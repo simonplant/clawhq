@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # aishore - AI Sprint Runner CLI
 # A self-contained sprint orchestration tool for Claude Code
 #
@@ -42,12 +42,12 @@ ensure_tmpdir() {
 AISHORE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$AISHORE_ROOT")"
 
-# Version: read from VERSION file if present, otherwise fall back to inline
-if [[ -f "$PROJECT_ROOT/VERSION" ]]; then
-    AISHORE_VERSION=$(cat "$PROJECT_ROOT/VERSION")
-else
-    AISHORE_VERSION="0.1.6"
+# Version: read from VERSION file (single source of truth)
+if [[ ! -f "$PROJECT_ROOT/VERSION" ]]; then
+    echo "ERROR: VERSION file not found at $PROJECT_ROOT/VERSION" >&2
+    exit 1
 fi
+AISHORE_VERSION=$(cat "$PROJECT_ROOT/VERSION")
 
 # Tool paths (in .aishore/ - can be updated)
 CONFIG_FILE="$AISHORE_ROOT/config.yaml"
@@ -343,7 +343,7 @@ pick_item() {
                         all_done_ids=$(echo "$all_done_ids" "$df_done" | jq -s 'add | unique')
                     done
                     local unmet
-                    unmet=$(echo "$deps_json" | jq -r --argjson done "$all_done_ids" '.[] | select(. as $dep | $done | index($dep) == null)' 2>/dev/null)
+                    unmet=$(echo "$deps_json" | jq -r --argjson done_ids "$all_done_ids" '.[] | select(. as $dep | $done_ids | index($dep) == null)' 2>/dev/null)
                     if [[ -n "$unmet" ]]; then
                         log_warning "Item $specific_id has unmet dependencies: $(echo "$unmet" | tr '\n' ', ' | sed 's/,$//')"
                     fi
@@ -1441,9 +1441,10 @@ cmd_init() {
     # Check for existing requirements docs
     local prd_found=""
     for candidate in \
-        "$PROJECT_ROOT/product.md" "$PROJECT_ROOT/PRODUCT.md" \
-        "$PROJECT_ROOT/prd.md" "$PROJECT_ROOT/PRD.md" \
-        "$PROJECT_ROOT/docs/product.md" "$PROJECT_ROOT/docs/PRD.md" \
+        "$PROJECT_ROOT/PRODUCT.md" "$PROJECT_ROOT/product.md" \
+        "$PROJECT_ROOT/PRD.md" "$PROJECT_ROOT/prd.md" \
+        "$PROJECT_ROOT/docs/PRODUCT.md" "$PROJECT_ROOT/docs/product.md" \
+        "$PROJECT_ROOT/docs/PRD.md" "$PROJECT_ROOT/docs/prd.md" \
         "$PROJECT_ROOT/docs/WEBSITE_BRIEF.md" \
         "$PROJECT_ROOT/README.md"; do
         if [[ -f "$candidate" ]]; then
@@ -1464,8 +1465,8 @@ cmd_init() {
     if [[ -n "$prd_found" ]]; then
         log_success "Found requirements doc: $prd_found"
     else
-        log_info "No product requirements doc found (product.md, prd.md, etc.)"
-        echo "  Tip: a product.md helps the product-owner agent prioritize features."
+        log_info "No product requirements doc found (PRODUCT.md, PRD.md, etc.)"
+        echo "  Tip: a PRODUCT.md helps the product-owner agent prioritize features."
         echo "  Even a short description of what you're building is useful."
     fi
 
@@ -1683,6 +1684,7 @@ cmd_update() {
 
     # Show what will be updated
     echo "Files to update:"
+    echo "  VERSION"
     echo "  .aishore/aishore"
     echo "  .aishore/gitignore-entries.txt"
     echo "  .aishore/agents/developer.md"
@@ -1751,6 +1753,13 @@ cmd_update() {
     mkdir -p "$staging_dir/agents"
     local all_verified=true
 
+    # Stage VERSION file
+    log_info "Fetching VERSION..."
+    if ! $fetch_cmd "$repo_url/VERSION" > "$staging_dir/VERSION" 2>/dev/null; then
+        log_error "Failed to fetch VERSION file"
+        exit 1
+    fi
+
     # Stage aishore script
     log_info "Fetching aishore..."
     if ! $fetch_cmd "$repo_url/.aishore/aishore" > "$staging_dir/aishore" 2>/dev/null; then
@@ -1792,6 +1801,7 @@ cmd_update() {
     fi
 
     log_info "All files verified — installing..."
+    mv "$staging_dir/VERSION" "$PROJECT_ROOT/VERSION"
     mv "$staging_dir/aishore" "$AISHORE_ROOT/aishore"
     chmod +x "$AISHORE_ROOT/aishore"
     mv "$staging_dir/gitignore-entries.txt" "$AISHORE_ROOT/gitignore-entries.txt"
@@ -1800,7 +1810,7 @@ cmd_update() {
     done
 
     echo ""
-    log_success "Updated to $remote_version (7 files installed)"
+    log_success "Updated to $remote_version (8 files installed)"
 }
 
 cmd_checksums() {
