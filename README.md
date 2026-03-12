@@ -1,36 +1,93 @@
-# ClawOps
+# ClawHQ
 
-**The lifecycle management platform for OpenClaw agents.**
+**The control panel for OpenClaw agents.**
 
 ---
 
-OpenClaw is the most powerful open-source framework for personal AI agents. It's also nearly impossible to operate. Configuration has 14+ silent landmines. Memory bloats without lifecycle management. Credentials expire without warning. Identity files drift and contradict themselves. Security is entirely opt-in. Running a production agent requires ongoing SRE work that non-experts won't do.
+cPanel made Linux hosting accessible to anyone who could rent a VPS. You didn't need to know how to configure Apache, manage SSL certs, set up email, write cron jobs, or harden a server — the control panel handled it. The server was powerful. The panel made it usable.
 
-**ClawOps fixes that.** Full-lifecycle management — from initial setup to long-term evolution — so your agent actually works in production:
+OpenClaw is the most powerful open-source framework for personal AI agents. It's also nearly impossible to operate — 14+ silent configuration landmines, memory that bloats without lifecycle management, credentials that expire without warning, security that's entirely opt-in, and ongoing SRE work that most people won't do.
+
+**ClawHQ is the control panel.** It manages the full deployment lifecycle — setup, build, hardening, deployment, operations, evolution, and decommission — so your agent actually works in production and keeps working.
 
 ```
-Onboard → Configure → Deploy → Secure → Monitor → Evolve → Support
+Plan  →  Build  →  Secure  →  Deploy  →  Operate  →  Evolve  →  Decommission
 ```
 
-## Two Modes
+Seven phases. Each is a distinct operational domain with its own toolchain. Together they cover the complete lifecycle — from the moment you decide to create an agent to the moment you retire it. The same way cPanel handles everything from domain setup to server decommission, ClawHQ handles everything from agent design to verified data deletion.
 
-**ClawOps Managed** — We operate your agent on isolated infrastructure. You never touch a terminal. We manage the container, not the contents.
+## The Toolchains
 
-**ClawOps Self-Operated** — The same engine as a free, open-source CLI. You run it on your own hardware. Full control.
+### Plan — Design your agent
+
+Templates, questionnaire, config generation, identity architecture. Answer questions about who your agent should be and what it should do — ClawHQ generates a complete, valid, hardened deployment bundle. Every known landmine already handled. No config files touched.
+
+Templates are **full operational profiles** — not prompt skins. Like WordPress themes, each defines personality, security posture, monitoring thresholds, memory policy, cron configuration, autonomy defaults, and integration requirements. They're the primary customization surface and the foundation of a community ecosystem.
 
 ```bash
-clawops init       # Questionnaire → complete, hardened config bundle
-clawops build      # Build agent image (from source, never pre-built)
-clawops up         # Deploy with hardened defaults
-clawops status     # Health dashboard: agent, integrations, memory, cost
-clawops doctor     # Diagnose issues — surfaces what WOULD have gone wrong
-clawops evolve     # Update personality, context, integrations
-clawops update     # Safe runtime upgrade with compatibility check + rollback
-clawops train      # Refine agent behavior from interaction history
-clawops backup     # Encrypted workspace snapshot
-clawops export     # Portable profile bundle (yours forever, take it anywhere)
-clawops destroy    # Wipe everything — cryptographic verification of deletion
-clawops logs       # Stream agent activity
+clawhq init          # Guided questionnaire → complete deployment bundle
+clawhq template      # Browse, preview, customize templates
+```
+
+### Build — Construct from source
+
+Two-stage image build from OpenClaw source. Never pre-built images — always from source, always auditable. Skill bundling, integration tool packaging, build verification.
+
+```bash
+clawhq build         # Two-stage image build from OpenClaw source
+```
+
+### Secure — Harden by default
+
+Like cPanel auto-configures SSL, firewall rules, and file permissions on a fresh VPS — ClawHQ auto-hardens every deployment. Container lockdown (cap_drop ALL, read-only rootfs, non-root user), egress firewall (DNS + HTTPS only), secrets management, PII scanning, credential health monitoring, audit logging. Security is the baseline, not a feature flag.
+
+```bash
+clawhq scan          # PII + secrets scanner across agent repos
+clawhq creds         # Credential health, expiry tracking, rotation
+clawhq audit         # Tool execution history + cost attribution
+```
+
+### Deploy — Ship and connect
+
+One command: container up, firewall applied, networks verified, health confirmed, messaging channel connected. Like clicking "create site" in a hosting panel — except the panel also hardens the server, verifies the SSL, and tests that email actually sends.
+
+```bash
+clawhq up            # Deploy + secure + verify in one step
+clawhq connect       # Connect messaging channel (Telegram, etc.)
+clawhq down          # Graceful shutdown
+clawhq restart       # Restart with firewall reapply + health verify
+```
+
+### Operate — Keep it running
+
+The day-2 through day-365 work. Diagnostics, health monitoring, backup/restore, safe updates, log streaming. The same way a hosting panel gives you a dashboard for server health, resource usage, and one-click updates — ClawHQ gives you a dashboard for agent health, integration status, and safe upstream upgrades.
+
+```bash
+clawhq doctor        # Preventive diagnostics — every known failure mode
+clawhq status        # Single-pane health: agent, integrations, cron, memory
+clawhq backup        # Encrypted snapshots with restore
+clawhq update        # Safe upstream upgrade with rollback
+clawhq logs          # Stream agent activity
+```
+
+**`doctor` is the hero feature.** It checks every known failure mode — 14+ configuration landmines, credential health, permissions, firewall state, identity file sizes, cron syntax, cross-file consistency — and tells you exactly what's wrong or what *would* go wrong if left unchecked. The marketing screenshot is `doctor` catching five problems you didn't know you had.
+
+### Evolve — Grow over time
+
+Hosting panels don't do this — but agents aren't static websites. They degrade without active management. Identity drifts, memory bloats, personality shifts, integrations go stale. ClawHQ provides identity governance, memory lifecycle (hot/warm/cold tiers), personality refinement, behavioral training, and integration management — the work that keeps your agent becoming more useful, not less.
+
+```bash
+clawhq evolve        # Update personality, context, integrations
+clawhq train         # Refine behavior from interaction history
+```
+
+### Decommission — Clean exit
+
+Export everything portable, destroy everything else, verify the destruction cryptographically. No orphaned data, no lingering secrets. Supports migration (export + reimport), fresh starts, and full retirement.
+
+```bash
+clawhq export        # Portable profile bundle — yours forever
+clawhq destroy       # Full wipe with cryptographic verification
 ```
 
 ## Three Layers
@@ -38,12 +95,12 @@ clawops logs       # Stream agent activity
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  LAYER 1: CORE PLATFORM (same for every agent)          │
-│  Security · Monitoring · Config Safety · Memory Mgmt    │
+│  Config Safety · Security · Monitoring · Memory Mgmt    │
 │  Cron Guardrails · Identity Governance · Audit Logging  │
 ├─────────────────────────────────────────────────────────┤
 │  LAYER 2: TEMPLATES (choose one, customize)             │
 │  Guardian · Assistant · Coach · Analyst · Companion     │
-│  Each: personality + operational profile + security     │
+│  Each: full operational profile, not just personality   │
 ├─────────────────────────────────────────────────────────┤
 │  LAYER 3: INTEGRATIONS (pick providers per category)    │
 │  Email · Calendar · Tasks · Messaging · Files · Code    │
@@ -51,52 +108,56 @@ clawops logs       # Stream agent activity
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Layer 1** is the product — the engineering that makes any agent safe, observable, and maintainable. Config generation with landmine detection, memory lifecycle (hot/warm/cold tiers), cron guardrails with circuit breakers, identity governance, security hardening, credential health monitoring. All the operational work that non-experts won't do and experts don't want to repeat.
+**Layer 1** is the control panel itself — the engineering that makes any agent safe, observable, and maintainable. Like cPanel's core: the same for every site, handling the operational complexity so you don't have to.
 
-**Layer 2** is the template system. Templates are full operational profiles — not just prompt skins. Each bundles personality, security posture, monitoring thresholds, memory policy, cron configuration, autonomy defaults, and integration recommendations. Community-contributed templates (WordPress model) extend the platform to use cases we'd never design ourselves.
+**Layer 2** is the ecosystem — community-contributed operational profiles (WordPress themes for agents). Templates customize Layer 1 within safe bounds. They can tighten security but never loosen it below the platform baseline.
 
-**Layer 3** is integration by category, not provider. The agent talks to "calendar" not "Google Calendar." Swap providers without changing agent behavior. Each integration has health checks, credential lifecycle tracking, fallback behavior, and version pinning.
+**Layer 3** is provider abstraction — the agent talks to "calendar" not "Google Calendar." Swap providers without changing agent behavior.
 
-## What It Handles
+## Two Modes
 
-| Problem | Without ClawOps | With ClawOps |
-|---|---|---|
-| **14+ config landmines** | Silent failures, days of debugging | Auto-detected and prevented |
-| **Memory bloat** (360KB/3 days) | Context overflow, degraded responses | Hot/warm/cold lifecycle, auto-summarization, size caps |
-| **Credential expiry** | Agent silently stops working | 7-day advance alerts, health probes, fallback |
-| **Identity drift** | Personality contradicts itself over time | Versioned YAML, staleness detection, token budgets |
-| **Security** | Opt-in, defaults are dangerous | Hardened by default (cap_drop, read-only rootfs, egress firewall) |
-| **Cron failures** | Silent, cascading, unbounded cost | Circuit breakers, exclusive locking, budget caps |
-| **Agent evolution** | Manual YAML edits, trial and error | `clawops evolve` — guided updates, schema validation |
-| **Ongoing operations** | Full-time SRE work | Automated monitoring, alerting, self-healing |
+**ClawHQ Managed** — We operate your agent on isolated infrastructure. Web console. Same engine underneath. We manage the container lifecycle, not the contents. You never touch a terminal. Think managed WordPress hosting — same WordPress, zero ops.
+
+**ClawHQ Self-Operated** — The same engine as a free, open-source CLI. Your hardware. Full control. Think installing cPanel on your own VPS — same panel, your server.
 
 ## Data Sovereignty
 
-For users who need it, ClawOps supports full data sovereignty — your agent, your infrastructure, your rules:
+Your agent holds the most intimate dataset about you that has ever existed — every email, every health concern, every financial anxiety, every relationship. ClawHQ is built so that data stays yours.
 
 | Principle | How |
 |---|---|
-| **Workspace isolation** | Agent runs on isolated infrastructure. We manage the container, not the contents. |
+| **Workspace isolation** | Isolated infrastructure. We manage the container, not the contents. |
 | **Identity integrity** | Identity files mounted read-only. Agent cannot modify its own guardrails. |
-| **Portability** | `clawops export` — portable bundle. Zero lock-in. Take it anywhere. |
-| **Auditability** | Every tool execution logged. Full transparency into agent behavior. |
+| **Portability** | `clawhq export` — take everything. Zero lock-in. |
+| **Deletion** | `clawhq destroy` — cryptographic verification of complete wipe. |
+| **Auditability** | Every tool execution logged. Full transparency. |
 | **Open source** | Auditable engine. Verify every claim. |
 
-## Competitive Position
+## Why This Exists
+
+Every successful infrastructure platform follows the same pattern: a powerful open-source engine appears, it's too hard for most people to operate, and a management layer emerges to bridge the gap.
+
+| Engine | Too Hard To Operate | Management Layer |
+|---|---|---|
+| Linux | Server administration | cPanel, Plesk, Webmin |
+| WordPress | Hosting, security, updates | WordPress.com, managed WP hosting |
+| AWS/multi-cloud | Cloud infrastructure | RightScale, CloudFormation |
+| Kubernetes | Container orchestration | Rancher, OpenShift |
+| **OpenClaw** | **Agent operations** | **ClawHQ** |
+
+ClawHQ is that layer for OpenClaw. The big-tech agents (Google, Apple, Microsoft) will be more polished and more integrated. They'll also see everything. ClawHQ is for people who want an agent that works reliably, evolves over time, and operates on their terms.
 
 ```
-Raw framework ←──────────────────────────────→ Platform lock-in
-OpenClaw         Basic hosting      CLAWOPS         Big-tech agents
-(powerful,       (default config,   (managed,       (polished,
- expert-only)    no lifecycle)      full lifecycle)  captive)
+Raw framework ←──────────────────────────────────→ Platform lock-in
+OpenClaw         Basic hosting       CLAWHQ          Big-tech agents
+(powerful,       (default config,    (control panel,     (polished,
+ expert-only)    no lifecycle)       full lifecycle)     captive)
 ```
 
-ClawOps is the managed service layer that makes OpenClaw production-ready — the same way RightScale made cloud infrastructure manageable, or WordPress.com made WordPress accessible.
+## Built on Production
 
-## Built on Production Experience
-
-Everything in ClawOps is grounded in a production agent that's been running for months — hardened Docker deployment, 10-minute heartbeat cycles, multiple cron jobs, multi-model architecture, 6+ working integrations, and ~13,500 tokens of configuration across 11+ files. Every failure mode became a product feature. Every landmine became a rule in the config generator. Every script became a module in the CLI.
+Everything in ClawHQ was extracted from a production agent running for months — hardened Docker deployment, 10-minute heartbeat cycles, multi-model architecture, 6+ integrations, ~13,500 tokens of configuration across 11+ files. Every failure mode became a rule. Every script became a module. Every landmine became a check in `doctor`.
 
 ## Status
 
-Pre-build / Design phase. See [product.md](product.md) for the full design document.
+Design phase. See [product.md](product.md) for the full design document.
