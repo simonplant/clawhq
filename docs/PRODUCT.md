@@ -735,6 +735,154 @@ The seven toolchains operate across three architectural layers:
 
 ---
 
+## Capability Map
+
+A structured inventory of every capability across the seven lifecycle phases and three architectural layers.
+
+### Phase Capabilities
+
+#### Plan — Design Your Agent
+
+| Capability | What It Does | Key Detail |
+|---|---|---|
+| Template System | Full operational profiles across 8 dimensions | Personality, security, monitoring, memory, cron, autonomy, integrations, skills |
+| Questionnaire | 3-phase interactive onboarding | Basics → Template → Integrations; generates 100% of config |
+| Config Generator | Assembles deployment bundle from questionnaire answers | 9+ files; all 14 landmines auto-handled; impossible to produce broken config |
+| Template Browsing | Browse, preview, compare, customize templates | Built-in + community; detailed previews of what each configures |
+| Community Templates | PR-contributed operational profiles | Safety-reviewed; can tighten Layer 1 security but never loosen it |
+
+#### Build — Construct From Source
+
+| Capability | What It Does | Key Detail |
+|---|---|---|
+| Source Management | Clone/update OpenClaw source, track upstream version | Offline cache; detects breaking upstream changes |
+| Two-Stage Docker Build | Incremental image build from source | Stage 1 (base + apt) rarely rebuilds; Stage 2 (tools + skills) is seconds |
+| Tool Bundling | Collect integration CLI tools from template manifest | Validated before bundling: syntax, imports, builds |
+| Skill Packaging | Bundle skills into workspace | Validates required files, prompt templates, declared dependencies |
+| Build Verification | Post-build integrity checks | Binary presence, version match, size check, manifest generation |
+| Reproducibility | Deterministic builds with drift detection | `--verify` rebuilds and compares against stored manifest |
+
+#### Secure — Harden By Default
+
+| Capability | What It Does | Key Detail |
+|---|---|---|
+| Container Hardening | Locked-down container runtime | 3 postures (standard/hardened/paranoid); cap_drop ALL, read-only rootfs, non-root UID 1000, resource limits |
+| Egress Firewall | iptables rules restricting outbound traffic | Dedicated `CLAWHQ_FWD` chain; DNS + HTTPS only; auto-reapply after bridge recreate |
+| Secrets Management | Enforce secrets isolation | `.env`-only injection, 600 permissions, never in config/logs/unencrypted backups |
+| PII & Secret Scanning | Continuous scanning of agent-created artifacts | Regex + entropy analysis; repos, git history, filenames; false-positive filtering |
+| Credential Health | Per-integration live validity probes | IMAP, CalDAV, API keys tested; expiry tracking; 7-day advance warnings |
+| Audit Logging | Tool execution history + cost attribution | Timestamps, redacted inputs, anomaly detection, exportable trail |
+
+#### Deploy — Ship and Connect
+
+| Capability | What It Does | Key Detail |
+|---|---|---|
+| Pre-flight Checks | 8 validations before anything starts | Docker, images, config, secrets, networks, ports, permissions, prior state |
+| Container Orchestration | Managed `docker compose up` | Correct project context; force-recreate on config change |
+| Firewall Application | Auto-detect and configure egress rules | Detect bridge interface, create/flush chain, persist with netfilter-persistent |
+| Network Verification | Validate container connectivity | ollama-bridge, DNS resolution, HTTPS, ICC disabled — tested from inside container |
+| Health Verification | Confirm agent is running correctly | Healthcheck polling, gateway auth, cron scheduler loaded |
+| Channel Connection | Messaging platform setup | Telegram/WhatsApp/Slack/Discord; guided setup with bidirectional verification |
+| Post-Deploy Smoke Test | End-to-end validation | Test message, identity loaded, one probe per integration |
+
+#### Operate — Keep It Running
+
+| Capability | What It Does | Key Detail |
+|---|---|---|
+| Doctor (hero feature) | Preventive diagnostics | 14+ landmine rules + 8 health check categories; `--fix` for safe auto-remediation |
+| Status Dashboard | Single-pane operational view | Agent state, integration health, cron status, workspace metrics |
+| Backup/Restore | Encrypted snapshots | Full/secrets-only/incremental; GPG encryption; validated restore + post-restore doctor |
+| Safe Update | Rollback-capable upstream upgrades | Fetch → changelog → approve → rebuild → swap → verify → rollback on failure |
+| Log Streaming | Structured access to agent activity | Live stream, historical search, per-cron-job history, cost attribution |
+
+#### Evolve — Grow Over Time
+
+| Capability | What It Does | Key Detail |
+|---|---|---|
+| Identity Governance | Prevent identity drift | Token budgets, staleness detection, contradiction flagging, scope-creep alerts, YAML source of truth |
+| Memory Lifecycle | Tiered memory management | Hot/warm/cold with LLM-powered summarization; PII masking at each transition |
+| Personality Refinement | Update agent without starting over | Selective re-questionnaire, diff preview, merge-not-overwrite, template upgrades |
+| Integration Management | Add, remove, or swap providers | Guided credential setup, health verification, dependency check, clean removal |
+| Behavioral Training | Refine behavior from interaction history | Pattern review, feedback incorporation, autonomy tuning recommendations |
+
+#### Decommission — Clean Exit
+
+| Capability | What It Does | Key Detail |
+|---|---|---|
+| Export | Portable bundle creation | Identity, memory, workspace, config, integrations, history, build manifest; self-documented |
+| Pre-Decommission Checklist | Safety verification before destruction | Backup exists, export created, data inventory, external data flagged, explicit confirmation |
+| Destruction Sequence | 10-step secure wipe | Container → volumes → workspace → config → secrets → images → networks → firewall → clawhq config → manifest |
+| Cryptographic Verification | Prove destruction completeness | SHA-256 pre/post state, orphan scan, signed destruction manifest |
+| Partial Decommission | Migration and fresh-start paths | Export + reimport, identity-only carry-over, template change |
+
+### Cross-Cutting Capabilities (Layer 1 Core Platform)
+
+These capabilities span all phases and apply identically to every agent regardless of template:
+
+| Capability | Description | Enforced By |
+|---|---|---|
+| Config Safety | Impossible to generate or ship broken configs | Plan (generation), Operate (doctor) |
+| Security Baseline | Hardened defaults that templates can tighten but never loosen | Secure (hardening), Plan (templates) |
+| Monitoring | Integration health probes, cron supervision, resource tracking | Operate (status, doctor) |
+| Memory Management | Tiered lifecycle with auto-summarization and PII masking | Evolve (memory lifecycle) |
+| Cron Guardrails | Syntax validation, timezone correctness, quiet hours enforcement | Plan (generation), Operate (doctor) |
+| Identity Governance | Read-only identity files, structured YAML source of truth, drift detection | Evolve (identity), Secure (read-only mounts) |
+| Audit Trail | Tool execution logging, cost attribution, anomaly detection | Secure (audit), Operate (logs) |
+| Credential Lifecycle | Live probes, expiry tracking, renewal guidance, rotation | Secure (creds), Operate (doctor) |
+| Backup/Restore | Encrypted snapshots with validated restore | Operate (backup) |
+| Update Safety | Rollback-capable upstream upgrades with post-update verification | Operate (update) |
+| Data Sovereignty | Export, verified deletion, zero lock-in, open source | Decommission (export, destroy) |
+
+### Layer 2: Template Dimensions
+
+Each template is a full operational profile across 8 dimensions:
+
+| Dimension | What It Controls | Example Variance |
+|---|---|---|
+| Personality | Tone, relationship model, communication style, boundaries | Guardian: direct steward / Companion: warm conversationalist |
+| Security Posture | Hardening level, egress rules, isolation mode | Analyst: standard / Guardian: hardened |
+| Monitoring Profile | Alert thresholds, check frequency, escalation rules | Guardian: aggressive alerting / Analyst: minimal interruption |
+| Memory Policy | Tier sizes, summarization aggressiveness, retention periods | Companion: long retention / Assistant: aggressive pruning |
+| Cron Configuration | Heartbeat frequency, quiet hours, waking hours, budget caps | Coach: frequent check-ins / Analyst: on-demand |
+| Autonomy Model | Independent action vs. approval required | Guardian: high autonomy / Assistant: escalates exceptions |
+| Integration Requirements | Required, recommended, optional tool categories | Coach: tasks + calendar required / Analyst: research + code required |
+| Skill Bundle | Pre-built skills included | Guardian: morning-brief + construct / Coach: session-report |
+
+**5 built-in templates:** Guardian, Assistant, Coach, Analyst, Companion — plus Custom (guided builder or raw YAML).
+
+### Layer 3: Integration Categories
+
+Provider-agnostic interfaces — the agent talks to "calendar" not "Google Calendar":
+
+| Category | Example Providers | Standard Interface | Ships With |
+|---|---|---|---|
+| Email | Gmail, iCloud, Outlook, Fastmail, ProtonMail | `email inbox`, `email send`, `email search` | Manifest, health check, credential lifecycle, fallback |
+| Calendar | Google, iCloud, Outlook, Fastmail | `calendar today`, `calendar create` | " |
+| Tasks | Todoist, TickTick, Linear, Notion | `tasks list`, `tasks add`, `tasks complete` | " |
+| Messaging | Telegram, WhatsApp, Slack, Discord | Channel config (not tool interface) | " |
+| Files | Google Drive, Dropbox, iCloud Drive | `files list`, `files get` | " |
+| Code | GitHub, GitLab | `code repos`, `code issues` | " |
+| Finance | Yahoo Finance, Alpha Vantage | `quote AAPL` | " |
+| Research | Tavily, Perplexity | `research <query>` | " |
+| Notes | Notion, Obsidian | `notes search`, `notes create` | " |
+| Health | Apple Health, manual entry | `health log`, `health summary` | " |
+
+### Capability Summary
+
+| | Capabilities | CLI Commands |
+|---|---|---|
+| **Plan** | 5 | `init`, `template` |
+| **Build** | 6 | `build` (+ flags) |
+| **Secure** | 6 | `scan`, `creds`, `audit` |
+| **Deploy** | 7 | `up`, `down`, `restart`, `connect` |
+| **Operate** | 5 | `doctor`, `status`, `backup`, `update`, `logs` |
+| **Evolve** | 5 | `evolve`, `train` |
+| **Decommission** | 5 | `export`, `destroy` |
+| **Cross-cutting** | 11 | — |
+| **Total** | **~50 capabilities** | **~18 commands** |
+
+---
+
 ## Architecture
 
 ### Self-Operated
