@@ -63,4 +63,4 @@ Pre-build / Design phase. See [product.md](product.md) for the full design docum
 
 ## Philosophy
 
-**KAHU** (Hawaiian: guardian, steward) — the design principles behind how agents should serve people. KAHU informs how ClawOps is built, not how it's branded.
+In an age of digital manipulation — dark patterns, engagement farming, data harvesting — a personal agent should be a **guardian**, not another vector of influence. ClawOps is built on the principle that agents must be secure by default, transparent in operation, and accountable to their users. The person comes first. The agent serves.

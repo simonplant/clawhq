@@ -4,7 +4,7 @@
 **Author**: Simon Plant + Claude Code (research & synthesis)
 **Status**: Design / Pre-build
 **Brand**: ClawOps — the complete lifecycle platform for OpenClaw agents (design → deploy → operate → evolve)
-**Philosophy**: KAHU — the design principles behind how agents should serve people
+**Philosophy**: Digital agents must be guardians, not manipulators — security-first, transparent, accountable
 
 ---
 
@@ -218,7 +218,7 @@ The personality is a **skin**, not the product. Each template defines the agent'
 
 | Template | Relationship | Tone | Proactivity | Focus |
 |---|---|---|---|---|
-| **Guardian** (KAHU) | Steward, protector | Direct, no sugarcoating | High — surfaces patterns, pushes back | Accountability, long-term health |
+| **Guardian** | Steward, protector | Direct, no sugarcoating | High — surfaces patterns, pushes back | Accountability, long-term health |
 | **Assistant** | Professional aide | Efficient, measured | Medium — handles routine, flags exceptions | Task execution, email triage |
 | **Coach** | Accountability partner | Encouraging, firm | High — tracks goals, celebrates wins | Progress tracking, habit building |
 | **Analyst** | Research partner | Thorough, skeptical | Low — responds to queries, delivers depth | Research, data analysis, synthesis |
@@ -628,8 +628,8 @@ Setting up a truly personalized agent requires depth that software alone can't p
 ### Challenge 7: Pricing vs. ChatGPT
 $29/mo vs ChatGPT Plus at $20/mo. Why pay more? **Resolution path**: The value proposition isn't "better chat" — it's "works while you sleep." ChatGPT waits for you. This agent checks your email, monitors your tasks, watches your portfolio, reminds you about your health, and sends you a morning briefing — all before you open your phone. That's a personal assistant, not a chatbot. Personal assistants cost $2-5K/mo. $29/mo for an AI version is cheap.
 
-### Challenge 8: The KAHU Philosophy Ceiling
-Buddhist principles, health accountability, "no sacred cows" — deeply personal to Simon. **Resolution path**: KAHU is the design philosophy, not the user-facing brand. It informs how we build (security-first, identity governance, pattern recognition) without requiring users to share the philosophy. The templates express different relationship dynamics — Guardian is KAHU-flavored, but Assistant and Developer Ally are not.
+### Challenge 8: The Guardian Philosophy
+In an age of digital manipulation — dark patterns, engagement farming, data harvesting — a personal agent should be a guardian, not another vector of influence. This means: security by default (not opt-in), identity the user controls (not the agent), transparent operations (audit everything), and accountability (surface patterns, don't hide them). The risk is that this philosophy feels opinionated. **Resolution path**: The philosophy informs how we build (security-first, identity governance, pattern recognition) without requiring users to share it. The Guardian template embodies it most directly, but every template benefits from the engineering it produces — container hardening, read-only identity, memory lifecycle, cost transparency. Users who want a warm companion still get a secure one.
 
 ---
 
@@ -732,9 +732,9 @@ Don't build the product first. Build the service. The service IS the research.
 
 ## 13. Open Questions
 
-1. **Product name** — **ClawOps**. SRE for OpenClaw agents. KAHU is the design philosophy. Runtime-neutral rebrand possible later if needed.
+1. **Product name** — **ClawOps**. SRE for OpenClaw agents. Runtime-neutral rebrand possible later if needed.
 2. **Phase 0 candidates** — Who are the 3-5 people for the concierge service? What are their use cases? (This determines the first template's real-world test.)
-3. **KAHU manifesto** — Publish the philosophy as thought leadership? Define the category before anyone else does?
+3. **Guardian manifesto** — Publish the philosophy (agents as guardians, not manipulators) as thought leadership? Define the category before anyone else does?
 4. **Relationship with OpenClaw** — Inform them? Partner? They might want guardrails upstream.
 5. **Where to build** — New repo? New GitHub org? Language (Go / TypeScript / Python)?
 6. **30-second pitch** — Not solved yet. Needs work.
