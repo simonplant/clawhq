@@ -1,48 +1,50 @@
-# ClawOps — SRE for OpenClaw Agents
+# ClawOps — The Privacy-First Personal Agent Platform
 
 **Date**: 2026-03-11
 **Author**: Simon Plant + Claude Code (research & synthesis)
 **Status**: Design / Pre-build
-**Brand**: ClawOps — the complete lifecycle platform for OpenClaw agents (design → deploy → operate → evolve)
-**Philosophy**: Digital agents must be guardians, not manipulators — security-first, transparent, accountable
+**Brand**: ClawOps — your agent, your data, your rules
+**Philosophy**: Digital agents must be guardians, not manipulators — security-first, transparent, accountable, sovereign
 
 ---
 
 ## 1. Purpose
 
-**One sentence**: SRE for OpenClaw — configure, personalize, harden, deploy, monitor, and evolve personal AI agents across their entire lifecycle.
+**One sentence**: The privacy-first alternative to big-tech AI agents — a platform to configure, deploy, and operate personal AI agents where your data stays yours.
 
-**The problem**: OpenClaw gives you everything and protects you from nothing. Configuration has ~30 surfaces with landmines. Identity files corrupt, bloat, and go stale. Operations require deep Linux/Docker expertise. Security is opt-in. The result: only infrastructure experts can build a production agent. Everyone else gets burned.
+**The big picture**: Google, Apple, Microsoft, and Anthropic will all ship personal AI agents. They'll be polished, deeply integrated, easy to set up. They'll also see every email you receive, every task you procrastinate on, every health condition you mention, every financial anxiety you express, every relationship you navigate — and they'll own that data forever. Your agent will know you more intimately than any app, any service, any person in your life. The question is: who else gets to see that?
 
-**The solution**: ClawOps is the operational layer for OpenClaw agents. It sits at the console outside — loading the right configuration, monitoring health, catching silent failures, managing memory lifecycle, and pulling the emergency brake when things go wrong. Not a hosting platform (HostedClaws and xCloud already do that). Not a no-code builder (Lindy and Relevance AI do that). The SRE toolkit that makes OpenClaw agents reliable at scale.
+**ClawOps is the Proton of personal agents.** Just as ProtonMail is the privacy-first alternative to Gmail, and ProtonVPN is the privacy-first alternative to trusting your ISP, ClawOps is the privacy-first alternative to trusting a big-tech platform with the most intimate AI relationship you'll ever have.
 
-**The metaphor**: Your agent is in the field. ClawOps is at the console — watching vitals, loading programs, spotting threats before the agent does, pulling the emergency brake when things go sideways. It doesn't go in. It keeps everything inside alive and effective.
+**The problem today**: The only open-source agent framework that works (OpenClaw) gives you everything and protects you from nothing. Configuration has ~30 surfaces with landmines. Identity files corrupt, bloat, and go stale. Operations require deep Linux/Docker expertise. Security is entirely opt-in. The result: only infrastructure experts can build a production agent. Everyone else is stuck choosing between big-tech surveillance agents or nothing.
+
+**The solution**: ClawOps makes it possible to have a powerful, personalized, autonomous AI agent — without handing your most intimate data to a platform that monetizes it. We handle the hard parts (configuration, security, monitoring, memory management, ongoing operations) so you get the quality of a big-tech agent with the privacy of self-hosted infrastructure.
 
 **Two modes, same engine:**
-1. **ClawOps Managed** — We operate your agent. Onboarding, deployment, monitoring, maintenance, support, evolution. You talk to your agent; we keep it alive.
-2. **ClawOps Self-Operated** — The same engine as an open-source CLI tool. You run it, you operate it, you own everything.
+1. **ClawOps Managed** — We operate your agent on isolated infrastructure. We manage the container, not the contents. Even we can't see your data.
+2. **ClawOps Self-Operated** — The same engine as an open-source CLI tool. You run it on your own hardware. Complete sovereignty.
 
 ---
 
 ## 2. Why Not Just Use What Exists?
 
-### Existing Options and Their Gaps
+### The Spectrum
 
-| Option | What It Does | What It Doesn't Do |
-|---|---|---|
-| **ChatGPT / Claude** | Stateless conversations with bolted-on memory | No proactive behavior, no tool execution, no scheduling, no autonomy |
-| **Custom GPTs** | Custom personality via system prompt + file upload | No persistent memory, no integrations, no cron, can't leave ChatGPT web |
-| **Lindy.ai** ($20-50/mo) | No-code workflow automation with AI | Workflow-first not agent-first. No identity, no memory evolution, credit-metered |
-| **Dust.tt** ($29/user/mo) | Enterprise AI agents connected to company data | Team-oriented, not personal. SaaS-only. |
-| **HostedClaws / xCloud** | Managed OpenClaw hosting (deploy in 5 min) | Just hosting. No personalization wizard. No guardrails. Same config nightmares. |
-| **Clawbot AI** | OpenClaw SaaS with model selection UI | Cloud-only. No deep personalization. No operational guardrails. |
-| **Self-hosting OpenClaw** | Full control, maximum customization | Requires Simon-level expertise. ~30 config surfaces. Months of trial and error. |
+| Option | Quality | Privacy | Effort | Your Data |
+|---|---|---|---|---|
+| **Big-tech agents** (Google, Apple, Microsoft) | High — deeply integrated | None — they see everything | Zero | Theirs |
+| **ChatGPT / Claude** | Good — great models, bolted-on memory | Platform sees all conversations | Low | Platform's |
+| **Lindy / Relevance AI** | Medium — workflow automation, not agents | SaaS — they process your data | Low | Theirs |
+| **HostedClaws / xCloud** | Medium — hosting, no personalization | Hoster has access to your VM | Low | Hoster's |
+| **Self-hosting OpenClaw** | High (if you survive setup) | Full — you control everything | Extreme | Yours |
+| **ClawOps Managed** | High — hardened, personalized, monitored | **Sovereign — we can't see your data** | Low | **Yours** |
+| **ClawOps Self-Operated** | High — same engine, you run it | Full — your hardware | Medium | **Yours** |
 
 ### The Gap
 
-Nobody does: "Tell me about yourself → here's a deeply personalized agent with safe defaults, managed memory, health-checked integrations, cost guardrails, and the 14 configuration landmines already handled."
+Today you choose between easy (big tech, no privacy) or private (self-host, months of expertise). Nobody offers **easy AND private** — a deeply personalized, operationally sound agent where even the service provider can't see your data.
 
-Hosting is solved. Configuration intelligence is not.
+That's the ClawOps gap.
 
 ---
 
@@ -573,39 +575,51 @@ The OSS tool builds community and trust. The managed service is the business.
 
 ## 9. Competitive Positioning
 
-### The Landscape (Early 2026)
+### The Real Competition
 
-The AI agent market is extremely crowded (~120+ companies) but segmented:
+The real competitors aren't other OpenClaw tools. They're the big-tech agents that are coming — and the question is whether people will care about privacy enough to choose an alternative.
 
-| Segment | Players | What They Solve |
-|---|---|---|
-| **Consumer chat** | ChatGPT, Claude, Gemini | Stateless conversation |
-| **No-code agents** | Lindy, Relevance AI, Cofounder | Workflow automation |
-| **Enterprise agents** | Dust, Microsoft Foundry | Team knowledge + process |
-| **Agent frameworks** | OpenClaw, LangGraph, CrewAI, AutoGen | Building blocks for developers |
-| **Managed hosting** | HostedClaws, xCloud, Clawbot AI | Deploy OpenClaw in 5 min |
+| Option | Experience | Privacy | Your Data |
+|---|---|---|---|
+| **Google Agent** (coming) | Seamless — integrated with Gmail, Calendar, Drive, Maps | None — Google sees everything, trains on it | Google's |
+| **Apple Intelligence** (expanding) | Smooth — integrated with iCloud, Health, Messages | Better — on-device where possible | Apple's (mostly) |
+| **Microsoft Copilot** (expanding) | Deep — integrated with Office, Teams, Outlook | Enterprise-controlled | Microsoft's |
+| **Anthropic/OpenAI agents** (coming) | Powerful — best models, API-first | Platform-dependent | Platform's |
+| **ClawOps** | Comparable — same models, open integrations | **Sovereign — even we can't see it** | **Yours** |
+
+### The Proton Playbook
+
+ProtonMail didn't beat Gmail on features. It beat Gmail on values — and built a $1B+ company doing it. The playbook:
+
+1. **Lead with the value proposition, not the feature list.** "We can't read your email" > "We have 15GB of storage."
+2. **Open source the engine.** Trust through transparency. ProtonMail's encryption is open source. ClawOps's engine is open source.
+3. **Privacy is the premium, not a tax.** Proton users pay MORE because privacy has value, not despite it.
+4. **The free tier builds the community.** Proton has free email. ClawOps has the free CLI tool.
+5. **Swiss jurisdiction / data sovereignty isn't a feature — it's the brand.**
 
 ### Where We Sit
 
-None of these do **configuration intelligence + personalization + operational guardrails**. We sit between "agent framework" (too hard) and "managed hosting" (too shallow):
+```
+Big tech ←─────────────────────────────────→ DIY
+Google       CLAWOPS           HostedClaws    OpenClaw
+Agent        (sovereign,       (hosted,       (framework)
+(integrated,  personalized,    default
+surveilled)   operated)        config)
+```
 
-```
-Too hard ←──────────────────────────────────→ Too shallow
-OpenClaw     CLAWOPS           HostedClaws    ChatGPT
-(framework)  (configured,      (hosted,       (chat)
-              personalized,     default
-              operated)         config)
-```
+The big-tech agents will be easier. ClawOps will be **yours**.
 
 ### The Moat (ordered by defensibility)
 
-1. **Configuration intelligence** — 14 encoded landmines, template system, auto-hardening. Competitors would need months of trial-and-error to discover these. Or they'd read our code (OSS) but still lack the operational context.
+1. **Data sovereignty architecture** — Not just a promise, but an engineering constraint. We literally cannot access your agent's workspace. This is ProtonMail's "we can't read your email" — the strongest possible trust signal.
 
-2. **Guardrail system** — Identity governance, memory lifecycle, cron safety, integration health. This is the ongoing value that prevents churn. Hosting is commodity; keeping an agent healthy over months is not.
+2. **Operational expertise** — 14 encoded landmines, guardrail system, memory lifecycle, identity governance. The hard-won knowledge that makes an open-source agent actually work long-term. Big tech doesn't need this (they control the stack). OSS users desperately do.
 
-3. **Questionnaire → personalization pipeline** — The 60% of config that's personalized (from our analysis: 40% universal, 60% personalized across ~13,500 tokens). The templates and questionnaire design encode product decisions about what makes a good agent.
+3. **Open source trust** — The engine is open source. Anyone can audit it. You can verify our privacy claims. Big-tech agents are black boxes.
 
-4. **Operational encoding** — The scripts, the fix-after-onboard logic, the firewall rules, the permission management. Invisible but essential. Without it, agents degrade silently.
+4. **Template ecosystem** — Community-built personality templates (like WordPress themes). Network effect: more templates → more users → more templates. Big tech offers one personality. We offer an ecosystem.
+
+5. **Portability** — `clawops export` gives you everything. Take it to another provider, run it yourself. Big-tech agents lock you into their ecosystem. We're the anti-lock-in option.
 
 ---
 
@@ -631,8 +645,8 @@ No relationship with the project. HostedClaws/xCloud already in the ecosystem. C
 ### Challenge 6: Is This a Product or a Service?
 Setting up a truly personalized agent requires depth that software alone can't provide. **Resolution path**: Both. The service (we set up your agent) generates revenue and learning. The product (the engine) codifies what we learn. The service becomes more efficient as the product improves. Eventually the product is good enough that the service becomes optional. This is the classic productized service → product transition.
 
-### Challenge 7: Differentiation vs. ChatGPT
-Why not just use ChatGPT/Claude? **Resolution path**: The value proposition isn't "better chat" — it's "works while you sleep." ChatGPT waits for you. A ClawOps agent checks your email, monitors your tasks, watches your portfolio, reminds you about your health, and sends you a morning briefing — all before you open your phone. That's a personal assistant, not a chatbot.
+### Challenge 7: Big-Tech Agents Will Be Better (At First)
+Google's agent will be more integrated. Apple's will be smoother. Microsoft's will own the enterprise. Why choose ClawOps? **Resolution path**: The same reason people choose ProtonMail over Gmail. Gmail is better at features. ProtonMail is better at privacy. When the data in question is the most intimate profile of a human being ever assembled, "who can see this?" matters more than "is the UI slightly smoother?" ClawOps doesn't need to beat big tech on polish. It needs to be the credible, sovereign alternative for people who care about who owns their agent's knowledge.
 
 ### Challenge 8: The Guardian Philosophy
 In an age of digital manipulation — dark patterns, engagement farming, data harvesting — a personal agent should be a guardian, not another vector of influence. This means: security by default (not opt-in), identity the user controls (not the agent), transparent operations (audit everything), and accountability (surface patterns, don't hide them). The risk is that this philosophy feels opinionated. **Resolution path**: The philosophy informs how we build (security-first, identity governance, pattern recognition) without requiring users to share it. The Guardian template embodies it most directly, but every template benefits from the engineering it produces — container hardening, read-only identity, memory lifecycle, cost transparency. Users who want a warm companion still get a secure one.
@@ -738,9 +752,13 @@ Don't build the product first. Build the service. The service IS the research.
 
 ## 13. Data Sovereignty & Trust
 
+This is not a feature. This is the reason ClawOps exists.
+
 After 6 months, your agent holds the most intimate dataset about you that exists anywhere — health data, daily patterns, relationships, work stress, financial positions, emotional states, habits, weaknesses. Combined. In one place. More sensitive than your email, medical records, or bank account — because it's ALL of them, with behavioral patterns on top.
 
-This is the trust question that determines whether anyone gives their agent real information. And it's potentially the strongest moat.
+Google will offer a personal agent for free. It will be excellent. And it will feed the most intimate profile of you ever assembled into the same machine that serves you ads. Apple will offer one that's better on privacy — but still locked to their ecosystem, still their hardware, still their rules.
+
+ClawOps exists because this data is too important to hand to any platform. The same way ProtonMail exists because email is too important to let Google read.
 
 ### Principles
 
@@ -852,10 +870,11 @@ This is Phase 5+ territory. Acknowledging it here because it changes design deci
 ## 16. Open Questions
 
 1. **Phase 0 candidates** — Who are the 3-5 people for the concierge service? What are their use cases?
-2. **Guardian manifesto** — Publish the philosophy (agents as guardians, not manipulators) as thought leadership? Define the category before anyone else does?
-3. **Relationship with OpenClaw** — Inform them? Partner? They might want guardrails upstream.
-4. **Where to build** — New GitHub org? Language (Go / TypeScript / Python)?
-5. **Template marketplace model** — How do community templates get reviewed and trusted? Quality gate vs. open marketplace?
-6. **Agent-to-agent protocol** — When to start designing cross-agent coordination? What's the minimum network size?
-7. **Data sovereignty certification** — SOC 2? Too early? What's the minimum trust signal for early adopters?
-8. **Pricing model** — TBD. Needs real-world validation from Phase 0 before setting prices.
+2. **Jurisdiction** — Proton chose Switzerland for privacy laws. Where does ClawOps incorporate? Where do managed VMs live? This is a brand decision as much as a legal one.
+3. **Encryption model** — Can we achieve true zero-knowledge (even we can't decrypt workspace at rest)? Or is "we don't look" the realistic starting point? What's the Proton-equivalent trust architecture?
+4. **Relationship with OpenClaw** — Inform them? Partner? They might want guardrails upstream.
+5. **Guardian manifesto** — Publish the philosophy (agents as guardians, not manipulators) as thought leadership? Frame the sovereignty narrative before big tech ships their agents.
+6. **Template marketplace model** — How do community templates get reviewed and trusted? Quality gate vs. open marketplace?
+7. **Agent-to-agent protocol** — When to start designing cross-agent coordination? What's the minimum network size?
+8. **Pricing model** — TBD. Proton proved privacy is a premium, not a tax. Needs Phase 0 validation.
+9. **Where to build** — New GitHub org? Language (Go / TypeScript / Python)?

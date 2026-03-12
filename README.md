@@ -1,28 +1,28 @@
 # ClawOps
 
-The managed service provider for personal AI agents. We onboard, configure, secure, monitor, and evolve OpenClaw agents so they stay healthy, useful, and safe — for months and years, not just the first week.
+The privacy-first personal AI agent platform. Your agent, your data, your rules.
 
-## The Problem
+## Why ClawOps Exists
 
-OpenClaw is a powerful open-source agent framework, but it gives you everything and protects you from nothing. Configuration has ~30 surfaces with landmines. Identity files corrupt, bloat, and go stale. Security is entirely opt-in. Operations require deep Linux/Docker expertise. The result: only infrastructure experts can run a production agent. Everyone else gets burned within weeks.
+Google, Apple, Microsoft, and Anthropic will all ship personal AI agents. They'll be polished, integrated, easy. They'll also see every email you receive, every task you procrastinate on, every health condition you mention, every financial anxiety you express — and they'll own that data forever.
 
-Hosting is solved (HostedClaws, xCloud). What's not solved is **keeping an agent healthy over time** — configuration intelligence, personalization, operational guardrails, memory lifecycle, credential management, cost tracking, and security hardening.
+After 6 months, your agent holds the most intimate dataset about you that exists anywhere. More sensitive than your email, medical records, or bank account — because it's all of them combined, with behavioral patterns on top.
 
-## What ClawOps Does
+**ClawOps is the Proton of personal agents.** Just as ProtonMail is the privacy-first alternative to Gmail, ClawOps is the privacy-first alternative to trusting a big-tech platform with the most intimate AI relationship you'll ever have.
 
-We manage the full agent lifecycle:
+## How It Works
+
+ClawOps manages the full lifecycle of OpenClaw agents — configuration, deployment, security, monitoring, and evolution — so you get the quality of a big-tech agent with the privacy of your own infrastructure.
 
 ```
 Onboard → Deploy → Operate → Optimize → Evolve → Support
 ```
 
-Your agent checks your email, monitors your tasks, watches your portfolio, and sends you a morning briefing — all before you open your phone. ClawOps keeps it running, secure, and getting better over time. You just talk to your agent.
-
 ## Two Modes
 
-**ClawOps Managed** — We operate your agent. Onboarding, deployment, monitoring, maintenance, support, evolution. You never touch a terminal.
+**ClawOps Managed** — We operate your agent on isolated infrastructure. We manage the container, not the contents. Even we can't see your data.
 
-**ClawOps Self-Operated** — Same engine, open-source CLI. You run everything.
+**ClawOps Self-Operated** — Same engine, open-source CLI. You run everything on your own hardware. Complete sovereignty.
 
 ```bash
 clawops init       # Questionnaire → complete config bundle
@@ -50,26 +50,37 @@ clawops export     # Portable profile bundle (yours forever)
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Layer 1** is the MSP value — the engineering that makes any agent safe, observable, and maintainable. Same for every agent.
+**Layer 1** is the engineering that makes any agent safe, observable, and maintainable.
 
-**Layer 2** is the personality — templates like WordPress themes. Pick Guardian (direct, proactive), Assistant (efficient, measured), Coach (encouraging, goal-focused), or build your own.
+**Layer 2** is the personality — templates like WordPress themes. Guardian, Assistant, Coach, Analyst, Companion, or build your own.
 
-**Layer 3** is tool integration — organized by category, not provider. The agent talks to "calendar" not "Google Calendar." Swap providers without changing agent behavior.
+**Layer 3** is tool integration by category, not provider. Swap Gmail for Outlook without changing agent behavior.
+
+## Data Sovereignty
+
+| Principle | How |
+|---|---|
+| **We can't see your data** | Isolated VM, encrypted at rest, we manage the container not the contents |
+| **Agent can't modify its own identity** | Identity files mounted read-only |
+| **You can leave anytime** | `clawops export` — portable bundle, no lock-in |
+| **You can nuke anytime** | `clawops destroy` — wipes everything, cryptographic verification |
+| **Audit everything** | Every tool execution logged, fully transparent |
+
+Architecturally enforced, not policy-enforced. Open source so you can verify.
 
 ## What's Inside
 
 - **14 configuration landmines** auto-handled (hard-won lessons that break OpenClaw if done wrong)
-- **Identity governance** — structured YAML, token budgets, read-only mounts, staleness alerts, contradiction detection
+- **Identity governance** — structured YAML, token budgets, read-only mounts, staleness alerts
 - **Memory lifecycle** — hot/warm/cold tiers, auto-summarization, PII masking, search index
-- **Cron guardrails** — exclusive locking, circuit breaker, cost estimation, budget caps, quiet hours
+- **Cron guardrails** — exclusive locking, circuit breaker, cost estimation, budget caps
 - **Security by default** — container hardening, egress firewall, secrets management, audit logging
 - **Integration health** — hourly probes, credential expiry tracking, fallback behavior
-- **Data sovereignty** — your data is yours, we can't see it, you can export or destroy anytime
-- **Template marketplace** — community-contributed personality templates (the WordPress ecosystem for agents)
+- **Template marketplace** — community personality templates (the WordPress ecosystem for agents)
 
 ## Philosophy
 
-In an age of digital manipulation — dark patterns, engagement farming, data harvesting — a personal agent should be a **guardian**, not another vector of influence. ClawOps is built on the principle that agents must be secure by default, transparent in operation, and accountable to their users. The person comes first. The agent serves.
+In an age of digital manipulation — dark patterns, engagement farming, data harvesting — a personal agent should be a **guardian**, not another vector of influence. The big-tech agents will be easier. ClawOps will be **yours**.
 
 ## Status
 
