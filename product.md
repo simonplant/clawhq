@@ -19,8 +19,8 @@
 **The metaphor**: Your agent is in the field. ClawOps is at the console — watching vitals, loading programs, spotting threats before the agent does, pulling the emergency brake when things go sideways. It doesn't go in. It keeps everything inside alive and effective.
 
 **Two modes, same engine:**
-1. **OSS tool** — Run the wizard, get a working agent, use the CLI to keep it healthy.
-2. **Managed service** — Same engine, we handle infrastructure + monitoring + support.
+1. **ClawOps Managed** — We operate your agent. Onboarding, deployment, monitoring, maintenance, support, evolution. You talk to your agent; we keep it alive.
+2. **ClawOps Self-Operated** — The same engine as an open-source CLI tool. You run it, you operate it, you own everything.
 
 ---
 
@@ -438,7 +438,7 @@ clawops status           # Agent: running (uptime: 14d 3h)
 
 ## 7. Architecture
 
-### For OSS (CLI Tool)
+### Self-Operated (CLI Tool)
 
 ```bash
 # Install
@@ -493,9 +493,9 @@ clawops logs     # Stream agent logs
     └── jobs.json          # Generated from template + schedule
 ```
 
-### For Managed Service (ClawOps Managed)
+### Managed Service
 
-Same engine, we handle infrastructure + monitoring + support:
+Same engine — we handle infrastructure, monitoring, maintenance, and support:
 
 ```
 ┌────────────────────────────────────────────┐
@@ -527,41 +527,47 @@ Same engine, we handle infrastructure + monitoring + support:
 
 ---
 
-## 8. Business Model
+## 8. Two Modes
 
-### Pricing
+### ClawOps Managed
 
-| Mode | What You Get | Price |
-|---|---|---|
-| **OSS** | Full engine (CLI), all templates, all guardrails | Free |
-| **Managed** | We deploy, manage, and support your agent | $29-199/mo |
-| **Premium OSS** | OSS + hosted dashboard + managed updates | $19/mo |
+We operate your agent. You never touch a terminal, config file, or Docker command.
 
-### Managed Tiers
+| What We Handle | How |
+|---|---|
+| **Onboarding** | Web questionnaire → fully configured, deployed agent |
+| **Infrastructure** | Provisioned VM, hardened container, egress firewall |
+| **Monitoring** | 24/7 health checks, integration status, cost tracking |
+| **Maintenance** | OpenClaw updates, security patches, credential rotation |
+| **Memory** | Lifecycle management, auto-summarization, PII masking |
+| **Evolution** | Personality updates, new integrations, life-change adaptation |
+| **Support** | Diagnose issues, fix broken integrations, explain agent behavior |
 
-| Tier | Price | Default Model | Integrations | Target |
-|---|---|---|---|---|
-| Starter | $29/mo | Haiku (or BYOK) | 3 | Non-technical individuals |
-| Pro | $79/mo | Sonnet (or BYOK) | Unlimited | Technical/lazy, consultants |
-| Max | $199/mo | Opus (or BYOK) | Unlimited + custom | Power users, small business |
+LLM costs are always the user's (BYOK — bring your own API key or subscription). ClawOps never touches your LLM billing.
 
-### Unit Economics
+### ClawOps Self-Operated
 
-- Compute: ~$6/mo per agent (Hetzner CX22: 2 vCPU, 4GB RAM, 40GB disk)
-- LLM: $0 (user's API key or subscription — never in our cost chain)
-- **COGS: ~$7/mo**
-- **Gross margin at Starter: ~76%**
-- **Gross margin at Pro: ~91%**
+Same engine, open-source CLI. You run everything — we just built the tools.
+
+```bash
+clawops init       # Questionnaire → config bundle
+clawops up         # Deploy with hardened defaults
+clawops status     # Health dashboard
+clawops doctor     # Diagnose issues
+clawops evolve     # Update personality/integrations
+clawops export     # Portable profile bundle (take it anywhere)
+```
 
 ### Open Source Strategy
 
-| Open Source | Proprietary |
+| Open Source (Self-Operated) | Proprietary (Managed) |
 |---|---|
-| Engine (questionnaire, templates, config generation) | ClawOps console (fleet dashboard) |
-| Guardrail system (identity, memory, cron, health) | Managed hosting infrastructure (the nodes) |
-| agentd binary | Support tools |
-| Profile format spec | Billing system |
-| CLI tool | Premium templates |
+| Engine (questionnaire, templates, config generation) | ClawOps console (fleet + customer dashboards) |
+| Guardrail system (identity, memory, cron, health) | Managed infrastructure |
+| agentd binary | Support tooling |
+| Profile format spec + CLI tool | Billing |
+
+The OSS tool builds community and trust. The managed service is the business.
 
 ---
 
@@ -625,8 +631,8 @@ No relationship with the project. HostedClaws/xCloud already in the ecosystem. C
 ### Challenge 6: Is This a Product or a Service?
 Setting up a truly personalized agent requires depth that software alone can't provide. **Resolution path**: Both. The service (we set up your agent) generates revenue and learning. The product (the engine) codifies what we learn. The service becomes more efficient as the product improves. Eventually the product is good enough that the service becomes optional. This is the classic productized service → product transition.
 
-### Challenge 7: Pricing vs. ChatGPT
-$29/mo vs ChatGPT Plus at $20/mo. Why pay more? **Resolution path**: The value proposition isn't "better chat" — it's "works while you sleep." ChatGPT waits for you. This agent checks your email, monitors your tasks, watches your portfolio, reminds you about your health, and sends you a morning briefing — all before you open your phone. That's a personal assistant, not a chatbot. Personal assistants cost $2-5K/mo. $29/mo for an AI version is cheap.
+### Challenge 7: Differentiation vs. ChatGPT
+Why not just use ChatGPT/Claude? **Resolution path**: The value proposition isn't "better chat" — it's "works while you sleep." ChatGPT waits for you. A ClawOps agent checks your email, monitors your tasks, watches your portfolio, reminds you about your health, and sends you a morning briefing — all before you open your phone. That's a personal assistant, not a chatbot.
 
 ### Challenge 8: The Guardian Philosophy
 In an age of digital manipulation — dark patterns, engagement farming, data harvesting — a personal agent should be a guardian, not another vector of influence. This means: security by default (not opt-in), identity the user controls (not the agent), transparent operations (audit everything), and accountability (surface patterns, don't hide them). The risk is that this philosophy feels opinionated. **Resolution path**: The philosophy informs how we build (security-first, identity governance, pattern recognition) without requiring users to share it. The Guardian template embodies it most directly, but every template benefits from the engineering it produces — container hardening, read-only identity, memory lifecycle, cost transparency. Users who want a warm companion still get a secure one.
@@ -730,12 +736,126 @@ Don't build the product first. Build the service. The service IS the research.
 
 ---
 
-## 13. Open Questions
+## 13. Data Sovereignty & Trust
 
-1. **Product name** — **ClawOps**. SRE for OpenClaw agents. Runtime-neutral rebrand possible later if needed.
-2. **Phase 0 candidates** — Who are the 3-5 people for the concierge service? What are their use cases? (This determines the first template's real-world test.)
-3. **Guardian manifesto** — Publish the philosophy (agents as guardians, not manipulators) as thought leadership? Define the category before anyone else does?
-4. **Relationship with OpenClaw** — Inform them? Partner? They might want guardrails upstream.
-5. **Where to build** — New repo? New GitHub org? Language (Go / TypeScript / Python)?
-6. **30-second pitch** — Not solved yet. Needs work.
-7. **The identity question** — Is this Simon's company? Or does it need co-founders? The service model is one-person friendly. The product model might not be.
+After 6 months, your agent holds the most intimate dataset about you that exists anywhere — health data, daily patterns, relationships, work stress, financial positions, emotional states, habits, weaknesses. Combined. In one place. More sensitive than your email, medical records, or bank account — because it's ALL of them, with behavioral patterns on top.
+
+This is the trust question that determines whether anyone gives their agent real information. And it's potentially the strongest moat.
+
+### Principles
+
+| Principle | Implementation |
+|---|---|
+| **We can't see your data** | Agent runs on isolated VM. Workspace encrypted at rest. We manage the container, not the contents. |
+| **Agent can't modify its own identity** | Identity files mounted read-only. The agent can't remove its own guardrails. |
+| **You can leave anytime** | `clawops export` — portable bundle (config, identity, memory, tools). No lock-in. |
+| **You can nuke anytime** | `clawops destroy` — wipes VM, all data, all backups. Cryptographic verification. |
+| **Audit everything** | Every tool execution logged. You see exactly what your agent did, when, with what data. |
+
+### What We Access (Managed Mode)
+
+| We CAN see | We CANNOT see |
+|---|---|
+| Container health (up/down/restarts) | Agent conversations |
+| Integration status (healthy/degraded/failed) | Email, task, calendar content |
+| Memory tier sizes (45KB hot, 120KB warm) | Memory contents |
+| API cost metrics | What the agent does with the calls |
+| Cron job status (running/failed) | Cron job outputs |
+
+Architecturally enforced, not policy-enforced.
+
+---
+
+## 14. Template Marketplace
+
+Personality templates are like WordPress themes — they define how the agent looks, feels, and behaves, but the underlying engine is the same. This is where community and ecosystem value comes in.
+
+### How Templates Work
+
+A template is a bundle:
+```yaml
+# template.yaml
+name: "Business Assistant"
+version: "1.2.0"
+author: "clawops-community"
+category: "professional"
+description: "Efficient email triage, calendar management, meeting prep"
+
+personality:
+  tone: measured
+  style: "professional, concise, proactive on logistics"
+  relationship: "executive assistant"
+
+heartbeat:
+  frequency: "10min"
+  checks: [email, calendar, tasks]
+  waking_hours: "7am-8pm"
+
+integrations_required: [email, calendar, tasks]
+integrations_optional: [code, research]
+
+skills_included:
+  - morning-brief
+  - meeting-prep
+  - email-digest
+
+autonomy_default: "handle_routine"
+```
+
+### Template Lifecycle
+
+1. **Built-in templates** — Ship with ClawOps. Deeply tested. Guardian is first.
+2. **Community templates** — Open-source, contributed via PR. Reviewed for quality + safety.
+3. **Premium templates** — Specialized (e.g., "Trading Copilot", "Health Coach"). May require specific integrations.
+4. **Custom templates** — Users build their own via guided builder or YAML.
+
+### The WordPress Analogy
+
+WordPress won because of themes and plugins, not because the core CMS was best. The same dynamic could apply here:
+- **Core engine** = WordPress core (ClawOps engine)
+- **Templates** = WordPress themes (personality + default config)
+- **Integrations** = WordPress plugins (tool providers)
+- **Skills** = WordPress widgets (pre-built capabilities)
+
+The community creates templates for use cases we'd never think of. A real estate agent template. A student template. A chronic illness management template. A day trader template. Each deeply tailored, each bringing in users we'd never reach directly.
+
+### Quality and Safety
+
+Templates have access to the user's integrations and personal context. Quality control matters:
+- Templates can't override Layer 1 security (container hardening, egress firewall, read-only identity)
+- Templates must declare required permissions (which tool categories, what autonomy level)
+- Community templates go through review before listing
+- User ratings and usage metrics visible
+- Templates versioned — updates require user confirmation
+
+---
+
+## 15. Agent-to-Agent (Future Vision)
+
+When 1,000 people run ClawOps agents, new possibilities emerge:
+
+- Alice's agent schedules a meeting with Bob's agent (calendar negotiation)
+- A family's agents coordinate grocery lists, pickups, meal planning
+- A team's agents handle standup summaries, PR reviews, deployment notifications
+
+This is where network effects kick in — and where lock-in becomes organic. Nobody leaves a platform where their agent has relationships with other agents.
+
+**Not building this yet.** But the identity layer and communication architecture should be designed to support it from day one:
+- Agents need discoverable identities (not just container IDs)
+- Cross-agent communication needs a protocol (request/response, not just chat)
+- Permission model: "Alice allows Bob's agent to see her calendar availability but not her task list"
+
+This is Phase 5+ territory. Acknowledging it here because it changes design decisions now.
+
+---
+
+## 16. Open Questions
+
+1. **Phase 0 candidates** — Who are the 3-5 people for the concierge service? What are their use cases?
+2. **Guardian manifesto** — Publish the philosophy (agents as guardians, not manipulators) as thought leadership? Define the category before anyone else does?
+3. **Relationship with OpenClaw** — Inform them? Partner? They might want guardrails upstream.
+4. **Where to build** — New GitHub org? Language (Go / TypeScript / Python)?
+5. **Template marketplace model** — How do community templates get reviewed and trusted? Quality gate vs. open marketplace?
+6. **Agent-to-agent protocol** — When to start designing cross-agent coordination? What's the minimum network size?
+7. **Data sovereignty certification** — SOC 2? Too early? What's the minimum trust signal for early adopters?
+8. **Pricing model** — TBD. Needs real-world validation from Phase 0 before setting prices.
