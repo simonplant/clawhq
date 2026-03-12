@@ -160,4 +160,4 @@ Everything in ClawHQ was extracted from a production agent running for months â€
 
 ## Status
 
-Design phase. See [product.md](product.md) for the full design document.
+Design phase. See [docs/PRODUCT.md](docs/PRODUCT.md) for the full design document.

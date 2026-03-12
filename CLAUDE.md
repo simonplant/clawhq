@@ -8,7 +8,7 @@ ClawHQ is a control panel for OpenClaw agents — the "cPanel for personal AI ag
 
 **Current status: Design phase.** No implementation code exists yet. The repository contains:
 - `README.md` — Executive summary and positioning
-- `product.md` — Comprehensive 900+ line design document covering all seven lifecycle phases, architecture, and implementation details
+- `docs/PRODUCT.md` — Comprehensive 900+ line design document covering all seven lifecycle phases, architecture, and implementation details
 
 ## Architecture
 
@@ -46,7 +46,7 @@ clawhq export / destroy    — Decommission phase
 
 ## Implementation Notes
 
-When building this project, refer to `product.md` for detailed specifications on each toolchain. Key technical details:
+When building this project, refer to `docs/PRODUCT.md` for detailed specifications on each toolchain. Key technical details:
 - Two-stage Docker build: Stage 1 (base OpenClaw + apt packages), Stage 2 (custom tools + skills)
 - Egress firewall uses dedicated iptables chain (`CLAWHQ_FWD`) on Docker bridge — must reapply after every `docker compose down`
 - OpenClaw config is ~13,500 tokens across 11+ files; ~40% universal, ~60% personalized
