@@ -1,0 +1,5 @@
+# aishore runtime files (add these to your .gitignore)
+.aishore/data/logs/
+.aishore/data/status/result.json
+.aishore/data/status/.item_source
+.aishore/data/status/.aishore.lock
