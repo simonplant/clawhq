@@ -239,13 +239,13 @@ clawhq build --dry-run          # Show what would be built without building
 
 ### 3. Secure
 
-> *Hardened by default. Monitored continuously. Every secret managed. Every repo scanned. Security is the baseline, not a feature flag.*
+> *Hardened by default. Monitored continuously. Every secret managed. Every skill vetted. Security is the baseline, not a feature flag.*
 
 #### The Problem
 
 OpenClaw's security is entirely opt-in. The default configuration runs as root with full capabilities, no egress filtering, secrets in config files, and writable identity files — the agent can modify its own personality and remove its own guardrails. Most users never harden their deployment because they don't know what to harden or how.
 
-Beyond the container itself: agents create code, push to repos, and generate files that may contain PII or leaked secrets. There's no scanning. Credentials expire silently — the agent doesn't notice, continues running, and the user assumes everything is fine because the container is healthy.
+Beyond the container itself: agents create code, push to repos, and generate files that may contain PII or leaked secrets. There's no scanning. Credentials expire silently — the agent doesn't notice, continues running, and the user assumes everything is fine because the container is healthy. Community skills represent an unvetted supply chain. And thousands of instances sit publicly exposed with authentication bypasses.
 
 #### What This Toolchain Does
 
@@ -270,14 +270,28 @@ Beyond the container itself: agents create code, push to repos, and generate fil
 - Allow HTTPS (TCP 443) — required for API calls
 - Log and drop everything else
 
-The firewall is implemented as a dedicated iptables chain (`CLAWHQ_FWD`) attached to the Docker bridge interface. Critical operational detail: after every `docker compose down`, Docker destroys and recreates the bridge interface, invalidating the chain. The Secure toolchain detects this and reapplies automatically — a landmine that has caused hours of debugging in manual setups.
+The firewall is implemented as a dedicated iptables chain (`CLAWHQ_FWD`) attached to the Docker bridge interface. Critical operational detail: after every `docker compose down`, Docker destroys and recreates the bridge interface, invalidating the chain. ClawHQ detects this and reapplies automatically — a landmine that has caused hours of debugging in manual setups. The Deploy toolchain applies the firewall; Doctor verifies it continuously.
 
-**Secrets Management** — Secrets (API keys, tokens, session keys) are injected via environment variables from `.env`, never stored in `openclaw.json` or other config files. The toolchain enforces this separation:
+**Network & Access Hardening** — Attack surface reduction beyond containers:
+
+| Control | What It Prevents | Implementation |
+|---|---|---|
+| Gateway binding | Publicly exposed instances via `0.0.0.0` binding | Enforce loopback-only binding by default |
+| WebSocket origin validation | Cross-site WebSocket hijacking (ClawJacked vector) | Origin header validation on all upgrade requests |
+| CSRF protections | Unauthorized state changes via cross-site requests | Token-based guards on all state-changing operations |
+| mDNS/Bonjour control | Network reconnaissance via service discovery | Disable service discovery broadcasts in container |
+| Secure remote access | Raw port exposure | Tailscale, SSH tunnels, or Cloudflare Tunnel only |
+| Device pairing | Silent auto-pairing on localhost | Explicit device registration approval required |
+| Auth failure tracking | Brute-force attacks | Failed auth logging with fail2ban integration |
+
+**Secrets Management** — Secrets (API keys, tokens, session keys) are injected via environment variables from `.env`, never stored in config files:
 
 - `.env` file permissions set to 600 (owner-only read/write)
 - Config files scanned for embedded secrets on every `doctor` run
 - `.env.example` template tracked in version control with `CHANGE_ME` placeholders
 - Secrets never logged, never included in backups without encryption
+- Enterprise option: source secrets from HashiCorp Vault, AWS Secrets Manager, Doppler, or 1Password CLI instead of `.env`
+- Scheduled rotation of API keys and tokens; per-service scoping with minimum necessary permissions
 
 **PII & Secret Scanning** — Continuous scanning of agent-created artifacts:
 
@@ -291,7 +305,16 @@ The firewall is implemented as a dedicated iptables chain (`CLAWHQ_FWD`) attache
 
 The scanner skips known false positives: `CHANGE_ME` placeholders, environment variable references (`$VAR`), comments explaining patterns, and functional identity references in designated files (USER.md, MEMORY.md).
 
-**Credential Health** — Per-integration health probes that test actual credential validity:
+**Supply Chain Security** — Agent skills and community contributions represent an attack surface:
+
+| Control | What It Does |
+|---|---|
+| Skill vetting | AI-powered scanning of community skills before installation; VirusTotal integration |
+| Skill allowlisting | Internal registry of approved skills only; block unapproved installs |
+| IOC database | Known C2 IPs, malicious domains, file hashes, publisher blacklists from known campaigns |
+| CVE monitoring | Automated NVD CVE polling; community threat intelligence feeds; same-day fleet patching |
+
+**Credential Health** — Per-integration probes that test actual credential validity:
 
 | Integration | Health Probe | What It Tests |
 |---|---|---|
@@ -304,12 +327,14 @@ The scanner skips known false positives: `CHANGE_ME` placeholders, environment v
 
 Probes run on schedule (configurable per template). Failures trigger alerts with specific remediation steps. Credential expiry is tracked where APIs expose it — 7-day advance warnings.
 
-**Audit Logging** — Every tool execution inside the container is logged by OpenClaw. The Secure toolchain makes these logs accessible, searchable, and alertable:
+**Audit & Compliance** — Every tool execution inside the container is logged by OpenClaw. The Secure toolchain makes these logs accessible, searchable, and alertable:
 
 - Tool execution history with timestamps, inputs (redacted), outputs (summarized)
-- Cost attribution per tool, per session, per cron job
 - Anomaly detection: unusual tool usage patterns, unexpected outbound connections
 - Exportable audit trail for compliance review
+- SIEM forwarding: Splunk, Elastic, or Graylog with structured event format
+- Alignment with OWASP GenAI Top 10, SOC 2, ISO 27001, GDPR, and HIPAA controls
+- Published, community-maintained threat model with attack examples and mitigations per lifecycle phase
 
 ```bash
 clawhq scan                     # Full PII + secret scan across agent repos
@@ -319,6 +344,7 @@ clawhq creds                    # Credential health check
 clawhq creds --renew <name>     # Guided credential renewal
 clawhq audit                    # Review tool execution history
 clawhq audit --cost             # Cost attribution report
+clawhq audit --compliance       # Exportable compliance report
 ```
 
 ---
@@ -353,24 +379,16 @@ Deploying an OpenClaw agent is a multi-step sequence where skipping any step pro
 - Project name: consistent naming for `docker compose` commands
 - Force-recreate if config has changed since last deploy
 
-**Firewall Application** — Immediately after containers start:
+**Firewall & Network** — Immediately after containers start, the Deploy toolchain applies the egress firewall defined by the Secure toolchain and verifies the full network stack:
 
 1. Detect the Docker bridge interface for the agent network (`br-<hash>`)
-2. Flush any existing `CLAWHQ_FWD` chain (idempotent)
-3. Create the chain with rules: ESTABLISHED/RELATED → DNS → HTTPS → LOG+DROP
-4. Insert into the FORWARD chain targeting the bridge interface
-5. Persist with `netfilter-persistent` (survives reboot)
-6. Verify rules are active with `iptables -L CLAWHQ_FWD`
+2. Apply `CLAWHQ_FWD` iptables chain (ESTABLISHED/RELATED → DNS → HTTPS → LOG+DROP)
+3. Persist with `netfilter-persistent` (survives reboot)
+4. Verify `ollama-bridge` connects the agent container to the Ollama service
+5. Test DNS resolution and HTTPS connectivity from inside the container
+6. Confirm ICC is disabled on the agent network
 
 Requires sudo. The toolchain explains why and what it's doing before prompting.
-
-**Network Verification** — After containers and firewall are up:
-
-- Verify `ollama-bridge` connects the agent container to the Ollama service
-- Test DNS resolution from inside the container (`docker exec ... nslookup api.anthropic.com`)
-- Test HTTPS connectivity to required API endpoints
-- Verify the agent can reach Ollama for embeddings (`curl http://ollama:11434/api/tags`)
-- Confirm ICC is disabled on the agent network (containers can't reach each other)
 
 **Health Verification** — Wait for the OpenClaw healthcheck to pass:
 
@@ -382,8 +400,19 @@ Requires sudo. The toolchain explains why and what it's doing before prompting.
 **Channel Connection** — Messaging channel setup (separate from container deployment):
 
 - Telegram: guide through BotFather bot creation, token configuration, first-message pairing
-- WhatsApp/Slack/Discord: provider-specific setup flow
+- WhatsApp/Slack/Discord/Signal: provider-specific setup flow
 - Verify bidirectional message flow (send test message, confirm receipt)
+
+**Infrastructure Provisioning** (Managed mode) — For ClawHQ Managed, the Deploy toolchain also handles infrastructure:
+
+| Capability | Description |
+|---|---|
+| Multi-cloud deploy | One-click provisioning across Hetzner, DigitalOcean, Vultr, AWS, and self-hosted VMs |
+| Server sizing | Recommend CPU/RAM/storage based on intended workload and template requirements |
+| Region selection | Deploy to geographically optimal datacenter for latency to messaging platform APIs |
+| DNS & SSL automation | Automatic subdomain creation, Let's Encrypt certificate provisioning and renewal |
+| Reverse proxy | Auto-configured nginx/Traefik with TLS termination, WebSocket support, and rate limiting |
+| Infrastructure-as-code | Reproducible provisioning via cloud-init templates |
 
 **Media Directory Setup** — Create required bind-mount directories:
 
@@ -412,7 +441,7 @@ clawhq restart                  # Restart with firewall reapply + health verify
 
 ### 5. Operate
 
-> *Day-2 through day-365. Diagnostics, monitoring, backup, updates. The invisible work that separates a demo from a production system.*
+> *Day-2 through day-365. Diagnostics, monitoring, cost tracking, backup, updates, fleet management. The invisible work that separates a demo from a production system.*
 
 #### The Problem
 
@@ -448,13 +477,13 @@ This is full-time SRE work. It's the reason most OpenClaw deployments are abando
 | Check Category | What It Validates |
 |---|---|
 | File permissions | Config dirs owned by UID 1000, `.env` is 600, credential files are 600, config is 644 |
-| Credential format | API keys match expected patterns (length, prefix), tokens not expired |
+| Credential health | Live probes for each integration (reuses Secure toolchain's credential checks) |
 | Cross-file consistency | Tools referenced in TOOLS.md exist in workspace, models in AGENTS.md match auth profile |
 | Memory health | Workspace size, growth rate, time since last summarization |
 | Cron health | All jobs have valid syntax, schedules are timezone-correct, no overlapping execution windows |
 | Container resources | CPU/memory within limits, no OOM kills, tmpfs not full |
 | Network state | Firewall active, bridge interface exists, ollama reachable |
-| Integration health | Live smoke tests for each configured integration |
+| Configuration drift | Current config matches generated state; alerts on manual changes that weaken security |
 
 Doctor outputs a structured report: pass/warn/fail per check, with specific fix instructions for every failure. It can also auto-fix safe issues (permissions, firewall reapplication) with `--fix`.
 
@@ -474,6 +503,11 @@ Doctor outputs a structured report: pass/warn/fail per check, with specific fix 
 │  ● Research (Tavily)   Last check: 2m ago    ✓ Healthy │
 │  ● Finance (Yahoo)     Last check: 2m ago    ✓ Healthy │
 ├─────────────────────────────────────────────────────────┤
+│  COST                                                   │
+│  Today: $0.43 (↓12%)    This week: $2.87    MTD: $8.14 │
+│  By model: Sonnet $6.20 · Haiku $1.94                   │
+│  Budget: $15/mo (54% used)    ⚠ Pace: $12.20 projected │
+├─────────────────────────────────────────────────────────┤
 │  CRON                                                   │
 │  heartbeat     Last: 3m ago (OK)    Next: 7m            │
 │  work-session  Last: 8m ago (OK)    Next: 7m            │
@@ -489,9 +523,17 @@ Doctor outputs a structured report: pass/warn/fail per check, with specific fix 
 
 Status data comes from:
 - Container state: Docker API (inspect, stats)
-- Integration health: `docker exec` smoke tests against each configured integration's CLI tool
-- Cron status: Parse `cron/jobs.json` for schedule + read execution logs for last run/outcome
-- Workspace metrics: File size measurements + git log for growth rate
+- Integration health: reuses Secure toolchain's credential probes
+- Cost: token usage tracked per model, per agent, per session; budget caps with alerts at 50%/75%/90% and graceful degradation to lower-cost models before pausing
+- Cron status: parse `cron/jobs.json` for schedule + read execution logs for last run/outcome
+- Workspace metrics: file size measurements + git log for growth rate
+
+**Fleet Management** — For users running multiple agents:
+
+- Monitor and manage multiple OpenClaw agents from a single dashboard across multiple servers
+- Aggregated health, cost, and security posture across the fleet
+- Fleet-wide operations: patch all agents, rotate all credentials, run doctor across fleet
+- Per-agent drill-down from fleet view to individual status
 
 **Backup** — Encrypted snapshots with restore:
 
@@ -510,18 +552,33 @@ Restore from any snapshot to any point in time. Restore validates the snapshot i
 3. Two-stage rebuild (same as Build toolchain)
 4. Stop current container, start new one
 5. Wait for healthcheck pass
-6. Reapply firewall (bridge interface may have changed)
-7. Run `doctor` post-update to catch regressions
-8. If anything fails: automatic rollback to previous image, restart, verify
+6. Reapply firewall and run `doctor` post-update to catch regressions
+7. If anything fails: automatic rollback to previous image, restart, verify
 
 The update toolchain maintains the previous image tag so rollback is always instant — no rebuild required.
+
+**Incident Response** — Documented playbook for when things go wrong:
+
+1. **Detect** — Automated alerts from monitoring, doctor, credential checks
+2. **Contain** — Isolate affected agent (network disconnect, pause)
+3. **Assess** — Audit trail review, scope determination
+4. **Recover** — Restore from backup, credential rotation, re-deploy
+5. **Report** — Exportable incident report with timeline and remediation steps
+
+Automated credential rotation triggers on breach detection.
+
+**Health Self-Repair** — Proactive recovery without human intervention:
+
+- Auto-reconnect on network drops
+- Gateway restart on crash detection
+- Firewall reapplication on bridge interface change
+- Self-healing deployment skill for common failure modes
 
 **Logs** — Structured access to agent activity:
 
 - Stream live container logs with filtering (tool executions, cron runs, errors)
 - Historical log search with time ranges
 - Cron job output history (per-job, per-run)
-- Cost attribution per session/job
 
 ```bash
 clawhq doctor                   # Full diagnostic — every known failure mode
@@ -529,6 +586,9 @@ clawhq doctor --fix             # Auto-fix safe issues (permissions, firewall)
 clawhq doctor --json            # Machine-readable output
 clawhq status                   # Single-pane health dashboard
 clawhq status --watch           # Live-updating dashboard
+clawhq status --cost            # Detailed cost breakdown
+clawhq fleet                    # Fleet-wide status dashboard
+clawhq fleet doctor             # Run doctor across all managed agents
 clawhq backup                   # Full encrypted snapshot
 clawhq backup --secrets-only    # Secrets backup only
 clawhq backup restore <id>      # Restore from snapshot
@@ -538,7 +598,6 @@ clawhq update --check           # Show what would change without updating
 clawhq update --rollback        # Roll back to previous version
 clawhq logs                     # Stream live logs
 clawhq logs --cron heartbeat    # Cron job history for specific job
-clawhq logs --cost              # Cost attribution
 ```
 
 ---
@@ -597,6 +656,13 @@ PII masking runs at each transition: names, addresses, phone numbers, financial 
 - Add a new integration: guided credential setup, health verification, tool installation, identity file update (TOOLS.md)
 - Remove an integration: clean credential removal, tool uninstall, identity file update, confirm no cron jobs depend on it
 - Swap a provider: replace Gmail with iCloud for email category — same interface, different backend, guided migration
+
+**Session Management** — Per-channel session control:
+
+- Per-channel-peer DM isolation — conversations from different contacts don't cross-contaminate
+- Identity linking across channels — same user recognized across Telegram, WhatsApp, Slack
+- Session pruning and compaction for long-running conversations
+- Configurable session timeouts and history retention per channel
 
 **Behavioral Training** — Refine agent behavior from interaction history:
 
@@ -692,7 +758,9 @@ clawhq destroy --verify         # Re-verify a previous destruction
 
 ---
 
-## The Three Layers
+## Architecture
+
+### The Three Layers
 
 The seven toolchains operate across three architectural layers:
 
@@ -702,6 +770,7 @@ The seven toolchains operate across three architectural layers:
 │  Config Safety · Security · Monitoring · Memory Mgmt    │
 │  Cron Guardrails · Identity Governance · Audit Logging  │
 │  Credential Health · Backup/Restore · Update Safety     │
+│  Cost Tracking · Fleet Management · Access Control      │
 ├─────────────────────────────────────────────────────────┤
 │  LAYER 2: TEMPLATES (operational profiles)              │
 │  Guardian · Assistant · Coach · Analyst · Companion     │
@@ -710,7 +779,7 @@ The seven toolchains operate across three architectural layers:
 ├─────────────────────────────────────────────────────────┤
 │  LAYER 3: INTEGRATIONS (providers per category)         │
 │  Email · Calendar · Tasks · Messaging · Files · Code    │
-│  Finance · Research · Notes · Health                    │
+│  Finance · Research · Notes · Health · CRM              │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -724,166 +793,15 @@ The seven toolchains operate across three architectural layers:
 |---|---|---|
 | **Email** | Gmail, iCloud, Outlook, Fastmail, ProtonMail | `email inbox`, `email send`, `email search` |
 | **Calendar** | Google, iCloud, Outlook, Fastmail | `calendar today`, `calendar create` |
-| **Tasks** | Todoist, TickTick, Linear, Notion | `tasks list`, `tasks add`, `tasks complete` |
-| **Messaging** | Telegram, WhatsApp, Slack, Discord | Channel config |
+| **Tasks** | Todoist, TickTick, Linear, Notion, Asana | `tasks list`, `tasks add`, `tasks complete` |
+| **Messaging** | Telegram, WhatsApp, Slack, Discord, Signal, iMessage, Teams, Matrix | Channel config |
 | **Files** | Google Drive, Dropbox, iCloud Drive | `files list`, `files get` |
-| **Code** | GitHub, GitLab | `code repos`, `code issues` |
+| **Code** | GitHub, GitLab, Sentry | `code repos`, `code issues`, `code prs` |
 | **Finance** | Yahoo Finance, Alpha Vantage | `quote AAPL` |
 | **Research** | Tavily, Perplexity | `research <query>` |
 | **Notes** | Notion, Obsidian | `notes search`, `notes create` |
-| **Health** | Apple Health, manual entry | `health log`, `health summary` |
-
----
-
-## Capability Map
-
-A structured inventory of every capability across the seven lifecycle phases and three architectural layers.
-
-### Phase Capabilities
-
-#### Plan — Design Your Agent
-
-| Capability | What It Does | Key Detail |
-|---|---|---|
-| Template System | Full operational profiles across 8 dimensions | Personality, security, monitoring, memory, cron, autonomy, integrations, skills |
-| Questionnaire | 3-phase interactive onboarding | Basics → Template → Integrations; generates 100% of config |
-| Config Generator | Assembles deployment bundle from questionnaire answers | 9+ files; all 14 landmines auto-handled; impossible to produce broken config |
-| Template Browsing | Browse, preview, compare, customize templates | Built-in + community; detailed previews of what each configures |
-| Community Templates | PR-contributed operational profiles | Safety-reviewed; can tighten Layer 1 security but never loosen it |
-
-#### Build — Construct From Source
-
-| Capability | What It Does | Key Detail |
-|---|---|---|
-| Source Management | Clone/update OpenClaw source, track upstream version | Offline cache; detects breaking upstream changes |
-| Two-Stage Docker Build | Incremental image build from source | Stage 1 (base + apt) rarely rebuilds; Stage 2 (tools + skills) is seconds |
-| Tool Bundling | Collect integration CLI tools from template manifest | Validated before bundling: syntax, imports, builds |
-| Skill Packaging | Bundle skills into workspace | Validates required files, prompt templates, declared dependencies |
-| Build Verification | Post-build integrity checks | Binary presence, version match, size check, manifest generation |
-| Reproducibility | Deterministic builds with drift detection | `--verify` rebuilds and compares against stored manifest |
-
-#### Secure — Harden By Default
-
-| Capability | What It Does | Key Detail |
-|---|---|---|
-| Container Hardening | Locked-down container runtime | 3 postures (standard/hardened/paranoid); cap_drop ALL, read-only rootfs, non-root UID 1000, resource limits |
-| Egress Firewall | iptables rules restricting outbound traffic | Dedicated `CLAWHQ_FWD` chain; DNS + HTTPS only; auto-reapply after bridge recreate |
-| Secrets Management | Enforce secrets isolation | `.env`-only injection, 600 permissions, never in config/logs/unencrypted backups |
-| PII & Secret Scanning | Continuous scanning of agent-created artifacts | Regex + entropy analysis; repos, git history, filenames; false-positive filtering |
-| Credential Health | Per-integration live validity probes | IMAP, CalDAV, API keys tested; expiry tracking; 7-day advance warnings |
-| Audit Logging | Tool execution history + cost attribution | Timestamps, redacted inputs, anomaly detection, exportable trail |
-
-#### Deploy — Ship and Connect
-
-| Capability | What It Does | Key Detail |
-|---|---|---|
-| Pre-flight Checks | 8 validations before anything starts | Docker, images, config, secrets, networks, ports, permissions, prior state |
-| Container Orchestration | Managed `docker compose up` | Correct project context; force-recreate on config change |
-| Firewall Application | Auto-detect and configure egress rules | Detect bridge interface, create/flush chain, persist with netfilter-persistent |
-| Network Verification | Validate container connectivity | ollama-bridge, DNS resolution, HTTPS, ICC disabled — tested from inside container |
-| Health Verification | Confirm agent is running correctly | Healthcheck polling, gateway auth, cron scheduler loaded |
-| Channel Connection | Messaging platform setup | Telegram/WhatsApp/Slack/Discord; guided setup with bidirectional verification |
-| Post-Deploy Smoke Test | End-to-end validation | Test message, identity loaded, one probe per integration |
-
-#### Operate — Keep It Running
-
-| Capability | What It Does | Key Detail |
-|---|---|---|
-| Doctor (hero feature) | Preventive diagnostics | 14+ landmine rules + 8 health check categories; `--fix` for safe auto-remediation |
-| Status Dashboard | Single-pane operational view | Agent state, integration health, cron status, workspace metrics |
-| Backup/Restore | Encrypted snapshots | Full/secrets-only/incremental; GPG encryption; validated restore + post-restore doctor |
-| Safe Update | Rollback-capable upstream upgrades | Fetch → changelog → approve → rebuild → swap → verify → rollback on failure |
-| Log Streaming | Structured access to agent activity | Live stream, historical search, per-cron-job history, cost attribution |
-
-#### Evolve — Grow Over Time
-
-| Capability | What It Does | Key Detail |
-|---|---|---|
-| Identity Governance | Prevent identity drift | Token budgets, staleness detection, contradiction flagging, scope-creep alerts, YAML source of truth |
-| Memory Lifecycle | Tiered memory management | Hot/warm/cold with LLM-powered summarization; PII masking at each transition |
-| Personality Refinement | Update agent without starting over | Selective re-questionnaire, diff preview, merge-not-overwrite, template upgrades |
-| Integration Management | Add, remove, or swap providers | Guided credential setup, health verification, dependency check, clean removal |
-| Behavioral Training | Refine behavior from interaction history | Pattern review, feedback incorporation, autonomy tuning recommendations |
-
-#### Decommission — Clean Exit
-
-| Capability | What It Does | Key Detail |
-|---|---|---|
-| Export | Portable bundle creation | Identity, memory, workspace, config, integrations, history, build manifest; self-documented |
-| Pre-Decommission Checklist | Safety verification before destruction | Backup exists, export created, data inventory, external data flagged, explicit confirmation |
-| Destruction Sequence | 10-step secure wipe | Container → volumes → workspace → config → secrets → images → networks → firewall → clawhq config → manifest |
-| Cryptographic Verification | Prove destruction completeness | SHA-256 pre/post state, orphan scan, signed destruction manifest |
-| Partial Decommission | Migration and fresh-start paths | Export + reimport, identity-only carry-over, template change |
-
-### Cross-Cutting Capabilities (Layer 1 Core Platform)
-
-These capabilities span all phases and apply identically to every agent regardless of template:
-
-| Capability | Description | Enforced By |
-|---|---|---|
-| Config Safety | Impossible to generate or ship broken configs | Plan (generation), Operate (doctor) |
-| Security Baseline | Hardened defaults that templates can tighten but never loosen | Secure (hardening), Plan (templates) |
-| Monitoring | Integration health probes, cron supervision, resource tracking | Operate (status, doctor) |
-| Memory Management | Tiered lifecycle with auto-summarization and PII masking | Evolve (memory lifecycle) |
-| Cron Guardrails | Syntax validation, timezone correctness, quiet hours enforcement | Plan (generation), Operate (doctor) |
-| Identity Governance | Read-only identity files, structured YAML source of truth, drift detection | Evolve (identity), Secure (read-only mounts) |
-| Audit Trail | Tool execution logging, cost attribution, anomaly detection | Secure (audit), Operate (logs) |
-| Credential Lifecycle | Live probes, expiry tracking, renewal guidance, rotation | Secure (creds), Operate (doctor) |
-| Backup/Restore | Encrypted snapshots with validated restore | Operate (backup) |
-| Update Safety | Rollback-capable upstream upgrades with post-update verification | Operate (update) |
-| Data Sovereignty | Export, verified deletion, zero lock-in, open source | Decommission (export, destroy) |
-
-### Layer 2: Template Dimensions
-
-Each template is a full operational profile across 8 dimensions:
-
-| Dimension | What It Controls | Example Variance |
-|---|---|---|
-| Personality | Tone, relationship model, communication style, boundaries | Guardian: direct steward / Companion: warm conversationalist |
-| Security Posture | Hardening level, egress rules, isolation mode | Analyst: standard / Guardian: hardened |
-| Monitoring Profile | Alert thresholds, check frequency, escalation rules | Guardian: aggressive alerting / Analyst: minimal interruption |
-| Memory Policy | Tier sizes, summarization aggressiveness, retention periods | Companion: long retention / Assistant: aggressive pruning |
-| Cron Configuration | Heartbeat frequency, quiet hours, waking hours, budget caps | Coach: frequent check-ins / Analyst: on-demand |
-| Autonomy Model | Independent action vs. approval required | Guardian: high autonomy / Assistant: escalates exceptions |
-| Integration Requirements | Required, recommended, optional tool categories | Coach: tasks + calendar required / Analyst: research + code required |
-| Skill Bundle | Pre-built skills included | Guardian: morning-brief + construct / Coach: session-report |
-
-**5 built-in templates:** Guardian, Assistant, Coach, Analyst, Companion — plus Custom (guided builder or raw YAML).
-
-### Layer 3: Integration Categories
-
-Provider-agnostic interfaces — the agent talks to "calendar" not "Google Calendar":
-
-| Category | Example Providers | Standard Interface | Ships With |
-|---|---|---|---|
-| Email | Gmail, iCloud, Outlook, Fastmail, ProtonMail | `email inbox`, `email send`, `email search` | Manifest, health check, credential lifecycle, fallback |
-| Calendar | Google, iCloud, Outlook, Fastmail | `calendar today`, `calendar create` | " |
-| Tasks | Todoist, TickTick, Linear, Notion | `tasks list`, `tasks add`, `tasks complete` | " |
-| Messaging | Telegram, WhatsApp, Slack, Discord | Channel config (not tool interface) | " |
-| Files | Google Drive, Dropbox, iCloud Drive | `files list`, `files get` | " |
-| Code | GitHub, GitLab | `code repos`, `code issues` | " |
-| Finance | Yahoo Finance, Alpha Vantage | `quote AAPL` | " |
-| Research | Tavily, Perplexity | `research <query>` | " |
-| Notes | Notion, Obsidian | `notes search`, `notes create` | " |
-| Health | Apple Health, manual entry | `health log`, `health summary` | " |
-
-### Capability Summary
-
-| | Capabilities | CLI Commands |
-|---|---|---|
-| **Plan** | 5 | `init`, `template` |
-| **Build** | 6 | `build` (+ flags) |
-| **Secure** | 6 | `scan`, `creds`, `audit` |
-| **Deploy** | 7 | `up`, `down`, `restart`, `connect` |
-| **Operate** | 5 | `doctor`, `status`, `backup`, `update`, `logs` |
-| **Evolve** | 5 | `evolve`, `train` |
-| **Decommission** | 5 | `export`, `destroy` |
-| **Cross-cutting** | 11 | — |
-| **Total** | **~50 capabilities** | **~18 commands** |
-
----
-
-## Architecture
+| **Health** | Garmin, Apple Health | `health log`, `health summary` |
+| **CRM** | Salesforce, HubSpot | `crm contacts`, `crm deals` |
 
 ### Self-Operated
 
@@ -924,6 +842,25 @@ Same engine, hosted infrastructure, web console:
 
 **agentd** is the self-operated CLI running as a daemon. It receives config from the console, manages Docker lifecycle, applies all seven toolchains, streams operational metadata back. The console is a thin coordination layer — it never sees agent contents.
 
+**Web Console** — The managed mode web console provides GUI access to all CLI capabilities:
+
+- Visual config editor with validation, auto-backup, and gateway restart on save
+- Model routing and tool policy management
+- Skill browsing, installation, and management
+- Cron scheduling with natural language or cron syntax
+- Webhook configuration for external triggers (Gmail Pub/Sub, GitHub webhooks, custom HTTP)
+- Environment variable management without SSH
+
+**Access Control** (Managed mode) — Team collaboration with appropriate boundaries:
+
+| Role | Capabilities |
+|---|---|
+| **Admin** | Full access: config, security, deploy, destroy, user management |
+| **Operator** | Operational access: status, doctor, backup, restart, logs |
+| **Viewer** | Read-only: status, logs, audit trail |
+
+Authentication: username/password, TOTP MFA, OAuth SSO (Google, GitHub). Human-in-the-loop exec approvals for sensitive agent actions, configurable per template.
+
 ### Operational Boundary (Managed Mode)
 
 | We CAN see | We CANNOT see |
@@ -960,11 +897,27 @@ Your agent holds the most intimate dataset about you that has ever existed. Claw
 | Option | What You Get | What's Missing |
 |---|---|---|
 | **Raw OpenClaw** | Full power, full control | Months of setup, ongoing SRE, no lifecycle management |
-| **Basic OpenClaw hosting** | Someone runs the container | Default config, no hardening, no memory mgmt, no evolution |
+| **Basic OpenClaw hosting** (10+ providers) | Someone runs the container | Default config, no hardening, no memory mgmt, no evolution |
+| **Community dashboards** | Basic monitoring, read-only views | No security, no lifecycle, no configuration management |
+| **Security point tools** (ClawSec, security-monitor) | Hardening guides, scanning | Fragmented, no unified platform, manual execution |
 | **No-code agent builders** (Lindy, Relevance AI) | Workflow automation | Not true persistent agents, SaaS data handling |
 | **Big-tech agents** (Google, Apple, MS) | Polished, integrated, easy | Platform lock-in, no sovereignty, black box |
 | **ChatGPT / Claude** (direct) | Best models, growing memory | Platform-controlled, no customization, no operational layer |
 | **ClawHQ** | **Full lifecycle across seven toolchains** | — |
+
+### Market Gap Analysis
+
+| Domain | Current Market Coverage | Gap Severity |
+|---|---|---|
+| Provisioning & Deploy | Well-served by 10+ hosting providers | Low |
+| Security Hardening | Fragmented: guides + point tools; no unified self-serve platform | **Critical** |
+| Monitoring & Observability | Partial: community dashboards cover basics; no unified cost + health + security | High |
+| Agent Lifecycle | Weak: most dashboards are read-only, no full lifecycle management | High |
+| Configuration Management | Very weak: built-in dashboard is minimal; most config requires CLI/JSON editing | **Critical** |
+| Operations & Maintenance | Fragmented: updates manual, backups DIY, incident response is "read this blog post" | **Critical** |
+| Governance & Compliance | Nearly nonexistent for self-hosted; no governance solution | **Critical** |
+
+Four domains are critically underserved: Security, Configuration, Operations, and Governance. These are precisely the domains that differentiate a control panel from another deploy button.
 
 ### Where We Sit
 
@@ -974,6 +927,16 @@ OpenClaw         Basic hosting      CLAWHQ          Big-tech agents
 (powerful,       (default config,   (control panel,     (polished,
  expert-only)    no lifecycle)      full lifecycle)     captive)
 ```
+
+### What Nobody Else Does
+
+1. **Full lifecycle in one product** — Plan → Build → Secure → Deploy → Operate → Evolve → Decommission. No one covers more than two of these today.
+2. **Opinionated security defaults** — Instead of a checklist users must execute manually, ship pre-hardened and maintain hardened state continuously.
+3. **Configuration-as-product** — Make OpenClaw's complex JSON config accessible through templates, validation, and visual editors with best-practice presets.
+4. **Continuous compliance** — Not a one-time audit but ongoing drift detection, automated remediation, and exportable compliance reports.
+5. **Operational intelligence** — Correlate cost spikes with agent behavior, security events with config changes, and performance issues with model routing decisions.
+
+The market has settled into two camps: "deploy it fast" (hosting providers) and "secure it after" (security guides and tools). Nobody owns the middle — the ongoing operational reality of running OpenClaw as critical infrastructure. ClawHQ is the operational platform.
 
 ### The Moat
 
@@ -1059,8 +1022,7 @@ Everything in ClawHQ was extracted from a production agent running for months:
 6. **Jurisdiction** — Incorporation location? VM locations? Matters for sovereignty segment.
 7. **Encryption model** — User-held keys for at-rest encryption? Trust architecture?
 8. **Team** — Service model is solo-friendly. Platform model may need co-founders.
-9. **Agent-to-agent** — Cross-agent coordination when density is high enough. When to design the protocol?
-10. **Naming** — ClawHQ confirmed. Repo: `simonplant/clawhq`.
+9. **Multi-agent orchestration** — Sub-agent management, agent-to-agent delegation, shared memory. When does agent density justify designing the coordination protocol?
 
 ---
 
