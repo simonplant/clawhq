@@ -827,9 +827,9 @@
       "title": "Channel connection — clawhq connect",
       "description": "Implement guided messaging channel setup for Telegram and WhatsApp with inline validation and bidirectional message flow testing.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-005",
         "FEAT-009"
@@ -850,7 +850,8 @@
         "Channel status shows in `clawhq status`"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Upgraded must: without a messaging channel, the deployed agent cannot communicate with the user at all. A running but silent agent delivers zero value. Channel connection is table stakes for Phase 2 completion — `clawhq up` without `clawhq connect` is a hollow deployment."
+      "groomingNotes": "Upgraded must: without a messaging channel, the deployed agent cannot communicate with the user at all. A running but silent agent delivers zero value. Channel connection is table stakes for Phase 2 completion — `clawhq up` without `clawhq connect` is a hollow deployment.",
+      "completedAt": "2026-03-13T12:37:44-07:00"
     },
     {
       "id": "FEAT-027",

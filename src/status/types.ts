@@ -72,12 +72,24 @@ export interface EgressSummary {
   zeroEgress: boolean;
 }
 
+// --- Channel health ---
+
+export type ChannelConnectionStatus = "connected" | "disconnected" | "error" | "unconfigured";
+
+export interface ChannelHealthEntry {
+  channel: string;
+  status: ChannelConnectionStatus;
+  message: string;
+  displayName?: string;
+}
+
 // --- Full status report ---
 
 export interface StatusReport {
   timestamp: string;
   agent: AgentStatus;
   integrations: IntegrationSection;
+  channels: ChannelHealthEntry[];
   workspace: WorkspaceMetrics;
   egress: EgressSummary;
 }

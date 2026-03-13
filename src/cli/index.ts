@@ -8,6 +8,8 @@ import { Command } from "commander";
 import { createBackup } from "../backup/backup.js";
 import { formatBackupTable, listBackups } from "../backup/list.js";
 import { restoreBackup } from "../backup/restore.js";
+import type { ChannelSetupFlow } from "../connect/index.js";
+import { formatTestResult, telegramFlow, whatsappFlow } from "../connect/index.js";
 import { deployDown, deployRestart, deployUp } from "../deploy/deploy.js";
 import { formatStepResult, formatSummary } from "../deploy/format.js";
 import {
@@ -26,6 +28,7 @@ import { DockerClient } from "../docker/client.js";
 import { runFixes } from "../doctor/fix.js";
 import { formatJson, formatTable, runChecks } from "../doctor/runner.js";
 import type { DoctorContext } from "../doctor/types.js";
+import { createExport } from "../export/export.js";
 import { createReadlineIO, runWizard } from "../init/index.js";
 import { formatCredTable, runProbesFromFile } from "../security/credentials/index.js";
 import { collectStatus } from "../status/collector.js";
@@ -400,7 +403,74 @@ program
     }
   });
 
-program.command("connect").description("Connect messaging channel");
+const connectCmd = program
+  .command("connect")
+  .description("Connect messaging channel")
+  .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
+  .option("--config <path>", "Path to openclaw.json", "~/.openclaw/openclaw.json")
+  .option("--env <path>", "Path to .env file", "~/.openclaw/.env")
+  .option("--test", "Test existing channel connection (bidirectional)");
+
+const CHANNEL_FLOWS: Record<string, ChannelSetupFlow> = {
+  telegram: telegramFlow,
+  whatsapp: whatsappFlow,
+};
+
+async function runConnectAction(
+  channelName: string,
+  opts: { home: string; config: string; env: string; test?: boolean },
+) {
+  const homePath = opts.home.replace(/^~/, process.env.HOME ?? "~");
+  const configPath = opts.config.replace(/^~/, process.env.HOME ?? "~");
+  const envPath = opts.env.replace(/^~/, process.env.HOME ?? "~");
+  const connectOpts = { openclawHome: homePath, configPath, envPath };
+
+  const flow = CHANNEL_FLOWS[channelName];
+  if (!flow) {
+    console.error(`Unknown channel: ${channelName}`);
+    console.error(`Supported channels: ${Object.keys(CHANNEL_FLOWS).join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (opts.test) {
+    console.log(`Testing ${channelName} connection...`);
+    console.log("");
+    const result = await flow.test(connectOpts);
+    console.log(formatTestResult(result));
+    if (!result.success) {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  // Interactive setup
+  const { io, close } = createReadlineIO();
+  try {
+    const result = await flow.setup(io, connectOpts);
+    if (!result.success) {
+      process.exitCode = 1;
+    }
+  } finally {
+    close();
+  }
+}
+
+connectCmd
+  .command("telegram")
+  .description("Connect Telegram bot via BotFather token")
+  .action(async () => {
+    const parentOpts = connectCmd.opts() as { home: string; config: string; env: string; test?: boolean };
+    await runConnectAction("telegram", parentOpts);
+  });
+
+connectCmd
+  .command("whatsapp")
+  .description("Connect WhatsApp Business API")
+  .action(async () => {
+    const parentOpts = connectCmd.opts() as { home: string; config: string; env: string; test?: boolean };
+    await runConnectAction("whatsapp", parentOpts);
+  });
 
 // Operate phase
 program
@@ -746,7 +816,56 @@ program.command("logs").description("Stream agent logs");
 program.command("evolve").description("Manage agent capabilities");
 
 // Decommission phase
-program.command("export").description("Export portable agent bundle");
+program
+  .command("export")
+  .description("Export portable agent bundle")
+  .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
+  .option("--output <path>", "Output directory for export bundle", ".")
+  .option("--mask-pii", "Apply PII masking to all exported files")
+  .option("--no-memory", "Export only identity and config (skip memory)")
+  .action(async (opts: {
+    home: string;
+    output: string;
+    maskPii?: boolean;
+    memory?: boolean;
+  }) => {
+    const homePath = opts.home.replace(/^~/, process.env.HOME ?? "~");
+    const outputDir = resolve(opts.output);
+
+    // Commander parses --no-memory as memory: false
+    const noMemory = opts.memory === false;
+
+    const flags: string[] = [];
+    if (opts.maskPii) flags.push("PII masking");
+    if (noMemory) flags.push("identity + config only");
+    const flagsNote = flags.length > 0 ? ` (${flags.join(", ")})` : "";
+    console.log(`Creating export bundle${flagsNote}...`);
+
+    try {
+      const result = await createExport({
+        openclawHome: homePath,
+        outputDir,
+        maskPii: opts.maskPii,
+        noMemory,
+      });
+
+      console.log(`Export created: ${result.exportId}`);
+      console.log(`  Files: ${result.manifest.files.length}`);
+      console.log(`  Archive: ${result.archivePath}`);
+
+      if (opts.maskPii) {
+        console.log("  PII masking: applied");
+      }
+      if (noMemory) {
+        console.log("  Memory: excluded");
+      }
+    } catch (err: unknown) {
+      console.error(
+        `Export failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      process.exitCode = 1;
+    }
+  });
 program.command("destroy").description("Verified agent destruction");
 
 program.parse();

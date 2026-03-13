@@ -149,6 +149,37 @@ function formatEgressSection(report: StatusReport): string {
   return lines.join("\n");
 }
 
+// --- Channel health section ---
+
+function formatChannelSection(report: StatusReport): string {
+  const lines: string[] = [sectionHeader("CHANNELS")];
+
+  if (report.channels.length === 0) {
+    lines.push("  No channels configured");
+    return lines.join("\n");
+  }
+
+  const STATUS_LABELS: Record<string, string> = {
+    connected: "OK",
+    disconnected: "OFF",
+    error: "ERR",
+    unconfigured: "NONE",
+  };
+
+  const nameWidth = Math.max(10, ...report.channels.map((c) => c.channel.length));
+
+  lines.push(`  ${pad("CHANNEL", nameWidth)}  STATUS  MESSAGE`);
+  lines.push(`  ${"-".repeat(nameWidth + 20)}`);
+
+  for (const ch of report.channels) {
+    const label = (STATUS_LABELS[ch.status] ?? ch.status.toUpperCase()).padEnd(6);
+    const display = ch.displayName ? `${ch.message} (${ch.displayName})` : ch.message;
+    lines.push(`  ${pad(ch.channel, nameWidth)}  ${label}  ${display}`);
+  }
+
+  return lines.join("\n");
+}
+
 // --- Public API ---
 
 /**
@@ -158,6 +189,7 @@ export function formatDashboard(report: StatusReport): string {
   const sections = [
     formatAgentSection(report),
     formatIntegrationSection(report),
+    formatChannelSection(report),
     formatWorkspaceSection(report),
     formatEgressSection(report),
   ];

@@ -90,8 +90,27 @@ export interface AgentDefaults {
   model?: AgentModelConfig;
 }
 
+export interface AgentEntry {
+  id: string;
+  default?: boolean;
+  workspace: string;
+}
+
+export interface AgentBinding {
+  agentId: string;
+  match: {
+    channel: string;
+    peer?: {
+      kind: "direct" | "group";
+      id: string;
+    };
+  };
+}
+
 export interface AgentsConfig {
   defaults?: AgentDefaults;
+  list?: AgentEntry[];
+  bindings?: AgentBinding[];
   [key: string]: unknown;
 }
 
@@ -155,15 +174,30 @@ export interface DeploymentBundle {
   openclawConfig: OpenClawConfig;
   envVars: Record<string, string>;
   dockerCompose: string;
+  dockerfile: string;
   identityFiles: Record<string, string>;
+  workspaceTools: Record<string, string>;
+  skills: Record<string, Record<string, string>>;
   cronJobs: CronJobDefinition[];
 }
 
 export interface CronJobDefinition {
   id: string;
-  schedule: string;
-  task: string;
+  kind: "cron" | "every";
+  expr?: string;           // 5-field cron expression (when kind === "cron")
+  everyMs?: number;         // interval in ms (when kind === "every")
+  task: string;             // prompt/instruction
   enabled: boolean;
+  delivery?: "announce" | "none" | "errors";
+  model?: string;           // per-job model override
+  session?: "main" | "isolated";
+  activeHours?: ActiveHoursConfig;
+}
+
+export interface ActiveHoursConfig {
+  start: number;  // hour (0-23)
+  end: number;    // hour (0-23)
+  tz: string;     // IANA timezone
 }
 
 // --- Validation Result ---

@@ -4,7 +4,7 @@ import { collectStatus } from "./collector.js";
 import type { StatusReport } from "./types.js";
 
 describe("collectStatus", () => {
-  it("returns a StatusReport with all four sections", async () => {
+  it("returns a StatusReport with all five sections", async () => {
     // Run with defaults — no agent running, no .env, no workspace, no egress log.
     // All collectors handle missing state gracefully.
     const report: StatusReport = await collectStatus({
@@ -23,6 +23,9 @@ describe("collectStatus", () => {
     // Integration section
     expect(report.integrations).toBeDefined();
     expect(report.integrations.counts).toBeDefined();
+
+    // Channels section
+    expect(report.channels).toBeInstanceOf(Array);
 
     // Workspace section
     expect(report.workspace).toBeDefined();

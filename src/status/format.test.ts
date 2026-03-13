@@ -36,6 +36,7 @@ function makeReport(overrides: Partial<StatusReport> = {}): StatusReport {
       totalMemoryBytes: 167936,
       totalIdentityTokens: 1536,
     },
+    channels: [],
     egress: {
       today: { label: "today", bytes: 0, calls: 0 },
       week: { label: "this week", bytes: 0, calls: 0 },
@@ -47,11 +48,12 @@ function makeReport(overrides: Partial<StatusReport> = {}): StatusReport {
 }
 
 describe("formatDashboard", () => {
-  it("renders all four sections", () => {
+  it("renders all five sections", () => {
     const output = formatDashboard(makeReport());
 
     expect(output).toContain("AGENT STATE");
     expect(output).toContain("INTEGRATION HEALTH");
+    expect(output).toContain("CHANNELS");
     expect(output).toContain("WORKSPACE METRICS");
     expect(output).toContain("DATA EGRESS");
   });
