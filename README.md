@@ -160,4 +160,8 @@ Everything in ClawHQ was extracted from a production agent running for months �
 
 ## Status
 
-Design phase. See [docs/PRODUCT.md](docs/PRODUCT.md) for the full design document.
+Design phase. TypeScript, tight coupling to OpenClaw's Node.js/TypeBox stack.
+
+- [docs/PRODUCT.md](docs/PRODUCT.md) — Product design: problem, personas, user stories, build order
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Solution architecture: three-tier system, package structure, security, data flow
+- [docs/OPENCLAW-REFERENCE.md](docs/OPENCLAW-REFERENCE.md) — Engineering reference: OpenClaw internals, config landmines, integration surfaces

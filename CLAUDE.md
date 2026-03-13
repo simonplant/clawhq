@@ -8,20 +8,23 @@ ClawHQ is a control panel for OpenClaw agents — the "cPanel for personal AI ag
 
 **Current status: Design phase.** No implementation code exists yet. The repository contains:
 - `README.md` — Executive summary and positioning
-- `docs/PRODUCT.md` — Comprehensive 900+ line design document covering all seven lifecycle phases, architecture, and implementation details
+- `docs/PRODUCT.md` — Product design document: problem, personas, user stories across all seven lifecycle phases, build order, and risks
+- `docs/ARCHITECTURE.md` — Solution architecture: three-tier system (OpenClaw → ClawHQ Local → ClawHQ Cloud), package structure, security architecture, data flow, cloud protocol
+- `docs/OPENCLAW-REFERENCE.md` — Engineering reference: OpenClaw internals, the 14 configuration landmines, config surface inventory, container hardening, credential probes, template system design
 
 ## Architecture
 
-**Three-layer model:**
+See `docs/ARCHITECTURE.md` for the full solution architecture.
+
+**Three-tier system:**
+- **Tier 1 (OpenClaw):** The agent runtime — unmodified, ClawHQ wraps but never forks
+- **Tier 2 (ClawHQ Local):** CLI + local web UI on the same host. This is the core product — works fully standalone
+- **Tier 3 (ClawHQ Cloud):** Optional web service for accounts, remote health, updates, fleet management. Never required
+
+**Three-layer product model:**
 - **Layer 1 (Core Platform):** Universal security, monitoring, memory management, config safety, audit logging — same for every agent
-- **Layer 2 (Templates):** Full operational profiles (Guardian, Assistant, Coach, Analyst, Companion) — like WordPress themes for agents. Templates can tighten Layer 1 security but never loosen it
+- **Layer 2 (Templates):** Full operational profiles — like WordPress themes for agents. Templates can tighten Layer 1 security but never loosen it
 - **Layer 3 (Integrations):** Provider abstraction — agents talk to "calendar" not "Google Calendar," enabling provider swaps without behavior changes
-
-**Two delivery modes:**
-- **ClawHQ Managed** — Hosted service with web console
-- **ClawHQ Self-Operated** — Open-source CLI, user's own hardware
-
-Both share identical toolchains.
 
 ## Key Design Constraints
 
@@ -46,7 +49,14 @@ clawhq export / destroy    — Decommission phase
 
 ## Implementation Notes
 
-When building this project, refer to `docs/PRODUCT.md` for detailed specifications on each toolchain. Key technical details:
+- `docs/PRODUCT.md` — User stories and acceptance criteria for each toolchain
+- `docs/ARCHITECTURE.md` — System design, package structure, security model, data flow
+- `docs/OPENCLAW-REFERENCE.md` — OpenClaw internals, integration surfaces, landmine rules, config details
+
+Key technical details:
+- TypeScript throughout — matches OpenClaw's Node.js/TypeBox stack, shares schema types directly
+- Tight coupling to OpenClaw — uses its config schema, WebSocket RPC, file paths, and container structure directly (no abstraction layer)
+- OpenClaw handles model routing — ClawHQ generates config, does not make LLM calls itself (except local Ollama during `init --smart`)
 - Two-stage Docker build: Stage 1 (base OpenClaw + apt packages), Stage 2 (custom tools + skills)
 - Egress firewall uses dedicated iptables chain (`CLAWHQ_FWD`) on Docker bridge — must reapply after every `docker compose down`
 - OpenClaw config is ~13,500 tokens across 11+ files; ~40% universal, ~60% personalized
