@@ -439,7 +439,7 @@
       "title": "Safe upstream update — clawhq update",
       "description": "Implement `clawhq update` — upstream OpenClaw updates with pre-update snapshot, rebuild, health check, firewall reapply, and instant rollback on failure.",
       "priority": "should",
-      "status": "todo",
+      "status": "done",
       "readyForSprint": true,
       "passes": false,
       "dependsOn": [
@@ -539,7 +539,7 @@
       "title": "Init wizard — clawhq init with guided questionnaire",
       "description": "Implement `clawhq init --guided` — structured setup flow that walks through basics, template selection, integration setup with credential validation, and config generation.",
       "priority": "must",
-      "status": "todo",
+      "status": "done",
       "readyForSprint": true,
       "passes": false,
       "dependsOn": [

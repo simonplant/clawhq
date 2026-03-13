@@ -3,7 +3,7 @@
 > Technical research and implementation details for building ClawHQ on top of OpenClaw.
 > This document is the engineering companion to `PRODUCT.md`. Everything here was extracted from running a production OpenClaw agent for months.
 
-**Updated:** 2026-03-12
+**Updated:** 2026-03-13
 
 ---
 
@@ -669,16 +669,34 @@ Stage 1 rebuilds only when OpenClaw upstream changes or apt packages change. Sta
 | Category | Example Providers | Interface |
 |---|---|---|
 | **Email** | Gmail, iCloud, Outlook, Fastmail, ProtonMail | `email inbox`, `email send`, `email search` |
-| **Calendar** | Google, iCloud, Outlook, Fastmail | `calendar today`, `calendar create` |
-| **Tasks** | Todoist, TickTick, Linear, Notion, Asana | `tasks list`, `tasks add`, `tasks complete` |
+| **Calendar** | Google, iCloud, Outlook, Fastmail | `ical today`, `ical create` |
+| **Tasks** | Todoist, TickTick, Linear, Notion, Asana | `todoist list`, `todoist add`, `todoist complete` |
 | **Messaging** | Telegram, WhatsApp, Slack, Discord, Signal, iMessage, Teams, Matrix | Channel config |
 | **Files** | Google Drive, Dropbox, iCloud Drive | `files list`, `files get` |
-| **Code** | GitHub, GitLab, Sentry | `code repos`, `code issues`, `code prs` |
+| **Code** | GitHub, GitLab, Sentry | `gh repo list`, `gh issue list`, `gh pr create` |
 | **Finance** | Yahoo Finance, Alpha Vantage | `quote AAPL` |
-| **Research** | Tavily, Perplexity | `research <query>` |
+| **Research** | Tavily, Perplexity | `tavily search <query>` |
 | **Notes** | Notion, Obsidian | `notes search`, `notes create` |
 | **Health** | Garmin, Apple Health | `health log`, `health summary` |
 | **CRM** | Salesforce, HubSpot | `crm contacts`, `crm deals` |
+
+### Workspace Tool Registry (Implemented)
+
+The init wizard generates CLI tools based on integration selections. Each tool is a self-contained bash/python3 script installed to the agent's workspace with `chmod +x`.
+
+| Integration | Generated Tool | Language | Binary Deps | Env Vars |
+|---|---|---|---|---|
+| *always* | `tasks` | bash + jq | jq | — |
+| email | `email` | bash | himalaya | — |
+| calendar | `ical` | bash + python3 | curl | ICAL_USER, ICAL_PASS, ICAL_SERVER |
+| tasks (todoist) | `todoist` | python3 | python3 | TODOIST_API_KEY |
+| tasks (todoist) | `todoist-sync` | bash | curl, jq | TODOIST_API_KEY |
+| research | `tavily` | bash | curl, jq | TAVILY_API_KEY |
+| markets | `quote` | bash | curl, jq, awk | — |
+
+The `tasks` tool includes: 12 configurable channels, 3 autonomy levels (do/do-tell/flag), 4 priority levels, recon staleness tracking, 4-hour notification cooldown, and atomic JSON writes.
+
+The Dockerfile generator composes binary install fragments from integration selections. Always included: curl, jq, rg. Conditionally included: himalaya (email), gh (GitHub), git (from source), ffmpeg (media), whisper (transcription, optional ~2GB).
 
 ---
 

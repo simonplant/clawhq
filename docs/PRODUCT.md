@@ -2,7 +2,7 @@
 
 > One-liner: Your AI agent runs on your hardware, talks to your services, and never sends a byte to anyone you didn't choose. ClawHQ makes that possible without a PhD in DevOps.
 
-**Owner:** [Name] · **Status:** Draft · **Updated:** 2026-03-12
+**Owner:** [Name] · **Status:** Active Development · **Updated:** 2026-03-13
 
 ---
 

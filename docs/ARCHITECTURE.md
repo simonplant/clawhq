@@ -2,7 +2,7 @@
 
 > Solution architecture for ClawHQ — the control panel for OpenClaw agents.
 
-**Status:** Draft · **Updated:** 2026-03-12
+**Status:** Active Development · **Updated:** 2026-03-13
 
 ---
 
@@ -104,34 +104,65 @@ ClawHQ Local ships as a single installable package:
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| **Language** | TypeScript | Matches OpenClaw. Shares TypeBox schema types. Native WebSocket client. |
-| **Runtime** | Node.js | Same as OpenClaw. No language boundary. |
-| **CLI framework** | TBD (commander, oclif, or similar) | |
+| **Language** | TypeScript (strict, ESM) | Matches OpenClaw. Shares TypeBox schema types. |
+| **Runtime** | Node.js ≥20 | Same as OpenClaw. No language boundary. |
+| **CLI framework** | commander ^14 | Lightweight, well-maintained, subcommand trees. |
+| **Config parsing** | yaml ^2 | YAML templates, compose generation. |
+| **Testing** | vitest ^4 | Fast, TypeScript-native, v8 coverage. |
+| **Linting** | eslint + typescript-eslint | Strict rules, import ordering. |
 | **Local web server** | TBD (Hono, Fastify, or similar) | Serves local dashboard, API for web UI |
 | **Local web UI** | TBD | Lightweight — this is a control panel, not a SaaS app |
-| **Distribution** | npm global install, or bundled binary via pkg/bun compile | Target audience already has Node.js (they're running OpenClaw) |
-| **Config validation** | OpenClaw's TypeBox schema imported directly | Single source of truth — no reimplementation |
+| **Distribution** | npm global install | Target audience already has Node.js (they're running OpenClaw) |
 
 ### Package Structure
 
 ```
 clawhq/
 ├── src/
-│   ├── cli/                  # CLI entrypoint and command definitions
-│   ├── ui/                   # Local web UI
-│   ├── server/               # Local web server (serves UI, API for dashboard)
+│   ├── cli/index.ts          # Commander.js CLI — all commands defined here
+│   ├── ui/                   # Local web UI (planned)
+│   ├── server/               # Local web server (planned)
 │   │
 │   ├── config/               # Config loading, validation, generation
-│   │   ├── schema.ts         # Re-exports/wraps OpenClaw TypeBox schema
+│   │   ├── schema.ts         # OpenClaw types (CronJobDefinition, AgentEntry, DeploymentBundle)
 │   │   ├── loader.ts         # Load and merge config from multiple sources
 │   │   ├── validator.ts      # 14 landmine rules + cross-file consistency
-│   │   └── generator.ts      # Template + answers → full config bundle
+│   │   └── generator.ts      # Template + answers → full deployment bundle
 │   │
-│   ├── docker/               # Docker client wrapper
+│   ├── init/                 # Guided setup wizard
+│   │   ├── wizard.ts         # Main orchestrator
+│   │   ├── steps.ts          # 4 wizard steps (basics, template, integrations, models)
+│   │   ├── templates.ts      # 6 built-in templates (code-defined)
+│   │   ├── generate.ts       # Full bundle generator (config + tools + identity + skills + cron + Dockerfile)
+│   │   ├── writer.ts         # Atomic file writer (phase 1: temp files, phase 2: rename)
+│   │   └── types.ts          # Wizard types (WizardAnswers, TemplateChoice, etc.)
+│   │
+│   ├── docker/               # Docker client + build
 │   │   ├── client.ts         # Docker Engine API / CLI subprocess
-│   │   ├── build.ts          # Two-stage build orchestration
-│   │   ├── compose.ts        # docker-compose generation and management
-│   │   └── hardening.ts      # Security posture → compose security options
+│   │   ├── build.ts          # Two-stage build with change detection + manifests
+│   │   ├── compose.ts        # docker-compose operations
+│   │   ├── hardening.ts      # Security posture → compose overrides (standard/hardened/paranoid)
+│   │   └── dockerfile.ts     # Dockerfile generator (binary fragments from integration selections)
+│   │
+│   ├── workspace/            # Workspace generation
+│   │   ├── tools/            # 7 CLI tool generators + registry
+│   │   │   ├── registry.ts   # Integration → tool mapping, binary dependency tracking
+│   │   │   ├── email.ts      # himalaya wrapper
+│   │   │   ├── tasks.ts      # Local work queue (channels, autonomy, priorities)
+│   │   │   ├── todoist.ts    # Todoist API client (Python3)
+│   │   │   ├── ical.ts       # CalDAV calendar client
+│   │   │   ├── quote.ts      # Yahoo Finance market quotes
+│   │   │   ├── tavily.ts     # Web research API
+│   │   │   └── todoist-sync.ts # Task polling + due alerts
+│   │   ├── identity/         # Identity file generators
+│   │   │   ├── agents.ts     # AGENTS.md (operating instructions)
+│   │   │   ├── heartbeat.ts  # HEARTBEAT.md (recon phases from integrations)
+│   │   │   ├── tools-doc.ts  # TOOLS.md (auto-generated from installed tools)
+│   │   │   ├── identity.ts   # IDENTITY.md
+│   │   │   └── memory.ts     # MEMORY.md skeleton
+│   │   └── skills/           # Skill template generators
+│   │       ├── construct.ts  # Self-improvement framework (SKILL.md + SOUL.md + skill-spec)
+│   │       └── morning-brief.ts # Daily briefing skill
 │   │
 │   ├── gateway/              # OpenClaw Gateway communication
 │   │   ├── websocket.ts      # WebSocket RPC client
@@ -139,37 +170,24 @@ clawhq/
 │   │   └── config-rpc.ts     # config.patch / config.apply wrappers
 │   │
 │   ├── security/             # Security toolchain
-│   │   ├── firewall.ts       # iptables CLAWHQ_FWD chain management
-│   │   ├── secrets.ts        # .env management, never in config files
-│   │   ├── credentials.ts    # Health probes per integration
-│   │   └── scanner.ts        # PII and secret pattern detection
+│   │   ├── firewall/         # iptables CLAWHQ_FWD chain management
+│   │   ├── credentials/      # Health probes per integration
+│   │   └── secrets/          # PII and secret pattern detection
 │   │
-│   ├── workspace/            # OpenClaw workspace management
-│   │   ├── identity.ts       # Identity file read/write, token budget tracking
-│   │   ├── memory.ts         # Memory tier management (hot/warm/cold)
-│   │   └── cron.ts           # Cron job definitions and run log reading
-│   │
-│   ├── templates/            # Template system
+│   ├── templates/            # YAML template loader + mapper
 │   │   ├── loader.ts         # YAML template parsing
-│   │   ├── resolver.ts       # Template + user answers → config values
-│   │   └── built-in/         # Bundled templates (Guardian, Assistant, etc.)
+│   │   └── mapper.ts         # Template + answers → config values
 │   │
-│   ├── backup/               # Backup and restore
-│   │   ├── snapshot.ts       # Encrypted backup creation
-│   │   └── restore.ts        # Integrity check, restore, post-restore doctor
-│   │
-│   ├── cloud/                # Tier 3 connection (optional)
-│   │   ├── client.ts         # Cloud API client
-│   │   ├── heartbeat.ts      # Periodic health/status push
-│   │   ├── updates.ts        # Update check and advisory pull
-│   │   └── index.ts          # Feature detection — graceful no-op when disabled
-│   │
-│   └── doctor/               # Diagnostic engine
-│       ├── checks/           # Individual check implementations
-│       ├── runner.ts         # Run all checks, aggregate results
-│       └── fix.ts            # Auto-fix for safe issues
+│   ├── deploy/               # Deployment orchestration (up/down/restart)
+│   ├── doctor/               # Diagnostic engine (14+ checks + auto-fix)
+│   ├── status/               # Status dashboard (agent, integrations, workspace, egress)
+│   ├── backup/               # Encrypted backup/restore with GPG
+│   ├── update/               # Safe upstream update with rollback
+│   ├── skill/                # Skill lifecycle (install/update/remove with vetting)
+│   ├── export/               # Portable agent export
+│   └── cloud/                # Tier 3 connection (optional, graceful no-op)
 │
-├── templates/                # Built-in template YAML files
+├── configs/templates/        # 6 built-in template YAML files
 ├── package.json
 └── tsconfig.json
 ```
@@ -337,9 +355,9 @@ Tier 2 must work completely without Tier 3 at every stage.
 
 | Decision | Options | Status |
 |----------|---------|--------|
-| CLI framework | commander, oclif, yargs, citty | Not decided |
+| CLI framework | commander, oclif, yargs, citty | **Decided: commander** |
 | Local web server | Hono, Fastify, Express | Not decided |
 | Local web UI framework | Lit (match OpenClaw), React, Vue, Svelte | Not decided |
-| Distribution format | npm global, bun compile, pkg, docker | Not decided |
+| Distribution format | npm global, bun compile, pkg, docker | npm global (current) |
 | Tier 3 tech stack | Separate repo or monorepo workspace | Not decided |
 | Monorepo tooling | Turborepo, nx, pnpm workspaces | Not decided |

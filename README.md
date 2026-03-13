@@ -20,13 +20,24 @@ Seven phases. Each is a distinct operational domain with its own toolchain. Toge
 
 ### Plan — Design your agent
 
-Templates, questionnaire, config generation, identity architecture. Answer questions about who your agent should be and what it should do — ClawHQ generates a complete, valid, hardened deployment bundle. Every known landmine already handled. No config files touched.
+Templates, questionnaire, config generation, identity architecture, workspace tools, skills. Answer questions about who your agent should be and what it should do — ClawHQ generates a complete, valid, hardened deployment bundle including:
 
-Templates are **full operational profiles** — not prompt skins. Like WordPress themes, each defines personality, security posture, monitoring thresholds, memory policy, cron configuration, autonomy defaults, and integration requirements. They're the primary customization surface and the foundation of a community ecosystem.
+- **openclaw.json** — runtime config with all 14 landmines auto-handled
+- **Dockerfile** — custom binary layer composed from your integration selections
+- **docker-compose.yml** — hardened container config (cap_drop ALL, ICC disabled, UID 1000)
+- **7 workspace tools** — email, tasks, todoist, ical, quote, tavily, todoist-sync (generated based on integrations)
+- **7 identity files** — SOUL.md, USER.md, IDENTITY.md, AGENTS.md, HEARTBEAT.md, TOOLS.md, MEMORY.md (auto-populated from template + integrations)
+- **Skills** — construct (self-improvement) + morning-brief (daily briefing)
+- **Cron jobs** — heartbeat, work-session, morning-brief, construct (OpenClaw-native format)
+
+Templates are **full operational profiles** — not prompt skins. 6 built-in templates, each defining personality, security posture, monitoring thresholds, memory policy, cron configuration, autonomy defaults, and integration requirements.
 
 ```bash
-clawhq init          # Guided questionnaire → complete deployment bundle
-clawhq template      # Browse, preview, customize templates
+clawhq init --guided       # Interactive questionnaire → complete deployment bundle
+clawhq template list       # Browse available templates
+clawhq template preview    # Preview a template's operational profile
+clawhq agent add <id>      # Add a second agent to an existing deployment
+clawhq agent list          # List configured agents
 ```
 
 ### Build — Construct from source

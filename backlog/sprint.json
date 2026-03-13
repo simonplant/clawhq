@@ -1,31 +1,27 @@
 {
-  "sprintId": "sprint-1773431810",
-  "startedAt": "2026-03-13T12:56:50-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773432444",
+  "startedAt": "2026-03-13T13:07:24-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-038",
-    "title": "Skill management — clawhq skill install/list/update/remove",
+    "id": "FEAT-039",
+    "title": "Integration management — clawhq integrate add/remove/swap/list",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create src/cli/skill.ts with skill subcommand group",
-      "Implement `clawhq skill list`: show installed skills with version, source, status (active/disabled), last-used timestamp",
-      "Implement `clawhq skill install <name|url>`: fetch skill, sandbox in isolated container, scan for suspicious patterns (outbound network calls, filesystem access outside workspace, credential access), present for user approval before activation",
-      "On approval: update TOOLS.md, trigger Stage 2 rebuild if skill requires container-level dependencies",
-      "Implement `clawhq skill remove <name>`: deactivate skill, remove from TOOLS.md, keep rollback snapshot for 30 days",
-      "Implement `clawhq skill update <name>`: sandbox and vet new version before replacing; old version kept as rollback",
-      "Write unit tests for skill vetting logic and lifecycle operations"
+      "Create src/cli/integrate.ts with integrate subcommand group",
+      "Implement `clawhq integrate add <type>`: walk through provider selection (e.g., Google Calendar vs. iCloud vs. CalDAV), credential setup with live validation, config generation",
+      "On add: write credential to .env, install integration tool, update TOOLS.md, check cron dependencies, update egress firewall allowlist for provider's API domains, run targeted doctor health check",
+      "Implement `clawhq integrate remove <name>`: clean credential from .env, uninstall tool, update TOOLS.md, update identity files to remove references, flag orphaned cron dependencies, tighten firewall allowlist",
+      "Implement `clawhq integrate swap <category> <new-provider>`: change backend provider (e.g., `integrate swap calendar icloud`) while preserving agent behavior — same category interface, new backend",
+      "Implement `clawhq integrate list`: show all integrations with provider, status, credential health, last-used",
+      "Write unit tests for integration lifecycle and firewall allowlist management"
     ],
     "acceptanceCriteria": [
-      "`clawhq skill install` sandboxes and vets skill before presenting user approval prompt",
-      "User must explicitly approve before skill is activated — no auto-install",
-      "TOOLS.md is updated correctly on install and remove",
-      "`clawhq skill remove` provides 30-day rollback window",
-      "`clawhq skill update` vets new version before replacing old — old version is rollback target"
+      "`clawhq integrate add` validates credentials live before completing setup",
+      "Adding an integration atomically updates egress firewall allowlist for that provider's domains",
+      "`clawhq integrate swap` changes provider without changing agent's task behavior (same category interface)",
+      "`clawhq integrate remove` tightens firewall allowlist and cleans all config references",
+      "`clawhq integrate list` shows credential health status per integration"
     ],
-    "startedAt": "2026-03-13T12:56:50-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-13T13:07:24-07:00"
-  },
-  "completedAt": "2026-03-13T13:07:24-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-13T13:07:24-07:00"
+  }
 }
