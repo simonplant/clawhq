@@ -1,5 +1,1027 @@
 {
-  "description": "Feature backlog",
-  "items": [],
-  "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done."
+  "description": "ClawHQ feature backlog — derived from docs/PRODUCT.md build phases",
+  "items": [
+    {
+      "id": "FEAT-001",
+      "title": "Project scaffolding and CLI entrypoint",
+      "description": "Initialize the Go module, set up project structure, and create the root CLI entrypoint using cobra. This is the foundation everything else builds on.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "steps": [
+        "Run `go mod init github.com/clawhq/clawhq` and set up the module",
+        "Create project directory structure: cmd/, internal/, pkg/, configs/, docs/",
+        "Add cobra dependency and create cmd/root.go with the root command",
+        "Create cmd/version.go that reads from a VERSION constant or ldflags",
+        "Create main.go as the entrypoint that calls cmd.Execute()",
+        "Add a Makefile with targets: build, test, lint, clean",
+        "Ensure `go build ./...` succeeds and `./clawhq version` prints version info",
+        "Add .golangci.yml with standard linting rules"
+      ],
+      "acceptanceCriteria": [
+        "`go build ./...` produces a single binary with zero errors",
+        "`./clawhq` prints help text listing available subcommands",
+        "`./clawhq version` prints the version string",
+        "`go test ./...` passes (even if no tests yet, must not error)",
+        "Project structure follows standard Go layout conventions"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Foundation item — everything depends on this. Keep minimal."
+    },
+    {
+      "id": "FEAT-002",
+      "title": "Config loading and validation engine",
+      "description": "Build the config loading system that reads/validates clawhq config (YAML) and OpenClaw config (JSON). This is the backbone of the doctor, init, and deploy commands.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-001"],
+      "steps": [
+        "Create internal/config/ package",
+        "Define Go structs for ClawHQ config (project name, validation command, model routing, security posture, etc.)",
+        "Implement YAML config loading from ~/.clawhq/config.yaml and ./clawhq.yaml with merge precedence",
+        "Implement config validation: required fields, valid enum values, path existence checks",
+        "Define the 14 landmine rules as a validation rule set (see PRODUCT.md § Config validation engine)",
+        "Implement a Validate() function that returns structured results (pass/warn/fail per rule with fix instructions)",
+        "Write unit tests for config loading, merging, and each validation rule",
+        "Export a LoadAndValidate() convenience function"
+      ],
+      "acceptanceCriteria": [
+        "Config loads from YAML with correct precedence (project > user > defaults)",
+        "All 14 landmine validation rules are implemented and return clear fix instructions on failure",
+        "Invalid config produces structured error output, not panics",
+        "Unit tests cover each landmine rule with both passing and failing cases",
+        "`go test ./internal/config/...` passes with >80% coverage"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Critical path — doctor, init, and deploy all depend on config validation."
+    },
+    {
+      "id": "FEAT-003",
+      "title": "Docker client wrapper",
+      "description": "Create a Go wrapper around Docker CLI operations needed by ClawHQ: image builds, container lifecycle, health checks, network inspection. Subprocess-based (not Docker SDK) per architecture decision.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-001"],
+      "steps": [
+        "Create internal/docker/ package",
+        "Implement DockerClient struct with methods: Build, Up, Down, Restart, Ps, Logs, Inspect, NetworkLs",
+        "Each method wraps the corresponding docker/docker-compose CLI command via exec.Command",
+        "Capture and parse stdout/stderr for structured output",
+        "Implement health polling: poll container health status with configurable timeout and interval",
+        "Implement image inspection: check if image exists, get layer info for two-stage build verification",
+        "Add error types for common failures (daemon not running, image not found, port conflict)",
+        "Write unit tests using command mocking (interface-based)"
+      ],
+      "acceptanceCriteria": [
+        "DockerClient correctly wraps docker CLI commands via subprocess",
+        "Health polling returns structured status within configurable timeout",
+        "Errors are typed and actionable (not raw stderr strings)",
+        "Unit tests pass without requiring a running Docker daemon",
+        "All methods accept context.Context for cancellation"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Build, deploy, and operate phases all need Docker operations."
+    },
+    {
+      "id": "FEAT-004",
+      "title": "Doctor command — core diagnostic engine",
+      "description": "Implement `clawhq doctor` — the hero feature. Runs all diagnostic checks and reports pass/warn/fail with fix instructions. This is the first command that delivers real value to Tinkerers.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-002", "FEAT-003"],
+      "steps": [
+        "Create cmd/doctor.go with the doctor subcommand",
+        "Create internal/doctor/ package with a Check interface: Name, Run() -> CheckResult{Status, Message, Fix}",
+        "Implement check: Docker daemon running",
+        "Implement check: OpenClaw images exist",
+        "Implement check: Config validation (delegates to config.Validate())",
+        "Implement check: File permissions (.env is 600, identity files are read-only)",
+        "Implement check: Secrets not embedded in config files (scan openclaw.json for API key patterns)",
+        "Implement check: Container running and healthy (delegates to docker.HealthPoll())",
+        "Implement check: Port availability (18789 not already bound)",
+        "Implement the Runner that executes all checks and formats output as a table: check name | status | message",
+        "Add --json flag for machine-readable output",
+        "Add --fix flag that auto-fixes safe issues (permissions, firewall)"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq doctor` runs all checks and prints a formatted status table",
+        "Each check reports pass/warn/fail with specific fix instructions",
+        "`clawhq doctor --json` outputs structured JSON",
+        "`clawhq doctor --fix` auto-fixes permission issues",
+        "Exit code is non-zero if any check fails",
+        "Checks are modular (easy to add new ones via the Check interface)"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Hero feature. First real value for Tinkerer persona. Ship-blocking for Phase 1."
+    },
+    {
+      "id": "FEAT-005",
+      "title": "Secrets management and credential health probes",
+      "description": "Implement secrets management: .env file handling, credential health probes for connected integrations, and secret scanning across config files.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-002"],
+      "steps": [
+        "Create internal/secrets/ package",
+        "Implement .env file reader/writer that preserves comments and ordering",
+        "Implement permission enforcement: ensure .env is chmod 600",
+        "Implement secret pattern scanner: regex patterns for API keys (sk-ant-*, ghp_*, AKIA*, Bearer tokens, JWTs)",
+        "Implement ScanFiles() that checks all config files for embedded secrets",
+        "Create internal/creds/ package for credential health probes",
+        "Implement health probe interface: Provider, Check() -> CredStatus{Valid, Expired, Failing, Error}",
+        "Implement probe for Anthropic API key (HEAD request to API)",
+        "Implement probe for OpenAI API key",
+        "Implement probe for Telegram bot token (getMe API call)",
+        "Create cmd/creds.go subcommand that runs all probes and displays status table"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq creds` checks all configured credentials and shows valid/expired/failing status",
+        "Secret scanner detects API keys embedded in non-.env files",
+        ".env permissions are enforced (warn if not 600)",
+        "Health probes timeout after 10s and don't crash on network errors",
+        "Unit tests cover pattern matching and .env read/write"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Security foundation. Doctor depends on this for its secrets checks."
+    },
+    {
+      "id": "FEAT-006",
+      "title": "Container hardening and security posture",
+      "description": "Implement automatic container hardening based on template security posture. Generate docker-compose.yml overrides with cap_drop ALL, read-only rootfs, non-root user, resource limits.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-002", "FEAT-003"],
+      "steps": [
+        "Create internal/secure/ package",
+        "Define SecurityPosture enum: minimal, standard, hardened, paranoid",
+        "Implement docker-compose override generator per posture level",
+        "For 'hardened' (default): cap_drop ALL, read-only rootfs, no-new-privileges, non-root UID 1000, tmpfs with noexec/nosuid, ICC disabled, resource limits",
+        "Implement compose file merger: take base docker-compose.yml and apply security overrides",
+        "Add doctor check: verify running container matches expected security posture",
+        "Write unit tests for override generation and compose merging"
+      ],
+      "acceptanceCriteria": [
+        "Generated docker-compose override includes all hardening controls for the configured posture",
+        "Compose merger produces valid YAML that docker-compose accepts",
+        "Doctor can verify that running containers match the expected posture",
+        "Each posture level is documented with what controls it enables",
+        "Unit tests cover all four posture levels"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Security by default. This is what differentiates ClawHQ from hosting providers."
+    },
+    {
+      "id": "FEAT-007",
+      "title": "Egress firewall with domain allowlisting",
+      "description": "Implement iptables-based egress firewall that restricts outbound traffic to allowlisted domains only. Stronger than 'allow all HTTPS' — enforces local-first at the network level.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-003", "FEAT-002"],
+      "steps": [
+        "Create internal/firewall/ package",
+        "Implement domain-to-IP resolver for allowlist entries",
+        "Implement iptables chain manager: create/flush/delete CLAWHQ_FWD chain",
+        "Implement rule generator: ESTABLISHED/RELATED -> DNS(53) -> HTTPS(443) to allowlisted IPs only -> LOG+DROP",
+        "Derive allowlist from config: base domains (Docker Hub for pulls) + user cloud opt-in (api.anthropic.com, api.openai.com, etc.)",
+        "Implement Apply() that creates the chain and inserts rules via sudo iptables",
+        "Implement Remove() for clean teardown",
+        "Implement Verify() that checks current iptables rules match expected state",
+        "Add doctor check: firewall applied and matches expected rules",
+        "Handle macOS (pf) vs Linux (iptables) — or document Linux-only with clear error on macOS"
+      ],
+      "acceptanceCriteria": [
+        "Firewall creates a dedicated iptables chain with correct rule order",
+        "Only allowlisted domains can be reached over HTTPS",
+        "DNS (port 53) is allowed for resolution",
+        "Dropped packets are logged for debugging",
+        "Verify() returns true only when rules match expected state",
+        "Apply() is idempotent (safe to call multiple times)"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Core privacy commitment. Network-level enforcement of local-first principle."
+    },
+    {
+      "id": "FEAT-008",
+      "title": "Two-stage Docker build command",
+      "description": "Implement `clawhq build` with two-stage Docker build: Stage 1 (base OpenClaw + apt packages) only rebuilds when upstream changes, Stage 2 (custom tools + skills) completes in seconds.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-003"],
+      "steps": [
+        "Create cmd/build.go with the build subcommand",
+        "Create internal/build/ package",
+        "Implement Stage 1 detection: check if base image exists and if upstream Dockerfile/apt packages changed",
+        "Implement Stage 1 build: docker build with OpenClaw Dockerfile and base dependencies",
+        "Implement Stage 2 build: docker build custom layer on top of Stage 1 with tools, skills, identity files",
+        "Generate build manifest: image hashes, layer sizes, build timestamps, binaries included",
+        "Add --stage2-only flag to skip Stage 1",
+        "Add --verify flag to compare current images against manifest",
+        "Display build progress and timing per stage"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq build` produces working container images from OpenClaw source",
+        "Stage 2 rebuilds complete in <30s when Stage 1 is cached",
+        "Build manifest is generated with image hashes and layer info",
+        "`clawhq build --verify` detects drift from manifest",
+        "`clawhq build --stage2-only` skips base image rebuild"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Auditability requirement — always build from source, never pre-built images."
+    },
+    {
+      "id": "FEAT-009",
+      "title": "Deploy sequence — clawhq up/down/restart",
+      "description": "Implement the full deploy sequence: pre-flight checks, compose up, firewall apply, health poll, cron verify, channel connection verify, smoke test.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-003", "FEAT-006", "FEAT-007"],
+      "steps": [
+        "Create cmd/up.go, cmd/down.go, cmd/restart.go",
+        "Create internal/deploy/ package",
+        "Implement pre-flight checks: Docker daemon, images exist, config valid, secrets present, ports available, Ollama reachable",
+        "Implement deploy sequence: compose up -> firewall apply -> health poll (60s timeout) -> report",
+        "Implement graceful shutdown: compose down preserving workspace state",
+        "Implement restart: down -> up with firewall reapply and health re-verify",
+        "Each pre-flight failure includes the exact fix command",
+        "Display deployment progress with step-by-step status"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq up` runs full pre-flight checks before starting containers",
+        "Pre-flight failures show exact fix instructions and abort deployment",
+        "Health poll waits up to 60s for container to be healthy",
+        "`clawhq down` stops containers gracefully",
+        "`clawhq restart` reapplies firewall and re-verifies health",
+        "Exit code is non-zero on any deployment failure"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Core deploy workflow. The one-command deploy experience."
+    },
+    {
+      "id": "FEAT-010",
+      "title": "Status dashboard — clawhq status",
+      "description": "Implement `clawhq status` — single-pane view of agent health, integrations, cost, cron, workspace metrics, and data egress summary.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-003", "FEAT-004", "FEAT-005"],
+      "steps": [
+        "Create cmd/status.go with the status subcommand",
+        "Create internal/status/ package",
+        "Implement agent state section: container status, uptime, model loaded",
+        "Implement integration health section: credential status for each configured integration",
+        "Implement workspace metrics section: memory file sizes by tier, identity file token counts",
+        "Implement data egress section: bytes sent to cloud today/week/month, zero-egress badge",
+        "Format output as a clean terminal dashboard with sections and colors",
+        "Add --json flag for machine-readable output",
+        "Add --watch flag for live-updating display (refresh every 5s)"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq status` shows agent state, integration health, workspace metrics, and egress summary",
+        "Zero-egress badge displays when no cloud calls were made",
+        "`clawhq status --json` outputs structured JSON",
+        "`clawhq status --watch` updates every 5 seconds",
+        "Works gracefully when agent is not running (shows 'stopped' state)"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Tinkerer's window into their agent. Pairs with doctor for observability."
+    },
+    {
+      "id": "FEAT-011",
+      "title": "Local-first model routing engine",
+      "description": "Implement the model routing engine that routes tasks to local Ollama models by default, with per-category cloud escalation policy. Core privacy commitment.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-002"],
+      "steps": [
+        "Create internal/routing/ package",
+        "Define TaskCategory enum: research, email_triage, calendar, creative_writing, code_generation, general",
+        "Define RoutingPolicy struct: per-category rules with local_model_preference, cloud_allowed bool, cloud_provider, quality_threshold",
+        "Implement Ollama client: discover available models via `ollama list`, check model availability",
+        "Implement task complexity scoring: token count, required capabilities, template quality threshold",
+        "Implement Router.Route(task) -> ModelChoice: evaluates policy, picks best available model",
+        "Local models always tried first; cloud only if allowed for category AND local quality insufficient",
+        "Implement cost tracking: per-task attribution with model and provider",
+        "Write unit tests for routing decisions across policy configurations"
+      ],
+      "acceptanceCriteria": [
+        "Router picks local Ollama model by default for all task categories",
+        "Cloud escalation only occurs when explicitly allowed in category policy",
+        "With no cloud API keys configured, agent operates fully on local models",
+        "Task complexity scoring produces consistent results",
+        "Cost tracking attributes cost per task, per model",
+        "Unit tests cover: all-local, partial-cloud, full-cloud, no-ollama-fallback scenarios"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Architectural commitment to local-first. Affects every other feature that touches models."
+    },
+    {
+      "id": "FEAT-012",
+      "title": "Data egress logging and visibility",
+      "description": "Implement egress logging: every outbound cloud API call is recorded with provider, model, token count, data category, and cost. Foundation for audit and status commands.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-011"],
+      "steps": [
+        "Create internal/egress/ package",
+        "Define EgressRecord struct: timestamp, provider, model, token_count_in, token_count_out, data_category, cost, session_id",
+        "Implement append-only egress log writer (JSONL format)",
+        "Implement egress log reader with filtering: by date range, provider, category",
+        "Implement aggregation: total by provider (today/week/month), breakdown by category",
+        "Implement zero-egress check: verify no cloud calls in a given period",
+        "Create cmd/audit.go with `clawhq audit --egress` subcommand",
+        "Add --export flag to generate a signed egress report"
+      ],
+      "acceptanceCriteria": [
+        "Every cloud API call produces an egress record in the log",
+        "`clawhq audit --egress` shows per-call detail with provider, model, tokens, cost",
+        "Aggregation correctly sums by provider and category",
+        "Zero-egress attestation works for arbitrary time periods",
+        "Log format is append-only JSONL for integrity"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Privacy transparency. Feeds into status dashboard and audit command."
+    },
+    {
+      "id": "FEAT-013",
+      "title": "Encrypted backup and restore",
+      "description": "Implement `clawhq backup` and `clawhq backup restore` — encrypted snapshots of agent state with GPG encryption, integrity verification, and restore with doctor validation.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-002", "FEAT-004"],
+      "steps": [
+        "Create cmd/backup.go with backup and backup restore subcommands",
+        "Create internal/backup/ package",
+        "Implement snapshot collection: workspace, config, credentials (.env), cron, identity files",
+        "Implement GPG encryption of snapshot archive",
+        "Generate backup manifest: file list, sizes, hashes, timestamp, backup ID",
+        "Implement backup listing: show available backups with IDs and timestamps",
+        "Implement restore: decrypt, validate integrity, extract, run doctor, verify agent starts",
+        "Add --secrets-only flag to backup only sensitive files",
+        "Store backups in configurable location (default: ~/.clawhq/backups/)"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq backup` creates an encrypted snapshot with all agent state",
+        "`clawhq backup restore <id>` restores from snapshot and verifies via doctor",
+        "Backup manifest includes integrity hashes for all files",
+        "Restore fails cleanly if integrity check fails",
+        "`clawhq backup --secrets-only` backs up only .env and credential files",
+        "Backups are listed with IDs and timestamps"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Disaster recovery. Required before safe-update can be implemented."
+    },
+    {
+      "id": "FEAT-014",
+      "title": "Safe upstream update — clawhq update",
+      "description": "Implement `clawhq update` — upstream OpenClaw updates with pre-update snapshot, rebuild, health check, firewall reapply, and instant rollback on failure.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-013", "FEAT-008", "FEAT-009"],
+      "steps": [
+        "Create cmd/update.go with the update subcommand",
+        "Create internal/update/ package",
+        "Implement upstream version check: fetch latest OpenClaw release tag",
+        "Implement changelog display with breaking changes highlighted",
+        "Implement pre-update snapshot via backup system",
+        "Implement update sequence: snapshot -> pull -> rebuild -> stop -> start -> healthcheck -> firewall reapply -> doctor",
+        "Implement rollback: on any failure, restore previous image, restart, verify",
+        "Add --check flag to show what would change without updating",
+        "Add --force flag to skip confirmation"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq update` shows changelog and confirms before updating",
+        "Pre-update snapshot is created automatically",
+        "On any failure during update, rollback restores the previous state",
+        "Rollback uses previous image (no rebuild needed) for instant recovery",
+        "`clawhq update --check` shows diff without modifying anything",
+        "Doctor runs after update to verify health"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Safety net for staying current with OpenClaw. Depends on backup and build."
+    },
+    {
+      "id": "FEAT-015",
+      "title": "Intelligent cost routing and budget management",
+      "description": "Implement cost tracking with per-task attribution, budget alerts, and automatic routing adjustment when budget thresholds are hit.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": ["FEAT-011", "FEAT-012"],
+      "steps": [
+        "Create internal/cost/ package",
+        "Implement per-model cost tables (local = $0, Haiku/Sonnet/Opus rates per token)",
+        "Implement budget configuration: monthly cap, alert thresholds (75%, 100%)",
+        "Implement cost attribution per task category and per model",
+        "Implement budget monitoring: track spend against cap with projections",
+        "At 75% budget: shift eligible tasks from cloud to local models before alerting",
+        "At 100% budget: cloud-escalation stops entirely, agent operates local-only",
+        "Integrate into status dashboard: cost breakdown section",
+        "Write unit tests for routing adjustments at budget thresholds"
+      ],
+      "acceptanceCriteria": [
+        "Cost is tracked per-task with model, provider, and category attribution",
+        "Budget threshold at 75% triggers automatic routing adjustment",
+        "Budget threshold at 100% blocks all cloud escalation (agent continues local-only)",
+        "Status dashboard shows cost breakdown by model and category",
+        "Agent never pauses completely due to budget — always falls back to local"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Cost management makes local-first tangible. Shows savings vs. cloud-only."
+    },
+    {
+      "id": "FEAT-016",
+      "title": "Health self-repair (auto-recovery)",
+      "description": "Implement automatic recovery from common failures: network drops, Gateway crashes, bridge interface changes. Reduces operational burden on Tinkerers.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-009", "FEAT-007"],
+      "steps": [
+        "Create internal/repair/ package",
+        "Implement health monitor: periodic check of container, network, and firewall state",
+        "Implement auto-reconnect: detect network drop, retry connection",
+        "Implement Gateway crash recovery: detect unhealthy container, auto-restart",
+        "Implement firewall reapply: detect bridge interface change, reapply iptables rules",
+        "Log all auto-repair actions for audit trail",
+        "Implement `clawhq repair` command for manual trigger of all recovery checks",
+        "Add configurable enable/disable for each auto-repair behavior"
+      ],
+      "acceptanceCriteria": [
+        "Gateway crash triggers automatic container restart",
+        "Network drop triggers reconnection attempt",
+        "Bridge interface change triggers firewall reapply",
+        "All auto-repair actions are logged",
+        "Auto-repair can be disabled per-behavior in config"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Operational reliability. Phase 1 nice-to-have, not ship-blocking."
+    },
+    {
+      "id": "FEAT-017",
+      "title": "Init wizard — clawhq init with guided questionnaire",
+      "description": "Implement `clawhq init --guided` — structured setup flow that walks through basics, template selection, integration setup with credential validation, and config generation.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-002", "FEAT-005", "FEAT-006"],
+      "steps": [
+        "Create cmd/init.go with the init subcommand",
+        "Create internal/init/ package",
+        "Implement Step 1: basics — name, timezone, waking hours",
+        "Implement Step 2: template selection — present use-case templates with descriptions",
+        "Implement Step 3: integration setup — per-integration credential input with live validation",
+        "Implement Step 4: model routing — local-only or cloud opt-in per category",
+        "Implement Step 5: config generation — produce openclaw.json, .env, docker-compose.yml, identity files, cron/jobs.json",
+        "Run config validation (all 14 landmine rules) before writing files",
+        "Display summary of generated config and next steps"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq init --guided` walks through all setup steps interactively",
+        "Credentials are validated live before proceeding",
+        "Generated config passes all 14 landmine validation rules",
+        "All generated files are written atomically (no partial writes on failure)",
+        "Summary shows what was configured and the next command to run"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 start. Requires config, secrets, and security foundations."
+    },
+    {
+      "id": "FEAT-018",
+      "title": "Use-case templates (YAML operational profiles)",
+      "description": "Implement the template system: YAML-based operational profiles organized by what users are replacing (Google Assistant, ChatGPT Plus, PA, etc.). Templates map use-case framing to operational dimensions.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-002"],
+      "steps": [
+        "Create internal/template/ package",
+        "Define Template struct: name, version, use_case_mapping, personality, security_posture, monitoring, memory_policy, cron_config, autonomy_model, model_routing_strategy, integration_requirements, skill_bundle",
+        "Create 6 built-in templates as YAML files in configs/templates/: replace-google-assistant, replace-chatgpt-plus, replace-my-pa, family-hub, research-copilot, founders-ops",
+        "Implement template loader with validation",
+        "Implement template preview: display what integrations are needed, autonomy model, local model requirements, estimated daily cost, and 'day in the life' narrative",
+        "Implement template-to-config mapper: generate DeploymentBundle from Template + setup answers",
+        "Write unit tests for template loading and config generation"
+      ],
+      "acceptanceCriteria": [
+        "6 built-in templates exist with complete operational profiles",
+        "Templates load and validate from YAML without error",
+        "Template preview shows all relevant info including cost estimates",
+        "Template-to-config mapper produces valid DeploymentBundle",
+        "Templates can tighten but never loosen Layer 1 security baselines"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 — use-case framing is the key differentiator for Privacy Migrants."
+    },
+    {
+      "id": "FEAT-019",
+      "title": "AI-powered config inference — clawhq init --smart",
+      "description": "Implement natural language config inference: user describes what they want, local LLM maps it to template selection and override parameters.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-017", "FEAT-018", "FEAT-011"],
+      "steps": [
+        "Create internal/inference/ package",
+        "Implement prompt construction: system prompt that understands templates and operational dimensions",
+        "Implement Ollama integration for local LLM inference",
+        "Implement response parser: extract template selection, integration requirements, autonomy levels, boundaries",
+        "Implement conversational refinement: show plain-language summary, allow adjustments",
+        "Implement fallback to guided questionnaire when local model isn't available",
+        "Generate config from inference results using template-to-config mapper"
+      ],
+      "acceptanceCriteria": [
+        "User describes needs in plain language and gets a valid config proposal",
+        "Inference runs on local Ollama model (no cloud dependency)",
+        "User can adjust any aspect conversationally before generating",
+        "Falls back to guided questionnaire if Ollama isn't available",
+        "Generated config passes all validation rules"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 — the '5-minute setup' experience for Privacy Migrants."
+    },
+    {
+      "id": "FEAT-020",
+      "title": "Identity governance — token budget and drift detection",
+      "description": "Implement identity file governance: track token budget per file, detect staleness, flag contradictions across identity files.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-002"],
+      "steps": [
+        "Create internal/identity/ package",
+        "Implement token counter for identity files (approximate, using tiktoken-go or word-based estimation)",
+        "Implement budget tracking: per-file token count vs bootstrapMaxChars (default 20K)",
+        "Implement warnings at 70% and 90% budget thresholds",
+        "Implement staleness detection: flag files not updated in configurable period",
+        "Implement consistency checker: parse identity files for contradictions (using local LLM)",
+        "Add identity section to doctor checks",
+        "Create cmd/evolve.go with `clawhq evolve --identity` subcommand for identity review"
+      ],
+      "acceptanceCriteria": [
+        "Token budget is tracked per identity file with threshold warnings",
+        "Staleness detection flags files that haven't been updated",
+        "Consistency checker identifies contradictions across identity files",
+        "Doctor reports identity health in its output",
+        "`clawhq evolve --identity` triggers interactive identity review"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Evolve — prevents identity drift over time."
+    },
+    {
+      "id": "FEAT-021",
+      "title": "Memory lifecycle management — structured knowledge graph",
+      "description": "Implement tiered memory management: transform raw conversations into structured knowledge, manage hot/warm/cold tiers with LLM-powered summarization, background reflection.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-011", "FEAT-002"],
+      "steps": [
+        "Create internal/memory/ package",
+        "Define StructuredMemory types: preferences (hierarchical), relationships (cross-linked), domain_expertise, context",
+        "Implement memory ingestion: parse raw conversation logs into structured knowledge entries",
+        "Implement hot tier: recent structured knowledge, <100KB, <7 days",
+        "Implement warm tier: LLM-summarized knowledge, PII-aware, <90 days",
+        "Implement cold tier: further compressed, PII-masked, >90 days (or delete per policy)",
+        "Implement tier transitions with local model summarization",
+        "Implement background reflection: analyze existing memories for new connections during idle time",
+        "Add memory section to status dashboard and doctor checks"
+      ],
+      "acceptanceCriteria": [
+        "Raw conversations are transformed into structured knowledge (not stored as flat logs)",
+        "Hot -> warm tier transition summarizes while preserving key information",
+        "Warm -> cold tier further compresses and masks PII",
+        "Background reflection detects and proposes new connections",
+        "All summarization runs on local models by default",
+        "Memory health is reported in doctor and status"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Evolve — biggest differentiator for cost and local model viability."
+    },
+    {
+      "id": "FEAT-022",
+      "title": "Activity digest and approval queue",
+      "description": "Implement daily activity digest and approval queue for high-stakes agent actions. The transparency layer that builds user trust.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-012", "FEAT-011"],
+      "steps": [
+        "Create internal/digest/ package",
+        "Implement activity log collector: gather actions, errors, egress, approvals from the last period",
+        "Implement digest generator: local LLM summarizes activity into human-readable daily summary",
+        "Implement privacy mode: summarize by category without showing content",
+        "Create internal/approval/ package",
+        "Implement approval queue: actions in requires-approval categories are queued",
+        "Implement approval resolution: approve, reject (with reason as preference signal), expire after timeout",
+        "Create cmd/digest.go subcommand",
+        "Integrate approval queue with messaging channel (Telegram)"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq digest` shows human-readable activity summary",
+        "Digest includes: tasks completed, tasks queued, problems found with proposed solutions, egress summary",
+        "Privacy mode summarizes by category without exposing content",
+        "Approval queue works for high-stakes actions (send email, create event, etc.)",
+        "Rejected approvals store reason as preference signal"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Transparency — builds trust with Privacy Migrants."
+    },
+    {
+      "id": "FEAT-023",
+      "title": "Portable export — clawhq export",
+      "description": "Implement full agent export: identity, memory, config, workspace as a portable bundle with README explaining how to use with raw OpenClaw. Zero lock-in.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-002"],
+      "steps": [
+        "Create cmd/export.go with the export subcommand",
+        "Create internal/export/ package",
+        "Implement bundle collector: identity files, memory archive (all tiers), workspace snapshot, config (secrets redacted), integration manifest, interaction history, build manifest",
+        "Generate README.md in bundle explaining structure and how to use with raw OpenClaw",
+        "Implement --mask-pii flag: apply PII masking throughout",
+        "Implement --no-memory flag: export only identity + config",
+        "Package as tar.gz with integrity manifest"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq export` produces a self-documented portable bundle",
+        "Bundle includes README explaining how to use without ClawHQ",
+        "Secrets are redacted from exported config",
+        "--mask-pii applies PII masking to all files",
+        "--no-memory exports only identity and config",
+        "Bundle integrity can be verified via manifest hashes"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Decommission — zero lock-in commitment."
+    },
+    {
+      "id": "FEAT-024",
+      "title": "Verified destruction — clawhq destroy",
+      "description": "Implement `clawhq destroy` with pre-decommission checklist, confirmed destruction sequence, and signed destruction manifest proving data was removed.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-023", "FEAT-009"],
+      "steps": [
+        "Create cmd/destroy.go with the destroy subcommand",
+        "Create internal/destroy/ package",
+        "Implement dry-run: list all local data, data requiring manual cleanup, backup/export status",
+        "Require deployment name typed out for confirmation",
+        "Implement destruction sequence: stop container -> remove volumes -> wipe workspace -> wipe config -> wipe secrets -> remove images -> remove networks -> remove firewall -> remove clawhq config",
+        "Generate signed destruction manifest with timestamps and verification hashes",
+        "Add --keep-export flag to preserve export bundle"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq destroy --dry-run` shows exactly what will be destroyed",
+        "No backup/export prompts user to create one first",
+        "Deployment name must be typed for confirmation",
+        "Destruction manifest is generated with cryptographic proof",
+        "All data locations are cleaned including volumes, configs, secrets, images, networks"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Decommission — data sovereignty includes the right to delete."
+    },
+    {
+      "id": "FEAT-025",
+      "title": "PII and secret scanning — clawhq scan",
+      "description": "Implement PII and secret scanning across agent-created files and repos. Catches exposures before they cause harm.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-005"],
+      "steps": [
+        "Create cmd/scan.go with the scan subcommand",
+        "Extend internal/secrets/ with PII pattern scanning",
+        "Implement PII patterns: names, SSN, credit cards, phone numbers, email addresses",
+        "Implement secret patterns: ghp_*, sk-ant-*, AKIA*, Bearer tokens, JWTs, private keys",
+        "Implement dangerous filename detection: .env, *.pem, *.key",
+        "Implement false positive filtering: CHANGE_ME placeholders, env var references, comments",
+        "Add --history flag to include git history in scan",
+        "Format output as table with file, line, pattern type, and match preview (redacted)"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq scan` detects PII and secrets in agent workspace files",
+        "False positive filtering removes common benign patterns",
+        "--history flag scans git history for leaked secrets",
+        "Output shows file, line, and pattern type without exposing full secret",
+        "Exit code is non-zero when issues are found"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Security — catches exposures proactively."
+    },
+    {
+      "id": "FEAT-026",
+      "title": "Channel connection — clawhq connect",
+      "description": "Implement guided messaging channel setup for Telegram and WhatsApp with inline validation and bidirectional message flow testing.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-005", "FEAT-009"],
+      "steps": [
+        "Create cmd/connect.go with the connect subcommand",
+        "Create internal/channel/ package",
+        "Implement Telegram setup flow: walk through BotFather token creation, validate token, configure webhook",
+        "Implement WhatsApp setup flow: walk through Business API setup, validate credentials",
+        "Implement --test flag: send test message and verify response (bidirectional)",
+        "Store channel config in appropriate config files",
+        "Display connection status in status dashboard"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq connect telegram` walks through setup with inline validation",
+        "`clawhq connect --test` verifies bidirectional message flow",
+        "Invalid credentials are caught during setup, not at runtime",
+        "Channel status shows in `clawhq status`"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Deploy — makes channel setup accessible to Privacy Migrants."
+    },
+    {
+      "id": "FEAT-027",
+      "title": "Preference learning from corrections",
+      "description": "Implement preference learning: classify user corrections (preference, boundary, one-time), accumulate signals, propose identity file updates after threshold.",
+      "priority": "could",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-020", "FEAT-022"],
+      "steps": [
+        "Create internal/learning/ package",
+        "Define PreferenceSignal struct: timestamp, action_type, original_decision, correction, signal_type (preference/boundary/one-time), applied_to_identity",
+        "Implement correction classifier: determine if correction is preference, boundary, or one-time override",
+        "Implement signal accumulator: track signals per category",
+        "Implement threshold proposer: when 5+ signals in same category, propose preference update",
+        "Implement identity file updater: apply approved preference updates with rollback capability",
+        "Log all preference changes for audit trail"
+      ],
+      "acceptanceCriteria": [
+        "Corrections are classified into preference, boundary, or one-time override",
+        "After 5 signals in the same category, a preference update is proposed",
+        "User approves preference updates before they're applied",
+        "Applied preferences are logged with rollback capability",
+        "Boundary signals are never overridden by preference signals"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Evolve — the 'gets better over time' mechanism."
+    },
+    {
+      "id": "FEAT-028",
+      "title": "Autonomy tuning from approval patterns",
+      "description": "Implement autonomy tuning: analyze approval queue history, recommend auto-approve/require-approval changes, with cooldown on rejected recommendations.",
+      "priority": "could",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-022", "FEAT-027"],
+      "steps": [
+        "Create internal/autonomy/ package",
+        "Implement approval pattern analyzer: track approve/reject rates per action category",
+        "Implement recommendation engine: propose auto-approve when >95% approval rate, propose require-approval when >50% rejection rate",
+        "Implement cooldown: don't re-recommend rejected changes for configurable period",
+        "Implement policy updater: apply approved autonomy changes to approval policy",
+        "Log all autonomy changes for audit trail"
+      ],
+      "acceptanceCriteria": [
+        "Approval patterns are analyzed per action category",
+        "Auto-approve recommendations trigger at >95% approval rate",
+        "Rejected recommendations have configurable cooldown period",
+        "Autonomy changes require explicit user approval",
+        "All changes are logged with rollback capability"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Evolve — reduces micromanagement over time."
+    },
+    {
+      "id": "FEAT-029",
+      "title": "ChatGPT conversation import",
+      "description": "Import ChatGPT export data, extract preferences and facts via local LLM, propose additions to identity/memory files. Phase 3 migration story.",
+      "priority": "could",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-021", "FEAT-020", "FEAT-011"],
+      "steps": [
+        "Create internal/migrate/ package",
+        "Implement ChatGPT export parser (ZIP with conversations.json)",
+        "Implement fact/preference extractor using local LLM",
+        "Implement PII detection and masking on extracted data",
+        "Present extracted preferences for user review (approve/edit/reject each)",
+        "Write approved entries to USER.md and warm memory tier",
+        "Create cmd/migrate.go with `clawhq migrate --from chatgpt <export.zip>`"
+      ],
+      "acceptanceCriteria": [
+        "ChatGPT export ZIP is parsed correctly",
+        "Preferences and facts are extracted via local LLM",
+        "PII is detected and flagged before writing",
+        "User reviews each extracted preference before it's applied",
+        "Extracted data respects token budgets for identity files"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 3 Migration — reduces switching cost for Privacy Migrants."
+    },
+    {
+      "id": "FEAT-030",
+      "title": "Fleet management — multi-agent dashboard",
+      "description": "Implement `clawhq fleet` — monitor and manage multiple agents from a single dashboard with aggregated health, cost, security, and egress. Phase 3 for Fleet Operators.",
+      "priority": "could",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-010", "FEAT-004"],
+      "steps": [
+        "Create cmd/fleet.go with fleet subcommand",
+        "Create internal/fleet/ package",
+        "Implement agent discovery: find running ClawHQ agents on the network or from config",
+        "Implement aggregated health view: per-agent status summary",
+        "Implement aggregated cost view: total spend across fleet",
+        "Implement aggregated security view: posture comparison across fleet",
+        "Implement `clawhq fleet doctor` to run doctor across all agents",
+        "Format output as multi-agent dashboard"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq fleet` shows aggregated health, cost, and security across all agents",
+        "`clawhq fleet doctor` runs diagnostics on all discovered agents",
+        "Per-agent drill-down is available from fleet view",
+        "Fleet view works with 2+ agents"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 3 — Fleet Operator persona. Not needed until multiple agents exist."
+    },
+    {
+      "id": "FEAT-031",
+      "title": "Post-deploy smoke test",
+      "description": "Implement automatic post-deployment verification: send test message, verify response, confirm identity files loaded, probe connected integrations.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-009", "FEAT-026"],
+      "steps": [
+        "Create internal/smoke/ package",
+        "Implement test message sender via configured messaging channel",
+        "Implement response verification: check for coherent response within timeout",
+        "Implement identity file verification: confirm agent loads and uses identity files",
+        "Implement integration probing: test each connected integration with a read-only operation",
+        "Integrate into deploy sequence as final step",
+        "Report results as pass/fail per check with details"
+      ],
+      "acceptanceCriteria": [
+        "Smoke test sends a test message and verifies coherent response",
+        "Identity file loading is confirmed",
+        "Each connected integration is probed",
+        "Smoke test runs automatically at end of deploy sequence",
+        "Failures include actionable diagnostics"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Deploy — confirms agent actually works, not just container healthy."
+    },
+    {
+      "id": "FEAT-032",
+      "title": "Log streaming — clawhq logs",
+      "description": "Implement filtered log streaming from agent containers. Debug tool for Tinkerers.",
+      "priority": "could",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-003"],
+      "steps": [
+        "Create cmd/logs.go with the logs subcommand",
+        "Implement docker logs streaming with follow mode",
+        "Implement log filtering by category (agent, gateway, cron, error)",
+        "Implement `clawhq logs --cron <job>` for per-job execution history",
+        "Implement `clawhq logs --since <duration>` for time-bounded output"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq logs` streams container logs in real-time",
+        "Filtering by category works correctly",
+        "`clawhq logs --cron heartbeat` shows cron job execution history",
+        "--since flag correctly bounds output by time"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2+ — useful debugging tool but not ship-blocking."
+    },
+    {
+      "id": "FEAT-033",
+      "title": "Predictive health alerts",
+      "description": "Implement trend-based health prediction: memory growth projection, credential expiry warnings, response quality degradation detection.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-004", "FEAT-021", "FEAT-005"],
+      "steps": [
+        "Create internal/predict/ package",
+        "Implement memory growth trend analysis with projection to capacity",
+        "Implement credential expiry tracking with 7-day advance warning",
+        "Implement response quality metrics: user corrections per session, redo requests, escalation rate",
+        "Implement quality degradation diagnosis: identity bloat, memory regression, routing mismatch",
+        "Integrate alerts into status dashboard and doctor output",
+        "Implement notification hooks for alert delivery"
+      ],
+      "acceptanceCriteria": [
+        "Memory growth is projected with 'days until action needed' estimate",
+        "Credential expiry fires warning 7 days before expiry",
+        "Quality degradation triggers diagnosis with likely causes",
+        "Alerts include projected timeline and available remediation",
+        "Alerts appear in both status dashboard and doctor output"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Operate — proactive ops, not reactive dashboards."
+    },
+    {
+      "id": "FEAT-034",
+      "title": "Integration auto-detection during setup",
+      "description": "Detect available integrations automatically during init: discover calendar/task services from email provider, detect Ollama models, suggest optimal routing.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-017", "FEAT-011"],
+      "steps": [
+        "Extend internal/init/ with auto-detection logic",
+        "Implement email provider -> calendar/task discovery (e.g., iCloud email -> iCloud calendar)",
+        "Implement Ollama model discovery: list available models, assess capabilities",
+        "Implement optimal routing suggestion based on available models and template requirements",
+        "Pre-fill integration config from detected services",
+        "Show discovery results to user for confirmation during init flow"
+      ],
+      "acceptanceCriteria": [
+        "Email provider connection triggers related service discovery",
+        "Ollama models are discovered and capabilities assessed",
+        "Routing suggestions match template requirements to available models",
+        "User confirms all auto-detected integrations before config generation"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 2 Plan — reduces setup friction for Privacy Migrants."
+    },
+    {
+      "id": "FEAT-035",
+      "title": "'Why did you do that?' trace",
+      "description": "Implement decision trace: when user asks why the agent took an action, cite the specific rules, preferences, and context that drove the decision.",
+      "priority": "could",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-022", "FEAT-021"],
+      "steps": [
+        "Create internal/trace/ package",
+        "Implement decision log: record the rules, preferences, and context used for each agent action",
+        "Implement trace query: given an action ID, return the full decision chain",
+        "Implement natural language explanation: local LLM generates user-friendly explanation from trace",
+        "Allow corrections from trace context to feed into preference learning"
+      ],
+      "acceptanceCriteria": [
+        "Every agent action records its decision trace",
+        "User can query why any specific action was taken",
+        "Explanation cites specific rules and preferences",
+        "Corrections from trace context feed into preference learning"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 4 Ecosystem — transparency at the deepest level."
+    }
+  ],
+  "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",
+  "_phaseMapping": {
+    "phase1_operate_secure_deploy": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005", "FEAT-006", "FEAT-007", "FEAT-008", "FEAT-009", "FEAT-010", "FEAT-011", "FEAT-012", "FEAT-013", "FEAT-014", "FEAT-015", "FEAT-016"],
+    "phase2_plan_evolve_transparency": ["FEAT-017", "FEAT-018", "FEAT-019", "FEAT-020", "FEAT-021", "FEAT-022", "FEAT-023", "FEAT-024", "FEAT-025", "FEAT-026", "FEAT-027", "FEAT-028", "FEAT-031", "FEAT-033", "FEAT-034"],
+    "phase3_migration_managed": ["FEAT-029", "FEAT-030"],
+    "phase4_ecosystem": ["FEAT-032", "FEAT-035"]
+  }
 }
