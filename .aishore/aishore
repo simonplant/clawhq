@@ -424,6 +424,68 @@ get_item_source() {
 }
 
 # ============================================================================
+# BACKLOG HELPERS
+# ============================================================================
+
+resolve_backlog_file() {
+    local id="$1"
+    case "$id" in
+        FEAT-*) echo "backlog.json" ;;
+        BUG-*)  echo "bugs.json" ;;
+        *)
+            # Search both files
+            for f in "backlog.json" "bugs.json"; do
+                if [[ -f "$BACKLOG_DIR/$f" ]] && jq -e --arg id "$id" '.items[] | select(.id == $id)' "$BACKLOG_DIR/$f" &>/dev/null; then
+                    echo "$f"
+                    return 0
+                fi
+            done
+            return 1
+            ;;
+    esac
+}
+
+find_item() {
+    local id="$1"
+    local file
+    file=$(resolve_backlog_file "$id") || { log_error "Item not found: $id"; return 1; }
+    local item
+    item=$(jq -e --arg id "$id" '.items[] | select(.id == $id)' "$BACKLOG_DIR/$file" 2>/dev/null) || {
+        log_error "Item not found: $id"
+        return 1
+    }
+    echo "$item"
+}
+
+next_id() {
+    local prefix="$1"
+    local max=0
+    for f in "backlog.json" "bugs.json"; do
+        [[ -f "$BACKLOG_DIR/$f" ]] || continue
+        local file_max
+        file_max=$(jq -r --arg pfx "$prefix-" '[.items[].id | select(startswith($pfx)) | ltrimstr($pfx) | tonumber] | max // 0' "$BACKLOG_DIR/$f" 2>/dev/null || echo 0)
+        [[ "$file_max" -gt "$max" ]] && max="$file_max"
+    done
+    printf "%s-%03d" "$prefix" "$((max + 1))"
+}
+
+validate_priority() {
+    local p="$1"
+    case "$p" in
+        must|should|could|future) return 0 ;;
+        *) log_error "Invalid priority: $p (must be: must, should, could, future)"; return 1 ;;
+    esac
+}
+
+validate_status() {
+    local s="$1"
+    case "$s" in
+        todo|in-progress|done) return 0 ;;
+        *) log_error "Invalid status: $s (must be: todo, in-progress, done)"; return 1 ;;
+    esac
+}
+
+# ============================================================================
 # SPRINT STATE
 # ============================================================================
 
@@ -1866,6 +1928,328 @@ cmd_checksums() {
     cat "$checksum_file"
 }
 
+# ============================================================================
+# BACKLOG CRUD
+# ============================================================================
+
+cmd_backlog() {
+    require_tool jq
+    local subcmd="${1:-list}"
+    shift || true
+    case "$subcmd" in
+        list|ls)    cmd_backlog_list "$@" ;;
+        add|new)    cmd_backlog_add "$@" ;;
+        show)       cmd_backlog_show "$@" ;;
+        edit)       cmd_backlog_edit "$@" ;;
+        rm|remove)  cmd_backlog_rm "$@" ;;
+        *)
+            log_error "Unknown backlog command: $subcmd"
+            echo "Usage: backlog {list|add|show|edit|rm}"
+            return 1
+            ;;
+    esac
+}
+
+cmd_backlog_list() {
+    local filter_status="" filter_type="" filter_ready=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --status)  filter_status="$2"; shift 2 ;;
+            --type)    filter_type="$2"; shift 2 ;;
+            --ready)   filter_ready=true; shift ;;
+            *) log_error "Unknown option: $1"; return 1 ;;
+        esac
+    done
+
+    # Determine which files to scan
+    local files=()
+    case "$filter_type" in
+        feat|feature) files=("backlog.json") ;;
+        bug)          files=("bugs.json") ;;
+        "")           files=("backlog.json" "bugs.json") ;;
+        *) log_error "Invalid type: $filter_type (must be: feat, bug)"; return 1 ;;
+    esac
+
+    # Build jq filter
+    local jq_filter='.items[]'
+    if [[ -n "$filter_status" ]]; then
+        validate_status "$filter_status" || return 1
+        jq_filter="$jq_filter | select((.status // \"todo\") == \"$filter_status\")"
+    fi
+    if [[ "$filter_ready" == "true" ]]; then
+        jq_filter="$jq_filter | select(.readyForSprint == true)"
+    fi
+
+    # Header
+    printf "%-10s %-8s %-13s %-6s %s\n" "ID" "PRI" "STATUS" "READY" "TITLE"
+    printf "%-10s %-8s %-13s %-6s %s\n" "──────────" "────────" "─────────────" "──────" "─────────────────────────────"
+
+    local count=0
+    for f in "${files[@]}"; do
+        [[ -f "$BACKLOG_DIR/$f" ]] || continue
+        local items
+        items=$(jq -r "[$jq_filter] | sort_by(if .priority == \"must\" then 0 elif .priority == \"should\" then 1 elif .priority == \"could\" then 2 else 3 end) | .[] | [.id, .priority // \"-\", .status // \"todo\", (if .readyForSprint then \"yes\" else \"no\" end), .title] | @tsv" "$BACKLOG_DIR/$f" 2>/dev/null) || continue
+        if [[ -n "$items" ]]; then
+            while IFS=$'\t' read -r id pri status ready title; do
+                printf "%-10s %-8s %-13s %-6s %s\n" "$id" "$pri" "$status" "$ready" "$title"
+                ((count++)) || true
+            done <<< "$items"
+        fi
+    done
+
+    echo ""
+    echo "$count item(s)"
+}
+
+cmd_backlog_add() {
+    local item_type="feat" title="" desc="" priority="should" category="" ready=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --type)      item_type="$2"; shift 2 ;;
+            --title)     title="$2"; shift 2 ;;
+            --desc)      desc="$2"; shift 2 ;;
+            --priority)  priority="$2"; shift 2 ;;
+            --category)  category="$2"; shift 2 ;;
+            --ready)     ready=true; shift ;;
+            *) log_error "Unknown option: $1"; return 1 ;;
+        esac
+    done
+
+    # Interactive mode if no title
+    if [[ -z "$title" ]]; then
+        if [[ ! -t 0 ]]; then
+            log_error "No --title provided and stdin is not interactive"
+            return 1
+        fi
+        echo "Add new backlog item"
+        echo ""
+
+        read -r -p "Type (feat/bug) [$item_type]: " input
+        [[ -n "$input" ]] && item_type="$input"
+
+        read -r -p "Title: " title
+        [[ -z "$title" ]] && { log_error "Title is required"; return 1; }
+
+        read -r -p "Description: " desc
+
+        read -r -p "Priority (must/should/could/future) [$priority]: " input
+        [[ -n "$input" ]] && priority="$input"
+
+        read -r -p "Category: " category
+    fi
+
+    # Validate
+    case "$item_type" in
+        feat|feature) item_type="feat" ;;
+        bug) ;;
+        *) log_error "Invalid type: $item_type (must be: feat, bug)"; return 1 ;;
+    esac
+    validate_priority "$priority" || return 1
+
+    # Determine prefix and target file
+    local prefix target_file
+    if [[ "$item_type" == "feat" ]]; then
+        prefix="FEAT"
+        target_file="$BACKLOG_DIR/backlog.json"
+    else
+        prefix="BUG"
+        target_file="$BACKLOG_DIR/bugs.json"
+    fi
+
+    # Generate ID
+    local new_id
+    new_id=$(next_id "$prefix")
+
+    # Create item and append
+    local tmp
+    tmp="$(ensure_tmpdir)/backlog_add.json"
+    jq --arg id "$new_id" \
+       --arg title "$title" \
+       --arg desc "$desc" \
+       --arg priority "$priority" \
+       --arg category "$category" \
+       --argjson ready "$ready" \
+       '.items += [{
+           id: $id,
+           title: $title,
+           description: $desc,
+           priority: $priority,
+           category: (if $category == "" then null else $category end),
+           steps: [],
+           acceptanceCriteria: [],
+           status: "todo",
+           passes: false,
+           readyForSprint: $ready
+       }]' "$target_file" > "$tmp" || {
+        rm -f "$tmp"
+        log_error "Failed to add item"
+        return 1
+    }
+    mv "$tmp" "$target_file"
+
+    log_success "Created $new_id: $title"
+}
+
+cmd_backlog_show() {
+    local id="${1:-}"
+    [[ -z "$id" ]] && { log_error "Usage: backlog show <ID>"; return 1; }
+
+    local item
+    item=$(find_item "$id") || return 1
+
+    echo ""
+    echo "$item" | jq -r '
+        "ID:          \(.id)",
+        "Title:       \(.title)",
+        "Status:      \(.status // "todo")",
+        "Priority:    \(.priority // "-")",
+        "Category:    \(.category // "-")",
+        "Ready:       \(if .readyForSprint then "yes" else "no" end)",
+        "Passes:      \(if .passes then "yes" else "no" end)",
+        "",
+        "Description: \(.description // "-")",
+        "",
+        if (.steps // [] | length) > 0 then "Steps:" else empty end,
+        (.steps // [] | to_entries[] | "  \(.key + 1). \(.value)"),
+        if (.steps // [] | length) > 0 then "" else empty end,
+        if (.acceptanceCriteria // [] | length) > 0 then "Acceptance Criteria:" else empty end,
+        (.acceptanceCriteria // [] | .[] | "  - \(.)"),
+        if (.dependsOn // [] | length) > 0 then "\nDependencies: \(.dependsOn | join(", "))" else empty end,
+        if .groomedAt then "\nGroomed:      \(.groomedAt)" else empty end,
+        if .groomingNotes then "Notes:        \(.groomingNotes)" else empty end,
+        if .completedAt then "Completed:    \(.completedAt)" else empty end
+    '
+}
+
+cmd_backlog_edit() {
+    local id="${1:-}"
+    [[ -z "$id" ]] && { log_error "Usage: backlog edit <ID> [--title ...] [--priority ...] [--status ...] [--desc ...] [--category ...] [--ready] [--no-ready]"; return 1; }
+    shift
+
+    # Verify item exists
+    find_item "$id" >/dev/null || return 1
+
+    local file
+    file=$(resolve_backlog_file "$id") || return 1
+
+    # Parse update flags
+    local updates=() update_desc=""
+    local jq_updates=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --title)
+                validate_arg "$1" "${2:-}" || return 1
+                jq_updates="$jq_updates | .title = \$title"
+                updates+=("--arg" "title" "$2")
+                update_desc="$update_desc title"
+                shift 2 ;;
+            --desc)
+                validate_arg "$1" "${2:-}" || return 1
+                jq_updates="$jq_updates | .description = \$desc"
+                updates+=("--arg" "desc" "$2")
+                update_desc="$update_desc description"
+                shift 2 ;;
+            --priority)
+                validate_arg "$1" "${2:-}" || return 1
+                validate_priority "$2" || return 1
+                jq_updates="$jq_updates | .priority = \$priority"
+                updates+=("--arg" "priority" "$2")
+                update_desc="$update_desc priority"
+                shift 2 ;;
+            --status)
+                validate_arg "$1" "${2:-}" || return 1
+                validate_status "$2" || return 1
+                jq_updates="$jq_updates | .status = \$status"
+                updates+=("--arg" "status" "$2")
+                update_desc="$update_desc status"
+                shift 2 ;;
+            --category)
+                validate_arg "$1" "${2:-}" || return 1
+                jq_updates="$jq_updates | .category = \$category"
+                updates+=("--arg" "category" "$2")
+                update_desc="$update_desc category"
+                shift 2 ;;
+            --ready)
+                jq_updates="$jq_updates | .readyForSprint = true"
+                update_desc="$update_desc ready"
+                shift ;;
+            --no-ready)
+                jq_updates="$jq_updates | .readyForSprint = false"
+                update_desc="$update_desc ready"
+                shift ;;
+            *) log_error "Unknown option: $1"; return 1 ;;
+        esac
+    done
+
+    if [[ -z "$jq_updates" ]]; then
+        log_error "No updates specified. Use --title, --priority, --status, --desc, --category, --ready, --no-ready"
+        return 1
+    fi
+
+    local tmp
+    tmp="$(ensure_tmpdir)/backlog_edit.json"
+    # shellcheck disable=SC2086
+    jq --arg id "$id" "${updates[@]}" \
+        "(.items[] | select(.id == \$id)) |= (. $jq_updates)" \
+        "$BACKLOG_DIR/$file" > "$tmp" || {
+        rm -f "$tmp"
+        log_error "Failed to update item"
+        return 1
+    }
+    mv "$tmp" "$BACKLOG_DIR/$file"
+
+    log_success "Updated $id:$update_desc"
+}
+
+validate_arg() {
+    local flag="$1" val="$2"
+    if [[ -z "$val" || "$val" == --* ]]; then
+        log_error "$flag requires a value"
+        return 1
+    fi
+}
+
+cmd_backlog_rm() {
+    local id="${1:-}" force=false
+    [[ -z "$id" ]] && { log_error "Usage: backlog rm <ID> [--force]"; return 1; }
+    shift || true
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force|-f) force=true; shift ;;
+            *) log_error "Unknown option: $1"; return 1 ;;
+        esac
+    done
+
+    local item
+    item=$(find_item "$id") || return 1
+    local title
+    title=$(echo "$item" | jq -r '.title')
+
+    local file
+    file=$(resolve_backlog_file "$id") || return 1
+
+    if [[ "$force" == "false" ]]; then
+        echo "Remove $id: $title?"
+        read -r -p "Confirm (y/N): " confirm
+        [[ "$confirm" != "y" && "$confirm" != "Y" ]] && { echo "Cancelled"; return 0; }
+    fi
+
+    local tmp
+    tmp="$(ensure_tmpdir)/backlog_rm.json"
+    jq --arg id "$id" '.items |= map(select(.id != $id))' "$BACKLOG_DIR/$file" > "$tmp" || {
+        rm -f "$tmp"
+        log_error "Failed to remove item"
+        return 1
+    }
+    mv "$tmp" "$BACKLOG_DIR/$file"
+
+    log_success "Removed $id: $title"
+}
+
 cmd_clean() {
     require_tool jq
 
@@ -1923,6 +2307,23 @@ aishore - AI Sprint Runner (v$AISHORE_VERSION)
 Usage: .aishore/aishore <command> [options]
 
 Commands:
+  backlog list      List all items (features + bugs)
+    --status <s>    Filter by status (todo, in-progress, done)
+    --type <t>      Filter by type (feat, bug)
+    --ready         Show only sprint-ready items
+  backlog add       Add a new item (interactive or with flags)
+    --type <t>      Type: feat (default) or bug
+    --title "..."   Item title (required)
+    --desc "..."    Description
+    --priority <p>  must, should, could, or future (default: should)
+    --category "."  Category
+    --ready         Mark as ready for sprint
+  backlog show <ID> Show full detail of one item
+  backlog edit <ID> Update fields on an item
+    --title, --desc, --priority, --status, --category, --ready, --no-ready
+  backlog rm <ID>   Remove an item (with confirmation)
+    --force         Skip confirmation
+
   run [count]       Run N sprints (default: 1)
   run <ID>          Run specific item by ID (e.g., TEST-006)
     --dry-run       Preview what would happen without running agents
@@ -2014,6 +2415,7 @@ main() {
 
     case "$cmd" in
         run)     cmd_run "$@" ;;
+        backlog) cmd_backlog "$@" ;;
         groom)   cmd_groom "$@" ;;
         review)  cmd_review "$@" ;;
         metrics) cmd_metrics "$@" ;;
