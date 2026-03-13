@@ -26,9 +26,16 @@ import { DockerClient } from "../docker/client.js";
 import { runFixes } from "../doctor/fix.js";
 import { formatJson, formatTable, runChecks } from "../doctor/runner.js";
 import type { DoctorContext } from "../doctor/types.js";
+import { createReadlineIO, runWizard } from "../init/index.js";
 import { formatCredTable, runProbesFromFile } from "../security/credentials/index.js";
 import { collectStatus } from "../status/collector.js";
 import { formatDashboard, formatJson as formatStatusJson } from "../status/format.js";
+import {
+  formatPreview,
+  formatTemplateList as formatYamlTemplateList,
+  generatePreview,
+  loadBuiltInTemplates,
+} from "../templates/index.js";
 import { formatCheckResult, runUpdate } from "../update/update.js";
 
 const require = createRequire(import.meta.url);
@@ -50,8 +57,75 @@ program
   });
 
 // Plan phase
-program.command("init").description("Initialize a new agent deployment");
-program.command("template").description("Manage agent templates");
+program
+  .command("init")
+  .description("Initialize a new agent deployment")
+  .option("--guided", "Run interactive guided questionnaire")
+  .option("--output <path>", "Output directory for generated config", "~/.openclaw")
+  .action(async (opts: { guided?: boolean; output: string }) => {
+    const outputDir = opts.output.replace(/^~/, process.env.HOME ?? "~");
+
+    if (!opts.guided) {
+      // Default to guided mode when no other mode is specified
+      console.log("Hint: Use `clawhq init --guided` for the interactive setup wizard.");
+      console.log("      Use `clawhq init --smart` for AI-powered config inference (coming soon).");
+      console.log("");
+      console.log("Starting guided setup...");
+      console.log("");
+    }
+
+    const { io, close } = createReadlineIO();
+    try {
+      const result = await runWizard(io, outputDir);
+
+      if (result.writeResult.errors.length > 0) {
+        process.exitCode = 1;
+      }
+    } finally {
+      close();
+    }
+  });
+const templateCmd = program
+  .command("template")
+  .description("Manage agent templates");
+
+templateCmd
+  .command("list", { isDefault: true })
+  .description("List available templates")
+  .action(async () => {
+    const results = await loadBuiltInTemplates();
+    const templates = new Map<string, import("../templates/index.js").Template>();
+    for (const [id, result] of results) {
+      if (result.template) {
+        templates.set(id, result.template);
+      }
+    }
+    console.log("Available templates:\n");
+    console.log(formatYamlTemplateList(templates));
+  });
+
+templateCmd
+  .command("preview <id>")
+  .description("Preview a template's operational profile")
+  .action(async (id: string) => {
+    const results = await loadBuiltInTemplates();
+    const result = results.get(id);
+
+    if (!result || !result.template) {
+      console.error(`Template "${id}" not found.`);
+      console.error("Available templates:");
+      for (const [tid] of results) {
+        if (tid !== "_error") {
+          console.error(`  - ${tid}`);
+        }
+      }
+      process.exitCode = 1;
+      return;
+    }
+
+    const preview = generatePreview(result.template);
+    console.log(formatPreview(preview));
+  });
 
 // Build phase
 program

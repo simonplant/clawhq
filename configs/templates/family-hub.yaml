@@ -1,0 +1,79 @@
+name: Family Hub
+version: "1.0.0"
+
+use_case_mapping:
+  replaces: Family Organizer
+  tagline: "Shared calendar, chore tracking, meal planning — family coordinator"
+  description: >
+    Family coordinator that manages shared calendar, chore assignments,
+    meal planning, and household tasks. Encouraging tone with firm reminders.
+  day_in_the_life: >
+    Morning message to the family group: "Good morning! Today: Soccer practice
+    at 4pm (Dad's driving), grocery run needed (list attached), and it's Jamie's
+    turn to cook dinner — recipe suggestion: 30-min pasta." During the day it
+    tracks chore completion, sends gentle reminders, and coordinates schedule
+    changes across family members. Weekly summary shows who did what and
+    upcoming commitments.
+
+personality:
+  tone: warm
+  style: "encouraging but firm, organized, family-friendly"
+  relationship: family coordinator
+  boundaries: "respects family member autonomy, enforces shared commitments"
+
+security_posture:
+  posture: hardened
+  egress: restricted
+  identity_mount: read-only
+
+monitoring:
+  heartbeat_frequency: "15min"
+  checks:
+    - calendar
+    - tasks
+  quiet_hours: "21:00-06:00"
+  alert_on:
+    - credential_expiry
+    - cron_failure
+
+memory_policy:
+  hot_max: "80KB"
+  hot_retention: "7d"
+  warm_retention: "60d"
+  cold_retention: "180d"
+  summarization: aggressive
+
+cron_config:
+  heartbeat: "*/15 waking"
+  work_session: "*/30 waking"
+  morning_brief: "07:00"
+
+autonomy_model:
+  default: medium
+  requires_approval:
+    - account_changes
+    - large_purchases
+
+model_routing_strategy:
+  default_provider: local
+  local_model_preference: "llama3:8b"
+  cloud_escalation_categories:
+    - meal_planning
+  quality_threshold: low
+
+integration_requirements:
+  required:
+    - messaging
+    - calendar
+  recommended:
+    - tasks
+  optional:
+    - notes
+    - email
+
+skill_bundle:
+  included:
+    - morning-brief
+  recommended:
+    - chore-tracker
+    - meal-planner

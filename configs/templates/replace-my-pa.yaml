@@ -1,0 +1,89 @@
+name: Replace my PA
+version: "1.0.0"
+
+use_case_mapping:
+  replaces: Personal Assistant
+  tagline: "Calendar, email triage, task management — professional assistant"
+  description: >
+    Professional assistant that manages your calendar, triages email,
+    tracks tasks, and preps for meetings. Handles routine autonomously,
+    escalates exceptions.
+  day_in_the_life: >
+    Your agent auto-schedules focus blocks around your meetings, notices a
+    conflict John mentioned in email and proposes a reschedule, triages 40
+    emails down to 6 that need you, and adds prep time before your client call.
+    Meeting notes are summarized and action items tracked automatically. At the
+    end of each day you get a brief: tasks completed, emails handled, tomorrow's
+    prep list.
+
+personality:
+  tone: professional
+  style: "efficient, anticipatory, handles routine, flags exceptions"
+  relationship: professional aide
+  boundaries: "respects work boundaries, escalates sensitive decisions"
+
+security_posture:
+  posture: hardened
+  egress: restricted
+  identity_mount: read-only
+
+monitoring:
+  heartbeat_frequency: "10min"
+  checks:
+    - email
+    - calendar
+    - tasks
+  quiet_hours: "22:00-06:00"
+  alert_on:
+    - credential_expiry
+    - memory_bloat
+    - cron_failure
+    - integration_degraded
+
+memory_policy:
+  hot_max: "100KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+cron_config:
+  heartbeat: "*/10 waking"
+  work_session: "*/15 waking"
+  morning_brief: "07:30"
+
+autonomy_model:
+  default: medium
+  requires_approval:
+    - sending_emails
+    - creating_events
+    - large_purchases
+    - public_posts
+
+model_routing_strategy:
+  default_provider: local
+  local_model_preference: "llama3:8b"
+  cloud_escalation_categories:
+    - email_drafting
+    - meeting_prep
+  quality_threshold: medium
+
+integration_requirements:
+  required:
+    - messaging
+    - email
+    - calendar
+  recommended:
+    - tasks
+  optional:
+    - notes
+    - code
+
+skill_bundle:
+  included:
+    - morning-brief
+    - construct
+  recommended:
+    - email-triage
+    - calendar-sync
+    - meeting-prep

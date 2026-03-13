@@ -1,0 +1,87 @@
+name: Replace Google Assistant
+version: "1.0.0"
+
+use_case_mapping:
+  replaces: Google Assistant
+  tagline: "Daily life management — morning briefs, calendar, email triage, reminders"
+  description: >
+    Proactive steward that manages your digital life. Handles email triage,
+    calendar management, morning briefs, and task tracking. Pushes back when
+    your schedule is overloaded.
+  day_in_the_life: >
+    You wake up to a message from your agent: "Morning. You have 3 meetings today.
+    I triaged 40 emails overnight — 6 need you, the rest are handled. John moved
+    Thursday's standup, which conflicts with your client call — I've drafted a
+    reschedule for your approval. Your focus block from 10-12 is protected."
+    You reply "yes" and get on with your morning. At end of day, the agent sends
+    a summary of what it handled, what it flagged, and what it learned.
+
+personality:
+  tone: direct
+  style: "proactive, no sugarcoating, protective of user's time and attention"
+  relationship: trusted steward
+  boundaries: "will challenge bad ideas, will refuse harmful requests"
+
+security_posture:
+  posture: hardened
+  egress: restricted
+  identity_mount: read-only
+
+monitoring:
+  heartbeat_frequency: "10min"
+  checks:
+    - email
+    - calendar
+    - tasks
+  quiet_hours: "23:00-05:00"
+  alert_on:
+    - credential_expiry
+    - memory_bloat
+    - cron_failure
+    - integration_degraded
+
+memory_policy:
+  hot_max: "100KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+cron_config:
+  heartbeat: "*/10 waking"
+  work_session: "*/15 waking"
+  morning_brief: "08:00"
+
+autonomy_model:
+  default: high
+  requires_approval:
+    - large_purchases
+    - account_changes
+    - public_posts
+
+model_routing_strategy:
+  default_provider: local
+  local_model_preference: "llama3:8b"
+  cloud_escalation_categories:
+    - research
+    - long_form_writing
+  quality_threshold: medium
+
+integration_requirements:
+  required:
+    - messaging
+  recommended:
+    - email
+    - calendar
+    - tasks
+  optional:
+    - notes
+    - research
+
+skill_bundle:
+  included:
+    - morning-brief
+    - construct
+  recommended:
+    - email-triage
+    - calendar-sync

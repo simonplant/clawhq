@@ -1,1 +1,31 @@
-{"sprintId": null, "status": "idle", "item": null}
+{
+  "sprintId": "sprint-1773428760",
+  "startedAt": "2026-03-13T12:06:00-07:00",
+  "status": "completed",
+  "item": {
+    "id": "FEAT-018",
+    "title": "Use-case templates (YAML operational profiles)",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Create internal/template/ package",
+      "Define Template struct: name, version, use_case_mapping, personality, security_posture, monitoring, memory_policy, cron_config, autonomy_model, model_routing_strategy, integration_requirements, skill_bundle",
+      "Create 6 built-in templates as YAML files in configs/templates/: replace-google-assistant, replace-chatgpt-plus, replace-my-pa, family-hub, research-copilot, founders-ops",
+      "Implement template loader with validation",
+      "Implement template preview: display what integrations are needed, autonomy model, local model requirements, estimated daily cost, and 'day in the life' narrative",
+      "Implement template-to-config mapper: generate DeploymentBundle from Template + setup answers",
+      "Write unit tests for template loading and config generation"
+    ],
+    "acceptanceCriteria": [
+      "6 built-in templates exist with complete operational profiles",
+      "Templates load and validate from YAML without error",
+      "Template preview shows all relevant info including cost estimates",
+      "Template-to-config mapper produces valid DeploymentBundle",
+      "Templates can tighten but never loosen Layer 1 security baselines"
+    ],
+    "startedAt": "2026-03-13T12:06:00-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-13T12:18:13-07:00"
+  },
+  "completedAt": "2026-03-13T12:18:13-07:00",
+  "attempts": 1
+}

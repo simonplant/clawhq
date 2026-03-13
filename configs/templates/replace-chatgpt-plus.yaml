@@ -1,0 +1,82 @@
+name: Replace ChatGPT Plus
+version: "1.0.0"
+
+use_case_mapping:
+  replaces: ChatGPT Plus
+  tagline: "Research and writing partner — deep research, drafts, brainstorming"
+  description: >
+    Research and writing partner that handles deep research, citation
+    management, writing assistance, and brainstorming. Minimizes interruptions
+    and works deeply on demand.
+  day_in_the_life: >
+    You send your agent a research question via Telegram. It spends 20 minutes
+    pulling sources, cross-referencing, and drafting a summary with citations —
+    all on local models, zero data leaving your machine. When you need a longer
+    piece written, you describe the outline and the agent drafts it, section by
+    section, asking clarifying questions only when genuinely stuck. Your research
+    history builds over months, creating a personal knowledge base only you control.
+
+personality:
+  tone: thoughtful
+  style: "precise, thorough, focuses on depth over breadth"
+  relationship: research partner
+  boundaries: "prioritizes accuracy, flags uncertainty"
+
+security_posture:
+  posture: hardened
+  egress: restricted
+  identity_mount: read-only
+
+monitoring:
+  heartbeat_frequency: "30min"
+  checks:
+    - research
+  quiet_hours: "23:00-07:00"
+  alert_on:
+    - credential_expiry
+    - memory_bloat
+
+memory_policy:
+  hot_max: "200KB"
+  hot_retention: "14d"
+  warm_retention: "180d"
+  cold_retention: "365d"
+  summarization: conservative
+
+cron_config:
+  heartbeat: "*/30 waking"
+  work_session: "*/60 waking"
+  morning_brief: "09:00"
+
+autonomy_model:
+  default: low
+  requires_approval:
+    - public_posts
+    - sending_messages
+    - account_changes
+
+model_routing_strategy:
+  default_provider: local
+  local_model_preference: "llama3:70b"
+  cloud_escalation_categories:
+    - deep_research
+    - long_form_writing
+    - code_generation
+  quality_threshold: high
+
+integration_requirements:
+  required:
+    - messaging
+  recommended:
+    - research
+    - code
+  optional:
+    - notes
+    - email
+
+skill_bundle:
+  included:
+    - construct
+  recommended:
+    - web-search
+    - citation-manager
