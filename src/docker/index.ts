@@ -50,5 +50,20 @@ export type {
 export { validateCompose, pullImages } from "./compose.js";
 export type { ComposeServiceConfig, ComposeConfig } from "./compose.js";
 
-export { applyHardening, POSTURE_CONTROLS } from "./hardening.js";
-export type { SecurityPosture, HardeningOptions } from "./hardening.js";
+export {
+  applyHardening,
+  POSTURE_CONTROLS,
+  POSTURE_ORDER,
+  generateOverride,
+  overrideToYaml,
+  mergeComposeConfigs,
+  parseComposeYaml,
+  composeToYaml,
+  getPostureDefinition,
+} from "./hardening.js";
+export type {
+  SecurityPosture,
+  HardeningOptions,
+  PostureNetworkOptions,
+  PostureDefinition,
+} from "./hardening.js";

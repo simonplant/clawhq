@@ -628,7 +628,7 @@ mark_complete() {
     # Append to archive (non-fatal — primary state is already consistent)
     local sprint_id
     sprint_id=$(jq -r '.sprintId' "$BACKLOG_DIR/sprint.json" 2>/dev/null || echo "unknown")
-    if ! jq -n --arg date "$(date +%Y-%m-%d)" --arg sid "$sprint_id" --arg iid "$item_id" \
+    if ! jq -cn --arg date "$(date +%Y-%m-%d)" --arg sid "$sprint_id" --arg iid "$item_id" \
         '{date: $date, sprintId: $sid, itemId: $iid, status: "complete"}' \
         >> "$ARCHIVE_DIR/sprints.jsonl" 2>/dev/null; then
         log_warning "Failed to append to archive — sprint data is still consistent"
@@ -1349,7 +1349,7 @@ cmd_metrics() {
 
     if [[ "$json_output" == "true" ]]; then
         local completed
-        completed=$([[ -f "$sprints_file" ]] && wc -l < "$sprints_file" | tr -d ' ' || echo 0)
+        completed=$([[ -f "$sprints_file" ]] && jq -s 'length' "$sprints_file" 2>/dev/null || echo 0)
 
         cat <<EOF
 {
@@ -1362,7 +1362,7 @@ EOF
     else
         log_header "aishore Metrics"
         echo ""
-        echo "Completed Sprints: $([[ -f "$sprints_file" ]] && wc -l < "$sprints_file" | tr -d ' ' || echo 0)"
+        echo "Completed Sprints: $([[ -f "$sprints_file" ]] && jq -s 'length' "$sprints_file" 2>/dev/null || echo 0)"
         echo ""
         echo "Backlog:"
         echo "  Total items: $backlog_total"
@@ -1417,9 +1417,9 @@ cmd_status() {
     # --- Recent sprints ---
     echo ""
     log_subheader "Recent sprints"
-    if [[ -f "$sprints_file" ]]; then
-        tail -5 "$sprints_file" | while IFS= read -r line; do
-            echo "  $(echo "$line" | jq -r '"\(.date) \(.itemId) \(.status)"')"
+    if [[ -f "$sprints_file" ]] && [[ -s "$sprints_file" ]]; then
+        jq -r '"\(.date) \(.itemId) \(.status)"' "$sprints_file" 2>/dev/null | tail -5 | while IFS= read -r line; do
+            echo "  $line"
         done
     else
         log_info "No sprints run yet"

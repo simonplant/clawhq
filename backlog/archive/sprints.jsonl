@@ -1,12 +1,10 @@
+{"date":"2026-03-12","sprintId":"sprint-1773376508","itemId":"FEAT-001","status":"complete"}
+{"date":"2026-03-12","sprintId":"sprint-1773380050","itemId":"FEAT-003","status":"complete"}
+{"date":"2026-03-12","sprintId":"sprint-1773380932","itemId":"FEAT-002","status":"complete"}
+{"date":"2026-03-12","sprintId":"sprint-1773381170","itemId":"FEAT-004","status":"complete"}
 {
   "date": "2026-03-12",
-  "sprintId": "sprint-1773376508",
-  "itemId": "FEAT-001",
-  "status": "complete"
-}
-{
-  "date": "2026-03-12",
-  "sprintId": "sprint-1773380050",
-  "itemId": "FEAT-003",
+  "sprintId": "sprint-1773382436",
+  "itemId": "FEAT-006",
   "status": "complete"
 }
