@@ -341,14 +341,14 @@ describe("mapTemplateToConfig", () => {
     const heartbeat = jobs.find((j) => j.id === "heartbeat");
     expect(heartbeat).toBeDefined();
     if (heartbeat) {
-      expect(heartbeat.schedule).toContain("10");
+      expect(heartbeat.expr).toContain("10");
       expect(heartbeat.enabled).toBe(true);
     }
 
     const morningBrief = jobs.find((j) => j.id === "morning-brief");
     expect(morningBrief).toBeDefined();
     if (morningBrief) {
-      expect(morningBrief.schedule).toBe("00 08 * * *");
+      expect(morningBrief.expr).toBe("00 08 * * *");
     }
   });
 

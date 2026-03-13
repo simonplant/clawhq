@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ClawHQ is a control panel for OpenClaw agents — the "cPanel for personal AI agents." It manages the full deployment lifecycle of OpenClaw agents: Plan, Build, Secure, Deploy, Operate, Evolve, and Decommission.
 
-**Current status: Design phase.** No implementation code exists yet. The repository contains:
+**Current status: Active development.** Full CLI implementation with operational tooling. Key docs:
 - `README.md` — Executive summary and positioning
-- `docs/PRODUCT.md` — Product design document: problem, personas, user stories across all seven lifecycle phases, build order, and risks
-- `docs/ARCHITECTURE.md` — Solution architecture: three-tier system (OpenClaw → ClawHQ Local → ClawHQ Cloud), package structure, security architecture, data flow, cloud protocol
-- `docs/OPENCLAW-REFERENCE.md` — Engineering reference: OpenClaw internals, the 14 configuration landmines, config surface inventory, container hardening, credential probes, template system design
+- `docs/PRODUCT.md` — Product design document: problem, personas, user stories, build order
+- `docs/ARCHITECTURE.md` — Solution architecture: three-tier system, package structure, security, data flow
+- `docs/OPENCLAW-REFERENCE.md` — Engineering reference: OpenClaw internals, 14 landmines, config surface
 
 ## Architecture
 
@@ -35,16 +35,46 @@ See `docs/ARCHITECTURE.md` for the full solution architecture.
 - **Secrets in `.env` only** — Never in config files, never logged, never in unencrypted backups
 - **Data sovereignty** — Full portability (`export`), verified deletion (`destroy`), zero lock-in
 
-## CLI Commands (Planned)
+## CLI Commands
 
 ```
-clawhq init / template     — Plan phase (questionnaire, templates, config generation)
-clawhq build               — Build phase (two-stage Docker build from source)
-clawhq scan / creds / audit — Secure phase (PII scanning, credential health, audit logs)
-clawhq up / down / restart / connect — Deploy phase
-clawhq doctor / status / backup / update / logs — Operate phase
-clawhq evolve / train      — Evolve phase
-clawhq export / destroy    — Decommission phase
+# Plan
+clawhq init --guided          — Interactive wizard → complete deployment bundle
+clawhq template list/preview  — Browse and preview templates
+
+# Build
+clawhq build                  — Two-stage Docker build with change detection + manifests
+
+# Secure
+clawhq scan                   — PII + secrets scanner
+clawhq creds                  — Credential health probes
+clawhq audit                  — Audit logs (planned)
+
+# Deploy
+clawhq up / down / restart    — Deploy with pre-flight checks, firewall, health verify
+clawhq connect                — Connect messaging channel
+
+# Operate
+clawhq doctor [--fix]         — Preventive diagnostics (14+ checks) with auto-fix
+clawhq status [--watch]       — Single-pane dashboard
+clawhq backup create/list/restore — Encrypted snapshots
+clawhq update [--check]       — Safe upstream upgrade with rollback
+clawhq logs                   — Stream agent logs
+
+# Agent Management
+clawhq agent add <id>         — Add agent to multi-agent deployment
+clawhq agent list             — List configured agents
+
+# Skills
+clawhq skill install <source> — Install skill (with security vetting)
+clawhq skill update <name>    — Update installed skill
+clawhq skill remove <name>    — Remove skill
+clawhq skill list             — List installed skills
+
+# Evolve / Decommission
+clawhq evolve                 — Manage agent capabilities (planned)
+clawhq export                 — Export portable agent bundle
+clawhq destroy                — Verified agent destruction
 ```
 
 ## Implementation Notes
@@ -55,13 +85,60 @@ clawhq export / destroy    — Decommission phase
 
 Key technical details:
 - TypeScript throughout — matches OpenClaw's Node.js/TypeBox stack, shares schema types directly
-- Tight coupling to OpenClaw — uses its config schema, WebSocket RPC, file paths, and container structure directly (no abstraction layer)
-- OpenClaw handles model routing — ClawHQ generates config, does not make LLM calls itself (except local Ollama during `init --smart`)
+- Tight coupling to OpenClaw — uses its config schema, WebSocket RPC, file paths, and container structure directly
 - Two-stage Docker build: Stage 1 (base OpenClaw + apt packages), Stage 2 (custom tools + skills)
 - Egress firewall uses dedicated iptables chain (`CLAWHQ_FWD`) on Docker bridge — must reapply after every `docker compose down`
-- OpenClaw config is ~13,500 tokens across 11+ files; ~40% universal, ~60% personalized
 - `doctor` is the hero feature — checks every known failure mode preventively
-- Templates are YAML-based full operational profiles (personality, security, monitoring, memory, cron, autonomy, integrations, skills)
+- Templates are full operational profiles (personality, security, monitoring, memory, cron, autonomy, integrations, skills)
+
+## Key Source Layout
+
+```
+src/
+├── cli/index.ts                — Commander.js CLI entry point
+├── config/
+│   ├── schema.ts               — OpenClaw/ClawHQ types (CronJobDefinition, AgentEntry, DeploymentBundle)
+│   ├── generator.ts            — Bundle generation API (delegates to init/generate.ts)
+│   └── validator.ts            — 14 landmine validation rules
+├── init/
+│   ├── wizard.ts               — Interactive questionnaire orchestrator
+│   ├── steps.ts                — 4 wizard steps (basics, template, integrations, models)
+│   ├── templates.ts            — 6 built-in templates
+│   ├── generate.ts             — Full bundle generator (config, tools, identity, skills, cron, Dockerfile)
+│   └── writer.ts               — Atomic file writer
+├── workspace/
+│   ├── tools/                  — 7 CLI tool generators + registry
+│   │   ├── registry.ts         — Integration → tool mapping
+│   │   ├── email.ts            — himalaya wrapper
+│   │   ├── tasks.ts            — local work queue (channels, autonomy, priority)
+│   │   ├── todoist.ts          — Todoist API client
+│   │   ├── ical.ts             — CalDAV calendar client
+│   │   ├── quote.ts            — Yahoo Finance market quotes
+│   │   ├── tavily.ts           — web research API
+│   │   └── todoist-sync.ts     — task polling + due alerts
+│   ├── identity/               — Identity file generators
+│   │   ├── agents.ts           — AGENTS.md (operating instructions)
+│   │   ├── heartbeat.ts        — HEARTBEAT.md (recon phases from integrations)
+│   │   ├── tools-doc.ts        — TOOLS.md (auto-generated from installed tools)
+│   │   ├── identity.ts         — IDENTITY.md
+│   │   └── memory.ts           — MEMORY.md skeleton
+│   └── skills/                 — Skill template generators
+│       ├── construct.ts        — Self-improvement framework
+│       └── morning-brief.ts    — Daily briefing skill
+├── docker/
+│   ├── build.ts                — Two-stage build orchestration
+│   ├── dockerfile.ts           — Dockerfile generator (binary fragments from integrations)
+│   ├── hardening.ts            — Security posture overrides
+│   └── compose.ts              — Docker Compose operations
+├── deploy/                     — Deployment orchestration
+├── doctor/                     — Diagnostics and auto-fix
+├── status/                     — Status dashboard
+├── backup/                     — Encrypted backup/restore
+├── update/                     — Safe upstream updates
+├── security/                   — Credential probes, secrets scanner, firewall
+├── skill/                      — Skill lifecycle management
+└── templates/                  — YAML template loader/mapper
+```
 
 ## Sprint Orchestration (aishore)
 

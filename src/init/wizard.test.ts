@@ -92,7 +92,7 @@ describe("runWizard", () => {
     // LM-01
     expect(config.dangerouslyDisableDeviceAuth).toBe(true);
     // LM-02
-    expect(config.allowedOrigins).toContain("http://localhost:18789");
+    expect(config.allowedOrigins).toContain("http://127.0.0.1:18789");
     // LM-03
     expect(config.trustedProxies).toContain("172.17.0.1");
     // LM-04
@@ -191,7 +191,7 @@ describe("runWizard", () => {
 
     // LM-09: No invalid stepping syntax (N/M without range)
     for (const job of jobs) {
-      const fields = job.schedule.split(" ");
+      const fields = (job.expr ?? "").split(" ");
       for (const field of fields) {
         // Valid forms: */N, N-M/N, plain number, *, N,M
         expect(field).not.toMatch(/^\d+\/\d+$/);

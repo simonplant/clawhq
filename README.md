@@ -160,7 +160,25 @@ Everything in ClawHQ was extracted from a production agent running for months �
 
 ## Status
 
-Design phase. TypeScript, tight coupling to OpenClaw's Node.js/TypeBox stack.
+Active development. TypeScript CLI, tight coupling to OpenClaw's Node.js/TypeBox stack.
+
+**Implemented:**
+- `clawhq init --guided` — full deployment bundle generation (config, Dockerfile, workspace tools, identity files, skills, cron)
+- `clawhq build` — two-stage Docker build with change detection and manifests
+- `clawhq up/down/restart` — deploy with pre-flight checks, firewall, health verification
+- `clawhq doctor` — 14+ diagnostic checks with auto-fix
+- `clawhq status` — single-pane dashboard (agent, integrations, workspace, egress)
+- `clawhq creds` — credential health probes
+- `clawhq backup create/list/restore` — encrypted snapshots
+- `clawhq update` — safe upstream upgrade with rollback
+- `clawhq agent add/list` — multi-agent support (OpenClaw native `agents.list[]` + `bindings[]`)
+- `clawhq skill install/update/remove/list` — skill lifecycle management
+- `clawhq template list/preview` — template browsing
+- **Workspace tool generators** — 7 CLI tools (email, tasks, todoist, ical, quote, tavily, todoist-sync) generated from integration selections
+- **Identity file generators** — SOUL.md, USER.md, IDENTITY.md, AGENTS.md, HEARTBEAT.md, TOOLS.md, MEMORY.md auto-populated from template + integrations
+- **Dockerfile generator** — composes binary install fragments based on enabled integrations
+- **Skill generators** — construct (self-improvement framework) + morning-brief bundled
+- **Enhanced cron** — OpenClaw-native format (`kind`, `expr`, `delivery`, `activeHours`)
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — Product design: problem, personas, user stories, build order
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Solution architecture: three-tier system, package structure, security, data flow

@@ -1192,9 +1192,9 @@
       "title": "Skill management — clawhq skill install/list/update/remove",
       "description": "Implement safe skill lifecycle management: install, list, update, and remove OpenClaw skills with sandboxed vetting and rollback capability. The safety layer (sandboxing, vetting, rollback) is what differentiates ClawHQ from raw OpenClaw skill installation.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-002",
         "FEAT-008"
@@ -1216,7 +1216,8 @@
         "`clawhq skill update` vets new version before replacing old — old version is rollback target"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq skill install/list/update/remove` is a P0 story in PRODUCT.md (§ Skill management) but had no backlog entry. This is a core Evolve feature: the agent ships with a baseline skill set and grows through user-approved skill installations. The safety layer (sandboxing, vetting, rollback) is the key differentiator from raw OpenClaw. No readyForSprint until FEAT-008 (two-stage build) ships — skill install depends on Stage 2 rebuild working correctly."
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq skill install/list/update/remove` is a P0 story in PRODUCT.md (§ Skill management) but had no backlog entry. This is a core Evolve feature: the agent ships with a baseline skill set and grows through user-approved skill installations. The safety layer (sandboxing, vetting, rollback) is the key differentiator from raw OpenClaw. No readyForSprint until FEAT-008 (two-stage build) ships — skill install depends on Stage 2 rebuild working correctly.",
+      "completedAt": "2026-03-13T13:07:24-07:00"
     },
     {
       "id": "FEAT-039",
@@ -1374,6 +1375,130 @@
       ],
       "groomedAt": "2026-03-12",
       "groomingNotes": "MISSING ITEM: Phase 2 Evolve — supply chain security for skills/tools is a P1 story in PRODUCT.md (§ Supply chain security for skills and tools) but had no backlog entry. Separation of concerns: FEAT-038/041 handle lifecycle operations and include basic allowlist gating; this item adds the deeper vetting layer (AI scanning, VirusTotal, audit) on top. The `clawhq evolve audit` command also lives here — it's the transparency mechanism for all capability changes."
+    },
+    {
+      "id": "FEAT-044",
+      "title": "Secrets CLI — add and list commands",
+      "description": "Implement `clawhq secrets add <name>` (masked input, optional health probe validation) and `clawhq secrets list` (names, provider category, health status, age, last rotated — never values). Builds on FEAT-005's env.ts and credential health probes.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": [
+        "FEAT-005"
+      ],
+      "steps": [
+        "Create src/cli/secrets.ts with `secrets` subcommand and `add`/`list` sub-subcommands",
+        "Implement `secrets add <name>`: prompt for value with masked input (no echo), write to .env via existing parseEnv/serializeEnv in src/security/secrets/env.ts, enforce chmod 600",
+        "Add optional `--validate` flag to `secrets add` that runs the matching credential health probe from src/security/credentials/index.ts after writing",
+        "Implement `secrets list`: read .env, display table with columns: name, provider_category (inferred from key name patterns), health_status (via credential probes), age (from metadata), last_rotated — never display values",
+        "Create src/security/secrets/metadata.ts to track secret metadata (created_at, rotated_at, provider_category) in a sidecar JSON file (.env.meta) with 600 permissions",
+        "Add SecretEntry type definition in src/security/secrets/types.ts matching PRODUCT.md data model",
+        "Write unit tests for add flow (masked input mock, .env write, permission enforcement) and list display formatting"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq secrets add MY_KEY` prompts for masked input and writes to .env with 600 permissions",
+        "`clawhq secrets add MY_KEY --validate` runs health probe after writing and reports valid/invalid",
+        "`clawhq secrets list` shows all secrets with name, category, health, age — never shows values",
+        "Secret metadata (.env.meta) tracks created_at and provider_category",
+        "Unit tests cover .env write, metadata tracking, and list formatting"
+      ],
+      "groomedAt": "2026-03-13",
+      "groomingNotes": "First of four items implementing the expanded Secrets lifecycle management story from PRODUCT.md § Secure. Builds directly on FEAT-005's existing env.ts and credential health probes. The SecretEntry type and .env.meta sidecar pattern establish the foundation for rotate/revoke/audit in subsequent items."
+    },
+    {
+      "id": "FEAT-045",
+      "title": "Secrets CLI — rotate and revoke commands",
+      "description": "Implement `clawhq secrets rotate <name>` (atomic swap, health validation, audit event) and `clawhq secrets revoke <name>` (remove from .env, verify removal, warn on dangling references).",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": [
+        "FEAT-044"
+      ],
+      "steps": [
+        "Add `rotate` and `revoke` sub-subcommands to src/cli/secrets.ts",
+        "Implement `secrets rotate <name>`: prompt for new value (masked), validate via health probe, atomically swap in .env (write to .env.tmp then rename), update rotated_at in .env.meta, emit audit event",
+        "Implement atomic .env swap in src/security/secrets/env.ts: write new content to .env.tmp with 600 permissions, then fs.rename() for atomic replacement",
+        "Implement `secrets revoke <name>`: remove entry from .env, verify removal by re-reading, scan all config files (openclaw.json, docker-compose.yml, workspace configs) for `${NAME}` references and warn if found",
+        "Implement dangling reference scanner in src/security/secrets/references.ts: glob config files, regex match `${SECRET_NAME}` and `$SECRET_NAME` patterns",
+        "Emit audit events for rotate and revoke (write to audit trail — consumed by FEAT-046)",
+        "Write unit tests for atomic swap, revocation, dangling reference detection"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq secrets rotate MY_KEY` prompts for new value, validates, and atomically swaps in .env",
+        "Rotation updates rotated_at metadata and emits audit event",
+        "`clawhq secrets revoke MY_KEY` removes from .env and confirms removal",
+        "Revoke warns if config files still reference `${MY_KEY}`",
+        "Atomic swap uses write-to-tmp-then-rename pattern (no partial writes on crash)"
+      ],
+      "groomedAt": "2026-03-13",
+      "groomingNotes": "Second secrets lifecycle item. Depends on FEAT-044 for SecretEntry types, metadata sidecar, and CLI scaffolding. Atomic swap pattern is critical — .env corruption during rotate would break the agent. Audit events are emitted here but the audit trail storage (FEAT-046) can be implemented in parallel if needed."
+    },
+    {
+      "id": "FEAT-046",
+      "title": "Secrets audit trail — append-only JSONL with HMAC chain",
+      "description": "Implement `clawhq secrets audit` command and the underlying append-only JSONL audit trail with HMAC chain for tamper detection. Logs all secret events: added, rotated, revoked, accessed-by-deploy.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": [
+        "FEAT-044"
+      ],
+      "steps": [
+        "Create src/security/secrets/audit.ts with SecretAuditEvent type matching PRODUCT.md data model (seq, event_type, secret_name, timestamp, prev_hmac, hmac)",
+        "Implement append-only JSONL writer: each line is a JSON SecretAuditEvent, file permissions 600",
+        "Implement HMAC chain: each event's hmac = HMAC-SHA256(key, JSON(event_without_hmac) + prev_hmac), first event uses empty prev_hmac",
+        "Implement chain verification: read all events, recompute HMAC chain, report any tampering",
+        "Add `secrets audit` sub-subcommand to src/cli/secrets.ts: display chronological event log with formatted table (seq, timestamp, event_type, secret_name)",
+        "Add `--verify` flag to `secrets audit` that validates HMAC chain integrity",
+        "Integrate audit event emission into FEAT-044 add/list and FEAT-045 rotate/revoke flows (export appendAuditEvent function)",
+        "Emit accessed-by-deploy events from the deploy pipeline (hook into src/docker/ deploy flow)",
+        "Write unit tests for HMAC chain computation, verification, and tamper detection"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq secrets audit` displays chronological log of all secret events",
+        "Audit trail is append-only JSONL file with 600 permissions",
+        "Each event has HMAC linking to previous event (tamper-evident chain)",
+        "`clawhq secrets audit --verify` validates chain integrity and reports tampering",
+        "Events are recorded for: add, rotate, revoke, and deploy-access operations"
+      ],
+      "groomedAt": "2026-03-13",
+      "groomingNotes": "Third secrets lifecycle item. Only hard dependency is FEAT-044 for types — can be built in parallel with FEAT-045. The HMAC chain uses a local key stored alongside the audit file (not high-security HSM, but detects casual tampering and accidental corruption). Deploy-access event emission requires a hook in the deploy pipeline."
+    },
+    {
+      "id": "FEAT-047",
+      "title": "Secrets export/import and encrypted storage backend",
+      "description": "Implement `clawhq secrets export/import` for encrypted backup/restore of secrets, and an encrypted storage backend (AES-256-GCM) as upgrade path from plaintext .env. SecretStore interface abstracts both backends.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
+      "dependsOn": [
+        "FEAT-044",
+        "FEAT-046"
+      ],
+      "steps": [
+        "Create src/security/secrets/store.ts with SecretStore interface: get(name), set(name, value), delete(name), list(), export(), import()",
+        "Implement PlaintextEnvStore as SecretStore wrapping existing env.ts parseEnv/serializeEnv — this is the default backend",
+        "Implement EncryptedStore as SecretStore: secrets encrypted with AES-256-GCM via Node.js crypto, master key derived from user passphrase via scrypt, stored in .env.enc",
+        "Add `secrets export` sub-subcommand: prompt for encryption passphrase, encrypt all secrets to portable archive (.clawhq-secrets.enc), include metadata and audit trail",
+        "Add `secrets import` sub-subcommand: prompt for passphrase, decrypt archive, verify integrity (HMAC), merge or overwrite into current .env with conflict prompts",
+        "Add `--encrypted` flag to `clawhq secrets` to enable encrypted backend (migrates existing .env to .env.enc, securely wipes plaintext .env)",
+        "Integrate with deploy pipeline: decrypt-to-tmpfs at deploy time (mount secrets as tmpfs volume, decrypt on container start, never write plaintext to disk)",
+        "Write unit tests for encryption round-trip, export/import cycle, backend switching"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq secrets export` creates encrypted archive of all secrets with passphrase protection",
+        "`clawhq secrets import` restores secrets from encrypted archive with integrity verification",
+        "SecretStore interface abstracts storage — plaintext .env and encrypted backends are interchangeable",
+        "`--encrypted` flag migrates from plaintext to encrypted storage and securely wipes old .env",
+        "Deploy pipeline decrypts to tmpfs (secrets never written to persistent disk in encrypted mode)"
+      ],
+      "groomedAt": "2026-03-13",
+      "groomingNotes": "Fourth and final secrets lifecycle item. The SecretStore interface is the key architectural piece — it ensures FEAT-044/045/046 work identically regardless of backend. Export/import enables migration between machines. Encrypted backend is an upgrade path, not a replacement — plaintext .env must remain supported for simplicity. Depends on FEAT-046 because export bundles the audit trail."
     }
   ],
   "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",
@@ -1396,7 +1521,11 @@
       "FEAT-013",
       "FEAT-014",
       "FEAT-015",
-      "FEAT-016"
+      "FEAT-016",
+      "FEAT-044",
+      "FEAT-045",
+      "FEAT-046",
+      "FEAT-047"
     ],
     "phase2_plan_evolve_transparency": [
       "FEAT-017",

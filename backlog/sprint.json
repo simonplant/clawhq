@@ -1,31 +1,31 @@
 {
-  "sprintId": "sprint-1773431302",
-  "startedAt": "2026-03-13T12:48:22-07:00",
+  "sprintId": "sprint-1773431810",
+  "startedAt": "2026-03-13T12:56:50-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-037",
-    "title": "OpenClaw source acquisition and version pinning",
+    "id": "FEAT-038",
+    "title": "Skill management — clawhq skill install/list/update/remove",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Decide and document the acquisition strategy: git clone pinned tag vs. release tarball download (open decision — Tech Lead must resolve)",
-      "Implement source fetcher: download/clone OpenClaw source at configured version to a local cache directory",
-      "Implement version pinning: store pinned OpenClaw version in ClawHQ config; reject builds that would use a different version without explicit override",
-      "Implement integrity verification: checksum or GPG signature check on downloaded source",
-      "Implement source cache management: detect when cached source matches pinned version (skip re-download)",
-      "Add doctor check: pinned OpenClaw version is available and verified",
-      "Surface current OpenClaw version in `clawhq status` output"
+      "Create src/cli/skill.ts with skill subcommand group",
+      "Implement `clawhq skill list`: show installed skills with version, source, status (active/disabled), last-used timestamp",
+      "Implement `clawhq skill install <name|url>`: fetch skill, sandbox in isolated container, scan for suspicious patterns (outbound network calls, filesystem access outside workspace, credential access), present for user approval before activation",
+      "On approval: update TOOLS.md, trigger Stage 2 rebuild if skill requires container-level dependencies",
+      "Implement `clawhq skill remove <name>`: deactivate skill, remove from TOOLS.md, keep rollback snapshot for 30 days",
+      "Implement `clawhq skill update <name>`: sandbox and vet new version before replacing; old version kept as rollback",
+      "Write unit tests for skill vetting logic and lifecycle operations"
     ],
     "acceptanceCriteria": [
-      "ClawHQ can acquire OpenClaw source at a pinned version without manual intervention",
-      "Source integrity is verified before use (checksum or signature)",
-      "Re-download is skipped when cached source matches pinned version",
-      "Version mismatch between pinned and cached source produces a clear error with fix instructions",
-      "Doctor reports OpenClaw source availability and version"
+      "`clawhq skill install` sandboxes and vets skill before presenting user approval prompt",
+      "User must explicitly approve before skill is activated — no auto-install",
+      "TOOLS.md is updated correctly on install and remove",
+      "`clawhq skill remove` provides 30-day rollback window",
+      "`clawhq skill update` vets new version before replacing old — old version is rollback target"
     ],
-    "startedAt": "2026-03-13T12:48:22-07:00",
+    "startedAt": "2026-03-13T12:56:50-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T12:56:50-07:00"
+    "completedAt": "2026-03-13T13:07:24-07:00"
   },
-  "completedAt": "2026-03-13T12:56:50-07:00",
+  "completedAt": "2026-03-13T13:07:24-07:00",
   "attempts": 1
 }

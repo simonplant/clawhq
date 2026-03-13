@@ -237,11 +237,17 @@ Hardened by default, isolated by context, monitored continuously. Every conversa
   - Given `docker compose down` was run, when `clawhq up` or `clawhq restart` runs, then the firewall is automatically reapplied
   - _Impl note: See OPENCLAW-REFERENCE.md → Egress Firewall Implementation. The domain-allowlist approach is stronger than the original "allow all HTTPS" — it enforces the local-first principle at the network level._
 
-- [ ] **Secrets management** `P0-critical` `M`
-  As a Tinkerer, I want secrets managed separately from config so that credentials never leak into config files or version control.
-  - Given the config generator runs, when secrets are collected, then they're written to `.env` with 600 permissions, never to `openclaw.json` or workspace files
+- [ ] **Secrets lifecycle management** `P0-critical` `L`
+  As a Tinkerer, I want to add, rotate, revoke, and audit secrets through the CLI so that credential management is safe, auditable, and I never have to manually edit `.env` files.
+  - Given `clawhq secrets add <name>` runs, when the user provides a value, then input is masked, the secret is written to `.env` with 600 permissions (never to `openclaw.json` or workspace files), and an optional live validation runs via credential health probes
+  - Given `clawhq secrets list` runs, then it displays secret names, provider category, health status, age, and last rotation date — never values
+  - Given `clawhq secrets rotate <name>` runs, when the user provides a new value, then the old value is swapped atomically, health validation runs against the new value, and a rotation event is logged to the audit trail
+  - Given `clawhq secrets revoke <name>` runs, then the secret is removed from `.env`, removal is verified, and a warning is shown if any config file still references `${NAME}`
+  - Given `clawhq secrets audit` runs, then it displays a chronological log of all secret events (added, rotated, revoked, accessed-by-deploy) from the local audit trail
+  - Given `clawhq secrets export` runs, then secrets are encrypted (AES-256-GCM or `age`) and written to a portable archive; `clawhq secrets import` restores from that archive with integrity verification
   - Given Doctor runs, when the secrets check executes, then it scans all config files for embedded secrets and alerts on any found
   - Given `clawhq creds` runs, when credential checks execute, then each integration's health probe reports valid/expired/failing
+  - _Impl note: Must integrate with existing `src/security/secrets/env.ts` (parseEnv/serializeEnv), `src/security/credentials/index.ts` (health probes), and deploy pipeline (decrypt-to-tmpfs at deploy time). Storage abstracted behind a `SecretStore` interface so plaintext `.env` remains a supported backend. Encrypted storage backend (Node.js `crypto` AES-256-GCM or `age`) as upgrade path from plaintext `.env`. Local-only audit trail is append-only JSONL with HMAC chain for tamper detection._
 
 - [ ] **PII & secret scanning** `P0` `M`
   As a Tinkerer, I want agent-created repos and files scanned for leaked PII and secrets so that I catch exposures before they cause harm.
@@ -525,6 +531,8 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 - `EgressLog` — outbound API call record. Fields: timestamp, provider, model, token_count_in, token_count_out, data_category, cost, session_id
 - `EvolveChange` — capability change record. Fields: id, timestamp, change_type (skill_install/integration_add/provider_add/tool_install/identity_update), target, previous_state, new_state, rollback_snapshot_id, rollback_expires_at
 - `BackupSnapshot` — encrypted state capture. Fields: id, timestamp, type, encryption method, manifest hash
+- `SecretEntry` — managed secret record. Fields: name, value (encrypted), provider_category, created_at, rotated_at, accessed_at, health_status
+- `SecretAuditEvent` — audit log entry. Fields: seq, event_type (added/rotated/revoked/accessed), secret_name, timestamp, prev_hmac, hmac
 - `ExportBundle` — portable agent archive. Fields: identity, memory, workspace, config, integrations, history, build manifest
 
 **Hard constraints:**
@@ -573,7 +581,7 @@ Stories: None (manual). We set up 3-5 agents by hand for real users. We ARE the 
 Done when: We know which use-case templates matter, which integrations are most requested, what breaks first, what keeps people engaged at 30 days, and what the migration experience from each big-tech product actually requires.
 
 **Phase 1 — Self-install panel (Operate + Secure + Deploy + Model Routing)**
-Stories: Doctor, Predictive health alerts, Status dashboard, Intelligent cost routing, Full deploy sequence, Pre-flight checks, Graceful shutdown, Egress firewall (with domain allowlisting), Container hardening, Secrets management, Encrypted backup, Safe upstream updates, Two-stage Docker build, Health self-repair, Local-first model routing, Per-category cloud opt-in, Data egress visibility
+Stories: Doctor, Predictive health alerts, Status dashboard, Intelligent cost routing, Full deploy sequence, Pre-flight checks, Graceful shutdown, Egress firewall (with domain allowlisting), Container hardening, Secrets lifecycle management, Encrypted backup, Safe upstream updates, Two-stage Docker build, Health self-repair, Local-first model routing, Per-category cloud opt-in, Data egress visibility
 Done when: A Tinkerer installs the CLI on an existing OpenClaw deployment and immediately gets value: diagnostics, security hardening with per-context container isolation, local-first model routing with egress visibility. They can `clawhq up` / `clawhq down` / `clawhq backup` / `clawhq update` with full safety. Zero data leaves the machine unless they opt in.
 
 **Phase 2 — Full panel (Plan + Evolve + Transparency + Decommission)**

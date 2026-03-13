@@ -530,17 +530,60 @@ skills_included: [morning-brief, construct]
 
 ### Config Generator Output
 
+The `clawhq init` wizard generates a complete deployment bundle:
+
 | Generated File | Contents | Landmines Auto-Handled |
 |---|---|---|
-| `openclaw.json` | Runtime config — models, tools, gateway, channels | #1-5, #14 |
-| `.env` | Secrets — API keys, tokens, session keys | #11: token format validation, no secrets in config |
-| `docker-compose.yml` | Container orchestration — volumes, networks, security | #6, #7, #10, #12: UID 1000, cap_drop ALL, read-only rootfs, ICC disabled, resource limits |
-| `SOUL.md` | Agent personality and boundaries | #8: token budget vs. `bootstrapMaxChars` |
-| `USER.md` | User context — work, interests, preferences | #8: kept within token budget |
-| `AGENTS.md` | Multi-model routing — primary, subagent, heartbeat | Model IDs match auth profile capabilities |
-| `HEARTBEAT.md` | Cron behavior — what to check, how to respond | #9: schedule syntax validated, waking hours respected |
-| `TOOLS.md` | Available tools and usage guidance | Cross-referenced against actually-installed tools |
-| `cron/jobs.json` | Scheduled job definitions | #9: stepping syntax validated, timezone-correct |
+| `openclaw.json` | Runtime config — models, tools, gateway, channels, agents | #1-5, #14 |
+| `.env` | Secrets — API keys, tokens, session keys (mode 0600) | #11: token format validation, no secrets in config |
+| `docker-compose.yml` | Container orchestration — volumes, networks, security | #6, #7, #10, #12: UID 1000, cap_drop ALL, read-only rootfs, ICC disabled |
+| `Dockerfile` | Custom layer — binary installs from GitHub releases (himalaya, gh, curl, jq, rg, git, ffmpeg) | Composed from integration selections |
+| `workspace/SOUL.md` | Agent mission, principles, hard stops, data covenant | #8: token budget vs. `bootstrapMaxChars` |
+| `workspace/USER.md` | User context placeholder | #8: kept within token budget |
+| `workspace/IDENTITY.md` | Agent name, personality summary | Auto-generated from template |
+| `workspace/AGENTS.md` | Operating instructions — session startup, memory, async tools, red lines | Auto-populated from template personality |
+| `workspace/HEARTBEAT.md` | Recon phases — auto-populated from enabled integrations | #9: schedule syntax validated |
+| `workspace/TOOLS.md` | Tool inventory — auto-generated from installed CLI tools + cron schedule | Cross-referenced against actually-installed tools |
+| `workspace/MEMORY.md` | Long-term memory skeleton with sections | Pre-structured for the agent |
+| `workspace/<tool>` | 7 CLI tools — email, tasks, todoist, ical, quote, tavily, todoist-sync | Generated based on integration selections, chmod +x |
+| `workspace/skills/` | Construct (self-improvement) + morning-brief skill templates | Skills from template's `skillsIncluded` |
+| `cron/jobs.json` | Scheduled job definitions (OpenClaw native format) | #9: stepping syntax validated, timezone-correct |
+
+### Cron Job Format (OpenClaw native)
+
+```json
+{
+  "id": "heartbeat",
+  "kind": "cron",
+  "expr": "0-59/10 5-23 * * *",
+  "task": "Run the heartbeat cycle as defined in HEARTBEAT.md",
+  "enabled": true,
+  "delivery": "announce",
+  "activeHours": { "start": 5, "end": 23, "tz": "America/Los_Angeles" }
+}
+```
+
+Fields: `kind` ("cron" | "every"), `expr` (5-field cron), `everyMs` (interval), `delivery` ("announce" | "none" | "errors"), `model` (per-job override), `session` ("main" | "isolated"), `activeHours` (waking hours constraint).
+
+### Multi-Agent Support
+
+OpenClaw natively supports multiple agents via `agents.list[]` + `bindings[]`:
+
+```json
+{
+  "agents": {
+    "list": [
+      { "id": "clawdius", "default": true, "workspace": "/home/node/.openclaw/workspace" },
+      { "id": "clawdia", "workspace": "/home/node/.openclaw/agents/clawdia/agent/workspace" }
+    ],
+    "bindings": [
+      { "agentId": "clawdia", "match": { "channel": "telegram", "peer": { "kind": "direct", "id": "<chat-id>" } } }
+    ]
+  }
+}
+```
+
+`clawhq agent add <id>` scaffolds a new agent within an existing deployment — creates workspace, identity files, memory directories, and updates `openclaw.json`.
 
 ---
 

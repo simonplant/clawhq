@@ -51,7 +51,7 @@ describe("generate", () => {
     const result = generate(makeAnswers());
 
     for (const job of result.bundle.cronJobs) {
-      const fields = job.schedule.split(" ");
+      const fields = (job.expr ?? "").split(" ");
       for (const field of fields) {
         // No bare N/M stepping (LM-09)
         expect(field).not.toMatch(/^\d+\/\d+$/);
