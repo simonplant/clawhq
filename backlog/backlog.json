@@ -119,7 +119,7 @@
         "Checks are modular (easy to add new ones via the Check interface)"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Hero feature. First real value for Tinkerer persona. Ship-blocking for Phase 1."
+      "groomingNotes": "Hero feature. First real value for Tinkerer persona. Ship-blocking for Phase 1. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/doctor.go`, `internal/doctor/`) — these must be corrected to TypeScript src/ paths per ARCHITECTURE.md (e.g., `src/cli/doctor.ts`, `src/doctor/checks/`, `src/doctor/runner.ts`, `src/doctor/fix.ts`). Steps also reference a Go-style `Check` interface — should be a TypeScript interface. Correcting steps is Tech Lead scope."
     },
     {
       "id": "FEAT-005",
@@ -151,7 +151,7 @@
         "Unit tests cover pattern matching and .env read/write"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Security foundation. Doctor depends on this for its secrets checks."
+      "groomingNotes": "Security foundation. Doctor depends on this for its secrets checks. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`internal/secrets/`, `internal/creds/`, `cmd/creds.go`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/security/secrets.ts`, `src/security/credentials.ts`, `src/cli/creds.ts`)."
     },
     {
       "id": "FEAT-006",
@@ -179,7 +179,7 @@
         "Unit tests cover all four posture levels"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Security by default. This is what differentiates ClawHQ from hosting providers."
+      "groomingNotes": "Security by default. This is what differentiates ClawHQ from hosting providers. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`internal/secure/`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/docker/hardening.ts`, `src/docker/compose.ts`)."
     },
     {
       "id": "FEAT-007",
@@ -211,7 +211,7 @@
         "Apply() is idempotent (safe to call multiple times)"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Core privacy commitment. Network-level enforcement of local-first principle."
+      "groomingNotes": "Core privacy commitment. Network-level enforcement of local-first principle. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`internal/firewall/`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/security/firewall.ts`)."
     },
     {
       "id": "FEAT-008",
@@ -241,7 +241,7 @@
         "`clawhq build --stage2-only` skips base image rebuild"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Auditability requirement — always build from source, never pre-built images. GAP: no backlog item covers how ClawHQ acquires the OpenClaw source (git clone, release tarball, version pinning). This needs to be resolved in the steps before FEAT-008 ships — either fold into this item or create a prerequisite."
+      "groomingNotes": "Auditability requirement — always build from source, never pre-built images. GAP resolved: FEAT-037 added to cover OpenClaw source acquisition. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/build.go`, `internal/build/`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/cli/build.ts`, `src/docker/build.ts`)."
     },
     {
       "id": "FEAT-009",
@@ -271,7 +271,7 @@
         "Exit code is non-zero on any deployment failure"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Core deploy workflow. The one-command deploy experience."
+      "groomingNotes": "Core deploy workflow. The one-command deploy experience. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/up.go`, `cmd/down.go`, `cmd/restart.go`, `internal/deploy/`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/cli/up.ts`, `src/cli/down.ts`, `src/cli/restart.ts`, new `src/deploy/` package)."
     },
     {
       "id": "FEAT-010",
@@ -301,7 +301,7 @@
         "Works gracefully when agent is not running (shows 'stopped' state)"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Tinkerer's window into their agent. Pairs with doctor for observability."
+      "groomingNotes": "Tinkerer's window into their agent. Pairs with doctor for observability. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/status.go`, `internal/status/`) — correct to TypeScript src/ paths (`src/cli/status.ts`, new `src/status/` or inline in `src/server/`)."
     },
     {
       "id": "FEAT-011",
@@ -332,7 +332,7 @@
         "Unit tests cover: all-local, partial-cloud, full-cloud, no-ollama-fallback scenarios"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Architectural commitment to local-first. Affects every other feature that touches models. GAP: no item covers Ollama installation guidance or model pull setup. Doctor (FEAT-004) should detect Ollama absence and provide setup instructions, but the steps for FEAT-004 don't mention this check. Flag to Tech Lead when grooming FEAT-004."
+      "groomingNotes": "Architectural commitment to local-first. Affects every other feature that touches models. GAP: no item covers Ollama installation guidance or model pull setup. Doctor (FEAT-004) should detect Ollama absence and provide setup instructions. ARCHITECTURE CONTRADICTION — TECH LEAD MUST RESOLVE: ARCHITECTURE.md says 'OpenClaw handles model routing. ClawHQ generates config that tells OpenClaw how to route models. It does not make LLM calls itself.' But the steps describe a runtime Router.Route(task) -> ModelChoice engine with task complexity scoring and model selection — this is the routing engine, not config generation. If ClawHQ generates ModelRoutingPolicy config for OpenClaw to execute, the steps need to be reframed around config generation (define policy structs, write policy to openclaw.json via FEAT-036). If ClawHQ truly does its own routing (e.g. for init --smart or egress decisions), the architecture doc needs updating. ALSO: Steps reference Go package paths (`internal/routing/`) — correct to TypeScript `src/` paths."
     },
     {
       "id": "FEAT-012",
@@ -1015,8 +1015,7 @@
       ],
       "groomedAt": "2026-03-12",
       "groomingNotes": "Phase 4 Ecosystem — transparency at the deepest level."
-    }
-  ],
+    },
     {
       "id": "FEAT-036",
       "title": "Gateway WebSocket client",
@@ -1075,10 +1074,177 @@
       "groomedAt": "2026-03-12",
       "groomingNotes": "GAP identified in FEAT-008 grooming notes: 'no backlog item covers how ClawHQ acquires the OpenClaw source (git clone, release tarball, version pinning).' This is a prerequisite for FEAT-008 (two-stage Docker build). Marked readyForSprint: false because the acquisition strategy (git vs. tarball) is an open decision that must be resolved first. Also affects FEAT-014 (upstream updates) which needs version comparison logic."
     },
+    {
+      "id": "FEAT-038",
+      "title": "Skill management — clawhq skill install/list/update/remove",
+      "description": "Implement safe skill lifecycle management: install, list, update, and remove OpenClaw skills with sandboxed vetting and rollback capability. The safety layer (sandboxing, vetting, rollback) is what differentiates ClawHQ from raw OpenClaw skill installation.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-002", "FEAT-008"],
+      "steps": [
+        "Create src/cli/skill.ts with skill subcommand group",
+        "Implement `clawhq skill list`: show installed skills with version, source, status (active/disabled), last-used timestamp",
+        "Implement `clawhq skill install <name|url>`: fetch skill, sandbox in isolated container, scan for suspicious patterns (outbound network calls, filesystem access outside workspace, credential access), present for user approval before activation",
+        "On approval: update TOOLS.md, trigger Stage 2 rebuild if skill requires container-level dependencies",
+        "Implement `clawhq skill remove <name>`: deactivate skill, remove from TOOLS.md, keep rollback snapshot for 30 days",
+        "Implement `clawhq skill update <name>`: sandbox and vet new version before replacing; old version kept as rollback",
+        "Write unit tests for skill vetting logic and lifecycle operations"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq skill install` sandboxes and vets skill before presenting user approval prompt",
+        "User must explicitly approve before skill is activated — no auto-install",
+        "TOOLS.md is updated correctly on install and remove",
+        "`clawhq skill remove` provides 30-day rollback window",
+        "`clawhq skill update` vets new version before replacing old — old version is rollback target"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq skill install/list/update/remove` is a P0 story in PRODUCT.md (§ Skill management) but had no backlog entry. This is a core Evolve feature: the agent ships with a baseline skill set and grows through user-approved skill installations. The safety layer (sandboxing, vetting, rollback) is the key differentiator from raw OpenClaw. No readyForSprint until FEAT-008 (two-stage build) ships — skill install depends on Stage 2 rebuild working correctly."
+    },
+    {
+      "id": "FEAT-039",
+      "title": "Integration management — clawhq integrate add/remove/swap/list",
+      "description": "Implement service integration lifecycle: add, remove, swap, and list integrations (email, calendar, tasks, etc.) with provider abstraction so the agent talks to 'calendar' not 'Google Calendar.' Swapping provider changes the backend without changing agent behavior.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-002", "FEAT-005", "FEAT-007"],
+      "steps": [
+        "Create src/cli/integrate.ts with integrate subcommand group",
+        "Implement `clawhq integrate add <type>`: walk through provider selection (e.g., Google Calendar vs. iCloud vs. CalDAV), credential setup with live validation, config generation",
+        "On add: write credential to .env, install integration tool, update TOOLS.md, check cron dependencies, update egress firewall allowlist for provider's API domains, run targeted doctor health check",
+        "Implement `clawhq integrate remove <name>`: clean credential from .env, uninstall tool, update TOOLS.md, update identity files to remove references, flag orphaned cron dependencies, tighten firewall allowlist",
+        "Implement `clawhq integrate swap <category> <new-provider>`: change backend provider (e.g., `integrate swap calendar icloud`) while preserving agent behavior — same category interface, new backend",
+        "Implement `clawhq integrate list`: show all integrations with provider, status, credential health, last-used",
+        "Write unit tests for integration lifecycle and firewall allowlist management"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq integrate add` validates credentials live before completing setup",
+        "Adding an integration atomically updates egress firewall allowlist for that provider's domains",
+        "`clawhq integrate swap` changes provider without changing agent's task behavior (same category interface)",
+        "`clawhq integrate remove` tightens firewall allowlist and cleans all config references",
+        "`clawhq integrate list` shows credential health status per integration"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq integrate` is a P0 story in PRODUCT.md (§ Integration management) but had no backlog entry. The provider abstraction ('calendar' not 'Google Calendar') is Layer 3 of the product model. KEY RISK: swap operation must update firewall allowlist atomically — old provider domains must be removed when new provider is added, not left allowlisted. Credential health check on `integrate add` is required (reuse FEAT-005 probe infrastructure)."
+    },
+    {
+      "id": "FEAT-040",
+      "title": "API provider management — clawhq provider add/list/remove/test",
+      "description": "Implement LLM and service API provider lifecycle: add providers with per-category task opt-in, list with egress stats, remove with routing policy update and firewall tightening, test with live inference call.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-002", "FEAT-005", "FEAT-007", "FEAT-011"],
+      "steps": [
+        "Create src/cli/provider.ts with provider subcommand group",
+        "Implement `clawhq provider add <name>`: API key setup with live validation, configure which task categories this provider is allowed for, update egress firewall allowlist for provider's API domains",
+        "Implement `clawhq provider list`: show all providers with credential status (valid/expired/failing), allowed task categories, egress stats (calls today/week/month, tokens sent, cost), routing priority",
+        "Implement `clawhq provider remove <name>`: clean credential from .env, update model routing config to exclude provider, tighten firewall allowlist, reroute tasks to next available provider or local fallback",
+        "Implement `clawhq provider test <name>`: run test inference call to verify provider end-to-end",
+        "Write unit tests for provider lifecycle and routing config updates"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq provider add` validates credential live and requires per-category opt-in before activating",
+        "Adding a provider updates egress firewall allowlist for that provider's API domains",
+        "`clawhq provider remove` removes from routing config and tightens firewall (not just credential delete)",
+        "`clawhq provider test` verifies live end-to-end connectivity with a real inference call",
+        "`clawhq provider list` shows egress stats per provider (calls, tokens, cost)"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq provider` is a P0 story in PRODUCT.md (§ API provider management) but had no backlog entry. IMPORTANT architectural note: adding a provider does NOT automatically route traffic to it — the user must configure per-category opt-in (done during `provider add` flow). Provider management is the user-facing control for the model routing config generated via FEAT-011/FEAT-015. Egress stat display links to FEAT-012 (egress logging)."
+    },
+    {
+      "id": "FEAT-041",
+      "title": "CLI tool installation — clawhq tool install/list/remove",
+      "description": "Implement CLI tool installation into the agent container: validate against a known-safe allowlist, add to Stage 2 Dockerfile, trigger Stage 2 rebuild. Enables the agent to use tools like jq, ffmpeg, pandoc, gh that the user needs.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-008"],
+      "steps": [
+        "Create src/cli/tool.ts with tool subcommand group",
+        "Maintain allowlist of known-safe packages (apt/apk) in config — version-pinned",
+        "Implement `clawhq tool install <package>`: validate against allowlist; for non-allowlisted packages flag for manual review with risk explanation; add to Stage 2 Dockerfile; trigger Stage 2 rebuild",
+        "Implement `clawhq tool list`: show all installed tools (base image tools + user-added) with version and source",
+        "Implement `clawhq tool remove <package>`: remove from Stage 2 Dockerfile; trigger rebuild",
+        "Write unit tests for allowlist checking and Dockerfile generation"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq tool install` validates against allowlist before modifying Stage 2 Dockerfile",
+        "Non-allowlisted packages are blocked with risk explanation — not silently installed",
+        "`clawhq tool install` triggers Stage 2 rebuild automatically after Dockerfile update",
+        "`clawhq tool list` shows base image tools and user-added tools separately",
+        "`clawhq tool remove` removes package from Dockerfile and triggers rebuild"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq tool install/list/remove` is a P1 story in PRODUCT.md (§ CLI tool installation) but had no backlog entry. This is a thin wrapper around the two-stage build: it modifies the Stage 2 Dockerfile and triggers a rebuild. Priority: should (not must) because the agent is useful without extra tools; tool installation is for power users expanding capability. Depends on FEAT-008 being solid — don't ship this until Stage 2 rebuild is reliable."
+    },
+    {
+      "id": "FEAT-042",
+      "title": "Evolve rollback — clawhq evolve rollback/history",
+      "description": "Implement rollback capability for all Evolve changes (skill install, integration add, provider add, tool install, identity change). Every Evolve action creates a rollback snapshot. Expanding agent capabilities is never a one-way door.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-038", "FEAT-039", "FEAT-040", "FEAT-041"],
+      "steps": [
+        "Create src/workspace/evolve-history.ts for change tracking",
+        "Define EvolveChange record: id, timestamp, change_type (skill_install/integration_add/provider_add/tool_install/identity_update), target, previous_state, new_state, rollback_snapshot_id, rollback_expires_at",
+        "Implement rollback snapshot creation on every Evolve action — call before applying change",
+        "Implement `clawhq evolve rollback <change-id>`: reverse specific change by restoring files, reverting config, triggering image rebuild if needed",
+        "Implement `clawhq evolve history`: show all Evolve changes with IDs, timestamps, change type, and rollback status (available/expired)",
+        "Rollback snapshots expire after 30 days",
+        "Write unit tests for rollback mechanics across all change types"
+      ],
+      "acceptanceCriteria": [
+        "Every Evolve action (skill, integration, provider, tool, identity) automatically creates a rollback snapshot before applying",
+        "`clawhq evolve rollback <id>` fully reverses the named change",
+        "Rollback triggers Stage 2 rebuild when the reversed change affected container image",
+        "Rollback snapshots expire after 30 days; expired rollbacks show 'unavailable' in history",
+        "`clawhq evolve history` shows complete change history with rollback availability"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq evolve rollback` is a P1 story in PRODUCT.md (§ Evolve rollback) but had no backlog entry. This is the safety net that makes capability expansion non-scary. Without rollback, every skill install or integration add is a one-way door and users will hesitate. Depends on FEAT-038/039/040/041 all having consistent snapshot infrastructure — the rollback mechanism must be uniform across all Evolve change types."
+    },
+    {
+      "id": "FEAT-043",
+      "title": "Supply chain security — vetting pipeline for skills and tools",
+      "description": "Implement AI-powered and allowlist-based vetting for community skill and tool installs: source verification, suspicious pattern scanning, VirusTotal integration, and evolve audit trail.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-038", "FEAT-041"],
+      "steps": [
+        "Create src/security/vetting.ts for supply chain security logic",
+        "Implement skill source verification: check source against known registries before sandboxing",
+        "Implement AI-powered pattern scanning: detect suspicious patterns — outbound network calls to non-allowlisted domains, credential access, filesystem writes outside workspace",
+        "Implement VirusTotal integration for scanning skill artifacts",
+        "Implement tool allowlist management: known-safe package list with version pinning; non-allowlisted installs require explicit manual override with warning",
+        "Implement `clawhq evolve audit`: show full change history with sources, timestamps, vetting results, and rollback status",
+        "Write unit tests for vetting rules and false-positive filtering"
+      ],
+      "acceptanceCriteria": [
+        "Community skill install triggers source verification and AI pattern scan before user approval prompt",
+        "VirusTotal scan runs on skill artifacts as part of vetting pipeline",
+        "Non-allowlisted tool installs are blocked with risk explanation and manual override path",
+        "`clawhq evolve audit` shows vetting results alongside change history",
+        "False-positive filtering prevents blocking common benign patterns"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — supply chain security for skills/tools is a P1 story in PRODUCT.md (§ Supply chain security for skills and tools) but had no backlog entry. Separation of concerns: FEAT-038/041 handle lifecycle operations and include basic allowlist gating; this item adds the deeper vetting layer (AI scanning, VirusTotal, audit) on top. The `clawhq evolve audit` command also lives here — it's the transparency mechanism for all capability changes."
+    }
+  ],
   "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",
   "_phaseMapping": {
     "phase1_operate_secure_deploy": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-036", "FEAT-004", "FEAT-005", "FEAT-006", "FEAT-007", "FEAT-037", "FEAT-008", "FEAT-009", "FEAT-010", "FEAT-011", "FEAT-012", "FEAT-013", "FEAT-014", "FEAT-015", "FEAT-016"],
-    "phase2_plan_evolve_transparency": ["FEAT-017", "FEAT-018", "FEAT-019", "FEAT-020", "FEAT-021", "FEAT-022", "FEAT-023", "FEAT-024", "FEAT-025", "FEAT-026", "FEAT-027", "FEAT-028", "FEAT-031", "FEAT-032", "FEAT-033", "FEAT-034"],
+    "phase2_plan_evolve_transparency": ["FEAT-017", "FEAT-018", "FEAT-019", "FEAT-020", "FEAT-021", "FEAT-022", "FEAT-023", "FEAT-024", "FEAT-025", "FEAT-026", "FEAT-027", "FEAT-028", "FEAT-031", "FEAT-032", "FEAT-033", "FEAT-034", "FEAT-038", "FEAT-039", "FEAT-040", "FEAT-041", "FEAT-042", "FEAT-043"],
     "phase3_migration_managed": ["FEAT-029", "FEAT-030"],
     "phase4_ecosystem": ["FEAT-035"]
   }
