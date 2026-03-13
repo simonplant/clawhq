@@ -29,6 +29,7 @@ import type { DoctorContext } from "../doctor/types.js";
 import { formatCredTable, runProbesFromFile } from "../security/credentials/index.js";
 import { collectStatus } from "../status/collector.js";
 import { formatDashboard, formatJson as formatStatusJson } from "../status/format.js";
+import { formatCheckResult, runUpdate } from "../update/update.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string; description: string };
@@ -562,7 +563,109 @@ backupCmd
     }
   });
 
-program.command("update").description("Update OpenClaw upstream");
+program
+  .command("update")
+  .description("Safe upstream OpenClaw update with pre-update snapshot and rollback")
+  .option("--check", "Show what would change without updating")
+  .option("--force", "Skip confirmation prompt")
+  .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
+  .option("--context <path>", "OpenClaw source directory", ".")
+  .option("--dockerfile <path>", "Dockerfile path (relative to context)")
+  .option("--base-tag <tag>", "Stage 1 base image tag", "openclaw:local")
+  .option("--tag <tag>", "Stage 2 final image tag", "openclaw:custom")
+  .option("--manifest-dir <path>", "Build manifest directory", ".")
+  .option("--compose <path>", "Path to docker-compose.yml")
+  .option("--env <path>", "Path to .env file")
+  .option("--gpg-recipient <id>", "GPG recipient for pre-update snapshot")
+  .option("--backup-dir <path>", "Backup storage directory", "~/.clawhq/backups")
+  .option("--health-timeout <ms>", "Health poll timeout in ms", "60000")
+  .option("--gateway-host <host>", "Gateway host", "127.0.0.1")
+  .option("--gateway-port <port>", "Gateway port", "18789")
+  .option("--providers <list>", "Comma-separated cloud providers for firewall allowlist")
+  .option("--bridge <iface>", "Docker bridge interface for firewall", "docker0")
+  .option("--repo <owner/repo>", "GitHub repo for release checks", "openclaw/openclaw")
+  .action(async (opts: {
+    check?: boolean;
+    force?: boolean;
+    home: string;
+    context: string;
+    dockerfile?: string;
+    baseTag: string;
+    tag: string;
+    manifestDir: string;
+    compose?: string;
+    env?: string;
+    gpgRecipient?: string;
+    backupDir: string;
+    healthTimeout: string;
+    gatewayHost: string;
+    gatewayPort: string;
+    providers?: string;
+    bridge: string;
+    repo: string;
+  }) => {
+    // --check mode: show what would change and exit
+    if (opts.check) {
+      try {
+        const output = await formatCheckResult({
+          repo: opts.repo,
+          finalTag: opts.tag,
+        });
+        console.log(output);
+      } catch (err: unknown) {
+        console.error(
+          `Update check failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    console.log("Starting update...");
+    console.log("");
+
+    const result = await runUpdate({
+      openclawHome: opts.home.replace(/^~/, process.env.HOME ?? "~"),
+      composePath: opts.compose,
+      envPath: opts.env?.replace(/^~/, process.env.HOME ?? "~"),
+      context: resolve(opts.context),
+      dockerfile: opts.dockerfile,
+      baseTag: opts.baseTag,
+      finalTag: opts.tag,
+      manifestDir: resolve(opts.manifestDir),
+      gpgRecipient: opts.gpgRecipient,
+      backupDir: opts.backupDir.replace(/^~/, process.env.HOME ?? "~"),
+      healthTimeoutMs: parseInt(opts.healthTimeout, 10),
+      gatewayHost: opts.gatewayHost,
+      gatewayPort: parseInt(opts.gatewayPort, 10),
+      enabledProviders: opts.providers?.split(",").map((p) => p.trim()),
+      bridgeInterface: opts.bridge,
+      force: opts.force,
+      repo: opts.repo,
+    });
+
+    for (let i = 0; i < result.steps.length; i++) {
+      console.log(formatStepResult(i + 1, result.steps.length, result.steps[i]));
+    }
+
+    console.log("");
+
+    if (result.rolledBack) {
+      console.log("Update failed — rolled back to previous version.");
+      if (result.snapshotId) {
+        console.log(`Pre-update snapshot: ${result.snapshotId}`);
+      }
+      process.exitCode = 1;
+    } else if (result.success) {
+      console.log(`Update completed: ${result.previousVersion} -> ${result.newVersion}`);
+      if (result.snapshotId) {
+        console.log(`Pre-update snapshot: ${result.snapshotId}`);
+      }
+    } else {
+      console.log("Update failed.");
+      process.exitCode = 1;
+    }
+  });
 program.command("logs").description("Stream agent logs");
 
 // Evolve phase
