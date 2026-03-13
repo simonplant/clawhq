@@ -1225,9 +1225,9 @@
       "title": "Integration management — clawhq integrate add/remove/swap/list",
       "description": "Implement service integration lifecycle: add, remove, swap, and list integrations (email, calendar, tasks, etc.) with provider abstraction so the agent talks to 'calendar' not 'Google Calendar.' Swapping provider changes the backend without changing agent behavior.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-002",
         "FEAT-005",
@@ -1250,7 +1250,8 @@
         "`clawhq integrate list` shows credential health status per integration"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq integrate` is a P0 story in PRODUCT.md (§ Integration management) but had no backlog entry. The provider abstraction ('calendar' not 'Google Calendar') is Layer 3 of the product model. KEY RISK: swap operation must update firewall allowlist atomically — old provider domains must be removed when new provider is added, not left allowlisted. Credential health check on `integrate add` is required (reuse FEAT-005 probe infrastructure)."
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq integrate` is a P0 story in PRODUCT.md (§ Integration management) but had no backlog entry. The provider abstraction ('calendar' not 'Google Calendar') is Layer 3 of the product model. KEY RISK: swap operation must update firewall allowlist atomically — old provider domains must be removed when new provider is added, not left allowlisted. Credential health check on `integrate add` is required (reuse FEAT-005 probe infrastructure).",
+      "completedAt": "2026-03-13T16:57:03-07:00"
     },
     {
       "id": "FEAT-040",

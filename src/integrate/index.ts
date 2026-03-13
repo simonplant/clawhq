@@ -4,6 +4,8 @@
 
 export {
   addIntegration,
+  checkCronDependencies,
+  cleanIdentityReferences,
   formatIntegrationList,
   getConfiguredEgressDomains,
   listIntegrations,
@@ -11,6 +13,7 @@ export {
   removeIntegration,
   saveRegistry,
   swapIntegration,
+  updateFirewallAllowlist,
 } from "./lifecycle.js";
 
 export type { IntegrateContext } from "./lifecycle.js";
@@ -25,6 +28,7 @@ export {
 export type {
   AddResult,
   ConfiguredIntegration,
+  CronDependencyResult,
   IntegrationCategoryDef,
   IntegrationListEntry,
   IntegrationRegistry,

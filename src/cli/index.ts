@@ -32,15 +32,18 @@ import { createExport } from "../export/export.js";
 import { createReadlineIO, runWizard } from "../init/index.js";
 import {
   addIntegration,
+  checkCronDependencies,
+  cleanIdentityReferences,
   findCategory,
   formatIntegrationList,
   INTEGRATION_CATEGORIES,
+  IntegrateError,
   listIntegrations,
   removeIntegration,
   swapIntegration,
+  updateFirewallAllowlist,
 } from "../integrate/index.js";
 import type { IntegrateContext } from "../integrate/index.js";
-import { IntegrateError } from "../integrate/index.js";
 import type { RepairConfig, RepairContext } from "../repair/index.js";
 import {
   DEFAULT_REPAIR_CONFIG,
@@ -1387,19 +1390,42 @@ integrateCmd
         return;
       }
 
-      // Validate credential if possible
+      // Validate credential live before completing setup
       let validated = false;
+      console.log("Validating credential...");
       try {
+        // Write credential to a temp env to validate it
+        const { parseEnv, setEnvValue: setTmpEnvValue } = await import(
+          "../security/secrets/env.js"
+        );
         const envPath = resolve(ctx.openclawHome, ".env");
-        const report = await runProbesFromFile(envPath);
+        let existingContent = "";
+        try {
+          const { readFile: rf } = await import("node:fs/promises");
+          existingContent = await rf(envPath, "utf-8");
+        } catch { /* no existing .env */ }
+        const tmpEnv = parseEnv(existingContent);
+        setTmpEnvValue(tmpEnv, provDef.envVar, credential);
+
+        const { runProbes, DEFAULT_PROBES } = await import(
+          "../security/credentials/index.js"
+        );
+        const report = await runProbes(tmpEnv, DEFAULT_PROBES);
+        const selectedProvider = providerName ?? "";
         const probe = report.results.find(
-          (r) => r.provider.toLowerCase() === providerName!.toLowerCase(),
+          (r) => r.provider.toLowerCase() === selectedProvider.toLowerCase(),
         );
         if (probe && probe.status === "valid") {
           validated = true;
+          console.log(`  Credential valid (${probe.message})`);
+        } else if (probe && probe.status !== "missing") {
+          console.log(`  Credential check: ${probe.status} — ${probe.message}`);
+          console.log("  Proceeding with setup (credential may need additional configuration).");
+        } else {
+          console.log("  No built-in probe for this provider — skipping live validation.");
         }
       } catch {
-        // Validation not available — proceed without
+        console.log("  Credential validation not available — proceeding.");
       }
 
       console.log(`Adding ${catDef.label} integration (${provDef.label})...`);
@@ -1411,8 +1437,47 @@ integrateCmd
       }
       if (result.egressDomainsAdded.length > 0) {
         console.log(`  Egress domains: ${result.egressDomainsAdded.join(", ")}`);
-        console.log("  Run `clawhq up` or `clawhq restart` to update the firewall allowlist.");
       }
+
+      // Update egress firewall allowlist atomically
+      if (result.egressDomainsAdded.length > 0) {
+        const fwResult = await updateFirewallAllowlist(ctx);
+        if (fwResult) {
+          if (fwResult.success) {
+            console.log(`  Firewall updated: ${fwResult.message}`);
+          } else {
+            console.log(`  Firewall update skipped: ${fwResult.message}`);
+          }
+        }
+      }
+
+      // Check cron dependencies
+      const cronDeps = await checkCronDependencies(ctx, category);
+      if (cronDeps.dependentJobs.length > 0) {
+        console.log(`  Cron jobs using ${category}:`);
+        for (const job of cronDeps.dependentJobs) {
+          console.log(`    - ${job.id}`);
+        }
+      }
+
+      // Run targeted doctor health check
+      try {
+        const doctorCtx: DoctorContext = {
+          openclawHome: ctx.openclawHome,
+          configPath: resolve(ctx.openclawHome, "openclaw.json"),
+          envPath: resolve(ctx.openclawHome, ".env"),
+        };
+        const { runChecks: runDoctorChecks } = await import("../doctor/runner.js");
+        const { firewallCheck } = await import("../doctor/checks/firewall.js");
+        const report = await runDoctorChecks(doctorCtx, [firewallCheck]);
+        for (const check of report.checks) {
+          const icon = check.status === "pass" ? "✓" : check.status === "warn" ? "!" : "✗";
+          console.log(`  Doctor [${icon}] ${check.name}: ${check.message}`);
+        }
+      } catch {
+        // Doctor check not critical — skip silently
+      }
+
       if (result.requiresRebuild) {
         console.log("");
         console.log("This integration requires container-level dependencies.");
@@ -1436,6 +1501,16 @@ integrateCmd
     const ctx = makeIntegrateCtx(parentOpts);
 
     try {
+      // Flag orphaned cron dependencies before removing
+      const cronDeps = await checkCronDependencies(ctx, category);
+      if (cronDeps.hasActiveDependencies) {
+        console.log(`Warning: active cron jobs depend on "${category}" tools:`);
+        for (const job of cronDeps.dependentJobs) {
+          console.log(`  - ${job.id}: ${job.task.slice(0, 80)}`);
+        }
+        console.log("  These jobs may fail after removal. Consider disabling them.");
+      }
+
       const result = await removeIntegration(ctx, category);
 
       console.log(`Integration "${category}" removed (was: ${result.provider}).`);
@@ -1445,10 +1520,26 @@ integrateCmd
       if (result.toolsRemoved.length > 0) {
         console.log(`  Tools removed: ${result.toolsRemoved.join(", ")}`);
       }
+
+      // Clean identity file references
+      const updatedIdentityFiles = await cleanIdentityReferences(ctx, category);
+      if (updatedIdentityFiles.length > 0) {
+        console.log(`  Identity files updated: ${updatedIdentityFiles.join(", ")}`);
+      }
+
+      // Tighten egress firewall allowlist
       if (result.egressDomainsRemoved.length > 0) {
         console.log(`  Egress domains removed: ${result.egressDomainsRemoved.join(", ")}`);
-        console.log("  Run `clawhq up` or `clawhq restart` to tighten the firewall allowlist.");
+        const fwResult = await updateFirewallAllowlist(ctx);
+        if (fwResult) {
+          if (fwResult.success) {
+            console.log(`  Firewall tightened: ${fwResult.message}`);
+          } else {
+            console.log(`  Firewall update skipped: ${fwResult.message}`);
+          }
+        }
       }
+
       console.log("");
       console.log("TOOLS.md updated.");
     } catch (err: unknown) {
@@ -1508,7 +1599,16 @@ integrateCmd
       if (result.egressDomainsRemoved.length > 0 || result.egressDomainsAdded.length > 0) {
         console.log(`  Egress domains removed: ${result.egressDomainsRemoved.join(", ") || "none"}`);
         console.log(`  Egress domains added: ${result.egressDomainsAdded.join(", ") || "none"}`);
-        console.log("  Run `clawhq up` or `clawhq restart` to update the firewall allowlist.");
+
+        // Update egress firewall allowlist atomically
+        const fwResult = await updateFirewallAllowlist(ctx);
+        if (fwResult) {
+          if (fwResult.success) {
+            console.log(`  Firewall updated: ${fwResult.message}`);
+          } else {
+            console.log(`  Firewall update skipped: ${fwResult.message}`);
+          }
+        }
       }
       console.log("");
       console.log("TOOLS.md updated. Agent behavior unchanged — same category interface, new backend.");

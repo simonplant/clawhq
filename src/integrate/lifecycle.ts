@@ -2,7 +2,8 @@
  * Integration lifecycle operations: add, remove, swap, list.
  *
  * Each operation manages .env credentials, workspace tools,
- * TOOLS.md identity file, and egress firewall allowlist.
+ * TOOLS.md identity file, egress firewall allowlist, cron
+ * dependencies, and identity file references.
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -16,10 +17,12 @@ import {
   writeEnvFile,
 } from "../security/secrets/env.js";
 import { TOOL_BINARY_DEPS } from "../workspace/tools/registry.js";
+
 import { findCategory, findProvider, getIntegrationEgressDomains } from "./providers.js";
 import type {
   AddResult,
   ConfiguredIntegration,
+  CronDependencyResult,
   IntegrationListEntry,
   IntegrationRegistry,
   RemoveResult,
@@ -352,9 +355,6 @@ async function updateToolsMd(
     return;
   }
 
-  // Collect active integration categories
-  const activeCategories = new Set(registry.integrations.map((i) => i.category));
-
   // Build marker-bounded section for integrations
   const marker = "<!-- clawhq:integrations -->";
   const endMarker = "<!-- /clawhq:integrations -->";
@@ -394,4 +394,148 @@ export async function getConfiguredEgressDomains(
 ): Promise<string[]> {
   const registry = await loadRegistry(ctx);
   return getIntegrationEgressDomains(registry.integrations);
+}
+
+// --- Cron dependency analysis ---
+
+/** Tools referenced by each integration category. */
+const CATEGORY_TOOL_KEYWORDS: Record<string, string[]> = {
+  email: ["email"],
+  calendar: ["ical", "calendar", "caldav"],
+  tasks: ["todoist", "todoist-sync"],
+  research: ["tavily"],
+  messaging: ["telegram", "whatsapp"],
+  code: ["github", "gh"],
+};
+
+/**
+ * Check cron jobs.json for dependencies on a category's tools.
+ * Returns dependent jobs so the CLI can report them.
+ */
+export async function checkCronDependencies(
+  ctx: IntegrateContext,
+  category: string,
+): Promise<CronDependencyResult> {
+  const cronPath = join(ctx.openclawHome, "cron", "jobs.json");
+  const keywords = CATEGORY_TOOL_KEYWORDS[category] ?? CATEGORY_TOOLS[category] ?? [];
+
+  if (keywords.length === 0) {
+    return { dependentJobs: [], hasActiveDependencies: false };
+  }
+
+  let jobs: Array<{ id: string; task: string; enabled?: boolean }>;
+  try {
+    const content = await readFile(cronPath, "utf-8");
+    const parsed = JSON.parse(content);
+    jobs = Array.isArray(parsed) ? parsed : (parsed.jobs ?? []);
+  } catch {
+    return { dependentJobs: [], hasActiveDependencies: false };
+  }
+
+  const dependentJobs: Array<{ id: string; task: string }> = [];
+  let hasActiveDependencies = false;
+
+  for (const job of jobs) {
+    const taskLower = (job.task ?? "").toLowerCase();
+    const matches = keywords.some((kw) => taskLower.includes(kw));
+    if (matches) {
+      dependentJobs.push({ id: job.id, task: job.task });
+      if (job.enabled !== false) {
+        hasActiveDependencies = true;
+      }
+    }
+  }
+
+  return { dependentJobs, hasActiveDependencies };
+}
+
+// --- Identity file cleanup on remove ---
+
+/**
+ * Remove references to an integration category from identity files
+ * (AGENTS.md, HEARTBEAT.md) using marker-bounded sections.
+ *
+ * Returns list of files that were updated.
+ */
+export async function cleanIdentityReferences(
+  ctx: IntegrateContext,
+  category: string,
+): Promise<string[]> {
+  const wsDir = join(ctx.openclawHome, "workspace");
+  const updatedFiles: string[] = [];
+
+  // Files to check for integration-specific content
+  const identityFiles = ["AGENTS.md", "HEARTBEAT.md"];
+  const keywords = CATEGORY_TOOL_KEYWORDS[category] ?? CATEGORY_TOOLS[category] ?? [];
+
+  if (keywords.length === 0) return updatedFiles;
+
+  for (const filename of identityFiles) {
+    const filePath = join(wsDir, filename);
+
+    let content: string;
+    try {
+      content = await readFile(filePath, "utf-8");
+    } catch {
+      continue;
+    }
+
+    // Check for marker-bounded sections for this category
+    const marker = `<!-- clawhq:${category} -->`;
+    const endMarker = `<!-- /clawhq:${category} -->`;
+    const startIdx = content.indexOf(marker);
+    const endIdx = content.indexOf(endMarker);
+
+    if (startIdx !== -1 && endIdx !== -1) {
+      content =
+        content.slice(0, startIdx) +
+        content.slice(endIdx + endMarker.length);
+
+      // Clean up double blank lines left by removal
+      content = content.replace(/\n{3,}/g, "\n\n");
+      await writeFile(filePath, content, "utf-8");
+      updatedFiles.push(filename);
+    }
+  }
+
+  return updatedFiles;
+}
+
+// --- Egress firewall update ---
+
+/**
+ * Update the egress firewall allowlist to match current integrations.
+ * Builds config from all configured integration domains and applies.
+ *
+ * Returns the firewall result, or null if firewall is not applicable
+ * (e.g., non-Linux platform).
+ */
+export async function updateFirewallAllowlist(
+  ctx: IntegrateContext,
+  options?: { enabledProviders?: string[]; bridgeInterface?: string },
+): Promise<{ success: boolean; message: string } | null> {
+  // Dynamic import to avoid hard dependency on firewall module
+  // (firewall requires iptables which is Linux-only)
+  try {
+    const { buildConfig, apply, checkPlatform } = await import(
+      "../security/firewall/index.js"
+    );
+
+    const platform = checkPlatform();
+    if (!platform.supported) {
+      return null;
+    }
+
+    const integrationDomains = await getConfiguredEgressDomains(ctx);
+    const config = await buildConfig({
+      enabledProviders: options?.enabledProviders,
+      extraDomains: integrationDomains,
+      bridgeInterface: options?.bridgeInterface,
+    });
+
+    return await apply(config);
+  } catch {
+    // Firewall module not available or failed
+    return null;
+  }
 }

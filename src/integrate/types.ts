@@ -77,6 +77,14 @@ export interface IntegrationListEntry {
   lastUsed: string | null;
 }
 
+/** Result of cron dependency analysis for an integration. */
+export interface CronDependencyResult {
+  /** Cron jobs that depend on this integration's tools. */
+  dependentJobs: Array<{ id: string; task: string }>;
+  /** Whether any dependent jobs are enabled. */
+  hasActiveDependencies: boolean;
+}
+
 export class IntegrateError extends Error {
   constructor(message: string) {
     super(message);

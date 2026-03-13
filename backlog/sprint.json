@@ -1,32 +1,31 @@
 {
-  "sprintId": "sprint-1773445457",
-  "startedAt": "2026-03-13T16:44:17-07:00",
+  "sprintId": "sprint-1773445675",
+  "startedAt": "2026-03-13T16:47:55-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-023",
-    "title": "Portable export — clawhq export",
+    "id": "FEAT-039",
+    "title": "Integration management — clawhq integrate add/remove/swap/list",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create cmd/export.go with the export subcommand",
-      "Create internal/export/ package",
-      "Implement bundle collector: identity files, memory archive (all tiers), workspace snapshot, config (secrets redacted), integration manifest, interaction history, build manifest",
-      "Generate README.md in bundle explaining structure and how to use with raw OpenClaw",
-      "Implement --mask-pii flag: apply PII masking throughout",
-      "Implement --no-memory flag: export only identity + config",
-      "Package as tar.gz with integrity manifest"
+      "Create src/cli/integrate.ts with integrate subcommand group",
+      "Implement `clawhq integrate add <type>`: walk through provider selection (e.g., Google Calendar vs. iCloud vs. CalDAV), credential setup with live validation, config generation",
+      "On add: write credential to .env, install integration tool, update TOOLS.md, check cron dependencies, update egress firewall allowlist for provider's API domains, run targeted doctor health check",
+      "Implement `clawhq integrate remove <name>`: clean credential from .env, uninstall tool, update TOOLS.md, update identity files to remove references, flag orphaned cron dependencies, tighten firewall allowlist",
+      "Implement `clawhq integrate swap <category> <new-provider>`: change backend provider (e.g., `integrate swap calendar icloud`) while preserving agent behavior — same category interface, new backend",
+      "Implement `clawhq integrate list`: show all integrations with provider, status, credential health, last-used",
+      "Write unit tests for integration lifecycle and firewall allowlist management"
     ],
     "acceptanceCriteria": [
-      "`clawhq export` produces a self-documented portable bundle",
-      "Bundle includes README explaining how to use without ClawHQ",
-      "Secrets are redacted from exported config",
-      "--mask-pii applies PII masking to all files",
-      "--no-memory exports only identity and config",
-      "Bundle integrity can be verified via manifest hashes"
+      "`clawhq integrate add` validates credentials live before completing setup",
+      "Adding an integration atomically updates egress firewall allowlist for that provider's domains",
+      "`clawhq integrate swap` changes provider without changing agent's task behavior (same category interface)",
+      "`clawhq integrate remove` tightens firewall allowlist and cleans all config references",
+      "`clawhq integrate list` shows credential health status per integration"
     ],
-    "startedAt": "2026-03-13T16:44:17-07:00",
+    "startedAt": "2026-03-13T16:47:55-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T16:47:35-07:00"
+    "completedAt": "2026-03-13T16:57:03-07:00"
   },
-  "completedAt": "2026-03-13T16:47:35-07:00",
+  "completedAt": "2026-03-13T16:57:03-07:00",
   "attempts": 1
 }

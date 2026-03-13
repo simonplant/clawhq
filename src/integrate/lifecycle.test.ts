@@ -4,9 +4,12 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { parseEnv, serializeEnv } from "../security/secrets/env.js";
+import { parseEnv } from "../security/secrets/env.js";
+
 import {
   addIntegration,
+  checkCronDependencies,
+  cleanIdentityReferences,
   formatIntegrationList,
   getConfiguredEgressDomains,
   listIntegrations,
@@ -355,5 +358,138 @@ describe("getConfiguredEgressDomains", () => {
     const domains = await getConfiguredEgressDomains(ctx);
     expect(domains).toContain("api.telegram.org");
     expect(domains).toContain("api.tavily.com");
+  });
+});
+
+describe("checkCronDependencies", () => {
+  let tmpDir: string;
+  let ctx: IntegrateContext;
+
+  beforeEach(async () => {
+    tmpDir = join(tmpdir(), `clawhq-test-integrate-cron-${Date.now()}`);
+    ctx = makeCtx(tmpDir);
+    await mkdir(ctx.openclawHome, { recursive: true });
+    await mkdir(ctx.clawhqDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns empty when no cron jobs exist", async () => {
+    const result = await checkCronDependencies(ctx, "email");
+    expect(result.dependentJobs).toEqual([]);
+    expect(result.hasActiveDependencies).toBe(false);
+  });
+
+  it("detects cron jobs that reference category tools", async () => {
+    const cronDir = join(ctx.openclawHome, "cron");
+    await mkdir(cronDir, { recursive: true });
+    await writeFile(
+      join(cronDir, "jobs.json"),
+      JSON.stringify([
+        { id: "heartbeat", task: "Run email inbox check and todoist-sync poll", enabled: true },
+        { id: "backup", task: "Run backup routine", enabled: true },
+      ]),
+    );
+
+    const result = await checkCronDependencies(ctx, "email");
+    expect(result.dependentJobs).toHaveLength(1);
+    expect(result.dependentJobs[0].id).toBe("heartbeat");
+    expect(result.hasActiveDependencies).toBe(true);
+  });
+
+  it("detects disabled dependencies without flagging as active", async () => {
+    const cronDir = join(ctx.openclawHome, "cron");
+    await mkdir(cronDir, { recursive: true });
+    await writeFile(
+      join(cronDir, "jobs.json"),
+      JSON.stringify([
+        { id: "sync", task: "Run todoist-sync poll", enabled: false },
+      ]),
+    );
+
+    const result = await checkCronDependencies(ctx, "tasks");
+    expect(result.dependentJobs).toHaveLength(1);
+    expect(result.hasActiveDependencies).toBe(false);
+  });
+
+  it("handles jobs wrapped in object with jobs key", async () => {
+    const cronDir = join(ctx.openclawHome, "cron");
+    await mkdir(cronDir, { recursive: true });
+    await writeFile(
+      join(cronDir, "jobs.json"),
+      JSON.stringify({ jobs: [
+        { id: "research", task: "Use tavily to search for news", enabled: true },
+      ]}),
+    );
+
+    const result = await checkCronDependencies(ctx, "research");
+    expect(result.dependentJobs).toHaveLength(1);
+    expect(result.hasActiveDependencies).toBe(true);
+  });
+});
+
+describe("cleanIdentityReferences", () => {
+  let tmpDir: string;
+  let ctx: IntegrateContext;
+
+  beforeEach(async () => {
+    tmpDir = join(tmpdir(), `clawhq-test-integrate-identity-${Date.now()}`);
+    ctx = makeCtx(tmpDir);
+    await mkdir(ctx.openclawHome, { recursive: true });
+    await mkdir(ctx.clawhqDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns empty when no identity files exist", async () => {
+    const updated = await cleanIdentityReferences(ctx, "email");
+    expect(updated).toEqual([]);
+  });
+
+  it("removes marker-bounded section from identity files", async () => {
+    const wsDir = join(ctx.openclawHome, "workspace");
+    await mkdir(wsDir, { recursive: true });
+
+    const content = [
+      "# HEARTBEAT.md",
+      "",
+      "## Phase 1: RECON",
+      "",
+      "<!-- clawhq:email -->",
+      "### Email",
+      "- email inbox",
+      "<!-- /clawhq:email -->",
+      "",
+      "## Phase 2: ACT",
+    ].join("\n");
+
+    await writeFile(join(wsDir, "HEARTBEAT.md"), content);
+
+    const updated = await cleanIdentityReferences(ctx, "email");
+    expect(updated).toContain("HEARTBEAT.md");
+
+    const result = await readFile(join(wsDir, "HEARTBEAT.md"), "utf-8");
+    expect(result).not.toContain("### Email");
+    expect(result).not.toContain("email inbox");
+    expect(result).toContain("## Phase 1: RECON");
+    expect(result).toContain("## Phase 2: ACT");
+  });
+
+  it("does not modify files without markers", async () => {
+    const wsDir = join(ctx.openclawHome, "workspace");
+    await mkdir(wsDir, { recursive: true });
+
+    const content = "# AGENTS.md\n\n## Session Startup\n";
+    await writeFile(join(wsDir, "AGENTS.md"), content);
+
+    const updated = await cleanIdentityReferences(ctx, "email");
+    expect(updated).toEqual([]);
+
+    const result = await readFile(join(wsDir, "AGENTS.md"), "utf-8");
+    expect(result).toBe(content);
   });
 });
