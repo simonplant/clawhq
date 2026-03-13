@@ -405,8 +405,8 @@
       "title": "Encrypted backup and restore",
       "description": "Implement `clawhq backup` and `clawhq backup restore` \u2014 encrypted snapshots of agent state with GPG encryption, integrity verification, and restore with doctor validation.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "passes": false,
       "dependsOn": [
         "FEAT-002",

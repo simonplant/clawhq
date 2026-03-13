@@ -548,8 +548,12 @@ backupCmd
       console.log(`Restored backup: ${result.backupId}`);
       console.log(`  Files restored: ${result.filesRestored}`);
       console.log(`  Integrity: ${result.integrityPassed ? "PASS" : "FAIL"}`);
-      console.log("");
-      console.log("Run `clawhq doctor` to verify agent health.");
+      console.log(`  Doctor: ${result.doctorPassed ? "PASS" : "FAIL"} (${result.doctorChecks.pass} passed, ${result.doctorChecks.warn} warnings, ${result.doctorChecks.fail} failed)`);
+
+      if (!result.doctorPassed) {
+        console.log("");
+        console.log("Run `clawhq doctor` for detailed diagnostics.");
+      }
     } catch (err: unknown) {
       console.error(
         `Restore failed: ${err instanceof Error ? err.message : String(err)}`,

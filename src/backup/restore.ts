@@ -8,6 +8,9 @@
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
+import { runChecks } from "../doctor/runner.js";
+import type { DoctorContext } from "../doctor/types.js";
+
 import { readManifest, validateIntegrity } from "./manifest.js";
 import { collectFiles, decryptWithGpg, extractTarArchive, hashFile } from "./snapshot.js";
 import type { RestoreOptions, RestoreResult } from "./types.js";
@@ -85,10 +88,19 @@ export async function restoreBackup(
       secretsOnly: manifest.secretsOnly,
     });
 
+    // Run doctor to verify agent health after restore
+    const doctorCtx: DoctorContext = {
+      openclawHome,
+      configPath: join(openclawHome, "openclaw.json"),
+    };
+    const doctorReport = await runChecks(doctorCtx);
+
     return {
       backupId,
       filesRestored: restoredFiles.length,
       integrityPassed: true,
+      doctorPassed: doctorReport.passed,
+      doctorChecks: doctorReport.counts,
     };
   } finally {
     // Clean up temp files

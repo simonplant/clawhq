@@ -58,6 +58,8 @@ export interface RestoreResult {
   backupId: string;
   filesRestored: number;
   integrityPassed: boolean;
+  doctorPassed: boolean;
+  doctorChecks: { pass: number; warn: number; fail: number };
 }
 
 export class BackupError extends Error {
