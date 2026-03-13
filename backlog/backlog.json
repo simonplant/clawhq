@@ -508,7 +508,7 @@
       "description": "Implement automatic recovery from common failures: network drops, Gateway crashes, bridge interface changes. Reduces operational burden on Tinkerers.",
       "priority": "could",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-009",
@@ -540,7 +540,7 @@
       "description": "Implement `clawhq init --guided` \u2014 structured setup flow that walks through basics, template selection, integration setup with credential validation, and config generation.",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-002",
@@ -574,7 +574,7 @@
       "description": "Implement the template system: YAML-based operational profiles organized by what users are replacing (Google Assistant, ChatGPT Plus, PA, etc.). Templates map use-case framing to operational dimensions.",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-002"
@@ -604,7 +604,7 @@
       "description": "Implement natural language config inference: user describes what they want, local LLM maps it to template selection and override parameters.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-017",
@@ -636,7 +636,7 @@
       "description": "Implement identity file governance: track token budget per file, detect staleness, flag contradictions across identity files.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-002"
@@ -667,7 +667,7 @@
       "description": "Implement tiered memory management: transform raw conversations into structured knowledge, manage hot/warm/cold tiers with LLM-powered summarization, background reflection.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-011",
@@ -701,7 +701,7 @@
       "description": "Implement daily activity digest and approval queue for high-stakes agent actions. The transparency layer that builds user trust.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-012",
@@ -734,7 +734,7 @@
       "description": "Implement full agent export: identity, memory, config, workspace as a portable bundle with README explaining how to use with raw OpenClaw. Zero lock-in.",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-002"
@@ -765,7 +765,7 @@
       "description": "Implement `clawhq destroy` with pre-decommission checklist, confirmed destruction sequence, and signed destruction manifest proving data was removed.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-023",
@@ -796,7 +796,7 @@
       "description": "Implement PII and secret scanning across agent-created files and repos. Catches exposures before they cause harm.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-005"
@@ -827,7 +827,7 @@
       "description": "Implement guided messaging channel setup for Telegram and WhatsApp with inline validation and bidirectional message flow testing.",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-005",
@@ -857,7 +857,7 @@
       "description": "Implement preference learning: classify user corrections (preference, boundary, one-time), accumulate signals, propose identity file updates after threshold.",
       "priority": "could",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-020",
@@ -888,7 +888,7 @@
       "description": "Implement autonomy tuning: analyze approval queue history, recommend auto-approve/require-approval changes, with cooldown on rejected recommendations.",
       "priority": "could",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-022",
@@ -918,7 +918,7 @@
       "description": "Import ChatGPT export data, extract preferences and facts via local LLM, propose additions to identity/memory files. Phase 3 migration story.",
       "priority": "could",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-021",
@@ -950,7 +950,7 @@
       "description": "Implement `clawhq fleet` \u2014 monitor and manage multiple agents from a single dashboard with aggregated health, cost, security, and egress. Phase 3 for Fleet Operators.",
       "priority": "could",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-010",
@@ -981,7 +981,7 @@
       "description": "Implement automatic post-deployment verification: send test message, verify response, confirm identity files loaded, probe connected integrations.",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-009",
@@ -1012,7 +1012,7 @@
       "description": "Implement filtered log streaming from agent containers. Debug tool for Tinkerers.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-003"
@@ -1039,7 +1039,7 @@
       "description": "Implement trend-based health prediction: memory growth projection, credential expiry warnings, response quality degradation detection.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-004",
@@ -1071,7 +1071,7 @@
       "description": "Detect available integrations automatically during init: discover calendar/task services from email provider, detect Ollama models, suggest optimal routing.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-017",
@@ -1100,7 +1100,7 @@
       "description": "Implement decision trace: when user asks why the agent took an action, cite the specific rules, preferences, and context that drove the decision.",
       "priority": "could",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-022",
@@ -1160,7 +1160,7 @@
       "description": "Implement how ClawHQ acquires the OpenClaw source for building container images: git clone, release tarball download, or version pinning. Required before FEAT-008 (two-stage Docker build) can ship.",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-001"
@@ -1190,7 +1190,7 @@
       "description": "Implement safe skill lifecycle management: install, list, update, and remove OpenClaw skills with sandboxed vetting and rollback capability. The safety layer (sandboxing, vetting, rollback) is what differentiates ClawHQ from raw OpenClaw skill installation.",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-002",
@@ -1221,7 +1221,7 @@
       "description": "Implement service integration lifecycle: add, remove, swap, and list integrations (email, calendar, tasks, etc.) with provider abstraction so the agent talks to 'calendar' not 'Google Calendar.' Swapping provider changes the backend without changing agent behavior.",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-002",
@@ -1253,7 +1253,7 @@
       "description": "Implement LLM and service API provider lifecycle: add providers with per-category task opt-in, list with egress stats, remove with routing policy update and firewall tightening, test with live inference call.",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-002",
@@ -1285,7 +1285,7 @@
       "description": "Implement CLI tool installation into the agent container: validate against a known-safe allowlist, add to Stage 2 Dockerfile, trigger Stage 2 rebuild. Enables the agent to use tools like jq, ffmpeg, pandoc, gh that the user needs.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-008"
@@ -1314,7 +1314,7 @@
       "description": "Implement rollback capability for all Evolve changes (skill install, integration add, provider add, tool install, identity change). Every Evolve action creates a rollback snapshot. Expanding agent capabilities is never a one-way door.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-038",
@@ -1347,7 +1347,7 @@
       "description": "Implement AI-powered and allowlist-based vetting for community skill and tool installs: source verification, suspicious pattern scanning, VirusTotal integration, and evolve audit trail.",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "passes": false,
       "dependsOn": [
         "FEAT-038",
