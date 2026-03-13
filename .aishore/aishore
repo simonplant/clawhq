@@ -42,12 +42,12 @@ ensure_tmpdir() {
 AISHORE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$AISHORE_ROOT")"
 
-# Version: read from VERSION file (single source of truth)
-if [[ ! -f "$PROJECT_ROOT/VERSION" ]]; then
-    echo "ERROR: VERSION file not found at $PROJECT_ROOT/VERSION" >&2
-    exit 1
+# Version: read from .aishore/VERSION (single source of truth)
+if [[ -f "$AISHORE_ROOT/VERSION" ]]; then
+    AISHORE_VERSION=$(cat "$AISHORE_ROOT/VERSION")
+else
+    AISHORE_VERSION="unknown"
 fi
-AISHORE_VERSION=$(cat "$PROJECT_ROOT/VERSION")
 
 # Tool paths (in .aishore/ - can be updated)
 CONFIG_FILE="$AISHORE_ROOT/config.yaml"
@@ -119,6 +119,9 @@ build_context() {
     local claude_md
     claude_md=$(find_claude_md)
     [[ -n "$claude_md" ]] && context="$context @$claude_md"
+    local project_docs
+    project_docs=$(find_project_docs)
+    [[ -n "$project_docs" ]] && context="$context $project_docs"
     echo "$context"
 }
 
@@ -187,7 +190,7 @@ require_tool() {
 }
 
 # ============================================================================
-# AUTO-DETECT CLAUDE.MD
+# AUTO-DETECT PROJECT DOCS
 # ============================================================================
 
 find_claude_md() {
@@ -197,6 +200,16 @@ find_claude_md() {
         [[ -f "$path" ]] && { echo "$path"; return 0; }
     done
     return 0
+}
+
+find_project_docs() {
+    local dir="$PROJECT_ROOT"
+    local docs=""
+    for path in "$dir/ARCHITECTURE.md" "$dir/docs/ARCHITECTURE.md" \
+                "$dir/PRODUCT.md" "$dir/docs/PRODUCT.md"; do
+        [[ -f "$path" ]] && docs="$docs @$path"
+    done
+    echo "$docs"
 }
 
 get_claudemd_snippet() {
@@ -1664,8 +1677,8 @@ cmd_update() {
     # Fetch remote version from VERSION file
     log_info "Checking for updates..."
     local remote_version
-    remote_version=$($fetch_cmd "$repo_url/VERSION" 2>/dev/null | tr -d '[:space:]') || {
-        log_error "Failed to fetch remote version from $repo_url/VERSION"
+    remote_version=$($fetch_cmd "$repo_url/.aishore/VERSION" 2>/dev/null | tr -d '[:space:]') || {
+        log_error "Failed to fetch remote version from $repo_url/.aishore/VERSION"
         exit 1
     }
 
@@ -1684,7 +1697,7 @@ cmd_update() {
 
     # Show what will be updated
     echo "Files to update:"
-    echo "  VERSION"
+    echo "  .aishore/VERSION"
     echo "  .aishore/aishore"
     echo "  .aishore/gitignore-entries.txt"
     echo "  .aishore/agents/developer.md"
@@ -1755,9 +1768,12 @@ cmd_update() {
 
     # Stage VERSION file
     log_info "Fetching VERSION..."
-    if ! $fetch_cmd "$repo_url/VERSION" > "$staging_dir/VERSION" 2>/dev/null; then
+    if ! $fetch_cmd "$repo_url/.aishore/VERSION" > "$staging_dir/VERSION" 2>/dev/null; then
         log_error "Failed to fetch VERSION file"
         exit 1
+    fi
+    if ! verify_or_abort "$staging_dir/VERSION" "VERSION" ".aishore/VERSION"; then
+        all_verified=false
     fi
 
     # Stage aishore script
@@ -1801,7 +1817,7 @@ cmd_update() {
     fi
 
     log_info "All files verified — installing..."
-    mv "$staging_dir/VERSION" "$PROJECT_ROOT/VERSION"
+    mv "$staging_dir/VERSION" "$AISHORE_ROOT/VERSION"
     mv "$staging_dir/aishore" "$AISHORE_ROOT/aishore"
     chmod +x "$AISHORE_ROOT/aishore"
     mv "$staging_dir/gitignore-entries.txt" "$AISHORE_ROOT/gitignore-entries.txt"
@@ -1818,6 +1834,7 @@ cmd_checksums() {
 
     local checksum_file="$AISHORE_ROOT/checksums.sha256"
     local files=(
+        .aishore/VERSION
         .aishore/aishore
         .aishore/gitignore-entries.txt
     )
