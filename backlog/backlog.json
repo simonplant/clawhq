@@ -306,9 +306,9 @@
       "title": "Status dashboard \u2014 clawhq status",
       "description": "Implement `clawhq status` \u2014 single-pane view of agent health, integrations, cost, cron, workspace metrics, and data egress summary.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-003",
         "FEAT-004",
@@ -333,7 +333,8 @@
         "Works gracefully when agent is not running (shows 'stopped' state)"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Tinkerer's window into their agent. Pairs with doctor for observability. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/status.go`, `internal/status/`) \u2014 correct to TypeScript src/ paths (`src/cli/status.ts`, new `src/status/` or inline in `src/server/`)."
+      "groomingNotes": "Tinkerer's window into their agent. Pairs with doctor for observability. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/status.go`, `internal/status/`) \u2014 correct to TypeScript src/ paths (`src/cli/status.ts`, new `src/status/` or inline in `src/server/`).",
+      "completedAt": "2026-03-13T11:16:18-07:00"
     },
     {
       "id": "FEAT-011",

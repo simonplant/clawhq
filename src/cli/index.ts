@@ -27,6 +27,8 @@ import { runFixes } from "../doctor/fix.js";
 import { formatJson, formatTable, runChecks } from "../doctor/runner.js";
 import type { DoctorContext } from "../doctor/types.js";
 import { formatCredTable, runProbesFromFile } from "../security/credentials/index.js";
+import { collectStatus } from "../status/collector.js";
+import { formatDashboard, formatJson as formatStatusJson } from "../status/format.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string; description: string };
@@ -390,7 +392,71 @@ program
       process.exitCode = 1;
     }
   });
-program.command("status").description("Show agent status dashboard");
+program
+  .command("status")
+  .description("Show agent status dashboard")
+  .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
+  .option("--env <path>", "Path to .env file")
+  .option("--compose <path>", "Path to docker-compose.yml")
+  .option("--gateway-host <host>", "Gateway host", "127.0.0.1")
+  .option("--gateway-port <port>", "Gateway port", "18789")
+  .option("--egress-log <path>", "Path to egress log file")
+  .option("--json", "Output as JSON")
+  .option("--watch", "Live-updating display (refresh every 5s)")
+  .action(async (opts: {
+    home: string;
+    env?: string;
+    compose?: string;
+    gatewayHost: string;
+    gatewayPort: string;
+    egressLog?: string;
+    json?: boolean;
+    watch?: boolean;
+  }) => {
+    const statusOpts = {
+      openclawHome: opts.home.replace(/^~/, process.env.HOME ?? "~"),
+      envPath: opts.env?.replace(/^~/, process.env.HOME ?? "~"),
+      composePath: opts.compose,
+      gatewayHost: opts.gatewayHost,
+      gatewayPort: parseInt(opts.gatewayPort, 10),
+      egressLogPath: opts.egressLog?.replace(/^~/, process.env.HOME ?? "~"),
+    };
+
+    const run = async () => {
+      const report = await collectStatus(statusOpts);
+      if (opts.json) {
+        console.log(formatStatusJson(report));
+      } else {
+        console.log(formatDashboard(report));
+      }
+    };
+
+    if (!opts.watch) {
+      await run();
+      return;
+    }
+
+    // Watch mode: clear screen and refresh every 5 seconds
+    const refresh = async () => {
+      process.stdout.write("\x1B[2J\x1B[H");
+      await run();
+    };
+
+    await refresh();
+    const interval = setInterval(() => {
+      refresh().catch((err: unknown) => {
+        console.error(err instanceof Error ? err.message : String(err));
+      });
+    }, 5000);
+
+    // Clean exit on SIGINT/SIGTERM
+    const cleanup = () => {
+      clearInterval(interval);
+      process.exit(0);
+    };
+    process.on("SIGINT", cleanup);
+    process.on("SIGTERM", cleanup);
+  });
 
 // Backup command with subcommands
 const backupCmd = program
