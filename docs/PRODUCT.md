@@ -44,7 +44,25 @@ These aren't aspirations. They're constraints that flow through every design dec
 
 ---
 
-## Who It's For
+## What Your Day Looks Like
+
+<!--
+This is the plain-language version of the product for the Privacy Migrant.
+No technical details. Just the experience.
+-->
+
+**Without ClawHQ (today):**
+You wake up and check Gmail — Google reads every email. You ask ChatGPT to help draft a response — OpenAI stores the conversation. You check Google Calendar — Google knows your schedule. You ask Siri to add a reminder — Apple logs it. By 9 AM, four companies know more about your day than your spouse does. You didn't choose this. There's just no alternative that works.
+
+**With ClawHQ (after setup):**
+You wake up to a message from your agent on Telegram: "Morning. You have 3 meetings today. I triaged 40 emails overnight — 6 need you, the rest are handled. John moved Thursday's standup, which conflicts with your client call — I've drafted a reschedule for your approval. Your focus block from 10-12 is protected. Also, you have an investor update due Friday — I've pulled the latest metrics and drafted an outline based on last quarter's format. Want me to send the reschedule?"
+
+You reply "yes" and get on with your morning.
+
+At the end of the day, your agent sends a summary: what it handled, what it flagged, what it learned ("you rejected the 2 PM meeting suggestion — noted: no meetings during focus blocks"). Zero data left your machine today — the entire day ran on local models.
+
+**After 6 months:**
+The agent auto-sends routine email replies in your voice without asking. It knows that meetings with your top 3 clients are always high priority. It preps investor updates unprompted because it learned the quarterly rhythm. It notices when your schedule is overloaded and proactively reschedules low-priority meetings. It built itself a custom tool for parsing your weekly analytics report because you kept asking for the same data. You approved all of this along the way — nothing happened without your say-so — but you barely think about it anymore. It just works, and none of it goes through Google, OpenAI, Apple, or anyone else.
 
 **The Privacy Migrant** — Currently using ChatGPT, Google Assistant, or Apple Intelligence and increasingly uncomfortable with the trade-off. Not necessarily technical — they might run a small business, manage a household, or work in a field where confidentiality matters (legal, medical, financial). Their biggest headache is that there's no alternative that doesn't require becoming a sysadmin. They'd switch to something that gives them the same daily utility without the surveillance.
 
@@ -64,12 +82,41 @@ These aren't aspirations. They're constraints that flow through every design dec
 
 ---
 
+## How the Agent Gets Better
+
+<!--
+This is the unified narrative for the improvement loop. Individual stories
+reference this section. It should be understandable without any technical context.
+-->
+
+The agent doesn't improve by magic. It improves through a concrete feedback loop that compounds over time:
+
+**Week 1 — You're the teacher.** The agent handles tasks but asks for approval on everything: sending emails, rescheduling meetings, triaging messages. You approve, reject, and correct. Every correction is classified — is this a preference ("I always want meetings with Sarah to be high priority"), a boundary ("never touch my health data"), or a one-time override ("just this once, skip the morning brief")? The agent proposes nothing on its own yet.
+
+**Month 1 — It starts to anticipate.** After enough corrections in the same category (default: 5), the system proposes a preference update: "You've corrected email urgency for [client] 7 times — update: emails from [client] are always high priority?" You approve, and the rule is written to the agent's identity files. The agent also starts structuring your interaction history into a knowledge graph — not flat logs, but organized preferences, relationship patterns, domain expertise, and scheduling habits. This structured knowledge means it retrieves relevant context without stuffing entire conversation histories into every prompt.
+
+**Month 3 — It earns more autonomy.** The system analyzes your approval queue: "You approved 47 of 48 email sends this month. Auto-approve routine replies?" You accept, and routine emails stop hitting the approval queue. Meanwhile, background reflection runs during idle time — the agent reviews its own knowledge, detects patterns you haven't explicitly stated, and proposes new connections. ("You usually reschedule Friday afternoon meetings when you have an investor call that week — should I do this automatically?")
+
+**Month 6 — It works for you.** The agent drafts investor updates unprompted because it learned the quarterly rhythm. It auto-schedules focus blocks because it knows your productivity patterns. It built itself a custom tool for parsing your analytics report because you kept asking for the same data. Every change was approved by you. Every action is logged and explainable. And if anything goes wrong, every preference update has rollback capability.
+
+This loop — corrections → preference signals → identity updates → autonomy tuning → self-improvement — is why an agent at 6 months is dramatically more useful than at day 1. It's also why people don't go back to ChatGPT: ChatGPT doesn't learn your patterns, doesn't earn autonomy, and doesn't get better at being *your* agent over time.
+
+---
+
 ## What We're Building
 
 <!--
 Each toolchain is a feature. Stories are atomic — one behavior each.
 Personas: Privacy Migrant, Tinkerer, Fleet Operator.
 Impl notes reference OPENCLAW-REFERENCE.md for implementation details.
+
+PRIORITY KEY:
+  P0-critical = Nothing works without this. Ship-blocking.
+  P0          = Important for launch quality. Not blocking but close.
+  P1          = Valuable, can follow fast after launch.
+  P2          = Future phase.
+
+SIZE KEY: S = hours, M = days, L = weeks, XL = multi-week
 -->
 
 ### 1. Plan — Agent Setup
@@ -101,14 +148,14 @@ From "I want to replace Google Assistant" to a running agent — in under 5 minu
   - Given a user connects their email, when auto-detection runs, then it discovers available calendar and task integrations from the same provider (e.g., iCloud email → suggest iCloud calendar) and pre-fills the integration config
   - Given a user has Ollama running locally, when detection runs, then it discovers available models and recommends the optimal routing strategy for the selected template
 
-- [ ] **Config generation with landmine prevention** `P0` `L`
+- [ ] **Config generation with landmine prevention** `P0-critical` `L`
   As a Tinkerer, I want the generated config to be impossible to break so that I never hit a silent failure.
   - Given any setup path completes (AI inference, questionnaire, or template), when config is generated, then it produces: `openclaw.json`, `.env`, `docker-compose.yml`, all identity files, `cron/jobs.json`
   - Given config is generated, when validation runs, then every file passes all 14 landmine rules — generation cannot produce a broken config
   - Given a generated `openclaw.json`, when the Gateway loads it, then it passes TypeBox schema validation with zero unknown keys
   - _Impl note: See OPENCLAW-REFERENCE.md → The 14 Configuration Landmines for full rule set. See → Config Generator Output for file-to-landmine mapping._
 
-- [ ] **Config validation engine** `P0` `M`
+- [ ] **Config validation engine** `P0-critical` `M`
   As a Tinkerer, I want every config write validated against all known failure modes so that I never accidentally break my agent.
   - Given any config change (via any path), when the change is applied, then all 14 landmine rules are checked pre-write
   - Given a validation failure, when results are shown, then each failure includes the specific rule violated, what will break, and exact fix instructions
@@ -123,7 +170,7 @@ From "I want to replace Google Assistant" to a running agent — in under 5 minu
 
 The agent's brain should run on your hardware by default. Cloud APIs are the escalation path, not the default — and every escalation is visible, auditable, and user-approved.
 
-- [ ] **Local-first model routing** `P0` `L`
+- [ ] **Local-first model routing** `P0-critical` `L`
   As a Privacy Migrant, I want my agent to use local models for everything it can and only call cloud APIs when I've explicitly allowed it so that my data stays on my machine by default.
   - Given a fresh install with Ollama running, when the agent processes a task, then it routes to the best available local model first
   - Given a task exceeds local model capability (determined by task complexity scoring), when escalation is needed, then the agent checks user-configured escalation policy before calling any cloud API
@@ -158,7 +205,7 @@ The agent's brain should run on your hardware by default. Cloud APIs are the esc
 
 From source code to auditable, reproducible container images — with every tool, skill, and integration baked in. Two-stage Docker build so most rebuilds take seconds, not minutes.
 
-- [ ] **Two-stage Docker build** `P0` `L`
+- [ ] **Two-stage Docker build** `P0-critical` `L`
   As a Tinkerer, I want to build my agent image from source so that I can audit every line of code running in the container.
   - Given a user runs `clawhq build`, when the build starts, then Stage 1 (base image) builds only if upstream or apt packages changed; Stage 2 (custom layer) completes in seconds
   - Given the build completes, when verification runs, then both image layers exist, declared binaries are executable, and a build manifest is generated
@@ -176,21 +223,21 @@ From source code to auditable, reproducible container images — with every tool
 
 Hardened by default, isolated by context, monitored continuously. Every conversation runs in its own container. Every secret is managed. Every credential is health-checked. Every skill is vetted. Security is the baseline, not a feature flag.
 
-- [ ] **Container hardening** `P0` `L`
+- [ ] **Container hardening** `P0-critical` `L`
   As a Tinkerer, I want my agent container hardened automatically based on my template's security posture so that I don't have to manually configure Docker security options.
   - Given a template with `security.posture: hardened`, when the deployment bundle is generated, then `docker-compose.yml` includes: `cap_drop: ALL`, read-only rootfs, `no-new-privileges`, non-root UID 1000, tmpfs with noexec/nosuid, ICC disabled, resource limits per posture level
   - Given multiple contexts exist (work group, family group, personal), when the agent handles messages from different contexts, then each context runs in its own isolated container with its own filesystem and memory — a compromised or misbehaving agent in one context cannot access data from another
   - Given the container is running, when Doctor checks security, then it verifies all hardening controls are active, per-context isolation is enforced, and alerts on any regression
   - _Impl note: Per-context container isolation is the architectural commitment that makes ClawHQ's security OS-level, not application-level. OpenClaw runs everything in one Node process with shared memory — session-level DM scope is a config setting, not a security boundary. ClawHQ enforces isolation at the container level so that even a prompt injection in one context can't leak data from another. See OPENCLAW-REFERENCE.md → Container Hardening Matrix for posture comparison._
 
-- [ ] **Egress firewall** `P0` `M`
+- [ ] **Egress firewall** `P0-critical` `M`
   As a Tinkerer, I want outbound network traffic restricted so that my agent can't exfiltrate data to unexpected destinations.
   - Given `clawhq up` runs, when the container starts, then iptables chain `CLAWHQ_FWD` is applied: ESTABLISHED/RELATED → DNS (53) → HTTPS (443) to allowlisted domains only (configured per template + user cloud opt-in) → LOG+DROP everything else
   - Given a cloud API provider is opted-in for specific categories, when the firewall is generated, then only that provider's API domains are allowlisted — not the entire internet over HTTPS
   - Given `docker compose down` was run, when `clawhq up` or `clawhq restart` runs, then the firewall is automatically reapplied
   - _Impl note: See OPENCLAW-REFERENCE.md → Egress Firewall Implementation. The domain-allowlist approach is stronger than the original "allow all HTTPS" — it enforces the local-first principle at the network level._
 
-- [ ] **Secrets management** `P0` `M`
+- [ ] **Secrets management** `P0-critical` `M`
   As a Tinkerer, I want secrets managed separately from config so that credentials never leak into config files or version control.
   - Given the config generator runs, when secrets are collected, then they're written to `.env` with 600 permissions, never to `openclaw.json` or workspace files
   - Given Doctor runs, when the secrets check executes, then it scans all config files for embedded secrets and alerts on any found
@@ -217,7 +264,7 @@ One command: container up, firewall applied, networks verified, channels connect
   - Given `clawhq up` runs, when pre-flight checks execute, then it validates: Docker daemon, images exist, config valid, secrets present, external networks exist, ports available, permissions correct, Ollama reachable (if local models configured), no orphaned containers
   - Given any check fails, then the error includes the exact fix
 
-- [ ] **Full deploy sequence** `P0` `L`
+- [ ] **Full deploy sequence** `P0-critical` `L`
   As a Tinkerer, I want one command to go from built images to a running, verified agent.
   - Given `clawhq up` runs, then it sequences: compose up → firewall apply → health poll (60s timeout) → cron scheduler verify → channel connection verify → smoke test
   - Given health poll fails, then container logs, network state, and config issues are shown
@@ -232,7 +279,7 @@ One command: container up, firewall applied, networks verified, channels connect
   As a Tinkerer, I want automatic verification that the agent is actually working — not just "container healthy but agent broken."
   - Given deployment and channel connection are complete, then the smoke test sends a test message, verifies coherent response, confirms identity files are loaded, and probes each connected integration
 
-- [ ] **Graceful shutdown and restart** `P0` `S`
+- [ ] **Graceful shutdown and restart** `P0-critical` `S`
   As a Tinkerer, I want shutdown that preserves state and restart that reapplies firewall.
   - Given `clawhq down` runs, then containers stop gracefully preserving workspace state
   - Given `clawhq restart` runs, then containers restart, firewall is reapplied, health is re-verified
@@ -246,7 +293,7 @@ One command: container up, firewall applied, networks verified, channels connect
 
 Not just diagnostics and dashboards — predictive intelligence that catches problems before they happen, fixes what it can automatically, and tells you what your agent actually did.
 
-- [ ] **Doctor — preventive diagnostics** `P0` `XL`
+- [ ] **Doctor — preventive diagnostics** `P0-critical` `XL`
   As a Tinkerer, I want a single command that checks every known failure mode so that I catch problems before they cause visible failures.
   - Given `clawhq doctor` runs, then it checks: all 14 configuration landmines, file permissions, credential health (live probes), cross-file consistency, memory health, cron health, container resources, network state, config drift, model availability (Ollama models still present and loadable)
   - Given checks complete, then each shows pass/warn/fail with specific fix instructions
@@ -273,7 +320,7 @@ Not just diagnostics and dashboards — predictive intelligence that catches pro
   - Given budget hits 75%, when the router adjusts, then it shifts eligible tasks from cloud to local models before alerting
   - Given budget hits 100%, when the cap is enforced, then cloud-escalation stops entirely and the agent operates local-only until the budget resets — never pauses completely
 
-- [ ] **Encrypted backup and restore** `P0` `L`
+- [ ] **Encrypted backup and restore** `P0-critical` `L`
   As a Tinkerer, I want encrypted snapshots of my agent's state so that I can recover from any failure.
   - Given `clawhq backup` runs, then workspace, config, credentials, cron, and identity files are encrypted with GPG
   - Given `clawhq backup restore <id>` runs, then it validates integrity, applies restore, runs Doctor, and verifies the agent starts
@@ -416,7 +463,7 @@ The biggest barrier to adoption isn't setup complexity — it's starting from ze
 
 End of life done right. Export everything portable. Destroy everything else. Verify the destruction cryptographically.
 
-- [ ] **Portable export** `P0` `L`
+- [ ] **Portable export** `P0-critical` `L`
   As a Tinkerer, I want to export my agent's identity, memory, config, and workspace into a portable bundle so that I can migrate or start fresh without losing everything.
   - Given `clawhq export` runs, then it includes: identity files + template source, memory archive (all tiers), workspace snapshot, config (secrets redacted), integration manifest (credentials excluded), interaction history, build manifest, and a README.md explaining bundle structure and how to use with raw OpenClaw
   - Given `clawhq export --mask-pii` runs, then PII is masked throughout
@@ -506,11 +553,17 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 
 ---
 
+## Why Not the Alternatives
+
+10+ OpenClaw hosting providers exist — they all stop at deploy. You get default config on shared infrastructure with no lifecycle management. NanoClaw solves container isolation brilliantly but has no configuration management, no memory lifecycle, no operational tooling, and no path for non-technical users — it's "fork the code and have Claude rewrite it," which is powerful for hackers and useless for everyone else. memU has the best memory architecture in the space but it's a memory layer, not a control panel — it doesn't handle security, deployment, identity governance, or decommissioning. Point tools exist for security scanning, dashboards exist for monitoring, and guides exist for hardening — but nobody stitches the full lifecycle together. ClawHQ's moat is that it covers all seven phases from plan through decommission in one product, with opinionated security defaults that work out of the box, and a feedback loop that makes the agent get better over time. Nobody else goes past deploy.
+
+---
+
 ## Build Order
 
 **Phase 0 — Concierge**
-Stories: None (manual). We set up 3-5 agents by hand for real users. We ARE the control panel. Focus on Privacy Migrants leaving specific big-tech products.
-Done when: We know which use-case templates matter, which integrations are most requested, what breaks first, and what keeps people engaged at 30 days.
+Stories: None (manual). We set up 3-5 agents by hand for real users. We ARE the control panel. Focus on Privacy Migrants leaving specific big-tech products. Document exactly what they're migrating from, what features they depend on, and what breaks when they switch — this research directly shapes use-case templates (Phase 2) and migration tooling (Phase 3).
+Done when: We know which use-case templates matter, which integrations are most requested, what breaks first, what keeps people engaged at 30 days, and what the migration experience from each big-tech product actually requires.
 
 **Phase 1 — Self-install panel (Operate + Secure + Deploy + Model Routing)**
 Stories: Doctor, Predictive health alerts, Status dashboard, Intelligent cost routing, Full deploy sequence, Pre-flight checks, Graceful shutdown, Egress firewall (with domain allowlisting), Container hardening, Secrets management, Encrypted backup, Safe upstream updates, Two-stage Docker build, Health self-repair, Local-first model routing, Per-category cloud opt-in, Data egress visibility
