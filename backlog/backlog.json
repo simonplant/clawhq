@@ -572,8 +572,130 @@
     },
     {
       "id": "FEAT-020",
-      "title": "Identity governance — token budget and drift detection",
-      "description": "Implement identity file governance: track token budget per file, detect staleness, flag contradictions across identity files.",
+      "title": "Skill management — clawhq skill install/list/remove/update",
+      "description": "Implement safe skill lifecycle: install skills with sandboxed vetting, list installed skills, update with rollback, remove cleanly. The primary way users expand what their agent can do.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-008", "FEAT-002"],
+      "steps": [
+        "Create cmd/skill.go with skill subcommand and install/list/remove/update actions",
+        "Create internal/skill/ package",
+        "Implement skill registry client: fetch skill metadata from known registries or URLs",
+        "Implement sandbox runner: install skill in isolated container, scan for suspicious patterns (outbound calls, filesystem access outside workspace, credential access)",
+        "Implement vetting report: present scan results for user approval before installation",
+        "Implement install: copy skill to workspace, update TOOLS.md, trigger Stage 2 rebuild if container-level dependencies needed",
+        "Implement list: show installed skills with version, source, status (active/disabled), last-used timestamp",
+        "Implement remove: deactivate skill, remove from TOOLS.md, create rollback snapshot",
+        "Implement update: sandbox new version, vet, replace old version, keep old version as rollback",
+        "Write unit tests for vetting logic and TOOLS.md updates"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq skill list` shows installed skills with version and status",
+        "`clawhq skill install <name>` sandboxes, vets, and prompts for approval before installing",
+        "`clawhq skill remove <name>` cleanly removes skill with rollback available",
+        "`clawhq skill update <name>` vets new version before replacing old",
+        "TOOLS.md is updated automatically on install/remove",
+        "Suspicious patterns in skills are flagged during vetting"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Core Evolve feature. Primary way users expand agent capabilities."
+    },
+    {
+      "id": "FEAT-021",
+      "title": "Integration management — clawhq integrate add/remove/swap/list",
+      "description": "Implement safe integration lifecycle: add new service integrations with credential validation, remove cleanly, swap providers within the same category (e.g., Gmail -> iCloud).",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-005", "FEAT-007", "FEAT-002"],
+      "steps": [
+        "Create cmd/integrate.go with integrate subcommand and add/remove/swap/list actions",
+        "Create internal/integrate/ package",
+        "Define integration categories: calendar, email, tasks, messaging, storage, custom",
+        "Implement provider registry: known providers per category with setup instructions",
+        "Implement add flow: provider selection -> credential setup with live validation -> config generation -> TOOLS.md update -> egress firewall allowlist update -> doctor health check",
+        "Implement remove flow: clean credential from .env -> uninstall tool -> update TOOLS.md -> update identity files -> flag orphaned cron dependencies -> tighten firewall allowlist",
+        "Implement swap flow: add new provider -> migrate category config -> remove old provider",
+        "Implement list: show integrations with provider, status, credential health, last-used timestamp",
+        "Write unit tests for add/remove/swap flows"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq integrate add calendar` walks through provider selection and credential setup",
+        "Credentials are validated live during setup",
+        "Egress firewall allowlist is updated when integrations are added/removed",
+        "`clawhq integrate swap calendar icloud` swaps provider without changing agent behavior",
+        "`clawhq integrate list` shows all integrations with health status",
+        "Remove cleans up credentials, tools, and firewall entries"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Core Evolve feature. How users connect their agent to new services."
+    },
+    {
+      "id": "FEAT-022",
+      "title": "API provider management — clawhq provider add/list/remove/test",
+      "description": "Implement API provider lifecycle: add LLM providers (OpenAI, Anthropic, Google) and service APIs with credential validation, per-category opt-in, and egress firewall updates.",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-011", "FEAT-005", "FEAT-007"],
+      "steps": [
+        "Create cmd/provider.go with provider subcommand and add/list/remove/test actions",
+        "Create internal/provider/ package",
+        "Implement provider registry: known LLM providers (Anthropic, OpenAI, Google) and service API providers with API endpoints and credential formats",
+        "Implement add flow: API key setup -> credential validation -> category opt-in configuration (which task categories can use this provider) -> egress firewall allowlist update -> routing policy update",
+        "Implement list: show providers with name, credential status, allowed categories, egress stats (calls/tokens/cost today/week/month), routing priority",
+        "Implement remove: clean credential -> update routing policy to exclude provider -> tighten firewall allowlist -> verify tasks fall back to local or next provider",
+        "Implement test: send test inference call to verify provider is working end-to-end",
+        "Write unit tests for add/remove flows and routing policy updates"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq provider add openai` walks through API key setup and category opt-in",
+        "Adding a provider doesn't automatically route traffic — user must configure category opt-in",
+        "`clawhq provider list` shows credential status and egress stats",
+        "`clawhq provider remove <name>` cleans up and traffic falls back gracefully",
+        "`clawhq provider test <name>` verifies end-to-end connectivity",
+        "Egress firewall is updated when providers are added/removed"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Core Evolve feature. User-facing control for model routing engine."
+    },
+    {
+      "id": "FEAT-023",
+      "title": "CLI tool installation — clawhq tool install/list/remove",
+      "description": "Implement safe CLI tool installation into the agent container. Thin wrapper around Stage 2 Docker build that adds apt/apk packages with allowlist vetting.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-008"],
+      "steps": [
+        "Create cmd/tool.go with tool subcommand and install/list/remove actions",
+        "Create internal/tool/ package",
+        "Implement package allowlist: curated list of known-safe packages (jq, ffmpeg, pandoc, gh, curl, etc.) with descriptions",
+        "Implement install: validate against allowlist -> add to Stage 2 Dockerfile -> trigger Stage 2 rebuild",
+        "Implement non-allowlisted warning: flag for manual review with package description and permission requirements",
+        "Implement list: show all installed tools (base + user-added) with version and source",
+        "Implement remove: remove from Stage 2 Dockerfile -> trigger rebuild",
+        "Write unit tests for allowlist checking and Dockerfile modification"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq tool install jq` adds package and triggers Stage 2 rebuild",
+        "Non-allowlisted packages are flagged with a warning before installation",
+        "`clawhq tool list` shows base and user-added tools with versions",
+        "`clawhq tool remove <package>` removes and triggers rebuild",
+        "Stage 2 Dockerfile is modified correctly (not Stage 1)"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Evolve feature. Expands agent's CLI toolkit safely."
+    },
+    {
+      "id": "FEAT-024",
+      "title": "Identity governance — token budget and staleness tracking",
+      "description": "Implement identity file governance: track token budget per file, detect staleness, provide interactive identity review and update.",
       "priority": "should",
       "status": "todo",
       "readyForSprint": false,
@@ -581,87 +703,106 @@
       "dependsOn": ["FEAT-002"],
       "steps": [
         "Create internal/identity/ package",
-        "Implement token counter for identity files (approximate, using tiktoken-go or word-based estimation)",
+        "Implement token counter for identity files (approximate, using word-based estimation)",
         "Implement budget tracking: per-file token count vs bootstrapMaxChars (default 20K)",
         "Implement warnings at 70% and 90% budget thresholds",
         "Implement staleness detection: flag files not updated in configurable period",
-        "Implement consistency checker: parse identity files for contradictions (using local LLM)",
         "Add identity section to doctor checks",
-        "Create cmd/evolve.go with `clawhq evolve --identity` subcommand for identity review"
+        "Create `clawhq evolve --identity` subcommand for interactive identity review with diffs before applying"
       ],
       "acceptanceCriteria": [
         "Token budget is tracked per identity file with threshold warnings",
         "Staleness detection flags files that haven't been updated",
-        "Consistency checker identifies contradictions across identity files",
         "Doctor reports identity health in its output",
-        "`clawhq evolve --identity` triggers interactive identity review"
+        "`clawhq evolve --identity` triggers interactive identity review with diffs"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — prevents identity drift over time."
+      "groomingNotes": "Evolve feature. Prevents identity file bloat and drift."
     },
     {
-      "id": "FEAT-021",
-      "title": "Memory lifecycle management — structured knowledge graph",
-      "description": "Implement tiered memory management: transform raw conversations into structured knowledge, manage hot/warm/cold tiers with LLM-powered summarization, background reflection.",
+      "id": "FEAT-025",
+      "title": "Supply chain security for skills and tools",
+      "description": "Implement vetting pipeline for community skills and CLI tool packages: AI-powered scanning, allowlists, VirusTotal integration, and full audit trail.",
       "priority": "should",
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-011", "FEAT-002"],
+      "dependsOn": ["FEAT-020", "FEAT-023"],
       "steps": [
-        "Create internal/memory/ package",
-        "Define StructuredMemory types: preferences (hierarchical), relationships (cross-linked), domain_expertise, context",
-        "Implement memory ingestion: parse raw conversation logs into structured knowledge entries",
-        "Implement hot tier: recent structured knowledge, <100KB, <7 days",
-        "Implement warm tier: LLM-summarized knowledge, PII-aware, <90 days",
-        "Implement cold tier: further compressed, PII-masked, >90 days (or delete per policy)",
-        "Implement tier transitions with local model summarization",
-        "Implement background reflection: analyze existing memories for new connections during idle time",
-        "Add memory section to status dashboard and doctor checks"
+        "Create internal/vetting/ package",
+        "Implement pattern scanner: detect suspicious patterns in skill code (outbound network calls, credential access, filesystem writes outside workspace)",
+        "Implement VirusTotal integration for artifact scanning (optional, requires API key)",
+        "Implement allowlist manager: maintain and check against known-safe package/skill lists",
+        "Implement vetting report generator: summarize findings for user review",
+        "Create `clawhq evolve audit` command: show full change history (skills installed, tools added, integrations connected, providers configured) with timestamps and rollback availability"
       ],
       "acceptanceCriteria": [
-        "Raw conversations are transformed into structured knowledge (not stored as flat logs)",
-        "Hot -> warm tier transition summarizes while preserving key information",
-        "Warm -> cold tier further compresses and masks PII",
-        "Background reflection detects and proposes new connections",
-        "All summarization runs on local models by default",
-        "Memory health is reported in doctor and status"
+        "Suspicious patterns in skill code are detected and flagged",
+        "Non-allowlisted packages are blocked with risk explanation",
+        "`clawhq evolve audit` shows complete change history with rollback status",
+        "Vetting runs automatically during skill install and tool install flows"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — biggest differentiator for cost and local model viability."
+      "groomingNotes": "Evolve safety net. Makes capability expansion trustworthy."
     },
     {
-      "id": "FEAT-022",
-      "title": "Activity digest and approval queue",
-      "description": "Implement daily activity digest and approval queue for high-stakes agent actions. The transparency layer that builds user trust.",
+      "id": "FEAT-026",
+      "title": "Evolve rollback — undo any capability change",
+      "description": "Implement rollback for all Evolve changes: skill installs, integration adds, provider adds, tool installs, identity changes. Every change is reversible.",
       "priority": "should",
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-012", "FEAT-011"],
+      "dependsOn": ["FEAT-020", "FEAT-021", "FEAT-022"],
+      "steps": [
+        "Create internal/evolve/ package for change tracking",
+        "Define EvolveChange struct: id, timestamp, change_type, target, previous_state, new_state, rollback_snapshot_id, rollback_expires_at",
+        "Implement change logger: record every Evolve action with snapshot of previous state",
+        "Implement `clawhq evolve rollback <change-id>`: reverse specific change (restore files, revert config, rebuild image if needed)",
+        "Implement `clawhq evolve history`: show all changes with IDs, timestamps, and rollback status (available/expired)",
+        "Set rollback snapshot expiry (default: 30 days)",
+        "Write unit tests for rollback of each change type"
+      ],
+      "acceptanceCriteria": [
+        "Every Evolve action creates a rollback snapshot",
+        "`clawhq evolve rollback <id>` reverses the specific change",
+        "`clawhq evolve history` shows all changes with rollback availability",
+        "Rollback snapshots expire after configurable period",
+        "Rollback works for skills, integrations, providers, tools, and identity changes"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Evolve safety net. Expanding capabilities is never a one-way door."
+    },
+    {
+      "id": "FEAT-027",
+      "title": "Activity digest — clawhq digest",
+      "description": "Implement daily activity digest summarizing what the agent did, errors encountered, integrations used, and data egress. The transparency layer that builds user trust.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-012"],
       "steps": [
         "Create internal/digest/ package",
-        "Implement activity log collector: gather actions, errors, egress, approvals from the last period",
-        "Implement digest generator: local LLM summarizes activity into human-readable daily summary",
+        "Implement activity log collector: gather actions, errors, egress, from the last period",
+        "Implement digest generator: summarize activity into human-readable daily summary",
         "Implement privacy mode: summarize by category without showing content",
-        "Create internal/approval/ package",
-        "Implement approval queue: actions in requires-approval categories are queued",
-        "Implement approval resolution: approve, reject (with reason as preference signal), expire after timeout",
         "Create cmd/digest.go subcommand",
-        "Integrate approval queue with messaging channel (Telegram)"
+        "Add --json flag for machine-readable output",
+        "Add --period flag (today, week, month)"
       ],
       "acceptanceCriteria": [
         "`clawhq digest` shows human-readable activity summary",
-        "Digest includes: tasks completed, tasks queued, problems found with proposed solutions, egress summary",
+        "Digest includes: tasks completed, errors encountered, integrations used, egress summary",
         "Privacy mode summarizes by category without exposing content",
-        "Approval queue works for high-stakes actions (send email, create event, etc.)",
-        "Rejected approvals store reason as preference signal"
+        "--json flag outputs structured JSON",
+        "Works for arbitrary time periods"
       ],
       "groomedAt": "2026-03-12",
       "groomingNotes": "Phase 2 Transparency — builds trust with Privacy Migrants."
     },
     {
-      "id": "FEAT-023",
+      "id": "FEAT-028",
       "title": "Portable export — clawhq export",
       "description": "Implement full agent export: identity, memory, config, workspace as a portable bundle with README explaining how to use with raw OpenClaw. Zero lock-in.",
       "priority": "should",
@@ -672,7 +813,7 @@
       "steps": [
         "Create cmd/export.go with the export subcommand",
         "Create internal/export/ package",
-        "Implement bundle collector: identity files, memory archive (all tiers), workspace snapshot, config (secrets redacted), integration manifest, interaction history, build manifest",
+        "Implement bundle collector: identity files, workspace snapshot, config (secrets redacted), integration manifest, build manifest",
         "Generate README.md in bundle explaining structure and how to use with raw OpenClaw",
         "Implement --mask-pii flag: apply PII masking throughout",
         "Implement --no-memory flag: export only identity + config",
@@ -683,21 +824,20 @@
         "Bundle includes README explaining how to use without ClawHQ",
         "Secrets are redacted from exported config",
         "--mask-pii applies PII masking to all files",
-        "--no-memory exports only identity and config",
         "Bundle integrity can be verified via manifest hashes"
       ],
       "groomedAt": "2026-03-12",
       "groomingNotes": "Phase 2 Decommission — zero lock-in commitment."
     },
     {
-      "id": "FEAT-024",
+      "id": "FEAT-029",
       "title": "Verified destruction — clawhq destroy",
       "description": "Implement `clawhq destroy` with pre-decommission checklist, confirmed destruction sequence, and signed destruction manifest proving data was removed.",
       "priority": "should",
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-023", "FEAT-009"],
+      "dependsOn": ["FEAT-028", "FEAT-009"],
       "steps": [
         "Create cmd/destroy.go with the destroy subcommand",
         "Create internal/destroy/ package",
@@ -718,7 +858,7 @@
       "groomingNotes": "Phase 2 Decommission — data sovereignty includes the right to delete."
     },
     {
-      "id": "FEAT-025",
+      "id": "FEAT-030",
       "title": "PII and secret scanning — clawhq scan",
       "description": "Implement PII and secret scanning across agent-created files and repos. Catches exposures before they cause harm.",
       "priority": "should",
@@ -747,7 +887,7 @@
       "groomingNotes": "Phase 2 Security — catches exposures proactively."
     },
     {
-      "id": "FEAT-026",
+      "id": "FEAT-031",
       "title": "Channel connection — clawhq connect",
       "description": "Implement guided messaging channel setup for Telegram and WhatsApp with inline validation and bidirectional message flow testing.",
       "priority": "should",
@@ -774,125 +914,14 @@
       "groomingNotes": "Phase 2 Deploy — makes channel setup accessible to Privacy Migrants."
     },
     {
-      "id": "FEAT-027",
-      "title": "Preference learning from corrections",
-      "description": "Implement preference learning: classify user corrections (preference, boundary, one-time), accumulate signals, propose identity file updates after threshold.",
-      "priority": "could",
-      "status": "todo",
-      "readyForSprint": false,
-      "passes": false,
-      "dependsOn": ["FEAT-020", "FEAT-022"],
-      "steps": [
-        "Create internal/learning/ package",
-        "Define PreferenceSignal struct: timestamp, action_type, original_decision, correction, signal_type (preference/boundary/one-time), applied_to_identity",
-        "Implement correction classifier: determine if correction is preference, boundary, or one-time override",
-        "Implement signal accumulator: track signals per category",
-        "Implement threshold proposer: when 5+ signals in same category, propose preference update",
-        "Implement identity file updater: apply approved preference updates with rollback capability",
-        "Log all preference changes for audit trail"
-      ],
-      "acceptanceCriteria": [
-        "Corrections are classified into preference, boundary, or one-time override",
-        "After 5 signals in the same category, a preference update is proposed",
-        "User approves preference updates before they're applied",
-        "Applied preferences are logged with rollback capability",
-        "Boundary signals are never overridden by preference signals"
-      ],
-      "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — the 'gets better over time' mechanism."
-    },
-    {
-      "id": "FEAT-028",
-      "title": "Autonomy tuning from approval patterns",
-      "description": "Implement autonomy tuning: analyze approval queue history, recommend auto-approve/require-approval changes, with cooldown on rejected recommendations.",
-      "priority": "could",
-      "status": "todo",
-      "readyForSprint": false,
-      "passes": false,
-      "dependsOn": ["FEAT-022", "FEAT-027"],
-      "steps": [
-        "Create internal/autonomy/ package",
-        "Implement approval pattern analyzer: track approve/reject rates per action category",
-        "Implement recommendation engine: propose auto-approve when >95% approval rate, propose require-approval when >50% rejection rate",
-        "Implement cooldown: don't re-recommend rejected changes for configurable period",
-        "Implement policy updater: apply approved autonomy changes to approval policy",
-        "Log all autonomy changes for audit trail"
-      ],
-      "acceptanceCriteria": [
-        "Approval patterns are analyzed per action category",
-        "Auto-approve recommendations trigger at >95% approval rate",
-        "Rejected recommendations have configurable cooldown period",
-        "Autonomy changes require explicit user approval",
-        "All changes are logged with rollback capability"
-      ],
-      "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — reduces micromanagement over time."
-    },
-    {
-      "id": "FEAT-029",
-      "title": "ChatGPT conversation import",
-      "description": "Import ChatGPT export data, extract preferences and facts via local LLM, propose additions to identity/memory files. Phase 3 migration story.",
-      "priority": "could",
-      "status": "todo",
-      "readyForSprint": false,
-      "passes": false,
-      "dependsOn": ["FEAT-021", "FEAT-020", "FEAT-011"],
-      "steps": [
-        "Create internal/migrate/ package",
-        "Implement ChatGPT export parser (ZIP with conversations.json)",
-        "Implement fact/preference extractor using local LLM",
-        "Implement PII detection and masking on extracted data",
-        "Present extracted preferences for user review (approve/edit/reject each)",
-        "Write approved entries to USER.md and warm memory tier",
-        "Create cmd/migrate.go with `clawhq migrate --from chatgpt <export.zip>`"
-      ],
-      "acceptanceCriteria": [
-        "ChatGPT export ZIP is parsed correctly",
-        "Preferences and facts are extracted via local LLM",
-        "PII is detected and flagged before writing",
-        "User reviews each extracted preference before it's applied",
-        "Extracted data respects token budgets for identity files"
-      ],
-      "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 3 Migration — reduces switching cost for Privacy Migrants."
-    },
-    {
-      "id": "FEAT-030",
-      "title": "Fleet management — multi-agent dashboard",
-      "description": "Implement `clawhq fleet` — monitor and manage multiple agents from a single dashboard with aggregated health, cost, security, and egress. Phase 3 for Fleet Operators.",
-      "priority": "could",
-      "status": "todo",
-      "readyForSprint": false,
-      "passes": false,
-      "dependsOn": ["FEAT-010", "FEAT-004"],
-      "steps": [
-        "Create cmd/fleet.go with fleet subcommand",
-        "Create internal/fleet/ package",
-        "Implement agent discovery: find running ClawHQ agents on the network or from config",
-        "Implement aggregated health view: per-agent status summary",
-        "Implement aggregated cost view: total spend across fleet",
-        "Implement aggregated security view: posture comparison across fleet",
-        "Implement `clawhq fleet doctor` to run doctor across all agents",
-        "Format output as multi-agent dashboard"
-      ],
-      "acceptanceCriteria": [
-        "`clawhq fleet` shows aggregated health, cost, and security across all agents",
-        "`clawhq fleet doctor` runs diagnostics on all discovered agents",
-        "Per-agent drill-down is available from fleet view",
-        "Fleet view works with 2+ agents"
-      ],
-      "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 3 — Fleet Operator persona. Not needed until multiple agents exist."
-    },
-    {
-      "id": "FEAT-031",
+      "id": "FEAT-032",
       "title": "Post-deploy smoke test",
       "description": "Implement automatic post-deployment verification: send test message, verify response, confirm identity files loaded, probe connected integrations.",
       "priority": "should",
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-009", "FEAT-026"],
+      "dependsOn": ["FEAT-009", "FEAT-031"],
       "steps": [
         "Create internal/smoke/ package",
         "Implement test message sender via configured messaging channel",
@@ -913,60 +942,7 @@
       "groomingNotes": "Phase 2 Deploy — confirms agent actually works, not just container healthy."
     },
     {
-      "id": "FEAT-032",
-      "title": "Log streaming — clawhq logs",
-      "description": "Implement filtered log streaming from agent containers. Debug tool for Tinkerers.",
-      "priority": "could",
-      "status": "todo",
-      "readyForSprint": false,
-      "passes": false,
-      "dependsOn": ["FEAT-003"],
-      "steps": [
-        "Create cmd/logs.go with the logs subcommand",
-        "Implement docker logs streaming with follow mode",
-        "Implement log filtering by category (agent, gateway, cron, error)",
-        "Implement `clawhq logs --cron <job>` for per-job execution history",
-        "Implement `clawhq logs --since <duration>` for time-bounded output"
-      ],
-      "acceptanceCriteria": [
-        "`clawhq logs` streams container logs in real-time",
-        "Filtering by category works correctly",
-        "`clawhq logs --cron heartbeat` shows cron job execution history",
-        "--since flag correctly bounds output by time"
-      ],
-      "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2+ — useful debugging tool but not ship-blocking."
-    },
-    {
       "id": "FEAT-033",
-      "title": "Predictive health alerts",
-      "description": "Implement trend-based health prediction: memory growth projection, credential expiry warnings, response quality degradation detection.",
-      "priority": "should",
-      "status": "todo",
-      "readyForSprint": false,
-      "passes": false,
-      "dependsOn": ["FEAT-004", "FEAT-021", "FEAT-005"],
-      "steps": [
-        "Create internal/predict/ package",
-        "Implement memory growth trend analysis with projection to capacity",
-        "Implement credential expiry tracking with 7-day advance warning",
-        "Implement response quality metrics: user corrections per session, redo requests, escalation rate",
-        "Implement quality degradation diagnosis: identity bloat, memory regression, routing mismatch",
-        "Integrate alerts into status dashboard and doctor output",
-        "Implement notification hooks for alert delivery"
-      ],
-      "acceptanceCriteria": [
-        "Memory growth is projected with 'days until action needed' estimate",
-        "Credential expiry fires warning 7 days before expiry",
-        "Quality degradation triggers diagnosis with likely causes",
-        "Alerts include projected timeline and available remediation",
-        "Alerts appear in both status dashboard and doctor output"
-      ],
-      "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Operate — proactive ops, not reactive dashboards."
-    },
-    {
-      "id": "FEAT-034",
       "title": "Integration auto-detection during setup",
       "description": "Detect available integrations automatically during init: discover calendar/task services from email provider, detect Ollama models, suggest optimal routing.",
       "priority": "should",
@@ -992,36 +968,91 @@
       "groomingNotes": "Phase 2 Plan — reduces setup friction for Privacy Migrants."
     },
     {
-      "id": "FEAT-035",
-      "title": "'Why did you do that?' trace",
-      "description": "Implement decision trace: when user asks why the agent took an action, cite the specific rules, preferences, and context that drove the decision.",
+      "id": "FEAT-034",
+      "title": "Log streaming — clawhq logs",
+      "description": "Implement filtered log streaming from agent containers. Debug tool for Tinkerers.",
       "priority": "could",
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-022", "FEAT-021"],
+      "dependsOn": ["FEAT-003"],
       "steps": [
-        "Create internal/trace/ package",
-        "Implement decision log: record the rules, preferences, and context used for each agent action",
-        "Implement trace query: given an action ID, return the full decision chain",
-        "Implement natural language explanation: local LLM generates user-friendly explanation from trace",
-        "Allow corrections from trace context to feed into preference learning"
+        "Create cmd/logs.go with the logs subcommand",
+        "Implement docker logs streaming with follow mode",
+        "Implement log filtering by category (agent, gateway, cron, error)",
+        "Implement `clawhq logs --cron <job>` for per-job execution history",
+        "Implement `clawhq logs --since <duration>` for time-bounded output"
       ],
       "acceptanceCriteria": [
-        "Every agent action records its decision trace",
-        "User can query why any specific action was taken",
-        "Explanation cites specific rules and preferences",
-        "Corrections from trace context feed into preference learning"
+        "`clawhq logs` streams container logs in real-time",
+        "Filtering by category works correctly",
+        "`clawhq logs --cron heartbeat` shows cron job execution history",
+        "--since flag correctly bounds output by time"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 4 Ecosystem — transparency at the deepest level."
+      "groomingNotes": "Useful debugging tool but not ship-blocking."
+    },
+    {
+      "id": "FEAT-035",
+      "title": "ChatGPT conversation import",
+      "description": "Import ChatGPT export data, extract preferences and facts via local LLM, propose additions to identity files. Phase 3 migration story.",
+      "priority": "could",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-024", "FEAT-011"],
+      "steps": [
+        "Create internal/migrate/ package",
+        "Implement ChatGPT export parser (ZIP with conversations.json)",
+        "Implement fact/preference extractor using local LLM",
+        "Implement PII detection and masking on extracted data",
+        "Present extracted preferences for user review (approve/edit/reject each)",
+        "Write approved entries to USER.md identity files",
+        "Create cmd/migrate.go with `clawhq migrate --from chatgpt <export.zip>`"
+      ],
+      "acceptanceCriteria": [
+        "ChatGPT export ZIP is parsed correctly",
+        "Preferences and facts are extracted via local LLM",
+        "PII is detected and flagged before writing",
+        "User reviews each extracted preference before it's applied",
+        "Extracted data respects token budgets for identity files"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 3 Migration — reduces switching cost for Privacy Migrants."
+    },
+    {
+      "id": "FEAT-036",
+      "title": "Fleet management — multi-agent dashboard",
+      "description": "Implement `clawhq fleet` — monitor and manage multiple agents from a single dashboard with aggregated health, cost, security, and egress. Phase 3 for Fleet Operators.",
+      "priority": "could",
+      "status": "todo",
+      "readyForSprint": false,
+      "passes": false,
+      "dependsOn": ["FEAT-010", "FEAT-004"],
+      "steps": [
+        "Create cmd/fleet.go with fleet subcommand",
+        "Create internal/fleet/ package",
+        "Implement agent discovery: find running ClawHQ agents on the network or from config",
+        "Implement aggregated health view: per-agent status summary",
+        "Implement aggregated cost view: total spend across fleet",
+        "Implement aggregated security view: posture comparison across fleet",
+        "Implement `clawhq fleet doctor` to run doctor across all agents",
+        "Format output as multi-agent dashboard"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq fleet` shows aggregated health, cost, and security across all agents",
+        "`clawhq fleet doctor` runs diagnostics on all discovered agents",
+        "Per-agent drill-down is available from fleet view",
+        "Fleet view works with 2+ agents"
+      ],
+      "groomedAt": "2026-03-12",
+      "groomingNotes": "Phase 3 — Fleet Operator persona. Not needed until multiple agents exist."
     }
   ],
   "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",
   "_phaseMapping": {
     "phase1_operate_secure_deploy": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005", "FEAT-006", "FEAT-007", "FEAT-008", "FEAT-009", "FEAT-010", "FEAT-011", "FEAT-012", "FEAT-013", "FEAT-014", "FEAT-015", "FEAT-016"],
-    "phase2_plan_evolve_transparency": ["FEAT-017", "FEAT-018", "FEAT-019", "FEAT-020", "FEAT-021", "FEAT-022", "FEAT-023", "FEAT-024", "FEAT-025", "FEAT-026", "FEAT-027", "FEAT-028", "FEAT-031", "FEAT-033", "FEAT-034"],
-    "phase3_migration_managed": ["FEAT-029", "FEAT-030"],
-    "phase4_ecosystem": ["FEAT-032", "FEAT-035"]
+    "phase2_plan_evolve_transparency": ["FEAT-017", "FEAT-018", "FEAT-019", "FEAT-020", "FEAT-021", "FEAT-022", "FEAT-023", "FEAT-024", "FEAT-025", "FEAT-026", "FEAT-027", "FEAT-028", "FEAT-029", "FEAT-030", "FEAT-031", "FEAT-032", "FEAT-033"],
+    "phase3_migration_fleet": ["FEAT-034", "FEAT-035", "FEAT-036"]
   }
 }
