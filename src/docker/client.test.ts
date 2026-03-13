@@ -28,7 +28,7 @@ function mockSuccess(stdout: string, stderr = "") {
     // Since we mocked the callback-based version, we simulate via callback:
     const cb = typeof _opts === "function" ? _opts : _cb;
     if (typeof cb === "function") {
-      (cb as (err: null, result: { stdout: string; stderr: string }) => void)(null, {
+      (cb as unknown as (err: null, result: { stdout: string; stderr: string }) => void)(null, {
         stdout,
         stderr,
       });
@@ -432,7 +432,7 @@ describe("DockerClient", () => {
         callCount++;
         const status = callCount >= 3 ? "healthy" : "starting";
         if (typeof cb === "function") {
-          (cb as (err: null, result: { stdout: string; stderr: string }) => void)(null, {
+          (cb as unknown as (err: null, result: { stdout: string; stderr: string }) => void)(null, {
             stdout: status + "\n",
             stderr: "",
           });

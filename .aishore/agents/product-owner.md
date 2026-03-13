@@ -39,32 +39,24 @@ Update product direction:
 - **could**: Nice to have, improves experience
 - **future**: Long-term consideration
 
-## Grooming Output
+## CLI Commands
 
-Update backlog.json items with:
-```json
-{
-  "priority": "should",
-  "groomedAt": "2026-01-24",
-  "groomingNotes": "HIGH VALUE: Enables key user workflow..."
-}
-```
+Use these commands to manage backlog items — do NOT edit JSON files directly:
 
-## Review Output
+```bash
+# View current items
+.aishore/aishore backlog list
+.aishore/aishore backlog list --type feat
+.aishore/aishore backlog show <ID>
 
-```
-SPRINT REVIEW
-=============
-Sprints Reviewed: [count]
+# Add new features
+.aishore/aishore backlog add --type feat --title "..." --desc "..." --priority should
 
-## Value Delivered
-- [item]: [user value delivered]
+# Update priority and add grooming notes
+.aishore/aishore backlog edit <ID> --priority must --groomed-at --groomed-notes "HIGH VALUE: Enables key user workflow"
 
-## Gaps Identified
-- [gap]: [recommendation]
-
-## Learnings
-- [learning]
+# Remove invalid items
+.aishore/aishore backlog rm <ID> --force
 ```
 
 ## Rules

@@ -98,18 +98,13 @@ log_header()  { echo -e "\n${BLUE}═══════════════�
 log_subheader() { echo -e "\n${CYAN}─── $1 ───${NC}"; }
 log_success() { echo -e "${GREEN}✓ $1${NC}"; }
 log_warning() { echo -e "${YELLOW}⚠ $1${NC}"; }
-log_error()   { echo -e "${RED}✗ $1${NC}"; }
+log_error()   { echo -e "${RED}✗ $1${NC}" >&2; }
 log_info()    { echo -e "${CYAN}$1${NC}"; }
 log_agent()   { echo -e "${MAGENTA}[$1]${NC} $2"; }
 
 # ============================================================================
 # UTILITIES (inlined from common.sh)
 # ============================================================================
-
-count_ready_items() {
-    local file="$1"
-    jq '[.items[] | select(.readyForSprint == true and (.passes == false or .passes == null))] | length' "$file" 2>/dev/null || echo 0
-}
 
 build_context() {
     local context=""
@@ -332,42 +327,38 @@ pick_item() {
 
     if [[ -n "$specific_id" ]]; then
         # Pick specific item by ID
-        for backlog in "backlog.json" "bugs.json"; do
-            item_json=$(jq -r --arg id "$specific_id" '
-                .items[] | select(.id == $id) |
-                {id, title, description, steps, acceptanceCriteria, priority, status: (.status // "todo"), passes: (.passes // false)}
-            ' "$BACKLOG_DIR/$backlog" 2>/dev/null)
-            if [[ -n "$item_json" && "$item_json" != "null" ]]; then
-                local item_status
-                item_status=$(echo "$item_json" | jq -r '.status // "todo"')
-                if [[ "$item_status" == "done" ]]; then
-                    log_warning "Item $specific_id is already completed — re-running"
-                fi
-                # Check for unmet dependencies
-                local deps_json
-                deps_json=$(jq -r --arg id "$specific_id" '
-                    .items[] | select(.id == $id) | .dependsOn // empty
-                ' "$BACKLOG_DIR/$backlog" 2>/dev/null)
-                if [[ -n "$deps_json" && "$deps_json" != "null" ]]; then
-                    local all_done_ids="[]"
-                    for df in "backlog.json" "bugs.json"; do
-                        local df_done
-                        df_done=$(jq -r '[.items[] | select(.status == "done") | .id]' "$BACKLOG_DIR/$df" 2>/dev/null || echo "[]")
-                        all_done_ids=$(echo "$all_done_ids" "$df_done" | jq -s 'add | unique')
-                    done
-                    local unmet
-                    unmet=$(echo "$deps_json" | jq -r --argjson done_ids "$all_done_ids" '.[] | select(. as $dep | $done_ids | index($dep) == null)' 2>/dev/null)
-                    if [[ -n "$unmet" ]]; then
-                        log_warning "Item $specific_id has unmet dependencies: $(echo "$unmet" | tr '\n' ', ' | sed 's/,$//')"
-                    fi
-                fi
-                echo "$backlog" > "$source_file"
-                echo "$item_json"
-                return 0
+        local backlog
+        backlog=$(resolve_backlog_file "$specific_id") || {
+            log_error "Item not found: $specific_id — run 'backlog list' to see valid IDs"
+            return 1
+        }
+        local full_item
+        full_item=$(find_item "$specific_id") || return 1
+
+        # Project to sprint fields
+        item_json=$(echo "$full_item" | jq '{id, title, description, steps, acceptanceCriteria, priority, status: (.status // "todo"), passes: (.passes // false)}')
+
+        local item_status
+        item_status=$(echo "$item_json" | jq -r '.status')
+        if [[ "$item_status" == "done" ]]; then
+            log_warning "Item $specific_id is already completed — re-running"
+        fi
+
+        # Check for unmet dependencies
+        local deps_json
+        deps_json=$(echo "$full_item" | jq -r '.dependsOn // empty' 2>/dev/null)
+        if [[ -n "$deps_json" && "$deps_json" != "null" ]]; then
+            local all_done_ids
+            all_done_ids=$(collect_done_ids)
+            local unmet
+            unmet=$(echo "$deps_json" | jq -r --argjson done_ids "$all_done_ids" '.[] | select(. as $dep | $done_ids | index($dep) == null)' 2>/dev/null)
+            if [[ -n "$unmet" ]]; then
+                log_warning "Item $specific_id has unmet dependencies: $(echo "$unmet" | tr '\n' ', ' | sed 's/,$//')"
             fi
-        done
-        log_error "Item not found: $specific_id — check backlog/backlog.json and backlog/bugs.json for valid item IDs"
-        return 1
+        fi
+        echo "$backlog" > "$source_file"
+        echo "$item_json"
+        return 0
     fi
 
     # Build skip list as JSON array for jq
@@ -377,12 +368,8 @@ pick_item() {
     fi
 
     # Build list of done item IDs from both backlogs for dependency checking
-    local done_ids_json="[]"
-    for bf in "backlog.json" "bugs.json"; do
-        local bf_done
-        bf_done=$(jq -r '[.items[] | select(.status == "done") | .id]' "$BACKLOG_DIR/$bf" 2>/dev/null || echo "[]")
-        done_ids_json=$(echo "$done_ids_json" "$bf_done" | jq -s 'add | unique')
-    done
+    local done_ids_json
+    done_ids_json=$(collect_done_ids)
 
     # Warn about self-referencing dependencies
     for bf in "backlog.json" "bugs.json"; do
@@ -485,6 +472,88 @@ validate_status() {
     esac
 }
 
+count_items() {
+    local file="$1"
+    jq '.items | length' "$file" 2>/dev/null || echo 0
+}
+
+count_by_status() {
+    local file="$1" status="$2"
+    jq --arg s "$status" '[.items[] | select((.status // "todo") == $s)] | length' "$file" 2>/dev/null || echo 0
+}
+
+count_ready_items() {
+    local file="$1"
+    jq '[.items[] | select(.readyForSprint == true and (.passes == false or .passes == null))] | length' "$file" 2>/dev/null || echo 0
+}
+
+list_ready_items() {
+    local file="$1"
+    jq -r '.items[] | select(.readyForSprint == true) | "  \(.id): \(.title)"' "$file" 2>/dev/null
+}
+
+collect_done_ids() {
+    local done_ids="[]"
+    for f in "backlog.json" "bugs.json"; do
+        [[ -f "$BACKLOG_DIR/$f" ]] || continue
+        local ids
+        ids=$(jq '[.items[] | select(.status == "done") | .id]' "$BACKLOG_DIR/$f" 2>/dev/null || echo "[]")
+        done_ids=$(echo "$done_ids" "$ids" | jq -s 'add | unique')
+    done
+    echo "$done_ids"
+}
+
+update_item() {
+    local file="$1" id="$2" jq_expr="$3"
+    shift 3
+    local tmp
+    tmp="$(ensure_tmpdir)/update_item.json"
+    # remaining args are --arg pairs for jq
+    # shellcheck disable=SC2086
+    jq --arg id "$id" "$@" \
+        "(.items[] | select(.id == \$id)) |= (. $jq_expr)" \
+        "$BACKLOG_DIR/$file" > "$tmp" || {
+        rm -f "$tmp"
+        return 1
+    }
+    mv "$tmp" "$BACKLOG_DIR/$file"
+}
+
+add_item() {
+    local file="$1"
+    shift
+    # remaining args are --arg/--argjson pairs and the jq expression
+    local tmp
+    tmp="$(ensure_tmpdir)/add_item.json"
+    jq "$@" "$BACKLOG_DIR/$file" > "$tmp" || {
+        rm -f "$tmp"
+        return 1
+    }
+    mv "$tmp" "$BACKLOG_DIR/$file"
+}
+
+remove_item() {
+    local file="$1" id="$2"
+    local tmp
+    tmp="$(ensure_tmpdir)/remove_item.json"
+    jq --arg id "$id" '.items |= map(select(.id != $id))' "$BACKLOG_DIR/$file" > "$tmp" || {
+        rm -f "$tmp"
+        return 1
+    }
+    mv "$tmp" "$BACKLOG_DIR/$file"
+}
+
+remove_items_by_status() {
+    local file="$1" status="$2"
+    local tmp
+    tmp="$(ensure_tmpdir)/remove_by_status.json"
+    jq --arg s "$status" '.items |= map(select((.status // "todo") != $s))' "$file" > "$tmp" || {
+        rm -f "$tmp"
+        return 1
+    }
+    mv "$tmp" "$file"
+}
+
 # ============================================================================
 # SPRINT STATE
 # ============================================================================
@@ -538,14 +607,9 @@ mark_complete() {
     [[ -z "$source" ]] && { log_error "Cannot mark complete: source backlog is empty"; return 1; }
 
     # Update source backlog
-    local tmp
-    tmp="$(ensure_tmpdir)/backlog_update.json"
-    if jq --arg id "$item_id" --arg ts "$now" '
-        (.items[] | select(.id == $id)) |= . + {passes: true, status: "done", readyForSprint: false, completedAt: $ts}
-    ' "$BACKLOG_DIR/$source" > "$tmp" 2>/dev/null; then
-        mv "$tmp" "$BACKLOG_DIR/$source"
-    else
-        rm -f "$tmp"
+    if ! update_item "$source" "$item_id" \
+        '| . + {passes: true, status: "done", readyForSprint: false, completedAt: $ts}' \
+        --arg ts "$now"; then
         log_error "Failed to update $source"
         return 1
     fi
@@ -1278,13 +1342,14 @@ cmd_metrics() {
     local ready_bugs
     ready_bugs=$(count_ready_items "$bugs_file")
 
+    local backlog_total
+    backlog_total=$(count_items "$backlog_file")
+    local bugs_total
+    bugs_total=$(count_items "$bugs_file")
+
     if [[ "$json_output" == "true" ]]; then
         local completed
         completed=$([[ -f "$sprints_file" ]] && wc -l < "$sprints_file" | tr -d ' ' || echo 0)
-        local backlog_total
-        backlog_total=$(jq '.items | length' "$backlog_file" 2>/dev/null || echo 0)
-        local bugs_total
-        bugs_total=$(jq '.items | length' "$bugs_file" 2>/dev/null || echo 0)
 
         cat <<EOF
 {
@@ -1300,11 +1365,11 @@ EOF
         echo "Completed Sprints: $([[ -f "$sprints_file" ]] && wc -l < "$sprints_file" | tr -d ' ' || echo 0)"
         echo ""
         echo "Backlog:"
-        echo "  Total items: $(jq '.items | length' "$backlog_file" 2>/dev/null || echo 0)"
+        echo "  Total items: $backlog_total"
         echo "  Ready for sprint: $ready_backlog"
         echo ""
         echo "Bugs/Tech Debt:"
-        echo "  Total items: $(jq '.items | length' "$bugs_file" 2>/dev/null || echo 0)"
+        echo "  Total items: $bugs_total"
         echo "  Ready for sprint: $ready_bugs"
     fi
 }
@@ -1321,21 +1386,13 @@ cmd_status() {
 
     # --- Item counts by status ---
     if [[ -f "$backlog_file" ]]; then
-        local feat_todo feat_in_progress feat_done
-        feat_todo=$(jq '[.items[] | select((.status // "todo") == "todo")] | length' "$backlog_file" 2>/dev/null || echo 0)
-        feat_in_progress=$(jq '[.items[] | select((.status // "todo") == "in-progress")] | length' "$backlog_file" 2>/dev/null || echo 0)
-        feat_done=$(jq '[.items[] | select((.status // "todo") == "done")] | length' "$backlog_file" 2>/dev/null || echo 0)
-        echo "Features: $feat_todo todo, $feat_in_progress in-progress, $feat_done done"
+        echo "Features: $(count_by_status "$backlog_file" "todo") todo, $(count_by_status "$backlog_file" "in-progress") in-progress, $(count_by_status "$backlog_file" "done") done"
     else
         log_warning "Backlog is empty"
     fi
 
     if [[ -f "$bugs_file" ]]; then
-        local bug_todo bug_in_progress bug_done
-        bug_todo=$(jq '[.items[] | select((.status // "todo") == "todo")] | length' "$bugs_file" 2>/dev/null || echo 0)
-        bug_in_progress=$(jq '[.items[] | select((.status // "todo") == "in-progress")] | length' "$bugs_file" 2>/dev/null || echo 0)
-        bug_done=$(jq '[.items[] | select((.status // "todo") == "done")] | length' "$bugs_file" 2>/dev/null || echo 0)
-        echo "Bugs: $bug_todo todo, $bug_in_progress in-progress, $bug_done done"
+        echo "Bugs: $(count_by_status "$bugs_file" "todo") todo, $(count_by_status "$bugs_file" "in-progress") in-progress, $(count_by_status "$bugs_file" "done") done"
     fi
 
     # --- Ready for sprint ---
@@ -1343,26 +1400,18 @@ cmd_status() {
     log_subheader "Ready for sprint"
     local has_ready=false
 
-    if [[ -f "$backlog_file" ]]; then
-        local ready_items
-        ready_items=$(jq -r '.items[] | select(.readyForSprint == true) | "  \(.id): \(.title)"' "$backlog_file" 2>/dev/null)
-        if [[ -n "$ready_items" ]]; then
-            echo "$ready_items"
+    for f in "$backlog_file" "$bugs_file"; do
+        [[ -f "$f" ]] || continue
+        local ready
+        ready=$(list_ready_items "$f")
+        if [[ -n "$ready" ]]; then
+            echo "$ready"
             has_ready=true
         fi
-    fi
-
-    if [[ -f "$bugs_file" ]]; then
-        local ready_bugs
-        ready_bugs=$(jq -r '.items[] | select(.readyForSprint == true) | "  \(.id): \(.title)"' "$bugs_file" 2>/dev/null)
-        if [[ -n "$ready_bugs" ]]; then
-            echo "$ready_bugs"
-            has_ready=true
-        fi
-    fi
+    done
 
     if [[ "$has_ready" == "false" ]]; then
-        log_warning "No items ready for sprint — run groom or set readyForSprint: true"
+        log_warning "No items ready for sprint — run 'groom' or 'backlog edit <ID> --ready'"
     fi
 
     # --- Recent sprints ---
@@ -1379,21 +1428,16 @@ cmd_status() {
     # --- Warnings ---
     if [[ ! -f "$backlog_file" ]] && [[ ! -f "$bugs_file" ]]; then
         echo ""
-        log_warning "Backlog is empty"
+        log_warning "Backlog is empty — run 'backlog add' to create items"
     fi
 
-    local all_done=true
-    if [[ -f "$backlog_file" ]]; then
-        local not_done
-        not_done=$(jq '[.items[] | select((.status // "todo") != "done")] | length' "$backlog_file" 2>/dev/null || echo 0)
-        [[ "$not_done" -gt 0 ]] && all_done=false
-    fi
-    if [[ -f "$bugs_file" ]] && [[ "$all_done" == "true" ]]; then
-        local not_done_bugs
-        not_done_bugs=$(jq '[.items[] | select((.status // "todo") != "done")] | length' "$bugs_file" 2>/dev/null || echo 0)
-        [[ "$not_done_bugs" -gt 0 ]] && all_done=false
-    fi
-    if [[ "$all_done" == "true" ]] && { [[ -f "$backlog_file" ]] || [[ -f "$bugs_file" ]]; }; then
+    local total=0 done_total=0
+    for f in "$backlog_file" "$bugs_file"; do
+        [[ -f "$f" ]] || continue
+        total=$((total + $(count_items "$f")))
+        done_total=$((done_total + $(count_by_status "$f" "done")))
+    done
+    if [[ "$total" -gt 0 && "$total" -eq "$done_total" ]]; then
         echo ""
         log_info "All items completed"
     fi
@@ -1596,7 +1640,7 @@ EOF
 EOF
         log_success "Created backlog/backlog.json"
     else
-        log_info "Kept existing backlog/backlog.json ($(jq '.items | length' "$BACKLOG_DIR/backlog.json" 2>/dev/null || echo '?') items)"
+        log_info "Kept existing backlog/backlog.json ($(count_items "$BACKLOG_DIR/backlog.json") items)"
     fi
 
     if [[ ! -f "$BACKLOG_DIR/bugs.json" ]]; then
@@ -1618,7 +1662,153 @@ EOF
         log_info "Kept existing backlog/sprint.json"
     fi
 
+    if [[ ! -f "$BACKLOG_DIR/DEFINITIONS.md" ]]; then
+        cat > "$BACKLOG_DIR/DEFINITIONS.md" << 'DEOF'
+# Sprint Definitions
+
+## Definition of Ready (DoR)
+
+An item is ready for sprint when:
+
+| # | Criteria              | Description                                        |
+|---|-----------------------|----------------------------------------------------|
+| 1 | **Clear Value**       | The "why" is understood - ties to a user outcome   |
+| 2 | **Actionable Steps**  | Steps are clear enough for implementation          |
+| 3 | **Testable AC**       | Acceptance criteria can be verified                |
+| 4 | **No Blockers**       | Dependencies are resolved                          |
+| 5 | **Right Size**        | Can be completed in one sprint                     |
+| 6 | **readyForSprint**    | Tech Lead has marked it ready                      |
+
+## Definition of Done (DoD)
+
+An item is done when:
+
+| # | Criteria              | Description                                        |
+|---|-----------------------|----------------------------------------------------|
+| 1 | **Code Complete**     | Implementation matches acceptance criteria         |
+| 2 | **Tests Pass**        | All tests pass (existing + new)                   |
+| 3 | **Validation Pass**   | Type-check, lint, tests all pass                  |
+| 4 | **AC Verified**       | Each acceptance criterion is met                  |
+| 5 | **No Regressions**    | Existing functionality still works                |
+
+## Priority Levels
+
+| Priority | Code | Description                   |
+|----------|------|-------------------------------|
+| Must     | P0   | Critical, blocking other work |
+| Should   | P1   | Important, not blocking       |
+| Could    | P2   | Nice to have                  |
+| Future   | P3   | Long-term consideration       |
+
+## Size Estimates
+
+| Size | Typical Scope                               |
+|------|---------------------------------------------|
+| XS   | Single file change, < 50 lines              |
+| S    | Few files, < 200 lines, straightforward     |
+| M    | Multiple files, new patterns, 200-500 lines |
+| L    | Significant feature, multiple components    |
+| XL   | Large feature, consider splitting           |
+
+## Backlog Item Structure
+
+```json
+{
+  "id": "FEAT-001",
+  "title": "Short title",
+  "description": "User-focused description",
+  "priority": "should",
+  "category": "core",
+  "steps": ["Step 1", "Step 2"],
+  "acceptanceCriteria": ["AC 1", "AC 2"],
+  "status": "todo",
+  "passes": false,
+  "readyForSprint": false
+}
+```
+DEOF
+        log_success "Created backlog/DEFINITIONS.md"
+    else
+        log_info "Kept existing backlog/DEFINITIONS.md"
+    fi
+
     touch "$ARCHIVE_DIR/sprints.jsonl"
+
+    # Scaffold project docs if missing
+    local docs_dir="$PROJECT_ROOT/docs"
+
+    # PRODUCT.md
+    local product_found=false
+    for p in "$PROJECT_ROOT/PRODUCT.md" "$PROJECT_ROOT/product.md" \
+             "$docs_dir/PRODUCT.md" "$docs_dir/product.md" \
+             "$PROJECT_ROOT/PRD.md" "$PROJECT_ROOT/prd.md" \
+             "$docs_dir/PRD.md" "$docs_dir/prd.md"; do
+        [[ -f "$p" ]] && { product_found=true; break; }
+    done
+    if [[ "$product_found" == "false" ]]; then
+        mkdir -p "$docs_dir"
+        cat > "$docs_dir/PRODUCT.md" << PEOF
+# Product Requirements — $project_name
+
+<!-- TODO: Fill in the sections below to give aishore agents context about what you're building -->
+
+## Vision
+
+What is this product and why does it exist?
+
+## Target Users
+
+Who are you building this for?
+
+## Core Features
+
+What are the key capabilities?
+
+- [ ] Feature 1
+- [ ] Feature 2
+- [ ] Feature 3
+
+## Non-Goals
+
+What is explicitly out of scope?
+PEOF
+        log_success "Created docs/PRODUCT.md (fill in to help agents understand your product)"
+    else
+        log_info "Found existing product doc: $p"
+    fi
+
+    # ARCHITECTURE.md
+    local arch_found=false
+    for p in "$PROJECT_ROOT/ARCHITECTURE.md" "$docs_dir/ARCHITECTURE.md"; do
+        [[ -f "$p" ]] && { arch_found=true; break; }
+    done
+    if [[ "$arch_found" == "false" ]]; then
+        mkdir -p "$docs_dir"
+        cat > "$docs_dir/ARCHITECTURE.md" << AEOF
+# Architecture — $project_name
+
+<!-- TODO: Fill in the sections below to guide implementation decisions -->
+
+## Tech Stack
+
+What languages, frameworks, and tools does this project use?
+
+## Project Structure
+
+Describe the key directories and their purpose.
+
+## Key Design Decisions
+
+Document important architectural choices and their rationale.
+
+## Conventions
+
+Code style, naming conventions, patterns to follow.
+AEOF
+        log_success "Created docs/ARCHITECTURE.md (fill in to guide agent implementation)"
+    else
+        log_info "Found existing architecture doc: $p"
+    fi
 
     # Update .gitignore
     local gitignore="$PROJECT_ROOT/.gitignore"
@@ -1671,23 +1861,34 @@ EOF
     echo ""
 
     # Status summary
-    echo "  Project:      $project_name"
-    echo "  Validation:   ${validate_cmd:-<none>}"
-    echo "  CLAUDE.md:    ${claude_md:-<not found>}"
-    echo "  Requirements: ${prd_found:-<not found>}"
+    echo "  Project:       $project_name"
+    echo "  Validation:    ${validate_cmd:-<none>}"
+    echo "  CLAUDE.md:     ${claude_md:-<not found>}"
+    echo "  PRODUCT.md:    $(ls "$docs_dir/PRODUCT.md" "$PROJECT_ROOT/PRODUCT.md" 2>/dev/null | head -1 || echo '<not found>')"
+    echo "  ARCHITECTURE:  $(ls "$docs_dir/ARCHITECTURE.md" "$PROJECT_ROOT/ARCHITECTURE.md" 2>/dev/null | head -1 || echo '<not found>')"
+    echo "  Definitions:   $BACKLOG_DIR/DEFINITIONS.md"
     echo ""
 
     # Contextual next steps based on what's missing
     echo -e "${CYAN}Next steps:${NC}"
     local step=1
 
+    if [[ "$product_found" == "false" ]]; then
+        echo "  $step. Fill in docs/PRODUCT.md with your product vision"
+        step=$((step + 1))
+    fi
+    if [[ "$arch_found" == "false" ]]; then
+        echo "  $step. Fill in docs/ARCHITECTURE.md with your tech stack and conventions"
+        step=$((step + 1))
+    fi
+
     local item_count=0
     if command -v jq &>/dev/null && [[ -f "$BACKLOG_DIR/backlog.json" ]]; then
-        item_count=$(jq '.items | length' "$BACKLOG_DIR/backlog.json" 2>/dev/null || echo 0)
+        item_count=$(count_items "$BACKLOG_DIR/backlog.json")
     fi
 
     if [[ "$item_count" -eq 0 ]]; then
-        echo "  $step. Add features to backlog/backlog.json (or run: .aishore/aishore groom --backlog)"
+        echo "  $step. Add features: .aishore/aishore backlog add"
         step=$((step + 1))
         echo "  $step. Groom items for sprint readiness: .aishore/aishore groom"
         step=$((step + 1))
@@ -1761,6 +1962,7 @@ cmd_update() {
     echo "Files to update:"
     echo "  .aishore/VERSION"
     echo "  .aishore/aishore"
+    echo "  .aishore/README.md"
     echo "  .aishore/gitignore-entries.txt"
     echo "  .aishore/agents/developer.md"
     echo "  .aishore/agents/validator.md"
@@ -1848,6 +2050,17 @@ cmd_update() {
         all_verified=false
     fi
 
+    # Stage README.md
+    log_info "Fetching README.md..."
+    if $fetch_cmd "$repo_url/.aishore/README.md" > "$staging_dir/README.md" 2>/dev/null; then
+        if ! verify_or_abort "$staging_dir/README.md" "README.md" ".aishore/README.md"; then
+            all_verified=false
+        fi
+    else
+        log_error "Could not fetch README.md"
+        all_verified=false
+    fi
+
     # Stage gitignore-entries.txt
     log_info "Fetching gitignore-entries.txt..."
     if $fetch_cmd "$repo_url/.aishore/gitignore-entries.txt" > "$staging_dir/gitignore-entries.txt" 2>/dev/null; then
@@ -1882,13 +2095,14 @@ cmd_update() {
     mv "$staging_dir/VERSION" "$AISHORE_ROOT/VERSION"
     mv "$staging_dir/aishore" "$AISHORE_ROOT/aishore"
     chmod +x "$AISHORE_ROOT/aishore"
+    mv "$staging_dir/README.md" "$AISHORE_ROOT/README.md"
     mv "$staging_dir/gitignore-entries.txt" "$AISHORE_ROOT/gitignore-entries.txt"
     for agent in developer validator tech-lead product-owner architect; do
         mv "$staging_dir/agents/$agent.md" "$AGENTS_DIR/$agent.md"
     done
 
     echo ""
-    log_success "Updated to $remote_version (8 files installed)"
+    log_success "Updated to $remote_version (9 files installed)"
 }
 
 cmd_checksums() {
@@ -1898,6 +2112,7 @@ cmd_checksums() {
     local files=(
         .aishore/VERSION
         .aishore/aishore
+        .aishore/README.md
         .aishore/gitignore-entries.txt
     )
 
@@ -2052,10 +2267,10 @@ cmd_backlog_add() {
     local prefix target_file
     if [[ "$item_type" == "feat" ]]; then
         prefix="FEAT"
-        target_file="$BACKLOG_DIR/backlog.json"
+        target_file="backlog.json"
     else
         prefix="BUG"
-        target_file="$BACKLOG_DIR/bugs.json"
+        target_file="bugs.json"
     fi
 
     # Generate ID
@@ -2063,31 +2278,28 @@ cmd_backlog_add() {
     new_id=$(next_id "$prefix")
 
     # Create item and append
-    local tmp
-    tmp="$(ensure_tmpdir)/backlog_add.json"
-    jq --arg id "$new_id" \
-       --arg title "$title" \
-       --arg desc "$desc" \
-       --arg priority "$priority" \
-       --arg category "$category" \
-       --argjson ready "$ready" \
-       '.items += [{
-           id: $id,
-           title: $title,
-           description: $desc,
-           priority: $priority,
-           category: (if $category == "" then null else $category end),
-           steps: [],
-           acceptanceCriteria: [],
-           status: "todo",
-           passes: false,
-           readyForSprint: $ready
-       }]' "$target_file" > "$tmp" || {
-        rm -f "$tmp"
+    if ! add_item "$target_file" \
+        --arg id "$new_id" \
+        --arg title "$title" \
+        --arg desc "$desc" \
+        --arg priority "$priority" \
+        --arg category "$category" \
+        --argjson ready "$ready" \
+        '.items += [{
+            id: $id,
+            title: $title,
+            description: $desc,
+            priority: $priority,
+            category: (if $category == "" then null else $category end),
+            steps: [],
+            acceptanceCriteria: [],
+            status: "todo",
+            passes: false,
+            readyForSprint: $ready
+        }]'; then
         log_error "Failed to add item"
         return 1
-    }
-    mv "$tmp" "$target_file"
+    fi
 
     log_success "Created $new_id: $title"
 }
@@ -2180,6 +2392,25 @@ cmd_backlog_edit() {
                 jq_updates="$jq_updates | .readyForSprint = false"
                 update_desc="$update_desc ready"
                 shift ;;
+            --groomed-notes)
+                validate_arg "$1" "${2:-}" || return 1
+                jq_updates="$jq_updates | .groomingNotes = \$gnotes"
+                updates+=("--arg" "gnotes" "$2")
+                update_desc="$update_desc groomingNotes"
+                shift 2 ;;
+            --groomed-at)
+                local gdate
+                if [[ -n "${2:-}" && "${2:-}" != --* ]]; then
+                    gdate="$2"
+                    shift 2
+                else
+                    gdate=$(date +%Y-%m-%d)
+                    shift
+                fi
+                jq_updates="$jq_updates | .groomedAt = \$gdate"
+                updates+=("--arg" "gdate" "$gdate")
+                update_desc="$update_desc groomedAt"
+                ;;
             *) log_error "Unknown option: $1"; return 1 ;;
         esac
     done
@@ -2189,17 +2420,10 @@ cmd_backlog_edit() {
         return 1
     fi
 
-    local tmp
-    tmp="$(ensure_tmpdir)/backlog_edit.json"
-    # shellcheck disable=SC2086
-    jq --arg id "$id" "${updates[@]}" \
-        "(.items[] | select(.id == \$id)) |= (. $jq_updates)" \
-        "$BACKLOG_DIR/$file" > "$tmp" || {
-        rm -f "$tmp"
+    if ! update_item "$file" "$id" "$jq_updates" "${updates[@]}"; then
         log_error "Failed to update item"
         return 1
-    }
-    mv "$tmp" "$BACKLOG_DIR/$file"
+    fi
 
     log_success "Updated $id:$update_desc"
 }
@@ -2238,14 +2462,10 @@ cmd_backlog_rm() {
         [[ "$confirm" != "y" && "$confirm" != "Y" ]] && { echo "Cancelled"; return 0; }
     fi
 
-    local tmp
-    tmp="$(ensure_tmpdir)/backlog_rm.json"
-    jq --arg id "$id" '.items |= map(select(.id != $id))' "$BACKLOG_DIR/$file" > "$tmp" || {
-        rm -f "$tmp"
+    if ! remove_item "$file" "$id"; then
         log_error "Failed to remove item"
         return 1
-    }
-    mv "$tmp" "$BACKLOG_DIR/$file"
+    fi
 
     log_success "Removed $id: $title"
 }
@@ -2263,31 +2483,11 @@ cmd_clean() {
 
     local feat_count=0 bug_count=0
 
-    for source in backlog.json bugs.json; do
-        local filepath="$BACKLOG_DIR/$source"
-        [[ -f "$filepath" ]] || continue
+    local backlog_file="$BACKLOG_DIR/backlog.json"
+    local bugs_file="$BACKLOG_DIR/bugs.json"
 
-        local count
-        count=$(jq '[.items[] | select(.status == "done")] | length' "$filepath" 2>/dev/null || echo 0)
-
-        if [[ "$source" == "backlog.json" ]]; then
-            feat_count=$count
-        else
-            bug_count=$count
-        fi
-
-        if [[ "$dry_run" == "false" && "$count" -gt 0 ]]; then
-            local tmp
-            tmp="$(ensure_tmpdir)/clean_${source}"
-            if jq '.items |= map(select(.status == "done" | not))' "$filepath" > "$tmp" 2>/dev/null; then
-                mv "$tmp" "$filepath"
-            else
-                rm -f "$tmp"
-                log_error "Failed to clean $source"
-                return 1
-            fi
-        fi
-    done
+    [[ -f "$backlog_file" ]] && feat_count=$(count_by_status "$backlog_file" "done")
+    [[ -f "$bugs_file" ]] && bug_count=$(count_by_status "$bugs_file" "done")
 
     local total=$((feat_count + bug_count))
 
@@ -2296,6 +2496,8 @@ cmd_clean() {
     elif [[ "$dry_run" == "true" ]]; then
         echo "Would remove: $feat_count features, $bug_count bugs"
     else
+        [[ "$feat_count" -gt 0 ]] && remove_items_by_status "$backlog_file" "done"
+        [[ "$bug_count" -gt 0 ]] && remove_items_by_status "$bugs_file" "done"
         echo "Cleaned $feat_count features, $bug_count bugs ($total total removed)"
     fi
 }
@@ -2320,7 +2522,8 @@ Commands:
     --ready         Mark as ready for sprint
   backlog show <ID> Show full detail of one item
   backlog edit <ID> Update fields on an item
-    --title, --desc, --priority, --status, --category, --ready, --no-ready
+    --title, --desc, --priority, --status, --category, --ready, --no-ready,
+    --groomed-at [date], --groomed-notes "..."
   backlog rm <ID>   Remove an item (with confirmation)
     --force         Skip confirmation
 

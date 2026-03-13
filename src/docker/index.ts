@@ -24,8 +24,28 @@ export type {
   DockerClientOptions,
 } from "./client.js";
 
-export { twoStageBuild } from "./build.js";
-export type { BuildStageResult, TwoStageBuildOptions, TwoStageBuildResult } from "./build.js";
+export {
+  twoStageBuild,
+  generateManifest,
+  writeManifest,
+  readManifest,
+  verifyAgainstManifest,
+  detectStage1Changes,
+  readStage1Hash,
+  writeStage1Hash,
+  formatDuration,
+  formatSize,
+} from "./build.js";
+
+export type {
+  BuildStageResult,
+  TwoStageBuildOptions,
+  TwoStageBuildResult,
+  BuildManifest,
+  BuildManifestStage,
+  VerifyResult,
+  DriftEntry,
+} from "./build.js";
 
 export { validateCompose, pullImages } from "./compose.js";
 export type { ComposeServiceConfig, ComposeConfig } from "./compose.js";

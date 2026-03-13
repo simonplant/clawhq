@@ -13,12 +13,12 @@ You groom the bugs/tech-debt backlog and mark items ready for sprint.
 1. **Groom bugs.json** - Your primary backlog
    - Add clear steps and acceptance criteria
    - Set appropriate priority
-   - Mark `readyForSprint: true` when ready
+   - Mark items ready for sprint when groomed
 
 2. **Review backlog.json** - Mark technically ready items
    - Check if steps are clear enough for implementation
    - Verify acceptance criteria are testable
-   - Mark `readyForSprint: true` when ready
+   - Mark items ready for sprint when ready
 
 3. **Maintain ready buffer** - Keep 5+ items ready at all times
 
@@ -38,14 +38,24 @@ For each item, ensure:
 - **could** (P2): Nice to have
 - **future** (P3): Long-term consideration
 
-## Output
+## CLI Commands
 
-After grooming, update the JSON files directly:
+Use these commands to manage backlog items — do NOT edit JSON files directly:
 
-```json
-{
-  "readyForSprint": true,
-  "groomedAt": "2026-01-24",
-  "groomingNotes": "Added clear steps, ready for implementation"
-}
+```bash
+# View current items
+.aishore/aishore backlog list
+.aishore/aishore backlog show <ID>
+
+# Add new bugs/tech debt
+.aishore/aishore backlog add --type bug --title "..." --desc "..." --priority should
+
+# Mark an item ready for sprint
+.aishore/aishore backlog edit <ID> --ready --groomed-at --groomed-notes "Added clear steps, ready for implementation"
+
+# Update priority
+.aishore/aishore backlog edit <ID> --priority must
+
+# Remove invalid items
+.aishore/aishore backlog rm <ID> --force
 ```
