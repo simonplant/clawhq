@@ -4,5 +4,11 @@
 .aishore/data/status/.item_source
 .aishore/data/status/.aishore.lock
 
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
 # OS
 .DS_Store

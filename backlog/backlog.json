@@ -6,9 +6,9 @@
       "title": "Project scaffolding and CLI entrypoint",
       "description": "Initialize the TypeScript/Node.js package, set up project structure per ARCHITECTURE.md, and create the root CLI entrypoint. This is the foundation everything else builds on.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "steps": [
         "Run `npm init` and configure package.json with TypeScript, ESM output, and bin entry",
         "Create project directory structure per ARCHITECTURE.md: src/cli/, src/config/, src/docker/, src/gateway/, src/security/, src/workspace/, src/templates/, src/backup/, src/doctor/, src/server/, src/ui/",
@@ -27,7 +27,8 @@
         "Project structure matches the src/ layout defined in ARCHITECTURE.md"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Foundation item — everything depends on this. Keep minimal. IMPORTANT: Previous steps referenced Go/cobra — corrected to TypeScript/Node.js per ARCHITECTURE.md decision. CLI framework (commander/oclif/citty) is still an open decision per ARCHITECTURE.md § Open Decisions — Tech Lead must resolve before sprint starts."
+      "groomingNotes": "Foundation item — everything depends on this. Keep minimal. IMPORTANT: Previous steps referenced Go/cobra — corrected to TypeScript/Node.js per ARCHITECTURE.md decision. CLI framework (commander/oclif/citty) is still an open decision per ARCHITECTURE.md § Open Decisions — Tech Lead must resolve before sprint starts.",
+      "completedAt": "2026-03-12T21:39:07-07:00"
     },
     {
       "id": "FEAT-002",
@@ -37,7 +38,9 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-001"],
+      "dependsOn": [
+        "FEAT-001"
+      ],
       "steps": [
         "Create src/config/ package (schema.ts, loader.ts, validator.ts, generator.ts per ARCHITECTURE.md)",
         "In schema.ts: import/re-export OpenClaw's TypeBox schema types — do NOT reimplement; this is the single source of truth for openclaw.json validation",
@@ -67,7 +70,9 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-001"],
+      "dependsOn": [
+        "FEAT-001"
+      ],
       "steps": [
         "Create src/docker/ package (client.ts, build.ts, compose.ts, hardening.ts per ARCHITECTURE.md)",
         "In client.ts: implement DockerClient class with methods: build, up, down, restart, ps, logs, inspect, networkLs — each wraps docker/docker-compose CLI via child_process or execa",
@@ -95,7 +100,10 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-002", "FEAT-003"],
+      "dependsOn": [
+        "FEAT-002",
+        "FEAT-003"
+      ],
       "steps": [
         "Create cmd/doctor.go with the doctor subcommand",
         "Create internal/doctor/ package with a Check interface: Name, Run() -> CheckResult{Status, Message, Fix}",
@@ -129,7 +137,9 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-002"],
+      "dependsOn": [
+        "FEAT-002"
+      ],
       "steps": [
         "Create internal/secrets/ package",
         "Implement .env file reader/writer that preserves comments and ordering",
@@ -161,7 +171,10 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-002", "FEAT-003"],
+      "dependsOn": [
+        "FEAT-002",
+        "FEAT-003"
+      ],
       "steps": [
         "Create internal/secure/ package",
         "Define SecurityPosture enum: minimal, standard, hardened, paranoid",
@@ -189,7 +202,10 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-003", "FEAT-002"],
+      "dependsOn": [
+        "FEAT-003",
+        "FEAT-002"
+      ],
       "steps": [
         "Create internal/firewall/ package",
         "Implement domain-to-IP resolver for allowlist entries",
@@ -221,7 +237,9 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-003"],
+      "dependsOn": [
+        "FEAT-003"
+      ],
       "steps": [
         "Create cmd/build.go with the build subcommand",
         "Create internal/build/ package",
@@ -251,7 +269,11 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-003", "FEAT-006", "FEAT-007"],
+      "dependsOn": [
+        "FEAT-003",
+        "FEAT-006",
+        "FEAT-007"
+      ],
       "steps": [
         "Create cmd/up.go, cmd/down.go, cmd/restart.go",
         "Create internal/deploy/ package",
@@ -281,7 +303,11 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-003", "FEAT-004", "FEAT-005"],
+      "dependsOn": [
+        "FEAT-003",
+        "FEAT-004",
+        "FEAT-005"
+      ],
       "steps": [
         "Create cmd/status.go with the status subcommand",
         "Create internal/status/ package",
@@ -311,7 +337,9 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-002"],
+      "dependsOn": [
+        "FEAT-002"
+      ],
       "steps": [
         "Create internal/routing/ package",
         "Define TaskCategory enum: research, email_triage, calendar, creative_writing, code_generation, general",
@@ -342,7 +370,9 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-011"],
+      "dependsOn": [
+        "FEAT-011"
+      ],
       "steps": [
         "Create internal/egress/ package",
         "Define EgressRecord struct: timestamp, provider, model, token_count_in, token_count_out, data_category, cost, session_id",
@@ -371,7 +401,10 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-002", "FEAT-004"],
+      "dependsOn": [
+        "FEAT-002",
+        "FEAT-004"
+      ],
       "steps": [
         "Create cmd/backup.go with backup and backup restore subcommands",
         "Create internal/backup/ package",
@@ -402,7 +435,11 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-013", "FEAT-008", "FEAT-009"],
+      "dependsOn": [
+        "FEAT-013",
+        "FEAT-008",
+        "FEAT-009"
+      ],
       "steps": [
         "Create cmd/update.go with the update subcommand",
         "Create internal/update/ package",
@@ -433,7 +470,10 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-011", "FEAT-012"],
+      "dependsOn": [
+        "FEAT-011",
+        "FEAT-012"
+      ],
       "steps": [
         "Create internal/cost/ package",
         "Implement per-model cost tables (local = $0, Haiku/Sonnet/Opus rates per token)",
@@ -463,7 +503,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-009", "FEAT-007"],
+      "dependsOn": [
+        "FEAT-009",
+        "FEAT-007"
+      ],
       "steps": [
         "Create internal/repair/ package",
         "Implement health monitor: periodic check of container, network, and firewall state",
@@ -492,7 +535,11 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-002", "FEAT-005", "FEAT-006"],
+      "dependsOn": [
+        "FEAT-002",
+        "FEAT-005",
+        "FEAT-006"
+      ],
       "steps": [
         "Create cmd/init.go with the init subcommand",
         "Create internal/init/ package",
@@ -522,7 +569,9 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-002"],
+      "dependsOn": [
+        "FEAT-002"
+      ],
       "steps": [
         "Create internal/template/ package",
         "Define Template struct: name, version, use_case_mapping, personality, security_posture, monitoring, memory_policy, cron_config, autonomy_model, model_routing_strategy, integration_requirements, skill_bundle",
@@ -550,7 +599,11 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-017", "FEAT-018", "FEAT-011"],
+      "dependsOn": [
+        "FEAT-017",
+        "FEAT-018",
+        "FEAT-011"
+      ],
       "steps": [
         "Create internal/inference/ package",
         "Implement prompt construction: system prompt that understands templates and operational dimensions",
@@ -578,7 +631,9 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-002"],
+      "dependsOn": [
+        "FEAT-002"
+      ],
       "steps": [
         "Create internal/identity/ package",
         "Implement token counter for identity files (approximate, using tiktoken-go or word-based estimation)",
@@ -607,7 +662,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-011", "FEAT-002"],
+      "dependsOn": [
+        "FEAT-011",
+        "FEAT-002"
+      ],
       "steps": [
         "Create internal/memory/ package",
         "Define StructuredMemory types: preferences (hierarchical), relationships (cross-linked), domain_expertise, context",
@@ -638,7 +696,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-012", "FEAT-011"],
+      "dependsOn": [
+        "FEAT-012",
+        "FEAT-011"
+      ],
       "steps": [
         "Create internal/digest/ package",
         "Implement activity log collector: gather actions, errors, egress, approvals from the last period",
@@ -668,7 +729,9 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-002"],
+      "dependsOn": [
+        "FEAT-002"
+      ],
       "steps": [
         "Create cmd/export.go with the export subcommand",
         "Create internal/export/ package",
@@ -697,7 +760,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-023", "FEAT-009"],
+      "dependsOn": [
+        "FEAT-023",
+        "FEAT-009"
+      ],
       "steps": [
         "Create cmd/destroy.go with the destroy subcommand",
         "Create internal/destroy/ package",
@@ -725,7 +791,9 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-005"],
+      "dependsOn": [
+        "FEAT-005"
+      ],
       "steps": [
         "Create cmd/scan.go with the scan subcommand",
         "Extend internal/secrets/ with PII pattern scanning",
@@ -754,7 +822,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-005", "FEAT-009"],
+      "dependsOn": [
+        "FEAT-005",
+        "FEAT-009"
+      ],
       "steps": [
         "Create cmd/connect.go with the connect subcommand",
         "Create internal/channel/ package",
@@ -781,7 +852,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-020", "FEAT-022"],
+      "dependsOn": [
+        "FEAT-020",
+        "FEAT-022"
+      ],
       "steps": [
         "Create internal/learning/ package",
         "Define PreferenceSignal struct: timestamp, action_type, original_decision, correction, signal_type (preference/boundary/one-time), applied_to_identity",
@@ -809,7 +883,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-022", "FEAT-027"],
+      "dependsOn": [
+        "FEAT-022",
+        "FEAT-027"
+      ],
       "steps": [
         "Create internal/autonomy/ package",
         "Implement approval pattern analyzer: track approve/reject rates per action category",
@@ -836,7 +913,11 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-021", "FEAT-020", "FEAT-011"],
+      "dependsOn": [
+        "FEAT-021",
+        "FEAT-020",
+        "FEAT-011"
+      ],
       "steps": [
         "Create internal/migrate/ package",
         "Implement ChatGPT export parser (ZIP with conversations.json)",
@@ -864,7 +945,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-010", "FEAT-004"],
+      "dependsOn": [
+        "FEAT-010",
+        "FEAT-004"
+      ],
       "steps": [
         "Create cmd/fleet.go with fleet subcommand",
         "Create internal/fleet/ package",
@@ -892,7 +976,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-009", "FEAT-026"],
+      "dependsOn": [
+        "FEAT-009",
+        "FEAT-026"
+      ],
       "steps": [
         "Create internal/smoke/ package",
         "Implement test message sender via configured messaging channel",
@@ -920,7 +1007,9 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-003"],
+      "dependsOn": [
+        "FEAT-003"
+      ],
       "steps": [
         "Create cmd/logs.go with the logs subcommand",
         "Implement docker logs streaming with follow mode",
@@ -945,7 +1034,11 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-004", "FEAT-021", "FEAT-005"],
+      "dependsOn": [
+        "FEAT-004",
+        "FEAT-021",
+        "FEAT-005"
+      ],
       "steps": [
         "Create internal/predict/ package",
         "Implement memory growth trend analysis with projection to capacity",
@@ -973,7 +1066,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-017", "FEAT-011"],
+      "dependsOn": [
+        "FEAT-017",
+        "FEAT-011"
+      ],
       "steps": [
         "Extend internal/init/ with auto-detection logic",
         "Implement email provider -> calendar/task discovery (e.g., iCloud email -> iCloud calendar)",
@@ -999,7 +1095,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-022", "FEAT-021"],
+      "dependsOn": [
+        "FEAT-022",
+        "FEAT-021"
+      ],
       "steps": [
         "Create internal/trace/ package",
         "Implement decision log: record the rules, preferences, and context used for each agent action",
@@ -1024,7 +1123,9 @@
       "status": "todo",
       "readyForSprint": true,
       "passes": false,
-      "dependsOn": ["FEAT-001"],
+      "dependsOn": [
+        "FEAT-001"
+      ],
       "steps": [
         "Create src/gateway/ package (websocket.ts, health.ts, config-rpc.ts per ARCHITECTURE.md)",
         "In websocket.ts: implement token-authenticated WebSocket client to Gateway at :18789",
@@ -1054,7 +1155,9 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-001"],
+      "dependsOn": [
+        "FEAT-001"
+      ],
       "steps": [
         "Decide and document the acquisition strategy: git clone pinned tag vs. release tarball download (open decision — Tech Lead must resolve)",
         "Implement source fetcher: download/clone OpenClaw source at configured version to a local cache directory",
@@ -1082,7 +1185,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-002", "FEAT-008"],
+      "dependsOn": [
+        "FEAT-002",
+        "FEAT-008"
+      ],
       "steps": [
         "Create src/cli/skill.ts with skill subcommand group",
         "Implement `clawhq skill list`: show installed skills with version, source, status (active/disabled), last-used timestamp",
@@ -1110,7 +1216,11 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-002", "FEAT-005", "FEAT-007"],
+      "dependsOn": [
+        "FEAT-002",
+        "FEAT-005",
+        "FEAT-007"
+      ],
       "steps": [
         "Create src/cli/integrate.ts with integrate subcommand group",
         "Implement `clawhq integrate add <type>`: walk through provider selection (e.g., Google Calendar vs. iCloud vs. CalDAV), credential setup with live validation, config generation",
@@ -1138,7 +1248,12 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-002", "FEAT-005", "FEAT-007", "FEAT-011"],
+      "dependsOn": [
+        "FEAT-002",
+        "FEAT-005",
+        "FEAT-007",
+        "FEAT-011"
+      ],
       "steps": [
         "Create src/cli/provider.ts with provider subcommand group",
         "Implement `clawhq provider add <name>`: API key setup with live validation, configure which task categories this provider is allowed for, update egress firewall allowlist for provider's API domains",
@@ -1165,7 +1280,9 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-008"],
+      "dependsOn": [
+        "FEAT-008"
+      ],
       "steps": [
         "Create src/cli/tool.ts with tool subcommand group",
         "Maintain allowlist of known-safe packages (apt/apk) in config — version-pinned",
@@ -1192,7 +1309,12 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-038", "FEAT-039", "FEAT-040", "FEAT-041"],
+      "dependsOn": [
+        "FEAT-038",
+        "FEAT-039",
+        "FEAT-040",
+        "FEAT-041"
+      ],
       "steps": [
         "Create src/workspace/evolve-history.ts for change tracking",
         "Define EvolveChange record: id, timestamp, change_type (skill_install/integration_add/provider_add/tool_install/identity_update), target, previous_state, new_state, rollback_snapshot_id, rollback_expires_at",
@@ -1220,7 +1342,10 @@
       "status": "todo",
       "readyForSprint": false,
       "passes": false,
-      "dependsOn": ["FEAT-038", "FEAT-041"],
+      "dependsOn": [
+        "FEAT-038",
+        "FEAT-041"
+      ],
       "steps": [
         "Create src/security/vetting.ts for supply chain security logic",
         "Implement skill source verification: check source against known registries before sandboxing",
@@ -1243,9 +1368,56 @@
   ],
   "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",
   "_phaseMapping": {
-    "phase1_operate_secure_deploy": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-036", "FEAT-004", "FEAT-005", "FEAT-006", "FEAT-007", "FEAT-037", "FEAT-008", "FEAT-009", "FEAT-010", "FEAT-011", "FEAT-012", "FEAT-013", "FEAT-014", "FEAT-015", "FEAT-016"],
-    "phase2_plan_evolve_transparency": ["FEAT-017", "FEAT-018", "FEAT-019", "FEAT-020", "FEAT-021", "FEAT-022", "FEAT-023", "FEAT-024", "FEAT-025", "FEAT-026", "FEAT-027", "FEAT-028", "FEAT-031", "FEAT-032", "FEAT-033", "FEAT-034", "FEAT-038", "FEAT-039", "FEAT-040", "FEAT-041", "FEAT-042", "FEAT-043"],
-    "phase3_migration_managed": ["FEAT-029", "FEAT-030"],
-    "phase4_ecosystem": ["FEAT-035"]
+    "phase1_operate_secure_deploy": [
+      "FEAT-001",
+      "FEAT-002",
+      "FEAT-003",
+      "FEAT-036",
+      "FEAT-004",
+      "FEAT-005",
+      "FEAT-006",
+      "FEAT-007",
+      "FEAT-037",
+      "FEAT-008",
+      "FEAT-009",
+      "FEAT-010",
+      "FEAT-011",
+      "FEAT-012",
+      "FEAT-013",
+      "FEAT-014",
+      "FEAT-015",
+      "FEAT-016"
+    ],
+    "phase2_plan_evolve_transparency": [
+      "FEAT-017",
+      "FEAT-018",
+      "FEAT-019",
+      "FEAT-020",
+      "FEAT-021",
+      "FEAT-022",
+      "FEAT-023",
+      "FEAT-024",
+      "FEAT-025",
+      "FEAT-026",
+      "FEAT-027",
+      "FEAT-028",
+      "FEAT-031",
+      "FEAT-032",
+      "FEAT-033",
+      "FEAT-034",
+      "FEAT-038",
+      "FEAT-039",
+      "FEAT-040",
+      "FEAT-041",
+      "FEAT-042",
+      "FEAT-043"
+    ],
+    "phase3_migration_managed": [
+      "FEAT-029",
+      "FEAT-030"
+    ],
+    "phase4_ecosystem": [
+      "FEAT-035"
+    ]
   }
 }
