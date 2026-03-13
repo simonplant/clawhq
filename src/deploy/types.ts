@@ -24,12 +24,18 @@ export interface DeployOptions {
   gatewayHost?: string;
   /** Gateway port (default: 18789). */
   gatewayPort?: number;
+  /** Gateway auth token. */
+  gatewayToken?: string;
   /** Cloud API providers enabled for egress firewall allowlist. */
   enabledProviders?: string[];
   /** Extra domains to allowlist in egress firewall. */
   extraDomains?: string[];
   /** Docker bridge interface for firewall (default: docker0). */
   bridgeInterface?: string;
+  /** Smoke test response timeout in ms (default: 30000). */
+  smokeTimeoutMs?: number;
+  /** Skip smoke test (default: false). */
+  skipSmoke?: boolean;
   /** AbortSignal for cancellation. */
   signal?: AbortSignal;
 }

@@ -6,9 +6,13 @@
  * `deployRestart`: down -> up with firewall reapply and health re-verify
  */
 
+import { homedir } from "node:os";
+import { join } from "node:path";
+
 import { DockerClient } from "../docker/client.js";
 import { pollGatewayHealth, HealthPollTimeout as GatewayHealthTimeout } from "../gateway/health.js";
 import { apply as applyFirewall, buildConfig as buildFirewallConfig } from "../security/firewall/firewall.js";
+import { runSmokeTest } from "../smoke/index.js";
 
 import { runPreflight } from "./preflight.js";
 import type {
@@ -151,6 +155,38 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
     } catch {
       // Non-fatal
     }
+  }
+
+  // Step 5: Smoke test (only if health passed)
+  if (healthStep.status === "done" && !opts.skipSmoke) {
+    const openclawHome = opts.openclawHome ?? join(homedir(), ".openclaw");
+    const configPath = opts.configPath ?? join(openclawHome, "openclaw.json");
+
+    const smokeStep = await timedStep("Smoke test", async () => {
+      const result = await runSmokeTest({
+        openclawHome,
+        configPath,
+        gatewayHost,
+        gatewayPort,
+        gatewayToken: opts.gatewayToken,
+        responseTimeoutMs: opts.smokeTimeoutMs,
+        signal: opts.signal,
+      });
+
+      if (!result.passed) {
+        const failures = result.checks
+          .filter((c) => c.status === "fail")
+          .map((c) => `${c.name}: ${c.message}`)
+          .join("; ");
+        return { passed: false, message: failures };
+      }
+
+      const summary = result.checks
+        .map((c) => `${c.name}: ${c.status}`)
+        .join(", ");
+      return { passed: true, message: summary };
+    });
+    steps.push(smokeStep);
   }
 
   const success = steps.every((s) => s.status === "done");

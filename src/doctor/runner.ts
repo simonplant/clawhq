@@ -14,6 +14,7 @@ import { dockerDaemonCheck } from "./checks/docker-daemon.js";
 import { filePermissionsCheck } from "./checks/file-permissions.js";
 import { firewallCheck } from "./checks/firewall.js";
 import { openclawImagesCheck } from "./checks/openclaw-images.js";
+import { openclawSourceCheck } from "./checks/openclaw-source.js";
 import { portAvailabilityCheck } from "./checks/port-availability.js";
 import { secretsScanCheck } from "./checks/secrets-scan.js";
 import { securityPostureCheck } from "./checks/security-posture.js";
@@ -21,6 +22,7 @@ import type { Check, CheckResult, CheckStatus, DoctorContext, DoctorReport } fro
 
 export const DEFAULT_CHECKS: Check[] = [
   dockerDaemonCheck,
+  openclawSourceCheck,
   openclawImagesCheck,
   configValidationCheck,
   filePermissionsCheck,

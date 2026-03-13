@@ -1161,9 +1161,9 @@
       "title": "OpenClaw source acquisition and version pinning",
       "description": "Implement how ClawHQ acquires the OpenClaw source for building container images: git clone, release tarball download, or version pinning. Required before FEAT-008 (two-stage Docker build) can ship.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-001"
       ],
@@ -1184,7 +1184,8 @@
         "Doctor reports OpenClaw source availability and version"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "GAP identified in FEAT-008 grooming notes: 'no backlog item covers how ClawHQ acquires the OpenClaw source (git clone, release tarball, version pinning).' This is a prerequisite for FEAT-008 (two-stage Docker build). Marked readyForSprint: false because the acquisition strategy (git vs. tarball) is an open decision that must be resolved first. Also affects FEAT-014 (upstream updates) which needs version comparison logic."
+      "groomingNotes": "GAP identified in FEAT-008 grooming notes: 'no backlog item covers how ClawHQ acquires the OpenClaw source (git clone, release tarball, version pinning).' This is a prerequisite for FEAT-008 (two-stage Docker build). Marked readyForSprint: false because the acquisition strategy (git vs. tarball) is an open decision that must be resolved first. Also affects FEAT-014 (upstream updates) which needs version comparison logic.",
+      "completedAt": "2026-03-13T12:56:50-07:00"
     },
     {
       "id": "FEAT-038",

@@ -14,6 +14,7 @@ export type {
   IntegrationSection,
   IntegrationStatus,
   MemoryTier,
+  OpenClawSourceStatus,
   StatusOptions,
   StatusReport,
   WorkspaceMetrics,

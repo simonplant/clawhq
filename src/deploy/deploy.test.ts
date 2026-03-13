@@ -95,6 +95,18 @@ vi.mock("../gateway/health.js", () => {
   };
 });
 
+// Mock smoke test
+vi.mock("../smoke/index.js", () => ({
+  runSmokeTest: vi.fn().mockResolvedValue({
+    passed: true,
+    checks: [
+      { name: "Identity files", status: "pass", message: "4 files verified", durationMs: 5 },
+      { name: "Test message", status: "pass", message: "Agent responded", durationMs: 100 },
+      { name: "Integration probe", status: "skip", message: "No integrations", durationMs: 2 },
+    ],
+  }),
+}));
+
 import { pollGatewayHealth, HealthPollTimeout } from "../gateway/health.js";
 import { apply as applyFirewall } from "../security/firewall/firewall.js";
 
@@ -135,11 +147,12 @@ describe("deployUp", () => {
     const result = await deployUp(defaultOpts());
 
     expect(result.success).toBe(true);
-    expect(result.steps.length).toBe(4); // preflight, compose up, firewall, health
+    expect(result.steps.length).toBe(5); // preflight, compose up, firewall, health, smoke
     expect(result.steps[0].name).toBe("Pre-flight checks");
     expect(result.steps[1].name).toBe("Compose up");
     expect(result.steps[2].name).toBe("Firewall apply");
     expect(result.steps[3].name).toBe("Health poll");
+    expect(result.steps[4].name).toBe("Smoke test");
   });
 
   it("fails when pre-flight fails", async () => {

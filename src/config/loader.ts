@@ -19,6 +19,11 @@ const DEFAULT_CONFIG: ClawHQConfig = {
   openclaw: {
     home: join(homedir(), ".openclaw"),
     configPath: join(homedir(), ".openclaw", "openclaw.json"),
+    source: {
+      repo: "https://github.com/openclaw-ai/openclaw.git",
+      version: undefined,
+      cacheDir: join(homedir(), ".clawhq", "cache", "openclaw-source"),
+    },
   },
   security: {
     posture: "hardened",

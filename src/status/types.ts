@@ -83,11 +83,21 @@ export interface ChannelHealthEntry {
   displayName?: string;
 }
 
+// --- OpenClaw source ---
+
+export interface OpenClawSourceStatus {
+  pinnedVersion: string | null;
+  cached: boolean;
+  integrityOk: boolean;
+  sourcePath: string | null;
+}
+
 // --- Full status report ---
 
 export interface StatusReport {
   timestamp: string;
   agent: AgentStatus;
+  openclawSource: OpenClawSourceStatus;
   integrations: IntegrationSection;
   channels: ChannelHealthEntry[];
   workspace: WorkspaceMetrics;

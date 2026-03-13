@@ -1,30 +1,31 @@
 {
-  "sprintId": "sprint-1773429976",
-  "startedAt": "2026-03-13T12:26:16-07:00",
+  "sprintId": "sprint-1773431302",
+  "startedAt": "2026-03-13T12:48:22-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-026",
-    "title": "Channel connection — clawhq connect",
+    "id": "FEAT-037",
+    "title": "OpenClaw source acquisition and version pinning",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create cmd/connect.go with the connect subcommand",
-      "Create internal/channel/ package",
-      "Implement Telegram setup flow: walk through BotFather token creation, validate token, configure webhook",
-      "Implement WhatsApp setup flow: walk through Business API setup, validate credentials",
-      "Implement --test flag: send test message and verify response (bidirectional)",
-      "Store channel config in appropriate config files",
-      "Display connection status in status dashboard"
+      "Decide and document the acquisition strategy: git clone pinned tag vs. release tarball download (open decision — Tech Lead must resolve)",
+      "Implement source fetcher: download/clone OpenClaw source at configured version to a local cache directory",
+      "Implement version pinning: store pinned OpenClaw version in ClawHQ config; reject builds that would use a different version without explicit override",
+      "Implement integrity verification: checksum or GPG signature check on downloaded source",
+      "Implement source cache management: detect when cached source matches pinned version (skip re-download)",
+      "Add doctor check: pinned OpenClaw version is available and verified",
+      "Surface current OpenClaw version in `clawhq status` output"
     ],
     "acceptanceCriteria": [
-      "`clawhq connect telegram` walks through setup with inline validation",
-      "`clawhq connect --test` verifies bidirectional message flow",
-      "Invalid credentials are caught during setup, not at runtime",
-      "Channel status shows in `clawhq status`"
+      "ClawHQ can acquire OpenClaw source at a pinned version without manual intervention",
+      "Source integrity is verified before use (checksum or signature)",
+      "Re-download is skipped when cached source matches pinned version",
+      "Version mismatch between pinned and cached source produces a clear error with fix instructions",
+      "Doctor reports OpenClaw source availability and version"
     ],
-    "startedAt": "2026-03-13T12:26:16-07:00",
+    "startedAt": "2026-03-13T12:48:22-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T12:37:44-07:00"
+    "completedAt": "2026-03-13T12:56:50-07:00"
   },
-  "completedAt": "2026-03-13T12:37:44-07:00",
+  "completedAt": "2026-03-13T12:56:50-07:00",
   "attempts": 1
 }

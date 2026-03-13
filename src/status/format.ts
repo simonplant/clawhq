@@ -25,6 +25,27 @@ function sectionHeader(title: string): string {
   return `\n${"=".repeat(50)}\n  ${title}\n${"=".repeat(50)}`;
 }
 
+// --- OpenClaw source section ---
+
+function formatSourceSection(report: StatusReport): string {
+  const { openclawSource } = report;
+  const lines: string[] = [sectionHeader("OPENCLAW SOURCE")];
+
+  if (!openclawSource.pinnedVersion) {
+    lines.push("  Version:   (not pinned)");
+    return lines.join("\n");
+  }
+
+  lines.push(`  Version:   ${openclawSource.pinnedVersion}`);
+  lines.push(`  Cached:    ${openclawSource.cached ? "yes" : "no"}`);
+  lines.push(`  Integrity: ${openclawSource.integrityOk ? "verified" : "NOT VERIFIED"}`);
+  if (openclawSource.sourcePath) {
+    lines.push(`  Path:      ${openclawSource.sourcePath}`);
+  }
+
+  return lines.join("\n");
+}
+
 // --- Agent state section ---
 
 function formatAgentSection(report: StatusReport): string {
@@ -188,6 +209,7 @@ function formatChannelSection(report: StatusReport): string {
 export function formatDashboard(report: StatusReport): string {
   const sections = [
     formatAgentSection(report),
+    formatSourceSection(report),
     formatIntegrationSection(report),
     formatChannelSection(report),
     formatWorkspaceSection(report),

@@ -49,12 +49,51 @@ export async function writeBundle(
     content: bundle.dockerCompose,
   });
 
+  // Dockerfile
+  if (bundle.dockerfile) {
+    ops.push({
+      path: join(outputDir, "Dockerfile"),
+      content: bundle.dockerfile,
+    });
+  }
+
   // Identity files in workspace/
   const workspaceDir = join(outputDir, "workspace");
   for (const [filename, content] of Object.entries(bundle.identityFiles)) {
     ops.push({
       path: join(workspaceDir, filename),
       content,
+    });
+  }
+
+  // Workspace tools (executable scripts)
+  if (bundle.workspaceTools) {
+    for (const [toolName, content] of Object.entries(bundle.workspaceTools)) {
+      ops.push({
+        path: join(workspaceDir, toolName),
+        content,
+        mode: 0o755,
+      });
+    }
+  }
+
+  // Skills
+  if (bundle.skills) {
+    for (const [skillName, files] of Object.entries(bundle.skills)) {
+      for (const [relativePath, content] of Object.entries(files)) {
+        ops.push({
+          path: join(workspaceDir, "skills", skillName, relativePath),
+          content,
+        });
+      }
+    }
+  }
+
+  // Memory directories
+  for (const tier of ["memory/hot", "memory/warm", "memory/cold"]) {
+    ops.push({
+      path: join(workspaceDir, tier, ".gitkeep"),
+      content: "",
     });
   }
 

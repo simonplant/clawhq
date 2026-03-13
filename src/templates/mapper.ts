@@ -228,22 +228,29 @@ function generateCronJobs(template: Template, answers: MapperAnswers): CronJobDe
   // Heartbeat
   if (template.cron_config.heartbeat) {
     const freq = template.cron_config.heartbeat.match(/\*\/(\d+)/)?.[1] ?? "10";
+    const minuteExpr = parseInt(freq, 10) === 1 ? "*" : `0-59/${freq}`;
     jobs.push({
       id: "heartbeat",
-      schedule: `0-59/${freq} ${wakingStart}-${wakingEnd} * * *`,
+      kind: "cron",
+      expr: `${minuteExpr} ${wakingStart}-${wakingEnd} * * *`,
       task: "heartbeat",
       enabled: true,
+      delivery: "announce",
     });
   }
 
   // Work session
   if (template.cron_config.work_session) {
     const freq = template.cron_config.work_session.match(/\*\/(\d+)/)?.[1] ?? "15";
+    const offset = Math.min(3, parseInt(freq, 10) - 1);
+    const minuteExpr = `${offset}-59/${freq}`;
     jobs.push({
       id: "work-session",
-      schedule: `0-59/${freq} ${wakingStart}-${wakingEnd} * * *`,
+      kind: "cron",
+      expr: `${minuteExpr} ${wakingStart}-${wakingEnd} * * *`,
       task: "work-session",
       enabled: true,
+      delivery: "announce",
     });
   }
 
@@ -253,9 +260,11 @@ function generateCronJobs(template: Template, answers: MapperAnswers): CronJobDe
     const minute = template.cron_config.morning_brief.split(":")[1] ?? "00";
     jobs.push({
       id: "morning-brief",
-      schedule: `${minute} ${hour} * * *`,
+      kind: "cron",
+      expr: `${minute} ${hour} * * *`,
       task: "morning-brief",
       enabled: true,
+      delivery: "announce",
     });
   }
 
@@ -276,7 +285,10 @@ export function mapTemplateToConfig(template: Template, answers: MapperAnswers):
     openclawConfig,
     envVars,
     dockerCompose,
+    dockerfile: "",
     identityFiles,
+    workspaceTools: {},
+    skills: {},
     cronJobs,
   };
 
@@ -294,7 +306,7 @@ export function mapTemplateToConfig(template: Template, answers: MapperAnswers):
 
   // Also validate cron expressions (LM-09)
   for (const job of cronJobs) {
-    const cronResult = validateCronExpression(job.schedule);
+    const cronResult = validateCronExpression(job.expr ?? "");
     if (cronResult.status === "fail") {
       validationResults.push(cronResult);
     }

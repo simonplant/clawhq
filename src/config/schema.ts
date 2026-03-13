@@ -149,10 +149,20 @@ export interface OpenClawConfig {
 
 // --- ClawHQ config (clawhq.yaml) ---
 
+export interface OpenClawSourceConfig {
+  /** Git repository URL for OpenClaw source. */
+  repo?: string;
+  /** Pinned version tag (e.g., "v0.14.2"). */
+  version?: string;
+  /** Local cache directory for cloned source. */
+  cacheDir?: string;
+}
+
 export interface ClawHQConfig {
   openclaw?: {
     home?: string;
     configPath?: string;
+    source?: OpenClawSourceConfig;
   };
   security?: {
     posture?: "standard" | "hardened" | "paranoid";

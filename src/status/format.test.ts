@@ -37,6 +37,12 @@ function makeReport(overrides: Partial<StatusReport> = {}): StatusReport {
       totalIdentityTokens: 1536,
     },
     channels: [],
+    openclawSource: {
+      pinnedVersion: "v0.14.2",
+      cached: true,
+      integrityOk: true,
+      sourcePath: "/home/user/.clawhq/cache/openclaw-source/v0.14.2",
+    },
     egress: {
       today: { label: "today", bytes: 0, calls: 0 },
       week: { label: "this week", bytes: 0, calls: 0 },
