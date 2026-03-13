@@ -1,29 +1,27 @@
 {
-  "sprintId": "sprint-1773377548",
-  "startedAt": "2026-03-12T21:52:28-07:00",
+  "sprintId": "sprint-1773378846",
+  "startedAt": "2026-03-12T22:14:06-07:00",
   "status": "in_progress",
   "item": {
-    "id": "FEAT-036",
-    "title": "Gateway WebSocket client",
+    "id": "FEAT-003",
+    "title": "Docker client wrapper",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create src/gateway/ package (websocket.ts, health.ts, config-rpc.ts per ARCHITECTURE.md)",
-      "In websocket.ts: implement token-authenticated WebSocket client to Gateway at :18789",
-      "Implement request/response RPC pattern with typed message envelopes and timeout handling",
-      "In health.ts: implement health check polling against :18789/healthz — Gateway must be healthy before further operations",
-      "In config-rpc.ts: implement config.patch and config.apply wrappers that respect the rate limit (3 req/60s)",
-      "Implement graceful fallback: when Gateway is down, direct filesystem write is used instead of RPC",
-      "Handle connection errors, auth failures, and rate limit responses with typed error classes",
-      "Write unit tests with a mock WebSocket server"
+      "Create src/docker/ package (client.ts, build.ts, compose.ts, hardening.ts per ARCHITECTURE.md)",
+      "In client.ts: implement DockerClient class with methods: build, up, down, restart, ps, logs, inspect, networkLs — each wraps docker/docker-compose CLI via child_process or execa",
+      "Capture and parse stdout/stderr into typed result objects",
+      "Implement health polling: poll container health status with configurable timeout and interval using async/await",
+      "Implement image inspection: check if image exists, get layer info for two-stage build verification",
+      "Add typed error classes for common failures (DaemonNotRunning, ImageNotFound, PortConflict)",
+      "Write unit tests using subprocess mocking (jest.mock or vitest mock for child_process/execa)"
     ],
     "acceptanceCriteria": [
-      "WebSocket client authenticates to Gateway and sends/receives typed RPC messages",
-      "Health check polling correctly reports gateway up/down status",
-      "config.patch respects 3 req/60s rate limit (queues or errors on excess)",
-      "Fallback to direct filesystem write works when Gateway is unavailable",
-      "Unit tests pass with a mock WebSocket server — no live Gateway required",
-      "All operations accept AbortSignal for cancellation"
+      "DockerClient correctly wraps docker CLI commands via subprocess (not SDK)",
+      "Health polling returns structured status within configurable timeout",
+      "Errors are typed and actionable (not raw stderr strings)",
+      "Unit tests pass without requiring a running Docker daemon",
+      "All async methods accept AbortSignal for cancellation"
     ],
-    "startedAt": "2026-03-12T21:52:28-07:00"
+    "startedAt": "2026-03-12T22:14:06-07:00"
   }
 }
