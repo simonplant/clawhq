@@ -24,7 +24,7 @@ So today you choose between **surveillance AI** (polished, easy, you own nothing
 
 ## The Solution
 
-ClawHQ is the control panel that makes OpenClaw a real alternative to big-tech AI. It covers the complete agent lifecycle — Plan, Build, Secure, Deploy, Operate, Evolve, Decommission — as a single Go binary you install on your own hardware. Local models are the default. Cloud APIs are opt-in, per-task, with full visibility into what data leaves your machine. Templates map to the things you're actually replacing (Google Assistant, ChatGPT Plus, a human PA). Setup takes 30 minutes, not weeks. And the agent gets smarter over time because ClawHQ manages the feedback loop that makes it learn your preferences, not just execute commands.
+ClawHQ is the control panel that makes OpenClaw a real alternative to big-tech AI. It covers the complete agent lifecycle — Plan, Build, Secure, Deploy, Operate, Evolve, Decommission — as a single Go binary you install on your own hardware. Local models are the default. Cloud APIs are opt-in, per-task, with full visibility into what data leaves your machine. Templates map to the things you're actually replacing (Google Assistant, ChatGPT Plus, a human PA). Setup takes minutes, not weeks — describe what you want and the system figures out the config. The agent doesn't just execute commands; it monitors your integrations, surfaces problems with proposed solutions, and gets smarter over time through structured memory that actually learns your patterns instead of accumulating raw conversation logs.
 
 **Core bet:** People will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
 
@@ -40,7 +40,7 @@ These aren't aspirations. They're constraints that flow through every design dec
 
 **Sovereign.** Self-operated is the primary product, not an equal sibling to managed hosting. Your data stays on your hardware by default. `clawhq export` gives you everything portable. `clawhq destroy` proves it's gone. No lock-in to ClawHQ, no lock-in to any cloud provider, no lock-in to any model provider.
 
-**Gets better, not worse.** The agent improves through use. User corrections become preference updates. Interaction patterns inform autonomy tuning. Memory is actively managed, not just accumulated. An agent at 6 months is dramatically more useful than at day 1 — this is the retention mechanism that keeps people from going back to ChatGPT.
+**Gets better, not worse.** The agent improves through use. Interactions are transformed into structured knowledge — preferences, relationships, patterns — not just accumulated as raw text. User corrections become preference updates. Interaction patterns inform autonomy tuning. The agent identifies its own capability gaps and proposes solutions. An agent at 6 months is dramatically more useful than at day 1 — this is the retention mechanism that keeps people from going back to ChatGPT.
 
 ---
 
@@ -56,7 +56,7 @@ These aren't aspirations. They're constraints that flow through every design dec
 
 ## What Success Looks Like
 
-- **Time to working agent:** < 30 minutes from install to first useful interaction (currently weeks)
+- **Time to working agent:** < 5 minutes via AI-inference path, < 30 minutes via guided questionnaire (currently weeks)
 - **Config-related failures:** 0 silent landmines shipped (currently 14 possible)
 - **Data leaving the machine:** 0 bytes by default; user explicitly opts in per-task-category for cloud APIs
 - **Agent improvement rate:** Measurable increase in autonomous task completion at 30/60/90 days (baseline TBD from Phase 0)
@@ -74,12 +74,12 @@ Impl notes reference OPENCLAW-REFERENCE.md for implementation details.
 
 ### 1. Plan — Agent Setup
 
-From "I want to replace Google Assistant" to a running agent — in 30 minutes, without touching a config file. The system infers the right config from what you connect and what you tell it, not from a 50-question form.
+From "I want to replace Google Assistant" to a running agent — in under 5 minutes with AI inference, or 30 minutes with guided setup. The system infers the right config from what you connect and what you tell it, not from a 50-question form.
 
 - [ ] **Use-case templates** `P0` `L`
   As a Privacy Migrant, I want to pick what I'm replacing (not an abstract personality archetype) so that my agent is immediately useful for my actual daily workflow.
   - Given a user runs `clawhq init`, when templates are presented, then they're organized by what they replace: "Replace Google Assistant" (daily life management), "Replace ChatGPT Plus" (research + writing partner), "Replace my PA" (calendar, email triage, task management), "Family Hub" (shared calendar, chore tracking, meal planning), "Research Co-pilot" (deep research, citation management, writing), "Founder's Ops" (inbox zero, investor updates, hiring pipeline)
-  - Given a user selects a template, when preview is shown, then it displays: what integrations are needed, what the agent will handle autonomously vs. with approval, what local model requirements are, estimated daily cost (local vs. cloud), and a "day in the life" narrative showing what a typical day looks like with this agent
+  - Given a user selects a template, when preview is shown, then it displays: what integrations are needed, what the agent will handle autonomously vs. with approval, what local model requirements are, estimated daily cost (local vs. cloud), and a "day in the life" narrative showing what a typical day looks like with this agent (e.g., "Replace my PA" shows: agent auto-schedules focus blocks around your meetings, notices a conflict John mentioned in email and proposes a reschedule, triages 40 emails down to 6 that need you, and adds prep time before your client call)
   - Given each template, when config is generated, then it maps to full operational dimensions internally: personality, security posture, monitoring, memory policy, cron config, autonomy model, model routing strategy
   - _Impl note: Templates are YAML files. Use-case framing is the presentation layer; operational dimensions (Guardian/Assistant/Coach/etc.) are the implementation layer. See OPENCLAW-REFERENCE.md → Template System Design._
 
@@ -172,15 +172,16 @@ From source code to auditable, reproducible container images — with every tool
   As a Tinkerer, I want to rebuild only the stage that changed so that iteration is fast.
   - Given `clawhq build --stage2-only` runs, then only the custom layer rebuilds using the existing base image
 
-### 4. Secure — Hardening & Monitoring
+### 4. Secure — Hardening & Isolation
 
-Hardened by default, monitored continuously. Every secret managed, every credential health-checked, every skill vetted. Security is the baseline, not a feature flag.
+Hardened by default, isolated by context, monitored continuously. Every conversation runs in its own container. Every secret is managed. Every credential is health-checked. Every skill is vetted. Security is the baseline, not a feature flag.
 
 - [ ] **Container hardening** `P0` `L`
   As a Tinkerer, I want my agent container hardened automatically based on my template's security posture so that I don't have to manually configure Docker security options.
   - Given a template with `security.posture: hardened`, when the deployment bundle is generated, then `docker-compose.yml` includes: `cap_drop: ALL`, read-only rootfs, `no-new-privileges`, non-root UID 1000, tmpfs with noexec/nosuid, ICC disabled, resource limits per posture level
-  - Given the container is running, when Doctor checks security, then it verifies all hardening controls are active and alerts on any regression
-  - _Impl note: See OPENCLAW-REFERENCE.md → Container Hardening Matrix for full posture comparison (Standard/Hardened/Paranoid)._
+  - Given multiple contexts exist (work group, family group, personal), when the agent handles messages from different contexts, then each context runs in its own isolated container with its own filesystem and memory — a compromised or misbehaving agent in one context cannot access data from another
+  - Given the container is running, when Doctor checks security, then it verifies all hardening controls are active, per-context isolation is enforced, and alerts on any regression
+  - _Impl note: Per-context container isolation is the architectural commitment that makes ClawHQ's security OS-level, not application-level. OpenClaw runs everything in one Node process with shared memory — session-level DM scope is a config setting, not a security boundary. ClawHQ enforces isolation at the container level so that even a prompt injection in one context can't leak data from another. See OPENCLAW-REFERENCE.md → Container Hardening Matrix for posture comparison._
 
 - [ ] **Egress firewall** `P0` `M`
   As a Tinkerer, I want outbound network traffic restricted so that my agent can't exfiltrate data to unexpected destinations.
@@ -254,9 +255,9 @@ Not just diagnostics and dashboards — predictive intelligence that catches pro
 
 - [ ] **Predictive health alerts** `P0` `L`
   As a Tinkerer, I want the system to predict problems and act before I notice so that my agent runs like autopilot, not a dashboard I have to watch.
-  - Given memory is growing, when trend analysis runs, then it predicts when hot tier will exceed budget and auto-triggers compaction before overflow ("Memory at 78KB, growing 12KB/day — auto-compacting in 2 days unless growth slows")
+  - Given memory is growing, when trend analysis runs, then it predicts when knowledge graph size will impact retrieval quality and auto-triggers background reflection and compaction before degradation ("Memory at 78KB structured knowledge, growing 12KB/day — scheduling reflection cycle")
   - Given credential expiry is tracked, when an API key has a known expiry, then a renewal notification fires 7 days before expiry with a one-command renewal flow
-  - Given agent response quality is measurable (user corrections per session, redo requests, escalation rate), when quality degrades, then the system diagnoses likely causes (identity bloat, memory overflow, model routing regression) and suggests fixes
+  - Given agent response quality is measurable (user corrections per session, redo requests, escalation rate), when quality degrades, then the system diagnoses likely causes (identity bloat, memory retrieval regression, model routing mismatch) and suggests fixes
   - Given any metric crosses a warning threshold, when the alert fires, then it includes the projected timeline and automated remediation if available — not just "something is wrong"
 
 - [ ] **Status dashboard** `P0` `L`
@@ -268,6 +269,7 @@ Not just diagnostics and dashboards — predictive intelligence that catches pro
 - [ ] **Intelligent cost routing** `P0` `M`
   As a Tinkerer, I want the system to minimize cost automatically by routing tasks to the cheapest capable model — with local models as the cheapest option.
   - Given a budget is configured, when usage tracking runs, then it attributes cost per-task-category and per-model: "Morning brief: $0.00 (local). Research session: $0.47 (Sonnet). Email triage: $0.00 (local)."
+  - Given structured memory is active, when context is assembled for any task, then only relevant structured knowledge is retrieved (not raw history), reducing token consumption and making local models viable for tasks that would otherwise require cloud context windows
   - Given budget hits 75%, when the router adjusts, then it shifts eligible tasks from cloud to local models before alerting
   - Given budget hits 100%, when the cap is enforced, then cloud-escalation stops entirely and the agent operates local-only until the budget resets — never pauses completely
 
@@ -304,10 +306,11 @@ Not just diagnostics and dashboards — predictive intelligence that catches pro
 The big 4 operate as black boxes. ClawHQ's agent is accountable. The user knows what happened, what data was touched, what left the machine, and what the agent wants to do next.
 
 - [ ] **Activity digest** `P0` `L`
-  As a Privacy Migrant, I want a daily summary of everything my agent did so that I trust it and can course-correct quickly.
-  - Given the agent ran overnight, when the user checks in (via messaging channel or `clawhq digest`), then they see: tasks completed autonomously, tasks queued for approval, emails read/triaged (count + categories, not content — unless user asks), calendar changes made, integrations used, errors encountered, and data egress summary
+  As a Privacy Migrant, I want a daily summary that tells me what my agent did, what it noticed, and what it thinks I should do next — so that I trust it and get value without micromanaging.
+  - Given the agent ran overnight, when the user checks in (via messaging channel or `clawhq digest`), then they see: tasks completed autonomously, tasks queued for approval, problems the agent found with proposed solutions (e.g., "John moved Thursday's meeting, which conflicts with your client call — I've drafted a reschedule for your approval"), emails triaged (count + categories, not content — unless user drills in), calendar changes made, integrations used, errors encountered, and data egress summary
+  - Given the agent monitors connected integrations continuously, when it detects something actionable (scheduling conflict, urgent email pattern, missed deadline approaching), then it surfaces the problem with a proposed action in the digest or as a real-time alert — not just a log entry
   - Given the digest is generated, when privacy mode is active, then it summarizes by category ("read 12 emails, triaged 3 as urgent") rather than showing content — the user drills into specifics only if they want to
-  - _Impl note: Digest generated by the agent itself using a local model, from structured activity logs. This is a cron-triggered skill, not a ClawHQ CLI feature._
+  - _Impl note: Digest generated by the agent itself using a local model, from structured activity logs + structured memory. Proactive monitoring is cron-driven: the heartbeat checks integrations, the agent reasons over what it finds, and surfaces actionable items. This is the core "it works for you while you sleep" experience._
 
 - [ ] **Approval queue** `P0` `M`
   As a Privacy Migrant, I want to approve high-stakes actions before the agent takes them so that I maintain control without micromanaging.
@@ -334,7 +337,7 @@ The big 4 operate as black boxes. ClawHQ's agent is accountable. The user knows 
 
 ### 8. Evolve — The Agent Gets Better
 
-This is the retention mechanism. An agent that doesn't improve is just a chatbot you host yourself. An agent that learns your preferences, adapts its autonomy, and gets better at being YOUR agent — that's what keeps people from going back to ChatGPT.
+This is the retention mechanism. An agent that doesn't improve is just a chatbot you host yourself. An agent that builds structured knowledge of your world, learns your preferences, adapts its autonomy, and fills its own capability gaps — that's what keeps people from going back to ChatGPT.
 
 - [ ] **Identity governance** `P0` `L`
   As a Tinkerer, I want my agent's identity files tracked for bloat, staleness, and contradictions so that the agent doesn't slowly become someone else.
@@ -344,11 +347,13 @@ This is the retention mechanism. An agent that doesn't improve is just a chatbot
   - _Impl note: See OPENCLAW-REFERENCE.md → Identity Drift Research._
 
 - [ ] **Memory lifecycle management** `P0` `L`
-  As a Tinkerer, I want agent memory automatically tiered and compacted so that context windows don't overflow and quality doesn't degrade.
-  - Given memory is accumulating, when hot tier exceeds 100KB or 7 days, then old memories are summarized (LLM-powered, using local model) and moved to warm tier
-  - Given warm memories exceed 90 days, then they're further compressed, PII masked, and archived to cold tier
-  - Given cold memories exceed retention period, then they're permanently deleted
-  - _Impl note: See OPENCLAW-REFERENCE.md → Memory Lifecycle Research. ~120KB/day growth observed in production. Summarization uses local model by default (private data stays local)._
+  As a Tinkerer, I want agent memory structured, cross-linked, and actively managed so that the agent gets smarter over time — not just less bloated.
+  - Given interactions accumulate, when memory processing runs, then raw conversations are transformed into structured knowledge: preferences, relationships, patterns, and domain expertise — organized hierarchically and cross-linked, not stored as flat markdown logs
+  - Given structured memory exists, when the agent handles a new task, then it retrieves only the relevant knowledge (not the full history), dramatically reducing context size and making local models viable for more tasks
+  - Given hot memory exceeds 100KB or 7 days, when tier transition runs, then the structured knowledge is preserved while raw conversation detail is summarized (LLM-powered, local model) and demoted to warm tier — the agent retains what it learned without retaining every word
+  - Given warm memories exceed 90 days, then they're further compressed, PII masked, and archived to cold tier; cold exceeding retention is permanently deleted
+  - Given the agent is idle (no active conversation), when background reflection runs, then it analyzes existing memories to detect new connections, merge redundant knowledge, and surface insights the agent can act on proactively
+  - _Impl note: This is the single biggest differentiator for cost and local model viability. Structured knowledge retrieval sends ~1/10th the tokens vs. raw history stuffing, which means local small models can handle tasks that would otherwise require cloud. Background reflection uses the same local model as summarization. See OPENCLAW-REFERENCE.md → Memory Lifecycle Research for baseline growth rates._
 
 - [ ] **Preference learning from corrections** `P1` `L`
   As a Privacy Migrant, I want the agent to learn from my corrections so that it stops making the same mistakes and starts anticipating my preferences.
@@ -373,6 +378,13 @@ This is the retention mechanism. An agent that doesn't improve is just a chatbot
   - Given a new integration is added, then credential is validated, tool installed, TOOLS.md updated, cron dependencies checked
   - Given an integration is removed, then credential cleaned, tool uninstalled, identity updated, no orphaned cron dependencies
   - Given a provider is swapped (Gmail → iCloud), then the same category interface works with the new backend
+
+- [ ] **Agent self-improvement** `P1` `L`
+  As a Tinkerer, I want my agent to identify gaps in its own capabilities and propose or build tools to fill them — with my approval.
+  - Given the agent encounters a repeated task it can't handle well (e.g., parsing a specific report format, interacting with a service it doesn't have a tool for), when the pattern is detected, then it proposes a solution: install an existing skill, build a custom tool, or request a new integration
+  - Given the agent proposes building a custom tool, when the user approves, then the agent uses the `construct` skill to write, test, and install the tool in its own workspace — sandboxed, logged, and reversible
+  - Given any self-improvement action is taken, when the audit trail records it, then the user can review, roll back, or refine the result
+  - _Impl note: The `construct` skill already exists in the skill library. This story makes it a first-class part of the Evolve experience rather than a power-user curiosity. All construction runs in sandboxed containers with per-context isolation. User approval required for every change._
 
 ### 9. Migrate — On-Ramp From Big Tech
 
@@ -431,11 +443,11 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 ## How It Should Feel
 
 - **Fast:** CLI commands respond in < 2s for reads. Builds complete Stage 2 in < 30s. Config writes propagate within 1s via WebSocket RPC. Local model routing adds < 100ms decision overhead.
-- **Secure:** Hardened by default. No secret in config files. Egress firewall with domain allowlisting (not just "allow all HTTPS"). Identity files read-only. Container runs non-root with minimal capabilities.
+- **Secure:** Hardened by default. Per-context container isolation so your work agent can't see your family group's data. No secret in config files. Egress firewall with domain allowlisting (not just "allow all HTTPS"). Identity files read-only. Container runs non-root with minimal capabilities.
 - **Private:** Zero data leaves the machine by default. Cloud APIs are opt-in per-task-category. Every outbound call logged. Air-gapped mode available. Self-operated is the hero product.
 - **Reliable:** Auto-recovery from common failures. Pre-update snapshots with instant rollback. Predictive alerts catch problems before users notice.
-- **Transparent:** Daily activity digest. Approval queue for high-stakes actions. Egress audit with zero-egress attestation. "Why did you do that?" trace.
-- **Improving:** Preference learning from corrections. Autonomy tuning from approval patterns. Memory actively managed. Agent at 6 months is dramatically better than at day 1.
+- **Transparent:** Daily activity digest that surfaces problems with proposed solutions, not just logs. Approval queue for high-stakes actions. Egress audit with zero-egress attestation. "Why did you do that?" trace.
+- **Improving:** Structured memory that learns patterns and relationships, not just accumulates text. Preference learning from corrections. Autonomy tuning from approval patterns. Agent builds its own tools when it hits a gap. Agent at 6 months is dramatically better than at day 1.
 - **Portable:** `clawhq export` produces a self-documented bundle. Zero lock-in to ClawHQ, any cloud, or any model provider. Works with raw OpenClaw if the user leaves.
 
 ---
@@ -454,6 +466,7 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 **Core data model:**
 - `Template` — operational profile (YAML). Fields: name, version, use_case_mapping, personality, security posture, monitoring, memory policy, cron config, autonomy model, model routing strategy, integration requirements, skill bundle
 - `ModelRoutingPolicy` — per-category escalation rules. Fields: task_category, local_model_preference, cloud_allowed (bool), cloud_provider, quality_threshold, cost_cap
+- `StructuredMemory` — knowledge graph of user patterns. Fields: preferences (hierarchical), relationships (cross-linked contacts + interaction patterns), domain_expertise (learned skills), context (recent + pending). Replaces flat markdown logs with structured, retrievable knowledge that reduces context tokens ~10x
 - `DeploymentBundle` — generated config set. Fields: openclaw.json, .env, docker-compose.yml, identity files, cron jobs, model routing config. Generated from Template + setup answers
 - `EgressLog` — outbound API call record. Fields: timestamp, provider, model, token_count_in, token_count_out, data_category, cost, session_id
 - `PreferenceSignal` — user correction record. Fields: timestamp, action_type, original_decision, correction, signal_type (preference/boundary/one-time), applied_to_identity (bool)
@@ -468,7 +481,8 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 - All config writes go through `config.patch` RPC when Gateway is running (rate limited: 3 req/60s)
 - Templates can tighten Layer 1 security baselines but can never loosen them
 - Self-operated is the primary product; managed mode is a convenience tier
-- Memory summarization and preference extraction use local models by default (private data stays local)
+- Memory summarization, preference extraction, and background reflection use local models by default (private data stays local)
+- Per-context container isolation for multi-group/multi-channel deployments (OS-level, not application-level)
 
 ---
 
@@ -488,6 +502,7 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 - Integration with non-OpenClaw agent frameworks
 - Smart home integration (Home Assistant bridge)
 - Shared family memory with per-member privacy boundaries
+- Agent swarms — teams of specialized agents collaborating on complex tasks, each in isolated containers (natural extension of per-context isolation)
 
 ---
 
@@ -499,18 +514,18 @@ Done when: We know which use-case templates matter, which integrations are most 
 
 **Phase 1 — Self-install panel (Operate + Secure + Deploy + Model Routing)**
 Stories: Doctor, Predictive health alerts, Status dashboard, Intelligent cost routing, Full deploy sequence, Pre-flight checks, Graceful shutdown, Egress firewall (with domain allowlisting), Container hardening, Secrets management, Encrypted backup, Safe upstream updates, Two-stage Docker build, Health self-repair, Local-first model routing, Per-category cloud opt-in, Data egress visibility
-Done when: A Tinkerer installs the CLI on an existing OpenClaw deployment and immediately gets value: diagnostics, security hardening, local-first model routing with egress visibility. They can `clawhq up` / `clawhq down` / `clawhq backup` / `clawhq update` with full safety. Zero data leaves the machine unless they opt in.
+Done when: A Tinkerer installs the CLI on an existing OpenClaw deployment and immediately gets value: diagnostics, security hardening with per-context container isolation, local-first model routing with egress visibility. They can `clawhq up` / `clawhq down` / `clawhq backup` / `clawhq update` with full safety. Zero data leaves the machine unless they opt in.
 
 **Phase 2 — Full panel (Plan + Evolve + Transparency + Decommission)**
-Stories: Use-case templates, AI-powered config inference, Guided questionnaire, Integration auto-detection, Config generation, Config validation, Identity governance, Memory lifecycle, Preference learning, Autonomy tuning, Activity digest, Approval queue, Data egress audit, Portable export, Verified destruction, Pre-decommission checklist, PII scanning, Channel connection, Post-deploy smoke test, Intelligent task-level routing
-Done when: A Privacy Migrant goes from zero to working agent using only `clawhq init`. The agent gets better over time through preference learning and autonomy tuning. The user knows exactly what the agent did and what data left their machine.
+Stories: Use-case templates, AI-powered config inference, Guided questionnaire, Integration auto-detection, Config generation, Config validation, Identity governance, Memory lifecycle (structured knowledge graph), Preference learning, Autonomy tuning, Agent self-improvement, Activity digest (proactive), Approval queue, Data egress audit, Portable export, Verified destruction, Pre-decommission checklist, PII scanning, Channel connection, Post-deploy smoke test, Intelligent task-level routing
+Done when: A Privacy Migrant goes from zero to working agent using only `clawhq init` in under 5 minutes. The agent proactively surfaces problems and proposes solutions. It gets better over time through structured memory, preference learning, and autonomy tuning. The user knows exactly what the agent did and what data left their machine.
 
 **Phase 3 — Migration + Managed hosting**
 Stories: ChatGPT conversation import, Google Assistant routine import, Contact/calendar bootstrapping, "Replace my X" wizard, Infrastructure provisioning, Fleet management, Web console, Access control
 Done when: A non-technical Privacy Migrant can switch from ChatGPT/Google Assistant to ClawHQ with their history and routines intact. Managed mode available for those who accept the trade-off.
 
 **Phase 4 — Ecosystem**
-Stories: Community templates, Supply chain security, "Why did you do that?" trace, Air-gapped mode, Template marketplace
+Stories: Community templates, Supply chain security, "Why did you do that?" trace, Air-gapped mode, Template marketplace, Agent swarms (task-level multi-agent collaboration)
 Done when: Community is contributing use-case templates. The WordPress flywheel is turning.
 
 ---
