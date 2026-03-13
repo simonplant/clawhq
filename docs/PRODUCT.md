@@ -180,6 +180,8 @@ clawhq init          # Guided questionnaire → complete deployment bundle
 clawhq template      # Browse, preview, compare, customize templates
 ```
 
+**OpenClaw integration:** The Plan toolchain produces the same artifacts OpenClaw expects: `openclaw.json` + workspace files + `.env`. It writes standard files and lets the Gateway load them normally. OpenClaw's `openclaw onboard` CLI wizard (`src/commands/onboard.ts`) handles minimal model/channel setup; ClawHQ replaces this with a complete config bundle, 14 landmine rules as pre-write validation, and personalization the wizard doesn't collect. Templates must generate TypeBox-schema-valid JSON5 — unknown keys cause the Gateway to refuse to start.
+
 ---
 
 ### 2. Build
@@ -234,6 +236,8 @@ clawhq build --stage2-only      # Rebuild custom layer only
 clawhq build --verify           # Rebuild and compare against manifest
 clawhq build --dry-run          # Show what would be built without building
 ```
+
+**OpenClaw integration:** ClawHQ wraps Docker CLI — it builds *on top of* OpenClaw's Dockerfiles (`Dockerfile`, `Dockerfile.sandbox`, `Dockerfile.sandbox-browser`, `Dockerfile.sandbox-common`), not by modifying them. The custom layer installs additional tools (himalaya, gh, etc.) that OpenClaw doesn't include by default. Sandbox setup requires `scripts/sandbox-setup.sh`. ClawHQ's Build must handle both the Gateway image and sandbox images.
 
 ---
 
@@ -347,6 +351,8 @@ clawhq audit --cost             # Cost attribution report
 clawhq audit --compliance       # Exportable compliance report
 ```
 
+**OpenClaw integration:** Security enforcement is a *layer on top of* OpenClaw's existing checks. OpenClaw provides `openclaw security audit` (`src/commands/security.ts`) and `openclaw doctor` (`src/commands/doctor.ts`), config schema enforcement, sandbox isolation (`src/agents/sandbox.ts`), tool policy (`tools.allow`/`tools.deny`), DM policy per channel, and a SecretRef system for avoiding plaintext secrets. ClawHQ runs these as a subset, then adds its own checks (firewall state, Docker hardening, credential probes, workspace scanning). The security policy evaluator intercepts config writes (via `config.patch` RPC) and warns before weakening security.
+
 ---
 
 ### 4. Deploy
@@ -436,6 +442,8 @@ clawhq connect --test           # Send test message through channel
 clawhq down                     # Graceful shutdown (preserves state)
 clawhq restart                  # Restart with firewall reapply + health verify
 ```
+
+**OpenClaw integration:** ClawHQ calls `docker compose` CLI + `openclaw gateway` CLI + `iptables` directly — this is subprocess orchestration, not API integration. OpenClaw provides `openclaw gateway` (starts Gateway), `openclaw gateway install` (daemon installation via launchd/systemd), and `openclaw channels status --probe` (channel health). ClawHQ sequences: preflight → compose up → firewall → health poll → channel verify → smoke test. The Gateway must be healthy (WebSocket at `:18789/healthz`) before ClawHQ can connect for further operations.
 
 ---
 
@@ -600,6 +608,8 @@ clawhq logs                     # Stream live logs
 clawhq logs --cron heartbeat    # Cron job history for specific job
 ```
 
+**OpenClaw integration:** Operate uses both WebSocket and filesystem channels. Gateway WebSocket provides real-time status, session data, and usage metrics. Filesystem provides memory sizes, identity file sizes, and cron run logs (`cron/runs/*.jsonl`). OpenClaw exposes `openclaw status`, `openclaw health`, `openclaw doctor` (structured output with `--json`), `openclaw logs`, and `openclaw update`. Usage tracking (token counts, costs) is in the Gateway's runtime state, exposed via WebSocket. ClawHQ aggregates these into a single dashboard and adds backup, fleet management, and update safety (pre-update snapshot, post-update doctor, rollback).
+
 ---
 
 ### 6. Evolve
@@ -681,6 +691,8 @@ clawhq train --review           # Review interaction patterns
 clawhq train --autonomy         # Autonomy tuning recommendations
 ```
 
+**OpenClaw integration:** This is where ClawHQ adds the most value over raw OpenClaw. OpenClaw treats identity files as opaque markdown — it reads them, includes them in the prompt, and never modifies them. This means ClawHQ owns the identity file lifecycle completely without interference. Integration points: filesystem read/write for identity and memory files, `config.patch` RPC for config changes, session history (from `~/.openclaw/agents/*/sessions/`) for behavioral analysis, subprocess for LLM-powered summarization during memory tier transitions.
+
 ---
 
 ### 7. Decommission
@@ -756,6 +768,8 @@ clawhq destroy --keep-export    # Destroy but preserve the export bundle
 clawhq destroy --verify         # Re-verify a previous destruction
 ```
 
+**OpenClaw integration:** Filesystem operations + Docker CLI + iptables — all subprocess work, no Gateway interaction needed (the Gateway is being shut down). OpenClaw provides `openclaw uninstall` (removes daemon service) but has no structured export/destroy mechanism or cryptographic destruction verification.
+
 ---
 
 ## Architecture
@@ -803,6 +817,110 @@ The seven toolchains operate across three architectural layers:
 | **Health** | Garmin, Apple Health | `health log`, `health summary` |
 | **CRM** | Salesforce, HubSpot | `crm contacts`, `crm deals` |
 
+### OpenClaw's Internal Architecture
+
+OpenClaw is a single Node.js process (the **Gateway**) that acts as a control plane. Everything else connects to it.
+
+```
+                     ~/.openclaw/openclaw.json  (JSON5 config)
+                     ~/.openclaw/workspace/     (agent files, memory, skills)
+                     ~/.openclaw/cron/          (job definitions + run logs)
+                     ~/.openclaw/credentials/   (pairing allowlists, auth state)
+                     ~/.openclaw/.env           (secrets)
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────┐
+│                    GATEWAY PROCESS                        │
+│                   (src/gateway/server.ts)                 │
+│                                                          │
+│  ┌──────────┐  ┌───────────┐  ┌──────────────────────┐  │
+│  │ Config   │  │ Session   │  │ Channel Adapters     │  │
+│  │ Loader   │  │ Manager   │  │ (telegram/, discord/,│  │
+│  │ (config/ │  │ (config/  │  │  slack/, whatsapp/,  │  │
+│  │  config  │  │  sessions │  │  signal/, imessage/, │  │
+│  │  .ts)    │  │  .ts)     │  │  + plugin channels)  │  │
+│  └────┬─────┘  └─────┬─────┘  └──────────┬───────────┘  │
+│       │              │                    │              │
+│       ▼              ▼                    ▼              │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │              Auto-Reply Router                    │   │
+│  │            (auto-reply/reply.ts)                  │   │
+│  │  access control → session resolve → agent dispatch│   │
+│  └──────────────────────┬───────────────────────────┘   │
+│                         │                                │
+│                         ▼                                │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │           Pi Agent Runtime (PiEmbeddedRunner)     │   │
+│  │            (agents/piembeddedrunner.ts)            │   │
+│  │                                                    │   │
+│  │  prompt-builder.ts → model API → tool dispatch     │   │
+│  │       ↕                    ↕            ↕          │   │
+│  │  memory/              providers     sandbox.ts     │   │
+│  │  (workspace/memory/)  (API keys)   (Docker exec)   │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                          │
+│  ┌────────────┐  ┌────────────┐  ┌──────────────────┐  │
+│  │ Cron       │  │ Hooks      │  │ WebSocket Hub    │  │
+│  │ Scheduler  │  │ (webhooks) │  │ (Control UI,     │  │
+│  │            │  │            │  │  TUI, CLI, apps) │  │
+│  └────────────┘  └────────────┘  └──────────────────┘  │
+│                                                          │
+│  ┌────────────┐  ┌────────────┐  ┌──────────────────┐  │
+│  │ Plugin     │  │ Skills     │  │ Browser Control  │  │
+│  │ Loader     │  │ Registry   │  │ (CDP/Chrome)     │  │
+│  └────────────┘  └────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+                              │
+              WebSocket :18789│
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+         CLI client     Control UI      Companion Apps
+         (openclaw …)   (browser)       (macOS/iOS/Android)
+```
+
+**Key implementation facts:**
+
+1. **Single process** — The Gateway is one Node.js process. No separate services, no message queues, no databases (except SQLite for memory search). Everything is in-process.
+2. **Single config file** — `~/.openclaw/openclaw.json` is the source of truth for runtime behavior. The Gateway validates against a TypeBox schema (`src/config/schema.ts`) and watches for hot-reload changes.
+3. **Filesystem is state** — Sessions, cron jobs, memory, credentials, and workspace files are all stored as files under `~/.openclaw/`. No database for operational state — JSON files on disk.
+4. **CLI talks to Gateway via WebSocket** — `openclaw config set` connects to the running Gateway's WebSocket, sends an RPC. The CLI is a *client*, not a direct file editor.
+5. **Control UI is served by the Gateway** — The built-in web dashboard at `http://127.0.0.1:18789` is a Lit web-component app served from the Gateway process itself.
+6. **Channels are adapters, not plugins** — Core channels (WhatsApp, Telegram, Discord, Slack, Signal, iMessage) are compiled into the Gateway. Plugin channels (Teams, Matrix, Feishu, LINE, etc.) are loaded by `src/plugins/loader.ts`.
+7. **Agent runtime is embedded** — `PiEmbeddedRunner` runs inside the Gateway process. Tools are function calls within the same process (or Docker exec for sandboxed operations).
+8. **Config schema is TypeBox** — The schema in `src/config/schema.ts` defines every valid field. Unknown keys cause the Gateway to refuse to start.
+
+### Four Integration Surfaces
+
+ClawHQ attaches to OpenClaw through exactly four surfaces:
+
+**Surface 1: The Config File** (`~/.openclaw/openclaw.json`) — Controls everything about runtime behavior. ClawHQ writes config via the Gateway's `config.patch` / `config.apply` RPC over WebSocket (preferred), or writes the file directly when the Gateway is down. Every panel in the web console ultimately produces a `config.patch` RPC call.
+
+**Surface 2: The Workspace** (`~/.openclaw/workspace/`) — Contains identity files (SOUL.md, USER.md, AGENTS.md, TOOLS.md, HEARTBEAT.md, IDENTITY.md, BOOT.md, BOOTSTRAP.md), memory files, skills, and custom tools. ClawHQ reads and writes these as plain files. The key constraint is `bootstrapMaxChars` — identity files that exceed it get silently truncated.
+
+**Surface 3: The Cron System** (`~/.openclaw/cron/`) — Contains `jobs.json` (job definitions) and `runs/<jobId>.jsonl` (execution history). ClawHQ writes jobs and reads run logs. The Gateway hot-reloads cron config.
+
+**Surface 4: The Gateway WebSocket API** — Exposes config management, session RPCs, gateway status/health/restart, agent RPCs, and device management. All communication is authenticated. Rate limited to 3 req/60s for config writes.
+
+### Three Communication Channels
+
+| Channel | What it's for | When to use |
+|---------|--------------|-------------|
+| **WebSocket RPC** | Config read/write, session ops, status, real-time events | Anything the Gateway manages at runtime |
+| **Filesystem** | Workspace files, memory, identity, cron jobs, backups | Anything stored as files |
+| **Subprocess** | Docker, iptables, openclaw CLI commands, system operations | Anything needing OS-level access |
+
+### What ClawHQ Does NOT Need to Do
+
+Understanding what OpenClaw already handles well:
+
+1. **Message routing** — OpenClaw's auto-reply router handles channel → session → agent dispatch
+2. **Model API calls** — The agent runtime handles model selection, failover, and streaming
+3. **Tool execution** — The agent runtime dispatches tools; ClawHQ sets policy but doesn't intercept
+4. **Session persistence** — OpenClaw manages session files automatically
+5. **Channel protocol handling** — Each channel adapter handles auth, parsing, and formatting
+6. **Config schema validation** — The Gateway validates config on load; ClawHQ validates before writing, but the Gateway is the final authority
+
 ### Self-Operated
 
 A single Go binary. All seven toolchains compiled in. No runtime dependencies except Docker.
@@ -841,6 +959,20 @@ Same engine, hosted infrastructure, web console:
 ```
 
 **agentd** is the self-operated CLI running as a daemon. It receives config from the console, manages Docker lifecycle, applies all seven toolchains, streams operational metadata back. The console is a thin coordination layer — it never sees agent contents.
+
+**Communication patterns by mode:**
+
+```
+Self-Operated:
+  ClawHQ CLI → Gateway WebSocket (localhost)
+             → Filesystem (direct)
+             → Subprocess (direct)
+
+Managed:
+  Web Console → agentd (HTTPS) → Gateway WebSocket (localhost)
+                                → Filesystem (direct)
+                                → Subprocess (direct)
+```
 
 **Web Console** — The managed mode web console provides GUI access to all CLI capabilities:
 
@@ -978,6 +1110,106 @@ Provider-specific implementations of category interfaces. Each ships with manife
 
 ---
 
+## Configuration Surface
+
+OpenClaw exposes ~200+ configurable fields across `openclaw.json`, workspace files, cron definitions, and environment variables. This is the complete surface that ClawHQ must expose through its GUI.
+
+### Config Surface → OpenClaw Source Mapping
+
+| Config Surface | OpenClaw Source | Runtime Location |
+|---------------|----------------|-----------------|
+| `identity.*` | `src/config/schema.ts` → `src/agents/prompt-builder.ts` | Loaded per agent turn |
+| `agents.*` | `src/config/schema.ts` → `src/agents/piembeddedrunner.ts` | Loaded at Gateway startup |
+| `models.*` | `src/config/schema.ts` → model provider modules | Loaded at Gateway startup |
+| `channels.*` | `src/config/schema.ts` → channel adapter startup | Channel connects on Gateway boot |
+| `tools.*` | `src/config/schema.ts` → tool policy engine | Evaluated per tool call |
+| `sandbox.*` | `src/config/schema.ts` → `src/agents/sandbox.ts` | Docker exec per sandbox session |
+| `session.*` | `src/config/schema.ts` → `src/config/sessions.ts` | Session resolution per message |
+| `gateway.*` | `src/config/schema.ts` → `src/gateway/server.ts` | Applied at Gateway startup (restart required) |
+| `cron.*` | `src/config/schema.ts` → cron scheduler | Jobs loaded at Gateway startup |
+| `hooks.*` | `src/config/schema.ts` → webhook handler | Applied at Gateway startup |
+| `browser.*` | `src/config/schema.ts` → browser controller | Applied when browser tool invoked |
+| `skills.*` | `src/config/schema.ts` → skills loader | Skills registered at Gateway startup |
+| `plugins.*` | `src/config/schema.ts` → `src/plugins/loader.ts` | Plugins loaded at Gateway startup |
+| `memorySearch.*` | `src/config/schema.ts` → `src/memory/` | Queried during prompt build |
+| `discovery.*` | `src/config/schema.ts` → mDNS/Bonjour module | Applied at Gateway startup |
+| `secrets.*` | `src/config/schema.ts` → SecretRef resolver | Resolved at config load time |
+| Workspace files | Filesystem (`~/.openclaw/workspace/`) | Read by prompt-builder per turn |
+| Cron jobs | Filesystem (`~/.openclaw/cron/jobs.json`) | Loaded by cron scheduler |
+| `.env` | Filesystem (`~/.openclaw/.env`) | Loaded at process start |
+
+### Field Inventory by Category
+
+| Category | Total Fields | Critical | Important | Nice-to-have |
+|----------|-------------|----------|-----------|-------------|
+| Identity & Persona | 12 | 2 | 4 | 6 |
+| AI Models | 15 | 4 | 6 | 5 |
+| Channels | 30+ per provider | 8 | 10 | 12+ |
+| Agents | 25 | 3 | 14 | 8 |
+| Tools & Permissions | 35 | 5 | 8 | 22 |
+| Sandbox & Isolation | 25 | 1 | 6 | 18 |
+| Sessions | 9 | 1 | 5 | 3 |
+| Gateway Server | 12 | 5 | 4 | 3 |
+| Automation (Cron & Hooks) | 18 | 0 | 10 | 8 |
+| Browser | 3 | 0 | 1 | 2 |
+| Skills | 3+ | 0 | 3 | 0 |
+| Plugins | 2+ | 0 | 0 | 2+ |
+| Media/Audio | 4 | 0 | 2 | 2 |
+| Memory & Search | 3 | 0 | 2 | 1 |
+| Messages/UI | 3 | 0 | 2 | 1 |
+| Networking | 4 | 0 | 2 | 2 |
+| Secrets | 2+ | 2 | 0 | 0 |
+| Environment | 4 | 0 | 2 | 2 |
+| **TOTAL** | **~200+** | **~31** | **~81** | **~97** |
+
+### Key Configuration Surfaces
+
+**Identity & Persona** — `identity.name`, `identity.theme`, `identity.emoji`, `identity.avatar` in config; plus 8 workspace files (SOUL.md, IDENTITY.md, USER.md, AGENTS.md, TOOLS.md, BOOT.md, BOOTSTRAP.md, HEARTBEAT.md) needing markdown editors with token budget display.
+
+**AI Models** — Primary model (`agents.defaults.model.primary`), fallback chain (`agents.defaults.model.fallbacks`), provider API keys via SecretRef (`models.providers.<name>.apiKey`). Built-in providers: anthropic, openai, google, deepseek, mistral, openrouter, xai, minimax, ollama. Auth profiles for credential rotation.
+
+**Channels** — 20+ providers, each with `enabled`, `botToken`, `dmPolicy` (pairing/allowlist/open/disabled), `allowFrom`, `groupPolicy`, `configWrites`. Channel-specific fields: WhatsApp uses phone numbers, Telegram uses bot tokens + user IDs, Discord needs applicationId + guildId, Slack needs botToken + appToken + signingSecret, iMessage needs cliPath + dbPath.
+
+**Tools & Permissions** — `tools.profile` (coding/messaging/custom), `tools.allow`/`tools.deny` with group support (`group:runtime`, `group:fs`, `group:sessions`, etc.). Exec tool: `tools.exec.host` (sandbox/gateway/node), `tools.exec.security` (allowlist/ask/auto), `tools.exec.safeBins`. Web tools: search provider selection, API keys, fetch limits.
+
+**Gateway Server** — `gateway.port` (18789), `gateway.bind` (127.0.0.1 default — `0.0.0.0` needs security warning), `gateway.auth.token`/`gateway.auth.password`, `gateway.reload.mode` (hybrid/hot/restart/off). Changes require restart.
+
+**Sandbox & Isolation** — `sandbox.mode` (off/non-main/all), `sandbox.scope` (session/agent/shared), Docker settings (image, network, readOnlyRoot, memory, cpus, pidsLimit, user, capDrop, tmpfs, seccompProfile).
+
+**Sessions** — `session.dmScope` (main/per-peer/per-channel-peer/per-account-channel-peer), identity links, reset mode (daily/idle/manual), thread bindings.
+
+**Automation** — `cron.enabled`, `cron.maxConcurrentRuns`, jobs in `cron/jobs.json` with visual builder. Hooks: `hooks.enabled`, `hooks.token`, `hooks.mappings[]` for webhook routing, Gmail Pub/Sub integration.
+
+**Secrets** — `secrets.providers` for env/file/exec backends. Any field accepting a SecretRef needs a toggle: "Paste value" vs. "Reference secret."
+
+### Config Management Meta-Capabilities
+
+| Capability | Description | Priority |
+|-----------|-------------|----------|
+| Config validation | Run `openclaw doctor` equivalent before saving | Critical |
+| Config diff view | Show what changed before apply | Critical |
+| Config backup on change | Auto-backup before every write | Critical |
+| Hot reload indicator | Show whether a change needs restart or applies live | Important |
+| Config versioning | Git-backed config history with diff and rollback | Important |
+| Raw JSON editor | Escape hatch for power users with syntax highlighting + validation | Critical |
+| Config export/import | Download/upload complete config as JSON5 | Important |
+| `$include` management | Visual split/merge for multi-file configs | Nice-to-have |
+
+### MVP Panel Build Order
+
+1. **Gateway & Auth** — Port, bind, token. If this is wrong nothing else works.
+2. **Model Configuration** — Primary model, API keys, test connection. Core value prop.
+3. **Channel Setup** — At least WhatsApp + Telegram + Discord. Wizard-driven.
+4. **Identity & Persona** — SOUL.md editor, name, emoji. Emotional hook for users.
+5. **Tool Policy** — Allow/deny toggles. Critical for security.
+6. **Session Management** — DM scope, reset policy. Prevents cross-contamination.
+7. **Cron Jobs** — Visual builder. Unlocks automation value.
+8. **Secrets Management** — Unified secret handling. Security differentiator.
+9. **Sandbox Configuration** — Docker settings. Enterprise requirement.
+10. **Everything else** — Skills, plugins, browser, media, hooks, networking.
+
+---
+
 ## Strategy
 
 ### The cPanel Playbook
@@ -993,6 +1225,18 @@ cPanel followed a specific path: first it was a tool sysadmins used to manage th
 **Phase 3: Managed Hosting** — Web console, agentd, VM provisioning, billing. Non-technical users served. They never see a terminal. This is WordPress.com — same engine, hosted for you.
 
 **Phase 4: Ecosystem** — Template marketplace, skill library, community contributions, integration catalog. The WordPress flywheel: more templates → more use cases → more users → more templates.
+
+### Implementation Build Priority
+
+Based on how OpenClaw actually works and the four integration surfaces, the technical build order within each phase:
+
+**Step 1: Read-Only Monitoring** (Operate toolchain, read-only) — Connect to Gateway WebSocket. Display status, cron job status (`cron/runs/*.jsonl`), workspace metrics (filesystem stats), log streaming, and `openclaw doctor` results. *Why first:* Doesn't write anything. Zero risk. Immediately useful. Proves the WebSocket integration works.
+
+**Step 2: Config Editing** (Plan toolchain, write path) — Config panels that produce `config.patch` RPCs: Gateway & auth, model configuration, channel setup wizards, tool policy. *Why second:* Uses the same RPC the Control UI already uses. The Gateway validates everything. Risk is low because the Gateway rejects bad config.
+
+**Step 3: Workspace Editing** (Evolve toolchain) — Identity file editors with token budget display, memory file browser with size tracking, skills browser and installer. *Why third:* Filesystem writes with no schema validation on markdown files. Token budget enforcement must be in ClawHQ.
+
+**Step 4: Lifecycle Operations** (Deploy + Secure + Decommission) — Docker compose orchestration, firewall management, backup/restore, export/destroy, credential health probes. *Why fourth:* Subprocess calls with OS-level permissions (Docker, iptables, sudo). Highest risk. Needs the most testing. But also the highest differentiation.
 
 ---
 
