@@ -30,7 +30,7 @@ vi.mock("./resolver.js", () => ({
   ),
 }));
 
-const iptablesMocks = await import("./iptables.js") as {
+const iptablesMocks = await import("./iptables.js") as unknown as {
   chainExists: ReturnType<typeof vi.fn>;
   createChain: ReturnType<typeof vi.fn>;
   flushChain: ReturnType<typeof vi.fn>;

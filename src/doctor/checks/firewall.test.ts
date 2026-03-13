@@ -23,7 +23,7 @@ vi.mock("../../security/firewall/index.js", () => ({
   })),
 }));
 
-const mocks = await import("../../security/firewall/index.js") as {
+const mocks = await import("../../security/firewall/index.js") as unknown as {
   checkPlatform: ReturnType<typeof vi.fn>;
   chainExists: ReturnType<typeof vi.fn>;
   buildConfig: ReturnType<typeof vi.fn>;
