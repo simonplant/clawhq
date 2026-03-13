@@ -1,1279 +1,579 @@
-# ClawHQ — Product Design Document
+# ClawHQ
 
-**The control panel for OpenClaw agents.**
+> One-liner: Your AI agent runs on your hardware, talks to your services, and never sends a byte to anyone you didn't choose. ClawHQ makes that possible without a PhD in DevOps.
+
+**Owner:** [Name] · **Status:** Draft · **Updated:** 2026-03-12
 
 ---
 
 ## The Problem
 
-OpenClaw gives you a persistent AI agent with tools, memory, cron jobs, and messaging integrations — running in a Docker container you control. It's the most powerful open-source framework for personal agents.
+The big 4 AI companies (OpenAI, Google, Anthropic, Apple) are building personal AI agents that know everything about you — your emails, calendar, tasks, health, finances, relationships. They store it on their servers. They train on it. They lose it in breaches. They shut down features and your data goes with them. You have zero sovereignty over the most intimate dataset that has ever existed about you.
 
-It's also nearly impossible to operate.
+OpenClaw is the escape hatch — the most powerful open-source framework for persistent AI agents, running in a Docker container you control. But it's nearly impossible to operate. Setting up a production agent means wrangling ~13,500 tokens of configuration across 11+ files, dodging 14 silent landmines that produce no errors when misconfigured. Memory bloats to 360KB in 3 days. Credentials expire silently. Identity files corrupt and drift. Security is entirely opt-in. This is full-time SRE work. Most deployments are abandoned within a month.
 
-Setting up a production agent takes weeks of trial and error. Keeping it running requires ongoing SRE work. The framework is excellent — the operational burden is the bottleneck.
-
-### What Goes Wrong
-
-Every item below was discovered running a production agent for months:
-
-- **14 configuration landmines** that silently break the agent. No errors, no warnings — just an agent that doesn't work. Each takes hours to diagnose.
-- **Memory bloat** — 360KB in 3 days without lifecycle management. Context windows overflow. Agent quality degrades.
-- **Credential rot** — API keys expire silently. The agent doesn't notice. The user thinks everything is fine.
-- **Identity drift** — Personality files corrupt, bloat, and go stale. The agent slowly becomes someone else.
-- **Security is opt-in** — Defaults let the agent escalate privileges and read the host filesystem.
-- **Configuration fragmentation** — ~13,500 tokens across 11+ files. 40% is universal, 60% is personalized. No tooling separates the two.
-- **Ongoing SRE burden** — Cron jobs fail silently, integrations degrade, costs accumulate, backups don't happen.
-
-### The Gap
-
-Today you choose between **raw framework** (powerful, months of expertise required) or **basic hosting** (someone runs the container with default config). Nobody offers the full lifecycle — from initial design through long-term evolution to eventual decommissioning — that makes an agent production-ready and keeps it that way.
-
-This is exactly the gap that control panels filled for Linux servers. In the early 2000s, Linux was powerful but operationally brutal — configuring Apache, managing SSL, setting up email, writing cron jobs, hardening security. Then cPanel, Plesk, and Webmin emerged. They didn't replace Linux. They made it usable. The server was the engine. The panel made it run.
+So today you choose between **surveillance AI** (polished, easy, you own nothing) or **raw framework** (sovereign, powerful, months of expertise required). Nobody makes the sovereign option usable. That's the gap.
 
 ---
 
-## What ClawHQ Is
+## Why Now
 
-The control panel for OpenClaw agents. A suite of toolchains covering every phase of the agent lifecycle — the same way a VPS control panel covers every phase of server management from initial setup through daily operations to decommission.
-
-Every successful open-source infrastructure engine follows this pattern:
-
-| Engine | Operational Burden | Control Panel |
-|---|---|---|
-| Linux | Server admin, security, mail, cron | cPanel, Plesk, Webmin |
-| WordPress | Hosting, updates, security, backups | WordPress.com, managed WP hosting |
-| AWS/multi-cloud | Infrastructure provisioning, governance | RightScale, CloudFormation |
-| Kubernetes | Container orchestration, networking | Rancher, OpenShift |
-| **OpenClaw** | **Agent config, security, monitoring, evolution** | **ClawHQ** |
-
-ClawHQ is the management layer that makes OpenClaw production-ready — with purpose-built toolchains for each phase of the agent lifecycle.
-
-### The Lifecycle
-
-```
-Plan  →  Build  →  Secure  →  Deploy  →  Operate  →  Evolve  →  Decommission
-```
-
-Seven phases. Each is a distinct problem domain with its own toolchain. Together they cover the complete lifecycle — from the moment you decide to create an agent to the moment you decide to end it.
-
-### Two Delivery Modes
-
-**ClawHQ Managed** — We host the panel and the agent. Web console. You never touch a terminal. We manage the container lifecycle, not the contents. Think managed WordPress hosting — same WordPress, zero ops.
-
-**ClawHQ Self-Operated** — Install the panel on your own hardware. Same engine, full control. Think installing cPanel on your own VPS — same panel, your server.
-
-Both modes use identical toolchains. Self-operated is the open-source engine. Managed wraps it with infrastructure, a web console, and support.
+10+ hosting providers have appeared for OpenClaw, proving demand — but they all stop at deploy and most just run default config on shared infrastructure, which is barely better than the big 4 for privacy. Meanwhile, the big 4 are accelerating: ChatGPT's memory is persistent, Gemini is embedded in every Google service, Apple Intelligence is on-device but locked to their ecosystem. Every month that passes, more people hand over more data to platforms they don't control. The framework itself is maturing fast (sandbox isolation, Ollama integration, plugin channels), creating a real technical foundation for local-first agents — but also more configuration surface area that users can't manage. The window for a privacy-first control panel is now.
 
 ---
 
-## The Toolchains
+## The Solution
 
-### 1. Plan
+ClawHQ is the control panel that makes OpenClaw a real alternative to big-tech AI. It covers the complete agent lifecycle — Plan, Build, Secure, Deploy, Operate, Evolve, Decommission — as a single Go binary you install on your own hardware. Local models are the default. Cloud APIs are opt-in, per-task, with full visibility into what data leaves your machine. Templates map to the things you're actually replacing (Google Assistant, ChatGPT Plus, a human PA). Setup takes 30 minutes, not weeks. And the agent gets smarter over time because ClawHQ manages the feedback loop that makes it learn your preferences, not just execute commands.
 
-> *From "I want an agent" to a complete, valid, deployable configuration bundle — without touching a single config file.*
-
-#### The Problem
-
-An OpenClaw deployment requires ~13,500 tokens of configuration spread across 11+ files: `openclaw.json` (runtime config), `.env` (secrets), `docker-compose.yml` (container orchestration), and 5-7 identity files (SOUL.md, USER.md, AGENTS.md, HEARTBEAT.md, TOOLS.md, IDENTITY.md). Roughly 40% of this configuration is universal — the same for any user, encoding hardened defaults and landmine avoidance. The other 60% is personalized — personality, integrations, schedule, autonomy preferences.
-
-No tooling separates the two. A new user must understand all of it, including 14 silent landmines that produce no errors when misconfigured. One wrong value in `openclaw.json` and the agent silently breaks — no crash, no log, just an agent that doesn't do what you asked.
-
-#### What This Toolchain Does
-
-**Templates** — Full operational profiles, not prompt skins. A template is the WordPress theme model applied to AI agents. Each template defines a complete configuration across every operational dimension:
-
-| Dimension | What the Template Controls | Why It Matters |
-|---|---|---|
-| **Personality** | Tone, relationship model, communication style, boundaries | Defines how the agent interacts — steward vs. assistant vs. coach |
-| **Security posture** | Hardening level, egress rules, isolation mode | A family coordinator needs different security than a day-trading analyst |
-| **Monitoring profile** | Alert thresholds, check frequency, escalation rules | Guardian templates alert aggressively; analyst templates minimize interruption |
-| **Memory policy** | Hot/warm/cold tier sizes, summarization aggressiveness, retention periods | Companion templates retain emotional context; assistant templates prune aggressively |
-| **Cron configuration** | Heartbeat frequency, quiet hours, waking hours, budget caps | Coach templates check in frequently; analyst templates run on-demand |
-| **Autonomy model** | What the agent handles independently vs. flags for approval | Guardian: high autonomy, pushes back on bad ideas. Assistant: handles routine, escalates exceptions |
-| **Integration requirements** | Which tool categories are required, recommended, or optional | Coach requires tasks + calendar. Analyst requires research + code. |
-| **Skill bundle** | Which pre-built skills are included | Morning brief, email digest, meeting prep, session reports, autonomous construction |
-
-```yaml
-# template.yaml — Guardian template (the production-tested default)
-name: "Guardian"
-version: "1.0.0"
-author: "clawhq"
-category: "personal"
-description: "Proactive steward — manages your digital life, pushes back when needed"
-
-personality:
-  tone: direct
-  style: "proactive, no sugarcoating, protective of user's time and attention"
-  relationship: "trusted steward"
-  boundaries: "will challenge bad ideas, will refuse harmful requests"
-
-security:
-  posture: hardened            # standard | hardened | paranoid
-  egress: restricted           # default | restricted | allowlist-only
-  identity_mount: read-only    # read-only | writable
-
-monitoring:
-  heartbeat_frequency: "10min"
-  checks: [email, calendar, tasks, markets]
-  quiet_hours: "23:00-05:00"
-  alert_on: [credential_expiry, memory_bloat, cron_failure, integration_degraded]
-
-memory:
-  hot_max: "100KB"
-  hot_retention: "7d"
-  warm_retention: "90d"
-  cold_retention: "365d"
-  summarization: balanced
-
-cron:
-  waking_hours: "05:00-23:00"
-  heartbeat: "*/10 waking"
-  work_session: "*/15 waking"
-  morning_brief: "08:00"
-
-autonomy:
-  default: high
-  requires_approval: [large_purchases, account_changes, public_posts]
-
-integrations_required: [messaging]
-integrations_recommended: [email, calendar, tasks]
-skills_included: [morning-brief, construct]
-```
-
-**Questionnaire** — Three-phase interactive flow:
-
-1. **Basics** — Name your agent, set timezone, define waking hours, pick briefing time. The platform auto-generates the universal 40% of config with all hardened defaults and landmine protections.
-2. **Template** — Browse available templates, see detailed previews of what each configures, select one, customize overrides (autonomy level, hard stops, personal context like work domain, interests, health conditions, family). The template applies its full operational profile.
-3. **Integrations** — Select providers per category (email: iCloud/Gmail/Outlook, calendar: iCloud/Google, tasks: Todoist/TickTick, etc.). Guided credential setup with inline validation. Health check verification before proceeding. Secrets stored in `.env`, never in config files.
-
-**Config Generator** — Assembles answers into a complete deployment bundle:
-
-| Generated File | Contents | Landmines Auto-Handled |
-|---|---|---|
-| `openclaw.json` | Runtime config — models, tools, gateway, channels | `dangerouslyDisableDeviceAuth`, `allowedOrigins`, `trustedProxies`, `exec.host`, `exec.security`, `fs.workspaceOnly` |
-| `.env` | Secrets — API keys, tokens, session keys | Token format validation, no secrets in config |
-| `docker-compose.yml` | Container orchestration — volumes, networks, security | UID 1000, cap_drop ALL, read-only rootfs, ICC disabled, resource limits |
-| `SOUL.md` | Agent personality and boundaries | Token budget vs. `bootstrapMaxChars` (20K default) |
-| `USER.md` | User context — work, interests, preferences | Kept within token budget, structured for parseability |
-| `AGENTS.md` | Multi-model routing — primary, subagent, heartbeat | Model IDs match auth profile capabilities |
-| `HEARTBEAT.md` | Cron behavior — what to check, how to respond | Schedule syntax validated, waking hours respected |
-| `TOOLS.md` | Available tools and usage guidance | Cross-referenced against actually-installed tools |
-| `cron/jobs.json` | Scheduled job definitions | Stepping syntax validated (no `5/15`), timezone-correct |
-
-Every generated file passes the same validation that `doctor` uses. It is impossible for the Plan toolchain to produce a broken config.
-
-**Built-in templates:**
-
-| Template | Relationship | Operational Profile |
-|---|---|---|
-| **Guardian** | Steward, protector | High autonomy, aggressive monitoring, hardened security, pushes back |
-| **Assistant** | Professional aide | Medium autonomy, balanced monitoring, handles routine, flags exceptions |
-| **Coach** | Accountability partner | Frequent check-ins, goal tracking, encouraging but firm |
-| **Analyst** | Research partner | Low proactivity, deep on demand, minimal interruption |
-| **Companion** | Conversational partner | Long memory retention, emotional context, warm check-ins |
-| **Custom** | User-defined | Guided builder or raw YAML |
-
-**Community templates** extend the platform to use cases we'd never design: real estate agent, student life manager, chronic illness tracker, day trader, family coordinator, solo founder, academic research assistant. Contributed via PR, reviewed for safety. Templates can tighten Layer 1 security baselines but can never loosen them.
-
-```bash
-clawhq init          # Guided questionnaire → complete deployment bundle
-clawhq template      # Browse, preview, compare, customize templates
-```
-
-**OpenClaw integration:** The Plan toolchain produces the same artifacts OpenClaw expects: `openclaw.json` + workspace files + `.env`. It writes standard files and lets the Gateway load them normally. OpenClaw's `openclaw onboard` CLI wizard (`src/commands/onboard.ts`) handles minimal model/channel setup; ClawHQ replaces this with a complete config bundle, 14 landmine rules as pre-write validation, and personalization the wizard doesn't collect. Templates must generate TypeBox-schema-valid JSON5 — unknown keys cause the Gateway to refuse to start.
+**Core bet:** People will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
 
 ---
 
-### 2. Build
+## Design Principles
 
-> *From source code to auditable, reproducible container images — with every tool, skill, and integration baked in.*
+These aren't aspirations. They're constraints that flow through every design decision, every story, every line of code.
 
-#### The Problem
+**Local-first.** Local models (Ollama) are the default for all agent tasks. Cloud APIs (Anthropic, OpenAI, Google) are opt-in escalation — enabled per-task-category, not globally. The agent works fully air-gapped. If a user never configures a cloud API key, their agent still functions for daily use. This is the architectural commitment that makes ClawHQ different from "a better way to send your data to OpenAI."
 
-OpenClaw images should be built from source for auditability — you should be able to inspect every line of code running in your agent's container. But the build process is multi-stage and error-prone. The base image needs specific apt packages. Custom tooling (email clients, CLI tools, language runtimes) needs a second build layer. Skills and integration tools need to be bundled correctly. Version mismatches between the base image and custom layer cause silent failures. And the whole thing needs to be reproducible — the same config should produce the same image every time.
+**Transparent.** The user knows exactly what their agent did, what data it touched, and what left their machine — without asking. Every agent session produces a human-readable activity summary. Every outbound API call is logged with the provider, token count, and data category. The agent doesn't operate in the dark.
 
-#### What This Toolchain Does
+**Sovereign.** Self-operated is the primary product, not an equal sibling to managed hosting. Your data stays on your hardware by default. `clawhq export` gives you everything portable. `clawhq destroy` proves it's gone. No lock-in to ClawHQ, no lock-in to any cloud provider, no lock-in to any model provider.
 
-**Source Management** — Clone or update the OpenClaw source repository. Track which upstream version is deployed. Detect when upstream changes might break the current configuration. Maintain a local source cache for offline builds.
-
-**Two-Stage Docker Build** — The same architecture proven in production:
-
-```
-Stage 1: openclaw:local (base image)
-├── OpenClaw source (upstream)
-├── apt packages: tmux, ffmpeg, jq, ripgrep (configurable per template)
-├── Node.js runtime + dependencies
-└── Base tools: git, curl, openssl
-
-Stage 2: openclaw:custom (user layer)
-├── himalaya (IMAP email client, static musl binary)
-├── gh (GitHub CLI)
-├── Additional tools declared by template
-├── Integration CLI wrappers (todoist, ical, quote, tavily, email)
-├── Skills (morning-brief, construct, etc.)
-└── Custom user tools
-```
-
-Stage 1 rebuilds only when OpenClaw upstream changes or apt packages change. Stage 2 rebuilds when tools, skills, or integration wrappers change. This separation means most builds only need Stage 2 — seconds instead of minutes.
-
-**Tool Bundling** — Each integration declares its CLI tools. The Build toolchain collects them from the template's integration manifest and copies them into the image at the correct paths with correct permissions. Tools are validated before bundling — syntax check for shell scripts, import check for Python, build check for Go.
-
-**Skill Packaging** — Skills declared by the template are bundled into the workspace directory. Each skill is validated: required files present, prompt templates parseable, declared dependencies (tools, integrations) satisfied.
-
-**Build Verification** — After build completes:
-- Verify both image layers exist with expected tags
-- Spot-check that declared binaries are present and executable
-- Verify tool versions match expectations
-- Check image size is reasonable (flag bloat from accidental inclusion)
-- Generate a build manifest (image hash, tool versions, upstream commit, build timestamp)
-
-**Reproducibility** — Build manifests are stored alongside the deployment. `clawhq build --verify` rebuilds and compares against a previous manifest to detect drift.
-
-```bash
-clawhq build                    # Two-stage build from source
-clawhq build --stage1-only      # Rebuild base image only
-clawhq build --stage2-only      # Rebuild custom layer only
-clawhq build --verify           # Rebuild and compare against manifest
-clawhq build --dry-run          # Show what would be built without building
-```
-
-**OpenClaw integration:** ClawHQ wraps Docker CLI — it builds *on top of* OpenClaw's Dockerfiles (`Dockerfile`, `Dockerfile.sandbox`, `Dockerfile.sandbox-browser`, `Dockerfile.sandbox-common`), not by modifying them. The custom layer installs additional tools (himalaya, gh, etc.) that OpenClaw doesn't include by default. Sandbox setup requires `scripts/sandbox-setup.sh`. ClawHQ's Build must handle both the Gateway image and sandbox images.
+**Gets better, not worse.** The agent improves through use. User corrections become preference updates. Interaction patterns inform autonomy tuning. Memory is actively managed, not just accumulated. An agent at 6 months is dramatically more useful than at day 1 — this is the retention mechanism that keeps people from going back to ChatGPT.
 
 ---
 
-### 3. Secure
+## Who It's For
 
-> *Hardened by default. Monitored continuously. Every secret managed. Every skill vetted. Security is the baseline, not a feature flag.*
+**The Privacy Migrant** — Currently using ChatGPT, Google Assistant, or Apple Intelligence and increasingly uncomfortable with the trade-off. Not necessarily technical — they might run a small business, manage a household, or work in a field where confidentiality matters (legal, medical, financial). Their biggest headache is that there's no alternative that doesn't require becoming a sysadmin. They'd switch to something that gives them the same daily utility without the surveillance.
 
-#### The Problem
+**The Tinkerer** — Technical user running or wanting to run an OpenClaw agent on their own hardware. Comfortable with Docker and CLI but doesn't want to spend weeks on configuration and ongoing SRE. Their biggest headache is the gap between "I got it running" and "it actually works well." They'd pay for something that handles security, monitoring, and config management so they can focus on what the agent does.
 
-OpenClaw's security is entirely opt-in. The default configuration runs as root with full capabilities, no egress filtering, secrets in config files, and writable identity files — the agent can modify its own personality and remove its own guardrails. Most users never harden their deployment because they don't know what to harden or how.
-
-Beyond the container itself: agents create code, push to repos, and generate files that may contain PII or leaked secrets. There's no scanning. Credentials expire silently — the agent doesn't notice, continues running, and the user assumes everything is fine because the container is healthy. Community skills represent an unvetted supply chain. And thousands of instances sit publicly exposed with authentication bypasses.
-
-#### What This Toolchain Does
-
-**Container Hardening** — Applied automatically by the Deploy toolchain, configured by the template's security posture:
-
-| Control | Standard | Hardened | Paranoid |
-|---|---|---|---|
-| Linux capabilities | `cap_drop: ALL` | `cap_drop: ALL` | `cap_drop: ALL` |
-| Filesystem | Read-only rootfs | Read-only rootfs | Read-only rootfs + encrypted workspace |
-| Privilege escalation | `no-new-privileges` | `no-new-privileges` | `no-new-privileges` |
-| User | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) |
-| Temp storage | tmpfs 256MB, noexec/nosuid | tmpfs 128MB, noexec/nosuid | tmpfs 64MB, noexec/nosuid |
-| Network isolation | ICC disabled | ICC disabled | ICC disabled + allowlist egress |
-| Resource limits | 4 CPU, 4GB RAM | 2 CPU, 2GB RAM | 1 CPU, 1GB RAM |
-| Identity files | Read-only mount | Read-only mount | Read-only mount + integrity hash |
-| Workspace | Writable (scoped) | Writable (scoped) | Writable (encrypted at rest) |
-
-**Egress Firewall** — iptables rules restricting container network access:
-
-- Allow established/related connections (return traffic)
-- Allow DNS (UDP/TCP 53) — required for API resolution
-- Allow HTTPS (TCP 443) — required for API calls
-- Log and drop everything else
-
-The firewall is implemented as a dedicated iptables chain (`CLAWHQ_FWD`) attached to the Docker bridge interface. Critical operational detail: after every `docker compose down`, Docker destroys and recreates the bridge interface, invalidating the chain. ClawHQ detects this and reapplies automatically — a landmine that has caused hours of debugging in manual setups. The Deploy toolchain applies the firewall; Doctor verifies it continuously.
-
-**Network & Access Hardening** — Attack surface reduction beyond containers:
-
-| Control | What It Prevents | Implementation |
-|---|---|---|
-| Gateway binding | Publicly exposed instances via `0.0.0.0` binding | Enforce loopback-only binding by default |
-| WebSocket origin validation | Cross-site WebSocket hijacking (ClawJacked vector) | Origin header validation on all upgrade requests |
-| CSRF protections | Unauthorized state changes via cross-site requests | Token-based guards on all state-changing operations |
-| mDNS/Bonjour control | Network reconnaissance via service discovery | Disable service discovery broadcasts in container |
-| Secure remote access | Raw port exposure | Tailscale, SSH tunnels, or Cloudflare Tunnel only |
-| Device pairing | Silent auto-pairing on localhost | Explicit device registration approval required |
-| Auth failure tracking | Brute-force attacks | Failed auth logging with fail2ban integration |
-
-**Secrets Management** — Secrets (API keys, tokens, session keys) are injected via environment variables from `.env`, never stored in config files:
-
-- `.env` file permissions set to 600 (owner-only read/write)
-- Config files scanned for embedded secrets on every `doctor` run
-- `.env.example` template tracked in version control with `CHANGE_ME` placeholders
-- Secrets never logged, never included in backups without encryption
-- Enterprise option: source secrets from HashiCorp Vault, AWS Secrets Manager, Doppler, or 1Password CLI instead of `.env`
-- Scheduled rotation of API keys and tokens; per-service scoping with minimum necessary permissions
-
-**PII & Secret Scanning** — Continuous scanning of agent-created artifacts:
-
-| Scan Target | What It Catches | How |
-|---|---|---|
-| Agent repos | PII (names, addresses, phone, SSN, credit cards) | Regex patterns with false-positive filtering |
-| Agent repos | Secrets (API keys: `ghp_*`, `sk-ant-*`, `AKIA*`, Bearer tokens, JWTs) | Pattern matching + entropy analysis |
-| Agent repos | Dangerous files (`.env`, `*.pem`, `*.key`, `id_rsa*`, `*.db`) | Filename patterns |
-| Git history | Previously committed secrets | `git log` pattern scan |
-| Repo settings | Public repos that should be private, unauthorized collaborators, deploy keys | GitHub API policy checks |
-
-The scanner skips known false positives: `CHANGE_ME` placeholders, environment variable references (`$VAR`), comments explaining patterns, and functional identity references in designated files (USER.md, MEMORY.md).
-
-**Supply Chain Security** — Agent skills and community contributions represent an attack surface:
-
-| Control | What It Does |
-|---|---|
-| Skill vetting | AI-powered scanning of community skills before installation; VirusTotal integration |
-| Skill allowlisting | Internal registry of approved skills only; block unapproved installs |
-| IOC database | Known C2 IPs, malicious domains, file hashes, publisher blacklists from known campaigns |
-| CVE monitoring | Automated NVD CVE polling; community threat intelligence feeds; same-day fleet patching |
-
-**Credential Health** — Per-integration probes that test actual credential validity:
-
-| Integration | Health Probe | What It Tests |
-|---|---|---|
-| Email (IMAP) | `himalaya account check` | IMAP + SMTP auth, server reachable |
-| Calendar (CalDAV) | CalDAV PROPFIND request | Auth valid, calendar accessible |
-| Tasks (Todoist) | `todoist projects` list | API key valid, API reachable |
-| Code (GitHub) | `gh auth status` | PAT valid, scopes sufficient |
-| Research (Tavily) | Search query | API key valid, quota remaining |
-| Finance (Yahoo) | Quote fetch | Endpoint reachable (no auth) |
-
-Probes run on schedule (configurable per template). Failures trigger alerts with specific remediation steps. Credential expiry is tracked where APIs expose it — 7-day advance warnings.
-
-**Audit & Compliance** — Every tool execution inside the container is logged by OpenClaw. The Secure toolchain makes these logs accessible, searchable, and alertable:
-
-- Tool execution history with timestamps, inputs (redacted), outputs (summarized)
-- Anomaly detection: unusual tool usage patterns, unexpected outbound connections
-- Exportable audit trail for compliance review
-- SIEM forwarding: Splunk, Elastic, or Graylog with structured event format
-- Alignment with OWASP GenAI Top 10, SOC 2, ISO 27001, GDPR, and HIPAA controls
-- Published, community-maintained threat model with attack examples and mitigations per lifecycle phase
-
-```bash
-clawhq scan                     # Full PII + secret scan across agent repos
-clawhq scan --repo <name>       # Scan specific repo
-clawhq scan --history           # Include git history scan
-clawhq creds                    # Credential health check
-clawhq creds --renew <name>     # Guided credential renewal
-clawhq audit                    # Review tool execution history
-clawhq audit --cost             # Cost attribution report
-clawhq audit --compliance       # Exportable compliance report
-```
-
-**OpenClaw integration:** Security enforcement is a *layer on top of* OpenClaw's existing checks. OpenClaw provides `openclaw security audit` (`src/commands/security.ts`) and `openclaw doctor` (`src/commands/doctor.ts`), config schema enforcement, sandbox isolation (`src/agents/sandbox.ts`), tool policy (`tools.allow`/`tools.deny`), DM policy per channel, and a SecretRef system for avoiding plaintext secrets. ClawHQ runs these as a subset, then adds its own checks (firewall state, Docker hardening, credential probes, workspace scanning). The security policy evaluator intercepts config writes (via `config.patch` RPC) and warns before weakening security.
+**The Fleet Operator** — Manages agents for multiple people or use cases (family coordinator, team assistant, client-facing bots). Cares most about fleet-wide visibility, consistent security posture, and operational efficiency. Currently solving this with custom scripts and manual SSH sessions.
 
 ---
 
-### 4. Deploy
+## What Success Looks Like
 
-> *One command: container up, firewall applied, networks verified, channels connected, health confirmed. No manual steps, no forgotten scripts.*
-
-#### The Problem
-
-Deploying an OpenClaw agent is a multi-step sequence where skipping any step produces a subtly broken system. You need to `docker compose up` with the correct project directory and file paths, then apply the egress firewall (which requires sudo and knowledge of the bridge interface name), then verify the ollama-bridge network is connected (it's an external network that must exist before compose runs), then wait for the healthcheck to pass, then verify the agent can actually reach its integrations through the firewall. After every `docker compose down`, the bridge interface changes — the firewall must be reapplied. Miss that step and the agent runs without egress filtering until someone notices.
-
-#### What This Toolchain Does
-
-**Pre-flight Checks** — Before starting anything:
-
-| Check | What It Validates | Failure Action |
-|---|---|---|
-| Docker daemon | Running, accessible, version compatible | Error with install instructions |
-| Images exist | Both `openclaw:local` and `openclaw:custom` tags present | Prompt to run `clawhq build` |
-| Config valid | `openclaw.json` passes full schema validation | Run `doctor`, show specific issues |
-| Secrets present | `.env` exists with all required variables populated | List missing variables |
-| Networks exist | External networks (`ollama-bridge`) created | Create automatically or error with instructions |
-| Ports available | Required ports (18789) not in use | Show what's using the port |
-| Permissions | Config dirs owned by UID 1000, correct modes | Auto-fix or show commands |
-| Prior state | Check for orphaned containers from previous runs | Offer cleanup |
-
-**Container Orchestration** — `docker compose up -d` with the correct project context:
-
-- Compose file: resolved from `clawhq.yaml` manifest (default: `~/.clawhq/compose/docker-compose.yml`)
-- Environment: `.env` loaded from deployment directory
-- Project name: consistent naming for `docker compose` commands
-- Force-recreate if config has changed since last deploy
-
-**Firewall & Network** — Immediately after containers start, the Deploy toolchain applies the egress firewall defined by the Secure toolchain and verifies the full network stack:
-
-1. Detect the Docker bridge interface for the agent network (`br-<hash>`)
-2. Apply `CLAWHQ_FWD` iptables chain (ESTABLISHED/RELATED → DNS → HTTPS → LOG+DROP)
-3. Persist with `netfilter-persistent` (survives reboot)
-4. Verify `ollama-bridge` connects the agent container to the Ollama service
-5. Test DNS resolution and HTTPS connectivity from inside the container
-6. Confirm ICC is disabled on the agent network
-
-Requires sudo. The toolchain explains why and what it's doing before prompting.
-
-**Health Verification** — Wait for the OpenClaw healthcheck to pass:
-
-- Poll `http://localhost:18789/healthz` inside the container (Node.js fetch)
-- Timeout after 60 seconds with diagnostic output (container logs, network state)
-- Verify the gateway token is accepted (authenticated health check)
-- Confirm cron scheduler is running (jobs loaded, next execution scheduled)
-
-**Channel Connection** — Messaging channel setup (separate from container deployment):
-
-- Telegram: guide through BotFather bot creation, token configuration, first-message pairing
-- WhatsApp/Slack/Discord/Signal: provider-specific setup flow
-- Verify bidirectional message flow (send test message, confirm receipt)
-
-**Infrastructure Provisioning** (Managed mode) — For ClawHQ Managed, the Deploy toolchain also handles infrastructure:
-
-| Capability | Description |
-|---|---|
-| Multi-cloud deploy | One-click provisioning across Hetzner, DigitalOcean, Vultr, AWS, and self-hosted VMs |
-| Server sizing | Recommend CPU/RAM/storage based on intended workload and template requirements |
-| Region selection | Deploy to geographically optimal datacenter for latency to messaging platform APIs |
-| DNS & SSL automation | Automatic subdomain creation, Let's Encrypt certificate provisioning and renewal |
-| Reverse proxy | Auto-configured nginx/Traefik with TLS termination, WebSocket support, and rate limiting |
-| Infrastructure-as-code | Reproducible provisioning via cloud-init templates |
-
-**Media Directory Setup** — Create required bind-mount directories:
-
-- `~/.openclaw/media/inbound` for Telegram attachments
-- Correct ownership (UID 1000) and permissions
-- Symlinks don't work inside the sandboxed container — bind mounts are required
-
-**Post-Deploy Smoke Test** — After everything is up:
-
-- Send a test message through the messaging channel
-- Verify the agent responds coherently
-- Confirm identity files are loaded (agent knows its name and personality)
-- Run a quick integration probe (one tool per connected integration)
-
-```bash
-clawhq up                       # Full deploy: preflight → compose → firewall → verify
-clawhq up --skip-firewall       # Deploy without firewall (development)
-clawhq up --dry-run             # Show what would happen without doing it
-clawhq connect                  # Connect/reconnect messaging channel
-clawhq connect --test           # Send test message through channel
-clawhq down                     # Graceful shutdown (preserves state)
-clawhq restart                  # Restart with firewall reapply + health verify
-```
-
-**OpenClaw integration:** ClawHQ calls `docker compose` CLI + `openclaw gateway` CLI + `iptables` directly — this is subprocess orchestration, not API integration. OpenClaw provides `openclaw gateway` (starts Gateway), `openclaw gateway install` (daemon installation via launchd/systemd), and `openclaw channels status --probe` (channel health). ClawHQ sequences: preflight → compose up → firewall → health poll → channel verify → smoke test. The Gateway must be healthy (WebSocket at `:18789/healthz`) before ClawHQ can connect for further operations.
+- **Time to working agent:** < 30 minutes from install to first useful interaction (currently weeks)
+- **Config-related failures:** 0 silent landmines shipped (currently 14 possible)
+- **Data leaving the machine:** 0 bytes by default; user explicitly opts in per-task-category for cloud APIs
+- **Agent improvement rate:** Measurable increase in autonomous task completion at 30/60/90 days (baseline TBD from Phase 0)
+- **Churn at 30 days:** < 20% (most raw OpenClaw deployments abandoned within a month)
 
 ---
 
-### 5. Operate
+## What We're Building
 
-> *Day-2 through day-365. Diagnostics, monitoring, cost tracking, backup, updates, fleet management. The invisible work that separates a demo from a production system.*
+<!--
+Each toolchain is a feature. Stories are atomic — one behavior each.
+Personas: Privacy Migrant, Tinkerer, Fleet Operator.
+Impl notes reference OPENCLAW-REFERENCE.md for implementation details.
+-->
 
-#### The Problem
+### 1. Plan — Agent Setup
 
-A deployed agent starts degrading immediately. Credentials expire. Memory grows. Cron jobs fail silently. Upstream releases introduce breaking changes. Config files drift from the generated state. Backups don't happen. Without active operational management, a working agent becomes a broken agent within weeks — and the user doesn't know until something visibly fails.
+From "I want to replace Google Assistant" to a running agent — in 30 minutes, without touching a config file. The system infers the right config from what you connect and what you tell it, not from a 50-question form.
 
-This is full-time SRE work. It's the reason most OpenClaw deployments are abandoned within a month.
+- [ ] **Use-case templates** `P0` `L`
+  As a Privacy Migrant, I want to pick what I'm replacing (not an abstract personality archetype) so that my agent is immediately useful for my actual daily workflow.
+  - Given a user runs `clawhq init`, when templates are presented, then they're organized by what they replace: "Replace Google Assistant" (daily life management), "Replace ChatGPT Plus" (research + writing partner), "Replace my PA" (calendar, email triage, task management), "Family Hub" (shared calendar, chore tracking, meal planning), "Research Co-pilot" (deep research, citation management, writing), "Founder's Ops" (inbox zero, investor updates, hiring pipeline)
+  - Given a user selects a template, when preview is shown, then it displays: what integrations are needed, what the agent will handle autonomously vs. with approval, what local model requirements are, estimated daily cost (local vs. cloud), and a "day in the life" narrative showing what a typical day looks like with this agent
+  - Given each template, when config is generated, then it maps to full operational dimensions internally: personality, security posture, monitoring, memory policy, cron config, autonomy model, model routing strategy
+  - _Impl note: Templates are YAML files. Use-case framing is the presentation layer; operational dimensions (Guardian/Assistant/Coach/etc.) are the implementation layer. See OPENCLAW-REFERENCE.md → Template System Design._
 
-#### What This Toolchain Does
+- [ ] **AI-powered config inference** `P0` `L`
+  As a Privacy Migrant, I want to describe what I need in plain language and have the system figure out the config so that I don't need to understand operational dimensions I've never heard of.
+  - Given a user runs `clawhq init --smart`, when they describe their needs ("I want an agent that manages my email, calendar, and tasks, checks in with me every morning, and never touches my health data"), then the system selects the best template, configures integrations, sets autonomy levels, and defines boundaries — presenting the result for approval before generating
+  - Given the AI inference runs, when the user reviews the proposed config, then they see a plain-language summary ("Here's what I understood: ...") with the ability to adjust any aspect conversationally before generating
+  - Given the inference is wrong on any dimension, when the user corrects it, then the correction is applied and the summary regenerates
+  - _Impl note: Uses a local model call (Ollama) to map natural language → template selection + override parameters. Falls back to guided questionnaire if local model isn't available._
 
-**Doctor** — The hero feature. Preventive diagnostics that check every known failure mode:
+- [ ] **Guided questionnaire (fallback)** `P0` `M`
+  As a Tinkerer, I want a structured setup flow as an alternative to AI inference so that I can make precise choices about every operational dimension.
+  - Given a user runs `clawhq init --guided`, when the flow starts, then it walks through: basics (name, timezone, waking hours) → template selection → integration setup with credential validation → autonomy and boundary configuration
+  - Given any credential is entered, when validation runs, then the credential is tested live before proceeding
+  - _Impl note: See OPENCLAW-REFERENCE.md → Credential Health Probes for per-integration health check details._
 
-*Configuration Landmines (14+ rules):*
+- [ ] **Integration auto-detection** `P0` `M`
+  As a Privacy Migrant, I want the setup to detect what I have and suggest accordingly so that I'm not asked about services I don't use.
+  - Given a user connects their email, when auto-detection runs, then it discovers available calendar and task integrations from the same provider (e.g., iCloud email → suggest iCloud calendar) and pre-fills the integration config
+  - Given a user has Ollama running locally, when detection runs, then it discovers available models and recommends the optimal routing strategy for the selected template
 
-| # | Landmine | What Goes Wrong | What Doctor Checks |
-|---|---|---|---|
-| 1 | `dangerouslyDisableDeviceAuth: true` missing | "Device signature invalid" loop — agent becomes inaccessible | Key present and `true` in `openclaw.json` |
-| 2 | `allowedOrigins` stripped after onboard | Control UI returns CORS errors, can't manage agent via web | Array contains expected origin |
-| 3 | `trustedProxies` stripped after onboard | Gateway rejects requests through Docker NAT | Array contains Docker bridge gateway IP |
-| 4 | `tools.exec.host` set to wrong value | `"node"` fails (no companion), `"sandbox"` fails (no Docker-in-Docker) | Value is `"gateway"` |
-| 5 | `tools.exec.security` not `"full"` | Tool execution silently restricted | Value is `"full"` |
-| 6 | Container user not UID 1000 | Permission errors on mounted volumes | Compose file specifies `user: "1000:1000"` |
-| 7 | ICC enabled on agent network | Containers can communicate (security breach) | Docker network inspect shows ICC disabled |
-| 8 | Identity files exceed `bootstrapMaxChars` | Files silently truncated — agent loses personality context | Sum of identity file sizes vs. threshold (default 20K) |
-| 9 | Cron stepping syntax invalid | `5/15` is invalid, must be `3-58/15` — jobs silently don't run | Regex validation on all cron expressions |
-| 10 | External networks not created | Compose fails or containers can't reach services | `docker network ls` for required networks |
-| 11 | `.env` missing required variables | Container starts but integrations silently fail | Cross-reference compose env vars vs. `.env` |
-| 12 | Config/credentials not read-only mount | Agent can modify its own config | Volume mount flags in compose |
-| 13 | Firewall not applied after network recreate | Agent runs without egress filtering | `iptables -L CLAWHQ_FWD` |
-| 14 | `fs.workspaceOnly` misconfigured | Too restrictive (can't read media) or too permissive (reads host FS) | Value matches expected for template security posture |
+- [ ] **Config generation with landmine prevention** `P0` `L`
+  As a Tinkerer, I want the generated config to be impossible to break so that I never hit a silent failure.
+  - Given any setup path completes (AI inference, questionnaire, or template), when config is generated, then it produces: `openclaw.json`, `.env`, `docker-compose.yml`, all identity files, `cron/jobs.json`
+  - Given config is generated, when validation runs, then every file passes all 14 landmine rules — generation cannot produce a broken config
+  - Given a generated `openclaw.json`, when the Gateway loads it, then it passes TypeBox schema validation with zero unknown keys
+  - _Impl note: See OPENCLAW-REFERENCE.md → The 14 Configuration Landmines for full rule set. See → Config Generator Output for file-to-landmine mapping._
 
-*Beyond landmines — operational health:*
+- [ ] **Config validation engine** `P0` `M`
+  As a Tinkerer, I want every config write validated against all known failure modes so that I never accidentally break my agent.
+  - Given any config change (via any path), when the change is applied, then all 14 landmine rules are checked pre-write
+  - Given a validation failure, when results are shown, then each failure includes the specific rule violated, what will break, and exact fix instructions
+  - _Impl note: See OPENCLAW-REFERENCE.md → Four Integration Surfaces (Surface 1). Rate limit: 3 req/60s for config writes via WebSocket._
 
-| Check Category | What It Validates |
-|---|---|
-| File permissions | Config dirs owned by UID 1000, `.env` is 600, credential files are 600, config is 644 |
-| Credential health | Live probes for each integration (reuses Secure toolchain's credential checks) |
-| Cross-file consistency | Tools referenced in TOOLS.md exist in workspace, models in AGENTS.md match auth profile |
-| Memory health | Workspace size, growth rate, time since last summarization |
-| Cron health | All jobs have valid syntax, schedules are timezone-correct, no overlapping execution windows |
-| Container resources | CPU/memory within limits, no OOM kills, tmpfs not full |
-| Network state | Firewall active, bridge interface exists, ollama reachable |
-| Configuration drift | Current config matches generated state; alerts on manual changes that weaken security |
+- [ ] **Community templates** `P1` `M`
+  As a Tinkerer, I want to contribute and install community templates so that the platform covers use cases the core team didn't design for.
+  - Given a community template is submitted, when it's reviewed, then it must pass safety checks and cannot loosen Layer 1 security baselines
+  - Given a community template maps to a real use case (e.g., "Chronic Illness Tracker," "Real Estate Agent," "Academic Researcher"), when it's published, then it follows the same use-case-first presentation as built-in templates
 
-Doctor outputs a structured report: pass/warn/fail per check, with specific fix instructions for every failure. It can also auto-fix safe issues (permissions, firewall reapplication) with `--fix`.
+### 2. Model Routing — Local-First Intelligence
 
-**Status** — Single-pane operational dashboard:
+The agent's brain should run on your hardware by default. Cloud APIs are the escalation path, not the default — and every escalation is visible, auditable, and user-approved.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  AGENT: Clawdius Maximus                                │
-│  Status: ● Running (healthy)    Uptime: 14d 6h 23m     │
-│  Restarts: 0    Image: openclaw:simon (built 3d ago)    │
-├─────────────────────────────────────────────────────────┤
-│  INTEGRATIONS                                           │
-│  ● Email (iCloud)      Last check: 2m ago    ✓ Healthy │
-│  ● Calendar (iCloud)   Last check: 2m ago    ✓ Healthy │
-│  ● Tasks (Todoist)     Last check: 2m ago    ✓ Healthy │
-│  ● Code (GitHub)       Last check: 2m ago    ✓ Healthy │
-│  ● Research (Tavily)   Last check: 2m ago    ✓ Healthy │
-│  ● Finance (Yahoo)     Last check: 2m ago    ✓ Healthy │
-├─────────────────────────────────────────────────────────┤
-│  COST                                                   │
-│  Today: $0.43 (↓12%)    This week: $2.87    MTD: $8.14 │
-│  By model: Sonnet $6.20 · Haiku $1.94                   │
-│  Budget: $15/mo (54% used)    ⚠ Pace: $12.20 projected │
-├─────────────────────────────────────────────────────────┤
-│  CRON                                                   │
-│  heartbeat     Last: 3m ago (OK)    Next: 7m            │
-│  work-session  Last: 8m ago (OK)    Next: 7m            │
-│  morning-brief Last: 6h ago (OK)    Next: 18h           │
-│  construct     Last: 22h ago (OK)   Next: 2h            │
-├─────────────────────────────────────────────────────────┤
-│  WORKSPACE                                              │
-│  Memory: 124KB (hot: 45KB, warm: 79KB)                  │
-│  Growth: ~12KB/day    Last backup: 2h ago               │
-│  Identity files: 8.2KB / 20KB budget (41%)              │
-└─────────────────────────────────────────────────────────┘
-```
+- [ ] **Local-first model routing** `P0` `L`
+  As a Privacy Migrant, I want my agent to use local models for everything it can and only call cloud APIs when I've explicitly allowed it so that my data stays on my machine by default.
+  - Given a fresh install with Ollama running, when the agent processes a task, then it routes to the best available local model first
+  - Given a task exceeds local model capability (determined by task complexity scoring), when escalation is needed, then the agent checks user-configured escalation policy before calling any cloud API
+  - Given no cloud API keys are configured, when any task runs, then the agent operates fully on local models with graceful degradation — never errors out because cloud isn't available
+  - _Impl note: Task complexity scoring based on token count, required capabilities (reasoning, code gen, long context), and template's quality threshold. Ollama model discovery via `ollama list`. See OPENCLAW-REFERENCE.md → Key Configuration Surfaces (AI Models)._
 
-Status data comes from:
-- Container state: Docker API (inspect, stats)
-- Integration health: reuses Secure toolchain's credential probes
-- Cost: token usage tracked per model, per agent, per session; budget caps with alerts at 50%/75%/90% and graceful degradation to lower-cost models before pausing
-- Cron status: parse `cron/jobs.json` for schedule + read execution logs for last run/outcome
-- Workspace metrics: file size measurements + git log for growth rate
+- [ ] **Per-category cloud opt-in** `P0` `M`
+  As a Privacy Migrant, I want to choose which types of tasks can use cloud models so that I control exactly what data leaves my machine.
+  - Given `clawhq init` runs, when model routing is configured, then the user sets escalation policy per task category: research (may need cloud for quality), email triage (local-only — contains private data), calendar management (local-only), creative writing (user choice), code generation (user choice)
+  - Given a task in a local-only category, when cloud escalation would normally trigger, then the agent uses the best local model available and never calls cloud — even if quality is lower
+  - Given a task in a cloud-allowed category, when escalation triggers, then the activity log records: provider, model, token count, data category sent
 
-**Fleet Management** — For users running multiple agents:
+- [ ] **Intelligent task-level routing** `P0` `L`
+  As a Tinkerer, I want the agent to automatically pick the cheapest/most-private model that can handle each specific task so that I'm not overpaying or over-sharing.
+  - Given a simple task (morning brief summary, task list formatting), when the router evaluates it, then it routes to local small model (e.g., Llama 3 8B via Ollama)
+  - Given a moderate task (email draft, meeting prep), when the router evaluates it, then it routes to local large model (e.g., Llama 3 70B) or cloud-small (Haiku) based on escalation policy
+  - Given a complex task (deep research synthesis, long-form writing), when the router evaluates it and cloud is allowed for that category, then it routes to cloud-large (Sonnet/Opus) with the data sent logged
+  - Given routing history accumulates, when the router learns, then it improves task-to-model matching based on actual outcomes (user accepted result vs. user asked to redo)
 
-- Monitor and manage multiple OpenClaw agents from a single dashboard across multiple servers
-- Aggregated health, cost, and security posture across the fleet
-- Fleet-wide operations: patch all agents, rotate all credentials, run doctor across fleet
-- Per-agent drill-down from fleet view to individual status
+- [ ] **Data egress visibility** `P0` `M`
+  As a Privacy Migrant, I want to see exactly what data left my machine, to which provider, and when so that I have proof of my privacy posture.
+  - Given any cloud API call is made, when it completes, then the egress log records: timestamp, provider (Anthropic/OpenAI/Google), model, token count (input/output), data category (email, calendar, research, etc.), cost
+  - Given `clawhq status --egress` runs, when the report renders, then it shows: total data sent per provider (today, week, month), breakdown by category, and a "zero egress" badge if no cloud calls were made
+  - Given `clawhq audit --egress` runs, when the detailed log is shown, then every individual cloud call is listed with enough context to understand what was sent (without reproducing the actual content)
 
-**Backup** — Encrypted snapshots with restore:
+- [ ] **Air-gapped mode** `P1` `M`
+  As a Tinkerer, I want to run my agent with zero network access to external APIs so that I can guarantee nothing leaves my machine.
+  - Given `clawhq init --air-gapped` runs, when config is generated, then no cloud API keys are configured, egress firewall blocks all outbound except DNS and local network, and the agent uses only Ollama models
+  - Given air-gapped mode is active, when any code path attempts a cloud API call, then it's blocked at the firewall level (defense in depth — not just config, but network enforcement)
 
-| Backup Type | What's Included | Encryption | Retention |
-|---|---|---|---|
-| **Full snapshot** | Workspace, config, credentials, cron, identity files | GPG symmetric (passphrase) or asymmetric (key) | 30 days default |
-| **Secrets-only** | `openclaw.json`, `.env`, `credentials/`, `identity/` | GPG (always encrypted) | 30 days |
-| **Workspace incremental** | Workspace directory (rsync with hardlink dedup) | Optional | 30 days |
+### 3. Build — Container Images
 
-Restore from any snapshot to any point in time. Restore validates the snapshot integrity before applying, runs `doctor` after restore, and verifies the agent starts successfully.
+From source code to auditable, reproducible container images — with every tool, skill, and integration baked in. Two-stage Docker build so most rebuilds take seconds, not minutes.
 
-**Update** — Safe upstream upgrades:
+- [ ] **Two-stage Docker build** `P0` `L`
+  As a Tinkerer, I want to build my agent image from source so that I can audit every line of code running in the container.
+  - Given a user runs `clawhq build`, when the build starts, then Stage 1 (base image) builds only if upstream or apt packages changed; Stage 2 (custom layer) completes in seconds
+  - Given the build completes, when verification runs, then both image layers exist, declared binaries are executable, and a build manifest is generated
+  - _Impl note: ClawHQ wraps Docker CLI, builds on top of OpenClaw's Dockerfiles — does NOT modify them. See OPENCLAW-REFERENCE.md → Two-Stage Docker Build Architecture._
 
-1. Fetch upstream OpenClaw source, show changelog (commits since current version)
-2. Prompt for approval (show breaking changes, if any)
-3. Two-stage rebuild (same as Build toolchain)
-4. Stop current container, start new one
-5. Wait for healthcheck pass
-6. Reapply firewall and run `doctor` post-update to catch regressions
-7. If anything fails: automatic rollback to previous image, restart, verify
+- [ ] **Build reproducibility verification** `P1` `S`
+  As a Tinkerer, I want to verify my image hasn't drifted from a known state so that I can detect supply chain issues.
+  - Given a previous build manifest exists, when `clawhq build --verify` runs, then it rebuilds and compares against the manifest, flagging any differences
 
-The update toolchain maintains the previous image tag so rollback is always instant — no rebuild required.
+- [ ] **Selective rebuild** `P1` `S`
+  As a Tinkerer, I want to rebuild only the stage that changed so that iteration is fast.
+  - Given `clawhq build --stage2-only` runs, then only the custom layer rebuilds using the existing base image
 
-**Incident Response** — Documented playbook for when things go wrong:
+### 4. Secure — Hardening & Monitoring
 
-1. **Detect** — Automated alerts from monitoring, doctor, credential checks
-2. **Contain** — Isolate affected agent (network disconnect, pause)
-3. **Assess** — Audit trail review, scope determination
-4. **Recover** — Restore from backup, credential rotation, re-deploy
-5. **Report** — Exportable incident report with timeline and remediation steps
+Hardened by default, monitored continuously. Every secret managed, every credential health-checked, every skill vetted. Security is the baseline, not a feature flag.
 
-Automated credential rotation triggers on breach detection.
+- [ ] **Container hardening** `P0` `L`
+  As a Tinkerer, I want my agent container hardened automatically based on my template's security posture so that I don't have to manually configure Docker security options.
+  - Given a template with `security.posture: hardened`, when the deployment bundle is generated, then `docker-compose.yml` includes: `cap_drop: ALL`, read-only rootfs, `no-new-privileges`, non-root UID 1000, tmpfs with noexec/nosuid, ICC disabled, resource limits per posture level
+  - Given the container is running, when Doctor checks security, then it verifies all hardening controls are active and alerts on any regression
+  - _Impl note: See OPENCLAW-REFERENCE.md → Container Hardening Matrix for full posture comparison (Standard/Hardened/Paranoid)._
 
-**Health Self-Repair** — Proactive recovery without human intervention:
+- [ ] **Egress firewall** `P0` `M`
+  As a Tinkerer, I want outbound network traffic restricted so that my agent can't exfiltrate data to unexpected destinations.
+  - Given `clawhq up` runs, when the container starts, then iptables chain `CLAWHQ_FWD` is applied: ESTABLISHED/RELATED → DNS (53) → HTTPS (443) to allowlisted domains only (configured per template + user cloud opt-in) → LOG+DROP everything else
+  - Given a cloud API provider is opted-in for specific categories, when the firewall is generated, then only that provider's API domains are allowlisted — not the entire internet over HTTPS
+  - Given `docker compose down` was run, when `clawhq up` or `clawhq restart` runs, then the firewall is automatically reapplied
+  - _Impl note: See OPENCLAW-REFERENCE.md → Egress Firewall Implementation. The domain-allowlist approach is stronger than the original "allow all HTTPS" — it enforces the local-first principle at the network level._
 
-- Auto-reconnect on network drops
-- Gateway restart on crash detection
-- Firewall reapplication on bridge interface change
-- Self-healing deployment skill for common failure modes
+- [ ] **Secrets management** `P0` `M`
+  As a Tinkerer, I want secrets managed separately from config so that credentials never leak into config files or version control.
+  - Given the config generator runs, when secrets are collected, then they're written to `.env` with 600 permissions, never to `openclaw.json` or workspace files
+  - Given Doctor runs, when the secrets check executes, then it scans all config files for embedded secrets and alerts on any found
+  - Given `clawhq creds` runs, when credential checks execute, then each integration's health probe reports valid/expired/failing
 
-**Logs** — Structured access to agent activity:
+- [ ] **PII & secret scanning** `P0` `M`
+  As a Tinkerer, I want agent-created repos and files scanned for leaked PII and secrets so that I catch exposures before they cause harm.
+  - Given `clawhq scan` runs, then it checks for: PII patterns (names, SSN, credit cards), secret patterns (`ghp_*`, `sk-ant-*`, `AKIA*`, Bearer tokens, JWTs), and dangerous filenames (`.env`, `*.pem`, `*.key`)
+  - Given `clawhq scan --history` runs, then git history is included
+  - Given a pattern matches, then false positives are filtered (`CHANGE_ME` placeholders, env var references, comments)
+  - _Impl note: See OPENCLAW-REFERENCE.md → PII & Secret Scanning Patterns._
 
-- Stream live container logs with filtering (tool executions, cron runs, errors)
-- Historical log search with time ranges
-- Cron job output history (per-job, per-run)
+- [ ] **Supply chain security for skills** `P1` `M`
+  As a Tinkerer, I want community skills vetted before installation so that I don't introduce malicious code into my agent.
+  - Given a community skill is being installed, when vetting runs, then AI-powered scanning checks for suspicious patterns and VirusTotal integration scans artifacts
+  - Given an internal allowlist exists, when a non-allowlisted skill install is attempted, then it's blocked with an explanation
 
-```bash
-clawhq doctor                   # Full diagnostic — every known failure mode
-clawhq doctor --fix             # Auto-fix safe issues (permissions, firewall)
-clawhq doctor --json            # Machine-readable output
-clawhq status                   # Single-pane health dashboard
-clawhq status --watch           # Live-updating dashboard
-clawhq status --cost            # Detailed cost breakdown
-clawhq fleet                    # Fleet-wide status dashboard
-clawhq fleet doctor             # Run doctor across all managed agents
-clawhq backup                   # Full encrypted snapshot
-clawhq backup --secrets-only    # Secrets backup only
-clawhq backup restore <id>      # Restore from snapshot
-clawhq backup list              # List available snapshots
-clawhq update                   # Safe upstream upgrade
-clawhq update --check           # Show what would change without updating
-clawhq update --rollback        # Roll back to previous version
-clawhq logs                     # Stream live logs
-clawhq logs --cron heartbeat    # Cron job history for specific job
-```
+### 5. Deploy — Container Orchestration
 
-**OpenClaw integration:** Operate uses both WebSocket and filesystem channels. Gateway WebSocket provides real-time status, session data, and usage metrics. Filesystem provides memory sizes, identity file sizes, and cron run logs (`cron/runs/*.jsonl`). OpenClaw exposes `openclaw status`, `openclaw health`, `openclaw doctor` (structured output with `--json`), `openclaw logs`, and `openclaw update`. Usage tracking (token counts, costs) is in the Gateway's runtime state, exposed via WebSocket. ClawHQ aggregates these into a single dashboard and adds backup, fleet management, and update safety (pre-update snapshot, post-update doctor, rollback).
+One command: container up, firewall applied, networks verified, channels connected, health confirmed.
+
+- [ ] **Pre-flight checks** `P0` `M`
+  As a Tinkerer, I want deployment prerequisites validated before anything starts so that I get clear errors instead of mysterious failures.
+  - Given `clawhq up` runs, when pre-flight checks execute, then it validates: Docker daemon, images exist, config valid, secrets present, external networks exist, ports available, permissions correct, Ollama reachable (if local models configured), no orphaned containers
+  - Given any check fails, then the error includes the exact fix
+
+- [ ] **Full deploy sequence** `P0` `L`
+  As a Tinkerer, I want one command to go from built images to a running, verified agent.
+  - Given `clawhq up` runs, then it sequences: compose up → firewall apply → health poll (60s timeout) → cron scheduler verify → channel connection verify → smoke test
+  - Given health poll fails, then container logs, network state, and config issues are shown
+  - _Impl note: See OPENCLAW-REFERENCE.md → Four Integration Surfaces (Surface 4). Gateway must be healthy at :18789/healthz before further operations._
+
+- [ ] **Channel connection** `P0` `M`
+  As a Privacy Migrant, I want guided messaging channel setup so that I can connect Telegram/WhatsApp/Signal without reading API docs.
+  - Given `clawhq connect` runs for a channel, then it walks through provider-specific setup with inline validation
+  - Given `clawhq connect --test` runs, then it verifies bidirectional message flow
+
+- [ ] **Post-deploy smoke test** `P0` `S`
+  As a Tinkerer, I want automatic verification that the agent is actually working — not just "container healthy but agent broken."
+  - Given deployment and channel connection are complete, then the smoke test sends a test message, verifies coherent response, confirms identity files are loaded, and probes each connected integration
+
+- [ ] **Graceful shutdown and restart** `P0` `S`
+  As a Tinkerer, I want shutdown that preserves state and restart that reapplies firewall.
+  - Given `clawhq down` runs, then containers stop gracefully preserving workspace state
+  - Given `clawhq restart` runs, then containers restart, firewall is reapplied, health is re-verified
+
+- [ ] **Infrastructure provisioning** `P2` `XL`
+  As a Privacy Migrant (managed mode), I want one-click deployment to cloud infrastructure so that I never touch a terminal. This is the convenience tier for people who accept the trade-off of running on managed infrastructure.
+  - Given a managed mode user selects deploy, then it handles VM creation, DNS, SSL, reverse proxy, and Docker setup
+  - _Impl note: Managed mode is secondary to self-operated. See OPENCLAW-REFERENCE.md → Managed Mode Architecture. The operational boundary ensures we never see agent contents._
+
+### 6. Operate — Predictive Operations
+
+Not just diagnostics and dashboards — predictive intelligence that catches problems before they happen, fixes what it can automatically, and tells you what your agent actually did.
+
+- [ ] **Doctor — preventive diagnostics** `P0` `XL`
+  As a Tinkerer, I want a single command that checks every known failure mode so that I catch problems before they cause visible failures.
+  - Given `clawhq doctor` runs, then it checks: all 14 configuration landmines, file permissions, credential health (live probes), cross-file consistency, memory health, cron health, container resources, network state, config drift, model availability (Ollama models still present and loadable)
+  - Given checks complete, then each shows pass/warn/fail with specific fix instructions
+  - Given `clawhq doctor --fix` runs, then safe issues (permissions, firewall) are auto-fixed
+  - _Impl note: Reuses OpenClaw's `openclaw doctor --json` as subset, adds ClawHQ-specific checks. See OPENCLAW-REFERENCE.md → The 14 Configuration Landmines._
+
+- [ ] **Predictive health alerts** `P0` `L`
+  As a Tinkerer, I want the system to predict problems and act before I notice so that my agent runs like autopilot, not a dashboard I have to watch.
+  - Given memory is growing, when trend analysis runs, then it predicts when hot tier will exceed budget and auto-triggers compaction before overflow ("Memory at 78KB, growing 12KB/day — auto-compacting in 2 days unless growth slows")
+  - Given credential expiry is tracked, when an API key has a known expiry, then a renewal notification fires 7 days before expiry with a one-command renewal flow
+  - Given agent response quality is measurable (user corrections per session, redo requests, escalation rate), when quality degrades, then the system diagnoses likely causes (identity bloat, memory overflow, model routing regression) and suggests fixes
+  - Given any metric crosses a warning threshold, when the alert fires, then it includes the projected timeline and automated remediation if available — not just "something is wrong"
+
+- [ ] **Status dashboard** `P0` `L`
+  As a Tinkerer, I want a single-pane view of agent health, integrations, cost, cron, workspace, and data egress so that I know everything's fine at a glance.
+  - Given `clawhq status` runs, then it shows: agent state, integration health, cost (by model, local vs. cloud breakdown), cron job status, workspace metrics (memory by tier, identity budget), data egress summary (bytes sent to cloud today/week/month, zero-egress badge if applicable), and any active predictive alerts
+  - Given `clawhq status --watch` runs, then it live-updates
+  - _Impl note: Data sources: Docker API, Gateway WebSocket, credential probes, filesystem, egress logs. See OPENCLAW-REFERENCE.md → Three Communication Channels._
+
+- [ ] **Intelligent cost routing** `P0` `M`
+  As a Tinkerer, I want the system to minimize cost automatically by routing tasks to the cheapest capable model — with local models as the cheapest option.
+  - Given a budget is configured, when usage tracking runs, then it attributes cost per-task-category and per-model: "Morning brief: $0.00 (local). Research session: $0.47 (Sonnet). Email triage: $0.00 (local)."
+  - Given budget hits 75%, when the router adjusts, then it shifts eligible tasks from cloud to local models before alerting
+  - Given budget hits 100%, when the cap is enforced, then cloud-escalation stops entirely and the agent operates local-only until the budget resets — never pauses completely
+
+- [ ] **Encrypted backup and restore** `P0` `L`
+  As a Tinkerer, I want encrypted snapshots of my agent's state so that I can recover from any failure.
+  - Given `clawhq backup` runs, then workspace, config, credentials, cron, and identity files are encrypted with GPG
+  - Given `clawhq backup restore <id>` runs, then it validates integrity, applies restore, runs Doctor, and verifies the agent starts
+  - Given `clawhq backup --secrets-only` runs, then only sensitive files are backed up
+
+- [ ] **Safe upstream updates** `P0` `L`
+  As a Tinkerer, I want upstream OpenClaw upgrades that don't break my agent.
+  - Given `clawhq update` runs, then it shows changelog with breaking changes highlighted, takes pre-update snapshot, rebuilds, stops/starts, healthchecks, reapplies firewall, runs Doctor
+  - Given any step fails, then previous image is restored instantly (no rebuild), restarted, and verified
+  - Given `clawhq update --check` runs, then it shows what would change without updating
+
+- [ ] **Health self-repair** `P1` `M`
+  As a Tinkerer, I want my agent to auto-recover from common failures.
+  - Given a network drop, then auto-reconnect
+  - Given a Gateway crash, then auto-restart
+  - Given a bridge interface change, then firewall auto-reapply
+
+- [ ] **Fleet management** `P1` `L`
+  As a Fleet Operator, I want to monitor and manage multiple agents from a single dashboard.
+  - Given `clawhq fleet` runs, then it shows aggregated health, cost, security posture, and egress across all agents
+  - Given `clawhq fleet doctor` runs, then Doctor runs across all agents with per-agent results
+
+- [ ] **Log streaming** `P1` `S`
+  As a Tinkerer, I want filtered access to agent activity logs for debugging.
+  - Given `clawhq logs` runs, then live container logs stream with filtering by category
+  - Given `clawhq logs --cron heartbeat` runs, then per-job execution history is shown
+
+### 7. Transparency — Know What Your Agent Did
+
+The big 4 operate as black boxes. ClawHQ's agent is accountable. The user knows what happened, what data was touched, what left the machine, and what the agent wants to do next.
+
+- [ ] **Activity digest** `P0` `L`
+  As a Privacy Migrant, I want a daily summary of everything my agent did so that I trust it and can course-correct quickly.
+  - Given the agent ran overnight, when the user checks in (via messaging channel or `clawhq digest`), then they see: tasks completed autonomously, tasks queued for approval, emails read/triaged (count + categories, not content — unless user asks), calendar changes made, integrations used, errors encountered, and data egress summary
+  - Given the digest is generated, when privacy mode is active, then it summarizes by category ("read 12 emails, triaged 3 as urgent") rather than showing content — the user drills into specifics only if they want to
+  - _Impl note: Digest generated by the agent itself using a local model, from structured activity logs. This is a cron-triggered skill, not a ClawHQ CLI feature._
+
+- [ ] **Approval queue** `P0` `M`
+  As a Privacy Migrant, I want to approve high-stakes actions before the agent takes them so that I maintain control without micromanaging.
+  - Given the agent wants to perform an action in a requires-approval category (sending an email, creating a calendar event, completing a purchase, posting publicly), when the action is proposed, then it's queued with a plain-language description and sent to the user's messaging channel for approval
+  - Given the user approves, then the action executes immediately
+  - Given the user rejects, then the rejection reason (if provided) is stored as a preference signal for behavioral training
+  - Given the user doesn't respond within a configurable timeout, then the action is logged as expired (not auto-approved)
+
+- [ ] **Data egress audit** `P0` `M`
+  As a Privacy Migrant, I want cryptographic proof of what data left my machine so that I can demonstrate my privacy posture.
+  - Given `clawhq audit --egress` runs, then it shows every outbound API call: timestamp, provider, model, token count, data category, cost
+  - Given `clawhq audit --egress --export` runs, then a signed report is generated that can be shared (e.g., for compliance, for personal records)
+  - Given `clawhq audit --egress --zero` runs, then it verifies that no data left the machine in the specified period and generates a zero-egress attestation
+
+- [ ] **"Why did you do that?" trace** `P1` `M`
+  As a Privacy Migrant, I want to ask the agent why it took a specific action and get a clear answer so that I understand its reasoning.
+  - Given the user asks "why did you mark that email as urgent?" (via messaging channel), when the agent responds, then it cites the specific rules, preferences, and context that drove the decision
+  - Given the user disagrees with the reasoning, when they correct it, then the correction feeds into behavioral training
+
+- [ ] **Tool execution audit trail** `P1` `M`
+  As a Fleet Operator, I want every tool execution logged and searchable for compliance review.
+  - Given `clawhq audit` runs, then tool execution history with timestamps, redacted inputs, and summarized outputs is displayed
+  - Given `clawhq audit --compliance` runs, then an exportable report aligned with OWASP GenAI Top 10 controls is generated
+
+### 8. Evolve — The Agent Gets Better
+
+This is the retention mechanism. An agent that doesn't improve is just a chatbot you host yourself. An agent that learns your preferences, adapts its autonomy, and gets better at being YOUR agent — that's what keeps people from going back to ChatGPT.
+
+- [ ] **Identity governance** `P0` `L`
+  As a Tinkerer, I want my agent's identity files tracked for bloat, staleness, and contradictions so that the agent doesn't slowly become someone else.
+  - Given identity files exist, when governance checks run, then token budget is tracked per file with warnings at 70%/90% thresholds vs. `bootstrapMaxChars` (default 20K)
+  - Given files haven't been updated in a configurable period, then staleness detection generates review prompts
+  - Given multiple identity files exist, then consistency checks flag contradictions
+  - _Impl note: See OPENCLAW-REFERENCE.md → Identity Drift Research._
+
+- [ ] **Memory lifecycle management** `P0` `L`
+  As a Tinkerer, I want agent memory automatically tiered and compacted so that context windows don't overflow and quality doesn't degrade.
+  - Given memory is accumulating, when hot tier exceeds 100KB or 7 days, then old memories are summarized (LLM-powered, using local model) and moved to warm tier
+  - Given warm memories exceed 90 days, then they're further compressed, PII masked, and archived to cold tier
+  - Given cold memories exceed retention period, then they're permanently deleted
+  - _Impl note: See OPENCLAW-REFERENCE.md → Memory Lifecycle Research. ~120KB/day growth observed in production. Summarization uses local model by default (private data stays local)._
+
+- [ ] **Preference learning from corrections** `P1` `L`
+  As a Privacy Migrant, I want the agent to learn from my corrections so that it stops making the same mistakes and starts anticipating my preferences.
+  - Given the user corrects an agent action (rejects an approval, edits a draft, overrides a triage decision), when the correction is logged, then it's classified: preference signal (user likes X, dislikes Y), boundary signal (never do X), or one-time override (don't generalize)
+  - Given preference signals accumulate, when a threshold is reached (configurable, default 5 signals in same category), then the system proposes a preference update to the agent's identity files ("You've corrected email urgency 7 times — update: meetings with [client] are always high priority?")
+  - Given the user approves a preference update, when it's applied, then the identity file is updated and the change is logged for rollback
+
+- [ ] **Autonomy tuning from behavior** `P1` `M`
+  As a Privacy Migrant, I want the system to recommend autonomy changes based on actual patterns so that the agent handles more over time without me micromanaging.
+  - Given approval queue history is analyzed, when patterns emerge, then the system recommends changes: "You approved 47 of 48 email sends this month — auto-approve routine replies?" / "You rejected 3 of 4 calendar reschedule requests — require approval for all calendar changes?"
+  - Given the user accepts an autonomy change, when it's applied, then the approval policy is updated and the change is logged with rollback capability
+  - Given the user rejects an autonomy recommendation, when the rejection is logged, then the system doesn't recommend the same change again for a configurable cooldown period
+
+- [ ] **Selective personality refinement** `P1` `M`
+  As a Tinkerer, I want to update specific aspects of my agent's config without re-running the full setup.
+  - Given `clawhq evolve --identity` runs, then the user can re-run specific questionnaire sections
+  - Given changes are selected, then diffs are shown before applying
+  - Given changes are applied, then manual customizations are preserved with conflicts flagged
+
+- [ ] **Integration management** `P1` `M`
+  As a Tinkerer, I want to add, remove, or swap integrations cleanly.
+  - Given a new integration is added, then credential is validated, tool installed, TOOLS.md updated, cron dependencies checked
+  - Given an integration is removed, then credential cleaned, tool uninstalled, identity updated, no orphaned cron dependencies
+  - Given a provider is swapped (Gmail → iCloud), then the same category interface works with the new backend
+
+### 9. Migrate — On-Ramp From Big Tech
+
+The biggest barrier to adoption isn't setup complexity — it's starting from zero. Migration tools turn switching costs into switching momentum.
+
+- [ ] **ChatGPT conversation import** `P1` `L`
+  As a Privacy Migrant, I want to import my ChatGPT conversation history so that my new agent already knows what my old one knew.
+  - Given a user has exported their ChatGPT data (Settings → Export), when `clawhq migrate --from chatgpt <export.zip>` runs, then conversation history is parsed, key facts and preferences are extracted (LLM-powered, local model), and the results are proposed as additions to USER.md and warm memory
+  - Given the extracted preferences are shown, when the user reviews them, then they can approve, edit, or reject each one before it's written to identity/memory files
+  - Given the import contains PII, when processing runs, then PII masking is applied to warm/cold memory and the user is warned about what was found
+
+- [ ] **Google Assistant routine import** `P1` `M`
+  As a Privacy Migrant, I want my Google Assistant routines converted to agent cron jobs so that my daily automations don't break when I switch.
+  - Given a user exports their Google Assistant data (Google Takeout), when `clawhq migrate --from google-assistant <export>` runs, then routines are parsed and converted to equivalent cron job definitions in `cron/jobs.json`
+  - Given a routine can't be directly mapped (requires Google-specific APIs), when the conversion runs, then it flags the gap and suggests an OpenClaw-native alternative
+
+- [ ] **Contact and calendar bootstrapping** `P1` `M`
+  As a Privacy Migrant, I want my agent to immediately know my calendar patterns and key contacts so that it's useful from day one, not after weeks of learning.
+  - Given the user connects their calendar during setup, when bootstrapping runs, then the agent analyzes the last 90 days: recurring meetings, frequent contacts, scheduling patterns, busy/free patterns — and adds structured context to USER.md
+  - Given the user connects their email, when bootstrapping runs, then it identifies top correspondents, response patterns, and email categories — added to USER.md as preferences
+  - Given bootstrapping generates identity file content, when token budget is checked, then it stays within `bootstrapMaxChars` and prioritizes the most recent/frequent patterns
+
+- [ ] **"Replace my X" migration wizard** `P2` `L`
+  As a Privacy Migrant, I want a guided flow that walks me through replacing a specific big-tech product so that switching feels like an upgrade, not a sacrifice.
+  - Given `clawhq migrate --replace "google assistant"` runs, when the wizard starts, then it: maps Google Assistant features to OpenClaw equivalents, identifies what transfers cleanly vs. what needs alternatives, sets up integrations, imports routines, and runs a comparison checklist ("✓ Morning briefing, ✓ Calendar management, ⚠ Smart home control — requires Home Assistant integration")
+  - Given the comparison shows gaps, when gaps are displayed, then each includes a workaround or a link to a community template that addresses it
+
+### 10. Decommission — Export & Destroy
+
+End of life done right. Export everything portable. Destroy everything else. Verify the destruction cryptographically.
+
+- [ ] **Portable export** `P0` `L`
+  As a Tinkerer, I want to export my agent's identity, memory, config, and workspace into a portable bundle so that I can migrate or start fresh without losing everything.
+  - Given `clawhq export` runs, then it includes: identity files + template source, memory archive (all tiers), workspace snapshot, config (secrets redacted), integration manifest (credentials excluded), interaction history, build manifest, and a README.md explaining bundle structure and how to use with raw OpenClaw
+  - Given `clawhq export --mask-pii` runs, then PII is masked throughout
+  - Given `clawhq export --no-memory` runs, then only identity + config are exported
+
+- [ ] **Pre-decommission checklist** `P0` `M`
+  As a Tinkerer, I want to see exactly what will be destroyed and what persists externally before I decommission.
+  - Given `clawhq destroy --dry-run` runs, then it lists: all local data locations, data ClawHQ can destroy vs. data requiring manual cleanup, whether a current backup and export exist
+  - Given no backup or export exists, then the user is prompted to create them first
+  - Given the user confirms, then the deployment name must be typed out
+
+- [ ] **Verified destruction** `P0` `L`
+  As a Tinkerer, I want cryptographic proof that my agent's data has been completely removed.
+  - Given `clawhq destroy` runs and is confirmed, then it proceeds: stop container → remove volumes → wipe workspace → wipe config → wipe secrets → remove images → remove networks → remove firewall → remove ClawHQ config → generate signed destruction manifest
+  - Given `clawhq destroy --keep-export` runs, then the export bundle is preserved
+
+- [ ] **Partial decommission** `P1` `M`
+  As a Tinkerer, I want to migrate, fresh-start, or template-swap without losing everything.
+  - Given a migration, then `clawhq init --import <bundle>` bootstraps a new deployment from an export
+  - Given a fresh-start, then identity + memory are preserved while everything else resets
 
 ---
 
-### 6. Evolve
+## How It Should Feel
 
-> *Agents degrade without active lifecycle management. Identity drifts. Memory bloats. Personality shifts. Evolve is the toolchain that keeps your agent becoming more useful, not less.*
-
-#### The Problem
-
-A newly deployed agent works well. After a week, memory has grown by ~120KB and context windows are getting crowded. After a month, identity files have been implicitly reinterpreted so many times that the agent's behavior has drifted from the original intent. After three months, some integrations have been deprecated by their providers, credentials have rotated, and the user's own needs have changed. Without active lifecycle management, a good agent becomes a bad agent — not through any single failure, but through slow accumulation of drift.
-
-This is the phase nobody else addresses. Basic hosting stops at deploy. Even sophisticated platforms treat the agent as a static deployment. But agents are living systems — they need ongoing evolution to remain useful.
-
-#### What This Toolchain Does
-
-**Identity Governance** — The agent's identity is defined by structured files (SOUL.md, USER.md, AGENTS.md, HEARTBEAT.md, TOOLS.md). Without governance, these files drift:
-
-| Drift Type | What Happens | How Evolve Prevents It |
-|---|---|---|
-| **Bloat** | Files grow as users add context, exceeding `bootstrapMaxChars` and getting silently truncated | Token budget tracking per file, warnings at 70%/90% thresholds, guided compression |
-| **Staleness** | Information becomes outdated (old job title, changed interests, deprecated tools) | Staleness detection based on last-modified dates + content heuristics, periodic review prompts |
-| **Contradiction** | Different files make conflicting claims (SOUL says "never trade stocks," TOOLS lists a trading tool) | Cross-file consistency checks, contradiction flagging |
-| **Scope creep** | Agent's role expands gradually beyond original intent | Boundary tracking against template definition, drift alerts |
-
-Identity governance maintains a structured source of truth (version-controlled YAML) from which the markdown identity files are generated. Changes go through the source of truth, not through direct file edits — ensuring consistency and enabling rollback.
-
-**Memory Lifecycle** — Without management, agent memory grows at ~120KB/day during active use:
-
-```
-Hot (in context)          Warm (indexed)           Cold (archived)
-≤7 days, ≤100KB          7-90 days                90+ days
-Full fidelity             Summarized, indexed      Summarized, compressed
-In every conversation     Searchable on demand     Retrievable on demand
-```
-
-| Transition | What Happens | When |
-|---|---|---|
-| Hot → Warm | Conversation memories older than 7 days are summarized, key facts extracted, full text moved to warm storage | Daily (configurable) |
-| Warm → Cold | Warm memories older than 90 days are further compressed, PII masked, archived | Weekly (configurable) |
-| Cold → Deleted | Cold memories older than retention period are permanently removed | Per retention policy |
-
-Each transition preserves the important information while reducing token cost. Summarization is LLM-powered (using the agent's own subagent model) — it understands context, not just truncation.
-
-PII masking runs at each transition: names, addresses, phone numbers, financial details are detected and replaced with tagged placeholders that can be resolved if the original is needed.
-
-**Personality Refinement** — Update the agent's personality and context without starting over:
-
-- Re-run specific questionnaire sections (change just timezone, or just autonomy level, or just integrations — not the full init flow)
-- Preview diffs before applying: see exactly what would change in each generated file
-- Merge, not overwrite: manual customizations to identity files are preserved where possible, with conflicts flagged for review
-- Template upgrade: when a template releases a new version, see what changed and apply selectively
-
-**Integration Management** — Add, remove, or swap integrations:
-
-- Add a new integration: guided credential setup, health verification, tool installation, identity file update (TOOLS.md)
-- Remove an integration: clean credential removal, tool uninstall, identity file update, confirm no cron jobs depend on it
-- Swap a provider: replace Gmail with iCloud for email category — same interface, different backend, guided migration
-
-**Session Management** — Per-channel session control:
-
-- Per-channel-peer DM isolation — conversations from different contacts don't cross-contaminate
-- Identity linking across channels — same user recognized across Telegram, WhatsApp, Slack
-- Session pruning and compaction for long-running conversations
-- Configurable session timeouts and history retention per channel
-
-**Behavioral Training** — Refine agent behavior from interaction history:
-
-- Review interaction patterns: what the agent handled well, what it got wrong, what it escalated unnecessarily
-- Feedback incorporation: user corrections and preferences extracted from conversation history, distilled into identity file updates
-- Autonomy tuning: based on actual escalation patterns, recommend autonomy adjustments ("you approved 95% of email sends — consider auto-approve for routine replies")
-
-```bash
-clawhq evolve                   # Interactive evolution — guided updates
-clawhq evolve --identity        # Review and update identity files
-clawhq evolve --integrations    # Add, remove, or swap integrations
-clawhq evolve --template        # Upgrade to new template version
-clawhq evolve --diff            # Show what would change without applying
-clawhq train                    # Behavioral analysis + refinement suggestions
-clawhq train --review           # Review interaction patterns
-clawhq train --autonomy         # Autonomy tuning recommendations
-```
-
-**OpenClaw integration:** This is where ClawHQ adds the most value over raw OpenClaw. OpenClaw treats identity files as opaque markdown — it reads them, includes them in the prompt, and never modifies them. This means ClawHQ owns the identity file lifecycle completely without interference. Integration points: filesystem read/write for identity and memory files, `config.patch` RPC for config changes, session history (from `~/.openclaw/agents/*/sessions/`) for behavioral analysis, subprocess for LLM-powered summarization during memory tier transitions.
+- **Fast:** CLI commands respond in < 2s for reads. Builds complete Stage 2 in < 30s. Config writes propagate within 1s via WebSocket RPC. Local model routing adds < 100ms decision overhead.
+- **Secure:** Hardened by default. No secret in config files. Egress firewall with domain allowlisting (not just "allow all HTTPS"). Identity files read-only. Container runs non-root with minimal capabilities.
+- **Private:** Zero data leaves the machine by default. Cloud APIs are opt-in per-task-category. Every outbound call logged. Air-gapped mode available. Self-operated is the hero product.
+- **Reliable:** Auto-recovery from common failures. Pre-update snapshots with instant rollback. Predictive alerts catch problems before users notice.
+- **Transparent:** Daily activity digest. Approval queue for high-stakes actions. Egress audit with zero-egress attestation. "Why did you do that?" trace.
+- **Improving:** Preference learning from corrections. Autonomy tuning from approval patterns. Memory actively managed. Agent at 6 months is dramatically better than at day 1.
+- **Portable:** `clawhq export` produces a self-documented bundle. Zero lock-in to ClawHQ, any cloud, or any model provider. Works with raw OpenClaw if the user leaves.
 
 ---
 
-### 7. Decommission
+## Tech Stack & Constraints
 
-> *End of life done right. Export everything portable. Destroy everything else. Verify the destruction cryptographically. No orphaned data, no lingering secrets.*
+**Stack:** Go (single static binary) · Docker · iptables · GPG · WebSocket (Gateway communication) · Ollama (local model runtime)
 
-#### The Problem
+**Key integrations:**
+- OpenClaw Gateway → config read/write, status, health → WebSocket RPC (:18789) → token auth
+- OpenClaw Workspace → identity, memory, skills, cron → filesystem read/write → direct access
+- Docker Engine → container lifecycle, image builds → Docker CLI (subprocess) → Unix socket
+- Ollama → local model inference → HTTP API (localhost:11434) → no auth (localhost only)
+- iptables → egress firewall with domain allowlisting → CLI (subprocess) → requires sudo
 
-When an agent needs to be retired — whether migrating to a new platform, shutting down permanently, or starting fresh — there's no clean way to do it. Data is scattered across bind mounts, Docker volumes, config directories, git repos, messaging platforms, and integration providers. Secrets persist in `.env` files, credential stores, and environment variables. The agent's workspace contains months of accumulated context, tools, and skills that may be valuable to preserve even if the agent itself is retired.
+**Core data model:**
+- `Template` — operational profile (YAML). Fields: name, version, use_case_mapping, personality, security posture, monitoring, memory policy, cron config, autonomy model, model routing strategy, integration requirements, skill bundle
+- `ModelRoutingPolicy` — per-category escalation rules. Fields: task_category, local_model_preference, cloud_allowed (bool), cloud_provider, quality_threshold, cost_cap
+- `DeploymentBundle` — generated config set. Fields: openclaw.json, .env, docker-compose.yml, identity files, cron jobs, model routing config. Generated from Template + setup answers
+- `EgressLog` — outbound API call record. Fields: timestamp, provider, model, token_count_in, token_count_out, data_category, cost, session_id
+- `PreferenceSignal` — user correction record. Fields: timestamp, action_type, original_decision, correction, signal_type (preference/boundary/one-time), applied_to_identity (bool)
+- `BackupSnapshot` — encrypted state capture. Fields: id, timestamp, type, encryption method, manifest hash
+- `ExportBundle` — portable agent archive. Fields: identity, memory, workspace, config, integrations, history, build manifest
 
-Without a structured decommission process, users either leave orphaned data everywhere (security risk) or delete things manually and miss something (both security risk and data loss).
-
-#### What This Toolchain Does
-
-**Export** — Create a portable bundle that captures everything valuable about the agent, independent of ClawHQ:
-
-| Exported Artifact | Format | Contents |
-|---|---|---|
-| Identity bundle | Markdown + YAML | SOUL.md, USER.md, AGENTS.md, HEARTBEAT.md, TOOLS.md, template source |
-| Memory archive | Structured JSON | All memory tiers (hot + warm + cold), with PII optionally masked or included |
-| Workspace snapshot | tar.gz | Tools, skills, custom scripts, workspace files |
-| Configuration | JSON + YAML | `openclaw.json` (secrets redacted), template config, cron definitions |
-| Integration manifest | YAML | List of configured integrations, categories, provider details (credentials excluded) |
-| Interaction history | JSON | Conversation logs (if retained), cron job history, tool execution audit trail |
-| Build manifest | JSON | Image hashes, tool versions, upstream commit, build timestamps |
-
-The export bundle is self-contained and documented. A `README.md` inside explains the bundle structure, how to import into a new ClawHQ deployment, and how to use the artifacts with raw OpenClaw if the user leaves ClawHQ entirely. Zero lock-in — this is a core principle.
-
-**Pre-Decommission Checklist** — Before destroying anything:
-
-1. Verify a current backup exists (prompt to create one if not)
-2. Verify an export bundle has been created (prompt to create one if not)
-3. List all known data locations (local filesystem, Docker volumes, agent-created repos, integration data)
-4. Identify data that ClawHQ can destroy vs. data that requires manual cleanup (e.g., messages sent to Telegram contacts, repos pushed to GitHub, tasks created in Todoist)
-5. Show a complete inventory of what will be destroyed and what will persist externally
-6. Require explicit confirmation with deployment name typed out (no accidental destruction)
-
-**Destruction Sequence:**
-
-| Step | What's Destroyed | How | Verification |
-|---|---|---|---|
-| 1. Stop agent | Running container | `docker compose down` | Container no longer in `docker ps` |
-| 2. Remove container data | Docker volumes, container filesystem | `docker volume rm`, `docker system prune` | Volumes no longer in `docker volume ls` |
-| 3. Wipe workspace | `~/.openclaw/workspace/` | Secure overwrite + `rm -rf` | Directory doesn't exist |
-| 4. Wipe config | `openclaw.json`, `cron/`, `identity/` | Secure overwrite + `rm -rf` | Files don't exist |
-| 5. Wipe secrets | `.env`, `credentials/` | Secure overwrite + `rm -rf` | Files don't exist |
-| 6. Remove images | Docker images (both stages) | `docker rmi` | Images not in `docker images` |
-| 7. Remove networks | Agent Docker networks | `docker network rm` | Networks not in `docker network ls` |
-| 8. Remove firewall | iptables chain | Flush + delete `CLAWHQ_FWD` | Chain not in `iptables -L` |
-| 9. Remove ClawHQ config | `~/.clawhq/` | `rm -rf` | Directory doesn't exist |
-| 10. Generate manifest | Cryptographic hash of destruction | SHA-256 of pre/post filesystem state | Manifest file (kept or printed) |
-
-**Cryptographic Verification** — After destruction:
-- Compute SHA-256 hashes of all directories/files that should no longer exist
-- Scan for orphaned files matching known patterns (`.env*`, `openclaw*`, `*.key`, `*.pem`)
-- Compare filesystem state against pre-destruction inventory
-- Generate a signed destruction manifest proving what was removed and when
-- Optionally: run a final PII/secrets scan to catch anything missed
-
-**Partial Decommission** — Not every decommission is a full wipe:
-
-- **Migration**: Export + destroy local, then `clawhq init --import <bundle>` on new infrastructure
-- **Fresh start**: Export identity + memory, destroy everything, re-init with same identity but clean state
-- **Template change**: Export, destroy, re-init with different template, import compatible artifacts
-
-```bash
-clawhq export                   # Create portable bundle
-clawhq export --no-memory       # Export without memory (identity + config only)
-clawhq export --mask-pii        # Export with PII masked
-clawhq destroy                  # Full decommission with verification
-clawhq destroy --dry-run        # Show what would be destroyed
-clawhq destroy --keep-export    # Destroy but preserve the export bundle
-clawhq destroy --verify         # Re-verify a previous destruction
-```
-
-**OpenClaw integration:** Filesystem operations + Docker CLI + iptables — all subprocess work, no Gateway interaction needed (the Gateway is being shut down). OpenClaw provides `openclaw uninstall` (removes daemon service) but has no structured export/destroy mechanism or cryptographic destruction verification.
+**Hard constraints:**
+- Single Go binary — no runtime dependencies except Docker (and Ollama for local models)
+- Must work fully air-gapped after initial build (no phone-home, no cloud dependency)
+- Local models are the default; cloud APIs are opt-in per-task-category
+- Generated config must pass OpenClaw's TypeBox schema validation
+- All config writes go through `config.patch` RPC when Gateway is running (rate limited: 3 req/60s)
+- Templates can tighten Layer 1 security baselines but can never loosen them
+- Self-operated is the primary product; managed mode is a convenience tier
+- Memory summarization and preference extraction use local models by default (private data stays local)
 
 ---
 
-## Architecture
+## What We're NOT Building
 
-### The Three Layers
+- **A fork of OpenClaw** — ClawHQ is a layer on top, not a replacement. We use OpenClaw's Dockerfiles, Gateway, agent runtime, and channel adapters as-is.
+- **Message routing or model API calls** — OpenClaw handles these well. We set policy (including model routing), we don't intercept execution.
+- **A competing agent framework** — We're the control panel, not the engine.
+- **A no-code agent builder** — We make OpenClaw accessible, not invisible. Power users can always drop to raw config.
+- **A cloud AI service** — We don't host models, don't train on user data, don't see user content. Self-operated is the product.
+- **Multi-agent orchestration** (for now) — Sub-agent management, agent-to-agent delegation, shared memory are future considerations.
 
-The seven toolchains operate across three architectural layers:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  LAYER 1: CORE PLATFORM (same for every agent)          │
-│  Config Safety · Security · Monitoring · Memory Mgmt    │
-│  Cron Guardrails · Identity Governance · Audit Logging  │
-│  Credential Health · Backup/Restore · Update Safety     │
-│  Cost Tracking · Fleet Management · Access Control      │
-├─────────────────────────────────────────────────────────┤
-│  LAYER 2: TEMPLATES (operational profiles)              │
-│  Guardian · Assistant · Coach · Analyst · Companion     │
-│  Each: personality + security + monitoring + memory     │
-│  + cron + autonomy + integration recommendations       │
-├─────────────────────────────────────────────────────────┤
-│  LAYER 3: INTEGRATIONS (providers per category)         │
-│  Email · Calendar · Tasks · Messaging · Files · Code    │
-│  Finance · Research · Notes · Health · CRM              │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Layer 1: Core Platform** — The engineering that makes any agent safe, observable, and maintainable. Same for every agent. This is the product. Every toolchain contributes to and draws from this layer.
-
-**Layer 2: Templates** — Community-contributed operational profiles. The WordPress ecosystem model. Templates customize Layer 1 within safe bounds — they can tighten security but never loosen it below the platform baseline.
-
-**Layer 3: Integrations** — Provider-agnostic tool categories. The agent talks to "calendar" not "Google Calendar." Each integration ships with: manifest, standard interface, health check, credential lifecycle, fallback behavior, version pinning.
-
-| Category | Example Providers | Interface |
-|---|---|---|
-| **Email** | Gmail, iCloud, Outlook, Fastmail, ProtonMail | `email inbox`, `email send`, `email search` |
-| **Calendar** | Google, iCloud, Outlook, Fastmail | `calendar today`, `calendar create` |
-| **Tasks** | Todoist, TickTick, Linear, Notion, Asana | `tasks list`, `tasks add`, `tasks complete` |
-| **Messaging** | Telegram, WhatsApp, Slack, Discord, Signal, iMessage, Teams, Matrix | Channel config |
-| **Files** | Google Drive, Dropbox, iCloud Drive | `files list`, `files get` |
-| **Code** | GitHub, GitLab, Sentry | `code repos`, `code issues`, `code prs` |
-| **Finance** | Yahoo Finance, Alpha Vantage | `quote AAPL` |
-| **Research** | Tavily, Perplexity | `research <query>` |
-| **Notes** | Notion, Obsidian | `notes search`, `notes create` |
-| **Health** | Garmin, Apple Health | `health log`, `health summary` |
-| **CRM** | Salesforce, HubSpot | `crm contacts`, `crm deals` |
-
-### OpenClaw's Internal Architecture
-
-OpenClaw is a single Node.js process (the **Gateway**) that acts as a control plane. Everything else connects to it.
-
-```
-                     ~/.openclaw/openclaw.json  (JSON5 config)
-                     ~/.openclaw/workspace/     (agent files, memory, skills)
-                     ~/.openclaw/cron/          (job definitions + run logs)
-                     ~/.openclaw/credentials/   (pairing allowlists, auth state)
-                     ~/.openclaw/.env           (secrets)
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────┐
-│                    GATEWAY PROCESS                        │
-│                   (src/gateway/server.ts)                 │
-│                                                          │
-│  ┌──────────┐  ┌───────────┐  ┌──────────────────────┐  │
-│  │ Config   │  │ Session   │  │ Channel Adapters     │  │
-│  │ Loader   │  │ Manager   │  │ (telegram/, discord/,│  │
-│  │ (config/ │  │ (config/  │  │  slack/, whatsapp/,  │  │
-│  │  config  │  │  sessions │  │  signal/, imessage/, │  │
-│  │  .ts)    │  │  .ts)     │  │  + plugin channels)  │  │
-│  └────┬─────┘  └─────┬─────┘  └──────────┬───────────┘  │
-│       │              │                    │              │
-│       ▼              ▼                    ▼              │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │              Auto-Reply Router                    │   │
-│  │            (auto-reply/reply.ts)                  │   │
-│  │  access control → session resolve → agent dispatch│   │
-│  └──────────────────────┬───────────────────────────┘   │
-│                         │                                │
-│                         ▼                                │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │           Pi Agent Runtime (PiEmbeddedRunner)     │   │
-│  │            (agents/piembeddedrunner.ts)            │   │
-│  │                                                    │   │
-│  │  prompt-builder.ts → model API → tool dispatch     │   │
-│  │       ↕                    ↕            ↕          │   │
-│  │  memory/              providers     sandbox.ts     │   │
-│  │  (workspace/memory/)  (API keys)   (Docker exec)   │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                          │
-│  ┌────────────┐  ┌────────────┐  ┌──────────────────┐  │
-│  │ Cron       │  │ Hooks      │  │ WebSocket Hub    │  │
-│  │ Scheduler  │  │ (webhooks) │  │ (Control UI,     │  │
-│  │            │  │            │  │  TUI, CLI, apps) │  │
-│  └────────────┘  └────────────┘  └──────────────────┘  │
-│                                                          │
-│  ┌────────────┐  ┌────────────┐  ┌──────────────────┐  │
-│  │ Plugin     │  │ Skills     │  │ Browser Control  │  │
-│  │ Loader     │  │ Registry   │  │ (CDP/Chrome)     │  │
-│  └────────────┘  └────────────┘  └──────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-                              │
-              WebSocket :18789│
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-         CLI client     Control UI      Companion Apps
-         (openclaw …)   (browser)       (macOS/iOS/Android)
-```
-
-**Key implementation facts:**
-
-1. **Single process** — The Gateway is one Node.js process. No separate services, no message queues, no databases (except SQLite for memory search). Everything is in-process.
-2. **Single config file** — `~/.openclaw/openclaw.json` is the source of truth for runtime behavior. The Gateway validates against a TypeBox schema (`src/config/schema.ts`) and watches for hot-reload changes.
-3. **Filesystem is state** — Sessions, cron jobs, memory, credentials, and workspace files are all stored as files under `~/.openclaw/`. No database for operational state — JSON files on disk.
-4. **CLI talks to Gateway via WebSocket** — `openclaw config set` connects to the running Gateway's WebSocket, sends an RPC. The CLI is a *client*, not a direct file editor.
-5. **Control UI is served by the Gateway** — The built-in web dashboard at `http://127.0.0.1:18789` is a Lit web-component app served from the Gateway process itself.
-6. **Channels are adapters, not plugins** — Core channels (WhatsApp, Telegram, Discord, Slack, Signal, iMessage) are compiled into the Gateway. Plugin channels (Teams, Matrix, Feishu, LINE, etc.) are loaded by `src/plugins/loader.ts`.
-7. **Agent runtime is embedded** — `PiEmbeddedRunner` runs inside the Gateway process. Tools are function calls within the same process (or Docker exec for sandboxed operations).
-8. **Config schema is TypeBox** — The schema in `src/config/schema.ts` defines every valid field. Unknown keys cause the Gateway to refuse to start.
-
-### Four Integration Surfaces
-
-ClawHQ attaches to OpenClaw through exactly four surfaces:
-
-**Surface 1: The Config File** (`~/.openclaw/openclaw.json`) — Controls everything about runtime behavior. ClawHQ writes config via the Gateway's `config.patch` / `config.apply` RPC over WebSocket (preferred), or writes the file directly when the Gateway is down. Every panel in the web console ultimately produces a `config.patch` RPC call.
-
-**Surface 2: The Workspace** (`~/.openclaw/workspace/`) — Contains identity files (SOUL.md, USER.md, AGENTS.md, TOOLS.md, HEARTBEAT.md, IDENTITY.md, BOOT.md, BOOTSTRAP.md), memory files, skills, and custom tools. ClawHQ reads and writes these as plain files. The key constraint is `bootstrapMaxChars` — identity files that exceed it get silently truncated.
-
-**Surface 3: The Cron System** (`~/.openclaw/cron/`) — Contains `jobs.json` (job definitions) and `runs/<jobId>.jsonl` (execution history). ClawHQ writes jobs and reads run logs. The Gateway hot-reloads cron config.
-
-**Surface 4: The Gateway WebSocket API** — Exposes config management, session RPCs, gateway status/health/restart, agent RPCs, and device management. All communication is authenticated. Rate limited to 3 req/60s for config writes.
-
-### Three Communication Channels
-
-| Channel | What it's for | When to use |
-|---------|--------------|-------------|
-| **WebSocket RPC** | Config read/write, session ops, status, real-time events | Anything the Gateway manages at runtime |
-| **Filesystem** | Workspace files, memory, identity, cron jobs, backups | Anything stored as files |
-| **Subprocess** | Docker, iptables, openclaw CLI commands, system operations | Anything needing OS-level access |
-
-### What ClawHQ Does NOT Need to Do
-
-Understanding what OpenClaw already handles well:
-
-1. **Message routing** — OpenClaw's auto-reply router handles channel → session → agent dispatch
-2. **Model API calls** — The agent runtime handles model selection, failover, and streaming
-3. **Tool execution** — The agent runtime dispatches tools; ClawHQ sets policy but doesn't intercept
-4. **Session persistence** — OpenClaw manages session files automatically
-5. **Channel protocol handling** — Each channel adapter handles auth, parsing, and formatting
-6. **Config schema validation** — The Gateway validates config on load; ClawHQ validates before writing, but the Gateway is the final authority
-
-### Self-Operated
-
-A single Go binary. All seven toolchains compiled in. No runtime dependencies except Docker.
-
-```
-clawhq (Go CLI)
-├── plan/          — templates, questionnaire, config generation
-├── build/         — source management, Docker builds
-├── secure/        — hardening, firewall, scanning, credentials, audit
-├── deploy/        — compose, networking, channels
-├── operate/       — doctor, status, backup, update, logs
-├── evolve/        — identity, memory, training, integration management
-└── decommission/  — export, destroy, verify
-```
-
-### Managed
-
-Same engine, hosted infrastructure, web console:
-
-```
-┌────────────────────────────────────────────┐
-│          ClawHQ Console (web)           │
-│  Onboarding · Dashboard · Fleet · Support │
-│             WebSocket Hub                  │
-└────────────────┬───────────────────────────┘
-                 │
-      ┌──────────┴──────────┐
-      ▼                     ▼
-┌───────────┐        ┌───────────┐
-│ Node 1    │        │ Node N    │
-│ agentd    │        │ agentd    │
-│ OpenClaw  │ . . .  │ OpenClaw  │
-│ Guardrails│        │ Guardrails│
-│ Monitoring│        │ Monitoring│
-└───────────┘        └───────────┘
-```
-
-**agentd** is the self-operated CLI running as a daemon. It receives config from the console, manages Docker lifecycle, applies all seven toolchains, streams operational metadata back. The console is a thin coordination layer — it never sees agent contents.
-
-**Communication patterns by mode:**
-
-```
-Self-Operated:
-  ClawHQ CLI → Gateway WebSocket (localhost)
-             → Filesystem (direct)
-             → Subprocess (direct)
-
-Managed:
-  Web Console → agentd (HTTPS) → Gateway WebSocket (localhost)
-                                → Filesystem (direct)
-                                → Subprocess (direct)
-```
-
-**Web Console** — The managed mode web console provides GUI access to all CLI capabilities:
-
-- Visual config editor with validation, auto-backup, and gateway restart on save
-- Model routing and tool policy management
-- Skill browsing, installation, and management
-- Cron scheduling with natural language or cron syntax
-- Webhook configuration for external triggers (Gmail Pub/Sub, GitHub webhooks, custom HTTP)
-- Environment variable management without SSH
-
-**Access Control** (Managed mode) — Team collaboration with appropriate boundaries:
-
-| Role | Capabilities |
-|---|---|
-| **Admin** | Full access: config, security, deploy, destroy, user management |
-| **Operator** | Operational access: status, doctor, backup, restart, logs |
-| **Viewer** | Read-only: status, logs, audit trail |
-
-Authentication: username/password, TOTP MFA, OAuth SSO (Google, GitHub). Human-in-the-loop exec approvals for sensitive agent actions, configurable per template.
-
-### Operational Boundary (Managed Mode)
-
-| We CAN see | We CANNOT see |
-|---|---|
-| Container health (up/down/restarts) | Agent conversations |
-| Integration status (healthy/degraded/failed) | Email, task, or calendar content |
-| Memory tier sizes (45KB hot, 120KB warm) | Memory contents |
-| API cost metrics | What the agent does with the calls |
-| Cron job status (running/failed) | Cron job outputs |
-
-Architecturally enforced. For the paranoid template: user-held encryption keys for at-rest workspace encryption.
+**Icebox** (good ideas, no commitment):
+- Mobile companion app for agent management
+- Marketplace with paid community templates
+- White-label managed hosting for MSPs
+- Integration with non-OpenClaw agent frameworks
+- Smart home integration (Home Assistant bridge)
+- Shared family memory with per-member privacy boundaries
 
 ---
 
-## Data Sovereignty
+## Build Order
 
-Your agent holds the most intimate dataset about you that has ever existed. ClawHQ is designed so that data stays yours.
+**Phase 0 — Concierge**
+Stories: None (manual). We set up 3-5 agents by hand for real users. We ARE the control panel. Focus on Privacy Migrants leaving specific big-tech products.
+Done when: We know which use-case templates matter, which integrations are most requested, what breaks first, and what keeps people engaged at 30 days.
 
-| Principle | How |
-|---|---|
-| **Workspace isolation** | Isolated infrastructure. We manage the container, not the contents. |
-| **Identity integrity** | Identity files mounted read-only. Agent cannot modify its own guardrails. |
-| **Portability** | `clawhq export` — portable bundle. Zero lock-in. Take it anywhere. |
-| **Deletion** | `clawhq destroy` — cryptographic verification of complete wipe. |
-| **Auditability** | Every tool execution logged. Full transparency into agent behavior. |
-| **Open source** | Auditable engine. Verify every claim. |
+**Phase 1 — Self-install panel (Operate + Secure + Deploy + Model Routing)**
+Stories: Doctor, Predictive health alerts, Status dashboard, Intelligent cost routing, Full deploy sequence, Pre-flight checks, Graceful shutdown, Egress firewall (with domain allowlisting), Container hardening, Secrets management, Encrypted backup, Safe upstream updates, Two-stage Docker build, Health self-repair, Local-first model routing, Per-category cloud opt-in, Data egress visibility
+Done when: A Tinkerer installs the CLI on an existing OpenClaw deployment and immediately gets value: diagnostics, security hardening, local-first model routing with egress visibility. They can `clawhq up` / `clawhq down` / `clawhq backup` / `clawhq update` with full safety. Zero data leaves the machine unless they opt in.
 
----
+**Phase 2 — Full panel (Plan + Evolve + Transparency + Decommission)**
+Stories: Use-case templates, AI-powered config inference, Guided questionnaire, Integration auto-detection, Config generation, Config validation, Identity governance, Memory lifecycle, Preference learning, Autonomy tuning, Activity digest, Approval queue, Data egress audit, Portable export, Verified destruction, Pre-decommission checklist, PII scanning, Channel connection, Post-deploy smoke test, Intelligent task-level routing
+Done when: A Privacy Migrant goes from zero to working agent using only `clawhq init`. The agent gets better over time through preference learning and autonomy tuning. The user knows exactly what the agent did and what data left their machine.
 
-## Competitive Positioning
+**Phase 3 — Migration + Managed hosting**
+Stories: ChatGPT conversation import, Google Assistant routine import, Contact/calendar bootstrapping, "Replace my X" wizard, Infrastructure provisioning, Fleet management, Web console, Access control
+Done when: A non-technical Privacy Migrant can switch from ChatGPT/Google Assistant to ClawHQ with their history and routines intact. Managed mode available for those who accept the trade-off.
 
-### The Landscape
-
-| Option | What You Get | What's Missing |
-|---|---|---|
-| **Raw OpenClaw** | Full power, full control | Months of setup, ongoing SRE, no lifecycle management |
-| **Basic OpenClaw hosting** (10+ providers) | Someone runs the container | Default config, no hardening, no memory mgmt, no evolution |
-| **Community dashboards** | Basic monitoring, read-only views | No security, no lifecycle, no configuration management |
-| **Security point tools** (ClawSec, security-monitor) | Hardening guides, scanning | Fragmented, no unified platform, manual execution |
-| **No-code agent builders** (Lindy, Relevance AI) | Workflow automation | Not true persistent agents, SaaS data handling |
-| **Big-tech agents** (Google, Apple, MS) | Polished, integrated, easy | Platform lock-in, no sovereignty, black box |
-| **ChatGPT / Claude** (direct) | Best models, growing memory | Platform-controlled, no customization, no operational layer |
-| **ClawHQ** | **Full lifecycle across seven toolchains** | — |
-
-### Market Gap Analysis
-
-| Domain | Current Market Coverage | Gap Severity |
-|---|---|---|
-| Provisioning & Deploy | Well-served by 10+ hosting providers | Low |
-| Security Hardening | Fragmented: guides + point tools; no unified self-serve platform | **Critical** |
-| Monitoring & Observability | Partial: community dashboards cover basics; no unified cost + health + security | High |
-| Agent Lifecycle | Weak: most dashboards are read-only, no full lifecycle management | High |
-| Configuration Management | Very weak: built-in dashboard is minimal; most config requires CLI/JSON editing | **Critical** |
-| Operations & Maintenance | Fragmented: updates manual, backups DIY, incident response is "read this blog post" | **Critical** |
-| Governance & Compliance | Nearly nonexistent for self-hosted; no governance solution | **Critical** |
-
-Four domains are critically underserved: Security, Configuration, Operations, and Governance. These are precisely the domains that differentiate a control panel from another deploy button.
-
-### Where We Sit
-
-```
-Raw framework ←──────────────────────────────────→ Platform lock-in
-OpenClaw         Basic hosting      CLAWHQ          Big-tech agents
-(powerful,       (default config,   (control panel,     (polished,
- expert-only)    no lifecycle)      full lifecycle)     captive)
-```
-
-### What Nobody Else Does
-
-1. **Full lifecycle in one product** — Plan → Build → Secure → Deploy → Operate → Evolve → Decommission. No one covers more than two of these today.
-2. **Opinionated security defaults** — Instead of a checklist users must execute manually, ship pre-hardened and maintain hardened state continuously.
-3. **Configuration-as-product** — Make OpenClaw's complex JSON config accessible through templates, validation, and visual editors with best-practice presets.
-4. **Continuous compliance** — Not a one-time audit but ongoing drift detection, automated remediation, and exportable compliance reports.
-5. **Operational intelligence** — Correlate cost spikes with agent behavior, security events with config changes, and performance issues with model routing decisions.
-
-The market has settled into two camps: "deploy it fast" (hosting providers) and "secure it after" (security guides and tools). Nobody owns the middle — the ongoing operational reality of running OpenClaw as critical infrastructure. ClawHQ is the operational platform.
-
-### The Moat
-
-1. **Operational expertise** — 14+ landmines, hardening playbooks, identity governance, memory lifecycle, cron guardrails. Hard-won knowledge encoded as rules. Compounds with every user.
-2. **Template ecosystem** — Community-built operational profiles. WordPress flywheel: more templates → more use cases → more users → more templates.
-3. **Full lifecycle** — Seven toolchains from plan through decommission. Nobody else goes past deploy.
-4. **Portability** — `clawhq export` gives you everything. Zero lock-in.
-5. **Open source trust** — Auditable engine. Every claim verifiable.
+**Phase 4 — Ecosystem**
+Stories: Community templates, Supply chain security, "Why did you do that?" trace, Air-gapped mode, Template marketplace
+Done when: Community is contributing use-case templates. The WordPress flywheel is turning.
 
 ---
 
-## The Ecosystem
+## Risks & Open Questions
 
-### Template Marketplace
+**Risks:**
+- Local model quality isn't good enough for daily use → mitigation: intelligent routing that escalates to cloud when local falls short; as local models improve (they are, rapidly), the cloud dependency shrinks. Phase 0 validates which tasks are local-ready today.
+- OpenClaw makes breaking changes to config schema or Gateway API → mitigation: pin to known-good upstream versions, test against upstream CI, maintain compatibility shims
+- Template ecosystem doesn't attract contributors → mitigation: ship 6 excellent use-case templates that cover 80% of migration scenarios, make contribution easy (single YAML file PR)
+- Preference learning creates feedback loops (agent reinforces bad patterns) → mitigation: all preference updates require explicit user approval, rollback capability on every change, cooldown on repeated suggestions
+- Privacy Migrants don't care enough to self-host → mitigation: Phase 0 concierge validates willingness to pay. If self-hosting is the barrier, managed mode exists — but we lead with self-operated.
+- Managed mode operational costs too high for pricing → mitigation: Phase 0 validates unit economics before building infrastructure
 
-Templates are the primary scaling mechanism — the WordPress model. Community extends the platform to domains we'd never design.
-
-**Built-in templates** — ship with ClawHQ, deeply tested.
-
-**Community templates** — contributed via PR, reviewed for safety. Can never override Layer 1 security baselines.
-
-**Custom templates** — guided builder or raw YAML.
-
-### Skill Library
-
-Pre-built capabilities that templates include:
-
-- **morning-brief** — daily briefing (tasks, calendar, priorities)
-- **email-digest** — summarize and triage incoming email
-- **meeting-prep** — research attendees, prep talking points
-- **session-report** — work session ledger and time tracking
-- **construct** — autonomous self-improvement (agent builds its own tools)
-
-Open-source. Community-contributed. Reviewed for safety.
-
-### Integration Catalog
-
-Provider-specific implementations of category interfaces. Each ships with manifest, health check, credential lifecycle, fallback, version pinning.
+**Open questions:**
+- [ ] Phase 0 candidates — Who are the 3-5 Privacy Migrants? What are they replacing? — owner: [name], decide by: [date]
+- [ ] Local model minimum bar — Which Ollama models are good enough for which task categories today? — owner: [name], decide by: [date]
+- [ ] OpenClaw relationship — Inform? Partner? They might want lifecycle tooling upstream. — owner: [name], decide by: [date]
+- [ ] Template quality gate — Open marketplace vs. curated garden? — owner: [name], decide by: [date]
+- [ ] Pricing — Cost to run one managed agent? Price point? — owner: [name], decide by: [date]
+- [ ] Jurisdiction — Incorporation location? VM locations? Matters for sovereignty. — owner: [name], decide by: [date]
+- [ ] Encryption model — User-held keys for at-rest workspace encryption? — owner: [name], decide by: [date]
+- [ ] Team — Service model is solo-friendly. Platform model may need co-founders. — owner: [name], decide by: [date]
+- [ ] Multi-agent orchestration — When does agent density justify the coordination protocol? — owner: [name], decide by: [date]
 
 ---
 
-## Configuration Surface
+## Links
 
-OpenClaw exposes ~200+ configurable fields across `openclaw.json`, workspace files, cron definitions, and environment variables. This is the complete surface that ClawHQ must expose through its GUI.
-
-### Config Surface → OpenClaw Source Mapping
-
-| Config Surface | OpenClaw Source | Runtime Location |
-|---------------|----------------|-----------------|
-| `identity.*` | `src/config/schema.ts` → `src/agents/prompt-builder.ts` | Loaded per agent turn |
-| `agents.*` | `src/config/schema.ts` → `src/agents/piembeddedrunner.ts` | Loaded at Gateway startup |
-| `models.*` | `src/config/schema.ts` → model provider modules | Loaded at Gateway startup |
-| `channels.*` | `src/config/schema.ts` → channel adapter startup | Channel connects on Gateway boot |
-| `tools.*` | `src/config/schema.ts` → tool policy engine | Evaluated per tool call |
-| `sandbox.*` | `src/config/schema.ts` → `src/agents/sandbox.ts` | Docker exec per sandbox session |
-| `session.*` | `src/config/schema.ts` → `src/config/sessions.ts` | Session resolution per message |
-| `gateway.*` | `src/config/schema.ts` → `src/gateway/server.ts` | Applied at Gateway startup (restart required) |
-| `cron.*` | `src/config/schema.ts` → cron scheduler | Jobs loaded at Gateway startup |
-| `hooks.*` | `src/config/schema.ts` → webhook handler | Applied at Gateway startup |
-| `browser.*` | `src/config/schema.ts` → browser controller | Applied when browser tool invoked |
-| `skills.*` | `src/config/schema.ts` → skills loader | Skills registered at Gateway startup |
-| `plugins.*` | `src/config/schema.ts` → `src/plugins/loader.ts` | Plugins loaded at Gateway startup |
-| `memorySearch.*` | `src/config/schema.ts` → `src/memory/` | Queried during prompt build |
-| `discovery.*` | `src/config/schema.ts` → mDNS/Bonjour module | Applied at Gateway startup |
-| `secrets.*` | `src/config/schema.ts` → SecretRef resolver | Resolved at config load time |
-| Workspace files | Filesystem (`~/.openclaw/workspace/`) | Read by prompt-builder per turn |
-| Cron jobs | Filesystem (`~/.openclaw/cron/jobs.json`) | Loaded by cron scheduler |
-| `.env` | Filesystem (`~/.openclaw/.env`) | Loaded at process start |
-
-### Field Inventory by Category
-
-| Category | Total Fields | Critical | Important | Nice-to-have |
-|----------|-------------|----------|-----------|-------------|
-| Identity & Persona | 12 | 2 | 4 | 6 |
-| AI Models | 15 | 4 | 6 | 5 |
-| Channels | 30+ per provider | 8 | 10 | 12+ |
-| Agents | 25 | 3 | 14 | 8 |
-| Tools & Permissions | 35 | 5 | 8 | 22 |
-| Sandbox & Isolation | 25 | 1 | 6 | 18 |
-| Sessions | 9 | 1 | 5 | 3 |
-| Gateway Server | 12 | 5 | 4 | 3 |
-| Automation (Cron & Hooks) | 18 | 0 | 10 | 8 |
-| Browser | 3 | 0 | 1 | 2 |
-| Skills | 3+ | 0 | 3 | 0 |
-| Plugins | 2+ | 0 | 0 | 2+ |
-| Media/Audio | 4 | 0 | 2 | 2 |
-| Memory & Search | 3 | 0 | 2 | 1 |
-| Messages/UI | 3 | 0 | 2 | 1 |
-| Networking | 4 | 0 | 2 | 2 |
-| Secrets | 2+ | 2 | 0 | 0 |
-| Environment | 4 | 0 | 2 | 2 |
-| **TOTAL** | **~200+** | **~31** | **~81** | **~97** |
-
-### Key Configuration Surfaces
-
-**Identity & Persona** — `identity.name`, `identity.theme`, `identity.emoji`, `identity.avatar` in config; plus 8 workspace files (SOUL.md, IDENTITY.md, USER.md, AGENTS.md, TOOLS.md, BOOT.md, BOOTSTRAP.md, HEARTBEAT.md) needing markdown editors with token budget display.
-
-**AI Models** — Primary model (`agents.defaults.model.primary`), fallback chain (`agents.defaults.model.fallbacks`), provider API keys via SecretRef (`models.providers.<name>.apiKey`). Built-in providers: anthropic, openai, google, deepseek, mistral, openrouter, xai, minimax, ollama. Auth profiles for credential rotation.
-
-**Channels** — 20+ providers, each with `enabled`, `botToken`, `dmPolicy` (pairing/allowlist/open/disabled), `allowFrom`, `groupPolicy`, `configWrites`. Channel-specific fields: WhatsApp uses phone numbers, Telegram uses bot tokens + user IDs, Discord needs applicationId + guildId, Slack needs botToken + appToken + signingSecret, iMessage needs cliPath + dbPath.
-
-**Tools & Permissions** — `tools.profile` (coding/messaging/custom), `tools.allow`/`tools.deny` with group support (`group:runtime`, `group:fs`, `group:sessions`, etc.). Exec tool: `tools.exec.host` (sandbox/gateway/node), `tools.exec.security` (allowlist/ask/auto), `tools.exec.safeBins`. Web tools: search provider selection, API keys, fetch limits.
-
-**Gateway Server** — `gateway.port` (18789), `gateway.bind` (127.0.0.1 default — `0.0.0.0` needs security warning), `gateway.auth.token`/`gateway.auth.password`, `gateway.reload.mode` (hybrid/hot/restart/off). Changes require restart.
-
-**Sandbox & Isolation** — `sandbox.mode` (off/non-main/all), `sandbox.scope` (session/agent/shared), Docker settings (image, network, readOnlyRoot, memory, cpus, pidsLimit, user, capDrop, tmpfs, seccompProfile).
-
-**Sessions** — `session.dmScope` (main/per-peer/per-channel-peer/per-account-channel-peer), identity links, reset mode (daily/idle/manual), thread bindings.
-
-**Automation** — `cron.enabled`, `cron.maxConcurrentRuns`, jobs in `cron/jobs.json` with visual builder. Hooks: `hooks.enabled`, `hooks.token`, `hooks.mappings[]` for webhook routing, Gmail Pub/Sub integration.
-
-**Secrets** — `secrets.providers` for env/file/exec backends. Any field accepting a SecretRef needs a toggle: "Paste value" vs. "Reference secret."
-
-### Config Management Meta-Capabilities
-
-| Capability | Description | Priority |
-|-----------|-------------|----------|
-| Config validation | Run `openclaw doctor` equivalent before saving | Critical |
-| Config diff view | Show what changed before apply | Critical |
-| Config backup on change | Auto-backup before every write | Critical |
-| Hot reload indicator | Show whether a change needs restart or applies live | Important |
-| Config versioning | Git-backed config history with diff and rollback | Important |
-| Raw JSON editor | Escape hatch for power users with syntax highlighting + validation | Critical |
-| Config export/import | Download/upload complete config as JSON5 | Important |
-| `$include` management | Visual split/merge for multi-file configs | Nice-to-have |
-
-### MVP Panel Build Order
-
-1. **Gateway & Auth** — Port, bind, token. If this is wrong nothing else works.
-2. **Model Configuration** — Primary model, API keys, test connection. Core value prop.
-3. **Channel Setup** — At least WhatsApp + Telegram + Discord. Wizard-driven.
-4. **Identity & Persona** — SOUL.md editor, name, emoji. Emotional hook for users.
-5. **Tool Policy** — Allow/deny toggles. Critical for security.
-6. **Session Management** — DM scope, reset policy. Prevents cross-contamination.
-7. **Cron Jobs** — Visual builder. Unlocks automation value.
-8. **Secrets Management** — Unified secret handling. Security differentiator.
-9. **Sandbox Configuration** — Docker settings. Enterprise requirement.
-10. **Everything else** — Skills, plugins, browser, media, hooks, networking.
+- OpenClaw Implementation Reference: `OPENCLAW-REFERENCE.md`
+- Design: [link]
+- Repo: [link]
 
 ---
 
-## Strategy
+<!--
+USING THIS WITH AI CODING TOOLS
+================================
 
-### The cPanel Playbook
+1. Drop this as docs/PRODUCT.md in your repo, alongside
+   docs/OPENCLAW-REFERENCE.md for implementation details.
 
-cPanel followed a specific path: first it was a tool sysadmins used to manage their own servers, then hosting companies licensed it for their customers, then it became the industry standard control panel. ClawHQ follows the same playbook.
+2. Point your AI agent at specific stories:
+   "Implement the [story title] story from docs/PRODUCT.md.
+   Follow the acceptance criteria exactly.
+   Refer to docs/OPENCLAW-REFERENCE.md for OpenClaw internals."
 
-**Phase 0: Concierge** — Manually set up 3-5 agents for real people. Deploy on VMs. Observe what they use, what breaks, what they ask for. We are the control panel — running it by hand. The service IS the research.
+3. Generate your backlog:
+   "Read the 'What We're Building' section of docs/PRODUCT.md.
+   Create one GitHub Issue per story with acceptance criteria
+   as a checklist. Label with priority and size."
 
-**Phase 1: Self-Install Panel (Operate + Secure + Deploy)** — The CLI you install on your own machine to manage your agent. `doctor`, `status`, `up`, `update`, `build`, `backup`, `scan`. One template (Guardian). Dogfood against the production prototype. Marketing screenshot: `clawhq doctor` catching real problems. This is cPanel-on-your-own-VPS.
+4. Generate tests from acceptance criteria:
+   "For each Given/When/Then in [feature], write a test."
 
-**Phase 2: Full Panel (Plan + Evolve + Decommission)** — `init`, `template`, `evolve`, `train`, `export`, `destroy`. Full onboarding. Template system. Identity governance. Memory lifecycle. A technical friend goes from zero to working agent using only `clawhq`. This is the complete self-install product.
+5. Validate work:
+   "Check my code against the acceptance criteria for [story].
+   Which criteria pass? Which are missing?"
 
-**Phase 3: Managed Hosting** — Web console, agentd, VM provisioning, billing. Non-technical users served. They never see a terminal. This is WordPress.com — same engine, hosted for you.
+6. The impl notes reference OPENCLAW-REFERENCE.md for
+   architectural details, config mappings, and landmine rules.
+   Load that file when implementing any story.
 
-**Phase 4: Ecosystem** — Template marketplace, skill library, community contributions, integration catalog. The WordPress flywheel: more templates → more use cases → more users → more templates.
-
-### Implementation Build Priority
-
-Based on how OpenClaw actually works and the four integration surfaces, the technical build order within each phase:
-
-**Step 1: Read-Only Monitoring** (Operate toolchain, read-only) — Connect to Gateway WebSocket. Display status, cron job status (`cron/runs/*.jsonl`), workspace metrics (filesystem stats), log streaming, and `openclaw doctor` results. *Why first:* Doesn't write anything. Zero risk. Immediately useful. Proves the WebSocket integration works.
-
-**Step 2: Config Editing** (Plan toolchain, write path) — Config panels that produce `config.patch` RPCs: Gateway & auth, model configuration, channel setup wizards, tool policy. *Why second:* Uses the same RPC the Control UI already uses. The Gateway validates everything. Risk is low because the Gateway rejects bad config.
-
-**Step 3: Workspace Editing** (Evolve toolchain) — Identity file editors with token budget display, memory file browser with size tracking, skills browser and installer. *Why third:* Filesystem writes with no schema validation on markdown files. Token budget enforcement must be in ClawHQ.
-
-**Step 4: Lifecycle Operations** (Deploy + Secure + Decommission) — Docker compose orchestration, firewall management, backup/restore, export/destroy, credential health probes. *Why fourth:* Subprocess calls with OS-level permissions (Docker, iptables, sudo). Highest risk. Needs the most testing. But also the highest differentiation.
-
----
-
-## The Foundation
-
-Everything in ClawHQ was extracted from a production agent running for months:
-
-| Discovery | Implication |
-|---|---|
-| 40% of config is universal, 60% is personalized | Config generator separates the two |
-| 14 config landmines silently break agents | Every landmine is a rule — impossible to ship a broken config |
-| Identity files corrupt, bloat, and go stale | Identity governance: structured YAML, token budgets, staleness detection |
-| Memory accumulates at ~120KB/day | Memory lifecycle: hot/warm/cold tiers, auto-summarization, size caps |
-| Credentials expire silently | Credential health: probes, expiry tracking, renewal notifications |
-| Security is opt-in, defaults are dangerous | Security hardened by default — every template starts secure |
-| Production agents need ongoing SRE | The entire platform exists because this is true |
-
----
-
-## Open Questions
-
-1. **Phase 0 candidates** — Who are the 3-5 people? What use cases determine initial template and integration priorities?
-2. **Relationship with OpenClaw** — Inform? Partner? They might want lifecycle tooling upstream.
-3. **Template quality gate** — Open marketplace vs. curated garden?
-4. **Training pipeline** — What does `clawhq train` look like? Interaction logs → behavior refinement?
-5. **Pricing** — Cost to run one managed agent? Price point? Needs Phase 0 data.
-6. **Jurisdiction** — Incorporation location? VM locations? Matters for sovereignty segment.
-7. **Encryption model** — User-held keys for at-rest encryption? Trust architecture?
-8. **Team** — Service model is solo-friendly. Platform model may need co-founders.
-9. **Multi-agent orchestration** — Sub-agent management, agent-to-agent delegation, shared memory. When does agent density justify designing the coordination protocol?
-
----
-
-## Philosophy
-
-Every powerful open-source engine eventually gets a control panel. Linux got cPanel. WordPress got WordPress.com. AWS got RightScale. Kubernetes got Rancher.
-
-Personal AI agents are about to become as common as smartphones. OpenClaw is the most powerful open-source engine for building them. It needs a control panel.
-
-**OpenClaw is the engine. ClawHQ is the panel.**
+7. Update THIS FILE when scope changes. The PRD is the source
+   of truth — not your chat history with the AI.
+-->
