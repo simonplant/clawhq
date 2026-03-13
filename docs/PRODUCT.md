@@ -24,7 +24,7 @@ So today you choose between **surveillance AI** (polished, easy, you own nothing
 
 ## The Solution
 
-ClawHQ is the control panel that makes OpenClaw a real alternative to big-tech AI. It covers the complete agent lifecycle — Plan, Build, Secure, Deploy, Operate, Evolve, Decommission — as a single Go binary you install on your own hardware. Local models are the default. Cloud APIs are opt-in, per-task, with full visibility into what data leaves your machine. Templates map to the things you're actually replacing (Google Assistant, ChatGPT Plus, a human PA). Setup takes minutes, not weeks — describe what you want and the system figures out the config. The agent doesn't just execute commands; it monitors your integrations, surfaces problems with proposed solutions, and gets smarter over time through structured memory that actually learns your patterns instead of accumulating raw conversation logs.
+ClawHQ is the operational layer that tames OpenClaw — turning a powerful but immature framework into something that actually survives in production. It covers the complete agent lifecycle — Plan, Build, Secure, Deploy, Operate, Evolve, Decommission — as a CLI you install on your own hardware. Local models are the default. Cloud APIs are opt-in, per-task, with full visibility into what data leaves your machine. Templates map to the things you're actually replacing (Google Assistant, ChatGPT Plus, a human PA). Setup takes minutes, not weeks — describe what you want and the system figures out the config. The agent doesn't just execute commands; it monitors your integrations, surfaces problems with proposed solutions, and gets smarter over time through structured memory that actually learns your patterns instead of accumulating raw conversation logs.
 
 **Core bet:** People will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
 
@@ -388,9 +388,11 @@ The big 4 operate as black boxes. ClawHQ's agent is accountable. The user knows 
   - Given `clawhq audit` runs, then tool execution history with timestamps, redacted inputs, and summarized outputs is displayed
   - Given `clawhq audit --compliance` runs, then an exportable report aligned with OWASP GenAI Top 10 controls is generated
 
-### 8. Evolve — Safely Expand What Your Agent Can Do
+### 8. Evolve — Keep Your Agent Alive Past Month One
 
-The agent ships with a baseline set of capabilities. Evolve is how you grow those capabilities over time — adding skills, connecting new services, installing tools, adding API providers — all through a safe, validated, rollback-capable pipeline. Every change is sandboxed, vetted, and reversible. The agent at month 6 can do more than at day 1 because you've expanded its toolkit, not because it magically "learned."
+Without active management, OpenClaw agents degrade. Memory bloats until context windows overflow. Identity files drift and contradict each other. Credentials expire silently. Cron jobs fail without warning. Skills reference tools that were removed. Most raw OpenClaw deployments are abandoned within a month — not because they stopped working suddenly, but because they rotted gradually.
+
+Evolve is ClawHQ's answer to that degradation. It covers two things: **taming decay** (identity governance, memory lifecycle, credential monitoring, consistency checking) and **safe growth** (adding skills, integrations, tools, and providers through a validated, sandboxed, rollback-capable pipeline). The agent at month 6 is still working *and* can do more than at day 1.
 
 - [ ] **Skill management** `P0` `L`
   As a Tinkerer, I want to install, list, update, and remove agent skills safely so that my agent can handle new types of tasks without risking my existing setup.
@@ -513,7 +515,7 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 
 ## Tech Stack & Constraints
 
-**Stack:** Go (single static binary) · Docker · iptables · GPG · WebSocket (Gateway communication) · Ollama (local model runtime)
+**Stack:** TypeScript / Node.js · Docker · iptables · GPG · WebSocket (Gateway communication) · Ollama (local model runtime)
 
 **Key integrations:**
 - OpenClaw Gateway → config read/write, status, health → WebSocket RPC (:18789) → token auth
@@ -536,7 +538,7 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 - `ExportBundle` — portable agent archive. Fields: identity, memory, workspace, config, integrations, history, build manifest
 
 **Hard constraints:**
-- Single Go binary — no runtime dependencies except Docker (and Ollama for local models)
+- Node.js ≥20 — matches OpenClaw's runtime, shares TypeBox schema types directly
 - Must work fully air-gapped after initial build (no phone-home, no cloud dependency)
 - Local models are the default; cloud APIs are opt-in per-task-category
 - Generated config must pass OpenClaw's TypeBox schema validation
@@ -552,14 +554,13 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 
 - **A fork of OpenClaw** — ClawHQ is a layer on top, not a replacement. We use OpenClaw's Dockerfiles, Gateway, agent runtime, and channel adapters as-is.
 - **Message routing or model API calls** — OpenClaw handles these well. We set policy (including model routing), we don't intercept execution.
-- **A competing agent framework** — We're the control panel, not the engine.
+- **A competing agent framework** — We're the operational layer, not the engine.
+- **A skill marketplace** — OpenClaw's marketplace already exists and has demonstrated the security problems inherent in running untrusted community code inside agents with access to everything. ClawHQ's construct skill takes the zero-trust approach: read marketplace skills as a source of inspiration, understand what they do, rebuild from scratch inside the agent's security boundary. The marketplace is a curriculum, not a supply chain.
 - **A no-code agent builder** — We make OpenClaw accessible, not invisible. Power users can always drop to raw config.
 - **A cloud AI service** — We don't host models, don't train on user data, don't see user content. Self-operated is the product.
-- **Multi-agent orchestration** (for now) — Sub-agent management, agent-to-agent delegation, shared memory are future considerations.
 
 **Icebox** (good ideas, no commitment):
 - Mobile companion app for agent management
-- Marketplace with paid community templates
 - White-label managed hosting for MSPs
 - Integration with non-OpenClaw agent frameworks
 - Smart home integration (Home Assistant bridge)

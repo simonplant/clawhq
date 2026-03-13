@@ -1499,6 +1499,55 @@
       ],
       "groomedAt": "2026-03-13",
       "groomingNotes": "Fourth and final secrets lifecycle item. The SecretStore interface is the key architectural piece — it ensures FEAT-044/045/046 work identically regardless of backend. Export/import enables migration between machines. Encrypted backend is an upgrade path, not a replacement — plaintext .env must remain supported for simplicity. Depends on FEAT-046 because export bundles the audit trail."
+    },
+    {
+      "id": "FEAT-057",
+      "title": "Template-driven workspace channels",
+      "description": "The tasks tool defaults to 12 channels hardcoded from the Clawdius deployment (developer, trader, pa, health, security, family, kahu, simon-growth, clawdius-growth, content, finances, network). These are meaningless for other agents. Each template should define channels appropriate to its use case. The channel list flows into the tasks tool generator, TOOLS.md documentation, and work-recon skill.\n\nSuggested channel sets per template:\n- Replace Google Assistant: personal, work, shopping, health, family, home, errands\n- Replace ChatGPT Plus: research, writing, coding, learning\n- Replace my PA: inbox, calendar, meetings, projects, travel, expenses\n- Family Hub: meals, chores, school, activities, shopping, health\n- Research Co-pilot: literature, experiments, writing, grants, collaboration\n- Founders Ops: product, engineering, hiring, investors, ops, admin, legal",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": true,
+      "steps": [
+        "Add a channels field to the TemplateChoice type (string array)",
+        "Add channels to each of the 6 built-in templates (code and/or YAML depending on BUG-002 resolution)",
+        "Update tasks tool generator to accept channels from the template instead of hardcoded defaults",
+        "Update TOOLS.md generator to document the template-specific channels",
+        "Update the tasks tool help text to show the actual channels",
+        "Add test: verify each template produces a tasks tool with its own channel set"
+      ],
+      "acceptanceCriteria": [
+        "Each of the 6 templates defines its own channel set",
+        "Generated tasks tool validates against template-specific channels, not the hardcoded 12",
+        "TOOLS.md lists the correct channels for the selected template",
+        "Default channels (if no template) remain sensible (e.g., general, work, personal)"
+      ]
+    },
+    {
+      "id": "FEAT-058",
+      "title": "Production parity — himalaya config, media mount, ollama bridge",
+      "description": "Three patterns exist in the production Clawdius deployment that the generator does not produce, causing agents with email/media/local-model integrations to fail silently:\n\n1. himalaya.toml — the email tool references /home/node/.openclaw/workspace/himalaya.toml but no config template is generated. Agents with email integration get a tool that can not connect.\n2. Media bind-mount — Telegram attachments need ~/.openclaw/media mounted at workspace/media. Without it, the agent can not access files users send via messaging.\n3. Ollama bridge network — agents using local models via Ollama need an external docker network (ollama-bridge) in their compose. Without it, the container can not reach the Ollama API.\n\nEach of these should be conditionally included based on integration selections.",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": true,
+      "steps": [
+        "Email: generate a himalaya.toml template with CHANGE_ME placeholders for IMAP/SMTP credentials when email integration is selected",
+        "Email: add himalaya-config volume mount to generated docker-compose.yml when email integration is enabled",
+        "Media: add ~/.openclaw/media:workspace/media volume mount when messaging integration is enabled",
+        "Media: set fs.workspaceOnly to false when media mount is needed, with scoped allowed roots",
+        "Ollama: when model routing includes local/ollama, add ollama-bridge external network to generated compose",
+        "Ollama: add ollama-bridge to the networks list in generated docker-compose.yml",
+        "Add conditional logic to docker-compose generator in init/generate.ts for each pattern",
+        "Test: verify compose output includes correct mounts/networks per integration combination"
+      ],
+      "acceptanceCriteria": [
+        "Email integration produces himalaya.toml template + volume mount in compose",
+        "Messaging integration produces media bind-mount in compose",
+        "Local model routing produces ollama-bridge network in compose",
+        "fs.workspaceOnly correctly set based on whether media mount is needed",
+        "None of these are included when the corresponding integration is not selected"
+      ]
     }
   ],
   "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",
