@@ -1,1 +1,32 @@
-{"sprintId": null, "status": "idle", "item": null}
+{
+  "sprintId": "sprint-1773445457",
+  "startedAt": "2026-03-13T16:44:17-07:00",
+  "status": "completed",
+  "item": {
+    "id": "FEAT-023",
+    "title": "Portable export — clawhq export",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Create cmd/export.go with the export subcommand",
+      "Create internal/export/ package",
+      "Implement bundle collector: identity files, memory archive (all tiers), workspace snapshot, config (secrets redacted), integration manifest, interaction history, build manifest",
+      "Generate README.md in bundle explaining structure and how to use with raw OpenClaw",
+      "Implement --mask-pii flag: apply PII masking throughout",
+      "Implement --no-memory flag: export only identity + config",
+      "Package as tar.gz with integrity manifest"
+    ],
+    "acceptanceCriteria": [
+      "`clawhq export` produces a self-documented portable bundle",
+      "Bundle includes README explaining how to use without ClawHQ",
+      "Secrets are redacted from exported config",
+      "--mask-pii applies PII masking to all files",
+      "--no-memory exports only identity and config",
+      "Bundle integrity can be verified via manifest hashes"
+    ],
+    "startedAt": "2026-03-13T16:44:17-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-13T16:47:35-07:00"
+  },
+  "completedAt": "2026-03-13T16:47:35-07:00",
+  "attempts": 1
+}
