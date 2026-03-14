@@ -1,31 +1,17 @@
 {
-  "sprintId": "sprint-1773461196",
-  "startedAt": "2026-03-13T21:06:36-07:00",
+  "sprintId": "sprint-1773461896",
+  "startedAt": "2026-03-13T21:18:16-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-030",
-    "title": "Fleet management — multi-agent dashboard",
+    "id": "FEAT-059",
+    "title": "Egress audit — clawhq audit --egress from firewall logs",
     "sourceBacklog": "backlog.json",
-    "steps": [
-      "Create cmd/fleet.go with fleet subcommand",
-      "Create internal/fleet/ package",
-      "Implement agent discovery: find running ClawHQ agents on the network or from config",
-      "Implement aggregated health view: per-agent status summary",
-      "Implement aggregated cost view: total spend across fleet",
-      "Implement aggregated security view: posture comparison across fleet",
-      "Implement `clawhq fleet doctor` to run doctor across all agents",
-      "Format output as multi-agent dashboard"
-    ],
-    "acceptanceCriteria": [
-      "`clawhq fleet` shows aggregated health, cost, and security across all agents",
-      "`clawhq fleet doctor` runs diagnostics on all discovered agents",
-      "Per-agent drill-down is available from fleet view",
-      "Fleet view works with 2+ agents"
-    ],
-    "startedAt": "2026-03-13T21:06:36-07:00",
+    "steps": [],
+    "acceptanceCriteria": [],
+    "startedAt": "2026-03-13T21:18:16-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T21:14:19-07:00"
+    "completedAt": "2026-03-13T21:26:14-07:00"
   },
-  "completedAt": "2026-03-13T21:14:19-07:00",
+  "completedAt": "2026-03-13T21:26:14-07:00",
   "attempts": 1
 }

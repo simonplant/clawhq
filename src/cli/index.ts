@@ -5,6 +5,13 @@ import { resolve } from "node:path";
 
 import { Command } from "commander";
 
+import {
+  collectEgressAudit,
+  formatEgressAuditJson,
+  formatEgressAuditTable,
+  generateExportReport,
+  generateZeroEgressAttestation,
+} from "../audit/index.js";
 import { createBackup } from "../backup/backup.js";
 import { formatBackupTable, listBackups } from "../backup/list.js";
 import { restoreBackup } from "../backup/restore.js";
@@ -353,7 +360,72 @@ program
 program.addCommand(createSecretsCommand());
 program.addCommand(createProviderCommand());
 program.addCommand(createFleetCommand());
-program.command("audit").description("View audit logs");
+program
+  .command("audit")
+  .description("View audit logs")
+  .option("--egress", "Show egress audit (outbound API calls and blocked packets)")
+  .option("--since <date>", "Only include entries since this date (ISO 8601)")
+  .option("--export", "Generate a signed export report")
+  .option("--zero", "Verify zero egress and generate attestation")
+  .option("--json", "Output as JSON")
+  .option("--egress-log <path>", "Path to egress log file")
+  .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
+  .option("--no-drops", "Exclude firewall drop log from report")
+  .action(async (opts: {
+    egress?: boolean;
+    since?: string;
+    export?: boolean;
+    zero?: boolean;
+    json?: boolean;
+    egressLog?: string;
+    home?: string;
+    drops?: boolean;
+  }) => {
+    if (!opts.egress) {
+      console.log("Usage: clawhq audit --egress [options]");
+      console.log("Run clawhq audit --help for details.");
+      return;
+    }
+
+    try {
+      const report = await collectEgressAudit({
+        openclawHome: opts.home,
+        egressLogPath: opts.egressLog,
+        since: opts.since ?? null,
+        includeDrops: opts.drops !== false,
+      });
+
+      if (opts.zero) {
+        const attestation = generateZeroEgressAttestation(report);
+        if (attestation) {
+          console.log(attestation);
+        } else {
+          console.log(
+            `Zero-egress verification FAILED: ${report.summary.totalCalls} API call(s) recorded.`,
+          );
+          console.log("Run clawhq audit --egress for details.");
+          process.exitCode = 1;
+        }
+        return;
+      }
+
+      if (opts.export) {
+        console.log(generateExportReport(report));
+        return;
+      }
+
+      if (opts.json) {
+        console.log(formatEgressAuditJson(report));
+      } else {
+        console.log(formatEgressAuditTable(report));
+      }
+    } catch (err: unknown) {
+      console.error(
+        `Audit failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      process.exitCode = 1;
+    }
+  });
 
 // Deploy phase
 program
