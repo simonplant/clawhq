@@ -1,5 +1,5 @@
 {
-  "description": "ClawHQ feature backlog — derived from docs/PRODUCT.md build phases",
+  "description": "ClawHQ feature backlog \u2014 derived from docs/PRODUCT.md build phases",
   "items": [
     {
       "id": "FEAT-001",
@@ -12,7 +12,7 @@
       "steps": [
         "Run `npm init` and configure package.json with TypeScript, ESM output, and bin entry",
         "Create project directory structure per ARCHITECTURE.md: src/cli/, src/config/, src/docker/, src/gateway/, src/security/, src/workspace/, src/templates/, src/backup/, src/doctor/, src/server/, src/ui/",
-        "Select CLI framework (commander, oclif, or citty — open decision) and create src/cli/index.ts as root entrypoint",
+        "Select CLI framework (commander, oclif, or citty \u2014 open decision) and create src/cli/index.ts as root entrypoint",
         "Create version command that reads version from package.json",
         "Configure tsconfig.json: strict mode, ESM output to dist/",
         "Add package scripts: build (tsc), test (vitest), lint (eslint with TypeScript rules)",
@@ -27,7 +27,7 @@
         "Project structure matches the src/ layout defined in ARCHITECTURE.md"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Foundation item — everything depends on this. Keep minimal. IMPORTANT: Previous steps referenced Go/cobra — corrected to TypeScript/Node.js per ARCHITECTURE.md decision. CLI framework (commander/oclif/citty) is still an open decision per ARCHITECTURE.md § Open Decisions — Tech Lead must resolve before sprint starts.",
+      "groomingNotes": "Foundation item \u2014 everything depends on this. Keep minimal. IMPORTANT: Previous steps referenced Go/cobra \u2014 corrected to TypeScript/Node.js per ARCHITECTURE.md decision. CLI framework (commander/oclif/citty) is still an open decision per ARCHITECTURE.md \u00a7 Open Decisions \u2014 Tech Lead must resolve before sprint starts.",
       "completedAt": "2026-03-12T21:39:07-07:00"
     },
     {
@@ -43,24 +43,24 @@
       ],
       "steps": [
         "Create src/config/ package (schema.ts, loader.ts, validator.ts, generator.ts per ARCHITECTURE.md)",
-        "In schema.ts: import/re-export OpenClaw's TypeBox schema types — do NOT reimplement; this is the single source of truth for openclaw.json validation",
+        "In schema.ts: import/re-export OpenClaw's TypeBox schema types \u2014 do NOT reimplement; this is the single source of truth for openclaw.json validation",
         "In loader.ts: implement config loading from ~/.clawhq/config.yaml and ./clawhq.yaml with merge precedence (project > user > defaults)",
-        "In validator.ts: implement config validation using TypeBox schema for openclaw.json; implement the 14 landmine rules as a typed rule set (see PRODUCT.md § Config validation engine)",
-        "Validate() returns structured results: { rule, status: 'pass'|'warn'|'fail', message, fix } — not thrown errors",
+        "In validator.ts: implement config validation using TypeBox schema for openclaw.json; implement the 14 landmine rules as a typed rule set (see PRODUCT.md \u00a7 Config validation engine)",
+        "Validate() returns structured results: { rule, status: 'pass'|'warn'|'fail', message, fix } \u2014 not thrown errors",
         "In generator.ts: stub out the DeploymentBundle generator (full implementation in FEAT-017/018)",
         "Write unit tests for loading, merging, and each landmine rule (pass + fail cases)",
         "Export a loadAndValidate() convenience function from src/config/index.ts"
       ],
       "acceptanceCriteria": [
         "Config loads from YAML with correct precedence (project > user > defaults)",
-        "openclaw.json validation uses OpenClaw's TypeBox schema directly — no reimplementation",
+        "openclaw.json validation uses OpenClaw's TypeBox schema directly \u2014 no reimplementation",
         "All 14 landmine validation rules are implemented and return clear fix instructions on failure",
         "Invalid config produces structured results with fix instructions, not thrown exceptions",
         "Unit tests cover each landmine rule with both passing and failing cases",
         "`npm test src/config` passes with >80% coverage"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Critical path — doctor, init, and deploy all depend on config validation. IMPORTANT: Previous steps referenced Go structs — corrected to TypeScript/TypeBox per ARCHITECTURE.md. Key constraint: openclaw.json must be validated against OpenClaw's actual TypeBox schema (imported, not reimplemented) so ClawHQ-generated config passes Gateway validation automatically.",
+      "groomingNotes": "Critical path \u2014 doctor, init, and deploy all depend on config validation. IMPORTANT: Previous steps referenced Go structs \u2014 corrected to TypeScript/TypeBox per ARCHITECTURE.md. Key constraint: openclaw.json must be validated against OpenClaw's actual TypeBox schema (imported, not reimplemented) so ClawHQ-generated config passes Gateway validation automatically.",
       "completedAt": "2026-03-12T22:52:50-07:00"
     },
     {
@@ -76,7 +76,7 @@
       ],
       "steps": [
         "Create src/docker/ package (client.ts, build.ts, compose.ts, hardening.ts per ARCHITECTURE.md)",
-        "In client.ts: implement DockerClient class with methods: build, up, down, restart, ps, logs, inspect, networkLs — each wraps docker/docker-compose CLI via child_process or execa",
+        "In client.ts: implement DockerClient class with methods: build, up, down, restart, ps, logs, inspect, networkLs \u2014 each wraps docker/docker-compose CLI via child_process or execa",
         "Capture and parse stdout/stderr into typed result objects",
         "Implement health polling: poll container health status with configurable timeout and interval using async/await",
         "Implement image inspection: check if image exists, get layer info for two-stage build verification",
@@ -91,13 +91,13 @@
         "All async methods accept AbortSignal for cancellation"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Build, deploy, and operate phases all need Docker operations. IMPORTANT: Previous steps referenced Go exec.Command — corrected to TypeScript child_process/execa. Subprocess-based approach (not Docker SDK) is per architecture decision — keeps the binary dependency surface minimal.",
+      "groomingNotes": "Build, deploy, and operate phases all need Docker operations. IMPORTANT: Previous steps referenced Go exec.Command \u2014 corrected to TypeScript child_process/execa. Subprocess-based approach (not Docker SDK) is per architecture decision \u2014 keeps the binary dependency surface minimal.",
       "completedAt": "2026-03-12T22:37:23-07:00"
     },
     {
       "id": "FEAT-004",
-      "title": "Doctor command — core diagnostic engine",
-      "description": "Implement `clawhq doctor` — the hero feature. Runs all diagnostic checks and reports pass/warn/fail with fix instructions. This is the first command that delivers real value to Tinkerers.",
+      "title": "Doctor command \u2014 core diagnostic engine",
+      "description": "Implement `clawhq doctor` \u2014 the hero feature. Runs all diagnostic checks and reports pass/warn/fail with fix instructions. This is the first command that delivers real value to Tinkerers.",
       "priority": "must",
       "status": "done",
       "readyForSprint": false,
@@ -129,7 +129,7 @@
         "Checks are modular (easy to add new ones via the Check interface)"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Hero feature. First real value for Tinkerer persona. Ship-blocking for Phase 1. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/doctor.go`, `internal/doctor/`) — these must be corrected to TypeScript src/ paths per ARCHITECTURE.md (e.g., `src/cli/doctor.ts`, `src/doctor/checks/`, `src/doctor/runner.ts`, `src/doctor/fix.ts`). Steps also reference a Go-style `Check` interface — should be a TypeScript interface. Correcting steps is Tech Lead scope.",
+      "groomingNotes": "Hero feature. First real value for Tinkerer persona. Ship-blocking for Phase 1. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/doctor.go`, `internal/doctor/`) \u2014 these must be corrected to TypeScript src/ paths per ARCHITECTURE.md (e.g., `src/cli/doctor.ts`, `src/doctor/checks/`, `src/doctor/runner.ts`, `src/doctor/fix.ts`). Steps also reference a Go-style `Check` interface \u2014 should be a TypeScript interface. Correcting steps is Tech Lead scope.",
       "completedAt": "2026-03-12T23:03:33-07:00"
     },
     {
@@ -164,7 +164,7 @@
         "Unit tests cover pattern matching and .env read/write"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Security foundation. Doctor depends on this for its secrets checks. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`internal/secrets/`, `internal/creds/`, `cmd/creds.go`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/security/secrets.ts`, `src/security/credentials.ts`, `src/cli/creds.ts`).",
+      "groomingNotes": "Security foundation. Doctor depends on this for its secrets checks. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`internal/secrets/`, `internal/creds/`, `cmd/creds.go`) \u2014 correct to TypeScript src/ paths per ARCHITECTURE.md (`src/security/secrets.ts`, `src/security/credentials.ts`, `src/cli/creds.ts`).",
       "completedAt": "2026-03-13T08:38:17-07:00"
     },
     {
@@ -196,13 +196,13 @@
         "Unit tests cover all four posture levels"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Security by default. This is what differentiates ClawHQ from hosting providers. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`internal/secure/`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/docker/hardening.ts`, `src/docker/compose.ts`).",
+      "groomingNotes": "Security by default. This is what differentiates ClawHQ from hosting providers. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`internal/secure/`) \u2014 correct to TypeScript src/ paths per ARCHITECTURE.md (`src/docker/hardening.ts`, `src/docker/compose.ts`).",
       "completedAt": "2026-03-12T23:21:49-07:00"
     },
     {
       "id": "FEAT-007",
       "title": "Egress firewall with domain allowlisting",
-      "description": "Implement iptables-based egress firewall that restricts outbound traffic to allowlisted domains only. Stronger than 'allow all HTTPS' — enforces local-first at the network level.",
+      "description": "Implement iptables-based egress firewall that restricts outbound traffic to allowlisted domains only. Stronger than 'allow all HTTPS' \u2014 enforces local-first at the network level.",
       "priority": "must",
       "status": "done",
       "readyForSprint": false,
@@ -221,7 +221,7 @@
         "Implement Remove() for clean teardown",
         "Implement Verify() that checks current iptables rules match expected state",
         "Add doctor check: firewall applied and matches expected rules",
-        "Handle macOS (pf) vs Linux (iptables) — or document Linux-only with clear error on macOS"
+        "Handle macOS (pf) vs Linux (iptables) \u2014 or document Linux-only with clear error on macOS"
       ],
       "acceptanceCriteria": [
         "Firewall creates a dedicated iptables chain with correct rule order",
@@ -232,7 +232,7 @@
         "Apply() is idempotent (safe to call multiple times)"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Core privacy commitment. Network-level enforcement of local-first principle. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`internal/firewall/`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/security/firewall.ts`)."
+      "groomingNotes": "Core privacy commitment. Network-level enforcement of local-first principle. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`internal/firewall/`) \u2014 correct to TypeScript src/ paths per ARCHITECTURE.md (`src/security/firewall.ts`)."
     },
     {
       "id": "FEAT-008",
@@ -264,11 +264,11 @@
         "`clawhq build --stage2-only` skips base image rebuild"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Auditability requirement — always build from source, never pre-built images. GAP resolved: FEAT-037 added to cover OpenClaw source acquisition. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/build.go`, `internal/build/`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/cli/build.ts`, `src/docker/build.ts`)."
+      "groomingNotes": "Auditability requirement \u2014 always build from source, never pre-built images. GAP resolved: FEAT-037 added to cover OpenClaw source acquisition. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/build.go`, `internal/build/`) \u2014 correct to TypeScript src/ paths per ARCHITECTURE.md (`src/cli/build.ts`, `src/docker/build.ts`)."
     },
     {
       "id": "FEAT-009",
-      "title": "Deploy sequence — clawhq up/down/restart",
+      "title": "Deploy sequence \u2014 clawhq up/down/restart",
       "description": "Implement the full deploy sequence: pre-flight checks, compose up, firewall apply, health poll, cron verify, channel connection verify, smoke test.",
       "priority": "must",
       "status": "done",
@@ -298,13 +298,13 @@
         "Exit code is non-zero on any deployment failure"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Core deploy workflow. The one-command deploy experience. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/up.go`, `cmd/down.go`, `cmd/restart.go`, `internal/deploy/`) — correct to TypeScript src/ paths per ARCHITECTURE.md (`src/cli/up.ts`, `src/cli/down.ts`, `src/cli/restart.ts`, new `src/deploy/` package).",
+      "groomingNotes": "Core deploy workflow. The one-command deploy experience. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/up.go`, `cmd/down.go`, `cmd/restart.go`, `internal/deploy/`) \u2014 correct to TypeScript src/ paths per ARCHITECTURE.md (`src/cli/up.ts`, `src/cli/down.ts`, `src/cli/restart.ts`, new `src/deploy/` package).",
       "completedAt": "2026-03-13T08:52:33-07:00"
     },
     {
       "id": "FEAT-010",
-      "title": "Status dashboard — clawhq status",
-      "description": "Implement `clawhq status` — single-pane view of agent health, integrations, cost, cron, workspace metrics, and data egress summary.",
+      "title": "Status dashboard \u2014 clawhq status",
+      "description": "Implement `clawhq status` \u2014 single-pane view of agent health, integrations, cost, cron, workspace metrics, and data egress summary.",
       "priority": "must",
       "status": "done",
       "readyForSprint": false,
@@ -333,7 +333,7 @@
         "Works gracefully when agent is not running (shows 'stopped' state)"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Tinkerer's window into their agent. Pairs with doctor for observability. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/status.go`, `internal/status/`) — correct to TypeScript src/ paths (`src/cli/status.ts`, new `src/status/` or inline in `src/server/`).",
+      "groomingNotes": "Tinkerer's window into their agent. Pairs with doctor for observability. TECH LEAD ACTION REQUIRED: Steps reference Go package paths (`cmd/status.go`, `internal/status/`) \u2014 correct to TypeScript src/ paths (`src/cli/status.ts`, new `src/status/` or inline in `src/server/`).",
       "completedAt": "2026-03-13T11:16:18-07:00"
     },
     {
@@ -367,7 +367,7 @@
         "Unit tests cover: all-local, partial-cloud, full-cloud, no-ollama-fallback scenarios"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Architectural commitment to local-first. Affects every other feature that touches models. GAP: no item covers Ollama installation guidance or model pull setup. Doctor (FEAT-004) should detect Ollama absence and provide setup instructions. ARCHITECTURE CONTRADICTION — TECH LEAD MUST RESOLVE: ARCHITECTURE.md says 'OpenClaw handles model routing. ClawHQ generates config that tells OpenClaw how to route models. It does not make LLM calls itself.' But the steps describe a runtime Router.Route(task) -> ModelChoice engine with task complexity scoring and model selection — this is the routing engine, not config generation. If ClawHQ generates ModelRoutingPolicy config for OpenClaw to execute, the steps need to be reframed around config generation (define policy structs, write policy to openclaw.json via FEAT-036). If ClawHQ truly does its own routing (e.g. for init --smart or egress decisions), the architecture doc needs updating. ALSO: Steps reference Go package paths (`internal/routing/`) — correct to TypeScript `src/` paths."
+      "groomingNotes": "Architectural commitment to local-first. Affects every other feature that touches models. GAP: no item covers Ollama installation guidance or model pull setup. Doctor (FEAT-004) should detect Ollama absence and provide setup instructions. ARCHITECTURE CONTRADICTION \u2014 TECH LEAD MUST RESOLVE: ARCHITECTURE.md says 'OpenClaw handles model routing. ClawHQ generates config that tells OpenClaw how to route models. It does not make LLM calls itself.' But the steps describe a runtime Router.Route(task) -> ModelChoice engine with task complexity scoring and model selection \u2014 this is the routing engine, not config generation. If ClawHQ generates ModelRoutingPolicy config for OpenClaw to execute, the steps need to be reframed around config generation (define policy structs, write policy to openclaw.json via FEAT-036). If ClawHQ truly does its own routing (e.g. for init --smart or egress decisions), the architecture doc needs updating. ALSO: Steps reference Go package paths (`internal/routing/`) \u2014 correct to TypeScript `src/` paths."
     },
     {
       "id": "FEAT-012",
@@ -403,7 +403,7 @@
     {
       "id": "FEAT-013",
       "title": "Encrypted backup and restore",
-      "description": "Implement `clawhq backup` and `clawhq backup restore` — encrypted snapshots of agent state with GPG encryption, integrity verification, and restore with doctor validation.",
+      "description": "Implement `clawhq backup` and `clawhq backup restore` \u2014 encrypted snapshots of agent state with GPG encryption, integrity verification, and restore with doctor validation.",
       "priority": "must",
       "status": "done",
       "readyForSprint": false,
@@ -436,8 +436,8 @@
     },
     {
       "id": "FEAT-014",
-      "title": "Safe upstream update — clawhq update",
-      "description": "Implement `clawhq update` — upstream OpenClaw updates with pre-update snapshot, rebuild, health check, firewall reapply, and instant rollback on failure.",
+      "title": "Safe upstream update \u2014 clawhq update",
+      "description": "Implement `clawhq update` \u2014 upstream OpenClaw updates with pre-update snapshot, rebuild, health check, firewall reapply, and instant rollback on failure.",
       "priority": "should",
       "status": "done",
       "readyForSprint": true,
@@ -497,10 +497,10 @@
         "Budget threshold at 75% triggers automatic routing adjustment",
         "Budget threshold at 100% blocks all cloud escalation (agent continues local-only)",
         "Status dashboard shows cost breakdown by model and category",
-        "Agent never pauses completely due to budget — always falls back to local"
+        "Agent never pauses completely due to budget \u2014 always falls back to local"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Upgraded must (was should): PRODUCT.md rates this P0. Budget enforcement is the concrete proof that local-first works — without it, users have no feedback loop on what's actually staying local vs. escalating to cloud. The 100% budget cap (agent continues local-only, never pauses) is a critical trust commitment. Pairs with FEAT-012 (egress logging) to make the full transparency story real."
+      "groomingNotes": "Upgraded must (was should): PRODUCT.md rates this P0. Budget enforcement is the concrete proof that local-first works \u2014 without it, users have no feedback loop on what's actually staying local vs. escalating to cloud. The 100% budget cap (agent continues local-only, never pauses) is a critical trust commitment. Pairs with FEAT-012 (egress logging) to make the full transparency story real."
     },
     {
       "id": "FEAT-016",
@@ -532,12 +532,12 @@
         "Auto-repair can be disabled per-behavior in config"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Downgraded could (was should): PRODUCT.md rates this P1 and existing groomingNotes say 'not ship-blocking'. The Tinkerer persona can manually restart/reapply — `clawhq restart` covers the gap. Self-repair is valuable but Phase 1 must ship first. Revisit after Phase 1 ships and Tinkerer feedback shows whether this is a real pain point."
+      "groomingNotes": "Downgraded could (was should): PRODUCT.md rates this P1 and existing groomingNotes say 'not ship-blocking'. The Tinkerer persona can manually restart/reapply \u2014 `clawhq restart` covers the gap. Self-repair is valuable but Phase 1 must ship first. Revisit after Phase 1 ships and Tinkerer feedback shows whether this is a real pain point."
     },
     {
       "id": "FEAT-017",
-      "title": "Init wizard — clawhq init with guided questionnaire",
-      "description": "Implement `clawhq init --guided` — structured setup flow that walks through basics, template selection, integration setup with credential validation, and config generation.",
+      "title": "Init wizard \u2014 clawhq init with guided questionnaire",
+      "description": "Implement `clawhq init --guided` \u2014 structured setup flow that walks through basics, template selection, integration setup with credential validation, and config generation.",
       "priority": "must",
       "status": "done",
       "readyForSprint": true,
@@ -550,11 +550,11 @@
       "steps": [
         "Create cmd/init.go with the init subcommand",
         "Create internal/init/ package",
-        "Implement Step 1: basics — name, timezone, waking hours",
-        "Implement Step 2: template selection — present use-case templates with descriptions",
-        "Implement Step 3: integration setup — per-integration credential input with live validation",
-        "Implement Step 4: model routing — local-only or cloud opt-in per category",
-        "Implement Step 5: config generation — produce openclaw.json, .env, docker-compose.yml, identity files, cron/jobs.json",
+        "Implement Step 1: basics \u2014 name, timezone, waking hours",
+        "Implement Step 2: template selection \u2014 present use-case templates with descriptions",
+        "Implement Step 3: integration setup \u2014 per-integration credential input with live validation",
+        "Implement Step 4: model routing \u2014 local-only or cloud opt-in per category",
+        "Implement Step 5: config generation \u2014 produce openclaw.json, .env, docker-compose.yml, identity files, cron/jobs.json",
         "Run config validation (all 14 landmine rules) before writing files",
         "Display summary of generated config and next steps"
       ],
@@ -596,12 +596,12 @@
         "Templates can tighten but never loosen Layer 1 security baselines"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 — use-case framing is the key differentiator for Privacy Migrants.",
+      "groomingNotes": "Phase 2 \u2014 use-case framing is the key differentiator for Privacy Migrants.",
       "completedAt": "2026-03-13T12:18:13-07:00"
     },
     {
       "id": "FEAT-019",
-      "title": "AI-powered config inference — clawhq init --smart",
+      "title": "AI-powered config inference \u2014 clawhq init --smart",
       "description": "Implement natural language config inference: user describes what they want, local LLM maps it to template selection and override parameters.",
       "priority": "should",
       "status": "todo",
@@ -629,11 +629,11 @@
         "Generated config passes all validation rules"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 2 — the 5-minute setup experience for Privacy Migrants. Natural language config inference is a major adoption enabler: instead of answering 15 questions, user describes what they want. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. init --smart uses Ollama directly (localhost:11434) for LLM inference — not a routing engine. Tech Lead: remove FEAT-011 from dependsOn array. Real prerequisites are FEAT-017 (init wizard) + FEAT-018 (templates), both done. This item is unblocked now."
+      "groomingNotes": "Phase 2 \u2014 the 5-minute setup experience for Privacy Migrants. Natural language config inference is a major adoption enabler: instead of answering 15 questions, user describes what they want. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. init --smart uses Ollama directly (localhost:11434) for LLM inference \u2014 not a routing engine. Tech Lead: remove FEAT-011 from dependsOn array. Real prerequisites are FEAT-017 (init wizard) + FEAT-018 (templates), both done. This item is unblocked now."
     },
     {
       "id": "FEAT-020",
-      "title": "Identity governance — token budget and drift detection",
+      "title": "Identity governance \u2014 token budget and drift detection",
       "description": "Implement identity file governance: track token budget per file, detect staleness, flag contradictions across identity files.",
       "priority": "should",
       "status": "done",
@@ -660,11 +660,11 @@
         "`clawhq evolve --identity` triggers interactive identity review"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — prevents identity drift over time."
+      "groomingNotes": "Phase 2 Evolve \u2014 prevents identity drift over time."
     },
     {
       "id": "FEAT-021",
-      "title": "Memory lifecycle management — structured knowledge graph",
+      "title": "Memory lifecycle management \u2014 structured knowledge graph",
       "description": "Implement tiered memory management: transform raw conversations into structured knowledge, manage hot/warm/cold tiers with LLM-powered summarization, background reflection.",
       "priority": "should",
       "status": "todo",
@@ -694,7 +694,7 @@
         "Memory health is reported in doctor and status"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 2 Evolve — biggest differentiator for agent longevity. Raw OpenClaw agents fail because memory bloats to 360KB in 3 days. This is what keeps agents working past month 1. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. Memory lifecycle is filesystem management of OpenClaw workspace files — reading conversation logs, restructuring them, managing hot/warm/cold file tiers. LLM summarization for tier transitions calls Ollama directly (localhost:11434). Tech Lead: remove FEAT-011 from dependsOn. Real dependency: FEAT-002 (config) only. This item is unblocked."
+      "groomingNotes": "Phase 2 Evolve \u2014 biggest differentiator for agent longevity. Raw OpenClaw agents fail because memory bloats to 360KB in 3 days. This is what keeps agents working past month 1. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. Memory lifecycle is filesystem management of OpenClaw workspace files \u2014 reading conversation logs, restructuring them, managing hot/warm/cold file tiers. LLM summarization for tier transitions calls Ollama directly (localhost:11434). Tech Lead: remove FEAT-011 from dependsOn. Real dependency: FEAT-002 (config) only. This item is unblocked."
     },
     {
       "id": "FEAT-022",
@@ -727,11 +727,11 @@
         "Rejected approvals store reason as preference signal"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 2 Transparency — the daily summary builds user trust with Privacy Migrants. Without it, the agent is a black box and they can't verify it's working as intended. DEPENDENCY FIX NEEDED: Both FEAT-011 and FEAT-012 are in dependsOn but are wontdo. Activity digest reads container logs and workspace state directly. Egress summary reads iptables LOG entries (see FEAT-059). LLM summarization calls Ollama directly. Tech Lead: replace dependsOn with [FEAT-036, FEAT-010] — Gateway WebSocket (live state) and status dashboard (data sources). Approval queue is messaging-channel-based and standalone."
+      "groomingNotes": "Phase 2 Transparency \u2014 the daily summary builds user trust with Privacy Migrants. Without it, the agent is a black box and they can't verify it's working as intended. DEPENDENCY FIX NEEDED: Both FEAT-011 and FEAT-012 are in dependsOn but are wontdo. Activity digest reads container logs and workspace state directly. Egress summary reads iptables LOG entries (see FEAT-059). LLM summarization calls Ollama directly. Tech Lead: replace dependsOn with [FEAT-036, FEAT-010] \u2014 Gateway WebSocket (live state) and status dashboard (data sources). Approval queue is messaging-channel-based and standalone."
     },
     {
       "id": "FEAT-023",
-      "title": "Portable export — clawhq export",
+      "title": "Portable export \u2014 clawhq export",
       "description": "Implement full agent export: identity, memory, config, workspace as a portable bundle with README explaining how to use with raw OpenClaw. Zero lock-in.",
       "priority": "must",
       "status": "done",
@@ -763,7 +763,7 @@
     },
     {
       "id": "FEAT-024",
-      "title": "Verified destruction — clawhq destroy",
+      "title": "Verified destruction \u2014 clawhq destroy",
       "description": "Implement `clawhq destroy` with pre-decommission checklist, confirmed destruction sequence, and signed destruction manifest proving data was removed.",
       "priority": "should",
       "status": "done",
@@ -790,12 +790,12 @@
         "All data locations are cleaned including volumes, configs, secrets, images, networks"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Decommission — data sovereignty includes the right to delete.",
+      "groomingNotes": "Phase 2 Decommission \u2014 data sovereignty includes the right to delete.",
       "completedAt": "2026-03-13T17:27:56-07:00"
     },
     {
       "id": "FEAT-025",
-      "title": "PII and secret scanning — clawhq scan",
+      "title": "PII and secret scanning \u2014 clawhq scan",
       "description": "Implement PII and secret scanning across agent-created files and repos. Catches exposures before they cause harm.",
       "priority": "should",
       "status": "done",
@@ -822,12 +822,12 @@
         "Exit code is non-zero when issues are found"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Security — catches exposures proactively.",
+      "groomingNotes": "Phase 2 Security \u2014 catches exposures proactively.",
       "completedAt": "2026-03-13T21:30:34.781477-07:00"
     },
     {
       "id": "FEAT-026",
-      "title": "Channel connection — clawhq connect",
+      "title": "Channel connection \u2014 clawhq connect",
       "description": "Implement guided messaging channel setup for Telegram and WhatsApp with inline validation and bidirectional message flow testing.",
       "priority": "must",
       "status": "done",
@@ -853,7 +853,7 @@
         "Channel status shows in `clawhq status`"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Upgraded must: without a messaging channel, the deployed agent cannot communicate with the user at all. A running but silent agent delivers zero value. Channel connection is table stakes for Phase 2 completion — `clawhq up` without `clawhq connect` is a hollow deployment.",
+      "groomingNotes": "Upgraded must: without a messaging channel, the deployed agent cannot communicate with the user at all. A running but silent agent delivers zero value. Channel connection is table stakes for Phase 2 completion \u2014 `clawhq up` without `clawhq connect` is a hollow deployment.",
       "completedAt": "2026-03-13T12:37:44-07:00"
     },
     {
@@ -885,7 +885,7 @@
         "Boundary signals are never overridden by preference signals"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — the 'gets better over time' mechanism."
+      "groomingNotes": "Phase 2 Evolve \u2014 the 'gets better over time' mechanism."
     },
     {
       "id": "FEAT-028",
@@ -915,7 +915,7 @@
         "All changes are logged with rollback capability"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — reduces micromanagement over time."
+      "groomingNotes": "Phase 2 Evolve \u2014 reduces micromanagement over time."
     },
     {
       "id": "FEAT-029",
@@ -947,12 +947,12 @@
         "Extracted data respects token budgets for identity files"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 3 Migration — reduces switching cost for Privacy Migrants. DEPENDENCY FIX NEEDED: Steps reference FEAT-011 dependency (wontdo). The local LLM call for fact/preference extraction should use Ollama directly (localhost:11434) — not a routing engine. Real dependency chain: FEAT-021 (memory lifecycle, for writing to warm tier) + FEAT-020 (identity governance, for USER.md token budget) only. Tech Lead: remove FEAT-011 from dependsOn array. Priority remains could — Phase 3 item, not needed until Phase 2 is solid."
+      "groomingNotes": "Phase 3 Migration \u2014 reduces switching cost for Privacy Migrants. DEPENDENCY FIX NEEDED: Steps reference FEAT-011 dependency (wontdo). The local LLM call for fact/preference extraction should use Ollama directly (localhost:11434) \u2014 not a routing engine. Real dependency chain: FEAT-021 (memory lifecycle, for writing to warm tier) + FEAT-020 (identity governance, for USER.md token budget) only. Tech Lead: remove FEAT-011 from dependsOn array. Priority remains could \u2014 Phase 3 item, not needed until Phase 2 is solid."
     },
     {
       "id": "FEAT-030",
-      "title": "Fleet management — multi-agent dashboard",
-      "description": "Implement `clawhq fleet` — monitor and manage multiple agents from a single dashboard with aggregated health, cost, security, and egress. Phase 3 for Fleet Operators.",
+      "title": "Fleet management \u2014 multi-agent dashboard",
+      "description": "Implement `clawhq fleet` \u2014 monitor and manage multiple agents from a single dashboard with aggregated health, cost, security, and egress. Phase 3 for Fleet Operators.",
       "priority": "could",
       "status": "done",
       "readyForSprint": false,
@@ -978,7 +978,7 @@
         "Fleet view works with 2+ agents"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 3 — Fleet Operator persona. Not needed until multiple agents exist.",
+      "groomingNotes": "Phase 3 \u2014 Fleet Operator persona. Not needed until multiple agents exist.",
       "completedAt": "2026-03-13T21:30:34.781477-07:00"
     },
     {
@@ -1015,7 +1015,7 @@
     },
     {
       "id": "FEAT-032",
-      "title": "Log streaming — clawhq logs",
+      "title": "Log streaming \u2014 clawhq logs",
       "description": "Implement filtered log streaming from agent containers. Debug tool for Tinkerers.",
       "priority": "should",
       "status": "done",
@@ -1038,7 +1038,7 @@
         "--since flag correctly bounds output by time"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Tinkerers need logs for debugging — without this, problems are invisible and they churn. IMPLEMENTATION STATUS: groomingNotes from previous session noted that src/logs/ directory exists with index.ts, stream.ts, types.ts and the CLI command is wired up. Tech Lead should verify if this is functionally complete and update status to done if tests pass. Until verified, keeping as todo. Priority remains should.",
+      "groomingNotes": "Tinkerers need logs for debugging \u2014 without this, problems are invisible and they churn. IMPLEMENTATION STATUS: groomingNotes from previous session noted that src/logs/ directory exists with index.ts, stream.ts, types.ts and the CLI command is wired up. Tech Lead should verify if this is functionally complete and update status to done if tests pass. Until verified, keeping as todo. Priority remains should.",
       "completedAt": "2026-03-13T21:06:03.785037-07:00"
     },
     {
@@ -1071,7 +1071,7 @@
         "Alerts appear in both status dashboard and doctor output"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Operate — proactive ops, not reactive dashboards."
+      "groomingNotes": "Phase 2 Operate \u2014 proactive ops, not reactive dashboards."
     },
     {
       "id": "FEAT-034",
@@ -1100,7 +1100,7 @@
         "User confirms all auto-detected integrations before config generation"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 2 Plan — reduces setup friction for Privacy Migrants during init flow. Discovering available integrations automatically means fewer questions and less config error. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. Ollama model discovery is a direct subprocess call (ollama list) — not a routing engine. Email provider -> calendar discovery is a simple heuristic lookup. Tech Lead: remove FEAT-011 from dependsOn. Real dependency: FEAT-017 (init wizard) only. This item is unblocked."
+      "groomingNotes": "Phase 2 Plan \u2014 reduces setup friction for Privacy Migrants during init flow. Discovering available integrations automatically means fewer questions and less config error. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. Ollama model discovery is a direct subprocess call (ollama list) \u2014 not a routing engine. Email provider -> calendar discovery is a simple heuristic lookup. Tech Lead: remove FEAT-011 from dependsOn. Real dependency: FEAT-017 (init wizard) only. This item is unblocked."
     },
     {
       "id": "FEAT-035",
@@ -1128,7 +1128,7 @@
         "Corrections from trace context feed into preference learning"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 4 Ecosystem — transparency at the deepest level."
+      "groomingNotes": "Phase 4 Ecosystem \u2014 transparency at the deepest level."
     },
     {
       "id": "FEAT-036",
@@ -1145,7 +1145,7 @@
         "Create src/gateway/ package (websocket.ts, health.ts, config-rpc.ts per ARCHITECTURE.md)",
         "In websocket.ts: implement token-authenticated WebSocket client to Gateway at :18789",
         "Implement request/response RPC pattern with typed message envelopes and timeout handling",
-        "In health.ts: implement health check polling against :18789/healthz — Gateway must be healthy before further operations",
+        "In health.ts: implement health check polling against :18789/healthz \u2014 Gateway must be healthy before further operations",
         "In config-rpc.ts: implement config.patch and config.apply wrappers that respect the rate limit (3 req/60s)",
         "Implement graceful fallback: when Gateway is down, direct filesystem write is used instead of RPC",
         "Handle connection errors, auth failures, and rate limit responses with typed error classes",
@@ -1156,11 +1156,11 @@
         "Health check polling correctly reports gateway up/down status",
         "config.patch respects 3 req/60s rate limit (queues or errors on excess)",
         "Fallback to direct filesystem write works when Gateway is unavailable",
-        "Unit tests pass with a mock WebSocket server — no live Gateway required",
+        "Unit tests pass with a mock WebSocket server \u2014 no live Gateway required",
         "All operations accept AbortSignal for cancellation"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "CRITICAL MISSING ITEM: This is listed in ARCHITECTURE.md (src/gateway/) but had no backlog entry. Doctor (FEAT-004), Status (FEAT-010), and Deploy (FEAT-009) all depend on Gateway communication. Without this foundation, those items cannot be built correctly. Added to phase1 and marked readyForSprint — dependency chain: FEAT-001 → FEAT-036 → FEAT-004/009/010."
+      "groomingNotes": "CRITICAL MISSING ITEM: This is listed in ARCHITECTURE.md (src/gateway/) but had no backlog entry. Doctor (FEAT-004), Status (FEAT-010), and Deploy (FEAT-009) all depend on Gateway communication. Without this foundation, those items cannot be built correctly. Added to phase1 and marked readyForSprint \u2014 dependency chain: FEAT-001 \u2192 FEAT-036 \u2192 FEAT-004/009/010."
     },
     {
       "id": "FEAT-037",
@@ -1174,7 +1174,7 @@
         "FEAT-001"
       ],
       "steps": [
-        "Decide and document the acquisition strategy: git clone pinned tag vs. release tarball download (open decision — Tech Lead must resolve)",
+        "Decide and document the acquisition strategy: git clone pinned tag vs. release tarball download (open decision \u2014 Tech Lead must resolve)",
         "Implement source fetcher: download/clone OpenClaw source at configured version to a local cache directory",
         "Implement version pinning: store pinned OpenClaw version in ClawHQ config; reject builds that would use a different version without explicit override",
         "Implement integrity verification: checksum or GPG signature check on downloaded source",
@@ -1195,7 +1195,7 @@
     },
     {
       "id": "FEAT-038",
-      "title": "Skill management — clawhq skill install/list/update/remove",
+      "title": "Skill management \u2014 clawhq skill install/list/update/remove",
       "description": "Implement safe skill lifecycle management: install, list, update, and remove OpenClaw skills with sandboxed vetting and rollback capability. The safety layer (sandboxing, vetting, rollback) is what differentiates ClawHQ from raw OpenClaw skill installation.",
       "priority": "must",
       "status": "done",
@@ -1216,18 +1216,18 @@
       ],
       "acceptanceCriteria": [
         "`clawhq skill install` sandboxes and vets skill before presenting user approval prompt",
-        "User must explicitly approve before skill is activated — no auto-install",
+        "User must explicitly approve before skill is activated \u2014 no auto-install",
         "TOOLS.md is updated correctly on install and remove",
         "`clawhq skill remove` provides 30-day rollback window",
-        "`clawhq skill update` vets new version before replacing old — old version is rollback target"
+        "`clawhq skill update` vets new version before replacing old \u2014 old version is rollback target"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq skill install/list/update/remove` is a P0 story in PRODUCT.md (§ Skill management) but had no backlog entry. This is a core Evolve feature: the agent ships with a baseline skill set and grows through user-approved skill installations. The safety layer (sandboxing, vetting, rollback) is the key differentiator from raw OpenClaw. No readyForSprint until FEAT-008 (two-stage build) ships — skill install depends on Stage 2 rebuild working correctly.",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve \u2014 `clawhq skill install/list/update/remove` is a P0 story in PRODUCT.md (\u00a7 Skill management) but had no backlog entry. This is a core Evolve feature: the agent ships with a baseline skill set and grows through user-approved skill installations. The safety layer (sandboxing, vetting, rollback) is the key differentiator from raw OpenClaw. No readyForSprint until FEAT-008 (two-stage build) ships \u2014 skill install depends on Stage 2 rebuild working correctly.",
       "completedAt": "2026-03-13T13:07:24-07:00"
     },
     {
       "id": "FEAT-039",
-      "title": "Integration management — clawhq integrate add/remove/swap/list",
+      "title": "Integration management \u2014 clawhq integrate add/remove/swap/list",
       "description": "Implement service integration lifecycle: add, remove, swap, and list integrations (email, calendar, tasks, etc.) with provider abstraction so the agent talks to 'calendar' not 'Google Calendar.' Swapping provider changes the backend without changing agent behavior.",
       "priority": "must",
       "status": "done",
@@ -1243,7 +1243,7 @@
         "Implement `clawhq integrate add <type>`: walk through provider selection (e.g., Google Calendar vs. iCloud vs. CalDAV), credential setup with live validation, config generation",
         "On add: write credential to .env, install integration tool, update TOOLS.md, check cron dependencies, update egress firewall allowlist for provider's API domains, run targeted doctor health check",
         "Implement `clawhq integrate remove <name>`: clean credential from .env, uninstall tool, update TOOLS.md, update identity files to remove references, flag orphaned cron dependencies, tighten firewall allowlist",
-        "Implement `clawhq integrate swap <category> <new-provider>`: change backend provider (e.g., `integrate swap calendar icloud`) while preserving agent behavior — same category interface, new backend",
+        "Implement `clawhq integrate swap <category> <new-provider>`: change backend provider (e.g., `integrate swap calendar icloud`) while preserving agent behavior \u2014 same category interface, new backend",
         "Implement `clawhq integrate list`: show all integrations with provider, status, credential health, last-used",
         "Write unit tests for integration lifecycle and firewall allowlist management"
       ],
@@ -1255,12 +1255,12 @@
         "`clawhq integrate list` shows credential health status per integration"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq integrate` is a P0 story in PRODUCT.md (§ Integration management) but had no backlog entry. The provider abstraction ('calendar' not 'Google Calendar') is Layer 3 of the product model. KEY RISK: swap operation must update firewall allowlist atomically — old provider domains must be removed when new provider is added, not left allowlisted. Credential health check on `integrate add` is required (reuse FEAT-005 probe infrastructure).",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve \u2014 `clawhq integrate` is a P0 story in PRODUCT.md (\u00a7 Integration management) but had no backlog entry. The provider abstraction ('calendar' not 'Google Calendar') is Layer 3 of the product model. KEY RISK: swap operation must update firewall allowlist atomically \u2014 old provider domains must be removed when new provider is added, not left allowlisted. Credential health check on `integrate add` is required (reuse FEAT-005 probe infrastructure).",
       "completedAt": "2026-03-13T16:57:03-07:00"
     },
     {
       "id": "FEAT-040",
-      "title": "API provider management — clawhq provider add/list/remove/test",
+      "title": "API provider management \u2014 clawhq provider add/list/remove/test",
       "description": "Implement LLM and service API provider lifecycle: add providers with per-category task opt-in, list with egress stats, remove with routing policy update and firewall tightening, test with live inference call.",
       "priority": "must",
       "status": "done",
@@ -1288,12 +1288,12 @@
         "`clawhq provider list` shows egress stats per provider (calls, tokens, cost)"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq provider` is a P0 story in PRODUCT.md (§ API provider management) but had no backlog entry. IMPORTANT architectural note: adding a provider does NOT automatically route traffic to it — the user must configure per-category opt-in (done during `provider add` flow). Provider management is the user-facing control for the model routing config generated via FEAT-011/FEAT-015. Egress stat display links to FEAT-012 (egress logging).",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve \u2014 `clawhq provider` is a P0 story in PRODUCT.md (\u00a7 API provider management) but had no backlog entry. IMPORTANT architectural note: adding a provider does NOT automatically route traffic to it \u2014 the user must configure per-category opt-in (done during `provider add` flow). Provider management is the user-facing control for the model routing config generated via FEAT-011/FEAT-015. Egress stat display links to FEAT-012 (egress logging).",
       "completedAt": "2026-03-13T18:47:08.332373-07:00"
     },
     {
       "id": "FEAT-041",
-      "title": "CLI tool installation — clawhq tool install/list/remove",
+      "title": "CLI tool installation \u2014 clawhq tool install/list/remove",
       "description": "Implement CLI tool installation into the agent container: validate against a known-safe allowlist, add to Stage 2 Dockerfile, trigger Stage 2 rebuild. Enables the agent to use tools like jq, ffmpeg, pandoc, gh that the user needs.",
       "priority": "should",
       "status": "done",
@@ -1304,7 +1304,7 @@
       ],
       "steps": [
         "Create src/cli/tool.ts with tool subcommand group",
-        "Maintain allowlist of known-safe packages (apt/apk) in config — version-pinned",
+        "Maintain allowlist of known-safe packages (apt/apk) in config \u2014 version-pinned",
         "Implement `clawhq tool install <package>`: validate against allowlist; for non-allowlisted packages flag for manual review with risk explanation; add to Stage 2 Dockerfile; trigger Stage 2 rebuild",
         "Implement `clawhq tool list`: show all installed tools (base image tools + user-added) with version and source",
         "Implement `clawhq tool remove <package>`: remove from Stage 2 Dockerfile; trigger rebuild",
@@ -1312,23 +1312,23 @@
       ],
       "acceptanceCriteria": [
         "`clawhq tool install` validates against allowlist before modifying Stage 2 Dockerfile",
-        "Non-allowlisted packages are blocked with risk explanation — not silently installed",
+        "Non-allowlisted packages are blocked with risk explanation \u2014 not silently installed",
         "`clawhq tool install` triggers Stage 2 rebuild automatically after Dockerfile update",
         "`clawhq tool list` shows base image tools and user-added tools separately",
         "`clawhq tool remove` removes package from Dockerfile and triggers rebuild"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq tool install/list/remove` is a P1 story in PRODUCT.md (§ CLI tool installation) but had no backlog entry. This is a thin wrapper around the two-stage build: it modifies the Stage 2 Dockerfile and triggers a rebuild. Priority: should (not must) because the agent is useful without extra tools; tool installation is for power users expanding capability. Depends on FEAT-008 being solid — don't ship this until Stage 2 rebuild is reliable.",
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve \u2014 `clawhq tool install/list/remove` is a P1 story in PRODUCT.md (\u00a7 CLI tool installation) but had no backlog entry. This is a thin wrapper around the two-stage build: it modifies the Stage 2 Dockerfile and triggers a rebuild. Priority: should (not must) because the agent is useful without extra tools; tool installation is for power users expanding capability. Depends on FEAT-008 being solid \u2014 don't ship this until Stage 2 rebuild is reliable.",
       "completedAt": "2026-03-13T21:30:34.781477-07:00"
     },
     {
       "id": "FEAT-042",
-      "title": "Evolve rollback — clawhq evolve rollback/history",
+      "title": "Evolve rollback \u2014 clawhq evolve rollback/history",
       "description": "Implement rollback capability for all Evolve changes (skill install, integration add, provider add, tool install, identity change). Every Evolve action creates a rollback snapshot. Expanding agent capabilities is never a one-way door.",
       "priority": "should",
-      "status": "done",
-      "readyForSprint": false,
-      "passes": true,
+      "status": "todo",
+      "readyForSprint": true,
+      "passes": false,
       "dependsOn": [
         "FEAT-038",
         "FEAT-039",
@@ -1338,7 +1338,7 @@
       "steps": [
         "Create src/workspace/evolve-history.ts for change tracking",
         "Define EvolveChange record: id, timestamp, change_type (skill_install/integration_add/provider_add/tool_install/identity_update), target, previous_state, new_state, rollback_snapshot_id, rollback_expires_at",
-        "Implement rollback snapshot creation on every Evolve action — call before applying change",
+        "Implement rollback snapshot creation on every Evolve action \u2014 call before applying change",
         "Implement `clawhq evolve rollback <change-id>`: reverse specific change by restoring files, reverting config, triggering image rebuild if needed",
         "Implement `clawhq evolve history`: show all Evolve changes with IDs, timestamps, change type, and rollback status (available/expired)",
         "Rollback snapshots expire after 30 days",
@@ -1352,12 +1352,11 @@
         "`clawhq evolve history` shows complete change history with rollback availability"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — `clawhq evolve rollback` is a P1 story in PRODUCT.md (§ Evolve rollback) but had no backlog entry. This is the safety net that makes capability expansion non-scary. Without rollback, every skill install or integration add is a one-way door and users will hesitate. Depends on FEAT-038/039/040/041 all having consistent snapshot infrastructure — the rollback mechanism must be uniform across all Evolve change types.",
-      "completedAt": "2026-03-13T21:41:48-07:00"
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve \u2014 `clawhq evolve rollback` is a P1 story in PRODUCT.md (\u00a7 Evolve rollback) but had no backlog entry. This is the safety net that makes capability expansion non-scary. Without rollback, every skill install or integration add is a one-way door and users will hesitate. Depends on FEAT-038/039/040/041 all having consistent snapshot infrastructure \u2014 the rollback mechanism must be uniform across all Evolve change types."
     },
     {
       "id": "FEAT-043",
-      "title": "Supply chain security — vetting pipeline for skills and tools",
+      "title": "Supply chain security \u2014 vetting pipeline for skills and tools",
       "description": "Implement AI-powered and allowlist-based vetting for community skill and tool installs: source verification, suspicious pattern scanning, VirusTotal integration, and evolve audit trail.",
       "priority": "should",
       "status": "todo",
@@ -1370,7 +1369,7 @@
       "steps": [
         "Create src/security/vetting.ts for supply chain security logic",
         "Implement skill source verification: check source against known registries before sandboxing",
-        "Implement AI-powered pattern scanning: detect suspicious patterns — outbound network calls to non-allowlisted domains, credential access, filesystem writes outside workspace",
+        "Implement AI-powered pattern scanning: detect suspicious patterns \u2014 outbound network calls to non-allowlisted domains, credential access, filesystem writes outside workspace",
         "Implement VirusTotal integration for scanning skill artifacts",
         "Implement tool allowlist management: known-safe package list with version pinning; non-allowlisted installs require explicit manual override with warning",
         "Implement `clawhq evolve audit`: show full change history with sources, timestamps, vetting results, and rollback status",
@@ -1384,12 +1383,12 @@
         "False-positive filtering prevents blocking common benign patterns"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — supply chain security for skills/tools is a P1 story in PRODUCT.md (§ Supply chain security for skills and tools) but had no backlog entry. Separation of concerns: FEAT-038/041 handle lifecycle operations and include basic allowlist gating; this item adds the deeper vetting layer (AI scanning, VirusTotal, audit) on top. The `clawhq evolve audit` command also lives here — it's the transparency mechanism for all capability changes."
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve \u2014 supply chain security for skills/tools is a P1 story in PRODUCT.md (\u00a7 Supply chain security for skills and tools) but had no backlog entry. Separation of concerns: FEAT-038/041 handle lifecycle operations and include basic allowlist gating; this item adds the deeper vetting layer (AI scanning, VirusTotal, audit) on top. The `clawhq evolve audit` command also lives here \u2014 it's the transparency mechanism for all capability changes."
     },
     {
       "id": "FEAT-044",
-      "title": "Secrets CLI — add and list commands",
-      "description": "Implement `clawhq secrets add <name>` (masked input, optional health probe validation) and `clawhq secrets list` (names, provider category, health status, age, last rotated — never values). Builds on FEAT-005's env.ts and credential health probes.",
+      "title": "Secrets CLI \u2014 add and list commands",
+      "description": "Implement `clawhq secrets add <name>` (masked input, optional health probe validation) and `clawhq secrets list` (names, provider category, health status, age, last rotated \u2014 never values). Builds on FEAT-005's env.ts and credential health probes.",
       "priority": "must",
       "status": "done",
       "readyForSprint": false,
@@ -1401,7 +1400,7 @@
         "Create src/cli/secrets.ts with `secrets` subcommand and `add`/`list` sub-subcommands",
         "Implement `secrets add <name>`: prompt for value with masked input (no echo), write to .env via existing parseEnv/serializeEnv in src/security/secrets/env.ts, enforce chmod 600",
         "Add optional `--validate` flag to `secrets add` that runs the matching credential health probe from src/security/credentials/index.ts after writing",
-        "Implement `secrets list`: read .env, display table with columns: name, provider_category (inferred from key name patterns), health_status (via credential probes), age (from metadata), last_rotated — never display values",
+        "Implement `secrets list`: read .env, display table with columns: name, provider_category (inferred from key name patterns), health_status (via credential probes), age (from metadata), last_rotated \u2014 never display values",
         "Create src/security/secrets/metadata.ts to track secret metadata (created_at, rotated_at, provider_category) in a sidecar JSON file (.env.meta) with 600 permissions",
         "Add SecretEntry type definition in src/security/secrets/types.ts matching PRODUCT.md data model",
         "Write unit tests for add flow (masked input mock, .env write, permission enforcement) and list display formatting"
@@ -1409,17 +1408,17 @@
       "acceptanceCriteria": [
         "`clawhq secrets add MY_KEY` prompts for masked input and writes to .env with 600 permissions",
         "`clawhq secrets add MY_KEY --validate` runs health probe after writing and reports valid/invalid",
-        "`clawhq secrets list` shows all secrets with name, category, health, age — never shows values",
+        "`clawhq secrets list` shows all secrets with name, category, health, age \u2014 never shows values",
         "Secret metadata (.env.meta) tracks created_at and provider_category",
         "Unit tests cover .env write, metadata tracking, and list formatting"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "First of four items implementing the expanded Secrets lifecycle management story from PRODUCT.md § Secure. Builds directly on FEAT-005's existing env.ts and credential health probes. The SecretEntry type and .env.meta sidecar pattern establish the foundation for rotate/revoke/audit in subsequent items.",
+      "groomingNotes": "First of four items implementing the expanded Secrets lifecycle management story from PRODUCT.md \u00a7 Secure. Builds directly on FEAT-005's existing env.ts and credential health probes. The SecretEntry type and .env.meta sidecar pattern establish the foundation for rotate/revoke/audit in subsequent items.",
       "completedAt": "2026-03-13T17:04:17-07:00"
     },
     {
       "id": "FEAT-045",
-      "title": "Secrets CLI — rotate and revoke commands",
+      "title": "Secrets CLI \u2014 rotate and revoke commands",
       "description": "Implement `clawhq secrets rotate <name>` (atomic swap, health validation, audit event) and `clawhq secrets revoke <name>` (remove from .env, verify removal, warn on dangling references).",
       "priority": "must",
       "status": "done",
@@ -1434,7 +1433,7 @@
         "Implement atomic .env swap in src/security/secrets/env.ts: write new content to .env.tmp with 600 permissions, then fs.rename() for atomic replacement",
         "Implement `secrets revoke <name>`: remove entry from .env, verify removal by re-reading, scan all config files (openclaw.json, docker-compose.yml, workspace configs) for `${NAME}` references and warn if found",
         "Implement dangling reference scanner in src/security/secrets/references.ts: glob config files, regex match `${SECRET_NAME}` and `$SECRET_NAME` patterns",
-        "Emit audit events for rotate and revoke (write to audit trail — consumed by FEAT-046)",
+        "Emit audit events for rotate and revoke (write to audit trail \u2014 consumed by FEAT-046)",
         "Write unit tests for atomic swap, revocation, dangling reference detection"
       ],
       "acceptanceCriteria": [
@@ -1445,12 +1444,12 @@
         "Atomic swap uses write-to-tmp-then-rename pattern (no partial writes on crash)"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Second secrets lifecycle item. Depends on FEAT-044 for SecretEntry types, metadata sidecar, and CLI scaffolding. Atomic swap pattern is critical — .env corruption during rotate would break the agent. Audit events are emitted here but the audit trail storage (FEAT-046) can be implemented in parallel if needed.",
+      "groomingNotes": "Second secrets lifecycle item. Depends on FEAT-044 for SecretEntry types, metadata sidecar, and CLI scaffolding. Atomic swap pattern is critical \u2014 .env corruption during rotate would break the agent. Audit events are emitted here but the audit trail storage (FEAT-046) can be implemented in parallel if needed.",
       "completedAt": "2026-03-13T17:11:20-07:00"
     },
     {
       "id": "FEAT-046",
-      "title": "Secrets audit trail — append-only JSONL with HMAC chain",
+      "title": "Secrets audit trail \u2014 append-only JSONL with HMAC chain",
       "description": "Implement `clawhq secrets audit` command and the underlying append-only JSONL audit trail with HMAC chain for tamper detection. Logs all secret events: added, rotated, revoked, accessed-by-deploy.",
       "priority": "must",
       "status": "done",
@@ -1478,7 +1477,7 @@
         "Events are recorded for: add, rotate, revoke, and deploy-access operations"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Third secrets lifecycle item. Only hard dependency is FEAT-044 for types — can be built in parallel with FEAT-045. The HMAC chain uses a local key stored alongside the audit file (not high-security HSM, but detects casual tampering and accidental corruption). Deploy-access event emission requires a hook in the deploy pipeline.",
+      "groomingNotes": "Third secrets lifecycle item. Only hard dependency is FEAT-044 for types \u2014 can be built in parallel with FEAT-045. The HMAC chain uses a local key stored alongside the audit file (not high-security HSM, but detects casual tampering and accidental corruption). Deploy-access event emission requires a hook in the deploy pipeline.",
       "completedAt": "2026-03-13T17:17:58-07:00"
     },
     {
@@ -1495,7 +1494,7 @@
       ],
       "steps": [
         "Create src/security/secrets/store.ts with SecretStore interface: get(name), set(name, value), delete(name), list(), export(), import()",
-        "Implement PlaintextEnvStore as SecretStore wrapping existing env.ts parseEnv/serializeEnv — this is the default backend",
+        "Implement PlaintextEnvStore as SecretStore wrapping existing env.ts parseEnv/serializeEnv \u2014 this is the default backend",
         "Implement EncryptedStore as SecretStore: secrets encrypted with AES-256-GCM via Node.js crypto, master key derived from user passphrase via scrypt, stored in .env.enc",
         "Add `secrets export` sub-subcommand: prompt for encryption passphrase, encrypt all secrets to portable archive (.clawhq-secrets.enc), include metadata and audit trail",
         "Add `secrets import` sub-subcommand: prompt for passphrase, decrypt archive, verify integrity (HMAC), merge or overwrite into current .env with conflict prompts",
@@ -1506,12 +1505,12 @@
       "acceptanceCriteria": [
         "`clawhq secrets export` creates encrypted archive of all secrets with passphrase protection",
         "`clawhq secrets import` restores secrets from encrypted archive with integrity verification",
-        "SecretStore interface abstracts storage — plaintext .env and encrypted backends are interchangeable",
+        "SecretStore interface abstracts storage \u2014 plaintext .env and encrypted backends are interchangeable",
         "`--encrypted` flag migrates from plaintext to encrypted storage and securely wipes old .env",
         "Deploy pipeline decrypts to tmpfs (secrets never written to persistent disk in encrypted mode)"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Fourth and final secrets lifecycle item. The SecretStore interface is the key architectural piece — it ensures FEAT-044/045/046 work identically regardless of backend. Export/import enables migration between machines. Encrypted backend is an upgrade path, not a replacement — plaintext .env must remain supported for simplicity. Depends on FEAT-046 because export bundles the audit trail."
+      "groomingNotes": "Fourth and final secrets lifecycle item. The SecretStore interface is the key architectural piece \u2014 it ensures FEAT-044/045/046 work identically regardless of backend. Export/import enables migration between machines. Encrypted backend is an upgrade path, not a replacement \u2014 plaintext .env must remain supported for simplicity. Depends on FEAT-046 because export bundles the audit trail."
     },
     {
       "id": "FEAT-057",
@@ -1540,8 +1539,8 @@
     },
     {
       "id": "FEAT-058",
-      "title": "Production parity — himalaya config, media mount, ollama bridge",
-      "description": "Three patterns exist in the production Clawdius deployment that the generator does not produce, causing agents with email/media/local-model integrations to fail silently:\n\n1. himalaya.toml — the email tool references /home/node/.openclaw/workspace/himalaya.toml but no config template is generated. Agents with email integration get a tool that can not connect.\n2. Media bind-mount — Telegram attachments need ~/.openclaw/media mounted at workspace/media. Without it, the agent can not access files users send via messaging.\n3. Ollama bridge network — agents using local models via Ollama need an external docker network (ollama-bridge) in their compose. Without it, the container can not reach the Ollama API.\n\nEach of these should be conditionally included based on integration selections.",
+      "title": "Production parity \u2014 himalaya config, media mount, ollama bridge",
+      "description": "Three patterns exist in the production Clawdius deployment that the generator does not produce, causing agents with email/media/local-model integrations to fail silently:\n\n1. himalaya.toml \u2014 the email tool references /home/node/.openclaw/workspace/himalaya.toml but no config template is generated. Agents with email integration get a tool that can not connect.\n2. Media bind-mount \u2014 Telegram attachments need ~/.openclaw/media mounted at workspace/media. Without it, the agent can not access files users send via messaging.\n3. Ollama bridge network \u2014 agents using local models via Ollama need an external docker network (ollama-bridge) in their compose. Without it, the container can not reach the Ollama API.\n\nEach of these should be conditionally included based on integration selections.",
       "priority": "must",
       "status": "todo",
       "readyForSprint": true,
@@ -1564,12 +1563,12 @@
         "None of these are included when the corresponding integration is not selected"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "UPGRADED TO MUST: These are silent deployment failures. Email agents produce a tool that can't connect. Media messages from Telegram are inaccessible. Local model agents can't reach Ollama. Every user who deploys with email/media/local-model integrations gets a broken agent with no error message. This is a deployment correctness bug disguised as a feature — must ship before the init flow is considered complete."
+      "groomingNotes": "UPGRADED TO MUST: These are silent deployment failures. Email agents produce a tool that can't connect. Media messages from Telegram are inaccessible. Local model agents can't reach Ollama. Every user who deploys with email/media/local-model integrations gets a broken agent with no error message. This is a deployment correctness bug disguised as a feature \u2014 must ship before the init flow is considered complete."
     },
     {
       "id": "FEAT-059",
-      "title": "Egress audit — clawhq audit --egress from firewall logs",
-      "description": "FEAT-012 is wontdo because ClawHQ doesn't intercept model calls. But users still need egress transparency. A firewall-based audit reads the CLAWHQ_FWD iptables LOG entries to show what domains/IPs were contacted and when — without token counts or data categories, but with enough to prove the firewall is enforcing allowlists. This covers the core privacy proof story: 'zero unexpected egress' attestation based on what the firewall actually saw. Commands: clawhq audit --egress (show domain/IP contacts from iptables LOG), --zero (attest no unexpected egress in period), --export (signed report). This is the realistic implementation of the transparency story given the architecture constraint.",
+      "title": "Egress audit \u2014 clawhq audit --egress from firewall logs",
+      "description": "FEAT-012 is wontdo because ClawHQ doesn't intercept model calls. But users still need egress transparency. A firewall-based audit reads the CLAWHQ_FWD iptables LOG entries to show what domains/IPs were contacted and when \u2014 without token counts or data categories, but with enough to prove the firewall is enforcing allowlists. This covers the core privacy proof story: 'zero unexpected egress' attestation based on what the firewall actually saw. Commands: clawhq audit --egress (show domain/IP contacts from iptables LOG), --zero (attest no unexpected egress in period), --export (signed report). This is the realistic implementation of the transparency story given the architecture constraint.",
       "priority": "should",
       "category": null,
       "steps": [],
@@ -1578,7 +1577,7 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Egress audit from firewall logs — realistic privacy transparency story given wontdo on FEAT-011/012. Steps: (1) Parse iptables LOG entries from CLAWHQ_FWD chain kernel log (journalctl or /var/log/kern.log) by regex on prefix 'CLAWHQ_FWD:'; (2) Extract destination IP, port, timestamp, container ID from log fields; (3) Resolve IPs to domain names via reverse DNS; (4) Implement 'clawhq audit --egress': show domain/IP contacts sorted by time, grouped by domain; (5) Implement --zero flag: verify no unexpected egress (non-allowlisted IPs) in given period, exit 0 if clean; (6) Implement --export flag: write signed JSON report with attestation timestamp; (7) Add to status dashboard as 'network egress' section. Acceptance criteria: 'clawhq audit --egress' shows domains contacted from firewall logs; '--zero' exits 0 when only allowlisted domains contacted and 1 when unexpected egress found; '--export' produces a signed report; works gracefully when firewall logs are unavailable (warn, do not error). Note: this is network-level audit only — no token counts or data categories (that requires intercepting model calls which is out of scope). Set readyForSprint after Tech Lead adds steps/AC to the JSON record.",
+      "groomingNotes": "Egress audit from firewall logs \u2014 realistic privacy transparency story given wontdo on FEAT-011/012. Steps: (1) Parse iptables LOG entries from CLAWHQ_FWD chain kernel log (journalctl or /var/log/kern.log) by regex on prefix 'CLAWHQ_FWD:'; (2) Extract destination IP, port, timestamp, container ID from log fields; (3) Resolve IPs to domain names via reverse DNS; (4) Implement 'clawhq audit --egress': show domain/IP contacts sorted by time, grouped by domain; (5) Implement --zero flag: verify no unexpected egress (non-allowlisted IPs) in given period, exit 0 if clean; (6) Implement --export flag: write signed JSON report with attestation timestamp; (7) Add to status dashboard as 'network egress' section. Acceptance criteria: 'clawhq audit --egress' shows domains contacted from firewall logs; '--zero' exits 0 when only allowlisted domains contacted and 1 when unexpected egress found; '--export' produces a signed report; works gracefully when firewall logs are unavailable (warn, do not error). Note: this is network-level audit only \u2014 no token counts or data categories (that requires intercepting model calls which is out of scope). Set readyForSprint after Tech Lead adds steps/AC to the JSON record.",
       "completedAt": "2026-03-13T21:30:34.781477-07:00"
     }
   ],

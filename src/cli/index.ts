@@ -93,6 +93,15 @@ import {
   loadBuiltInTemplates,
 } from "../templates/index.js";
 import { formatCheckResult, runUpdate } from "../update/update.js";
+import {
+  type EvolveContext,
+  EvolveError,
+  formatHistory,
+  getHistory,
+  loadHistory,
+  recordChange,
+  rollbackChange,
+} from "../workspace/evolve-history.js";
 
 import { createFleetCommand } from "./fleet.js";
 import { createProviderCommand } from "./provider.js";
@@ -1348,7 +1357,72 @@ agentCmd
   });
 
 // Evolve phase
-program.command("evolve").description("Manage agent capabilities");
+const evolveCmd = program
+  .command("evolve")
+  .description("Manage agent capabilities — history, rollback")
+  .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
+  .option("--clawhq-dir <path>", "ClawHQ data directory", "~/.clawhq");
+
+function makeEvolveCtx(opts: { home: string; clawhqDir: string }): EvolveContext {
+  return {
+    openclawHome: opts.home.replace(/^~/, process.env.HOME ?? "~"),
+    clawhqDir: opts.clawhqDir.replace(/^~/, process.env.HOME ?? "~"),
+  };
+}
+
+evolveCmd
+  .command("history", { isDefault: true })
+  .description("Show all Evolve changes with IDs, timestamps, change type, and rollback status")
+  .option("--json", "Output as JSON")
+  .action(async (opts: { json?: boolean }) => {
+    const parentOpts = evolveCmd.opts() as { home: string; clawhqDir: string };
+    const ctx = makeEvolveCtx(parentOpts);
+
+    try {
+      const history = await loadHistory(ctx);
+      const entries = getHistory(history);
+
+      if (opts.json) {
+        console.log(JSON.stringify(entries, null, 2));
+      } else {
+        console.log(formatHistory(entries));
+      }
+    } catch (err: unknown) {
+      console.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      process.exitCode = 1;
+    }
+  });
+
+evolveCmd
+  .command("rollback <change-id>")
+  .description("Reverse a specific Evolve change by restoring previous state")
+  .action(async (changeId: string) => {
+    const parentOpts = evolveCmd.opts() as { home: string; clawhqDir: string };
+    const ctx = makeEvolveCtx(parentOpts);
+
+    try {
+      console.log(`Rolling back change ${changeId}...`);
+      const result = await rollbackChange(ctx, changeId);
+
+      console.log(`Change "${changeId}" rolled back.`);
+      console.log(`  Type: ${result.change.changeType}`);
+      console.log(`  Target: ${result.change.target}`);
+      console.log(`  Restored: ${result.change.previousState}`);
+
+      if (result.requiresRebuild) {
+        console.log("");
+        console.log("This rollback affected container image dependencies.");
+        console.log("Run `clawhq build` to rebuild the agent image.");
+      }
+    } catch (err: unknown) {
+      if (err instanceof EvolveError) {
+        console.error(`Error: ${err.message}`);
+      } else {
+        console.error(`Rollback failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      process.exitCode = 1;
+    }
+  });
 
 // CLI tool management (Evolve sub-feature)
 registerToolCommand(program);
@@ -1438,6 +1512,16 @@ skillCmd
       const resolved = resolveSource(source);
       const result = await activateSkill(ctx, manifest, stagingDir, resolved.source, resolved.uri);
 
+      // Record evolve change
+      await recordChange(ctx, {
+        changeType: "skill_install",
+        target: result.skill.name,
+        previousState: "not installed",
+        newState: `${result.skill.name}@${result.skill.version}`,
+        rollbackSnapshotId: null,
+        requiresRebuild: result.requiresRebuild,
+      });
+
       console.log(`Skill "${result.skill.name}" installed and activated.`);
       if (result.requiresRebuild) {
         console.log("");
@@ -1463,6 +1547,16 @@ skillCmd
 
     try {
       const result = await removeSkillOp(ctx, name);
+
+      // Record evolve change
+      await recordChange(ctx, {
+        changeType: "skill_remove",
+        target: name,
+        previousState: `${result.skill.name}@${result.skill.version}`,
+        newState: "removed",
+        rollbackSnapshotId: result.snapshotId,
+        requiresRebuild: result.skill.requiresContainerDeps,
+      });
 
       console.log(`Skill "${name}" removed.`);
       console.log(`  Rollback snapshot: ${result.snapshotId}`);
@@ -1528,6 +1622,16 @@ skillCmd
       }
 
       const result = await applySkillUpdate(ctx, name, manifest, stagingDir);
+
+      // Record evolve change
+      await recordChange(ctx, {
+        changeType: "skill_update",
+        target: name,
+        previousState: `${name}@${result.previousVersion}`,
+        newState: `${name}@${result.skill.version}`,
+        rollbackSnapshotId: result.snapshotId,
+        requiresRebuild: result.requiresRebuild,
+      });
 
       console.log(`Skill "${name}" updated: ${result.previousVersion} -> ${result.skill.version}`);
       console.log(`  Rollback snapshot: ${result.snapshotId}`);
@@ -1689,6 +1793,16 @@ integrateCmd
       console.log(`Adding ${catDef.label} integration (${provDef.label})...`);
       const result = await addIntegration(ctx, category, providerName, credential, validated);
 
+      // Record evolve change
+      await recordChange(ctx, {
+        changeType: "integration_add",
+        target: category,
+        previousState: "not configured",
+        newState: `${category}/${providerName}`,
+        rollbackSnapshotId: JSON.stringify({ action: "add", integration: result.integration }),
+        requiresRebuild: result.requiresRebuild,
+      });
+
       console.log(`Integration "${category}" added (provider: ${provDef.label}).`);
       if (result.toolsInstalled.length > 0) {
         console.log(`  Tools: ${result.toolsInstalled.join(", ")}`);
@@ -1769,7 +1883,24 @@ integrateCmd
         console.log("  These jobs may fail after removal. Consider disabling them.");
       }
 
+      // Capture previous state for rollback before removing
+      const { loadRegistry: loadIntRegistry } = await import("../integrate/lifecycle.js");
+      const intRegistry = await loadIntRegistry(ctx);
+      const previousIntegration = intRegistry.integrations.find((i) => i.category === category);
+
       const result = await removeIntegration(ctx, category);
+
+      // Record evolve change
+      await recordChange(ctx, {
+        changeType: "integration_remove",
+        target: category,
+        previousState: `${category}/${result.provider}`,
+        newState: "removed",
+        rollbackSnapshotId: previousIntegration
+          ? JSON.stringify({ action: "remove", integration: previousIntegration })
+          : null,
+        requiresRebuild: false,
+      });
 
       console.log(`Integration "${category}" removed (was: ${result.provider}).`);
       if (result.envVarsCleaned.length > 0) {
@@ -1847,8 +1978,25 @@ integrateCmd
         return;
       }
 
+      // Capture previous state for rollback before swapping
+      const { loadRegistry: loadIntRegSwap } = await import("../integrate/lifecycle.js");
+      const intRegSwap = await loadIntRegSwap(ctx);
+      const previousSwapIntegration = intRegSwap.integrations.find((i) => i.category === category);
+
       console.log(`Swapping ${category} provider to ${provDef.label}...`);
       const result = await swapIntegration(ctx, category, newProvider, credential, false);
+
+      // Record evolve change
+      await recordChange(ctx, {
+        changeType: "integration_swap",
+        target: category,
+        previousState: `${category}/${result.oldProvider}`,
+        newState: `${category}/${result.newProvider}`,
+        rollbackSnapshotId: previousSwapIntegration
+          ? JSON.stringify({ action: "swap", integration: previousSwapIntegration })
+          : null,
+        requiresRebuild: false,
+      });
 
       console.log(`Integration "${category}" swapped: ${result.oldProvider} → ${result.newProvider}`);
       if (result.envVarsCleaned.length > 0) {
