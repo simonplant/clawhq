@@ -49,6 +49,10 @@ export interface EvolveChange {
   rollbackExpiresAt: string | null;
   /** Whether rollback requires a container image rebuild. */
   requiresRebuild: boolean;
+  /** Source URI for skill/tool installs (for audit trail). */
+  sourceUri?: string;
+  /** Vetting summary from the supply chain security pipeline. */
+  vettingSummary?: string;
 }
 
 export interface EvolveHistory {
@@ -123,6 +127,8 @@ export async function recordChange(
     newState: string;
     rollbackSnapshotId: string | null;
     requiresRebuild: boolean;
+    sourceUri?: string;
+    vettingSummary?: string;
   },
 ): Promise<EvolveChange> {
   const now = new Date();
@@ -140,6 +146,8 @@ export async function recordChange(
     rollbackSnapshotId: params.rollbackSnapshotId,
     rollbackExpiresAt: expires ? expires.toISOString() : null,
     requiresRebuild: params.requiresRebuild,
+    ...(params.sourceUri ? { sourceUri: params.sourceUri } : {}),
+    ...(params.vettingSummary ? { vettingSummary: params.vettingSummary } : {}),
   };
 
   const history = await loadHistory(ctx);
@@ -399,6 +407,44 @@ const ROLLBACK_STATUS_LABELS: Record<RollbackStatus, string> = {
   expired: "EXPIRED",
   unavailable: "—",
 };
+
+/**
+ * Format evolve audit — detailed view with sources, timestamps,
+ * vetting results, and rollback status.
+ */
+export function formatAudit(entries: HistoryEntry[]): string {
+  if (entries.length === 0) {
+    return "No evolve changes recorded yet.";
+  }
+
+  const lines: string[] = [];
+  lines.push(`Evolve Audit — ${entries.length} change${entries.length !== 1 ? "s" : ""} recorded`);
+  lines.push("=".repeat(60));
+
+  for (const entry of entries) {
+    lines.push("");
+    lines.push(`  ID:        ${entry.id}`);
+    lines.push(`  Type:      ${CHANGE_TYPE_LABELS[entry.changeType]}`);
+    lines.push(`  Target:    ${entry.target}`);
+    lines.push(`  Timestamp: ${entry.timestamp.slice(0, 19).replace("T", " ")}`);
+    if (entry.sourceUri) {
+      lines.push(`  Source:    ${entry.sourceUri}`);
+    }
+    lines.push(`  Before:    ${entry.previousState}`);
+    lines.push(`  After:     ${entry.newState}`);
+    if (entry.vettingSummary) {
+      lines.push(`  Vetting:   ${entry.vettingSummary}`);
+    }
+    lines.push(`  Rollback:  ${ROLLBACK_STATUS_LABELS[entry.rollbackStatus]}`);
+    if (entry.rollbackExpiresAt && entry.rollbackStatus === "available") {
+      lines.push(`  Expires:   ${entry.rollbackExpiresAt.slice(0, 19).replace("T", " ")}`);
+    }
+    lines.push(`  Rebuild:   ${entry.requiresRebuild ? "required" : "not required"}`);
+    lines.push("  " + "-".repeat(56));
+  }
+
+  return lines.join("\n");
+}
 
 /**
  * Format evolve history for CLI display.

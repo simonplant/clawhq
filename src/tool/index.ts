@@ -24,7 +24,6 @@ export type {
   InstalledTool,
   ToolContext,
   ToolDefinition,
-  ToolError,
   ToolInstallMethod,
   ToolRegistry,
 } from "./types.js";

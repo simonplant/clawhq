@@ -1360,9 +1360,9 @@
       "title": "Supply chain security — vetting pipeline for skills and tools",
       "description": "Implement AI-powered and allowlist-based vetting for community skill and tool installs: source verification, suspicious pattern scanning, VirusTotal integration, and evolve audit trail.",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-038",
         "FEAT-041"
@@ -1384,7 +1384,8 @@
         "False-positive filtering prevents blocking common benign patterns"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — supply chain security for skills/tools is a P1 story in PRODUCT.md (§ Supply chain security for skills and tools) but had no backlog entry. Separation of concerns: FEAT-038/041 handle lifecycle operations and include basic allowlist gating; this item adds the deeper vetting layer (AI scanning, VirusTotal, audit) on top. The `clawhq evolve audit` command also lives here — it's the transparency mechanism for all capability changes."
+      "groomingNotes": "MISSING ITEM: Phase 2 Evolve — supply chain security for skills/tools is a P1 story in PRODUCT.md (§ Supply chain security for skills and tools) but had no backlog entry. Separation of concerns: FEAT-038/041 handle lifecycle operations and include basic allowlist gating; this item adds the deeper vetting layer (AI scanning, VirusTotal, audit) on top. The `clawhq evolve audit` command also lives here — it's the transparency mechanism for all capability changes.",
+      "completedAt": "2026-03-13T21:52:38-07:00"
     },
     {
       "id": "FEAT-044",
