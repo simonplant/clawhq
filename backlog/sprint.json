@@ -1,17 +1,27 @@
 {
-  "sprintId": "sprint-1773461896",
-  "startedAt": "2026-03-13T21:18:16-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773462699",
+  "startedAt": "2026-03-13T21:31:39-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-059",
-    "title": "Egress audit — clawhq audit --egress from firewall logs",
+    "id": "FEAT-042",
+    "title": "Evolve rollback — clawhq evolve rollback/history",
     "sourceBacklog": "backlog.json",
-    "steps": [],
-    "acceptanceCriteria": [],
-    "startedAt": "2026-03-13T21:18:16-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-13T21:26:14-07:00"
-  },
-  "completedAt": "2026-03-13T21:26:14-07:00",
-  "attempts": 1
+    "steps": [
+      "Create src/workspace/evolve-history.ts for change tracking",
+      "Define EvolveChange record: id, timestamp, change_type (skill_install/integration_add/provider_add/tool_install/identity_update), target, previous_state, new_state, rollback_snapshot_id, rollback_expires_at",
+      "Implement rollback snapshot creation on every Evolve action — call before applying change",
+      "Implement `clawhq evolve rollback <change-id>`: reverse specific change by restoring files, reverting config, triggering image rebuild if needed",
+      "Implement `clawhq evolve history`: show all Evolve changes with IDs, timestamps, change type, and rollback status (available/expired)",
+      "Rollback snapshots expire after 30 days",
+      "Write unit tests for rollback mechanics across all change types"
+    ],
+    "acceptanceCriteria": [
+      "Every Evolve action (skill, integration, provider, tool, identity) automatically creates a rollback snapshot before applying",
+      "`clawhq evolve rollback <id>` fully reverses the named change",
+      "Rollback triggers Stage 2 rebuild when the reversed change affected container image",
+      "Rollback snapshots expire after 30 days; expired rollbacks show 'unavailable' in history",
+      "`clawhq evolve history` shows complete change history with rollback availability"
+    ],
+    "startedAt": "2026-03-13T21:31:39-07:00"
+  }
 }
