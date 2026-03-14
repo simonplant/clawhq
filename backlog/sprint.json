@@ -1,32 +1,31 @@
 {
-  "sprintId": "sprint-1773460281",
-  "startedAt": "2026-03-13T20:51:21-07:00",
+  "sprintId": "sprint-1773461196",
+  "startedAt": "2026-03-13T21:06:36-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-047",
-    "title": "Secrets export/import and encrypted storage backend",
+    "id": "FEAT-030",
+    "title": "Fleet management — multi-agent dashboard",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create src/security/secrets/store.ts with SecretStore interface: get(name), set(name, value), delete(name), list(), export(), import()",
-      "Implement PlaintextEnvStore as SecretStore wrapping existing env.ts parseEnv/serializeEnv — this is the default backend",
-      "Implement EncryptedStore as SecretStore: secrets encrypted with AES-256-GCM via Node.js crypto, master key derived from user passphrase via scrypt, stored in .env.enc",
-      "Add `secrets export` sub-subcommand: prompt for encryption passphrase, encrypt all secrets to portable archive (.clawhq-secrets.enc), include metadata and audit trail",
-      "Add `secrets import` sub-subcommand: prompt for passphrase, decrypt archive, verify integrity (HMAC), merge or overwrite into current .env with conflict prompts",
-      "Add `--encrypted` flag to `clawhq secrets` to enable encrypted backend (migrates existing .env to .env.enc, securely wipes plaintext .env)",
-      "Integrate with deploy pipeline: decrypt-to-tmpfs at deploy time (mount secrets as tmpfs volume, decrypt on container start, never write plaintext to disk)",
-      "Write unit tests for encryption round-trip, export/import cycle, backend switching"
+      "Create cmd/fleet.go with fleet subcommand",
+      "Create internal/fleet/ package",
+      "Implement agent discovery: find running ClawHQ agents on the network or from config",
+      "Implement aggregated health view: per-agent status summary",
+      "Implement aggregated cost view: total spend across fleet",
+      "Implement aggregated security view: posture comparison across fleet",
+      "Implement `clawhq fleet doctor` to run doctor across all agents",
+      "Format output as multi-agent dashboard"
     ],
     "acceptanceCriteria": [
-      "`clawhq secrets export` creates encrypted archive of all secrets with passphrase protection",
-      "`clawhq secrets import` restores secrets from encrypted archive with integrity verification",
-      "SecretStore interface abstracts storage — plaintext .env and encrypted backends are interchangeable",
-      "`--encrypted` flag migrates from plaintext to encrypted storage and securely wipes old .env",
-      "Deploy pipeline decrypts to tmpfs (secrets never written to persistent disk in encrypted mode)"
+      "`clawhq fleet` shows aggregated health, cost, and security across all agents",
+      "`clawhq fleet doctor` runs diagnostics on all discovered agents",
+      "Per-agent drill-down is available from fleet view",
+      "Fleet view works with 2+ agents"
     ],
-    "startedAt": "2026-03-13T20:51:21-07:00",
+    "startedAt": "2026-03-13T21:06:36-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T21:01:10-07:00"
+    "completedAt": "2026-03-13T21:14:19-07:00"
   },
-  "completedAt": "2026-03-13T21:01:10-07:00",
+  "completedAt": "2026-03-13T21:14:19-07:00",
   "attempts": 1
 }

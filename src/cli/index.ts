@@ -87,6 +87,7 @@ import {
 } from "../templates/index.js";
 import { formatCheckResult, runUpdate } from "../update/update.js";
 
+import { createFleetCommand } from "./fleet.js";
 import { createProviderCommand } from "./provider.js";
 import { createSecretsCommand } from "./secrets.js";
 
@@ -351,6 +352,7 @@ program
   });
 program.addCommand(createSecretsCommand());
 program.addCommand(createProviderCommand());
+program.addCommand(createFleetCommand());
 program.command("audit").description("View audit logs");
 
 // Deploy phase
