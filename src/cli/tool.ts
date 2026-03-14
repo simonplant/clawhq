@@ -15,6 +15,7 @@ import {
   removeToolOp,
   ToolError,
 } from "../tool/index.js";
+import { recordChange } from "../workspace/evolve-history.js";
 
 function makeToolCtx(opts: { home: string; clawhqDir: string }): ToolContext {
   return {
@@ -65,6 +66,16 @@ export function registerToolCommand(program: Command): void {
       try {
         const result = await installTool(ctx, name);
 
+        // Record evolve change
+        await recordChange(ctx, {
+          changeType: "tool_install",
+          target: result.tool.name,
+          previousState: "not installed",
+          newState: `installed (${result.definition.installMethod})`,
+          rollbackSnapshotId: result.tool.name,
+          requiresRebuild: true,
+        });
+
         console.log(`Tool "${result.tool.name}" installed.`);
         console.log(`  ${result.definition.description}`);
         if (result.requiresRebuild) {
@@ -90,6 +101,16 @@ export function registerToolCommand(program: Command): void {
 
       try {
         const result = await removeToolOp(ctx, name);
+
+        // Record evolve change
+        await recordChange(ctx, {
+          changeType: "tool_remove",
+          target: result.tool.name,
+          previousState: "installed",
+          newState: "removed",
+          rollbackSnapshotId: result.tool.name,
+          requiresRebuild: true,
+        });
 
         console.log(`Tool "${result.tool.name}" removed.`);
         if (result.requiresRebuild) {
