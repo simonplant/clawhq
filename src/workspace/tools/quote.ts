@@ -171,14 +171,14 @@ if $WATCH; then
     change_pct=$(echo "$data" | jq -r '.changePercent | . * 100 | round / 100')
 
     if _awk_cmp "$price < $low"; then
-      echo "ALERT: \${ticker} (\${name}) at \\\$\${price} -- BELOW \\\$\${low} floor (\${change_pct}%)"
+      echo "ALERT: \${ticker} (\${name}) at \\$\${price} -- BELOW \\$\${low} floor (\${change_pct}%)"
       exit_code=2
     elif _awk_cmp "$price > $high"; then
-      echo "ALERT: \${ticker} (\${name}) at \\\$\${price} -- ABOVE \\\$\${high} ceiling (\${change_pct}%)"
+      echo "ALERT: \${ticker} (\${name}) at \\$\${price} -- ABOVE \\$\${high} ceiling (\${change_pct}%)"
       exit_code=2
     else
       if ! $QUIET; then
-        echo "OK: \${ticker} at \\\$\${price} -- within \\\$\${low}-\\\$\${high} (\${change_pct}%)"
+        echo "OK: \${ticker} at \\$\${price} -- within \\$\${low}-\\$\${high} (\${change_pct}%)"
       fi
     fi
   done

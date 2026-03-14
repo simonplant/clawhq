@@ -6,14 +6,15 @@
  */
 
 import type { IntegrationSetup } from "../../init/types.js";
-import type { TasksToolOptions } from "./tasks.js";
+
 import { generateEmailTool, type EmailToolOptions } from "./email.js";
 import { generateIcalTool } from "./ical.js";
 import { generateQuoteTool } from "./quote.js";
+import type { TasksToolOptions } from "./tasks.js";
 import { generateTasksTool } from "./tasks.js";
 import { generateTavilyTool } from "./tavily.js";
-import { generateTodoistTool } from "./todoist.js";
 import { generateTodoistSyncTool } from "./todoist-sync.js";
+import { generateTodoistTool } from "./todoist.js";
 
 /** Integration category → tool names mapping */
 const INTEGRATION_TOOLS: Record<string, string[]> = {

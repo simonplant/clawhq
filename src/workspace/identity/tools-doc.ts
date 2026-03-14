@@ -2,8 +2,8 @@
  * TOOLS.md generator — auto-generates from installed CLI tools.
  */
 
-import type { WizardAnswers } from "../../init/types.js";
 import type { CronJobDefinition } from "../../config/schema.js";
+import type { WizardAnswers } from "../../init/types.js";
 
 export function generateToolsMd(
   answers: WizardAnswers,

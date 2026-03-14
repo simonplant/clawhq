@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mkdtemp } from "node:fs/promises";
 
 import { describe, expect, it, beforeEach } from "vitest";
 

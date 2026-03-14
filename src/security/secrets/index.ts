@@ -20,8 +20,19 @@ export {
   setSecretMetadata,
   writeMetadata,
 } from "./metadata.js";
-export { scanContent, scanFiles, SECRET_PATTERNS } from "./scanner.js";
-export type { ScanMatch, ScanResult, SecretPattern } from "./scanner.js";
+export {
+  ALL_PATTERNS,
+  formatScanTable,
+  isDangerousFilename,
+  isFalsePositive,
+  PII_PATTERNS,
+  redactPreview,
+  scanContent,
+  scanFiles,
+  scanGitHistory,
+  SECRET_PATTERNS,
+} from "./scanner.js";
+export type { MatchType, ScanMatch, ScanResult, SecretPattern } from "./scanner.js";
 export {
   auditKeyPath,
   auditPath,

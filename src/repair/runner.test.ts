@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DetectedIssue, RepairActionResult, RepairConfig, RepairContext, RepairReport } from "./types.js";
-import { DEFAULT_REPAIR_CONFIG } from "./types.js";
-
 // Mock the dependencies
 vi.mock("./monitor.js", () => ({
   detectIssues: vi.fn(),
@@ -20,6 +17,8 @@ import { repairIssue } from "./actions.js";
 import { logRepairAction } from "./logger.js";
 import { detectIssues } from "./monitor.js";
 import { formatRepairReport, runRepair } from "./runner.js";
+import type { DetectedIssue, RepairActionResult, RepairConfig, RepairContext, RepairReport } from "./types.js";
+import { DEFAULT_REPAIR_CONFIG } from "./types.js";
 
 function makeCtx(): RepairContext {
   return {

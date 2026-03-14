@@ -1,31 +1,24 @@
 {
-  "sprintId": "sprint-1773447478",
-  "startedAt": "2026-03-13T17:17:58-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773448439",
+  "startedAt": "2026-03-13T17:33:59-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-024",
-    "title": "Verified destruction — clawhq destroy",
+    "id": "FEAT-032",
+    "title": "Log streaming — clawhq logs",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create cmd/destroy.go with the destroy subcommand",
-      "Create internal/destroy/ package",
-      "Implement dry-run: list all local data, data requiring manual cleanup, backup/export status",
-      "Require deployment name typed out for confirmation",
-      "Implement destruction sequence: stop container -> remove volumes -> wipe workspace -> wipe config -> wipe secrets -> remove images -> remove networks -> remove firewall -> remove clawhq config",
-      "Generate signed destruction manifest with timestamps and verification hashes",
-      "Add --keep-export flag to preserve export bundle"
+      "Create cmd/logs.go with the logs subcommand",
+      "Implement docker logs streaming with follow mode",
+      "Implement log filtering by category (agent, gateway, cron, error)",
+      "Implement `clawhq logs --cron <job>` for per-job execution history",
+      "Implement `clawhq logs --since <duration>` for time-bounded output"
     ],
     "acceptanceCriteria": [
-      "`clawhq destroy --dry-run` shows exactly what will be destroyed",
-      "No backup/export prompts user to create one first",
-      "Deployment name must be typed for confirmation",
-      "Destruction manifest is generated with cryptographic proof",
-      "All data locations are cleaned including volumes, configs, secrets, images, networks"
+      "`clawhq logs` streams container logs in real-time",
+      "Filtering by category works correctly",
+      "`clawhq logs --cron heartbeat` shows cron job execution history",
+      "--since flag correctly bounds output by time"
     ],
-    "startedAt": "2026-03-13T17:17:58-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-13T17:27:56-07:00"
-  },
-  "completedAt": "2026-03-13T17:27:56-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-13T17:33:59-07:00"
+  }
 }

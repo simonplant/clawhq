@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { RepairContext } from "./types.js";
-
 // Mock DockerClient
 vi.mock("../docker/client.js", () => {
   class MockDockerClient {
@@ -36,6 +34,7 @@ import { checkHealth } from "../gateway/health.js";
 import { chainExists } from "../security/firewall/iptables.js";
 
 import { checkFirewall, checkGateway, checkNetwork, detectIssues } from "./monitor.js";
+import type { RepairContext } from "./types.js";
 
 const MockDockerClient = DockerClient as unknown as {
   psImpl: (() => Promise<Array<{ id: string; name: string; state: string; status: string; image: string; ports: string }>>) | undefined;
@@ -73,8 +72,9 @@ describe("checkGateway", () => {
 
     const issue = await checkGateway(makeCtx());
     expect(issue).not.toBeNull();
-    expect(issue!.type).toBe("gateway_down");
-    expect(issue!.message).toContain("No agent container");
+    if (issue == null) return;
+    expect(issue.type).toBe("gateway_down");
+    expect(issue.message).toContain("No agent container");
   });
 
   it("detects container not running", async () => {
@@ -84,8 +84,9 @@ describe("checkGateway", () => {
 
     const issue = await checkGateway(makeCtx());
     expect(issue).not.toBeNull();
-    expect(issue!.type).toBe("gateway_down");
-    expect(issue!.message).toContain("exited");
+    if (issue == null) return;
+    expect(issue.type).toBe("gateway_down");
+    expect(issue.message).toContain("exited");
   });
 
   it("detects gateway down even when container is running", async () => {
@@ -100,8 +101,9 @@ describe("checkGateway", () => {
 
     const issue = await checkGateway(makeCtx());
     expect(issue).not.toBeNull();
-    expect(issue!.type).toBe("gateway_down");
-    expect(issue!.message).toContain("down");
+    if (issue == null) return;
+    expect(issue.type).toBe("gateway_down");
+    expect(issue.message).toContain("down");
   });
 });
 
@@ -126,8 +128,9 @@ describe("checkNetwork", () => {
 
     const issue = await checkNetwork(makeCtx());
     expect(issue).not.toBeNull();
-    expect(issue!.type).toBe("network_drop");
-    expect(issue!.message).toContain("ECONNREFUSED");
+    if (issue == null) return;
+    expect(issue.type).toBe("network_drop");
+    expect(issue.message).toContain("ECONNREFUSED");
   });
 
   it("returns null for non-network errors", async () => {
@@ -159,8 +162,9 @@ describe("checkFirewall", () => {
 
     const issue = await checkFirewall(makeCtx());
     expect(issue).not.toBeNull();
-    expect(issue!.type).toBe("firewall_missing");
-    expect(issue!.message).toContain("CLAWHQ_FWD");
+    if (issue == null) return;
+    expect(issue.type).toBe("firewall_missing");
+    expect(issue.message).toContain("CLAWHQ_FWD");
   });
 
   it("returns null when iptables is unsupported", async () => {

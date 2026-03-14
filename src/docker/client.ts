@@ -5,7 +5,7 @@
  * which keeps the dependency tree minimal and matches how operators debug.
  */
 
-import { execFile as execFileCb } from "node:child_process";
+import { execFile as execFileCb, spawn } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFile = promisify(execFileCb);
@@ -269,14 +269,76 @@ export class DockerClient {
       });
   }
 
-  /** Stream or fetch container logs. */
+  /** Fetch container logs (buffered). */
   async logs(
-    options: { tail?: number; service?: string; signal?: AbortSignal } = {},
+    options: {
+      tail?: number;
+      since?: string;
+      service?: string;
+      timestamps?: boolean;
+      signal?: AbortSignal;
+    } = {},
   ): Promise<ExecResult> {
     const args = ["logs"];
     if (options.tail !== undefined) args.push("--tail", String(options.tail));
+    if (options.since) args.push("--since", options.since);
+    if (options.timestamps) args.push("--timestamps");
     if (options.service) args.push(options.service);
     return this.composeExec(args, { signal: options.signal });
+  }
+
+  /**
+   * Stream container logs in real-time (follow mode).
+   * Pipes stdout/stderr directly to the provided writable streams.
+   * Returns a promise that resolves when the stream ends or is aborted.
+   */
+  streamLogs(options: {
+    tail?: number;
+    since?: string;
+    service?: string;
+    timestamps?: boolean;
+    stdout: NodeJS.WritableStream;
+    stderr: NodeJS.WritableStream;
+    signal?: AbortSignal;
+  }): Promise<void> {
+    const args = ["compose", "logs", "--follow"];
+    if (options.tail !== undefined) args.push("--tail", String(options.tail));
+    if (options.since) args.push("--since", options.since);
+    if (options.timestamps) args.push("--timestamps");
+    if (options.service) args.push(options.service);
+
+    return new Promise<void>((resolve, reject) => {
+      const child = spawn(this.composeBin, args, {
+        cwd: this.cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      child.stdout.pipe(options.stdout, { end: false });
+      child.stderr.pipe(options.stderr, { end: false });
+
+      const onAbort = () => {
+        child.kill("SIGTERM");
+      };
+
+      if (options.signal) {
+        if (options.signal.aborted) {
+          child.kill("SIGTERM");
+          resolve();
+          return;
+        }
+        options.signal.addEventListener("abort", onAbort, { once: true });
+      }
+
+      child.on("close", () => {
+        options.signal?.removeEventListener("abort", onAbort);
+        resolve();
+      });
+
+      child.on("error", (err) => {
+        options.signal?.removeEventListener("abort", onAbort);
+        reject(err);
+      });
+    });
   }
 
   /** Inspect a Docker object (container, image, etc.). */

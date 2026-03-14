@@ -8,6 +8,9 @@
  * which calls the same underlying generators.
  */
 
+import { generate } from "../init/generate.js";
+import type { WizardAnswers } from "../init/types.js";
+
 import type {
   ClawHQConfig,
   DeploymentBundle,
@@ -15,8 +18,6 @@ import type {
 } from "./schema.js";
 import { validate, validateCronExpression, type ValidationContext } from "./validator.js";
 
-import { generate } from "../init/generate.js";
-import type { WizardAnswers } from "../init/types.js";
 
 export interface GenerateOptions {
   templatePath?: string;

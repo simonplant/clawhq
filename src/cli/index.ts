@@ -46,6 +46,12 @@ import {
   updateFirewallAllowlist,
 } from "../integrate/index.js";
 import type { IntegrateContext } from "../integrate/index.js";
+import type { LogCategory } from "../logs/index.js";
+import {
+  formatCronHistory,
+  readCronHistory,
+  streamContainerLogs,
+} from "../logs/index.js";
 import type { RepairConfig, RepairContext } from "../repair/index.js";
 import {
   DEFAULT_REPAIR_CONFIG,
@@ -55,7 +61,7 @@ import {
   runRepair,
 } from "../repair/index.js";
 import { formatCredTable, runProbesFromFile } from "../security/credentials/index.js";
-import { createSecretsCommand } from "./secrets.js";
+import { formatScanTable, scanFiles, scanGitHistory } from "../security/secrets/scanner.js";
 import {
   activateSkill,
   applySkillUpdate,
@@ -79,6 +85,8 @@ import {
   loadBuiltInTemplates,
 } from "../templates/index.js";
 import { formatCheckResult, runUpdate } from "../update/update.js";
+
+import { createSecretsCommand } from "./secrets.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string; description: string };
@@ -273,7 +281,44 @@ program
   });
 
 // Secure phase
-program.command("scan").description("Scan for PII and leaked secrets");
+program
+  .command("scan")
+  .description("Scan for PII and leaked secrets")
+  .option("--path <path>", "Directory to scan", "~/.openclaw/workspace")
+  .option("--history", "Include git history in scan")
+  .option("--json", "Output results as JSON")
+  .action(async (opts: { path: string; history?: boolean; json?: boolean }) => {
+    const scanPath = opts.path.replace(/^~/, process.env.HOME ?? "~");
+    const resolvedPath = resolve(scanPath);
+
+    try {
+      const result = await scanFiles(resolvedPath);
+      let historyMatches: Awaited<ReturnType<typeof scanGitHistory>> = [];
+
+      if (opts.history) {
+        historyMatches = await scanGitHistory(resolvedPath);
+      }
+
+      if (opts.json) {
+        console.log(JSON.stringify({
+          ...result,
+          historyMatches,
+          totalIssues: result.matches.length + historyMatches.length,
+        }, null, 2));
+      } else {
+        console.log(formatScanTable(result, historyMatches));
+      }
+
+      if (result.matches.length + historyMatches.length > 0) {
+        process.exitCode = 1;
+      }
+    } catch (err: unknown) {
+      console.error(
+        `Scan failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      process.exitCode = 1;
+    }
+  });
 program
   .command("creds")
   .description("Check credential health")
@@ -936,7 +981,73 @@ program
       process.exitCode = 1;
     }
   });
-program.command("logs").description("Stream agent logs");
+program
+  .command("logs")
+  .description("Stream agent logs")
+  .option("--follow, -f", "Follow log output in real-time")
+  .option("--category <type>", "Filter by category (agent, gateway, cron, error)")
+  .option("--cron <job>", "Show execution history for a specific cron job")
+  .option("--since <duration>", "Show logs since duration (e.g. 30m, 1h, 2d)")
+  .option("--tail <lines>", "Number of lines to show from end")
+  .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
+  .action(async (opts) => {
+    const openclawHome = opts.home.replace(/^~/, process.env.HOME ?? "~");
+
+    // --cron mode: show cron job execution history
+    if (opts.cron) {
+      try {
+        const entries = await readCronHistory(openclawHome, opts.cron, {
+          since: opts.since,
+        });
+        console.log(formatCronHistory(entries));
+      } catch (err: unknown) {
+        console.error(
+          `Failed to read cron history: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    // Validate category if provided
+    const validCategories: LogCategory[] = ["agent", "gateway", "cron", "error"];
+    if (opts.category && !validCategories.includes(opts.category as LogCategory)) {
+      console.error(
+        `Invalid category "${opts.category}". Valid: ${validCategories.join(", ")}`,
+      );
+      process.exitCode = 1;
+      return;
+    }
+
+    // Set up abort controller for graceful shutdown
+    const ac = new AbortController();
+    const onSignal = () => ac.abort();
+    process.on("SIGINT", onSignal);
+    process.on("SIGTERM", onSignal);
+
+    try {
+      await streamContainerLogs({
+        openclawHome,
+        follow: Boolean(opts.follow),
+        category: opts.category as LogCategory | undefined,
+        since: opts.since,
+        tail: opts.tail ? parseInt(opts.tail, 10) : undefined,
+        signal: ac.signal,
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        // Graceful shutdown via Ctrl+C
+        return;
+      }
+      console.error(
+        `Log streaming failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      process.exitCode = 1;
+    } finally {
+      process.off("SIGINT", onSignal);
+      process.off("SIGTERM", onSignal);
+    }
+  });
 
 // Agent management
 const agentCmd = program

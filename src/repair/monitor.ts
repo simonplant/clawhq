@@ -71,7 +71,8 @@ export async function checkNetwork(ctx: RepairContext): Promise<DetectedIssue | 
   if (health.status === "down" && health.error) {
     // Distinguish network errors from container-down errors
     const networkErrors = ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "EHOSTUNREACH", "fetch failed"];
-    const isNetworkError = networkErrors.some((e) => health.error!.includes(e));
+    const errorMsg = health.error;
+    const isNetworkError = networkErrors.some((e) => errorMsg.includes(e));
 
     if (isNetworkError) {
       return {
