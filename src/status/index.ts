@@ -17,6 +17,7 @@ export type {
   OpenClawSourceStatus,
   StatusOptions,
   StatusReport,
+  StructuredMemoryStatus,
   WorkspaceMetrics,
 } from "./types.js";
 

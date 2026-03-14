@@ -11,7 +11,15 @@ export { formatSummary } from "./summary.js";
 export { getBuiltInTemplates, getTemplateById, formatTemplateList } from "./templates.js";
 export { createReadlineIO } from "./readline-io.js";
 export {
+  discoverFromEmail,
+  discoverOllamaModels,
+  isOllamaAvailable,
+  suggestRouting,
+  runDetection,
+} from "./detect.js";
+export {
   stepBasics,
+  stepDetection,
   stepIntegrations,
   stepModelRouting,
   stepTemplate,
@@ -23,6 +31,10 @@ export type {
   TemplateChoice,
   IntegrationSetup,
   ModelRoutingSetup,
+  DetectionResult,
+  DiscoveredModel,
+  RoutingSuggestion,
+  ProviderDiscovery,
   PromptFn,
   SelectFn,
   ConfirmFn,

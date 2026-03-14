@@ -201,6 +201,37 @@ function formatChannelSection(report: StatusReport): string {
   return lines.join("\n");
 }
 
+// --- Structured memory section ---
+
+function formatStructuredMemorySection(report: StatusReport): string {
+  const { structuredMemory } = report;
+  const lines: string[] = [sectionHeader("STRUCTURED MEMORY")];
+
+  if (!structuredMemory) {
+    lines.push("  No structured memory entries");
+    return lines.join("\n");
+  }
+
+  for (const tier of structuredMemory.tiers) {
+    const size = formatBytes(tier.sizeBytes);
+    const ageInfo = tier.oldestEntryAge !== null ? ` (oldest: ${tier.oldestEntryAge}d)` : "";
+    lines.push(`    ${pad(tier.name, 6)}  ${pad(String(tier.entryCount), 5)} entries  ${pad(size, 10)}${ageInfo}`);
+  }
+  lines.push(`    Total: ${structuredMemory.totalEntries} entries, ${formatBytes(structuredMemory.totalSizeBytes)}`);
+
+  if (structuredMemory.hotTierOverBudget) {
+    lines.push("    ** HOT TIER OVER BUDGET ** Run tier transitions");
+  }
+  if (structuredMemory.pendingTransitions > 0) {
+    lines.push(`    ${structuredMemory.pendingTransitions} entries pending transition`);
+  }
+  if (structuredMemory.staleEntriesCount > 0) {
+    lines.push(`    ${structuredMemory.staleEntriesCount} stale entries (30+ days)`);
+  }
+
+  return lines.join("\n");
+}
+
 // --- Public API ---
 
 /**
@@ -213,6 +244,7 @@ export function formatDashboard(report: StatusReport): string {
     formatIntegrationSection(report),
     formatChannelSection(report),
     formatWorkspaceSection(report),
+    formatStructuredMemorySection(report),
     formatEgressSection(report),
   ];
 

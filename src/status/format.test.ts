@@ -36,6 +36,7 @@ function makeReport(overrides: Partial<StatusReport> = {}): StatusReport {
       totalMemoryBytes: 167936,
       totalIdentityTokens: 1536,
     },
+    structuredMemory: null,
     channels: [],
     openclawSource: {
       pinnedVersion: "v0.14.2",

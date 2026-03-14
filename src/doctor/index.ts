@@ -35,3 +35,4 @@ export { containerHealthCheck } from "./checks/container-health.js";
 export { portAvailabilityCheck } from "./checks/port-availability.js";
 export { securityPostureCheck } from "./checks/security-posture.js";
 export type { SecurityPostureContext } from "./checks/security-posture.js";
+export { memoryHealthCheck } from "./checks/memory-health.js";

@@ -688,7 +688,10 @@
         "Memory health is reported in doctor and status"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 2 Evolve — biggest differentiator for agent longevity. Raw OpenClaw agents fail because memory bloats to 360KB in 3 days. This is what keeps agents working past month 1. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. Memory lifecycle is filesystem management of OpenClaw workspace files — reading conversation logs, restructuring them, managing hot/warm/cold file tiers. LLM summarization for tier transitions calls Ollama directly (localhost:11434). Tech Lead: remove FEAT-011 from dependsOn. Real dependency: FEAT-002 (config) only. This item is unblocked."
+      "groomingNotes": "Phase 2 Evolve — biggest differentiator for agent longevity. Raw OpenClaw agents fail because memory bloats to 360KB in 3 days. This is what keeps agents working past month 1. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. Memory lifecycle is filesystem management of OpenClaw workspace files — reading conversation logs, restructuring them, managing hot/warm/cold file tiers. LLM summarization for tier transitions calls Ollama directly (localhost:11434). Tech Lead: remove FEAT-011 from dependsOn. Real dependency: FEAT-002 (config) only. This item is unblocked.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-13T22:15:01-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-022",
@@ -718,7 +721,10 @@
         "Rejected approvals store reason as preference signal"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 2 Transparency — the daily summary builds user trust with Privacy Migrants. Without it, the agent is a black box and they can't verify it's working as intended. DEPENDENCY FIX NEEDED: Both FEAT-011 and FEAT-012 are in dependsOn but are wontdo. Activity digest reads container logs and workspace state directly. Egress summary reads iptables LOG entries (see FEAT-059). LLM summarization calls Ollama directly. Tech Lead: replace dependsOn with [FEAT-036, FEAT-010] — Gateway WebSocket (live state) and status dashboard (data sources). Approval queue is messaging-channel-based and standalone."
+      "groomingNotes": "Phase 2 Transparency — the daily summary builds user trust with Privacy Migrants. Without it, the agent is a black box and they can't verify it's working as intended. DEPENDENCY FIX NEEDED: Both FEAT-011 and FEAT-012 are in dependsOn but are wontdo. Activity digest reads container logs and workspace state directly. Egress summary reads iptables LOG entries (see FEAT-059). LLM summarization calls Ollama directly. Tech Lead: replace dependsOn with [FEAT-036, FEAT-010] — Gateway WebSocket (live state) and status dashboard (data sources). Approval queue is messaging-channel-based and standalone.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-13T22:15:21-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-023",
@@ -1064,9 +1070,9 @@
       "title": "Integration auto-detection during setup",
       "description": "Detect available integrations automatically during init: discover calendar/task services from email provider, detect Ollama models, suggest optimal routing.",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [],
       "steps": [
         "Extend internal/init/ with auto-detection logic",
@@ -1083,7 +1089,8 @@
         "User confirms all auto-detected integrations before config generation"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 2 Plan — reduces setup friction for Privacy Migrants during init flow. Discovering available integrations automatically means fewer questions and less config error. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. Ollama model discovery is a direct subprocess call (ollama list) — not a routing engine. Email provider -> calendar discovery is a simple heuristic lookup. Tech Lead: remove FEAT-011 from dependsOn. Real dependency: FEAT-017 (init wizard) only. This item is unblocked."
+      "groomingNotes": "Phase 2 Plan — reduces setup friction for Privacy Migrants during init flow. Discovering available integrations automatically means fewer questions and less config error. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. Ollama model discovery is a direct subprocess call (ollama list) — not a routing engine. Email provider -> calendar discovery is a simple heuristic lookup. Tech Lead: remove FEAT-011 from dependsOn. Real dependency: FEAT-017 (init wizard) only. This item is unblocked.",
+      "completedAt": "2026-03-13T22:26:09-07:00"
     },
     {
       "id": "FEAT-035",
