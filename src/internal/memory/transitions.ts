@@ -11,7 +11,7 @@
  */
 
 import { deleteEntry, findTransitionCandidates, writeEntry } from "./store.js";
-import type { TierPolicy, TransitionResult } from "./types.js";
+import type { StructuredMemoryEntry, TierPolicy, TransitionResult } from "./types.js";
 import { DEFAULT_TIER_POLICY } from "./types.js";
 
 // --- PII masking ---

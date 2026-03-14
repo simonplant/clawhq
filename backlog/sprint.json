@@ -1,29 +1,34 @@
 {
-  "sprintId": "sprint-1773465321",
-  "startedAt": "2026-03-13T22:15:21-07:00",
+  "sprintId": "sprint-1773496143",
+  "startedAt": "2026-03-14T06:49:03-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-034",
-    "title": "Integration auto-detection during setup",
+    "id": "FEAT-021",
+    "title": "Memory lifecycle management — structured knowledge graph",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Extend internal/init/ with auto-detection logic",
-      "Implement email provider -> calendar/task discovery (e.g., iCloud email -> iCloud calendar)",
-      "Implement Ollama model discovery: list available models, assess capabilities",
-      "Implement optimal routing suggestion based on available models and template requirements",
-      "Pre-fill integration config from detected services",
-      "Show discovery results to user for confirmation during init flow"
+      "Create internal/memory/ package",
+      "Define StructuredMemory types: preferences (hierarchical), relationships (cross-linked), domain_expertise, context",
+      "Implement memory ingestion: parse raw conversation logs into structured knowledge entries",
+      "Implement hot tier: recent structured knowledge, <100KB, <7 days",
+      "Implement warm tier: LLM-summarized knowledge, PII-aware, <90 days",
+      "Implement cold tier: further compressed, PII-masked, >90 days (or delete per policy)",
+      "Implement tier transitions with local model summarization",
+      "Implement background reflection: analyze existing memories for new connections during idle time",
+      "Add memory section to status dashboard and doctor checks"
     ],
     "acceptanceCriteria": [
-      "Email provider connection triggers related service discovery",
-      "Ollama models are discovered and capabilities assessed",
-      "Routing suggestions match template requirements to available models",
-      "User confirms all auto-detected integrations before config generation"
+      "Raw conversations are transformed into structured knowledge (not stored as flat logs)",
+      "Hot -> warm tier transition summarizes while preserving key information",
+      "Warm -> cold tier further compresses and masks PII",
+      "Background reflection detects and proposes new connections",
+      "All summarization runs on local models by default",
+      "Memory health is reported in doctor and status"
     ],
-    "startedAt": "2026-03-13T22:15:21-07:00",
+    "startedAt": "2026-03-14T06:49:03-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T22:26:09-07:00"
+    "completedAt": "2026-03-14T06:57:01-07:00"
   },
-  "completedAt": "2026-03-13T22:26:09-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-14T06:57:01-07:00",
+  "attempts": 2
 }
