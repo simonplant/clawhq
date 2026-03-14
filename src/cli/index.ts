@@ -53,6 +53,7 @@ import {
   runRepair,
 } from "../repair/index.js";
 import { formatCredTable, runProbesFromFile } from "../security/credentials/index.js";
+import { createSecretsCommand } from "./secrets.js";
 import {
   activateSkill,
   applySkillUpdate,
@@ -299,6 +300,7 @@ program
       process.exitCode = 1;
     }
   });
+program.addCommand(createSecretsCommand());
 program.command("audit").description("View audit logs");
 
 // Deploy phase

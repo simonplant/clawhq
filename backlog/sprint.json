@@ -1,31 +1,31 @@
 {
-  "sprintId": "sprint-1773445675",
-  "startedAt": "2026-03-13T16:47:55-07:00",
+  "sprintId": "sprint-1773446224",
+  "startedAt": "2026-03-13T16:57:04-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-039",
-    "title": "Integration management — clawhq integrate add/remove/swap/list",
+    "id": "FEAT-044",
+    "title": "Secrets CLI — add and list commands",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create src/cli/integrate.ts with integrate subcommand group",
-      "Implement `clawhq integrate add <type>`: walk through provider selection (e.g., Google Calendar vs. iCloud vs. CalDAV), credential setup with live validation, config generation",
-      "On add: write credential to .env, install integration tool, update TOOLS.md, check cron dependencies, update egress firewall allowlist for provider's API domains, run targeted doctor health check",
-      "Implement `clawhq integrate remove <name>`: clean credential from .env, uninstall tool, update TOOLS.md, update identity files to remove references, flag orphaned cron dependencies, tighten firewall allowlist",
-      "Implement `clawhq integrate swap <category> <new-provider>`: change backend provider (e.g., `integrate swap calendar icloud`) while preserving agent behavior — same category interface, new backend",
-      "Implement `clawhq integrate list`: show all integrations with provider, status, credential health, last-used",
-      "Write unit tests for integration lifecycle and firewall allowlist management"
+      "Create src/cli/secrets.ts with `secrets` subcommand and `add`/`list` sub-subcommands",
+      "Implement `secrets add <name>`: prompt for value with masked input (no echo), write to .env via existing parseEnv/serializeEnv in src/security/secrets/env.ts, enforce chmod 600",
+      "Add optional `--validate` flag to `secrets add` that runs the matching credential health probe from src/security/credentials/index.ts after writing",
+      "Implement `secrets list`: read .env, display table with columns: name, provider_category (inferred from key name patterns), health_status (via credential probes), age (from metadata), last_rotated — never display values",
+      "Create src/security/secrets/metadata.ts to track secret metadata (created_at, rotated_at, provider_category) in a sidecar JSON file (.env.meta) with 600 permissions",
+      "Add SecretEntry type definition in src/security/secrets/types.ts matching PRODUCT.md data model",
+      "Write unit tests for add flow (masked input mock, .env write, permission enforcement) and list display formatting"
     ],
     "acceptanceCriteria": [
-      "`clawhq integrate add` validates credentials live before completing setup",
-      "Adding an integration atomically updates egress firewall allowlist for that provider's domains",
-      "`clawhq integrate swap` changes provider without changing agent's task behavior (same category interface)",
-      "`clawhq integrate remove` tightens firewall allowlist and cleans all config references",
-      "`clawhq integrate list` shows credential health status per integration"
+      "`clawhq secrets add MY_KEY` prompts for masked input and writes to .env with 600 permissions",
+      "`clawhq secrets add MY_KEY --validate` runs health probe after writing and reports valid/invalid",
+      "`clawhq secrets list` shows all secrets with name, category, health, age — never shows values",
+      "Secret metadata (.env.meta) tracks created_at and provider_category",
+      "Unit tests cover .env write, metadata tracking, and list formatting"
     ],
-    "startedAt": "2026-03-13T16:47:55-07:00",
+    "startedAt": "2026-03-13T16:57:04-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T16:57:03-07:00"
+    "completedAt": "2026-03-13T17:04:17-07:00"
   },
-  "completedAt": "2026-03-13T16:57:03-07:00",
+  "completedAt": "2026-03-13T17:04:17-07:00",
   "attempts": 1
 }

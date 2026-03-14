@@ -1383,9 +1383,9 @@
       "title": "Secrets CLI — add and list commands",
       "description": "Implement `clawhq secrets add <name>` (masked input, optional health probe validation) and `clawhq secrets list` (names, provider category, health status, age, last rotated — never values). Builds on FEAT-005's env.ts and credential health probes.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-005"
       ],
@@ -1406,7 +1406,8 @@
         "Unit tests cover .env write, metadata tracking, and list formatting"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "First of four items implementing the expanded Secrets lifecycle management story from PRODUCT.md § Secure. Builds directly on FEAT-005's existing env.ts and credential health probes. The SecretEntry type and .env.meta sidecar pattern establish the foundation for rotate/revoke/audit in subsequent items."
+      "groomingNotes": "First of four items implementing the expanded Secrets lifecycle management story from PRODUCT.md § Secure. Builds directly on FEAT-005's existing env.ts and credential health probes. The SecretEntry type and .env.meta sidecar pattern establish the foundation for rotate/revoke/audit in subsequent items.",
+      "completedAt": "2026-03-13T17:04:17-07:00"
     },
     {
       "id": "FEAT-045",
