@@ -85,6 +85,32 @@ describe("scanContent", () => {
 });
 
 describe("PII patterns", () => {
+  it("detects person names in structured fields", () => {
+    const content = '{"full_name": "John Smith"}';
+    const matches = scanContent(content, "data.json");
+    expect(matches.some((m) => m.pattern === "Person name (structured field)")).toBe(true);
+    expect(matches[0]?.type).toBe("pii");
+  });
+
+  it("detects person names with various field keys", () => {
+    const cases = [
+      '"patient_name": "Jane Doe"',
+      '"customer-name": "Alice Johnson"',
+      '"first_name": "Bob Williams"',
+      '"last_name": "Mary Davis"',
+    ];
+    for (const c of cases) {
+      const matches = scanContent(c, "test.json");
+      expect(matches.some((m) => m.pattern === "Person name (structured field)")).toBe(true);
+    }
+  });
+
+  it("does not detect generic name fields with non-name values", () => {
+    const content = '{"user_name": "admin123"}';
+    const matches = scanContent(content, "test.json");
+    expect(matches.some((m) => m.pattern === "Person name (structured field)")).toBe(false);
+  });
+
   it("detects SSN", () => {
     const content = "ssn: 123-45-6789";
     const matches = scanContent(content, "test.txt");

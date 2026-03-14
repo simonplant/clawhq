@@ -57,6 +57,11 @@ export const SECRET_PATTERNS: SecretPattern[] = [
 
 /** PII patterns. */
 export const PII_PATTERNS: SecretPattern[] = [
+  {
+    name: "Person name (structured field)",
+    pattern: /["'](?:full[_-]?name|first[_-]?name|last[_-]?name|patient[_-]?name|customer[_-]?name|user[_-]?name|recipient|beneficiary)["']\s*[:=]\s*["'][A-Z][a-z]+(?:\s+[A-Z][a-z]+)+["']/,
+    type: "pii",
+  },
   { name: "SSN", pattern: /\b\d{3}-\d{2}-\d{4}\b/, type: "pii" },
   { name: "Credit card", pattern: /\b(?:4\d{3}|5[1-5]\d{2}|3[47]\d{2}|6(?:011|5\d{2}))[- ]?\d{4}[- ]?\d{4}[- ]?\d{3,4}\b/, type: "pii" },
   { name: "Phone number", pattern: /\b(?:\+1[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b/, type: "pii" },

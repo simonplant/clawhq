@@ -1,24 +1,32 @@
 {
-  "sprintId": "sprint-1773451538",
-  "startedAt": "2026-03-13T18:25:38-07:00",
-  "status": "in_progress",
+  "sprintId": "sprint-1773459787",
+  "startedAt": "2026-03-13T20:43:07-07:00",
+  "status": "completed",
   "item": {
-    "id": "FEAT-032",
-    "title": "Log streaming — clawhq logs",
+    "id": "FEAT-025",
+    "title": "PII and secret scanning — clawhq scan",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create cmd/logs.go with the logs subcommand",
-      "Implement docker logs streaming with follow mode",
-      "Implement log filtering by category (agent, gateway, cron, error)",
-      "Implement `clawhq logs --cron <job>` for per-job execution history",
-      "Implement `clawhq logs --since <duration>` for time-bounded output"
+      "Create cmd/scan.go with the scan subcommand",
+      "Extend internal/secrets/ with PII pattern scanning",
+      "Implement PII patterns: names, SSN, credit cards, phone numbers, email addresses",
+      "Implement secret patterns: ghp_*, sk-ant-*, AKIA*, Bearer tokens, JWTs, private keys",
+      "Implement dangerous filename detection: .env, *.pem, *.key",
+      "Implement false positive filtering: CHANGE_ME placeholders, env var references, comments",
+      "Add --history flag to include git history in scan",
+      "Format output as table with file, line, pattern type, and match preview (redacted)"
     ],
     "acceptanceCriteria": [
-      "`clawhq logs` streams container logs in real-time",
-      "Filtering by category works correctly",
-      "`clawhq logs --cron heartbeat` shows cron job execution history",
-      "--since flag correctly bounds output by time"
+      "`clawhq scan` detects PII and secrets in agent workspace files",
+      "False positive filtering removes common benign patterns",
+      "--history flag scans git history for leaked secrets",
+      "Output shows file, line, and pattern type without exposing full secret",
+      "Exit code is non-zero when issues are found"
     ],
-    "startedAt": "2026-03-13T18:25:38-07:00"
-  }
+    "startedAt": "2026-03-13T20:43:07-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-13T20:46:45-07:00"
+  },
+  "completedAt": "2026-03-13T20:46:45-07:00",
+  "attempts": 1
 }
