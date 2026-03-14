@@ -38,6 +38,7 @@ import { runFixes } from "../doctor/fix.js";
 import { formatJson, formatTable, runChecks } from "../doctor/runner.js";
 import type { DoctorContext } from "../doctor/types.js";
 import { createExport } from "../export/export.js";
+import { runSmartInit } from "../inference/index.js";
 import { createReadlineIO, runWizard } from "../init/index.js";
 import {
   addIntegration,
@@ -136,25 +137,40 @@ program
   .command("init")
   .description("Initialize a new agent deployment")
   .option("--guided", "Run interactive guided questionnaire")
+  .option("--smart", "AI-powered config inference via local Ollama model")
+  .option("--ollama-host <url>", "Ollama API host", "http://localhost:11434")
+  .option("--ollama-model <name>", "Ollama model to use", "llama3:8b")
   .option("--output <path>", "Output directory for generated config", "~/.openclaw")
-  .action(async (opts: { guided?: boolean; output: string }) => {
+  .action(async (opts: { guided?: boolean; smart?: boolean; ollamaHost: string; ollamaModel: string; output: string }) => {
     const outputDir = opts.output.replace(/^~/, process.env.HOME ?? "~");
-
-    if (!opts.guided) {
-      // Default to guided mode when no other mode is specified
-      console.log("Hint: Use `clawhq init --guided` for the interactive setup wizard.");
-      console.log("      Use `clawhq init --smart` for AI-powered config inference (coming soon).");
-      console.log("");
-      console.log("Starting guided setup...");
-      console.log("");
-    }
 
     const { io, close } = createReadlineIO();
     try {
-      const result = await runWizard(io, outputDir);
+      if (opts.smart) {
+        const result = await runSmartInit({
+          io,
+          outputDir,
+          ollamaHost: opts.ollamaHost,
+          ollamaModel: opts.ollamaModel,
+        });
 
-      if (result.writeResult.errors.length > 0) {
-        process.exitCode = 1;
+        if (result.writeResult.errors.length > 0) {
+          process.exitCode = 1;
+        }
+      } else {
+        if (!opts.guided) {
+          console.log("Hint: Use `clawhq init --guided` for the interactive setup wizard.");
+          console.log("      Use `clawhq init --smart` for AI-powered config inference.");
+          console.log("");
+          console.log("Starting guided setup...");
+          console.log("");
+        }
+
+        const result = await runWizard(io, outputDir);
+
+        if (result.writeResult.errors.length > 0) {
+          process.exitCode = 1;
+        }
       }
     } finally {
       close();
