@@ -18,6 +18,60 @@ import type { SmokeCheckResult, SmokeTestOptions } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
+// --- Container running verification ---
+
+/**
+ * Verify the OpenClaw container is running via Docker.
+ * This is the most basic smoke check — if the container isn't up, nothing else matters.
+ */
+export async function checkContainerRunning(_opts: SmokeTestOptions): Promise<SmokeCheckResult> {
+  const start = Date.now();
+
+  try {
+    const { stdout } = await execFileAsync(
+      "docker",
+      ["ps", "--filter", "name=openclaw", "--format", "{{.ID}}\t{{.Status}}\t{{.State}}"],
+      { timeout: 10_000 },
+    );
+
+    const lines = stdout.trim().split("\n").filter((l) => l.length > 0);
+    if (lines.length === 0) {
+      return {
+        name: "Container running",
+        status: "fail",
+        message: "No OpenClaw container found. Fix: Run `clawhq up` to deploy the agent.",
+        durationMs: Date.now() - start,
+      };
+    }
+
+    // Parse the first matching container
+    const [id, status, state] = lines[0].split("\t");
+
+    if (state !== "running") {
+      return {
+        name: "Container running",
+        status: "fail",
+        message: `Container ${id} is ${state} (${status}). Fix: Run \`clawhq restart\` or check logs with \`clawhq logs\`.`,
+        durationMs: Date.now() - start,
+      };
+    }
+
+    return {
+      name: "Container running",
+      status: "pass",
+      message: `Container ${id} is running (${status})`,
+      durationMs: Date.now() - start,
+    };
+  } catch (err: unknown) {
+    return {
+      name: "Container running",
+      status: "fail",
+      message: `Failed to check container status: ${err instanceof Error ? err.message : String(err)}. Fix: Ensure Docker is running and accessible.`,
+      durationMs: Date.now() - start,
+    };
+  }
+}
+
 // --- Identity file verification ---
 
 /** Known OpenClaw identity files. */

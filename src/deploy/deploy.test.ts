@@ -100,6 +100,7 @@ vi.mock("../smoke/index.js", () => ({
   runSmokeTest: vi.fn().mockResolvedValue({
     passed: true,
     checks: [
+      { name: "Container running", status: "pass", message: "Container abc123 is running", durationMs: 3 },
       { name: "Identity files", status: "pass", message: "4 files verified", durationMs: 5 },
       { name: "Test message", status: "pass", message: "Agent responded", durationMs: 100 },
       { name: "Integration probe", status: "skip", message: "No integrations", durationMs: 2 },

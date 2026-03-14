@@ -41,7 +41,7 @@ vi.mock("../gateway/websocket.js", () => {
 
 
 
-import { checkIdentityFiles, checkTestMessage, checkIntegrations } from "./checks.js";
+import { checkContainerRunning, checkIdentityFiles, checkTestMessage, checkIntegrations } from "./checks.js";
 import type { SmokeTestOptions } from "./types.js";
 
 import { runSmokeTest } from "./index.js";
@@ -65,6 +65,61 @@ interface MockDirent {
 function mockDirent(name: string): MockDirent {
   return { name, isDirectory: () => true, isFile: () => false };
 }
+
+describe("checkContainerRunning", () => {
+  beforeEach(() => {
+    vi.mocked(execFile as unknown as (...args: unknown[]) => unknown).mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("passes when container is running", async () => {
+    vi.mocked(execFile as unknown as (...args: unknown[]) => unknown).mockResolvedValue({
+      stdout: "abc123def\tUp 5 minutes\trunning\n",
+    });
+
+    const result = await checkContainerRunning(defaultOpts());
+
+    expect(result.status).toBe("pass");
+    expect(result.message).toContain("abc123def");
+    expect(result.message).toContain("running");
+  });
+
+  it("fails when no container found", async () => {
+    vi.mocked(execFile as unknown as (...args: unknown[]) => unknown).mockResolvedValue({
+      stdout: "",
+    });
+
+    const result = await checkContainerRunning(defaultOpts());
+
+    expect(result.status).toBe("fail");
+    expect(result.message).toContain("No OpenClaw container found");
+  });
+
+  it("fails when container is not running", async () => {
+    vi.mocked(execFile as unknown as (...args: unknown[]) => unknown).mockResolvedValue({
+      stdout: "abc123def\tExited (1) 2 minutes ago\texited\n",
+    });
+
+    const result = await checkContainerRunning(defaultOpts());
+
+    expect(result.status).toBe("fail");
+    expect(result.message).toContain("exited");
+  });
+
+  it("fails when docker command errors", async () => {
+    vi.mocked(execFile as unknown as (...args: unknown[]) => unknown).mockRejectedValue(
+      new Error("Cannot connect to Docker daemon"),
+    );
+
+    const result = await checkContainerRunning(defaultOpts());
+
+    expect(result.status).toBe("fail");
+    expect(result.message).toContain("Cannot connect to Docker daemon");
+  });
+});
 
 describe("checkIdentityFiles", () => {
   beforeEach(() => {
@@ -271,6 +326,9 @@ describe("runSmokeTest", () => {
     gatewayConnectImpl = undefined;
     gatewayCallImpl = async () => ({ result: { text: "OK" } });
     gatewayDisconnectImpl = undefined;
+    vi.mocked(execFile as unknown as (...args: unknown[]) => unknown).mockResolvedValue({
+      stdout: "abc123def\tUp 5 minutes\trunning\n",
+    });
     vi.mocked(readdir).mockResolvedValue([mockDirent("default")] as never);
     vi.mocked(stat).mockResolvedValue({ size: 100 } as never);
     vi.mocked(readFile).mockResolvedValue(JSON.stringify({ channels: {} }));
@@ -280,13 +338,14 @@ describe("runSmokeTest", () => {
     vi.restoreAllMocks();
   });
 
-  it("runs all three checks", async () => {
+  it("runs all four checks", async () => {
     const result = await runSmokeTest(defaultOpts());
 
-    expect(result.checks.length).toBe(3);
-    expect(result.checks[0].name).toBe("Identity files");
-    expect(result.checks[1].name).toBe("Test message");
-    expect(result.checks[2].name).toBe("Integration probe");
+    expect(result.checks.length).toBe(4);
+    expect(result.checks[0].name).toBe("Container running");
+    expect(result.checks[1].name).toBe("Identity files");
+    expect(result.checks[2].name).toBe("Test message");
+    expect(result.checks[3].name).toBe("Integration probe");
   });
 
   it("passes when all checks pass", async () => {
@@ -311,5 +370,17 @@ describe("runSmokeTest", () => {
     expect(result.passed).toBe(true);
     const integrationCheck = result.checks.find((c) => c.name === "Integration probe");
     expect(integrationCheck?.status).toBe("skip");
+  });
+
+  it("fails when container is not running", async () => {
+    vi.mocked(execFile as unknown as (...args: unknown[]) => unknown).mockResolvedValue({
+      stdout: "",
+    });
+
+    const result = await runSmokeTest(defaultOpts());
+
+    expect(result.passed).toBe(false);
+    expect(result.checks[0].name).toBe("Container running");
+    expect(result.checks[0].status).toBe("fail");
   });
 });
