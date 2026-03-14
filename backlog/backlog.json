@@ -1482,9 +1482,9 @@
       "title": "Secrets export/import and encrypted storage backend",
       "description": "Implement `clawhq secrets export/import` for encrypted backup/restore of secrets, and an encrypted storage backend (AES-256-GCM) as upgrade path from plaintext .env. SecretStore interface abstracts both backends.",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-044",
         "FEAT-046"
@@ -1507,7 +1507,8 @@
         "Deploy pipeline decrypts to tmpfs (secrets never written to persistent disk in encrypted mode)"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Fourth and final secrets lifecycle item. The SecretStore interface is the key architectural piece — it ensures FEAT-044/045/046 work identically regardless of backend. Export/import enables migration between machines. Encrypted backend is an upgrade path, not a replacement — plaintext .env must remain supported for simplicity. Depends on FEAT-046 because export bundles the audit trail."
+      "groomingNotes": "Fourth and final secrets lifecycle item. The SecretStore interface is the key architectural piece — it ensures FEAT-044/045/046 work identically regardless of backend. Export/import enables migration between machines. Encrypted backend is an upgrade path, not a replacement — plaintext .env must remain supported for simplicity. Depends on FEAT-046 because export bundles the audit trail.",
+      "completedAt": "2026-03-13T21:01:10-07:00"
     },
     {
       "id": "FEAT-057",

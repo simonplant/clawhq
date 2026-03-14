@@ -13,6 +13,7 @@ import { DockerClient } from "../docker/client.js";
 import { pollGatewayHealth, HealthPollTimeout as GatewayHealthTimeout } from "../gateway/health.js";
 import { apply as applyFirewall, buildConfig as buildFirewallConfig } from "../security/firewall/firewall.js";
 import { emitSecretAuditEvent } from "../security/secrets/audit.js";
+import { decryptForDeploy } from "../security/secrets/encrypted-store.js";
 import { readEnvFile } from "../security/secrets/env.js";
 import { runSmokeTest } from "../smoke/index.js";
 
@@ -70,6 +71,25 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
 
   if (!preflight.passed) {
     return { success: false, steps };
+  }
+
+  // Step 1b: Decrypt secrets to tmpfs if encrypted backend is active
+  if (opts.encryptedEnvPassphrase) {
+    const encPath = (opts.envPath ?? join(opts.openclawHome ?? join(homedir(), ".openclaw"), ".env")) + ".enc";
+    const tmpfsPath = opts.secretsTmpfsPath ?? "/dev/shm/clawhq-secrets/.env";
+
+    const decryptStep = await timedStep("Decrypt secrets to tmpfs", async () => {
+      const { mkdir } = await import("node:fs/promises");
+      const { dirname } = await import("node:path");
+      await mkdir(dirname(tmpfsPath), { recursive: true, mode: 0o700 });
+      await decryptForDeploy(encPath, tmpfsPath, opts.encryptedEnvPassphrase as string);
+      return { passed: true, message: `Secrets decrypted to ${tmpfsPath} (tmpfs — never written to persistent disk)` };
+    });
+    steps.push(decryptStep);
+
+    if (decryptStep.status === "failed") {
+      return { success: false, steps };
+    }
   }
 
   // Step 2: Compose up

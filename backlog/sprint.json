@@ -1,32 +1,32 @@
 {
-  "sprintId": "sprint-1773459787",
-  "startedAt": "2026-03-13T20:43:07-07:00",
+  "sprintId": "sprint-1773460281",
+  "startedAt": "2026-03-13T20:51:21-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-025",
-    "title": "PII and secret scanning — clawhq scan",
+    "id": "FEAT-047",
+    "title": "Secrets export/import and encrypted storage backend",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create cmd/scan.go with the scan subcommand",
-      "Extend internal/secrets/ with PII pattern scanning",
-      "Implement PII patterns: names, SSN, credit cards, phone numbers, email addresses",
-      "Implement secret patterns: ghp_*, sk-ant-*, AKIA*, Bearer tokens, JWTs, private keys",
-      "Implement dangerous filename detection: .env, *.pem, *.key",
-      "Implement false positive filtering: CHANGE_ME placeholders, env var references, comments",
-      "Add --history flag to include git history in scan",
-      "Format output as table with file, line, pattern type, and match preview (redacted)"
+      "Create src/security/secrets/store.ts with SecretStore interface: get(name), set(name, value), delete(name), list(), export(), import()",
+      "Implement PlaintextEnvStore as SecretStore wrapping existing env.ts parseEnv/serializeEnv — this is the default backend",
+      "Implement EncryptedStore as SecretStore: secrets encrypted with AES-256-GCM via Node.js crypto, master key derived from user passphrase via scrypt, stored in .env.enc",
+      "Add `secrets export` sub-subcommand: prompt for encryption passphrase, encrypt all secrets to portable archive (.clawhq-secrets.enc), include metadata and audit trail",
+      "Add `secrets import` sub-subcommand: prompt for passphrase, decrypt archive, verify integrity (HMAC), merge or overwrite into current .env with conflict prompts",
+      "Add `--encrypted` flag to `clawhq secrets` to enable encrypted backend (migrates existing .env to .env.enc, securely wipes plaintext .env)",
+      "Integrate with deploy pipeline: decrypt-to-tmpfs at deploy time (mount secrets as tmpfs volume, decrypt on container start, never write plaintext to disk)",
+      "Write unit tests for encryption round-trip, export/import cycle, backend switching"
     ],
     "acceptanceCriteria": [
-      "`clawhq scan` detects PII and secrets in agent workspace files",
-      "False positive filtering removes common benign patterns",
-      "--history flag scans git history for leaked secrets",
-      "Output shows file, line, and pattern type without exposing full secret",
-      "Exit code is non-zero when issues are found"
+      "`clawhq secrets export` creates encrypted archive of all secrets with passphrase protection",
+      "`clawhq secrets import` restores secrets from encrypted archive with integrity verification",
+      "SecretStore interface abstracts storage — plaintext .env and encrypted backends are interchangeable",
+      "`--encrypted` flag migrates from plaintext to encrypted storage and securely wipes old .env",
+      "Deploy pipeline decrypts to tmpfs (secrets never written to persistent disk in encrypted mode)"
     ],
-    "startedAt": "2026-03-13T20:43:07-07:00",
+    "startedAt": "2026-03-13T20:51:21-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T20:46:45-07:00"
+    "completedAt": "2026-03-13T21:01:10-07:00"
   },
-  "completedAt": "2026-03-13T20:46:45-07:00",
+  "completedAt": "2026-03-13T21:01:10-07:00",
   "attempts": 1
 }

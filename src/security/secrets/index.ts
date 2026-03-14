@@ -51,3 +51,7 @@ export type {
 export { scanDanglingReferences } from "./references.js";
 export type { DanglingReference } from "./references.js";
 export type { MetadataFile, SecretEntry, SecretMetadata } from "./types.js";
+export type { SecretStore, SecretArchive, ArchivePayload } from "./store.js";
+export { PlaintextEnvStore, decryptArchive } from "./plaintext-store.js";
+export { EncryptedStore, migrateToEncrypted, decryptForDeploy } from "./encrypted-store.js";
+export { deriveKey, encryptAes256Gcm, decryptAes256Gcm, hmacSha256, generateSalt } from "./crypto.js";

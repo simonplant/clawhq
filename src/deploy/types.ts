@@ -36,6 +36,10 @@ export interface DeployOptions {
   smokeTimeoutMs?: number;
   /** Skip smoke test (default: false). */
   skipSmoke?: boolean;
+  /** Passphrase for encrypted .env.enc backend. When set, secrets are decrypted to tmpfs at deploy time. */
+  encryptedEnvPassphrase?: string;
+  /** Path to tmpfs mount for decrypted secrets (default: /dev/shm/clawhq-secrets). */
+  secretsTmpfsPath?: string;
   /** AbortSignal for cancellation. */
   signal?: AbortSignal;
 }

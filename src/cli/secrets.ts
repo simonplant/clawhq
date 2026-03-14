@@ -5,6 +5,7 @@
  * Never displays secret values.
  */
 
+import { readFile, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 
 import { Command } from "commander";
@@ -16,6 +17,7 @@ import {
   verifyAuditChain,
 } from "../security/secrets/audit.js";
 import type { SecretAuditEvent } from "../security/secrets/audit.js";
+import { migrateToEncrypted, decryptForDeploy } from "../security/secrets/encrypted-store.js";
 import {
   atomicWriteEnvFile,
   getEnvValue,
@@ -27,7 +29,9 @@ import {
 import type { EnvFile } from "../security/secrets/env.js";
 import { inferCategory, readMetadata, removeSecretMetadata, setSecretMetadata } from "../security/secrets/metadata.js";
 import { enforceEnvPermissions } from "../security/secrets/permissions.js";
+import { PlaintextEnvStore, decryptArchive } from "../security/secrets/plaintext-store.js";
 import { scanDanglingReferences } from "../security/secrets/references.js";
+import type { SecretArchive } from "../security/secrets/store.js";
 import type { SecretEntry } from "../security/secrets/types.js";
 
 /**
@@ -462,6 +466,196 @@ export function createSecretsCommand(): Command {
         console.error(
           `Failed to read audit trail: ${err instanceof Error ? err.message : String(err)}`,
         );
+        process.exitCode = 1;
+      }
+    });
+
+  secretsCmd
+    .command("export")
+    .description("Export all secrets to an encrypted portable archive (.clawhq-secrets.enc)")
+    .option("-o, --output <path>", "Output file path", ".clawhq-secrets.enc")
+    .action(async (opts: { output: string }) => {
+      const parentOpts = secretsCmd.opts() as { env: string };
+      const envPath = parentOpts.env.replace(/^~/, process.env.HOME ?? "~");
+      const metaPath = envPath + ".meta";
+
+      try {
+        const passphrase = await promptMaskedInput("Enter encryption passphrase: ");
+        if (!passphrase) {
+          console.error("No passphrase provided. Aborting.");
+          process.exitCode = 1;
+          return;
+        }
+
+        const confirm = await promptMaskedInput("Confirm passphrase: ");
+        if (passphrase !== confirm) {
+          console.error("Passphrases do not match. Aborting.");
+          process.exitCode = 1;
+          return;
+        }
+
+        const store = new PlaintextEnvStore(envPath, metaPath);
+        const archive = await store.exportArchive(passphrase);
+
+        await writeFile(opts.output, JSON.stringify(archive, null, 2) + "\n", "utf-8");
+        console.log(`Exported ${archive.secretCount} secret${archive.secretCount === 1 ? "" : "s"} to ${opts.output}`);
+      } catch (err: unknown) {
+        console.error(
+          `Failed to export secrets: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        process.exitCode = 1;
+      }
+    });
+
+  secretsCmd
+    .command("import <file>")
+    .description("Import secrets from an encrypted archive with integrity verification")
+    .option("--overwrite", "Overwrite existing secrets without prompting")
+    .action(async (file: string, opts: { overwrite?: boolean }) => {
+      const parentOpts = secretsCmd.opts() as { env: string };
+      const envPath = parentOpts.env.replace(/^~/, process.env.HOME ?? "~");
+      const metaPath = envPath + ".meta";
+
+      try {
+        const content = await readFile(file, "utf-8");
+        const archive = JSON.parse(content) as SecretArchive;
+
+        if (archive.version !== 1) {
+          console.error(`Unsupported archive version: ${archive.version}`);
+          process.exitCode = 1;
+          return;
+        }
+
+        const passphrase = await promptMaskedInput("Enter archive passphrase: ");
+        if (!passphrase) {
+          console.error("No passphrase provided. Aborting.");
+          process.exitCode = 1;
+          return;
+        }
+
+        // Decrypt and verify integrity
+        const payload = decryptArchive(archive, passphrase);
+
+        // Check for conflicts
+        let env: EnvFile;
+        try {
+          env = await readEnvFile(envPath);
+        } catch {
+          env = { entries: [] };
+        }
+
+        const conflicts: string[] = [];
+        for (const key of Object.keys(payload.secrets)) {
+          if (getEnvValue(env, key) !== undefined) {
+            conflicts.push(key);
+          }
+        }
+
+        if (conflicts.length > 0 && !opts.overwrite) {
+          console.log(`${conflicts.length} existing secret${conflicts.length === 1 ? "" : "s"} will be overwritten:`);
+          for (const key of conflicts) {
+            console.log(`  ${key}`);
+          }
+          const rl = createInterface({ input: process.stdin, output: process.stdout });
+          const answer = await new Promise<string>((resolve) => {
+            rl.question("Continue? (y/N) ", resolve);
+          });
+          rl.close();
+          if (answer.toLowerCase() !== "y") {
+            console.log("Import cancelled.");
+            return;
+          }
+        }
+
+        // Import secrets
+        const store = new PlaintextEnvStore(envPath, metaPath);
+        const imported = await store.importArchive(archive, passphrase);
+
+        // Restore metadata
+        for (const [key, meta] of Object.entries(payload.metadata)) {
+          await setSecretMetadata(metaPath, key, meta.provider_category);
+        }
+
+        // Emit audit events
+        for (const key of imported) {
+          await emitSecretAuditEvent(envPath, "added", key);
+        }
+
+        await enforceEnvPermissions(envPath);
+        console.log(`Imported ${imported.length} secret${imported.length === 1 ? "" : "s"} from ${file}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("Unsupported state") || msg.includes("unable to authenticate")) {
+          console.error("Decryption failed — wrong passphrase or corrupted archive");
+        } else {
+          console.error(`Failed to import secrets: ${msg}`);
+        }
+        process.exitCode = 1;
+      }
+    });
+
+  secretsCmd
+    .command("encrypt")
+    .description("Migrate from plaintext .env to encrypted .env.enc storage")
+    .action(async () => {
+      const parentOpts = secretsCmd.opts() as { env: string };
+      const envPath = parentOpts.env.replace(/^~/, process.env.HOME ?? "~");
+      const encPath = envPath + ".enc";
+
+      try {
+        const passphrase = await promptMaskedInput("Enter encryption passphrase for .env.enc: ");
+        if (!passphrase) {
+          console.error("No passphrase provided. Aborting.");
+          process.exitCode = 1;
+          return;
+        }
+
+        const confirm = await promptMaskedInput("Confirm passphrase: ");
+        if (passphrase !== confirm) {
+          console.error("Passphrases do not match. Aborting.");
+          process.exitCode = 1;
+          return;
+        }
+
+        console.log("Migrating secrets to encrypted storage...");
+        const { migratedCount } = await migrateToEncrypted(envPath, encPath, passphrase);
+        console.log(`Migrated ${migratedCount} secret${migratedCount === 1 ? "" : "s"} to ${encPath}`);
+        console.log("Plaintext .env has been securely wiped.");
+      } catch (err: unknown) {
+        console.error(
+          `Failed to migrate: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        process.exitCode = 1;
+      }
+    });
+
+  secretsCmd
+    .command("decrypt-for-deploy")
+    .description("Decrypt .env.enc to a temporary .env for deploy (use with tmpfs mount)")
+    .requiredOption("-o, --output <path>", "Output path for plaintext .env (should be on tmpfs)")
+    .action(async (opts: { output: string }) => {
+      const parentOpts = secretsCmd.opts() as { env: string };
+      const envPath = parentOpts.env.replace(/^~/, process.env.HOME ?? "~");
+      const encPath = envPath + ".enc";
+
+      try {
+        const passphrase = await promptMaskedInput("Enter .env.enc passphrase: ");
+        if (!passphrase) {
+          console.error("No passphrase provided. Aborting.");
+          process.exitCode = 1;
+          return;
+        }
+
+        await decryptForDeploy(encPath, opts.output, passphrase);
+        console.log(`Decrypted secrets written to ${opts.output}`);
+        console.log("Ensure this path is on tmpfs — secrets must not persist to disk.");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("Unsupported state") || msg.includes("unable to authenticate")) {
+          console.error("Decryption failed — wrong passphrase");
+        } else {
+          console.error(`Failed to decrypt: ${msg}`);
+        }
         process.exitCode = 1;
       }
     });
