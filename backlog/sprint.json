@@ -1,6 +1,6 @@
 {
-  "sprintId": "sprint-1773448439",
-  "startedAt": "2026-03-13T17:33:59-07:00",
+  "sprintId": "sprint-1773451538",
+  "startedAt": "2026-03-13T18:25:38-07:00",
   "status": "in_progress",
   "item": {
     "id": "FEAT-032",
@@ -19,6 +19,6 @@
       "`clawhq logs --cron heartbeat` shows cron job execution history",
       "--since flag correctly bounds output by time"
     ],
-    "startedAt": "2026-03-13T17:33:59-07:00"
+    "startedAt": "2026-03-13T18:25:38-07:00"
   }
 }
