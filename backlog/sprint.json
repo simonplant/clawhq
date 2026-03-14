@@ -1,31 +1,31 @@
 {
-  "sprintId": "sprint-1773463309",
-  "startedAt": "2026-03-13T21:41:49-07:00",
+  "sprintId": "sprint-1773464000",
+  "startedAt": "2026-03-13T21:53:20-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-043",
-    "title": "Supply chain security — vetting pipeline for skills and tools",
+    "id": "FEAT-019",
+    "title": "AI-powered config inference — clawhq init --smart",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create src/security/vetting.ts for supply chain security logic",
-      "Implement skill source verification: check source against known registries before sandboxing",
-      "Implement AI-powered pattern scanning: detect suspicious patterns — outbound network calls to non-allowlisted domains, credential access, filesystem writes outside workspace",
-      "Implement VirusTotal integration for scanning skill artifacts",
-      "Implement tool allowlist management: known-safe package list with version pinning; non-allowlisted installs require explicit manual override with warning",
-      "Implement `clawhq evolve audit`: show full change history with sources, timestamps, vetting results, and rollback status",
-      "Write unit tests for vetting rules and false-positive filtering"
+      "Create internal/inference/ package",
+      "Implement prompt construction: system prompt that understands templates and operational dimensions",
+      "Implement Ollama integration for local LLM inference",
+      "Implement response parser: extract template selection, integration requirements, autonomy levels, boundaries",
+      "Implement conversational refinement: show plain-language summary, allow adjustments",
+      "Implement fallback to guided questionnaire when local model isn't available",
+      "Generate config from inference results using template-to-config mapper"
     ],
     "acceptanceCriteria": [
-      "Community skill install triggers source verification and AI pattern scan before user approval prompt",
-      "VirusTotal scan runs on skill artifacts as part of vetting pipeline",
-      "Non-allowlisted tool installs are blocked with risk explanation and manual override path",
-      "`clawhq evolve audit` shows vetting results alongside change history",
-      "False-positive filtering prevents blocking common benign patterns"
+      "User describes needs in plain language and gets a valid config proposal",
+      "Inference runs on local Ollama model (no cloud dependency)",
+      "User can adjust any aspect conversationally before generating",
+      "Falls back to guided questionnaire if Ollama isn't available",
+      "Generated config passes all validation rules"
     ],
-    "startedAt": "2026-03-13T21:41:49-07:00",
+    "startedAt": "2026-03-13T21:53:20-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T21:52:38-07:00"
+    "completedAt": "2026-03-13T22:03:26-07:00"
   },
-  "completedAt": "2026-03-13T21:52:38-07:00",
+  "completedAt": "2026-03-13T22:03:26-07:00",
   "attempts": 1
 }
