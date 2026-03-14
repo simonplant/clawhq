@@ -126,3 +126,46 @@ export interface WizardIO {
   confirm: ConfirmFn;
   log: (message: string) => void;
 }
+
+// --- Auto-detection types ---
+
+/** Known email provider with related service discovery. */
+export interface ProviderDiscovery {
+  provider: string;
+  calendar?: string;
+  tasks?: string;
+}
+
+/** A model discovered from the local Ollama instance. */
+export interface DiscoveredModel {
+  name: string;
+  sizeBytes: number;
+  parameterSize: string;
+  capabilities: ModelCapabilities;
+}
+
+export interface ModelCapabilities {
+  reasoning: "low" | "medium" | "high";
+  coding: "low" | "medium" | "high";
+  longContext: boolean;
+}
+
+/** A routing suggestion for a task category based on available models. */
+export interface RoutingSuggestion {
+  category: string;
+  suggestedModel: string;
+  reason: string;
+  cloudNeeded: boolean;
+}
+
+/** Result of running auto-detection before integration setup. */
+export interface DetectionResult {
+  /** Related services discovered from email provider. */
+  discoveredIntegrations: ProviderDiscovery | null;
+  /** Ollama models found on localhost. */
+  ollamaModels: DiscoveredModel[];
+  /** Suggested routing per task category. */
+  routingSuggestions: RoutingSuggestion[];
+  /** Whether Ollama is reachable at all. */
+  ollamaAvailable: boolean;
+}

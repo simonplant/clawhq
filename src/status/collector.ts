@@ -5,12 +5,13 @@
  */
 
 import { collectChannelHealth } from "../connect/format.js";
+import { collectMemoryHealth } from "../internal/memory/index.js";
 import { getSourceStatus, resolveSourceConfig } from "../source/index.js";
 
 import { collectAgentStatus } from "./agent.js";
 import { collectEgressSummary } from "./egress.js";
 import { collectIntegrationHealth } from "./integrations.js";
-import type { ChannelHealthEntry, OpenClawSourceStatus, StatusOptions, StatusReport } from "./types.js";
+import type { ChannelHealthEntry, OpenClawSourceStatus, StatusOptions, StatusReport, StructuredMemoryStatus } from "./types.js";
 import { collectWorkspaceMetrics } from "./workspace.js";
 
 /**
@@ -20,7 +21,7 @@ export async function collectStatus(options: StatusOptions = {}): Promise<Status
   const openclawHome = options.openclawHome ?? "~/.openclaw";
   const resolvedHome = openclawHome.replace(/^~/, process.env.HOME ?? "~");
 
-  const [agent, integrations, channelHealthRaw, workspace, egress, openclawSourceRaw] = await Promise.all([
+  const [agent, integrations, channelHealthRaw, workspace, egress, openclawSourceRaw, structuredMemory] = await Promise.all([
     collectAgentStatus({
       composePath: options.composePath,
       gatewayHost: options.gatewayHost,
@@ -42,6 +43,7 @@ export async function collectStatus(options: StatusOptions = {}): Promise<Status
       egressLogPath: options.egressLogPath,
     }),
     collectOpenClawSource(),
+    collectStructuredMemory(resolvedHome),
   ]);
 
   // Map connect module types to status types
@@ -59,6 +61,7 @@ export async function collectStatus(options: StatusOptions = {}): Promise<Status
     integrations,
     channels,
     workspace,
+    structuredMemory,
     egress,
   };
 }
@@ -93,5 +96,19 @@ async function collectOpenClawSource(): Promise<OpenClawSourceStatus> {
       integrityOk: false,
       sourcePath: null,
     };
+  }
+}
+
+/**
+ * Collect structured memory health status.
+ * Returns null if no structured memory entries exist.
+ */
+async function collectStructuredMemory(resolvedHome: string): Promise<StructuredMemoryStatus | null> {
+  try {
+    const health = await collectMemoryHealth(resolvedHome);
+    if (health.totalEntries === 0) return null;
+    return health;
+  } catch {
+    return null;
   }
 }

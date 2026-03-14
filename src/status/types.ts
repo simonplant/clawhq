@@ -92,6 +92,24 @@ export interface OpenClawSourceStatus {
   sourcePath: string | null;
 }
 
+// --- Structured memory health ---
+
+export interface StructuredMemoryStatus {
+  tiers: {
+    name: string;
+    entryCount: number;
+    sizeBytes: number;
+    oldestEntryAge: number | null;
+    newestEntryAge: number | null;
+  }[];
+  totalEntries: number;
+  totalSizeBytes: number;
+  hotTierOverBudget: boolean;
+  staleEntriesCount: number;
+  pendingTransitions: number;
+  pendingConnections: number;
+}
+
 // --- Full status report ---
 
 export interface StatusReport {
@@ -101,6 +119,7 @@ export interface StatusReport {
   integrations: IntegrationSection;
   channels: ChannelHealthEntry[];
   workspace: WorkspaceMetrics;
+  structuredMemory: StructuredMemoryStatus | null;
   egress: EgressSummary;
 }
 

@@ -5,9 +5,11 @@
  * keeping the logic testable without actual terminal I/O.
  */
 
+import { runDetection, type FetchFn } from "./detect.js";
 import { getBuiltInTemplates, formatTemplateList } from "./templates.js";
 import type {
   CloudProviderSetup,
+  DetectionResult,
   IntegrationSetup,
   ModelCategoryPolicy,
   ModelRoutingSetup,
@@ -63,7 +65,7 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export async function stepBasics(io: WizardIO): Promise<WizardBasics> {
   io.log("");
-  io.log("Step 1/5: Basics");
+  io.log("Step 1/6: Basics");
   io.log("─────────────────");
   io.log("");
 
@@ -101,7 +103,7 @@ export async function stepBasics(io: WizardIO): Promise<WizardBasics> {
 
 export async function stepTemplate(io: WizardIO): Promise<TemplateChoice> {
   io.log("");
-  io.log("Step 2/5: Template Selection");
+  io.log("Step 2/6: Template Selection");
   io.log("────────────────────────────");
   io.log("");
   io.log("Choose a template based on what you're replacing:");
@@ -126,17 +128,91 @@ export async function stepTemplate(io: WizardIO): Promise<TemplateChoice> {
   return template;
 }
 
-// --- Step 3: Integration setup ---
+// --- Step 3a: Auto-detection ---
+
+export async function stepDetection(
+  io: WizardIO,
+  template: TemplateChoice,
+  emailAddress?: string,
+  fetchFn?: FetchFn,
+): Promise<DetectionResult> {
+  io.log("");
+  io.log("Step 3/6: Auto-Detection");
+  io.log("────────────────────────");
+  io.log("");
+  io.log("Scanning for available services and models...");
+  io.log("");
+
+  const result = await runDetection(emailAddress, template, fetchFn);
+
+  // Show email provider discovery
+  if (result.discoveredIntegrations) {
+    const d = result.discoveredIntegrations;
+    io.log(`  Email provider detected: ${d.provider}`);
+    if (d.calendar) io.log(`    → Calendar available: ${d.calendar}`);
+    if (d.tasks) io.log(`    → Tasks available: ${d.tasks}`);
+  }
+
+  // Show Ollama discovery
+  if (result.ollamaAvailable) {
+    if (result.ollamaModels.length > 0) {
+      io.log(`  Ollama: ${result.ollamaModels.length} model(s) available`);
+      for (const m of result.ollamaModels) {
+        io.log(`    → ${m.name} (${m.parameterSize}, reasoning: ${m.capabilities.reasoning}, coding: ${m.capabilities.coding})`);
+      }
+    } else {
+      io.log("  Ollama: running but no models installed");
+    }
+  } else {
+    io.log("  Ollama: not detected (install Ollama for local model support)");
+  }
+
+  // Show routing suggestions
+  if (result.routingSuggestions.length > 0) {
+    io.log("");
+    io.log("  Routing suggestions:");
+    for (const s of result.routingSuggestions) {
+      const icon = s.cloudNeeded ? "☁" : "⚡";
+      const model = s.suggestedModel ? ` → ${s.suggestedModel}` : "";
+      io.log(`    ${icon} ${s.category}${model}: ${s.reason}`);
+    }
+  }
+
+  io.log("");
+
+  return result;
+}
+
+// --- Step 3b: Integration setup (with pre-fill from detection) ---
 
 export async function stepIntegrations(
   io: WizardIO,
   template: TemplateChoice,
   validateCredential?: (envVar: string, value: string) => Promise<boolean>,
+  detection?: DetectionResult,
 ): Promise<IntegrationSetup[]> {
   io.log("");
-  io.log("Step 3/5: Integration Setup");
+  io.log("Step 4/6: Integration Setup");
   io.log("───────────────────────────");
   io.log("");
+
+  // If detection discovered related services, show them pre-filled
+  if (detection?.discoveredIntegrations) {
+    const d = detection.discoveredIntegrations;
+    if (d.calendar && !template.integrationsRequired.includes("calendar") && !template.integrationsRecommended.includes("calendar")) {
+      io.log(`  Auto-detected: ${d.calendar} from your email provider`);
+      io.log(`  Adding calendar to recommended integrations.`);
+      io.log("");
+      // Temporarily add calendar to recommended if detected
+      template = { ...template, integrationsRecommended: [...template.integrationsRecommended, "calendar"] };
+    }
+    if (d.tasks && !template.integrationsRequired.includes("tasks") && !template.integrationsRecommended.includes("tasks")) {
+      io.log(`  Auto-detected: ${d.tasks} from your email provider`);
+      io.log(`  Adding tasks to recommended integrations.`);
+      io.log("");
+      template = { ...template, integrationsRecommended: [...template.integrationsRecommended, "tasks"] };
+    }
+  }
 
   const integrations: IntegrationSetup[] = [];
   const allNeeded = [...template.integrationsRequired, ...template.integrationsRecommended];
@@ -195,16 +271,35 @@ export async function stepIntegrations(
   return integrations;
 }
 
-// --- Step 4: Model routing ---
+// --- Step 5: Model routing ---
 
-export async function stepModelRouting(io: WizardIO): Promise<ModelRoutingSetup> {
+export async function stepModelRouting(
+  io: WizardIO,
+  detection?: DetectionResult,
+): Promise<ModelRoutingSetup> {
   io.log("");
-  io.log("Step 4/5: Model Routing");
+  io.log("Step 5/6: Model Routing");
   io.log("───────────────────────");
   io.log("");
   io.log("By default, your agent uses local models (Ollama) for all tasks.");
   io.log("You can optionally enable cloud API providers for specific task categories.");
   io.log("");
+
+  // Show detection-based recommendation
+  if (detection) {
+    const cloudNeededCount = detection.routingSuggestions.filter((s) => s.cloudNeeded).length;
+    if (detection.ollamaModels.length > 0 && cloudNeededCount === 0) {
+      io.log("  Based on auto-detection: your local models can handle all task categories.");
+      io.log("");
+    } else if (detection.ollamaModels.length > 0 && cloudNeededCount > 0) {
+      const cats = detection.routingSuggestions.filter((s) => s.cloudNeeded).map((s) => s.category);
+      io.log(`  Based on auto-detection: cloud recommended for: ${cats.join(", ")}`);
+      io.log("");
+    } else if (!detection.ollamaAvailable) {
+      io.log("  Ollama not detected — cloud providers recommended for all tasks.");
+      io.log("");
+    }
+  }
 
   const localOnly = await io.confirm("Run local-only (no cloud APIs)?", true);
 
@@ -254,7 +349,11 @@ export async function stepModelRouting(io: WizardIO): Promise<ModelRoutingSetup>
 
   const categories: ModelCategoryPolicy[] = [];
   for (const cat of MODEL_CATEGORIES) {
-    const allowed = await io.confirm(`  Allow cloud for ${cat.label}?`, false);
+    // Default to cloud-allowed if routing suggestions indicate cloud is needed
+    const suggestion = detection?.routingSuggestions.find((s) => s.category === cat.category);
+    const defaultAllow = suggestion?.cloudNeeded ?? false;
+    const hint = suggestion ? ` (suggested: ${defaultAllow ? "yes" : "no"})` : "";
+    const allowed = await io.confirm(`  Allow cloud for ${cat.label}?${hint}`, defaultAllow);
     categories.push({
       category: cat.category,
       cloudAllowed: allowed,
@@ -268,4 +367,4 @@ export async function stepModelRouting(io: WizardIO): Promise<ModelRoutingSetup>
   };
 }
 
-export { INTEGRATION_DEFS, CLOUD_PROVIDER_DEFS, MODEL_CATEGORIES };
+export { INTEGRATION_DEFS, CLOUD_PROVIDER_DEFS, MODEL_CATEGORIES, type IntegrationDef };

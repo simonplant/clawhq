@@ -2,10 +2,11 @@
  * Init wizard runner — orchestrates all steps for `clawhq init --guided`.
  */
 
+import type { FetchFn } from "./detect.js";
 import { generate, type GeneratedConfig } from "./generate.js";
-import { stepBasics, stepIntegrations, stepModelRouting, stepTemplate } from "./steps.js";
+import { stepBasics, stepDetection, stepIntegrations, stepModelRouting, stepTemplate } from "./steps.js";
 import { formatSummary } from "./summary.js";
-import type { WizardAnswers, WizardIO } from "./types.js";
+import type { DetectionResult, WizardAnswers, WizardIO } from "./types.js";
 import { writeBundle, type WriteResult } from "./writer.js";
 
 export interface WizardResult {
@@ -13,6 +14,7 @@ export interface WizardResult {
   config: GeneratedConfig;
   writeResult: WriteResult;
   summary: string;
+  detection?: DetectionResult;
 }
 
 export async function runWizard(
@@ -20,6 +22,7 @@ export async function runWizard(
   outputDir: string,
   options?: {
     validateCredential?: (envVar: string, value: string) => Promise<boolean>;
+    fetchFn?: FetchFn;
   },
 ): Promise<WizardResult> {
   io.log("ClawHQ Init — Guided Setup");
@@ -34,11 +37,28 @@ export async function runWizard(
   // Step 2: Template selection
   const template = await stepTemplate(io);
 
-  // Step 3: Integration setup
-  const integrations = await stepIntegrations(io, template, options?.validateCredential);
+  // Step 3: Auto-detection — prompt for email to enable provider discovery
+  io.log("");
+  const emailAddress = await io.prompt("Email address (for service auto-detection, optional)", "");
+  const detection = await stepDetection(io, template, emailAddress || undefined, options?.fetchFn);
 
-  // Step 4: Model routing
-  const modelRouting = await stepModelRouting(io);
+  // Show confirmation of detected services
+  const hasDetections = detection.discoveredIntegrations || detection.ollamaModels.length > 0;
+  if (hasDetections) {
+    const confirmed = await io.confirm("Proceed with detected services?", true);
+    if (!confirmed) {
+      io.log("  Auto-detection results cleared.");
+      detection.discoveredIntegrations = null;
+      detection.ollamaModels = [];
+      detection.routingSuggestions = [];
+    }
+  }
+
+  // Step 4: Integration setup (with detection pre-fill)
+  const integrations = await stepIntegrations(io, template, options?.validateCredential, detection);
+
+  // Step 5: Model routing (with detection suggestions)
+  const modelRouting = await stepModelRouting(io, detection);
 
   const answers: WizardAnswers = {
     basics,
@@ -47,9 +67,9 @@ export async function runWizard(
     modelRouting,
   };
 
-  // Step 5: Config generation
+  // Step 6: Config generation
   io.log("");
-  io.log("Step 5/5: Config Generation");
+  io.log("Step 6/6: Config Generation");
   io.log("───────────────────────────");
   io.log("");
   io.log("Generating configuration files...");
@@ -74,6 +94,7 @@ export async function runWizard(
         filesWritten: [],
         errors: ["Validation failed — config not written"],
       }),
+      detection,
     };
   }
 
@@ -92,5 +113,5 @@ export async function runWizard(
   const summary = formatSummary(answers, config.validationResults, writeResult);
   io.log(summary);
 
-  return { answers, config, writeResult, summary };
+  return { answers, config, writeResult, summary, detection };
 }

@@ -13,6 +13,7 @@ import { containerHealthCheck } from "./checks/container-health.js";
 import { dockerDaemonCheck } from "./checks/docker-daemon.js";
 import { filePermissionsCheck } from "./checks/file-permissions.js";
 import { firewallCheck } from "./checks/firewall.js";
+import { memoryHealthCheck } from "./checks/memory-health.js";
 import { openclawImagesCheck } from "./checks/openclaw-images.js";
 import { openclawSourceCheck } from "./checks/openclaw-source.js";
 import { portAvailabilityCheck } from "./checks/port-availability.js";
@@ -31,6 +32,7 @@ export const DEFAULT_CHECKS: Check[] = [
   portAvailabilityCheck,
   securityPostureCheck,
   firewallCheck,
+  memoryHealthCheck,
 ];
 
 // --- Runner ---
