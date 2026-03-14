@@ -36,6 +36,8 @@ export {
   loadTemplateFromString,
   loadBuiltInTemplates,
   loadTemplatesFromDirectory,
+  loadBuiltInTemplateChoices,
+  templateToChoice,
   getBuiltInTemplatesDir,
 } from "./loader.js";
 

@@ -1,8 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll } from "vitest";
 
 import { generate } from "./generate.js";
-import { BUILT_IN_TEMPLATES } from "./templates.js";
-import type { WizardAnswers } from "./types.js";
+import { getBuiltInTemplates } from "./templates.js";
+import type { TemplateChoice, WizardAnswers } from "./types.js";
+
+let TEMPLATES: TemplateChoice[];
+
+beforeAll(async () => {
+  TEMPLATES = await getBuiltInTemplates();
+});
 
 function makeAnswers(overrides: Partial<WizardAnswers> = {}): WizardAnswers {
   return {
@@ -12,7 +18,7 @@ function makeAnswers(overrides: Partial<WizardAnswers> = {}): WizardAnswers {
       wakingHoursStart: "06:00",
       wakingHoursEnd: "23:00",
     },
-    template: BUILT_IN_TEMPLATES[0], // Replace Google Assistant
+    template: TEMPLATES[0], // Replace Google Assistant
     integrations: [
       {
         provider: "Messaging (Telegram)",
@@ -110,10 +116,29 @@ describe("generate", () => {
   });
 
   it("passes validation for all 6 templates", () => {
-    for (const template of BUILT_IN_TEMPLATES) {
+    for (const template of TEMPLATES) {
       const result = generate(makeAnswers({ template }));
       const failures = result.validationResults.filter((r) => r.status === "fail");
       expect(failures).toHaveLength(0);
     }
+  });
+
+  it("generates non-empty dockerfile", () => {
+    const result = generate(makeAnswers());
+    expect(result.bundle.dockerfile).toBeTruthy();
+    expect(result.bundle.dockerfile).toContain("FROM");
+  });
+
+  it("generates workspace tools", () => {
+    const result = generate(makeAnswers());
+    expect(result.bundle.workspaceTools).toBeDefined();
+    expect(typeof result.bundle.workspaceTools).toBe("object");
+  });
+
+  it("generates skills from template", () => {
+    const result = generate(makeAnswers());
+    expect(result.bundle.skills).toBeDefined();
+    // Replace Google Assistant includes morning-brief and construct
+    expect(Object.keys(result.bundle.skills).length).toBeGreaterThan(0);
   });
 });

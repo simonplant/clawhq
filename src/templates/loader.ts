@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 
 import * as YAML from "yaml";
 
+import type { TemplateChoice } from "../init/types.js";
+
 import type {
   Template,
   TemplateLoadResult,
@@ -325,4 +327,72 @@ export async function loadTemplatesFromDirectory(
 /** Get the path to the built-in templates directory. */
 export function getBuiltInTemplatesDir(): string {
   return BUILT_IN_DIR;
+}
+
+// --- Template → TemplateChoice conversion ---
+
+/**
+ * Convert a YAML Template (snake_case) to a TemplateChoice (camelCase)
+ * compatible with the init wizard.
+ */
+export function templateToChoice(id: string, template: Template): TemplateChoice {
+  return {
+    id,
+    name: template.name,
+    description: template.use_case_mapping.description.trim(),
+    useCase: template.use_case_mapping.tagline,
+    personality: {
+      tone: template.personality.tone,
+      style: template.personality.style,
+      relationship: template.personality.relationship,
+      boundaries: template.personality.boundaries,
+    },
+    security: {
+      posture: template.security_posture.posture,
+      egress: template.security_posture.egress,
+      identityMount: template.security_posture.identity_mount,
+    },
+    monitoring: {
+      heartbeatFrequency: template.monitoring.heartbeat_frequency,
+      checks: template.monitoring.checks,
+      quietHours: template.monitoring.quiet_hours,
+      alertOn: template.monitoring.alert_on,
+    },
+    memory: {
+      hotMax: template.memory_policy.hot_max,
+      hotRetention: template.memory_policy.hot_retention,
+      warmRetention: template.memory_policy.warm_retention,
+      coldRetention: template.memory_policy.cold_retention,
+      summarization: template.memory_policy.summarization,
+    },
+    cron: {
+      heartbeat: template.cron_config.heartbeat,
+      workSession: template.cron_config.work_session,
+      morningBrief: template.cron_config.morning_brief,
+    },
+    autonomy: {
+      default: template.autonomy_model.default,
+      requiresApproval: template.autonomy_model.requires_approval,
+    },
+    integrationsRequired: template.integration_requirements.required,
+    integrationsRecommended: template.integration_requirements.recommended,
+    skillsIncluded: template.skill_bundle.included,
+  };
+}
+
+/**
+ * Load all built-in templates and convert them to TemplateChoice objects
+ * for use by the init wizard. This is the canonical way to get templates
+ * for the wizard — YAML files are the single source of truth.
+ */
+export async function loadBuiltInTemplateChoices(): Promise<TemplateChoice[]> {
+  const results = await loadBuiltInTemplates();
+  const choices: TemplateChoice[] = [];
+
+  for (const [id, result] of results) {
+    if (id === "_error" || !result.template) continue;
+    choices.push(templateToChoice(id, result.template));
+  }
+
+  return choices;
 }

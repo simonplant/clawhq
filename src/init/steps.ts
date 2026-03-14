@@ -5,7 +5,7 @@
  * keeping the logic testable without actual terminal I/O.
  */
 
-import { BUILT_IN_TEMPLATES, formatTemplateList } from "./templates.js";
+import { getBuiltInTemplates, formatTemplateList } from "./templates.js";
 import type {
   CloudProviderSetup,
   IntegrationSetup,
@@ -106,13 +106,14 @@ export async function stepTemplate(io: WizardIO): Promise<TemplateChoice> {
   io.log("");
   io.log("Choose a template based on what you're replacing:");
   io.log("");
-  io.log(formatTemplateList());
+  io.log(await formatTemplateList());
   io.log("");
 
-  const choices = BUILT_IN_TEMPLATES.map((t) => t.name);
+  const templates = await getBuiltInTemplates();
+  const choices = templates.map((t) => t.name);
   const idx = await io.select("Select template", choices);
 
-  const template = BUILT_IN_TEMPLATES[idx];
+  const template = templates[idx];
   io.log("");
   io.log(`Selected: ${template.name}`);
   io.log(`  ${template.description}`);

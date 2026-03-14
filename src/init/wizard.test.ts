@@ -2,11 +2,17 @@ import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { BUILT_IN_TEMPLATES } from "./templates.js";
-import type { WizardIO } from "./types.js";
+import { getBuiltInTemplates } from "./templates.js";
+import type { TemplateChoice, WizardIO } from "./types.js";
 import { runWizard } from "./wizard.js";
+
+let TEMPLATES: TemplateChoice[];
+
+beforeAll(async () => {
+  TEMPLATES = await getBuiltInTemplates();
+});
 
 // --- Test IO helper ---
 
@@ -56,7 +62,7 @@ describe("runWizard", () => {
       "America/New_York",  // timezone
       "07:00",             // waking start
       "22:00",             // waking end
-      "0",                 // template: Replace Google Assistant
+      "3",                 // template: Replace Google Assistant (sorted: family-hub=0, founders-ops=1, replace-chatgpt-plus=2, replace-google-assistant=3)
       "bot-token-123",     // messaging (required) credential
       "y",                 // set up email?
       "email-pass-456",    // email credential
@@ -78,7 +84,7 @@ describe("runWizard", () => {
   it("generates openclaw.json with correct landmine prevention", async () => {
     const io = createMockIO([
       "myagent", "UTC", "06:00", "23:00",
-      "0",                    // template
+      "3",                    // template (replace-google-assistant)
       "tok",                  // messaging cred
       "n", "n", "n",         // skip recommended integrations
       "y",                    // local-only
@@ -106,7 +112,7 @@ describe("runWizard", () => {
   it("generates .env with 600 permissions", async () => {
     const io = createMockIO([
       "myagent", "UTC", "06:00", "23:00",
-      "0",
+      "3",                 // template (replace-google-assistant)
       "secret-token",
       "n", "n", "n",
       "y",
@@ -127,7 +133,7 @@ describe("runWizard", () => {
   it("generates docker-compose.yml with security hardening", async () => {
     const io = createMockIO([
       "myagent", "UTC", "06:00", "23:00",
-      "0",
+      "3",                 // template (replace-google-assistant)
       "tok",
       "n", "n", "n",
       "y",
@@ -149,7 +155,7 @@ describe("runWizard", () => {
   it("generates identity files in workspace/", async () => {
     const io = createMockIO([
       "myagent", "UTC", "06:00", "23:00",
-      "0",
+      "3",                 // template (replace-google-assistant)
       "tok",
       "n", "n", "n",
       "y",
@@ -170,7 +176,7 @@ describe("runWizard", () => {
   it("generates cron/jobs.json with valid schedules", async () => {
     const io = createMockIO([
       "myagent", "UTC", "07:00", "22:00",
-      "0",
+      "3",                 // template (replace-google-assistant)
       "tok",
       "n", "n", "n",
       "y",
@@ -202,7 +208,7 @@ describe("runWizard", () => {
   it("includes cloud providers in config when not local-only", async () => {
     const io = createMockIO([
       "myagent", "UTC", "06:00", "23:00",
-      "0",
+      "3",                            // template (replace-google-assistant)
       "tok",                          // messaging
       "n", "n", "n",                  // skip integrations
       "n",                            // NOT local-only
@@ -227,7 +233,7 @@ describe("runWizard", () => {
   it("all validation rules pass on generated config", async () => {
     const io = createMockIO([
       "test-agent", "UTC", "06:00", "23:00",
-      "0",
+      "3",                 // template (replace-google-assistant)
       "tok",
       "n", "n", "n",
       "y",
@@ -242,24 +248,24 @@ describe("runWizard", () => {
   });
 });
 
-describe("BUILT_IN_TEMPLATES", () => {
+describe("getBuiltInTemplates", () => {
   it("has 6 built-in templates", () => {
-    expect(BUILT_IN_TEMPLATES).toHaveLength(6);
+    expect(TEMPLATES).toHaveLength(6);
   });
 
   it("all templates have unique IDs", () => {
-    const ids = BUILT_IN_TEMPLATES.map((t) => t.id);
-    expect(new Set(ids).size).toBe(BUILT_IN_TEMPLATES.length);
+    const ids = TEMPLATES.map((t) => t.id);
+    expect(new Set(ids).size).toBe(TEMPLATES.length);
   });
 
   it("all templates require messaging", () => {
-    for (const t of BUILT_IN_TEMPLATES) {
+    for (const t of TEMPLATES) {
       expect(t.integrationsRequired).toContain("messaging");
     }
   });
 
   it("all templates have security posture set", () => {
-    for (const t of BUILT_IN_TEMPLATES) {
+    for (const t of TEMPLATES) {
       expect(["standard", "hardened", "paranoid"]).toContain(t.security.posture);
     }
   });

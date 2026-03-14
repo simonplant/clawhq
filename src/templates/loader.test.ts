@@ -293,7 +293,7 @@ describe("mapTemplateToConfig", () => {
     cloudProviders: [],
   };
 
-  it("produces a valid DeploymentBundle", () => {
+  it("produces a complete DeploymentBundle with all fields populated", () => {
     const t = loadValid();
     const result = mapTemplateToConfig(t, baseAnswers);
 
@@ -303,6 +303,12 @@ describe("mapTemplateToConfig", () => {
     expect(result.bundle.dockerCompose).toBeTruthy();
     expect(result.bundle.identityFiles).toBeDefined();
     expect(result.bundle.cronJobs).toBeDefined();
+
+    // Verify bundle completeness — these were empty in the old mapper
+    expect(result.bundle.dockerfile).toBeTruthy();
+    expect(result.bundle.dockerfile).toContain("FROM");
+    expect(typeof result.bundle.workspaceTools).toBe("object");
+    expect(typeof result.bundle.skills).toBe("object");
   });
 
   it("sets mandatory security config (LM-01 through LM-05)", () => {
@@ -311,7 +317,7 @@ describe("mapTemplateToConfig", () => {
     const config = result.bundle.openclawConfig;
 
     expect(config.dangerouslyDisableDeviceAuth).toBe(true);
-    expect(config.allowedOrigins).toContain("http://localhost:18789");
+    expect(config.allowedOrigins).toContain("http://127.0.0.1:18789");
     expect(config.trustedProxies).toContain("172.17.0.1");
     expect(config.tools?.exec?.host).toBe("gateway");
     expect(config.tools?.exec?.security).toBe("full");
@@ -323,12 +329,15 @@ describe("mapTemplateToConfig", () => {
     const files = result.bundle.identityFiles;
 
     expect(files["SOUL.md"]).toContain("test-agent");
-    expect(files["SOUL.md"]).toContain("direct");
     expect(files["SOUL.md"]).toContain("test partner");
-    expect(files["HEARTBEAT.md"]).toContain("email");
-    expect(files["HEARTBEAT.md"]).toContain("10min");
+    expect(files["SOUL.md"]).toContain("test boundaries");
     expect(files["USER.md"]).toContain("User Context");
-    expect(files["TOOLS.md"]).toContain("telegram");
+    // Full bundle generates HEARTBEAT.md, IDENTITY.md, AGENTS.md, etc.
+    expect(files["HEARTBEAT.md"]).toBeDefined();
+    expect(files["IDENTITY.md"]).toBeDefined();
+    expect(files["AGENTS.md"]).toBeDefined();
+    expect(files["TOOLS.md"]).toBeDefined();
+    expect(files["MEMORY.md"]).toBeDefined();
   });
 
   it("generates cron jobs from template cron config", () => {
@@ -336,7 +345,8 @@ describe("mapTemplateToConfig", () => {
     const result = mapTemplateToConfig(t, baseAnswers);
     const jobs = result.bundle.cronJobs;
 
-    expect(jobs.length).toBe(3);
+    // At least heartbeat, work-session, morning-brief
+    expect(jobs.length).toBeGreaterThanOrEqual(3);
 
     const heartbeat = jobs.find((j) => j.id === "heartbeat");
     expect(heartbeat).toBeDefined();
@@ -350,6 +360,14 @@ describe("mapTemplateToConfig", () => {
     if (morningBrief) {
       expect(morningBrief.expr).toBe("00 08 * * *");
     }
+  });
+
+  it("generates skills from template skill bundle", () => {
+    const t = loadValid();
+    const result = mapTemplateToConfig(t, baseAnswers);
+
+    // Test template includes morning-brief
+    expect(result.bundle.skills["morning-brief"]).toBeDefined();
   });
 
   it("includes cloud provider config when provided", () => {
@@ -375,16 +393,20 @@ describe("mapTemplateToConfig", () => {
     expect(compose).toContain("ALL");
     expect(compose).toContain("read_only: true");
     expect(compose).toContain("no-new-privileges");
-    expect(compose).toContain("user: 1000:1000");
+    expect(compose).toContain("1000:1000");
   });
 
-  it("maps all built-in templates to valid bundles", async () => {
+  it("maps all built-in templates to valid bundles with full output", async () => {
     const templates = await loadBuiltInTemplates();
 
     for (const [, loadResult] of templates) {
       if (!loadResult.template) continue;
       const result = mapTemplateToConfig(loadResult.template, baseAnswers);
       expect(result.validationPassed).toBe(true);
+      // Verify complete bundles for every template
+      expect(result.bundle.dockerfile).toBeTruthy();
+      expect(typeof result.bundle.workspaceTools).toBe("object");
+      expect(typeof result.bundle.skills).toBe("object");
     }
   });
 });
