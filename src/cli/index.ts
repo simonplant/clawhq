@@ -97,6 +97,7 @@ import { formatCheckResult, runUpdate } from "../update/update.js";
 import { createFleetCommand } from "./fleet.js";
 import { createProviderCommand } from "./provider.js";
 import { createSecretsCommand } from "./secrets.js";
+import { registerToolCommand } from "./tool.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string; description: string };
@@ -1348,6 +1349,9 @@ agentCmd
 
 // Evolve phase
 program.command("evolve").description("Manage agent capabilities");
+
+// CLI tool management (Evolve sub-feature)
+registerToolCommand(program);
 
 // Skill management (Evolve sub-feature)
 const skillCmd = program
