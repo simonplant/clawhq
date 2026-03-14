@@ -5,7 +5,8 @@
  * and writes them back without losing formatting.
  */
 
-import { readFile, writeFile } from "node:fs/promises";
+import { chmod, readFile, rename, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 export interface EnvEntry {
   type: "pair" | "comment" | "blank";
@@ -92,6 +93,19 @@ export async function readEnvFile(path: string): Promise<EnvFile> {
  */
 export async function writeEnvFile(path: string, env: EnvFile): Promise<void> {
   await writeFile(path, serializeEnv(env), "utf-8");
+}
+
+/**
+ * Atomically write an EnvFile to disk.
+ * Writes to a .env.tmp sibling file with 600 permissions, then renames
+ * over the target path. This prevents partial writes on crash.
+ */
+export async function atomicWriteEnvFile(path: string, env: EnvFile): Promise<void> {
+  const tmpPath = join(dirname(path), ".env.tmp");
+  const content = serializeEnv(env);
+  await writeFile(tmpPath, content, { encoding: "utf-8", mode: 0o600 });
+  await chmod(tmpPath, 0o600);
+  await rename(tmpPath, path);
 }
 
 /**

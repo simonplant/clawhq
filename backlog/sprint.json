@@ -1,31 +1,31 @@
 {
-  "sprintId": "sprint-1773446224",
-  "startedAt": "2026-03-13T16:57:04-07:00",
+  "sprintId": "sprint-1773446657",
+  "startedAt": "2026-03-13T17:04:17-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-044",
-    "title": "Secrets CLI — add and list commands",
+    "id": "FEAT-045",
+    "title": "Secrets CLI — rotate and revoke commands",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create src/cli/secrets.ts with `secrets` subcommand and `add`/`list` sub-subcommands",
-      "Implement `secrets add <name>`: prompt for value with masked input (no echo), write to .env via existing parseEnv/serializeEnv in src/security/secrets/env.ts, enforce chmod 600",
-      "Add optional `--validate` flag to `secrets add` that runs the matching credential health probe from src/security/credentials/index.ts after writing",
-      "Implement `secrets list`: read .env, display table with columns: name, provider_category (inferred from key name patterns), health_status (via credential probes), age (from metadata), last_rotated — never display values",
-      "Create src/security/secrets/metadata.ts to track secret metadata (created_at, rotated_at, provider_category) in a sidecar JSON file (.env.meta) with 600 permissions",
-      "Add SecretEntry type definition in src/security/secrets/types.ts matching PRODUCT.md data model",
-      "Write unit tests for add flow (masked input mock, .env write, permission enforcement) and list display formatting"
+      "Add `rotate` and `revoke` sub-subcommands to src/cli/secrets.ts",
+      "Implement `secrets rotate <name>`: prompt for new value (masked), validate via health probe, atomically swap in .env (write to .env.tmp then rename), update rotated_at in .env.meta, emit audit event",
+      "Implement atomic .env swap in src/security/secrets/env.ts: write new content to .env.tmp with 600 permissions, then fs.rename() for atomic replacement",
+      "Implement `secrets revoke <name>`: remove entry from .env, verify removal by re-reading, scan all config files (openclaw.json, docker-compose.yml, workspace configs) for `${NAME}` references and warn if found",
+      "Implement dangling reference scanner in src/security/secrets/references.ts: glob config files, regex match `${SECRET_NAME}` and `$SECRET_NAME` patterns",
+      "Emit audit events for rotate and revoke (write to audit trail — consumed by FEAT-046)",
+      "Write unit tests for atomic swap, revocation, dangling reference detection"
     ],
     "acceptanceCriteria": [
-      "`clawhq secrets add MY_KEY` prompts for masked input and writes to .env with 600 permissions",
-      "`clawhq secrets add MY_KEY --validate` runs health probe after writing and reports valid/invalid",
-      "`clawhq secrets list` shows all secrets with name, category, health, age — never shows values",
-      "Secret metadata (.env.meta) tracks created_at and provider_category",
-      "Unit tests cover .env write, metadata tracking, and list formatting"
+      "`clawhq secrets rotate MY_KEY` prompts for new value, validates, and atomically swaps in .env",
+      "Rotation updates rotated_at metadata and emits audit event",
+      "`clawhq secrets revoke MY_KEY` removes from .env and confirms removal",
+      "Revoke warns if config files still reference `${MY_KEY}`",
+      "Atomic swap uses write-to-tmp-then-rename pattern (no partial writes on crash)"
     ],
-    "startedAt": "2026-03-13T16:57:04-07:00",
+    "startedAt": "2026-03-13T17:04:17-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T17:04:17-07:00"
+    "completedAt": "2026-03-13T17:11:20-07:00"
   },
-  "completedAt": "2026-03-13T17:04:17-07:00",
+  "completedAt": "2026-03-13T17:11:20-07:00",
   "attempts": 1
 }

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  atomicWriteEnvFile,
   envToObject,
   getEnvValue,
   parseEnv,
@@ -131,5 +132,52 @@ describe("readEnvFile / writeEnvFile", () => {
     const raw = await readFile(envPath, "utf-8");
     expect(raw).toContain("FOO=updated");
     expect(raw).toContain("# Config");
+  });
+});
+
+describe("atomicWriteEnvFile", () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), "env-atomic-"));
+  });
+
+  it("atomically writes .env file via tmp-then-rename", async () => {
+    const envPath = join(tmpDir, ".env");
+    const content = "FOO=bar\nBAZ=qux";
+    await writeFile(envPath, content);
+
+    const env = await readEnvFile(envPath);
+    setEnvValue(env, "FOO", "rotated");
+    await atomicWriteEnvFile(envPath, env);
+
+    const raw = await readFile(envPath, "utf-8");
+    expect(raw).toContain("FOO=rotated");
+    expect(raw).toContain("BAZ=qux");
+  });
+
+  it("sets 600 permissions on the written file", async () => {
+    const envPath = join(tmpDir, ".env");
+    const env = parseEnv("SECRET=value");
+    await atomicWriteEnvFile(envPath, env);
+
+    const { stat: fsStat } = await import("node:fs/promises");
+    const s = await fsStat(envPath);
+    expect(s.mode & 0o777).toBe(0o600);
+  });
+
+  it("does not leave .env.tmp behind on success", async () => {
+    const envPath = join(tmpDir, ".env");
+    const env = parseEnv("KEY=val");
+    await atomicWriteEnvFile(envPath, env);
+
+    const { stat: fsStat } = await import("node:fs/promises");
+    try {
+      await fsStat(join(tmpDir, ".env.tmp"));
+      // Should not reach here
+      expect(true).toBe(false);
+    } catch (err: unknown) {
+      expect((err as NodeJS.ErrnoException).code).toBe("ENOENT");
+    }
   });
 });

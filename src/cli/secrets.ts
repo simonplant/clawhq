@@ -10,15 +10,19 @@ import { createInterface } from "node:readline";
 import { Command } from "commander";
 
 import { DEFAULT_PROBES, runProbes } from "../security/credentials/index.js";
+import { emitSecretAuditEvent } from "../security/secrets/audit.js";
 import {
+  atomicWriteEnvFile,
   getEnvValue,
   readEnvFile,
+  removeEnvValue,
   setEnvValue,
   writeEnvFile,
 } from "../security/secrets/env.js";
 import type { EnvFile } from "../security/secrets/env.js";
-import { inferCategory, readMetadata, setSecretMetadata } from "../security/secrets/metadata.js";
+import { inferCategory, readMetadata, removeSecretMetadata, setSecretMetadata } from "../security/secrets/metadata.js";
 import { enforceEnvPermissions } from "../security/secrets/permissions.js";
+import { scanDanglingReferences } from "../security/secrets/references.js";
 import type { SecretEntry } from "../security/secrets/types.js";
 
 /**
@@ -195,7 +199,7 @@ export function formatSecretsTable(entries: SecretEntry[]): string {
  */
 export function createSecretsCommand(): Command {
   const secretsCmd = new Command("secrets")
-    .description("Manage secrets — add and list")
+    .description("Manage secrets — add, list, rotate, and revoke")
     .option("--env <path>", "Path to .env file", "~/.openclaw/.env");
 
   secretsCmd
@@ -288,6 +292,127 @@ export function createSecretsCommand(): Command {
       } catch (err: unknown) {
         console.error(
           `Cannot read .env file at ${envPath}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        process.exitCode = 1;
+      }
+    });
+
+  secretsCmd
+    .command("rotate <name>")
+    .description("Rotate a secret — prompts for new value, validates, and atomically swaps in .env")
+    .option("--validate", "Run credential health probe after rotation")
+    .action(async (name: string, opts: { validate?: boolean }) => {
+      const parentOpts = secretsCmd.opts() as { env: string };
+      const envPath = parentOpts.env.replace(/^~/, process.env.HOME ?? "~");
+      const metaPath = envPath + ".meta";
+
+      try {
+        const env = await readEnvFile(envPath);
+
+        // Verify secret exists
+        const existing = getEnvValue(env, name);
+        if (existing === undefined) {
+          console.error(`Secret ${name} not found in ${envPath}`);
+          process.exitCode = 1;
+          return;
+        }
+
+        // Prompt for new value
+        const value = await promptMaskedInput(`Enter new value for ${name}: `);
+        if (!value) {
+          console.error("No value provided. Aborting.");
+          process.exitCode = 1;
+          return;
+        }
+
+        // Optional validation before swapping
+        if (opts.validate) {
+          const probe = DEFAULT_PROBES.find((p) => p.envVar === name);
+          if (probe) {
+            console.log(`Validating new value for ${name}...`);
+            const result = await probe.check(value);
+            if (result.status !== "valid") {
+              console.error(`✗ Validation failed: ${result.message}`);
+              console.error("Rotation aborted — old value preserved.");
+              process.exitCode = 1;
+              return;
+            }
+            console.log(`✓ ${result.provider}: ${result.message}`);
+          }
+        }
+
+        // Atomically swap in .env
+        setEnvValue(env, name, value);
+        await atomicWriteEnvFile(envPath, env);
+
+        // Update rotated_at in metadata
+        await setSecretMetadata(metaPath, name);
+
+        // Emit audit event
+        await emitSecretAuditEvent(envPath, "rotated", name);
+
+        console.log(`Secret ${name} rotated successfully`);
+      } catch (err: unknown) {
+        console.error(
+          `Failed to rotate secret: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        process.exitCode = 1;
+      }
+    });
+
+  secretsCmd
+    .command("revoke <name>")
+    .description("Revoke a secret — removes from .env and warns about dangling references")
+    .action(async (name: string) => {
+      const parentOpts = secretsCmd.opts() as { env: string };
+      const envPath = parentOpts.env.replace(/^~/, process.env.HOME ?? "~");
+      const metaPath = envPath + ".meta";
+
+      try {
+        const env = await readEnvFile(envPath);
+
+        // Verify secret exists
+        const existing = getEnvValue(env, name);
+        if (existing === undefined) {
+          console.error(`Secret ${name} not found in ${envPath}`);
+          process.exitCode = 1;
+          return;
+        }
+
+        // Remove from .env
+        removeEnvValue(env, name);
+        await atomicWriteEnvFile(envPath, env);
+
+        // Verify removal by re-reading
+        const verify = await readEnvFile(envPath);
+        if (getEnvValue(verify, name) !== undefined) {
+          console.error(`Failed to verify removal of ${name} — secret may still be present`);
+          process.exitCode = 1;
+          return;
+        }
+
+        // Remove metadata
+        await removeSecretMetadata(metaPath, name);
+
+        // Emit audit event
+        await emitSecretAuditEvent(envPath, "revoked", name);
+
+        console.log(`Secret ${name} revoked and removed from ${envPath}`);
+
+        // Scan for dangling references
+        const refs = await scanDanglingReferences(name);
+        if (refs.length > 0) {
+          console.log("");
+          console.log(`⚠ Warning: ${refs.length} dangling reference${refs.length === 1 ? "" : "s"} found:`);
+          for (const ref of refs) {
+            console.log(`  ${ref.file}:${ref.line} — ${ref.match}`);
+          }
+          console.log("");
+          console.log("These config files still reference the revoked secret.");
+        }
+      } catch (err: unknown) {
+        console.error(
+          `Failed to revoke secret: ${err instanceof Error ? err.message : String(err)}`,
         );
         process.exitCode = 1;
       }

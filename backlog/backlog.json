@@ -1414,9 +1414,9 @@
       "title": "Secrets CLI — rotate and revoke commands",
       "description": "Implement `clawhq secrets rotate <name>` (atomic swap, health validation, audit event) and `clawhq secrets revoke <name>` (remove from .env, verify removal, warn on dangling references).",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-044"
       ],
@@ -1437,7 +1437,8 @@
         "Atomic swap uses write-to-tmp-then-rename pattern (no partial writes on crash)"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Second secrets lifecycle item. Depends on FEAT-044 for SecretEntry types, metadata sidecar, and CLI scaffolding. Atomic swap pattern is critical — .env corruption during rotate would break the agent. Audit events are emitted here but the audit trail storage (FEAT-046) can be implemented in parallel if needed."
+      "groomingNotes": "Second secrets lifecycle item. Depends on FEAT-044 for SecretEntry types, metadata sidecar, and CLI scaffolding. Atomic swap pattern is critical — .env corruption during rotate would break the agent. Audit events are emitted here but the audit trail storage (FEAT-046) can be implemented in parallel if needed.",
+      "completedAt": "2026-03-13T17:11:20-07:00"
     },
     {
       "id": "FEAT-046",
