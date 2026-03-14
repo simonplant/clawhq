@@ -99,6 +99,20 @@ export async function writeBundle(
     });
   }
 
+  // Media directory
+  ops.push({
+    path: join(outputDir, "media", ".gitkeep"),
+    content: "",
+  });
+
+  // Himalaya config
+  if (bundle.himalayaConfig) {
+    ops.push({
+      path: join(outputDir, "himalaya.toml"),
+      content: bundle.himalayaConfig,
+    });
+  }
+
   // cron/jobs.json
   if (bundle.cronJobs.length > 0) {
     const cronDir = join(outputDir, "cron");

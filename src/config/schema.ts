@@ -189,6 +189,7 @@ export interface DeploymentBundle {
   workspaceTools: Record<string, string>;
   skills: Record<string, Record<string, string>>;
   cronJobs: CronJobDefinition[];
+  himalayaConfig?: string;
 }
 
 export interface CronJobDefinition {

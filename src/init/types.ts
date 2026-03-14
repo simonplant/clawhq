@@ -97,6 +97,7 @@ export interface WizardAnswers {
   template: TemplateChoice;
   integrations: IntegrationSetup[];
   modelRouting: ModelRoutingSetup;
+  emailAddress?: string;
 }
 
 export interface WizardStepResult<T> {

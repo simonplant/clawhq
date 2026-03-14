@@ -23,6 +23,10 @@ import { generateMemoryMd } from "../workspace/identity/memory.js";
 import { generateToolsMd } from "../workspace/identity/tools-doc.js";
 import { generateSkills } from "../workspace/skills/index.js";
 import {
+  detectProvider,
+  generateHimalayaConfig,
+} from "../workspace/tools/himalaya-config.js";
+import {
   generateWorkspaceTools,
   getEnabledToolNames,
 } from "../workspace/tools/registry.js";
@@ -141,18 +145,39 @@ function generateDockerCompose(answers: WizardAnswers): string {
     `${openclawHome}/cron:/home/node/.openclaw/cron:ro`,
   ];
 
+  // Media mount — bind-mount for attachments/media files
+  volumes.push(`${openclawHome}/media:/home/node/.openclaw/media`);
+
+  // Himalaya config mount (read-only) when email is configured
+  const hasEmail = answers.integrations.some((i) => i.category === "email" && i.credential);
+  if (hasEmail) {
+    volumes.push(`${openclawHome}/himalaya.toml:/home/node/.openclaw/workspace/himalaya.toml:ro`);
+  }
+
+  const serviceConfig: Record<string, unknown> = {
+    image: "openclaw:custom",
+    container_name: `openclaw-${answers.basics.agentName}`,
+    restart: "unless-stopped",
+    user: "1000:1000",
+    ports: ["18789:18789"],
+    ...services,
+    volumes,
+    ...(envFile ? { env_file: envFile } : {}),
+  };
+
+  // Ollama bridge — when local models are configured, the container needs
+  // to reach the host's Ollama instance at host.docker.internal:11434
+  const usesOllama = answers.modelRouting.localOnly ||
+    answers.modelRouting.cloudProviders.length === 0;
+  if (usesOllama) {
+    serviceConfig["extra_hosts"] = [
+      "host.docker.internal:host-gateway",
+    ];
+  }
+
   const compose: Record<string, unknown> = {
     services: {
-      openclaw: {
-        image: "openclaw:custom",
-        container_name: `openclaw-${answers.basics.agentName}`,
-        restart: "unless-stopped",
-        user: "1000:1000",
-        ports: ["18789:18789"],
-        ...services,
-        volumes,
-        ...(envFile ? { env_file: envFile } : {}),
-      },
+      openclaw: serviceConfig,
     },
   };
 
@@ -342,6 +367,22 @@ export function generate(answers: WizardAnswers): GeneratedConfig {
   // Generate skills
   const skills = generateSkills(answers.template.skillsIncluded);
 
+  // Himalaya config when email integration is configured
+  const emailIntegration = answers.integrations.find((i) => i.category === "email" && i.credential);
+  let himalayaConfig: string | undefined;
+  if (emailIntegration) {
+    const email = answers.emailAddress ?? emailIntegration.credential;
+    const provider = detectProvider(email);
+    if (provider) {
+      himalayaConfig = generateHimalayaConfig({
+        accountName: answers.basics.agentName,
+        email,
+        provider,
+        passwordEnvVar: emailIntegration.envVar,
+      });
+    }
+  }
+
   const bundle: DeploymentBundle = {
     openclawConfig,
     envVars,
@@ -351,6 +392,7 @@ export function generate(answers: WizardAnswers): GeneratedConfig {
     workspaceTools,
     skills,
     cronJobs,
+    ...(himalayaConfig ? { himalayaConfig } : {}),
   };
 
   // Validate against all 14 landmine rules
