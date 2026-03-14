@@ -766,9 +766,9 @@
       "title": "Verified destruction — clawhq destroy",
       "description": "Implement `clawhq destroy` with pre-decommission checklist, confirmed destruction sequence, and signed destruction manifest proving data was removed.",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-023",
         "FEAT-009"
@@ -790,7 +790,8 @@
         "All data locations are cleaned including volumes, configs, secrets, images, networks"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Decommission — data sovereignty includes the right to delete."
+      "groomingNotes": "Phase 2 Decommission — data sovereignty includes the right to delete.",
+      "completedAt": "2026-03-13T17:27:56-07:00"
     },
     {
       "id": "FEAT-025",
