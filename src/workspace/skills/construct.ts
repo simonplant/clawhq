@@ -9,6 +9,7 @@ export function generateConstructSkill(): Record<string, string> {
     "SKILL.md": generateConstructSkillMd(),
     "SOUL.md": generateConstructSoulMd(),
     "references/skill-spec.md": generateSkillSpec(),
+    "scripts/state.py": generateStatePy(),
   };
 }
 
@@ -178,5 +179,184 @@ description: "What it does. Use when: (1) trigger one, (2) trigger two. NOT for:
 - Regex-based "intelligence" (use the LLM for analysis)
 - Descriptions that don't mention triggers
 - Skills that duplicate existing capabilities
+`;
+}
+
+export function generateStatePy(): string {
+  return `#!/usr/bin/env python3
+"""Construct skill state manager.
+
+Manages persistent state for the construct assess->propose->build->deploy pipeline.
+State is stored as JSON under ~/.openclaw/construct/.
+"""
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+STATE_DIR = Path.home() / ".openclaw" / "construct"
+STATE_FILE = STATE_DIR / "state.json"
+
+
+def _ensure_dir() -> None:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _load_state() -> dict:
+    _ensure_dir()
+    if STATE_FILE.exists():
+        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    return {"assessments": [], "proposals": [], "builds": [], "deploys": []}
+
+
+def _save_state(state: dict) -> None:
+    _ensure_dir()
+    STATE_FILE.write_text(json.dumps(state, indent=2) + "\\n", encoding="utf-8")
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def cmd_assess_save(args: argparse.Namespace) -> None:
+    state = _load_state()
+    entry = {"gaps": json.loads(args.gaps), "timestamp": _now()}
+    state["assessments"].append(entry)
+    _save_state(state)
+    print(json.dumps(entry, indent=2))
+
+
+def cmd_assess_load(_args: argparse.Namespace) -> None:
+    state = _load_state()
+    if not state["assessments"]:
+        print("No assessments found.", file=sys.stderr)
+        sys.exit(1)
+    print(json.dumps(state["assessments"][-1], indent=2))
+
+
+def cmd_propose_save(args: argparse.Namespace) -> None:
+    state = _load_state()
+    entry = {"proposals": json.loads(args.proposals), "timestamp": _now()}
+    state["proposals"].append(entry)
+    _save_state(state)
+    print(json.dumps(entry, indent=2))
+
+
+def cmd_propose_load(args: argparse.Namespace) -> None:
+    state = _load_state()
+    if not state["proposals"]:
+        print("No proposals found.", file=sys.stderr)
+        sys.exit(1)
+    latest = state["proposals"][-1]
+    if args.name:
+        matches = [p for p in latest["proposals"] if p.get("name") == args.name]
+        if not matches:
+            print(f"Proposal '{args.name}' not found.", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(matches[0], indent=2))
+    else:
+        print(json.dumps(latest, indent=2))
+
+
+def cmd_build_save(args: argparse.Namespace) -> None:
+    state = _load_state()
+    entry = {"name": args.name, "path": args.path, "timestamp": _now()}
+    state["builds"].append(entry)
+    _save_state(state)
+    print(json.dumps(entry, indent=2))
+
+
+def cmd_build_load(args: argparse.Namespace) -> None:
+    state = _load_state()
+    if not state["builds"]:
+        print("No builds found.", file=sys.stderr)
+        sys.exit(1)
+    if args.name:
+        matches = [b for b in state["builds"] if b.get("name") == args.name]
+        if not matches:
+            print(f"Build '{args.name}' not found.", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(matches[-1], indent=2))
+    else:
+        print(json.dumps(state["builds"][-1], indent=2))
+
+
+def cmd_deploy_save(args: argparse.Namespace) -> None:
+    state = _load_state()
+    entry = {"name": args.name, "path": args.path, "timestamp": _now()}
+    state["deploys"].append(entry)
+    _save_state(state)
+    print(json.dumps(entry, indent=2))
+
+
+def cmd_review(_args: argparse.Namespace) -> None:
+    state = _load_state()
+    summary = {
+        "assessments": len(state["assessments"]),
+        "proposals": len(state["proposals"]),
+        "builds": len(state["builds"]),
+        "deploys": len(state["deploys"]),
+        "last_assessment": state["assessments"][-1]["timestamp"] if state["assessments"] else None,
+        "last_proposal": state["proposals"][-1]["timestamp"] if state["proposals"] else None,
+        "last_build": state["builds"][-1]["timestamp"] if state["builds"] else None,
+        "last_deploy": state["deploys"][-1]["timestamp"] if state["deploys"] else None,
+    }
+    print(json.dumps(summary, indent=2))
+
+
+def cmd_config(_args: argparse.Namespace) -> None:
+    print(json.dumps({"state_dir": str(STATE_DIR), "state_file": str(STATE_FILE)}, indent=2))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Construct skill state manager")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_as = sub.add_parser("assess-save", help="Save assessment gaps")
+    p_as.add_argument("--gaps", required=True, help="JSON array of capability gaps")
+
+    sub.add_parser("assess-load", help="Load latest assessment")
+
+    p_ps = sub.add_parser("propose-save", help="Save skill proposals")
+    p_ps.add_argument("--proposals", required=True, help="JSON array of proposals")
+
+    p_pl = sub.add_parser("propose-load", help="Load proposals (optionally by name)")
+    p_pl.add_argument("--name", default=None, help="Filter by proposal name")
+
+    p_bs = sub.add_parser("build-save", help="Record a built skill")
+    p_bs.add_argument("--name", required=True, help="Skill name")
+    p_bs.add_argument("--path", required=True, help="Path to built skill")
+
+    p_bl = sub.add_parser("build-load", help="Load build info")
+    p_bl.add_argument("--name", default=None, help="Filter by skill name")
+
+    p_ds = sub.add_parser("deploy-save", help="Record a deployed skill")
+    p_ds.add_argument("--name", required=True, help="Skill name")
+    p_ds.add_argument("--path", required=True, help="Deployed path")
+
+    sub.add_parser("review", help="Show pipeline summary")
+    sub.add_parser("config", help="Show state configuration")
+
+    args = parser.parse_args()
+
+    commands = {
+        "assess-save": cmd_assess_save,
+        "assess-load": cmd_assess_load,
+        "propose-save": cmd_propose_save,
+        "propose-load": cmd_propose_load,
+        "build-save": cmd_build_save,
+        "build-load": cmd_build_load,
+        "deploy-save": cmd_deploy_save,
+        "review": cmd_review,
+        "config": cmd_config,
+    }
+
+    commands[args.command](args)
+
+
+if __name__ == "__main__":
+    main()
 `;
 }

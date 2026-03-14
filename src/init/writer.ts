@@ -81,9 +81,11 @@ export async function writeBundle(
   if (bundle.skills) {
     for (const [skillName, files] of Object.entries(bundle.skills)) {
       for (const [relativePath, content] of Object.entries(files)) {
+        const isScript = /\.(py|sh)$/.test(relativePath);
         ops.push({
           path: join(workspaceDir, "skills", skillName, relativePath),
           content,
+          ...(isScript ? { mode: 0o755 } : {}),
         });
       }
     }
