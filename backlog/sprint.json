@@ -1,31 +1,31 @@
 {
-  "sprintId": "sprint-1773462699",
-  "startedAt": "2026-03-13T21:31:39-07:00",
+  "sprintId": "sprint-1773463309",
+  "startedAt": "2026-03-13T21:41:49-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-042",
-    "title": "Evolve rollback — clawhq evolve rollback/history",
+    "id": "FEAT-043",
+    "title": "Supply chain security — vetting pipeline for skills and tools",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create src/workspace/evolve-history.ts for change tracking",
-      "Define EvolveChange record: id, timestamp, change_type (skill_install/integration_add/provider_add/tool_install/identity_update), target, previous_state, new_state, rollback_snapshot_id, rollback_expires_at",
-      "Implement rollback snapshot creation on every Evolve action — call before applying change",
-      "Implement `clawhq evolve rollback <change-id>`: reverse specific change by restoring files, reverting config, triggering image rebuild if needed",
-      "Implement `clawhq evolve history`: show all Evolve changes with IDs, timestamps, change type, and rollback status (available/expired)",
-      "Rollback snapshots expire after 30 days",
-      "Write unit tests for rollback mechanics across all change types"
+      "Create src/security/vetting.ts for supply chain security logic",
+      "Implement skill source verification: check source against known registries before sandboxing",
+      "Implement AI-powered pattern scanning: detect suspicious patterns — outbound network calls to non-allowlisted domains, credential access, filesystem writes outside workspace",
+      "Implement VirusTotal integration for scanning skill artifacts",
+      "Implement tool allowlist management: known-safe package list with version pinning; non-allowlisted installs require explicit manual override with warning",
+      "Implement `clawhq evolve audit`: show full change history with sources, timestamps, vetting results, and rollback status",
+      "Write unit tests for vetting rules and false-positive filtering"
     ],
     "acceptanceCriteria": [
-      "Every Evolve action (skill, integration, provider, tool, identity) automatically creates a rollback snapshot before applying",
-      "`clawhq evolve rollback <id>` fully reverses the named change",
-      "Rollback triggers Stage 2 rebuild when the reversed change affected container image",
-      "Rollback snapshots expire after 30 days; expired rollbacks show 'unavailable' in history",
-      "`clawhq evolve history` shows complete change history with rollback availability"
+      "Community skill install triggers source verification and AI pattern scan before user approval prompt",
+      "VirusTotal scan runs on skill artifacts as part of vetting pipeline",
+      "Non-allowlisted tool installs are blocked with risk explanation and manual override path",
+      "`clawhq evolve audit` shows vetting results alongside change history",
+      "False-positive filtering prevents blocking common benign patterns"
     ],
-    "startedAt": "2026-03-13T21:31:39-07:00",
+    "startedAt": "2026-03-13T21:41:49-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T21:41:48-07:00"
+    "completedAt": "2026-03-13T21:52:38-07:00"
   },
-  "completedAt": "2026-03-13T21:41:48-07:00",
+  "completedAt": "2026-03-13T21:52:38-07:00",
   "attempts": 1
 }

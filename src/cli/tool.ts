@@ -7,6 +7,7 @@
 
 import type { Command } from "commander";
 
+import { isAllowlisted, loadAllowlist } from "../security/vetting.js";
 import type { ToolContext } from "../tool/index.js";
 import {
   formatToolList,
@@ -59,11 +60,29 @@ export function registerToolCommand(program: Command): void {
   toolCmd
     .command("install <name>")
     .description("Install a CLI tool into the agent's Docker image")
-    .action(async (name: string) => {
+    .option("--force", "Override allowlist check for non-allowlisted packages")
+    .action(async (name: string, opts: { force?: boolean }) => {
       const parentOpts = toolCmd.opts() as { home: string; clawhqDir: string };
       const ctx = makeToolCtx(parentOpts);
 
       try {
+        // Check tool allowlist
+        const allowlist = await loadAllowlist(ctx.clawhqDir);
+        if (!isAllowlisted(allowlist, name)) {
+          console.warn(`WARNING: Package "${name}" is not on the known-safe allowlist.`);
+          console.warn("Non-allowlisted packages have not been vetted and may pose security risks.");
+          console.warn("");
+          if (!opts.force) {
+            console.error(
+              `Installation blocked. To override, run: clawhq tool install ${name} --force`,
+            );
+            process.exitCode = 1;
+            return;
+          }
+          console.warn("Proceeding with --force override...");
+          console.warn("");
+        }
+
         const result = await installTool(ctx, name);
 
         // Record evolve change

@@ -70,6 +70,10 @@ import {
 import { formatCredTable, runProbesFromFile } from "../security/credentials/index.js";
 import { formatScanTable, scanFiles, scanGitHistory } from "../security/secrets/scanner.js";
 import {
+  formatVettingResult,
+  runVettingPipeline,
+} from "../security/vetting.js";
+import {
   activateSkill,
   applySkillUpdate,
   formatSkillList,
@@ -96,6 +100,7 @@ import { formatCheckResult, runUpdate } from "../update/update.js";
 import {
   type EvolveContext,
   EvolveError,
+  formatAudit,
   formatHistory,
   getHistory,
   loadHistory,
@@ -1424,6 +1429,29 @@ evolveCmd
     }
   });
 
+evolveCmd
+  .command("audit")
+  .description("Show full change history with sources, timestamps, vetting results, and rollback status")
+  .option("--json", "Output as JSON")
+  .action(async (opts: { json?: boolean }) => {
+    const parentOpts = evolveCmd.opts() as { home: string; clawhqDir: string };
+    const ctx = makeEvolveCtx(parentOpts);
+
+    try {
+      const history = await loadHistory(ctx);
+      const entries = getHistory(history);
+
+      if (opts.json) {
+        console.log(JSON.stringify(entries, null, 2));
+      } else {
+        console.log(formatAudit(entries));
+      }
+    } catch (err: unknown) {
+      console.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      process.exitCode = 1;
+    }
+  });
+
 // CLI tool management (Evolve sub-feature)
 registerToolCommand(program);
 
@@ -1470,7 +1498,7 @@ skillCmd
       console.log(`Fetching skill from ${source}...`);
       const { manifest, vetResult, stagingDir } = await stageSkillInstall(ctx, source);
 
-      // Show summary and vet results
+      // Show summary and basic vet results
       console.log("");
       console.log(formatSkillSummary(
         manifest.name,
@@ -1480,10 +1508,23 @@ skillCmd
         manifest.requiresContainerDeps,
       ));
       console.log(formatVetResult(vetResult));
+
+      // Run supply chain vetting pipeline
+      const resolved = resolveSource(source);
+      const vtApiKey = process.env.VIRUSTOTAL_API_KEY;
+      const vettingResult = await runVettingPipeline(
+        stagingDir,
+        manifest.files,
+        resolved.source,
+        resolved.uri,
+        { virusTotalApiKey: vtApiKey },
+      );
+      console.log("");
+      console.log(formatVettingResult(vettingResult));
       console.log("");
 
-      // Block on vetting failure
-      if (!vetResult.passed) {
+      // Block on vetting failure (basic vet OR supply chain scan)
+      if (!vetResult.passed || !vettingResult.passed) {
         console.error("Skill failed security vetting. Installation blocked.");
         const { rm: rmDir } = await import("node:fs/promises");
         await rmDir(stagingDir, { recursive: true, force: true });
@@ -1509,10 +1550,9 @@ skillCmd
       }
 
       // Activate
-      const resolved = resolveSource(source);
       const result = await activateSkill(ctx, manifest, stagingDir, resolved.source, resolved.uri);
 
-      // Record evolve change
+      // Record evolve change with vetting info
       await recordChange(ctx, {
         changeType: "skill_install",
         target: result.skill.name,
@@ -1520,6 +1560,8 @@ skillCmd
         newState: `${result.skill.name}@${result.skill.version}`,
         rollbackSnapshotId: null,
         requiresRebuild: result.requiresRebuild,
+        sourceUri: resolved.uri,
+        vettingSummary: vettingResult.summary,
       });
 
       console.log(`Skill "${result.skill.name}" installed and activated.`);

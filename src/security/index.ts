@@ -66,3 +66,30 @@ export type {
 } from "./firewall/index.js";
 
 export { BASE_DOMAINS, CHAIN_NAME, PROVIDER_DOMAINS } from "./firewall/index.js";
+
+export {
+  addToAllowlist,
+  DEFAULT_ALLOWLIST,
+  formatAllowlist,
+  formatVettingResult,
+  isAllowlisted,
+  loadAllowlist,
+  removeFromAllowlist,
+  runVettingPipeline,
+  saveAllowlist,
+  scanPatterns,
+  scanSkillVirusTotal,
+  scanVirusTotal,
+  verifySource,
+} from "./vetting.js";
+
+export type {
+  AllowlistEntry as ToolAllowlistEntry,
+  PatternFinding,
+  PatternScanResult,
+  SourceVerificationResult,
+  ToolAllowlist,
+  VettingPipelineResult,
+  VettingStage,
+  VirusTotalResult,
+} from "./vetting.js";
