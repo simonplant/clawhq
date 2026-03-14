@@ -10,7 +10,12 @@ import { createInterface } from "node:readline";
 import { Command } from "commander";
 
 import { DEFAULT_PROBES, runProbes } from "../security/credentials/index.js";
-import { emitSecretAuditEvent } from "../security/secrets/audit.js";
+import {
+  emitSecretAuditEvent,
+  readAuditEvents,
+  verifyAuditChain,
+} from "../security/secrets/audit.js";
+import type { SecretAuditEvent } from "../security/secrets/audit.js";
 import {
   atomicWriteEnvFile,
   getEnvValue,
@@ -243,6 +248,9 @@ export function createSecretsCommand(): Command {
         // Write metadata
         await setSecretMetadata(metaPath, name);
 
+        // Emit audit event
+        await emitSecretAuditEvent(envPath, "added", name);
+
         console.log(`Secret ${name} written to ${envPath}`);
 
         // Optional validation via credential health probes
@@ -418,5 +426,77 @@ export function createSecretsCommand(): Command {
       }
     });
 
+  secretsCmd
+    .command("audit")
+    .description("Display chronological audit log of all secret events")
+    .option("--verify", "Validate HMAC chain integrity")
+    .option("--json", "Output as JSON")
+    .action(async (opts: { verify?: boolean; json?: boolean }) => {
+      const parentOpts = secretsCmd.opts() as { env: string };
+      const envPath = parentOpts.env.replace(/^~/, process.env.HOME ?? "~");
+
+      try {
+        if (opts.verify) {
+          const result = await verifyAuditChain(envPath);
+          if (opts.json) {
+            console.log(JSON.stringify(result, null, 2));
+          } else if (result.valid) {
+            console.log(`Chain integrity: VALID (${result.eventCount} events verified)`);
+          } else {
+            console.log(`Chain integrity: TAMPERED`);
+            for (const err of result.errors) {
+              console.log(`  seq ${err.seq}: ${err.message}`);
+            }
+            process.exitCode = 1;
+          }
+          return;
+        }
+
+        const events = await readAuditEvents(envPath);
+        if (opts.json) {
+          console.log(JSON.stringify(events, null, 2));
+        } else {
+          console.log(formatAuditTable(events));
+        }
+      } catch (err: unknown) {
+        console.error(
+          `Failed to read audit trail: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        process.exitCode = 1;
+      }
+    });
+
   return secretsCmd;
+}
+
+/**
+ * Format audit events as a human-readable table.
+ */
+export function formatAuditTable(events: SecretAuditEvent[]): string {
+  if (events.length === 0) {
+    return "No audit events recorded";
+  }
+
+  const seqWidth = Math.max(3, String(events[events.length - 1].seq).length);
+  const eventWidth = Math.max(5, ...events.map((e) => e.event.length));
+  const nameWidth = Math.max(6, ...events.map((e) => e.secret_name.length));
+
+  const lines: string[] = [];
+
+  lines.push(
+    `${"SEQ".padEnd(seqWidth)}  ${"TIMESTAMP".padEnd(24)}  ${"EVENT".padEnd(eventWidth)}  SECRET`,
+  );
+  lines.push("-".repeat(seqWidth + eventWidth + nameWidth + 32));
+
+  for (const ev of events) {
+    const ts = ev.timestamp.slice(0, 19).replace("T", " ");
+    lines.push(
+      `${String(ev.seq).padEnd(seqWidth)}  ${ts.padEnd(24)}  ${ev.event.padEnd(eventWidth)}  ${ev.secret_name}`,
+    );
+  }
+
+  lines.push("");
+  lines.push(`${events.length} event${events.length === 1 ? "" : "s"}`);
+
+  return lines.join("\n");
 }

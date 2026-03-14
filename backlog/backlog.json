@@ -1445,9 +1445,9 @@
       "title": "Secrets audit trail — append-only JSONL with HMAC chain",
       "description": "Implement `clawhq secrets audit` command and the underlying append-only JSONL audit trail with HMAC chain for tamper detection. Logs all secret events: added, rotated, revoked, accessed-by-deploy.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-044"
       ],
@@ -1470,7 +1470,8 @@
         "Events are recorded for: add, rotate, revoke, and deploy-access operations"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Third secrets lifecycle item. Only hard dependency is FEAT-044 for types — can be built in parallel with FEAT-045. The HMAC chain uses a local key stored alongside the audit file (not high-security HSM, but detects casual tampering and accidental corruption). Deploy-access event emission requires a hook in the deploy pipeline."
+      "groomingNotes": "Third secrets lifecycle item. Only hard dependency is FEAT-044 for types — can be built in parallel with FEAT-045. The HMAC chain uses a local key stored alongside the audit file (not high-security HSM, but detects casual tampering and accidental corruption). Deploy-access event emission requires a hook in the deploy pipeline.",
+      "completedAt": "2026-03-13T17:17:58-07:00"
     },
     {
       "id": "FEAT-047",

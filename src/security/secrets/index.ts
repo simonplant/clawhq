@@ -22,8 +22,21 @@ export {
 } from "./metadata.js";
 export { scanContent, scanFiles, SECRET_PATTERNS } from "./scanner.js";
 export type { ScanMatch, ScanResult, SecretPattern } from "./scanner.js";
-export { emitSecretAuditEvent } from "./audit.js";
-export type { SecretAuditEvent, SecretAuditEventType } from "./audit.js";
+export {
+  auditKeyPath,
+  auditPath,
+  computeEventHmac,
+  emitSecretAuditEvent,
+  getOrCreateAuditKey,
+  readAuditEvents,
+  verifyAuditChain,
+} from "./audit.js";
+export type {
+  AuditVerifyError,
+  AuditVerifyResult,
+  SecretAuditEvent,
+  SecretAuditEventType,
+} from "./audit.js";
 export { scanDanglingReferences } from "./references.js";
 export type { DanglingReference } from "./references.js";
 export type { MetadataFile, SecretEntry, SecretMetadata } from "./types.js";

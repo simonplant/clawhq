@@ -1,31 +1,33 @@
 {
-  "sprintId": "sprint-1773446657",
-  "startedAt": "2026-03-13T17:04:17-07:00",
+  "sprintId": "sprint-1773447080",
+  "startedAt": "2026-03-13T17:11:20-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-045",
-    "title": "Secrets CLI — rotate and revoke commands",
+    "id": "FEAT-046",
+    "title": "Secrets audit trail — append-only JSONL with HMAC chain",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Add `rotate` and `revoke` sub-subcommands to src/cli/secrets.ts",
-      "Implement `secrets rotate <name>`: prompt for new value (masked), validate via health probe, atomically swap in .env (write to .env.tmp then rename), update rotated_at in .env.meta, emit audit event",
-      "Implement atomic .env swap in src/security/secrets/env.ts: write new content to .env.tmp with 600 permissions, then fs.rename() for atomic replacement",
-      "Implement `secrets revoke <name>`: remove entry from .env, verify removal by re-reading, scan all config files (openclaw.json, docker-compose.yml, workspace configs) for `${NAME}` references and warn if found",
-      "Implement dangling reference scanner in src/security/secrets/references.ts: glob config files, regex match `${SECRET_NAME}` and `$SECRET_NAME` patterns",
-      "Emit audit events for rotate and revoke (write to audit trail — consumed by FEAT-046)",
-      "Write unit tests for atomic swap, revocation, dangling reference detection"
+      "Create src/security/secrets/audit.ts with SecretAuditEvent type matching PRODUCT.md data model (seq, event_type, secret_name, timestamp, prev_hmac, hmac)",
+      "Implement append-only JSONL writer: each line is a JSON SecretAuditEvent, file permissions 600",
+      "Implement HMAC chain: each event's hmac = HMAC-SHA256(key, JSON(event_without_hmac) + prev_hmac), first event uses empty prev_hmac",
+      "Implement chain verification: read all events, recompute HMAC chain, report any tampering",
+      "Add `secrets audit` sub-subcommand to src/cli/secrets.ts: display chronological event log with formatted table (seq, timestamp, event_type, secret_name)",
+      "Add `--verify` flag to `secrets audit` that validates HMAC chain integrity",
+      "Integrate audit event emission into FEAT-044 add/list and FEAT-045 rotate/revoke flows (export appendAuditEvent function)",
+      "Emit accessed-by-deploy events from the deploy pipeline (hook into src/docker/ deploy flow)",
+      "Write unit tests for HMAC chain computation, verification, and tamper detection"
     ],
     "acceptanceCriteria": [
-      "`clawhq secrets rotate MY_KEY` prompts for new value, validates, and atomically swaps in .env",
-      "Rotation updates rotated_at metadata and emits audit event",
-      "`clawhq secrets revoke MY_KEY` removes from .env and confirms removal",
-      "Revoke warns if config files still reference `${MY_KEY}`",
-      "Atomic swap uses write-to-tmp-then-rename pattern (no partial writes on crash)"
+      "`clawhq secrets audit` displays chronological log of all secret events",
+      "Audit trail is append-only JSONL file with 600 permissions",
+      "Each event has HMAC linking to previous event (tamper-evident chain)",
+      "`clawhq secrets audit --verify` validates chain integrity and reports tampering",
+      "Events are recorded for: add, rotate, revoke, and deploy-access operations"
     ],
-    "startedAt": "2026-03-13T17:04:17-07:00",
+    "startedAt": "2026-03-13T17:11:20-07:00",
     "status": "passed",
-    "completedAt": "2026-03-13T17:11:20-07:00"
+    "completedAt": "2026-03-13T17:17:58-07:00"
   },
-  "completedAt": "2026-03-13T17:11:20-07:00",
+  "completedAt": "2026-03-13T17:17:58-07:00",
   "attempts": 1
 }

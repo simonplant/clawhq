@@ -12,6 +12,8 @@ import { join } from "node:path";
 import { DockerClient } from "../docker/client.js";
 import { pollGatewayHealth, HealthPollTimeout as GatewayHealthTimeout } from "../gateway/health.js";
 import { apply as applyFirewall, buildConfig as buildFirewallConfig } from "../security/firewall/firewall.js";
+import { emitSecretAuditEvent } from "../security/secrets/audit.js";
+import { readEnvFile } from "../security/secrets/env.js";
 import { runSmokeTest } from "../smoke/index.js";
 
 import { runPreflight } from "./preflight.js";
@@ -154,6 +156,21 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
       }
     } catch {
       // Non-fatal
+    }
+  }
+
+  // Step 4b: Emit deploy-access audit events for all secrets
+  if (healthStep.status === "done") {
+    const envFilePath = opts.envPath ?? join(opts.openclawHome ?? join(homedir(), ".openclaw"), ".env");
+    try {
+      const env = await readEnvFile(envFilePath);
+      for (const entry of env.entries) {
+        if (entry.type === "pair" && entry.key) {
+          await emitSecretAuditEvent(envFilePath, "accessed", entry.key);
+        }
+      }
+    } catch {
+      // .env may not exist or be empty — non-fatal for deploy
     }
   }
 
