@@ -2,7 +2,7 @@
  * `clawhq migrate` subcommand — import data from other AI assistants.
  *
  * Currently supports ChatGPT export ZIP files.
- * Uses local LLM for extraction with pattern-based fallback.
+ * Uses regex-based pattern matching for fact/preference extraction.
  */
 
 import { stat } from "node:fs/promises";
@@ -53,15 +53,11 @@ export function createMigrateCommand(): Command {
     .description("Import conversation history from other AI assistants")
     .requiredOption("--from <source>", "Source platform (chatgpt)")
     .option("--openclaw-home <path>", "OpenClaw home directory", "~/.openclaw")
-    .option("--ollama-host <url>", "Ollama API host", "http://localhost:11434")
-    .option("--ollama-model <name>", "Ollama model for extraction", "llama3:8b")
     .option("--token-budget <chars>", "Max chars for USER.md additions", "20000")
     .argument("<file>", "Export file path (e.g., chatgpt-export.zip)")
     .action(async (file: string, opts: {
       from: string;
       openclawHome: string;
-      ollamaHost: string;
-      ollamaModel: string;
       tokenBudget: string;
     }) => {
       if (opts.from !== "chatgpt") {
@@ -109,13 +105,9 @@ export function createMigrateCommand(): Command {
 
         // Step 3: Extract facts/preferences
         io.print("\nExtracting facts and preferences...");
-        const { items: rawItems, method } = await extract(
-          texts,
-          opts.ollamaHost,
-          opts.ollamaModel,
-        );
+        const { items: rawItems } = extract(texts);
         io.print(
-          `Extracted ${rawItems.length} item(s) using ${method === "llm" ? "local LLM" : "pattern matching"}.`,
+          `Extracted ${rawItems.length} item(s) using pattern matching.`,
         );
 
         if (rawItems.length === 0) {

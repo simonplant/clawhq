@@ -2,7 +2,7 @@
  * ChatGPT conversation import types.
  *
  * Supports parsing ChatGPT data exports (ZIP with conversations.json),
- * extracting facts/preferences via local LLM, PII masking, and
+ * extracting facts/preferences via regex pattern matching, PII masking, and
  * interactive user review before writing to identity/memory files.
  */
 
@@ -74,10 +74,6 @@ export interface MigrateOptions {
   exportPath: string;
   /** OpenClaw home directory. */
   openclawHome: string;
-  /** Ollama API host URL. */
-  ollamaHost: string;
-  /** Ollama model name. */
-  ollamaModel: string;
   /** Maximum token budget for USER.md additions. */
   tokenBudget: number;
 }

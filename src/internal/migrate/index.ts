@@ -1,10 +1,9 @@
 /**
  * ChatGPT conversation import — migrate from ChatGPT to ClawHQ.
  *
- * Parses ChatGPT export ZIPs, extracts facts and preferences via local LLM
- * (with pattern-based fallback), applies PII masking, presents items for
- * interactive user review, and writes approved entries to USER.md and
- * warm memory tier.
+ * Parses ChatGPT export ZIPs, extracts facts and preferences via regex
+ * pattern matching, applies PII masking, presents items for interactive
+ * user review, and writes approved entries to USER.md and warm memory tier.
  */
 
 export type {
@@ -25,7 +24,6 @@ export { buildConversationTexts, extractMessages, parseExport } from "./parser.j
 export {
   estimateTokens,
   extract,
-  extractWithLLM,
   extractWithPatterns,
 } from "./extractor.js";
 
