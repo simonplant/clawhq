@@ -1,31 +1,28 @@
 {
-  "sprintId": "sprint-1773540027",
-  "startedAt": "2026-03-14T19:00:27-07:00",
+  "sprintId": "sprint-1773541280",
+  "startedAt": "2026-03-14T19:21:20-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-027",
-    "title": "Preference learning from corrections",
+    "id": "FEAT-035",
+    "title": "'Why did you do that?' trace",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create internal/learning/ package",
-      "Define PreferenceSignal struct: timestamp, action_type, original_decision, correction, signal_type (preference/boundary/one-time), applied_to_identity",
-      "Implement correction classifier: determine if correction is preference, boundary, or one-time override",
-      "Implement signal accumulator: track signals per category",
-      "Implement threshold proposer: when 5+ signals in same category, propose preference update",
-      "Implement identity file updater: apply approved preference updates with rollback capability",
-      "Log all preference changes for audit trail"
+      "Create internal/trace/ package",
+      "Implement decision log: record the rules, preferences, and context used for each agent action",
+      "Implement trace query: given an action ID, return the full decision chain",
+      "Implement natural language explanation: local LLM generates user-friendly explanation from trace",
+      "Allow corrections from trace context to feed into preference learning"
     ],
     "acceptanceCriteria": [
-      "Corrections are classified into preference, boundary, or one-time override",
-      "After 5 signals in the same category, a preference update is proposed",
-      "User approves preference updates before they're applied",
-      "Applied preferences are logged with rollback capability",
-      "Boundary signals are never overridden by preference signals"
+      "Every agent action records its decision trace",
+      "User can query why any specific action was taken",
+      "Explanation cites specific rules and preferences",
+      "Corrections from trace context feed into preference learning"
     ],
-    "startedAt": "2026-03-14T19:00:27-07:00",
+    "startedAt": "2026-03-14T19:21:20-07:00",
     "status": "passed",
-    "completedAt": "2026-03-14T19:09:25-07:00"
+    "completedAt": "2026-03-14T19:29:23-07:00"
   },
-  "completedAt": "2026-03-14T19:09:25-07:00",
+  "completedAt": "2026-03-14T19:29:23-07:00",
   "attempts": 1
 }
