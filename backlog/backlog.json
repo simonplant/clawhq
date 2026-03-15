@@ -860,9 +860,9 @@
       "title": "Preference learning from corrections",
       "description": "Implement preference learning: classify user corrections (preference, boundary, one-time), accumulate signals, propose identity file updates after threshold.",
       "priority": "could",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-022"
       ],
@@ -883,7 +883,8 @@
         "Boundary signals are never overridden by preference signals"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — the 'gets better over time' mechanism."
+      "groomingNotes": "Phase 2 Evolve — the 'gets better over time' mechanism.",
+      "completedAt": "2026-03-14T19:09:25-07:00"
     },
     {
       "id": "FEAT-028",
@@ -1065,7 +1066,10 @@
         "Alerts appear in both status dashboard and doctor output"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Operate — proactive ops, not reactive dashboards."
+      "groomingNotes": "Phase 2 Operate — proactive ops, not reactive dashboards.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-14T19:00:27-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-034",
