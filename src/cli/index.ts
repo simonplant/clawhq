@@ -5,6 +5,14 @@ import { resolve } from "node:path";
 
 import { Command } from "commander";
 
+import {
+  collectMetrics,
+  formatAlertJson,
+  formatAlertSummary,
+  formatAlertTable,
+  generateAlerts,
+} from "../alerts/index.js";
+import { appendSnapshot, loadHistory as loadAlertHistory } from "../alerts/store.js";
 import type { ApprovalCategory } from "../approval/index.js";
 import {
   approve as approveAction,
@@ -72,6 +80,18 @@ import {
   updateFirewallAllowlist,
 } from "../integrate/index.js";
 import type { IntegrateContext } from "../integrate/index.js";
+import {
+  type AutonomyConfig,
+  AutonomyError,
+  DEFAULT_AUTONOMY_CONFIG,
+  formatDryRun,
+  formatRecommendations,
+  generateRecommendations,
+  acceptRecommendation,
+  loadStore as loadAutonomyStore,
+  rejectRecommendation,
+} from "../internal/autonomy/index.js";
+import type { AutonomyContext } from "../internal/autonomy/index.js";
 import type { LogCategory } from "../logs/index.js";
 import {
   formatCronHistory,
@@ -945,10 +965,24 @@ program
 
     const run = async () => {
       const report = await collectStatus(statusOpts);
+
+      // Collect metrics and append to history for trend analysis
+      const snapshot = collectMetrics(report);
+      await appendSnapshot(statusOpts.openclawHome, snapshot).catch(() => {
+        // Silently ignore history write errors — alerts are non-blocking
+      });
+
       if (opts.json) {
         console.log(formatStatusJson(report));
       } else {
         console.log(formatDashboard(report));
+
+        // Show alert summary if there are any active alerts
+        const history = await loadAlertHistory(statusOpts.openclawHome).catch(() => []);
+        const alertReport = generateAlerts(history);
+        if (alertReport.alerts.length > 0) {
+          console.log(formatAlertSummary(alertReport));
+        }
       }
     };
 
@@ -977,6 +1011,31 @@ program
     };
     process.on("SIGINT", cleanup);
     process.on("SIGTERM", cleanup);
+  });
+
+// Alerts command
+program
+  .command("alerts")
+  .description("Show current and predicted health alerts")
+  .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
+  .option("--json", "Output as JSON")
+  .action(async (opts: {
+    home: string;
+    json?: boolean;
+  }) => {
+    const openclawHome = opts.home.replace(/^~/, process.env.HOME ?? "~");
+    const history = await loadAlertHistory(openclawHome);
+    const alertReport = generateAlerts(history);
+
+    if (opts.json) {
+      console.log(formatAlertJson(alertReport));
+    } else {
+      console.log(formatAlertTable(alertReport));
+    }
+
+    if (alertReport.counts.critical > 0) {
+      process.exitCode = 1;
+    }
   });
 
 // Backup command with subcommands
@@ -1496,6 +1555,144 @@ evolveCmd
         console.log(JSON.stringify(entries, null, 2));
       } else {
         console.log(formatAudit(entries));
+      }
+    } catch (err: unknown) {
+      console.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      process.exitCode = 1;
+    }
+  });
+
+// Autonomy tuning (Evolve sub-feature)
+const autonomyCmd = evolveCmd
+  .command("autonomy")
+  .description("Analyze approval patterns and recommend autonomy changes")
+  .option("--dry-run", "Preview what would be recommended without persisting")
+  .option("--json", "Output as JSON")
+  .option("--min-sample <n>", "Minimum decisions before recommending", "10")
+  .option("--auto-approve-threshold <n>", "Approval rate threshold for auto-approve (0-1)", "0.95")
+  .option("--require-approval-threshold <n>", "Rejection rate threshold for require-approval (0-1)", "0.50")
+  .action(async (opts: {
+    dryRun?: boolean;
+    json?: boolean;
+    minSample?: string;
+    autoApproveThreshold?: string;
+    requireApprovalThreshold?: string;
+  }) => {
+    const parentOpts = evolveCmd.opts() as { home: string; clawhqDir: string };
+    const ctx: AutonomyContext = {
+      openclawHome: parentOpts.home.replace(/^~/, process.env.HOME ?? "~"),
+      clawhqDir: parentOpts.clawhqDir.replace(/^~/, process.env.HOME ?? "~"),
+    };
+
+    const config: AutonomyConfig = {
+      ...DEFAULT_AUTONOMY_CONFIG,
+      minimumSampleSize: parseInt(opts.minSample ?? "10", 10),
+      autoApproveThreshold: parseFloat(opts.autoApproveThreshold ?? "0.95"),
+      requireApprovalThreshold: parseFloat(opts.requireApprovalThreshold ?? "0.50"),
+    };
+
+    try {
+      const result = await generateRecommendations(ctx, config);
+
+      if (opts.dryRun) {
+        if (opts.json) {
+          console.log(JSON.stringify(result.allPending, null, 2));
+        } else {
+          console.log(formatDryRun(result.allPending));
+        }
+        return;
+      }
+
+      if (opts.json) {
+        console.log(JSON.stringify({
+          new: result.recommendations,
+          allPending: result.allPending,
+        }, null, 2));
+      } else {
+        if (result.recommendations.length > 0) {
+          console.log(`Generated ${result.recommendations.length} new recommendation(s).`);
+          console.log("");
+        }
+        console.log(formatRecommendations(result.allPending));
+      }
+    } catch (err: unknown) {
+      if (err instanceof AutonomyError) {
+        console.error(`Error: ${err.message}`);
+      } else {
+        console.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      process.exitCode = 1;
+    }
+  });
+
+autonomyCmd
+  .command("accept <recommendation-id>")
+  .description("Accept an autonomy recommendation")
+  .action(async (recommendationId: string) => {
+    const parentOpts = evolveCmd.opts() as { home: string; clawhqDir: string };
+    const ctx: AutonomyContext = {
+      openclawHome: parentOpts.home.replace(/^~/, process.env.HOME ?? "~"),
+      clawhqDir: parentOpts.clawhqDir.replace(/^~/, process.env.HOME ?? "~"),
+    };
+
+    try {
+      const result = await acceptRecommendation(ctx, recommendationId);
+      console.log(result.message);
+    } catch (err: unknown) {
+      if (err instanceof AutonomyError) {
+        console.error(`Error: ${err.message}`);
+      } else {
+        console.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      process.exitCode = 1;
+    }
+  });
+
+autonomyCmd
+  .command("reject <recommendation-id>")
+  .description("Reject an autonomy recommendation (applies cooldown)")
+  .action(async (recommendationId: string) => {
+    const parentOpts = evolveCmd.opts() as { home: string; clawhqDir: string };
+    const ctx: AutonomyContext = {
+      openclawHome: parentOpts.home.replace(/^~/, process.env.HOME ?? "~"),
+      clawhqDir: parentOpts.clawhqDir.replace(/^~/, process.env.HOME ?? "~"),
+    };
+
+    try {
+      const result = await rejectRecommendation(ctx, recommendationId);
+      console.log(result.message);
+    } catch (err: unknown) {
+      if (err instanceof AutonomyError) {
+        console.error(`Error: ${err.message}`);
+      } else {
+        console.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      process.exitCode = 1;
+    }
+  });
+
+autonomyCmd
+  .command("list")
+  .description("List all pending autonomy recommendations")
+  .option("--json", "Output as JSON")
+  .option("--all", "Show all recommendations including resolved")
+  .action(async (opts: { json?: boolean; all?: boolean }) => {
+    const parentOpts = evolveCmd.opts() as { home: string; clawhqDir: string };
+    const ctx: AutonomyContext = {
+      openclawHome: parentOpts.home.replace(/^~/, process.env.HOME ?? "~"),
+      clawhqDir: parentOpts.clawhqDir.replace(/^~/, process.env.HOME ?? "~"),
+    };
+
+    try {
+      const store = await loadAutonomyStore(ctx);
+      const recs = opts.all
+        ? store.recommendations
+        : store.recommendations.filter((r) => r.status === "pending");
+
+      if (opts.json) {
+        console.log(JSON.stringify(recs, null, 2));
+      } else {
+        console.log(formatRecommendations(recs));
       }
     } catch (err: unknown) {
       console.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
