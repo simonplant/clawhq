@@ -860,9 +860,9 @@
       "title": "Preference learning from corrections",
       "description": "Implement preference learning: classify user corrections (preference, boundary, one-time), accumulate signals, propose identity file updates after threshold.",
       "priority": "could",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-022"
       ],
@@ -883,7 +883,8 @@
         "Boundary signals are never overridden by preference signals"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — the 'gets better over time' mechanism."
+      "groomingNotes": "Phase 2 Evolve — the 'gets better over time' mechanism.",
+      "completedAt": "2026-03-14T19:09:25-07:00"
     },
     {
       "id": "FEAT-028",
@@ -913,7 +914,10 @@
         "All changes are logged with rollback capability"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — reduces micromanagement over time."
+      "groomingNotes": "Phase 2 Evolve — reduces micromanagement over time.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-14T19:09:42-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-029",
@@ -943,7 +947,10 @@
         "Extracted data respects token budgets for identity files"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 3 Migration — reduces switching cost for Privacy Migrants. DEPENDENCY FIX NEEDED: Steps reference FEAT-011 dependency (wontdo). The local LLM call for fact/preference extraction should use Ollama directly (localhost:11434) — not a routing engine. Real dependency chain: FEAT-021 (memory lifecycle, for writing to warm tier) + FEAT-020 (identity governance, for USER.md token budget) only. Tech Lead: remove FEAT-011 from dependsOn array. Priority remains could — Phase 3 item, not needed until Phase 2 is solid."
+      "groomingNotes": "Phase 3 Migration — reduces switching cost for Privacy Migrants. DEPENDENCY FIX NEEDED: Steps reference FEAT-011 dependency (wontdo). The local LLM call for fact/preference extraction should use Ollama directly (localhost:11434) — not a routing engine. Real dependency chain: FEAT-021 (memory lifecycle, for writing to warm tier) + FEAT-020 (identity governance, for USER.md token budget) only. Tech Lead: remove FEAT-011 from dependsOn array. Priority remains could — Phase 3 item, not needed until Phase 2 is solid.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-14T19:21:20-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-030",

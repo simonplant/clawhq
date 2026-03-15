@@ -914,7 +914,10 @@
         "All changes are logged with rollback capability"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 2 Evolve — reduces micromanagement over time."
+      "groomingNotes": "Phase 2 Evolve — reduces micromanagement over time.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-14T19:09:42-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-029",
@@ -944,7 +947,10 @@
         "Extracted data respects token budgets for identity files"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "Phase 3 Migration — reduces switching cost for Privacy Migrants. DEPENDENCY FIX NEEDED: Steps reference FEAT-011 dependency (wontdo). The local LLM call for fact/preference extraction should use Ollama directly (localhost:11434) — not a routing engine. Real dependency chain: FEAT-021 (memory lifecycle, for writing to warm tier) + FEAT-020 (identity governance, for USER.md token budget) only. Tech Lead: remove FEAT-011 from dependsOn array. Priority remains could — Phase 3 item, not needed until Phase 2 is solid."
+      "groomingNotes": "Phase 3 Migration — reduces switching cost for Privacy Migrants. DEPENDENCY FIX NEEDED: Steps reference FEAT-011 dependency (wontdo). The local LLM call for fact/preference extraction should use Ollama directly (localhost:11434) — not a routing engine. Real dependency chain: FEAT-021 (memory lifecycle, for writing to warm tier) + FEAT-020 (identity governance, for USER.md token budget) only. Tech Lead: remove FEAT-011 from dependsOn array. Priority remains could — Phase 3 item, not needed until Phase 2 is solid.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-14T19:21:20-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-030",
@@ -1103,9 +1109,9 @@
       "title": "'Why did you do that?' trace",
       "description": "Implement decision trace: when user asks why the agent took an action, cite the specific rules, preferences, and context that drove the decision.",
       "priority": "could",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [
         "FEAT-022",
         "FEAT-021"
@@ -1124,7 +1130,8 @@
         "Corrections from trace context feed into preference learning"
       ],
       "groomedAt": "2026-03-12",
-      "groomingNotes": "Phase 4 Ecosystem — transparency at the deepest level."
+      "groomingNotes": "Phase 4 Ecosystem — transparency at the deepest level.",
+      "completedAt": "2026-03-14T19:29:23-07:00"
     },
     {
       "id": "FEAT-036",

@@ -128,9 +128,11 @@ import {
 } from "../workspace/evolve-history.js";
 
 import { createFleetCommand } from "./fleet.js";
+import { createMigrateCommand } from "./migrate.js";
 import { createProviderCommand } from "./provider.js";
 import { createSecretsCommand } from "./secrets.js";
 import { registerToolCommand } from "./tool.js";
+import { createTraceCommand } from "./trace.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string; description: string };
@@ -409,6 +411,8 @@ program
 program.addCommand(createSecretsCommand());
 program.addCommand(createProviderCommand());
 program.addCommand(createFleetCommand());
+program.addCommand(createMigrateCommand());
+program.addCommand(createTraceCommand());
 program
   .command("audit")
   .description("View audit logs")
