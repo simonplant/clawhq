@@ -664,9 +664,9 @@
       "title": "Memory lifecycle management \u2014 structured knowledge graph",
       "description": "Implement tiered memory management: transform raw conversations into structured knowledge, manage hot/warm/cold tiers with LLM-powered summarization, background reflection.",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
-      "passes": false,
+      "status": "done",
+      "readyForSprint": false,
+      "passes": true,
       "dependsOn": [],
       "steps": [
         "Create internal/memory/ package",
@@ -691,7 +691,8 @@
       "groomingNotes": "Phase 2 Evolve \u2014 biggest differentiator for agent longevity. Raw OpenClaw agents fail because memory bloats to 360KB in 3 days. This is what keeps agents working past month 1. DEPENDENCY FIX NEEDED: FEAT-011 is in dependsOn but is wontdo. Memory lifecycle is filesystem management of OpenClaw workspace files \u2014 reading conversation logs, restructuring them, managing hot/warm/cold file tiers. LLM summarization for tier transitions calls Ollama directly (localhost:11434). Tech Lead: remove FEAT-011 from dependsOn. Real dependency: FEAT-002 (config) only. This item is unblocked.",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-13T22:15:01-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-14T06:57:01-07:00"
     },
     {
       "id": "FEAT-022",
@@ -1509,8 +1510,8 @@
       "title": "Template-driven workspace channels",
       "description": "The tasks tool defaults to 12 channels hardcoded from the Clawdius deployment (developer, trader, pa, health, security, family, kahu, simon-growth, clawdius-growth, content, finances, network). These are meaningless for other agents. Each template should define channels appropriate to its use case. The channel list flows into the tasks tool generator, TOOLS.md documentation, and work-recon skill.\n\nSuggested channel sets per template:\n- Replace Google Assistant: personal, work, shopping, health, family, home, errands\n- Replace ChatGPT Plus: research, writing, coding, learning\n- Replace my PA: inbox, calendar, meetings, projects, travel, expenses\n- Family Hub: meals, chores, school, activities, shopping, health\n- Research Co-pilot: literature, experiments, writing, grants, collaboration\n- Founders Ops: product, engineering, hiring, investors, ops, admin, legal",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "passes": true,
       "steps": [
         "Add a channels field to the TemplateChoice type (string array)",
@@ -1527,15 +1528,16 @@
         "Default channels (if no template) remain sensible (e.g., general, work, personal)"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "UPGRADED TO MUST: The hardcoded channels (developer, trader, pa, kahu, clawdius-growth...) are from the Clawdius deployment and are actively wrong for every other template. A user who picks 'Replace my PA' sees channels named 'trader' and 'kahu'. This is a template correctness issue that undermines trust in the init output. Must fix before Phase 2 is considered complete."
+      "groomingNotes": "UPGRADED TO MUST: The hardcoded channels (developer, trader, pa, kahu, clawdius-growth...) are from the Clawdius deployment and are actively wrong for every other template. A user who picks 'Replace my PA' sees channels named 'trader' and 'kahu'. This is a template correctness issue that undermines trust in the init output. Must fix before Phase 2 is considered complete.",
+      "completedAt": "2026-03-14T18:49:17.304980-07:00"
     },
     {
       "id": "FEAT-058",
       "title": "Production parity \u2014 himalaya config, media mount, ollama bridge",
       "description": "Three patterns exist in the production Clawdius deployment that the generator does not produce, causing agents with email/media/local-model integrations to fail silently:\n\n1. himalaya.toml \u2014 the email tool references /home/node/.openclaw/workspace/himalaya.toml but no config template is generated. Agents with email integration get a tool that can not connect.\n2. Media bind-mount \u2014 Telegram attachments need ~/.openclaw/media mounted at workspace/media. Without it, the agent can not access files users send via messaging.\n3. Ollama bridge network \u2014 agents using local models via Ollama need an external docker network (ollama-bridge) in their compose. Without it, the container can not reach the Ollama API.\n\nEach of these should be conditionally included based on integration selections.",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "passes": true,
       "steps": [
         "Email: generate a himalaya.toml template with CHANGE_ME placeholders for IMAP/SMTP credentials when email integration is selected",
@@ -1555,7 +1557,8 @@
         "None of these are included when the corresponding integration is not selected"
       ],
       "groomedAt": "2026-03-13",
-      "groomingNotes": "UPGRADED TO MUST: These are silent deployment failures. Email agents produce a tool that can't connect. Media messages from Telegram are inaccessible. Local model agents can't reach Ollama. Every user who deploys with email/media/local-model integrations gets a broken agent with no error message. This is a deployment correctness bug disguised as a feature \u2014 must ship before the init flow is considered complete."
+      "groomingNotes": "UPGRADED TO MUST: These are silent deployment failures. Email agents produce a tool that can't connect. Media messages from Telegram are inaccessible. Local model agents can't reach Ollama. Every user who deploys with email/media/local-model integrations gets a broken agent with no error message. This is a deployment correctness bug disguised as a feature \u2014 must ship before the init flow is considered complete.",
+      "completedAt": "2026-03-14T18:49:17.304980-07:00"
     },
     {
       "id": "FEAT-059",

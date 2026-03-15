@@ -1,34 +1,33 @@
 {
-  "sprintId": "sprint-1773496143",
-  "startedAt": "2026-03-14T06:49:03-07:00",
+  "sprintId": "sprint-1773539367",
+  "startedAt": "2026-03-14T18:49:27-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-021",
-    "title": "Memory lifecycle management — structured knowledge graph",
+    "id": "FEAT-022",
+    "title": "Activity digest and approval queue",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create internal/memory/ package",
-      "Define StructuredMemory types: preferences (hierarchical), relationships (cross-linked), domain_expertise, context",
-      "Implement memory ingestion: parse raw conversation logs into structured knowledge entries",
-      "Implement hot tier: recent structured knowledge, <100KB, <7 days",
-      "Implement warm tier: LLM-summarized knowledge, PII-aware, <90 days",
-      "Implement cold tier: further compressed, PII-masked, >90 days (or delete per policy)",
-      "Implement tier transitions with local model summarization",
-      "Implement background reflection: analyze existing memories for new connections during idle time",
-      "Add memory section to status dashboard and doctor checks"
+      "Create internal/digest/ package",
+      "Implement activity log collector: gather actions, errors, egress, approvals from the last period",
+      "Implement digest generator: local LLM summarizes activity into human-readable daily summary",
+      "Implement privacy mode: summarize by category without showing content",
+      "Create internal/approval/ package",
+      "Implement approval queue: actions in requires-approval categories are queued",
+      "Implement approval resolution: approve, reject (with reason as preference signal), expire after timeout",
+      "Create cmd/digest.go subcommand",
+      "Integrate approval queue with messaging channel (Telegram)"
     ],
     "acceptanceCriteria": [
-      "Raw conversations are transformed into structured knowledge (not stored as flat logs)",
-      "Hot -> warm tier transition summarizes while preserving key information",
-      "Warm -> cold tier further compresses and masks PII",
-      "Background reflection detects and proposes new connections",
-      "All summarization runs on local models by default",
-      "Memory health is reported in doctor and status"
+      "`clawhq digest` shows human-readable activity summary",
+      "Digest includes: tasks completed, tasks queued, problems found with proposed solutions, egress summary",
+      "Privacy mode summarizes by category without exposing content",
+      "Approval queue works for high-stakes actions (send email, create event, etc.)",
+      "Rejected approvals store reason as preference signal"
     ],
-    "startedAt": "2026-03-14T06:49:03-07:00",
+    "startedAt": "2026-03-14T18:49:27-07:00",
     "status": "passed",
-    "completedAt": "2026-03-14T06:57:01-07:00"
+    "completedAt": "2026-03-14T19:00:05-07:00"
   },
-  "completedAt": "2026-03-14T06:57:01-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-14T19:00:05-07:00",
+  "attempts": 1
 }
