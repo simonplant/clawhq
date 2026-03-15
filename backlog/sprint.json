@@ -1,33 +1,31 @@
 {
-  "sprintId": "sprint-1773539367",
-  "startedAt": "2026-03-14T18:49:27-07:00",
+  "sprintId": "sprint-1773540027",
+  "startedAt": "2026-03-14T19:00:27-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-022",
-    "title": "Activity digest and approval queue",
+    "id": "FEAT-027",
+    "title": "Preference learning from corrections",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create internal/digest/ package",
-      "Implement activity log collector: gather actions, errors, egress, approvals from the last period",
-      "Implement digest generator: local LLM summarizes activity into human-readable daily summary",
-      "Implement privacy mode: summarize by category without showing content",
-      "Create internal/approval/ package",
-      "Implement approval queue: actions in requires-approval categories are queued",
-      "Implement approval resolution: approve, reject (with reason as preference signal), expire after timeout",
-      "Create cmd/digest.go subcommand",
-      "Integrate approval queue with messaging channel (Telegram)"
+      "Create internal/learning/ package",
+      "Define PreferenceSignal struct: timestamp, action_type, original_decision, correction, signal_type (preference/boundary/one-time), applied_to_identity",
+      "Implement correction classifier: determine if correction is preference, boundary, or one-time override",
+      "Implement signal accumulator: track signals per category",
+      "Implement threshold proposer: when 5+ signals in same category, propose preference update",
+      "Implement identity file updater: apply approved preference updates with rollback capability",
+      "Log all preference changes for audit trail"
     ],
     "acceptanceCriteria": [
-      "`clawhq digest` shows human-readable activity summary",
-      "Digest includes: tasks completed, tasks queued, problems found with proposed solutions, egress summary",
-      "Privacy mode summarizes by category without exposing content",
-      "Approval queue works for high-stakes actions (send email, create event, etc.)",
-      "Rejected approvals store reason as preference signal"
+      "Corrections are classified into preference, boundary, or one-time override",
+      "After 5 signals in the same category, a preference update is proposed",
+      "User approves preference updates before they're applied",
+      "Applied preferences are logged with rollback capability",
+      "Boundary signals are never overridden by preference signals"
     ],
-    "startedAt": "2026-03-14T18:49:27-07:00",
+    "startedAt": "2026-03-14T19:00:27-07:00",
     "status": "passed",
-    "completedAt": "2026-03-14T19:00:05-07:00"
+    "completedAt": "2026-03-14T19:09:25-07:00"
   },
-  "completedAt": "2026-03-14T19:00:05-07:00",
+  "completedAt": "2026-03-14T19:09:25-07:00",
   "attempts": 1
 }
