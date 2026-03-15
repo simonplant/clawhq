@@ -67,6 +67,11 @@ export interface TemplateSkillBundle {
   recommended: string[];
 }
 
+export interface TemplateChannels {
+  supported: string[];
+  default: string;
+}
+
 // --- Main Template type ---
 
 export interface Template {
@@ -87,6 +92,7 @@ export interface Template {
   model_routing_strategy: TemplateModelRoutingStrategy;
   integration_requirements: TemplateIntegrationRequirements;
   skill_bundle: TemplateSkillBundle;
+  channels?: TemplateChannels;
 }
 
 // --- Layer 1 security baselines (templates can tighten, never loosen) ---
@@ -130,6 +136,7 @@ export interface TemplatePreview {
     withCloud: string;
   };
   skillsIncluded: string[];
+  channels?: TemplateChannels;
 }
 
 // --- Validation result ---

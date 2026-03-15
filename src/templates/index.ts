@@ -20,6 +20,7 @@ export type {
   TemplateModelRoutingStrategy,
   TemplateIntegrationRequirements,
   TemplateSkillBundle,
+  TemplateChannels,
   TemplatePreview,
   TemplateLoadResult,
   TemplateValidationError,

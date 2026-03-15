@@ -82,6 +82,14 @@ integration_requirements:
     - notes
     - research
 
+channels:
+  supported:
+    - telegram
+    - whatsapp
+    - slack
+    - discord
+  default: telegram
+
 skill_bundle:
   included:
     - morning-brief

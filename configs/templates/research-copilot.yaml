@@ -72,6 +72,13 @@ integration_requirements:
   optional:
     - email
 
+channels:
+  supported:
+    - telegram
+    - matrix
+    - discord
+  default: telegram
+
 skill_bundle:
   included:
     - construct

@@ -16,7 +16,7 @@ import { createBackup } from "../backup/backup.js";
 import { formatBackupTable, listBackups } from "../backup/list.js";
 import { restoreBackup } from "../backup/restore.js";
 import type { ChannelSetupFlow } from "../connect/index.js";
-import { formatTestResult, telegramFlow, whatsappFlow } from "../connect/index.js";
+import { formatTestResult, readOpenClawChannels, telegramFlow, whatsappFlow } from "../connect/index.js";
 import { deployDown, deployRestart, deployUp } from "../deploy/deploy.js";
 import { formatStepResult, formatSummary } from "../deploy/format.js";
 import { destroy, dryRun } from "../destroy/destroy.js";
@@ -686,6 +686,19 @@ async function runConnectAction(
     console.error(`Supported channels: ${Object.keys(CHANNEL_FLOWS).join(", ")}`);
     process.exitCode = 1;
     return;
+  }
+
+  // Warn if the channel is not in the template's supported channels
+  const existingChannels = await readOpenClawChannels(configPath);
+  if (existingChannels && !(channelName in existingChannels)) {
+    const configured = Object.keys(existingChannels).join(", ");
+    console.warn(
+      `Warning: "${channelName}" is not in this deployment's configured channels (${configured}).`,
+    );
+    console.warn(
+      "This channel may not be supported by the current template. Proceeding anyway.",
+    );
+    console.warn("");
   }
 
   if (opts.test) {

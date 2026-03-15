@@ -38,6 +38,7 @@ const VALID_SUMMARIZATION = ["aggressive", "balanced", "conservative"];
 const VALID_AUTONOMY = ["low", "medium", "high"];
 const VALID_QUALITY_THRESHOLD = ["low", "medium", "high"];
 const VALID_DEFAULT_PROVIDER = ["local", "cloud"];
+const VALID_CHANNELS = ["telegram", "whatsapp", "discord", "slack", "matrix"];
 
 function validateTemplate(data: unknown): TemplateValidationError[] {
   const errors: TemplateValidationError[] = [];
@@ -140,6 +141,35 @@ function validateTemplate(data: unknown): TemplateValidationError[] {
   if (sb) {
     requireStringArray(sb, "included", errors, "skill_bundle");
     requireStringArray(sb, "recommended", errors, "skill_bundle");
+  }
+
+  // channels (optional)
+  if (t["channels"] !== undefined) {
+    const ch = requireObject(t, "channels", errors);
+    if (ch) {
+      requireStringArray(ch, "supported", errors, "channels");
+      requireString(ch, "default", errors, "channels");
+
+      const supported = ch["supported"] as string[] | undefined;
+      if (Array.isArray(supported)) {
+        for (const s of supported) {
+          if (!VALID_CHANNELS.includes(s)) {
+            errors.push({
+              field: "channels.supported",
+              message: `Unknown channel "${s}" — valid channels: ${VALID_CHANNELS.join(", ")}`,
+            });
+          }
+        }
+      }
+
+      const def = ch["default"];
+      if (typeof def === "string" && Array.isArray(supported) && !supported.includes(def)) {
+        errors.push({
+          field: "channels.default",
+          message: `Default channel "${def}" must be in the supported list`,
+        });
+      }
+    }
   }
 
   // Layer 1 security baseline enforcement
@@ -377,6 +407,7 @@ export function templateToChoice(id: string, template: Template): TemplateChoice
     integrationsRequired: template.integration_requirements.required,
     integrationsRecommended: template.integration_requirements.recommended,
     skillsIncluded: template.skill_bundle.included,
+    ...(template.channels ? { channels: template.channels } : {}),
   };
 }
 

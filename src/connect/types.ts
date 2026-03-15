@@ -8,7 +8,7 @@
 import type { WizardIO } from "../init/types.js";
 
 /** Supported channel types. */
-export type ChannelType = "telegram" | "whatsapp";
+export type ChannelType = "telegram" | "whatsapp" | "discord" | "slack" | "matrix";
 
 /** Result of a channel setup flow. */
 export interface ChannelSetupResult {

@@ -79,6 +79,13 @@ integration_requirements:
     - notes
     - code
 
+channels:
+  supported:
+    - telegram
+    - whatsapp
+    - slack
+  default: telegram
+
 skill_bundle:
   included:
     - morning-brief

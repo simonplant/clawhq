@@ -87,12 +87,19 @@ function generateOpenClawConfig(answers: WizardAnswers): OpenClawConfig {
     config.models = { providers };
   }
 
-  // Configure channels if messaging integration is set up
+  // Configure channels from template definition (or fallback to telegram-only)
   const messagingIntegration = integrations.find((i) => i.category === "messaging");
   if (messagingIntegration) {
-    config.channels = {
-      telegram: { enabled: true },
-    };
+    const channelList = template.channels?.supported ?? ["telegram"];
+    const channels: Record<string, { enabled: boolean }> = {};
+    for (const ch of channelList) {
+      // Enable the default channel; others are present but disabled until connected
+      const isDefault = template.channels
+        ? ch === template.channels.default
+        : ch === "telegram";
+      channels[ch] = { enabled: isDefault };
+    }
+    config.channels = channels;
   }
 
   return config;
@@ -331,7 +338,49 @@ function generateIdentityFiles(
   files["TOOLS.md"] = generateToolsMd(answers, enabledTools, cronJobs);
   files["MEMORY.md"] = generateMemoryMd(answers);
 
+  // CHANNELS.md — template-driven channel documentation
+  files["CHANNELS.md"] = generateChannelsMd(answers);
+
   return files;
+}
+
+// --- Channels identity file ---
+
+function generateChannelsMd(answers: WizardAnswers): string {
+  const { template } = answers;
+  const supported = template.channels?.supported ?? ["telegram"];
+  const defaultChannel = template.channels?.default ?? "telegram";
+
+  const lines: string[] = [
+    "# CHANNELS.md — Messaging Channels",
+    "",
+    `**Template:** ${template.name}`,
+    `**Default channel:** ${defaultChannel}`,
+    "",
+    "## Supported Channels",
+    "",
+  ];
+
+  for (const ch of supported) {
+    const isDefault = ch === defaultChannel;
+    lines.push(`- **${ch}**${isDefault ? " (default — enabled)" : " (available — connect with `clawhq connect`)"}`);
+  }
+
+  lines.push(
+    "",
+    "## Connecting a Channel",
+    "",
+    "```bash",
+    "clawhq connect <channel>        # Interactive setup",
+    "clawhq connect <channel> --test # Test existing connection",
+    "```",
+    "",
+    "Only channels listed above are supported by this template.",
+    "Connecting an unsupported channel will produce a warning.",
+    "",
+  );
+
+  return lines.join("\n");
 }
 
 // --- Main generate function ---

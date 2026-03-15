@@ -19,3 +19,5 @@ export { telegramFlow, validateTelegramToken } from "./telegram.js";
 export { whatsappFlow, validateWhatsAppCredentials } from "./whatsapp.js";
 export { readChannelEnv, readOpenClawChannels, writeChannelConfig, writeChannelEnv } from "./config.js";
 export { collectChannelHealth, formatChannelSection, formatTestResult } from "./format.js";
+export { resolveTemplateChannels, checkChannelSupported, isDefaultChannel, ALL_CHANNELS } from "./channels.js";
+export type { ChannelResolution, ChannelWarning } from "./channels.js";

@@ -25,6 +25,10 @@ export interface TemplateChoice {
   integrationsRequired: string[];
   integrationsRecommended: string[];
   skillsIncluded: string[];
+  channels?: {
+    supported: string[];
+    default: string;
+  };
 }
 
 export interface TemplatePersonality {
