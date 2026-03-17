@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773766215",
   "startedAt": "2026-03-17T09:50:15-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-063",
     "title": "Friendly error handler (src/cli/errors.ts)",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T09:50:15-07:00"
-  }
+    "startedAt": "2026-03-17T09:50:15-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T09:55:56-07:00"
+  },
+  "completedAt": "2026-03-17T09:55:56-07:00",
+  "attempts": 2
 }
