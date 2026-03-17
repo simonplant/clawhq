@@ -421,11 +421,12 @@
       "category": "Capability Layer",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "IMPLEMENTATION FURTHER ALONG THAN NOTES SUGGEST: src/integrate/ module is complete (lifecycle.ts, providers.ts, types.ts) AND src/cli/integrate.ts (401L) is already committed and registered in index.ts. The CLI implements: integrate add <category> (with provider selection, credential setup, firewall update), integrate remove <category>, integrate swap <category> <provider>, integrate list. Sprint should VERIFY + TEST not rebuild: (1) run npm test — verify integrate tests pass; (2) verify integrate add walks through credential validation live; (3) verify swap leaves agent behavior unchanged (same category interface); (4) verify integrate remove tightens egress firewall allowlist; (5) verify integrate list shows health and last-used; (6) check for any TODOs or stubs in lifecycle.ts/providers.ts that are not yet implemented; (7) run clawhq integrate list manually to verify the command works end-to-end. If all ACs pass on review, mark passes:true. If stubs are found, sprint to complete them. Acceptance criteria unchanged from original grooming."
+      "groomingNotes": "IMPLEMENTATION FURTHER ALONG THAN NOTES SUGGEST: src/integrate/ module is complete (lifecycle.ts, providers.ts, types.ts) AND src/cli/integrate.ts (401L) is already committed and registered in index.ts. The CLI implements: integrate add <category> (with provider selection, credential setup, firewall update), integrate remove <category>, integrate swap <category> <provider>, integrate list. Sprint should VERIFY + TEST not rebuild: (1) run npm test — verify integrate tests pass; (2) verify integrate add walks through credential validation live; (3) verify swap leaves agent behavior unchanged (same category interface); (4) verify integrate remove tightens egress firewall allowlist; (5) verify integrate list shows health and last-used; (6) check for any TODOs or stubs in lifecycle.ts/providers.ts that are not yet implemented; (7) run clawhq integrate list manually to verify the command works end-to-end. If all ACs pass on review, mark passes:true. If stubs are found, sprint to complete them. Acceptance criteria unchanged from original grooming.",
+      "completedAt": "2026-03-16T22:23:34-07:00"
     },
     {
       "id": "FEAT-092",
