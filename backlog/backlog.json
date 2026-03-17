@@ -588,11 +588,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: Verify-first approach — check existing infrastructure before adding anything. Sprint scope: (1) WebSocket auto-reconnect: inspect src/gateway/websocket.ts — verify exponential backoff exists (1s/2s/4s/.../60s max); if missing, add reconnect loop with backoff; (2) Gateway crash recovery: inspect generated docker-compose.yml output from src/docker/compose.ts — verify 'restart: unless-stopped' is set for all services; add if missing; (3) Firewall auto-reapply on restart: inspect src/deploy/deploy.ts deployRestart() — verify it calls firewall reapply after container restart; wire in if missing; (4) Credential expiry warning: scan .env for provider tokens (ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENAI_ORG_ID, etc.); use existing src/security/credentials/ health probes to check expiry; surface 7-day expiry warning in clawhq doctor and clawhq status output. Each sub-item is verify-then-fix: if already implemented, no code change needed. Acceptance criteria: WebSocket client reconnects without manual intervention after network drop (inspect code path); generated docker-compose.yml has restart: unless-stopped for all services; clawhq restart reapplies firewall; clawhq doctor warns on credentials expiring within 7 days; tsc clean."
+      "groomingNotes": "READY TO SPRINT: Verify-first approach — check existing infrastructure before adding anything. Sprint scope: (1) WebSocket auto-reconnect: inspect src/gateway/websocket.ts — verify exponential backoff exists (1s/2s/4s/.../60s max); if missing, add reconnect loop with backoff; (2) Gateway crash recovery: inspect generated docker-compose.yml output from src/docker/compose.ts — verify 'restart: unless-stopped' is set for all services; add if missing; (3) Firewall auto-reapply on restart: inspect src/deploy/deploy.ts deployRestart() — verify it calls firewall reapply after container restart; wire in if missing; (4) Credential expiry warning: scan .env for provider tokens (ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENAI_ORG_ID, etc.); use existing src/security/credentials/ health probes to check expiry; surface 7-day expiry warning in clawhq doctor and clawhq status output. Each sub-item is verify-then-fix: if already implemented, no code change needed. Acceptance criteria: WebSocket client reconnects without manual intervention after network drop (inspect code path); generated docker-compose.yml has restart: unless-stopped for all services; clawhq restart reapplies firewall; clawhq doctor warns on credentials expiring within 7 days; tsc clean.",
+      "completedAt": "2026-03-17T13:47:44-07:00"
     }
   ],
   "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",

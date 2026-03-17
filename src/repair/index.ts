@@ -5,6 +5,7 @@ export { repairIssue, reapplyFirewall, reconnectNetwork, restartGateway } from "
 export { logRepairAction, readRepairLog } from "./logger.js";
 export { checkFirewall, checkGateway, checkNetwork, detectIssues } from "./monitor.js";
 export { formatRepairJson, formatRepairReport, runRepair } from "./runner.js";
+export { startWatcher } from "./watcher.js";
 
 export type {
   DetectedIssue,
@@ -18,3 +19,5 @@ export type {
 } from "./types.js";
 
 export { DEFAULT_REPAIR_CONFIG } from "./types.js";
+
+export type { RepairWatcher, WatcherOptions } from "./watcher.js";

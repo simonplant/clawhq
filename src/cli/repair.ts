@@ -12,6 +12,7 @@ import {
   formatRepairReport,
   readRepairLog,
   runRepair,
+  startWatcher,
 } from "../repair/index.js";
 
 import { spinner, status } from "./ui.js";
@@ -24,6 +25,8 @@ export function createRepairCommand(): Command {
     .description("Run all recovery checks and auto-repair detected issues")
     .option("--json", "Output results as JSON")
     .option("--log", "Show repair audit log")
+    .option("--watch", "Continuous monitoring with auto-repair (every 30s)")
+    .option("--interval <seconds>", "Watch interval in seconds", "30")
     .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
     .option("--config <path>", "Path to openclaw.json", "~/.openclaw/openclaw.json")
     .option("--compose <path>", "Path to docker-compose.yml")
@@ -38,6 +41,8 @@ export function createRepairCommand(): Command {
     .action(async (opts: {
       json?: boolean;
       log?: boolean;
+      watch?: boolean;
+      interval: string;
       home: string;
       config: string;
       compose?: string;
@@ -90,6 +95,53 @@ export function createRepairCommand(): Command {
         firewallReapply: opts.firewallReapply,
       };
 
+      // Watch mode: continuous monitoring with auto-repair
+      if (opts.watch) {
+        const intervalMs = parseInt(opts.interval, 10) * 1000;
+        console.log(
+          `${chalk.magenta("Operate")} Starting continuous health monitor (every ${opts.interval}s)...`,
+        );
+
+        const watcher = startWatcher({
+          ctx,
+          config: repairConfig,
+          intervalMs,
+          onCycle(report) {
+            const ts = new Date().toISOString().replace("T", " ").slice(0, 19);
+            if (report.issues.length === 0) {
+              console.log(`${ts}  ${status.pass} All systems healthy`);
+            } else {
+              for (const action of report.actions) {
+                const label = action.status === "repaired"
+                  ? status.pass
+                  : action.status === "failed"
+                    ? status.fail
+                    : chalk.yellow("SKIP");
+                console.log(
+                  `${ts}  ${label} ${action.action}: ${action.message}`,
+                );
+              }
+            }
+          },
+          onError(err) {
+            console.error(
+              `${chalk.red("ERROR")} Repair cycle failed: ${err.message}`,
+            );
+          },
+        });
+
+        // Clean exit on SIGINT/SIGTERM
+        const cleanup = () => {
+          watcher.stop();
+        };
+        process.on("SIGINT", cleanup);
+        process.on("SIGTERM", cleanup);
+
+        await watcher.done;
+        return;
+      }
+
+      // One-shot mode
       const repairSpinner = spinner(`${chalk.magenta("Operate")} Running repair checks...`);
       repairSpinner.start();
 
