@@ -490,11 +490,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: Phase B of FEAT-092 (memory lifecycle). FEAT-092 is done — hot/warm/cold tiers exist at ~/.clawhq/memory/hot.jsonl, warm.jsonl, cold.jsonl (or similar paths from src/internal/memory/store.ts). Sprint scope: (1) Inspect src/internal/memory/store.ts and reader.ts to understand exact file paths and MemoryEntry type; (2) Add 'memory search <query>' subcommand to the existing src/cli/memory.ts createMemoryCommand(); (3) Search implementation: read warm.jsonl and cold.jsonl, parse each MemoryEntry, do case-insensitive substring match on content/summary fields, return ranked results (exact phrase match > word match); (4) Output format: table with tier (warm/cold), timestamp, relevance snippet (truncated to 80 chars), entry ID; (5) Add --since <date> flag to limit search to entries after a date; (6) Add --tier hot|warm|cold flag to limit to a specific tier; (7) v1 is intentionally keyword-only — no qdrant/vector search (that's FEAT-090 dependency, deferred). Acceptance criteria: clawhq memory search 'meeting' returns matching entries from warm and cold tiers; results show tier, timestamp, and content snippet; --since 2026-01-01 filters by date; empty result shows friendly 'no matches found' message; tsc clean."
+      "groomingNotes": "READY TO SPRINT: Phase B of FEAT-092 (memory lifecycle). FEAT-092 is done — hot/warm/cold tiers exist at ~/.clawhq/memory/hot.jsonl, warm.jsonl, cold.jsonl (or similar paths from src/internal/memory/store.ts). Sprint scope: (1) Inspect src/internal/memory/store.ts and reader.ts to understand exact file paths and MemoryEntry type; (2) Add 'memory search <query>' subcommand to the existing src/cli/memory.ts createMemoryCommand(); (3) Search implementation: read warm.jsonl and cold.jsonl, parse each MemoryEntry, do case-insensitive substring match on content/summary fields, return ranked results (exact phrase match > word match); (4) Output format: table with tier (warm/cold), timestamp, relevance snippet (truncated to 80 chars), entry ID; (5) Add --since <date> flag to limit search to entries after a date; (6) Add --tier hot|warm|cold flag to limit to a specific tier; (7) v1 is intentionally keyword-only — no qdrant/vector search (that's FEAT-090 dependency, deferred). Acceptance criteria: clawhq memory search 'meeting' returns matching entries from warm and cold tiers; results show tier, timestamp, and content snippet; --since 2026-01-01 filters by date; empty result shows friendly 'no matches found' message; tsc clean.",
+      "completedAt": "2026-03-17T12:00:41-07:00"
     },
     {
       "id": "FEAT-096",

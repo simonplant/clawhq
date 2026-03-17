@@ -1,17 +1,17 @@
 {
-  "sprintId": "sprint-1773773288",
-  "startedAt": "2026-03-17T11:48:08-07:00",
+  "sprintId": "sprint-1773773788",
+  "startedAt": "2026-03-17T11:56:28-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-088",
-    "title": "Skill registry — discover, install, manage agent behaviors",
+    "id": "FEAT-095",
+    "title": "Memory search — warm/cold tier search (clawhq memory search)",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T11:48:08-07:00",
+    "startedAt": "2026-03-17T11:56:28-07:00",
     "status": "passed",
-    "completedAt": "2026-03-17T11:56:26-07:00"
+    "completedAt": "2026-03-17T12:00:41-07:00"
   },
-  "completedAt": "2026-03-17T11:56:26-07:00",
+  "completedAt": "2026-03-17T12:00:41-07:00",
   "attempts": 1
 }
