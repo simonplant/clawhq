@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773776257",
   "startedAt": "2026-03-17T12:37:37-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-099",
     "title": "Evolve rollback — undo any capability change",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T12:37:37-07:00"
-  }
+    "startedAt": "2026-03-17T12:37:37-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T12:46:15-07:00"
+  },
+  "completedAt": "2026-03-17T12:46:15-07:00",
+  "attempts": 2
 }

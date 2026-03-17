@@ -556,11 +556,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: All capability expansion items (FEAT-086, FEAT-088, FEAT-089, FEAT-091) are done — users can now install skills/tools/integrations. Sprint scope: (1) Create src/evolve/types.ts — EvolveChange type: id, timestamp, changeType (skill_install|integration_add|provider_add|tool_install|identity_update), target, previousState, newState, rollbackSnapshotId, rollbackExpiresAt (30 days); (2) Create src/evolve/store.ts — append/read from ~/.clawhq/evolve-history.jsonl; (3) Create src/evolve/snapshot.ts — createSnapshot() saves relevant files to ~/.clawhq/snapshots/<id>/; (4) Hook into existing Evolve ops: call createSnapshot()+appendEvolveChange() after each skill install, tool install, integration add, identity update completes successfully; (5) Create src/cli/evolve.ts with createEvolveCommand(): 'evolve history' (table: id/timestamp/changeType/target/rollback-status), 'evolve rollback <change-id>' (lookup change, restore previousState files, trigger rebuild if tool/skill change); (6) Register in src/cli/index.ts. Acceptance criteria: evolve history lists changes with rollback availability (available/expired based on 30-day window); evolve rollback <id> restores previous state and verifies agent still starts; snapshots expire after 30 days; tsc clean."
+      "groomingNotes": "READY TO SPRINT: All capability expansion items (FEAT-086, FEAT-088, FEAT-089, FEAT-091) are done — users can now install skills/tools/integrations. Sprint scope: (1) Create src/evolve/types.ts — EvolveChange type: id, timestamp, changeType (skill_install|integration_add|provider_add|tool_install|identity_update), target, previousState, newState, rollbackSnapshotId, rollbackExpiresAt (30 days); (2) Create src/evolve/store.ts — append/read from ~/.clawhq/evolve-history.jsonl; (3) Create src/evolve/snapshot.ts — createSnapshot() saves relevant files to ~/.clawhq/snapshots/<id>/; (4) Hook into existing Evolve ops: call createSnapshot()+appendEvolveChange() after each skill install, tool install, integration add, identity update completes successfully; (5) Create src/cli/evolve.ts with createEvolveCommand(): 'evolve history' (table: id/timestamp/changeType/target/rollback-status), 'evolve rollback <change-id>' (lookup change, restore previousState files, trigger rebuild if tool/skill change); (6) Register in src/cli/index.ts. Acceptance criteria: evolve history lists changes with rollback availability (available/expired based on 30-day window); evolve rollback <id> restores previous state and verifies agent still starts; snapshots expire after 30 days; tsc clean.",
+      "completedAt": "2026-03-17T12:46:15-07:00"
     },
     {
       "id": "FEAT-100",
