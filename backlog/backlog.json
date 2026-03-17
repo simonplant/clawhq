@@ -54,14 +54,15 @@
       "category": "Phase 1: CLI UX",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
       "groomingNotes": "RETRY GUIDANCE (failCount: 2): Previous failures likely due to overly complex error mapping or TypeScript issues. Keep it simple.\n\nIMPLEMENTATION APPROACH — minimal surface area:\n\n(1) Create src/cli/errors.ts with a single exported function:\n```typescript\nimport { formatError } from './ui.js';\n\nexport function handleCliError(err: unknown): void {\n  const message = err instanceof Error ? err.message : String(err);\n  const stack = err instanceof Error ? err.stack ?? '' : '';\n\n  if (message.includes('ENOENT') && (message.includes('docker') || stack.includes('docker'))) {\n    formatError('DOCKER_NOT_FOUND', 'Docker is not installed or not in PATH', 'Install Docker Desktop from docker.com and ensure it is running');\n  } else if (message.includes('ECONNREFUSED') || message.includes('Cannot connect to Docker')) {\n    formatError('DOCKER_NOT_RUNNING', 'Docker daemon is not running', 'Start Docker Desktop or run: sudo systemctl start docker');\n  } else if (message.includes('openclaw.json') && (message.includes('ENOENT') || message.includes('not found'))) {\n    formatError('NO_CONFIG', 'No agent config found', 'Run: clawhq init to set up your agent');\n  } else if (message.includes('EADDRINUSE')) {\n    formatError('PORT_IN_USE', 'Port is already in use', 'Check what is using the port: lsof -i :<port>');\n  } else if (message.includes('Dockerfile') && (message.includes('not found') || message.includes('ENOENT'))) {\n    formatError('NO_DOCKERFILE', 'Dockerfile not found — run clawhq build first', 'Run: clawhq build to generate the Dockerfile');\n  } else if (message.includes('EACCES') && message.includes('.env')) {\n    formatError('PERMISSION_DENIED', 'Permission denied reading .env file', 'Fix permissions: chmod 600 .env');\n  } else {\n    formatError('UNKNOWN_ERROR', message || 'An unexpected error occurred', 'Run with DEBUG=1 for full details');\n  }\n}\n```\n\n(2) In src/cli/index.ts, wrap the program.parseAsync() call:\n```typescript\nimport { handleCliError } from './errors.js';\n\nprogram.parseAsync(process.argv).catch((err) => {\n  handleCliError(err);\n  process.exit(1);\n});\n```\n\nVALIDATOR ACs (all locally checkable):\n- src/cli/errors.ts exists and exports handleCliError(err: unknown): void\n- handleCliError covers exactly 6 error cases: DOCKER_NOT_FOUND, DOCKER_NOT_RUNNING, NO_CONFIG, PORT_IN_USE, NO_DOCKERFILE, PERMISSION_DENIED\n- Unknown errors show UNKNOWN_ERROR not a stack trace\n- program.parseAsync() in index.ts is wrapped in .catch(handleCliError)\n- tsc --noEmit passes clean\n- No regression: existing commands still work (test with clawhq --version)",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-16T21:53:12-07:00",
-      "failCount": 2
+      "failCount": 2,
+      "completedAt": "2026-03-17T09:55:56-07:00"
     },
     {
       "id": "FEAT-064",

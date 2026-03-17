@@ -13,6 +13,7 @@ import { createDashboardCommand } from "./dashboard.js";
 import { createDecommissionCommands } from "./decommission.js";
 import { createDeployCommands } from "./deploy.js";
 import { createDigestApprovalCommands } from "./digest-approval.js";
+import { handleCliError } from "./errors.js";
 import { createEvolveCommand } from "./evolve.js";
 import { checkFirstRun } from "./first-run.js";
 import { createFleetCommand } from "./fleet.js";
@@ -103,8 +104,11 @@ program.addCommand(createTraceCommand());
 
 checkFirstRun(program);
 
-program.parse();
-
 if (!process.argv.slice(2).length) {
   program.outputHelp();
+} else {
+  program.parseAsync(process.argv).catch((err: unknown) => {
+    handleCliError(err);
+    process.exit(1);
+  });
 }
