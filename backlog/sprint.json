@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773722072",
   "startedAt": "2026-03-16T21:34:32-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-089",
     "title": "Tool installation framework — add-on capabilities",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T21:34:32-07:00"
-  }
+    "startedAt": "2026-03-16T21:34:32-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-16T21:43:20-07:00"
+  },
+  "completedAt": "2026-03-16T21:43:20-07:00",
+  "attempts": 1
 }
