@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773779926",
   "startedAt": "2026-03-17T13:38:46-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-101",
     "title": "Health self-repair — auto-recovery from common failures",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T13:38:46-07:00"
-  }
+    "startedAt": "2026-03-17T13:38:46-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T13:47:44-07:00"
+  },
+  "completedAt": "2026-03-17T13:47:44-07:00",
+  "attempts": 2
 }
