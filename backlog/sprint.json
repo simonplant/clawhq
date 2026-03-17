@@ -1,32 +1,13 @@
 {
-  "sprintId": "sprint-1773775074",
-  "startedAt": "2026-03-17T12:17:54-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773776257",
+  "startedAt": "2026-03-17T12:37:37-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-098",
-    "title": "Activity digest — proactive daily summary and monitoring",
+    "id": "FEAT-099",
+    "title": "Evolve rollback — undo any capability change",
     "sourceBacklog": "backlog.json",
-    "steps": [
-      "Enhanced DigestReport type with pendingApprovals, cronRuns, doctorWarnings fields",
-      "Added readPendingApprovals() and parseCronHistory() collector functions",
-      "Updated generateDigest() to pull from approval queue and cron history",
-      "Added friendly 'No activity recorded yet' empty state in formatter",
-      "Added pending approvals, cron runs, and doctor warnings sections to table format",
-      "Privacy mode masks approval descriptions",
-      "Updated tests: 28 tests covering all new functionality",
-      "Verified heartbeat cron hook wiring (PART B)"
-    ],
-    "acceptanceCriteria": [
-      "clawhq digest shows meaningful summary from available agent data",
-      "--since filters correctly",
-      "No data shows friendly 'no activity recorded yet' message",
-      "TypeScript compiles clean (tsc --noEmit passes)",
-      "All 1595 tests pass"
-    ],
-    "startedAt": "2026-03-17T12:17:54-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-17T12:27:47-07:00"
-  },
-  "completedAt": "2026-03-17T12:27:47-07:00",
-  "attempts": 1
+    "steps": [],
+    "acceptanceCriteria": [],
+    "startedAt": "2026-03-17T12:37:37-07:00"
+  }
 }

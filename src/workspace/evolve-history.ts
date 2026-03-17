@@ -264,11 +264,12 @@ export async function rollbackChange(
 
     case "provider_add":
     case "provider_remove":
+      requiresRebuild = await rollbackProviderChange(ctx, change);
+      break;
+
     case "identity_update":
-      throw new EvolveError(
-        `Rollback for "${change.changeType}" is not yet implemented.`,
-        "NOT_IMPLEMENTED",
-      );
+      requiresRebuild = await rollbackIdentityChange(ctx, change);
+      break;
 
     default:
       throw new EvolveError(
@@ -381,6 +382,74 @@ async function rollbackIntegrationChange(
   }
 
   await saveRegistry(intCtx, registry);
+  return false;
+}
+
+async function rollbackProviderChange(
+  ctx: EvolveContext,
+  change: EvolveChange,
+): Promise<boolean> {
+  if (!change.rollbackSnapshotId) {
+    throw new EvolveError("No snapshot for provider rollback.", "NO_SNAPSHOT");
+  }
+
+  const {
+    loadRegistry,
+    saveRegistry,
+  } = await import("../provider/provider.js");
+
+  const previousState = JSON.parse(change.rollbackSnapshotId) as {
+    action: string;
+    provider?: {
+      id: string;
+      label: string;
+      category: string;
+      envVar: string;
+      domains: string[];
+      status: string;
+      addedAt: string;
+    };
+  };
+
+  const registry = await loadRegistry(ctx.openclawHome);
+
+  if (change.changeType === "provider_add") {
+    // Reverse add: remove the provider
+    const idx = registry.providers.findIndex((p) => p.id === change.target);
+    if (idx !== -1) {
+      registry.providers.splice(idx, 1);
+    }
+  } else if (change.changeType === "provider_remove") {
+    // Reverse remove: restore the provider
+    if (previousState.provider) {
+      registry.providers.push(previousState.provider as import("../provider/types.js").ProviderConfig);
+    }
+  }
+
+  await saveRegistry(ctx.openclawHome, registry);
+  return false;
+}
+
+async function rollbackIdentityChange(
+  ctx: EvolveContext,
+  change: EvolveChange,
+): Promise<boolean> {
+  if (!change.rollbackSnapshotId) {
+    throw new EvolveError("No snapshot for identity rollback.", "NO_SNAPSHOT");
+  }
+
+  const { writeFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+
+  // The snapshot stores the previous file content and path
+  const previousState = JSON.parse(change.rollbackSnapshotId) as {
+    filePath: string;
+    content: string;
+  };
+
+  const fullPath = join(ctx.openclawHome, previousState.filePath);
+  await writeFile(fullPath, previousState.content, "utf-8");
+
   return false;
 }
 
