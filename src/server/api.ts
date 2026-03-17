@@ -83,14 +83,16 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
       let id = 0;
       try {
         const { deployUp } = await import("../deploy/deploy.js");
-        const result = await deployUp({ openclawHome });
-        for (const step of result.steps) {
-          await stream.writeSSE({
-            data: JSON.stringify(step),
-            event: "step",
-            id: String(id++),
-          });
-        }
+        const result = await deployUp({
+          openclawHome,
+          onStep: (stepName, status) => {
+            stream.writeSSE({
+              data: JSON.stringify({ name: stepName, status }),
+              event: "step",
+              id: String(id++),
+            });
+          },
+        });
         await stream.writeSSE({
           data: JSON.stringify({ ok: true, data: result }),
           event: "done",
@@ -114,14 +116,16 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
       let id = 0;
       try {
         const { deployDown } = await import("../deploy/deploy.js");
-        const result = await deployDown({ openclawHome });
-        for (const step of result.steps) {
-          await stream.writeSSE({
-            data: JSON.stringify(step),
-            event: "step",
-            id: String(id++),
-          });
-        }
+        const result = await deployDown({
+          openclawHome,
+          onStep: (stepName, status) => {
+            stream.writeSSE({
+              data: JSON.stringify({ name: stepName, status }),
+              event: "step",
+              id: String(id++),
+            });
+          },
+        });
         await stream.writeSSE({
           data: JSON.stringify({ ok: true, data: result }),
           event: "done",
@@ -145,14 +149,16 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
       let id = 0;
       try {
         const { deployRestart } = await import("../deploy/deploy.js");
-        const result = await deployRestart({ openclawHome });
-        for (const step of result.steps) {
-          await stream.writeSSE({
-            data: JSON.stringify(step),
-            event: "step",
-            id: String(id++),
-          });
-        }
+        const result = await deployRestart({
+          openclawHome,
+          onStep: (stepName, status) => {
+            stream.writeSSE({
+              data: JSON.stringify({ name: stepName, status }),
+              event: "step",
+              id: String(id++),
+            });
+          },
+        });
         await stream.writeSSE({
           data: JSON.stringify({ ok: true, data: result }),
           event: "done",

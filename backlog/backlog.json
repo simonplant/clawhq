@@ -180,11 +180,12 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with SSE deploy endpoints) are both done. Deploy controls in the browser let Privacy Migrants manage their agent without remembering CLI flags.\n\nSprint scope: (1) Create src/ui/pages/deploy.tsx — Hono JSX page component; (2) Three action buttons: Up, Down, Restart — each with confirmation dialog (htmx hx-confirm); (3) Each button triggers SSE endpoint via htmx hx-get with hx-swap=innerHTML to a status pane that shows step-by-step progress from the SSE stream; (4) Status pane shows each deploy step as it completes: spinner → pass/fail icon; (5) Add optional onStep callback parameter to deployUp(), deployDown(), deployRestart() in src/deploy/deploy.ts — callback receives (stepName: string, status: 'running'|'done'|'failed') — fully backward compatible since callback is optional; (6) SSE endpoints /api/v1/deploy/up etc. call the deploy functions with onStep wired to sse.send(); (7) Register route as GET /deploy in app.ts; (8) Add 'Deploy' link to sidebar nav under Deploy section; (9) Acceptance criteria: Up/Down/Restart buttons work with confirmation; SSE progress streams step-by-step results; deploy.ts onStep callback is optional and backward compatible; existing CLI deploy commands unaffected; tsc clean."
+      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with SSE deploy endpoints) are both done. Deploy controls in the browser let Privacy Migrants manage their agent without remembering CLI flags.\n\nSprint scope: (1) Create src/ui/pages/deploy.tsx — Hono JSX page component; (2) Three action buttons: Up, Down, Restart — each with confirmation dialog (htmx hx-confirm); (3) Each button triggers SSE endpoint via htmx hx-get with hx-swap=innerHTML to a status pane that shows step-by-step progress from the SSE stream; (4) Status pane shows each deploy step as it completes: spinner → pass/fail icon; (5) Add optional onStep callback parameter to deployUp(), deployDown(), deployRestart() in src/deploy/deploy.ts — callback receives (stepName: string, status: 'running'|'done'|'failed') — fully backward compatible since callback is optional; (6) SSE endpoints /api/v1/deploy/up etc. call the deploy functions with onStep wired to sse.send(); (7) Register route as GET /deploy in app.ts; (8) Add 'Deploy' link to sidebar nav under Deploy section; (9) Acceptance criteria: Up/Down/Restart buttons work with confirmation; SSE progress streams step-by-step results; deploy.ts onStep callback is optional and backward compatible; existing CLI deploy commands unaffected; tsc clean.",
+      "completedAt": "2026-03-17T10:20:42-07:00"
     },
     {
       "id": "FEAT-075",
