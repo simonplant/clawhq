@@ -573,11 +573,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: No blocking dependencies — FEAT-087 (personality/role system) is done, identity files exist. Sprint scope: (1) Create src/evolve/identity-governance.ts — checkIdentityHealth(): reads workspace identity files (IDENTITY.md, AGENTS.md, USER.md from ~/.openclaw/workspace/), counts chars, returns budget usage per file vs bootstrapMaxChars (20K default from OpenClaw config); (2) Add identity budget check to clawhq doctor in src/doctor/ — warn at 70%, critical at 90% threshold; (3) Add identity staleness check to doctor: file not modified in >30 days → warning with review prompt; (4) Create 'clawhq evolve --identity' subcommand in src/cli/evolve.ts (or src/cli/index.ts): shows token budget per file + last-modified date + staleness status; interactive file selection → opens  with current file → shows diff before saving; (5) CUSTOMIZATIONS block preservation: track manual edits in a comment block '<\\!-- CUSTOMIZATIONS -->' at end of each identity file — template re-apply preserves this block; (6) Register evolve --identity in CLI. Acceptance criteria: clawhq doctor shows identity budget warnings at 70%/90%; clawhq evolve --identity shows budget per file; edit flow shows diff before saving; manual customizations preserved on template re-apply; tsc clean."
+      "groomingNotes": "READY TO SPRINT: No blocking dependencies — FEAT-087 (personality/role system) is done, identity files exist. Sprint scope: (1) Create src/evolve/identity-governance.ts — checkIdentityHealth(): reads workspace identity files (IDENTITY.md, AGENTS.md, USER.md from ~/.openclaw/workspace/), counts chars, returns budget usage per file vs bootstrapMaxChars (20K default from OpenClaw config); (2) Add identity budget check to clawhq doctor in src/doctor/ — warn at 70%, critical at 90% threshold; (3) Add identity staleness check to doctor: file not modified in >30 days → warning with review prompt; (4) Create 'clawhq evolve --identity' subcommand in src/cli/evolve.ts (or src/cli/index.ts): shows token budget per file + last-modified date + staleness status; interactive file selection → opens  with current file → shows diff before saving; (5) CUSTOMIZATIONS block preservation: track manual edits in a comment block '<\\!-- CUSTOMIZATIONS -->' at end of each identity file — template re-apply preserves this block; (6) Register evolve --identity in CLI. Acceptance criteria: clawhq doctor shows identity budget warnings at 70%/90%; clawhq evolve --identity shows budget per file; edit flow shows diff before saving; manual customizations preserved on template re-apply; tsc clean.",
+      "completedAt": "2026-03-17T13:38:44-07:00"
     },
     {
       "id": "FEAT-101",
