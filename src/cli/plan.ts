@@ -14,6 +14,8 @@ import {
   loadBuiltInTemplates,
 } from "../templates/index.js";
 
+import { markFirstRunComplete } from "./first-run.js";
+
 /**
  * Run non-interactive init: use template defaults + CLI overrides,
  * skip the wizard entirely. For fleet provisioning / scripted use.
@@ -79,6 +81,7 @@ async function runNonInteractive(opts: {
     return;
   }
 
+  await markFirstRunComplete("~/.clawhq");
   console.log(`ok ${opts.name} ${outputDir}`);
 }
 
@@ -143,6 +146,8 @@ export function createPlanCommands(program: Command): void {
 
           if (result.writeResult.errors.length > 0) {
             process.exitCode = 1;
+          } else {
+            await markFirstRunComplete("~/.clawhq");
           }
         } else {
           if (!opts.guided) {
@@ -157,6 +162,8 @@ export function createPlanCommands(program: Command): void {
 
           if (result.writeResult.errors.length > 0) {
             process.exitCode = 1;
+          } else {
+            await markFirstRunComplete("~/.clawhq");
           }
         }
       } finally {

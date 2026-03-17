@@ -14,6 +14,7 @@ import { createDecommissionCommands } from "./decommission.js";
 import { createDeployCommands } from "./deploy.js";
 import { createDigestApprovalCommands } from "./digest-approval.js";
 import { createEvolveCommand } from "./evolve.js";
+import { checkFirstRun } from "./first-run.js";
 import { createFleetCommand } from "./fleet.js";
 import { createIntegrateCommand } from "./integrate.js";
 import { createMemoryCommand } from "./memory.js";
@@ -99,6 +100,8 @@ createDecommissionCommands(program);
 program.commandsGroup("Migrate:");
 program.addCommand(createMigrateCommand());
 program.addCommand(createTraceCommand());
+
+checkFirstRun(program);
 
 program.parse();
 

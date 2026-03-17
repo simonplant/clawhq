@@ -1,17 +1,17 @@
 {
-  "sprintId": "sprint-1773723192",
-  "startedAt": "2026-03-16T21:53:12-07:00",
+  "sprintId": "sprint-1773723777",
+  "startedAt": "2026-03-16T22:02:57-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-071",
-    "title": "Dashboard API endpoints (v1)",
+    "id": "FEAT-064",
+    "title": "First-run experience (src/cli/first-run.ts)",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T21:53:12-07:00",
+    "startedAt": "2026-03-16T22:02:57-07:00",
     "status": "passed",
-    "completedAt": "2026-03-16T22:02:55-07:00"
+    "completedAt": "2026-03-16T22:09:56-07:00"
   },
-  "completedAt": "2026-03-16T22:02:55-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-16T22:09:56-07:00",
+  "attempts": 2
 }
