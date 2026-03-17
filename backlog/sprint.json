@@ -1,28 +1,17 @@
 {
-  "sprintId": "sprint-1773541280",
-  "startedAt": "2026-03-14T19:21:20-07:00",
+  "sprintId": "sprint-1773712762",
+  "startedAt": "2026-03-16T18:59:22-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-035",
-    "title": "'Why did you do that?' trace",
+    "id": "FEAT-060",
+    "title": "CLI UI module (src/cli/ui.ts)",
     "sourceBacklog": "backlog.json",
-    "steps": [
-      "Create internal/trace/ package",
-      "Implement decision log: record the rules, preferences, and context used for each agent action",
-      "Implement trace query: given an action ID, return the full decision chain",
-      "Implement natural language explanation: local LLM generates user-friendly explanation from trace",
-      "Allow corrections from trace context to feed into preference learning"
-    ],
-    "acceptanceCriteria": [
-      "Every agent action records its decision trace",
-      "User can query why any specific action was taken",
-      "Explanation cites specific rules and preferences",
-      "Corrections from trace context feed into preference learning"
-    ],
-    "startedAt": "2026-03-14T19:21:20-07:00",
+    "steps": [],
+    "acceptanceCriteria": [],
+    "startedAt": "2026-03-16T18:59:22-07:00",
     "status": "passed",
-    "completedAt": "2026-03-14T19:29:23-07:00"
+    "completedAt": "2026-03-16T19:02:40-07:00"
   },
-  "completedAt": "2026-03-14T19:29:23-07:00",
+  "completedAt": "2026-03-16T19:02:40-07:00",
   "attempts": 1
 }

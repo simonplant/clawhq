@@ -9,11 +9,12 @@
       "category": "Phase 1: CLI UX",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "DEPENDENCY ANCHOR — must ship first in Phase 1. Steps: (1) npm install chalk ora; (2) create src/cli/ui.ts; (3) export spinner(text) factory wrapping ora; (4) export phase-colored labels: plan=cyan, build=blue, secure=yellow, deploy=green, operate=magenta; (5) export status indicators: pass/fail/warn with colored symbols; (6) export sectionHeader(title) function; (7) export formatError(code, message, hint) using chalk.red/yellow; (8) verify no existing commands are broken. Acceptance criteria: chalk + ora installed; spinner(), formatError(), sectionHeader(), phase labels all exported and callable; TypeScript compiles clean; existing CLI commands unaffected."
+      "groomingNotes": "DEPENDENCY ANCHOR — must ship first in Phase 1. Steps: (1) npm install chalk ora; (2) create src/cli/ui.ts; (3) export spinner(text) factory wrapping ora; (4) export phase-colored labels: plan=cyan, build=blue, secure=yellow, deploy=green, operate=magenta; (5) export status indicators: pass/fail/warn with colored symbols; (6) export sectionHeader(title) function; (7) export formatError(code, message, hint) using chalk.red/yellow; (8) verify no existing commands are broken. Acceptance criteria: chalk + ora installed; spinner(), formatError(), sectionHeader(), phase labels all exported and callable; TypeScript compiles clean; existing CLI commands unaffected.",
+      "completedAt": "2026-03-16T19:02:40-07:00"
     },
     {
       "id": "FEAT-061",
