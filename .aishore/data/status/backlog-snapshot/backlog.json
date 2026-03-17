@@ -60,8 +60,8 @@
       "groomedAt": "2026-03-16",
       "groomingNotes": "UNBLOCKED: FEAT-060 (formatError) done. Create src/cli/errors.ts wrapping program.parseAsync() in try/catch. Steps: (1) create src/cli/errors.ts; (2) export handleError(err: unknown) mapping error types to formatError() calls; (3) handle 6 error types: Docker not installed (ENOENT on docker), daemon not running (connection refused), no config found (missing openclaw.json), port in use (EADDRINUSE), build fails no Dockerfile, permission denied on .env; (4) wrap program.parseAsync() call in src/cli/index.ts; (5) each error type has code, message, hint fields. AC: each of 6 error types shows styled output not stack trace; unknown errors show generic formatted message; tsc clean; no regression on existing commands.",
       "lastFailReason": "Validator agent rejected implementation",
-      "lastFailAt": "2026-03-16T21:14:14-07:00",
-      "failCount": 1
+      "lastFailAt": "2026-03-16T21:53:12-07:00",
+      "failCount": 2
     },
     {
       "id": "FEAT-064",
@@ -431,11 +431,12 @@
       "category": "Capability Layer",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "INTERNAL IMPL EXISTS: src/internal/memory/ module is complete with hot/warm/cold tier transitions (transitions.ts), store (store.ts), ingestion (ingestion.ts), reflection (reflection.ts) — all with tests. What is MISSING: the CLI wrapper. Sprint should create the CLI surface only: (1) create src/cli/memory.ts with createMemoryCommand(): Command; (2) memory status subcommand: calls collectMemoryHealth() from internal/memory/store.ts, displays hot/warm/cold tier sizes with entry counts and total bytes, shows growth rate if calculable; (3) memory compact subcommand: calls runAllTransitions() from internal/memory/transitions.ts with fallbackSummarize as the summarizer, reports how many entries were transitioned; (4) register memory command in src/cli/index.ts: import { createMemoryCommand } and program.addCommand(createMemoryCommand()); (5) verify no cron entry is needed (cron auto-compaction can be a follow-up). AC: clawhq memory status shows hot/warm/cold tier sizes; clawhq memory compact triggers transitions and reports count; tsc clean; no regression on existing commands. Note: Phase B (qdrant vector search for clawhq memory search) is a separate future sprint — do not include search in this sprint."
+      "groomingNotes": "INTERNAL IMPL EXISTS: src/internal/memory/ module is complete with hot/warm/cold tier transitions (transitions.ts), store (store.ts), ingestion (ingestion.ts), reflection (reflection.ts) — all with tests. What is MISSING: the CLI wrapper. Sprint should create the CLI surface only: (1) create src/cli/memory.ts with createMemoryCommand(): Command; (2) memory status subcommand: calls collectMemoryHealth() from internal/memory/store.ts, displays hot/warm/cold tier sizes with entry counts and total bytes, shows growth rate if calculable; (3) memory compact subcommand: calls runAllTransitions() from internal/memory/transitions.ts with fallbackSummarize as the summarizer, reports how many entries were transitioned; (4) register memory command in src/cli/index.ts: import { createMemoryCommand } and program.addCommand(createMemoryCommand()); (5) verify no cron entry is needed (cron auto-compaction can be a follow-up). AC: clawhq memory status shows hot/warm/cold tier sizes; clawhq memory compact triggers transitions and reports count; tsc clean; no regression on existing commands. Note: Phase B (qdrant vector search for clawhq memory search) is a separate future sprint — do not include search in this sprint.",
+      "completedAt": "2026-03-16T21:46:33-07:00"
     },
     {
       "id": "FEAT-093",

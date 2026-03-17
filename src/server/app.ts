@@ -1,8 +1,7 @@
 /**
  * Hono application with routes.
  *
- * Defines all web dashboard routes: pages, static assets, and SSE.
- * API endpoints are defined separately in FEAT-071.
+ * Defines all web dashboard routes: pages, static assets, SSE, and API.
  */
 
 import { readFile } from "node:fs/promises";
@@ -13,6 +12,7 @@ import { Hono } from "hono";
 
 import { renderHomePage } from "../ui/pages/home.js";
 
+import { createApiRouter } from "./api.js";
 import { authMiddleware } from "./auth.js";
 import type { ServerConfig, ServerEnv } from "./context.js";
 import { handleStatusSSE } from "./sse.js";
@@ -47,6 +47,9 @@ export function createApp(config: ServerConfig): Hono<ServerEnv> {
       return c.notFound();
     }
   });
+
+  // --- API v1 ---
+  app.route("/api/v1", createApiRouter(config));
 
   // --- SSE ---
   app.get("/sse/status", handleStatusSSE(config.openclawHome));

@@ -1,17 +1,13 @@
 {
-  "sprintId": "sprint-1773722602",
-  "startedAt": "2026-03-16T21:43:22-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773723192",
+  "startedAt": "2026-03-16T21:53:12-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-092",
-    "title": "Memory lifecycle management",
+    "id": "FEAT-071",
+    "title": "Dashboard API endpoints (v1)",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T21:43:22-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-16T21:46:33-07:00"
-  },
-  "completedAt": "2026-03-16T21:46:33-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-16T21:53:12-07:00"
+  }
 }
