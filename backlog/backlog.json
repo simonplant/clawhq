@@ -24,11 +24,12 @@
       "category": "Phase 1: CLI UX",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-060 done. Pure Commander configureHelp() display change, ~20 lines. Steps: (1) use program.configureHelp() to override formatHelp; (2) group commands into lifecycle phases: Plan, Build, Secure, Deploy, Operate, Evolve, Decommission; (3) add section headers from ui.ts sectionHeader(); (4) verify non-TTY environments still work; (5) all command names/flags unchanged. AC: clawhq --help shows grouped sections; no behavior change; tsc clean; existing commands unaffected."
+      "groomingNotes": "UNBLOCKED: FEAT-060 done. Pure Commander configureHelp() display change, ~20 lines. Steps: (1) use program.configureHelp() to override formatHelp; (2) group commands into lifecycle phases: Plan, Build, Secure, Deploy, Operate, Evolve, Decommission; (3) add section headers from ui.ts sectionHeader(); (4) verify non-TTY environments still work; (5) all command names/flags unchanged. AC: clawhq --help shows grouped sections; no behavior change; tsc clean; existing commands unaffected.",
+      "completedAt": "2026-03-16T21:10:39-07:00"
     },
     {
       "id": "FEAT-062",
