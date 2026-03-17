@@ -31,6 +31,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Doctor", href: "/doctor", icon: "\u2695" },
       { label: "Logs", href: "/logs", icon: "\u2263" },
       { label: "Alerts", href: "/alerts", icon: "\u25B2" },
+      { label: "Backups", href: "/backups", icon: "\u2B13" },
       { label: "Fleet", href: "/fleet", icon: "\u2630" },
     ],
   },

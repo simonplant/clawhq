@@ -124,4 +124,89 @@ describe("createApp", () => {
     expect(html).toContain("pico.min.css");
     expect(html).toContain("sidebar");
   });
+
+  it("serves the backups page at /backups", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/backups");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Backups");
+    expect(html).toContain("backup-table");
+  });
+
+  it("backups page includes create and restore controls", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/backups");
+    const html = await res.text();
+    expect(html).toContain("create-full-btn");
+    expect(html).toContain("create-secrets-btn");
+    expect(html).toContain("createBackup");
+    expect(html).toContain("restoreBackup");
+  });
+
+  it("backups page calls backup API endpoints", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/backups");
+    const html = await res.text();
+    expect(html).toContain("/api/v1/backups");
+  });
+
+  it("backups page uses established dashboard layout", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/backups");
+    const html = await res.text();
+    expect(html).toContain("ClawHQ");
+    expect(html).toContain("pico.min.css");
+    expect(html).toContain("sidebar");
+  });
+
+  it("serves the alerts page at /alerts", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/alerts");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Alerts");
+    expect(html).toContain("alert-cards");
+  });
+
+  it("alerts page groups by severity", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/alerts");
+    const html = await res.text();
+    expect(html).toContain("critical");
+    expect(html).toContain("warning");
+    expect(html).toContain("info");
+  });
+
+  it("alerts page includes dismiss functionality", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/alerts");
+    const html = await res.text();
+    expect(html).toContain("dismissAlert");
+    expect(html).toContain("clawhq_dismissed_alerts");
+  });
+
+  it("alerts page calls alerts API endpoint", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/alerts");
+    const html = await res.text();
+    expect(html).toContain("/api/v1/alerts");
+  });
+
+  it("alerts page uses established dashboard layout", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/alerts");
+    const html = await res.text();
+    expect(html).toContain("ClawHQ");
+    expect(html).toContain("pico.min.css");
+    expect(html).toContain("sidebar");
+  });
+
+  it("sidebar includes Backups nav link under Operate", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/");
+    const html = await res.text();
+    expect(html).toContain('href="/backups"');
+    expect(html).toContain("Backups");
+  });
 });
