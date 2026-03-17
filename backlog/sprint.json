@@ -1,17 +1,13 @@
 {
-  "sprintId": "sprint-1773790158",
-  "startedAt": "2026-03-17T16:29:18-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773790496",
+  "startedAt": "2026-03-17T16:34:56-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-094",
-    "title": "Dashboard: Backups & Alerts pages",
+    "id": "FEAT-103",
+    "title": "Google Assistant routine import — clawhq migrate --from google-assistant",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T16:29:18-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-17T16:34:54-07:00"
-  },
-  "completedAt": "2026-03-17T16:34:54-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-17T16:34:56-07:00"
+  }
 }
