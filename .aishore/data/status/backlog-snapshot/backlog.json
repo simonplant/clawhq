@@ -388,11 +388,12 @@
       "category": "Capability Layer",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "PARTIAL IMPL EXISTS: tool.ts (148L) already committed with clawhq tool install/list/remove CLI skeleton. The full acceptance criteria — allowlist validation, Dockerfile patching, and Stage 2 rebuild triggering — needs completion. Sprint should complete these three missing pieces, not start from scratch. CAPABILITY EXPANSION BACKBONE: 'Gets more capable over time' is a core design principle. Without the Dockerfile patching + rebuild trigger, users are stuck with day-1 tools forever. dependsOn: build.ts/two-stage build infrastructure must be functional. Acceptance criteria unchanged: clawhq tool install pandoc patches Stage 2 Dockerfile and triggers rebuild; clawhq tool list shows installed tools with version+health; unlisted packages flagged not silently blocked; clawhq tool remove triggers rebuild and cleans up. READY TO SPRINT: partial impl de-risks this — it's a completion sprint, not a build sprint. Must ship before FEAT-086 (Template toolbelts)."
+      "groomingNotes": "PARTIAL IMPL EXISTS: tool.ts (148L) already committed with clawhq tool install/list/remove CLI skeleton. The full acceptance criteria — allowlist validation, Dockerfile patching, and Stage 2 rebuild triggering — needs completion. Sprint should complete these three missing pieces, not start from scratch. CAPABILITY EXPANSION BACKBONE: 'Gets more capable over time' is a core design principle. Without the Dockerfile patching + rebuild trigger, users are stuck with day-1 tools forever. dependsOn: build.ts/two-stage build infrastructure must be functional. Acceptance criteria unchanged: clawhq tool install pandoc patches Stage 2 Dockerfile and triggers rebuild; clawhq tool list shows installed tools with version+health; unlisted packages flagged not silently blocked; clawhq tool remove triggers rebuild and cleans up. READY TO SPRINT: partial impl de-risks this — it's a completion sprint, not a build sprint. Must ship before FEAT-086 (Template toolbelts).",
+      "completedAt": "2026-03-16T21:43:20-07:00"
     },
     {
       "id": "FEAT-090",

@@ -16,6 +16,7 @@ import { createDigestApprovalCommands } from "./digest-approval.js";
 import { createEvolveCommand } from "./evolve.js";
 import { createFleetCommand } from "./fleet.js";
 import { createIntegrateCommand } from "./integrate.js";
+import { createMemoryCommand } from "./memory.js";
 import { createMigrateCommand } from "./migrate.js";
 import { createOperateCommands } from "./operate.js";
 import { createPlanCommands } from "./plan.js";
@@ -70,6 +71,7 @@ program.addCommand(createConnectCommand());
 // Operate phase
 program.commandsGroup("Operate:");
 createOperateCommands(program);
+program.addCommand(createMemoryCommand());
 program.addCommand(createDashboardCommand());
 program.addCommand(createRepairCommand());
 program.addCommand(createAlertsCommand());
