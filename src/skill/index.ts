@@ -2,6 +2,9 @@
  * Skill management — install, list, update, remove agent skills safely.
  */
 
+export { formatCatalogInfo, formatCatalogSearch } from "./catalog-format.js";
+export type { BuiltinSkillEntry } from "./catalog.js";
+export { BUILTIN_SKILLS, findCatalogSkill, searchCatalog } from "./catalog.js";
 export { formatSkillList, formatSkillSummary } from "./format.js";
 export {
   activateSkill,

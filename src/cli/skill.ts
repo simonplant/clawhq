@@ -6,6 +6,8 @@ import {
   formatVettingResult,
   runVettingPipeline,
 } from "../security/vetting.js";
+import { formatCatalogInfo, formatCatalogSearch } from "../skill/catalog-format.js";
+import { BUILTIN_SKILLS, findCatalogSkill, searchCatalog } from "../skill/catalog.js";
 import {
   activateSkill,
   applySkillUpdate,
@@ -50,6 +52,49 @@ export function createSkillCommand(): Command {
         console.log(JSON.stringify(registry.skills, null, 2));
       } else {
         console.log(formatSkillList(registry.skills));
+      }
+    });
+
+  skillCmd
+    .command("search [query]")
+    .description("Search the built-in skill registry by keyword")
+    .option("--json", "Output as JSON")
+    .action(async (query: string | undefined, opts: { json?: boolean }) => {
+      if (!query) {
+        // No query — list all available skills
+        if (opts.json) {
+          console.log(JSON.stringify(BUILTIN_SKILLS, null, 2));
+        } else {
+          console.log(formatCatalogSearch(BUILTIN_SKILLS, "*"));
+        }
+        return;
+      }
+
+      const results = searchCatalog(query);
+      if (opts.json) {
+        console.log(JSON.stringify(results, null, 2));
+      } else {
+        console.log(formatCatalogSearch(results, query));
+      }
+    });
+
+  skillCmd
+    .command("info <name>")
+    .description("Show details about a skill from the built-in registry")
+    .option("--json", "Output as JSON")
+    .action(async (name: string, opts: { json?: boolean }) => {
+      const skill = findCatalogSkill(name);
+      if (!skill) {
+        console.error(`Skill "${name}" not found in the built-in registry.`);
+        console.error("Use `clawhq skill search <query>` to discover available skills.");
+        process.exitCode = 1;
+        return;
+      }
+
+      if (opts.json) {
+        console.log(JSON.stringify(skill, null, 2));
+      } else {
+        console.log(formatCatalogInfo(skill));
       }
     });
 

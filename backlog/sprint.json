@@ -1,17 +1,17 @@
 {
-  "sprintId": "sprint-1773772803",
-  "startedAt": "2026-03-17T11:40:03-07:00",
+  "sprintId": "sprint-1773773288",
+  "startedAt": "2026-03-17T11:48:08-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-087",
-    "title": "Personality and role system",
+    "id": "FEAT-088",
+    "title": "Skill registry — discover, install, manage agent behaviors",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T11:40:03-07:00",
+    "startedAt": "2026-03-17T11:48:08-07:00",
     "status": "passed",
-    "completedAt": "2026-03-17T11:48:06-07:00"
+    "completedAt": "2026-03-17T11:56:26-07:00"
   },
-  "completedAt": "2026-03-17T11:48:06-07:00",
+  "completedAt": "2026-03-17T11:56:26-07:00",
   "attempts": 1
 }
