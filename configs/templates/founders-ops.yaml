@@ -98,3 +98,43 @@ skill_bundle:
     - email-triage
     - calendar-sync
     - hiring-tracker
+
+toolbelt:
+  role: "Startup operator"
+  description: "Inbox zero, investor updates, hiring pipeline, meeting management — founder's chief of staff"
+  tools:
+    - name: email
+      category: email
+      required: true
+      description: "Inbox zero via himalaya — auto-triage, draft replies in your voice"
+    - name: ical
+      category: calendar
+      required: true
+      description: "Calendar management, deep work block protection via CalDAV"
+    - name: todoist
+      category: tasks
+      required: true
+      description: "Hiring pipeline and task tracking via Todoist"
+    - name: todoist-sync
+      category: tasks
+      required: true
+      description: "Task deadline alerts and follow-up reminders"
+    - name: tavily
+      category: research
+      required: false
+      description: "Market research and competitor analysis via Tavily"
+    - name: quote
+      category: markets
+      required: false
+      description: "Market data and financial quotes via Yahoo Finance"
+    - name: tasks
+      category: core
+      required: true
+      description: "Local work queue for autonomous task execution"
+  skills:
+    - name: morning-brief
+      required: true
+      description: "Executive daily brief with inbox status, meetings, and pipeline updates"
+    - name: construct
+      required: false
+      description: "Self-improvement framework for capability growth"

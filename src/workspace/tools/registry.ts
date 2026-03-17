@@ -36,11 +36,21 @@ export const TOOL_BINARY_DEPS: Record<string, string[]> = {
   tasks: ["jq"],
 };
 
+/** Tool entry from a template toolbelt. */
+export interface ToolbeltToolEntry {
+  name: string;
+  category: string;
+  required: boolean;
+  description: string;
+}
+
 export interface ToolRegistryOptions {
   integrations: IntegrationSetup[];
   tasksOptions?: TasksToolOptions;
   emailOptions?: EmailToolOptions;
   includeMarkets?: boolean;
+  /** Tools defined in the template's toolbelt — included even without integration credentials. */
+  toolbeltTools?: ToolbeltToolEntry[];
 }
 
 export interface GeneratedTools {
@@ -91,6 +101,24 @@ export function generateWorkspaceTools(options: ToolRegistryOptions): GeneratedT
     }
   }
 
+  // Toolbelt tools — include tools defined in the template's toolbelt
+  // even if the corresponding integration credential isn't set up yet.
+  // This ensures the tool scripts are ready when credentials are added.
+  if (options.toolbeltTools) {
+    for (const entry of options.toolbeltTools) {
+      if (entry.name === "tasks") continue; // already included above
+      if (tools[entry.name]) continue;      // already included via integration
+
+      const script = generateToolByName(entry.name, options);
+      if (script) {
+        tools[entry.name] = script;
+        for (const bin of TOOL_BINARY_DEPS[entry.name] ?? []) {
+          requiredBinaries.add(bin);
+        }
+      }
+    }
+  }
+
   return { tools, requiredBinaries };
 }
 
@@ -126,6 +154,15 @@ export function getEnabledToolNames(options: ToolRegistryOptions): string[] {
 
   if (options.includeMarkets) {
     names.push("quote");
+  }
+
+  // Toolbelt tools
+  if (options.toolbeltTools) {
+    for (const entry of options.toolbeltTools) {
+      if (!names.includes(entry.name)) {
+        names.push(entry.name);
+      }
+    }
   }
 
   return names;

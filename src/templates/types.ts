@@ -72,6 +72,31 @@ export interface TemplateChannels {
   default: string;
 }
 
+// --- Toolbelt types ---
+
+/** A tool included in a template toolbelt. */
+export interface ToolbeltTool {
+  name: string;
+  category: string;
+  required: boolean;
+  description: string;
+}
+
+/** A skill included in a template toolbelt. */
+export interface ToolbeltSkill {
+  name: string;
+  required: boolean;
+  description: string;
+}
+
+/** Preconfigured capability bundle — tools, skills, and role for a template. */
+export interface TemplateToolbelt {
+  role: string;
+  description: string;
+  tools: ToolbeltTool[];
+  skills: ToolbeltSkill[];
+}
+
 // --- Main Template type ---
 
 export interface Template {
@@ -93,6 +118,7 @@ export interface Template {
   integration_requirements: TemplateIntegrationRequirements;
   skill_bundle: TemplateSkillBundle;
   channels?: TemplateChannels;
+  toolbelt?: TemplateToolbelt;
 }
 
 // --- Layer 1 security baselines (templates can tighten, never loosen) ---
@@ -137,6 +163,7 @@ export interface TemplatePreview {
   };
   skillsIncluded: string[];
   channels?: TemplateChannels;
+  toolbelt?: TemplateToolbelt;
 }
 
 // --- Validation result ---

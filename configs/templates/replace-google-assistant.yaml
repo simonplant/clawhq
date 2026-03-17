@@ -92,3 +92,35 @@ skill_bundle:
   recommended:
     - email-triage
     - calendar-sync
+
+toolbelt:
+  role: "Daily life manager"
+  description: "Email triage, calendar management, morning briefs, task tracking — replaces Google Assistant for daily life"
+  tools:
+    - name: email
+      category: email
+      required: true
+      description: "Email reading and triage via himalaya"
+    - name: ical
+      category: calendar
+      required: true
+      description: "Calendar management via CalDAV"
+    - name: todoist
+      category: tasks
+      required: false
+      description: "Task management via Todoist API"
+    - name: todoist-sync
+      category: tasks
+      required: false
+      description: "Task polling and due-date alerts"
+    - name: tasks
+      category: core
+      required: true
+      description: "Local work queue for autonomous task execution"
+  skills:
+    - name: morning-brief
+      required: true
+      description: "Daily morning briefing with agenda, email summary, and priorities"
+    - name: construct
+      required: false
+      description: "Self-improvement framework for capability growth"

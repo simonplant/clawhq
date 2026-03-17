@@ -59,6 +59,7 @@ export function generatePreview(template: Template): TemplatePreview {
     localModelRequirements: localModelRequirements(template),
     estimatedDailyCost: estimateCost(template),
     skillsIncluded: template.skill_bundle.included,
+    ...(template.toolbelt ? { toolbelt: template.toolbelt } : {}),
   };
 }
 
@@ -89,6 +90,25 @@ export function formatPreview(preview: TemplatePreview): string {
   lines.push(`    With cloud:  ${preview.estimatedDailyCost.withCloud}`);
   lines.push("");
   lines.push(`  Skills included: ${preview.skillsIncluded.join(", ") || "none"}`);
+
+  if (preview.toolbelt) {
+    lines.push("");
+    lines.push(`  Toolbelt: ${preview.toolbelt.role}`);
+    lines.push(`  ${preview.toolbelt.description}`);
+    lines.push("");
+    lines.push("  Tools bundled:");
+    for (const tool of preview.toolbelt.tools) {
+      const tag = tool.required ? "required" : "optional";
+      lines.push(`    - ${tool.name} (${tool.category}, ${tag}): ${tool.description}`);
+    }
+    lines.push("");
+    lines.push("  Skills bundled:");
+    for (const skill of preview.toolbelt.skills) {
+      const tag = skill.required ? "required" : "optional";
+      lines.push(`    - ${skill.name} (${tag}): ${skill.description}`);
+    }
+  }
+
   lines.push("");
   lines.push("  A day in the life:");
 
@@ -106,6 +126,74 @@ export function formatPreview(preview: TemplatePreview): string {
   if (currentLine.trim() !== "") {
     lines.push(currentLine);
   }
+
+  return lines.join("\n");
+}
+
+/** Format a detailed toolbelt view for `template show`. */
+export function formatTemplateShow(template: Template): string {
+  const lines: string[] = [];
+
+  lines.push(`  ${template.name}`);
+  lines.push(`  ${template.use_case_mapping.tagline}`);
+  lines.push("");
+
+  // Toolbelt section
+  if (template.toolbelt) {
+    lines.push(`  Role: ${template.toolbelt.role}`);
+    lines.push(`  ${template.toolbelt.description}`);
+    lines.push("");
+
+    lines.push("  What gets installed:");
+    lines.push("");
+    lines.push("  Tools:");
+    for (const tool of template.toolbelt.tools) {
+      const tag = tool.required ? "required" : "optional";
+      lines.push(`    [${tag}] ${tool.name} (${tool.category})`);
+      lines.push(`            ${tool.description}`);
+    }
+
+    lines.push("");
+    lines.push("  Skills:");
+    for (const skill of template.toolbelt.skills) {
+      const tag = skill.required ? "required" : "optional";
+      lines.push(`    [${tag}] ${skill.name}`);
+      lines.push(`            ${skill.description}`);
+    }
+  } else {
+    lines.push("  No toolbelt defined — template uses default tool selection from integrations.");
+  }
+
+  // Security
+  lines.push("");
+  lines.push("  Security:");
+  lines.push(`    Posture:        ${template.security_posture.posture}`);
+  lines.push(`    Egress:         ${template.security_posture.egress}`);
+  lines.push(`    Identity mount: ${template.security_posture.identity_mount}`);
+
+  // Data egress
+  lines.push("");
+  lines.push("  Data leaving your machine:");
+  const cloudCategories = template.model_routing_strategy.cloud_escalation_categories;
+  if (cloudCategories.length === 0) {
+    lines.push("    None — fully local by default");
+  } else {
+    lines.push(`    Cloud escalation allowed for: ${cloudCategories.join(", ")}`);
+    lines.push("    All other tasks run on local models — zero egress");
+  }
+  lines.push(`    Default provider: ${template.model_routing_strategy.default_provider}`);
+
+  // Integrations
+  lines.push("");
+  lines.push("  Integrations:");
+  lines.push(`    Required:    ${template.integration_requirements.required.join(", ") || "none"}`);
+  lines.push(`    Recommended: ${template.integration_requirements.recommended.join(", ") || "none"}`);
+  lines.push(`    Optional:    ${template.integration_requirements.optional.join(", ") || "none"}`);
+
+  // Autonomy
+  lines.push("");
+  lines.push(`  Autonomy: ${template.autonomy_model.default}`);
+  lines.push(`    Requires approval: ${template.autonomy_model.requires_approval.join(", ")}`);
 
   return lines.join("\n");
 }
