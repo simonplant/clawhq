@@ -86,11 +86,12 @@
       "category": "Phase 1: CLI UX",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-060 (spinner factory) done. Modify action handlers in src/cli/index.ts to add ora spinners for long-running operations. Steps: (1) import spinner() from src/cli/ui.ts; (2) build command: const s = spinner('Building Stage 1...'); ... s.succeed('Stage 1 complete'); per Docker stage; (3) up/down/restart: spinner per deploy step (compose up, firewall apply, health check); (4) doctor: single spinner while checks run, then show per-check results; (5) backup create/restore: spinner during operation; (6) update: spinners for check and apply phases; (7) scan: spinner while scanning. Pattern is consistent. AC: all listed commands show spinner during operation; spinner.succeed() on success, spinner.fail() on error; non-TTY environments degrade gracefully; no behavior change; tsc clean."
+      "groomingNotes": "UNBLOCKED: FEAT-060 (spinner factory) done. Modify action handlers in src/cli/index.ts to add ora spinners for long-running operations. Steps: (1) import spinner() from src/cli/ui.ts; (2) build command: const s = spinner('Building Stage 1...'); ... s.succeed('Stage 1 complete'); per Docker stage; (3) up/down/restart: spinner per deploy step (compose up, firewall apply, health check); (4) doctor: single spinner while checks run, then show per-check results; (5) backup create/restore: spinner during operation; (6) update: spinners for check and apply phases; (7) scan: spinner while scanning. Pattern is consistent. AC: all listed commands show spinner during operation; spinner.succeed() on success, spinner.fail() on error; non-TTY environments degrade gracefully; no behavior change; tsc clean.",
+      "completedAt": "2026-03-16T22:18:21-07:00"
     },
     {
       "id": "FEAT-066",

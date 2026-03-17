@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773724198",
   "startedAt": "2026-03-16T22:09:58-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-065",
     "title": "Add spinners to existing CLI commands",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T22:09:58-07:00"
-  }
+    "startedAt": "2026-03-16T22:09:58-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-16T22:18:21-07:00"
+  },
+  "completedAt": "2026-03-16T22:18:21-07:00",
+  "attempts": 1
 }
