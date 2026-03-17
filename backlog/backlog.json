@@ -466,14 +466,15 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
       "groomingNotes": "READY TO SPRINT: FEAT-067 (dashboard) and FEAT-071 (API with GET /api/v1/fleet) are both done. Conditional display (only when >1 agent) avoids cluttering single-agent setups. Sprint scope: (1) Create src/ui/pages/fleet.tsx — Hono JSX page component; (2) Page calls GET /api/v1/fleet → renders agent table: name, template, status (running/stopped/degraded icon), uptime, resource usage (CPU/RAM), active skills count, pending approvals count; (3) Bulk action buttons: Restart All (hx-post to /api/v1/deploy/restart for each agent), Backup All (hx-post to /api/v1/backups for each), Update All; (4) Each agent row links to per-agent dashboard view (/dashboard?agent=<id>); (5) Conditional sidebar visibility: check agent count from GET /api/v1/fleet at layout render time — hide Fleet link when count ≤ 1; (6) Register route as GET /fleet in src/ui/app.ts; (7) Add 'Fleet' link to sidebar nav under Operate section (conditionally). Acceptance criteria: fleet table shows name/template/status/uptime/resource-usage/pending-approvals for all configured agents; bulk restart-all and backup-all actions work; page/link hidden from sidebar when only one agent exists; agent rows link to per-agent view; uses established dashboard layout; tsc clean.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-17T12:37:37-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-17T13:31:24-07:00"
     },
     {
       "id": "FEAT-094",
