@@ -75,6 +75,12 @@ export interface DigestReport {
   categories: CategorySummary[];
   /** Data egress summary for the period. */
   egressSummary: DigestEgressSummary;
+  /** Pending approvals from the approval queue. */
+  pendingApprovals: DigestApprovalEntry[];
+  /** Recent cron runs in the period. */
+  cronRuns: DigestCronEntry[];
+  /** Doctor warnings or failures (non-passing checks). */
+  doctorWarnings: DigestDoctorEntry[];
   /** Total activity entries in the period. */
   totalEntries: number;
 }
@@ -97,6 +103,30 @@ export interface DigestEgressSummary {
   zeroEgress: boolean;
 }
 
+/** A pending approval entry surfaced in the digest. */
+export interface DigestApprovalEntry {
+  id: string;
+  category: string;
+  description: string;
+  createdAt: string;
+}
+
+/** A cron run entry surfaced in the digest. */
+export interface DigestCronEntry {
+  jobName: string;
+  ranAt: string;
+  status: "success" | "failure" | "unknown";
+  summary?: string;
+}
+
+/** A doctor warning or failure surfaced in the digest. */
+export interface DigestDoctorEntry {
+  name: string;
+  status: "warn" | "fail";
+  message: string;
+  fix: string;
+}
+
 // --- Options ---
 
 export interface DigestOptions {
@@ -106,6 +136,10 @@ export interface DigestOptions {
   activityLogPath?: string;
   /** Path to the egress log file. Default: <openclawHome>/egress.log */
   egressLogPath?: string;
+  /** Path to the approval queue file. Default: <openclawHome>/approvals.jsonl */
+  approvalsPath?: string;
+  /** Path to the cron run history file. Default: <openclawHome>/cron/history.jsonl */
+  cronHistoryPath?: string;
   /** Only include entries since this date. Default: start of today. */
   since?: string;
   /** Only include entries until this date. Default: now. */

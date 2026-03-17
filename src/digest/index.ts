@@ -10,6 +10,9 @@ export type {
   ActivityEntry,
   ActivityType,
   CategorySummary,
+  DigestApprovalEntry,
+  DigestCronEntry,
+  DigestDoctorEntry,
   DigestEgressSummary,
   DigestOptions,
   DigestReport,
@@ -20,6 +23,8 @@ export {
   collectDigestEgress,
   filterByTimeRange,
   parseActivityLog,
+  parseCronHistory,
+  readPendingApprovals,
 } from "./collector.js";
 
 export { generateDigest } from "./generator.js";
