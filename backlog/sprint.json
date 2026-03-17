@@ -1,17 +1,17 @@
 {
-  "sprintId": "sprint-1773768045",
-  "startedAt": "2026-03-17T10:20:45-07:00",
+  "sprintId": "sprint-1773771716",
+  "startedAt": "2026-03-17T11:21:56-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-075",
-    "title": "Dashboard Approvals page",
+    "id": "FEAT-076",
+    "title": "Dashboard: Skills & Tools management page",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T10:20:45-07:00",
+    "startedAt": "2026-03-17T11:21:56-07:00",
     "status": "passed",
-    "completedAt": "2026-03-17T10:26:41-07:00"
+    "completedAt": "2026-03-17T11:26:44-07:00"
   },
-  "completedAt": "2026-03-17T10:26:41-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-17T11:26:44-07:00",
+  "attempts": 1
 }

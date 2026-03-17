@@ -210,11 +210,12 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: FEAT-067 (dashboard) and FEAT-071 (API endpoints with GET/POST/DELETE /api/v1/skills) are both done. This is a Tier B dashboard page — ship after confirming Tier A (FEAT-072-075) validated. Sprint scope: (1) Create src/ui/pages/skills.tsx — Hono JSX page component with two tabs: Skills and Tools; (2) Skills tab: GET /api/v1/skills → render card list of installed skills with name, version, source, status (active/disabled), last-used; each card has Enable/Disable toggle (htmx hx-patch) and Remove button (htmx hx-delete with hx-confirm); install form at top: text input for skill name or URL + Install button (htmx hx-post to /api/v1/skills); (3) Tools tab: GET /api/v1/fleet (or dedicated tools endpoint) → render installed tools table with name, version, health status; install form for package name; (4) Register route as GET /skills in app.ts; (5) Add 'Skills & Tools' link to sidebar nav under Evolve section; (6) Note: the API endpoint for tools (clawhq tool list/install) may need a new /api/v1/tools endpoint added to src/ui/app.ts — scope that in sprint if needed. Acceptance criteria: /skills page renders installed skills from live API; install form works for skill name and URL; enable/disable toggle works; remove button works with confirmation; Tools tab shows installed tools; uses established dashboard layout; tsc clean."
+      "groomingNotes": "READY TO SPRINT: FEAT-067 (dashboard) and FEAT-071 (API endpoints with GET/POST/DELETE /api/v1/skills) are both done. This is a Tier B dashboard page — ship after confirming Tier A (FEAT-072-075) validated. Sprint scope: (1) Create src/ui/pages/skills.tsx — Hono JSX page component with two tabs: Skills and Tools; (2) Skills tab: GET /api/v1/skills → render card list of installed skills with name, version, source, status (active/disabled), last-used; each card has Enable/Disable toggle (htmx hx-patch) and Remove button (htmx hx-delete with hx-confirm); install form at top: text input for skill name or URL + Install button (htmx hx-post to /api/v1/skills); (3) Tools tab: GET /api/v1/fleet (or dedicated tools endpoint) → render installed tools table with name, version, health status; install form for package name; (4) Register route as GET /skills in app.ts; (5) Add 'Skills & Tools' link to sidebar nav under Evolve section; (6) Note: the API endpoint for tools (clawhq tool list/install) may need a new /api/v1/tools endpoint added to src/ui/app.ts — scope that in sprint if needed. Acceptance criteria: /skills page renders installed skills from live API; install form works for skill name and URL; enable/disable toggle works; remove button works with confirmation; Tools tab shows installed tools; uses established dashboard layout; tsc clean.",
+      "completedAt": "2026-03-17T11:26:44-07:00"
     },
     {
       "id": "FEAT-077",

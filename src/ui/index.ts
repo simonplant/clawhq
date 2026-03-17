@@ -9,3 +9,4 @@ export { renderApprovalsPage } from "./pages/approvals.js";
 export { renderDeployPage } from "./pages/deploy.js";
 export { renderHomePage } from "./pages/home.js";
 export { renderDoctorPage } from "./pages/doctor.js";
+export { renderSkillsPage } from "./pages/skills.js";

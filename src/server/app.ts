@@ -15,6 +15,7 @@ import { renderDeployPage } from "../ui/pages/deploy.js";
 import { renderDoctorPage } from "../ui/pages/doctor.js";
 import { renderHomePage } from "../ui/pages/home.js";
 import { renderLogsPage } from "../ui/pages/logs.js";
+import { renderSkillsPage } from "../ui/pages/skills.js";
 
 import { createApiRouter } from "./api.js";
 import { authMiddleware } from "./auth.js";
@@ -77,6 +78,10 @@ export function createApp(config: ServerConfig): Hono<ServerEnv> {
 
   app.get("/approvals", (c) => {
     return c.html(renderApprovalsPage());
+  });
+
+  app.get("/skills", (c) => {
+    return c.html(renderSkillsPage());
   });
 
   return app;
