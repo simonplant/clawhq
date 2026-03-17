@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773789733",
   "startedAt": "2026-03-17T16:22:13-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-085",
     "title": "Tool execution audit trail — clawhq audit",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T16:22:13-07:00"
-  }
+    "startedAt": "2026-03-17T16:22:13-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T16:29:16-07:00"
+  },
+  "completedAt": "2026-03-17T16:29:16-07:00",
+  "attempts": 1
 }
