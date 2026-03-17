@@ -418,14 +418,15 @@
       "category": "Capability Layer",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
       "groomingNotes": "READY TO SPRINT: FEAT-086 (template toolbelts) and FEAT-089 (tool installation) are both done — prerequisites met. Start simple with postgres + redis + qdrant. Sprint scope: (1) Create src/services/types.ts — ServiceDefinition type: name, image, version, envVars[], volumes[], healthCheck, ports[], networkAliases[]; export BUILTIN_SERVICES with 3 definitions: postgres (postgres:16, POSTGRES_PASSWORD env, /var/lib/postgresql/data volume, health via pg_isready), redis (redis:7, /data volume, health via redis-cli ping), qdrant (qdrant/qdrant:latest, /qdrant/storage volume, health via HTTP :6333/health); (2) Create src/services/manager.ts — addService(name): reads docker-compose.yml from workspace, appends service definition with proper networking (same network as agent), volumes, health check, writes back; removeService(name, opts: {deleteData}): removes from compose, handles volume deletion; listServices(): reads compose, returns running status via Docker API; (3) Create src/cli/service.ts — createServiceCommand() with subcommands: service add <name>, service list, service remove <name> [--delete-data]; auto-inject env vars to .env on add; (4) Register in src/cli/index.ts. Acceptance criteria: clawhq service add qdrant adds service to docker-compose with networking/volumes/health; env vars auto-injected; clawhq service list shows running services; clawhq service remove preserves data by default, requires --delete-data to destroy; tsc clean.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-17T12:36:27-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-17T13:26:29-07:00"
     },
     {
       "id": "FEAT-091",

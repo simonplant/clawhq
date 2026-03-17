@@ -31,6 +31,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Doctor", href: "/doctor", icon: "\u2695" },
       { label: "Logs", href: "/logs", icon: "\u2263" },
       { label: "Alerts", href: "/alerts", icon: "\u25B2" },
+      { label: "Fleet", href: "/fleet", icon: "\u2630" },
     ],
   },
   {
@@ -73,12 +74,15 @@ function Sidebar() {
           <summary>{group.phase}</summary>
           <ul>
             {group.items.map((item) => (
-              <li>
+              <li id={item.href === "/fleet" ? "fleet-nav-item" : undefined} style={item.href === "/fleet" ? "display:none;" : undefined}>
                 <a href={item.href}>
                   <span class="nav-icon">{item.icon}</span>
                   {item.label}
                   {item.href === "/approvals" && (
                     <span id="approvals-badge" class="nav-badge" style="display:none;" />
+                  )}
+                  {item.href === "/fleet" && (
+                    <span id="fleet-badge" class="nav-badge" style="display:none;" />
                   )}
                 </a>
               </li>
@@ -231,6 +235,29 @@ export function Layout({ title, children }: LayoutProps) {
             }
             refreshApprovalBadge();
             setInterval(refreshApprovalBadge, 5000);
+
+            function refreshFleetVisibility() {
+              fetch('/api/v1/fleet')
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                  if (!res.ok) return;
+                  var agents = res.data.agents || [];
+                  var navItem = document.getElementById('fleet-nav-item');
+                  if (navItem) {
+                    navItem.style.display = agents.length > 1 ? 'block' : 'none';
+                  }
+                  var badge = document.getElementById('fleet-badge');
+                  if (badge && agents.length > 1) {
+                    badge.textContent = agents.length;
+                    badge.style.display = 'inline-block';
+                  } else if (badge) {
+                    badge.style.display = 'none';
+                  }
+                })
+                .catch(function() {});
+            }
+            refreshFleetVisibility();
+            setInterval(refreshFleetVisibility, 10000);
           })();
         `}</script>
       </body>

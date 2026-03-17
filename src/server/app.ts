@@ -13,6 +13,7 @@ import { Hono } from "hono";
 import { renderApprovalsPage } from "../ui/pages/approvals.js";
 import { renderDeployPage } from "../ui/pages/deploy.js";
 import { renderDoctorPage } from "../ui/pages/doctor.js";
+import { renderFleetPage } from "../ui/pages/fleet.js";
 import { renderHomePage } from "../ui/pages/home.js";
 import { renderLogsPage } from "../ui/pages/logs.js";
 import { renderSkillsPage } from "../ui/pages/skills.js";
@@ -82,6 +83,10 @@ export function createApp(config: ServerConfig): Hono<ServerEnv> {
 
   app.get("/skills", (c) => {
     return c.html(renderSkillsPage());
+  });
+
+  app.get("/fleet", (c) => {
+    return c.html(renderFleetPage());
   });
 
   return app;
