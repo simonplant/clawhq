@@ -94,3 +94,35 @@ skill_bundle:
     - email-triage
     - calendar-sync
     - meeting-prep
+
+toolbelt:
+  role: "Professional assistant"
+  description: "Calendar, email triage, task management, meeting prep — replaces a human PA"
+  tools:
+    - name: email
+      category: email
+      required: true
+      description: "Email reading, triage, and draft replies via himalaya"
+    - name: ical
+      category: calendar
+      required: true
+      description: "Calendar management, conflict detection, scheduling via CalDAV"
+    - name: todoist
+      category: tasks
+      required: true
+      description: "Task management and tracking via Todoist API"
+    - name: todoist-sync
+      category: tasks
+      required: true
+      description: "Task polling and due-date alerts for proactive reminders"
+    - name: tasks
+      category: core
+      required: true
+      description: "Local work queue for autonomous task execution"
+  skills:
+    - name: morning-brief
+      required: true
+      description: "Daily briefing with agenda, email summary, and action items"
+    - name: construct
+      required: false
+      description: "Self-improvement framework for capability growth"

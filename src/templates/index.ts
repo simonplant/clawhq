@@ -21,6 +21,9 @@ export type {
   TemplateIntegrationRequirements,
   TemplateSkillBundle,
   TemplateChannels,
+  TemplateToolbelt,
+  ToolbeltTool,
+  ToolbeltSkill,
   TemplatePreview,
   TemplateLoadResult,
   TemplateValidationError,
@@ -46,6 +49,7 @@ export {
   generatePreview,
   formatPreview,
   formatTemplateList,
+  formatTemplateShow,
 } from "./preview.js";
 
 export {

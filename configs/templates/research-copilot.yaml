@@ -86,3 +86,20 @@ skill_bundle:
     - citation-manager
     - paper-reader
     - web-search
+
+toolbelt:
+  role: "Academic research partner"
+  description: "Deep research, citation management, literature review, technical writing"
+  tools:
+    - name: tavily
+      category: research
+      required: true
+      description: "Web research and literature discovery via Tavily API"
+    - name: tasks
+      category: core
+      required: true
+      description: "Research task queue for tracking investigations"
+  skills:
+    - name: construct
+      required: true
+      description: "Self-improvement for expanding research methodology capabilities"

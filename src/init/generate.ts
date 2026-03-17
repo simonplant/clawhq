@@ -391,11 +391,14 @@ export function generate(answers: WizardAnswers): GeneratedConfig {
   const dockerCompose = generateDockerCompose(answers);
   const cronJobs = generateCronJobs(answers);
 
-  // Generate workspace tools
-  const includeMarkets = answers.template.monitoring.checks.includes("markets");
+  // Generate workspace tools — toolbelt enriches integration-based selection
+  const toolbelt = answers.template.toolbelt;
+  const includeMarkets = answers.template.monitoring.checks.includes("markets") ||
+    (toolbelt?.tools.some((t) => t.name === "quote") ?? false);
   const { tools: workspaceTools, requiredBinaries } = generateWorkspaceTools({
     integrations: answers.integrations,
     includeMarkets,
+    toolbeltTools: toolbelt?.tools,
   });
 
   // Generate Dockerfile
@@ -410,6 +413,7 @@ export function generate(answers: WizardAnswers): GeneratedConfig {
   const enabledTools = getEnabledToolNames({
     integrations: answers.integrations,
     includeMarkets,
+    toolbeltTools: toolbelt?.tools,
   });
   const identityFiles = generateIdentityFiles(answers, enabledTools, cronJobs);
 

@@ -10,6 +10,7 @@ import type { WizardAnswers } from "../init/index.js";
 import {
   formatPreview,
   formatTemplateList as formatYamlTemplateList,
+  formatTemplateShow,
   generatePreview,
   loadBuiltInTemplates,
 } from "../templates/index.js";
@@ -211,5 +212,27 @@ export function createPlanCommands(program: Command): void {
 
       const preview = generatePreview(result.template);
       console.log(formatPreview(preview));
+    });
+
+  templateCmd
+    .command("show <id>")
+    .description("Show what a template installs — tools, skills, security, and data egress")
+    .action(async (id: string) => {
+      const results = await loadBuiltInTemplates();
+      const result = results.get(id);
+
+      if (!result || !result.template) {
+        console.error(`Template "${id}" not found.`);
+        console.error("Available templates:");
+        for (const [tid] of results) {
+          if (tid !== "_error") {
+            console.error(`  - ${tid}`);
+          }
+        }
+        process.exitCode = 1;
+        return;
+      }
+
+      console.log(formatTemplateShow(result.template));
     });
 }

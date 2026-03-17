@@ -29,6 +29,27 @@ export interface TemplateChoice {
     supported: string[];
     default: string;
   };
+  toolbelt?: TemplateChoiceToolbelt;
+}
+
+export interface TemplateChoiceToolbelt {
+  role: string;
+  description: string;
+  tools: TemplateChoiceToolbeltTool[];
+  skills: TemplateChoiceToolbeltSkill[];
+}
+
+export interface TemplateChoiceToolbeltTool {
+  name: string;
+  category: string;
+  required: boolean;
+  description: string;
+}
+
+export interface TemplateChoiceToolbeltSkill {
+  name: string;
+  required: boolean;
+  description: string;
 }
 
 export interface TemplatePersonality {

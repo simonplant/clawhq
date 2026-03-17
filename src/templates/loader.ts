@@ -143,6 +143,54 @@ function validateTemplate(data: unknown): TemplateValidationError[] {
     requireStringArray(sb, "recommended", errors, "skill_bundle");
   }
 
+  // toolbelt (optional)
+  if (t["toolbelt"] !== undefined) {
+    const tb = requireObject(t, "toolbelt", errors);
+    if (tb) {
+      requireString(tb, "role", errors, "toolbelt");
+      requireString(tb, "description", errors, "toolbelt");
+
+      // tools array
+      if (!Array.isArray(tb["tools"])) {
+        errors.push({ field: "toolbelt.tools", message: "tools is required and must be an array" });
+      } else {
+        for (let i = 0; i < (tb["tools"] as unknown[]).length; i++) {
+          const tool = (tb["tools"] as unknown[])[i];
+          if (typeof tool !== "object" || tool === null) {
+            errors.push({ field: `toolbelt.tools[${i}]`, message: "each tool must be an object" });
+            continue;
+          }
+          const t2 = tool as Record<string, unknown>;
+          requireString(t2, "name", errors, `toolbelt.tools[${i}]`);
+          requireString(t2, "category", errors, `toolbelt.tools[${i}]`);
+          requireString(t2, "description", errors, `toolbelt.tools[${i}]`);
+          if (typeof t2["required"] !== "boolean") {
+            errors.push({ field: `toolbelt.tools[${i}].required`, message: "required must be a boolean" });
+          }
+        }
+      }
+
+      // skills array
+      if (!Array.isArray(tb["skills"])) {
+        errors.push({ field: "toolbelt.skills", message: "skills is required and must be an array" });
+      } else {
+        for (let i = 0; i < (tb["skills"] as unknown[]).length; i++) {
+          const skill = (tb["skills"] as unknown[])[i];
+          if (typeof skill !== "object" || skill === null) {
+            errors.push({ field: `toolbelt.skills[${i}]`, message: "each skill must be an object" });
+            continue;
+          }
+          const s = skill as Record<string, unknown>;
+          requireString(s, "name", errors, `toolbelt.skills[${i}]`);
+          requireString(s, "description", errors, `toolbelt.skills[${i}]`);
+          if (typeof s["required"] !== "boolean") {
+            errors.push({ field: `toolbelt.skills[${i}].required`, message: "required must be a boolean" });
+          }
+        }
+      }
+    }
+  }
+
   // channels (optional)
   if (t["channels"] !== undefined) {
     const ch = requireObject(t, "channels", errors);
@@ -408,6 +456,23 @@ export function templateToChoice(id: string, template: Template): TemplateChoice
     integrationsRecommended: template.integration_requirements.recommended,
     skillsIncluded: template.skill_bundle.included,
     ...(template.channels ? { channels: template.channels } : {}),
+    ...(template.toolbelt ? {
+      toolbelt: {
+        role: template.toolbelt.role,
+        description: template.toolbelt.description,
+        tools: template.toolbelt.tools.map((t) => ({
+          name: t.name,
+          category: t.category,
+          required: t.required,
+          description: t.description,
+        })),
+        skills: template.toolbelt.skills.map((s) => ({
+          name: s.name,
+          required: s.required,
+          description: s.description,
+        })),
+      },
+    } : {}),
   };
 }
 

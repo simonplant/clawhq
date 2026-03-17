@@ -87,3 +87,20 @@ skill_bundle:
   recommended:
     - web-search
     - citation-manager
+
+toolbelt:
+  role: "Research and writing partner"
+  description: "Deep research, web search, writing assistance, brainstorming — replaces ChatGPT Plus"
+  tools:
+    - name: tavily
+      category: research
+      required: true
+      description: "Web research via Tavily API"
+    - name: tasks
+      category: core
+      required: true
+      description: "Local work queue for research task tracking"
+  skills:
+    - name: construct
+      required: true
+      description: "Self-improvement framework for expanding research capabilities"
