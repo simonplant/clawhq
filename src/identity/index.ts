@@ -13,6 +13,24 @@ export {
   formatStalenessReport,
   runGovernanceCheck,
 } from "./governance.js";
+export {
+  ensureCustomizationsBlock,
+  extractCustomizations,
+  extractCustomizationsContent,
+  mergeCustomizations,
+} from "./customizations.js";
+export {
+  buildReviewSummary,
+  formatReviewSummary,
+  identityFilePath,
+  readIdentityFile,
+  saveIdentityFile,
+  simpleDiff,
+} from "./review.js";
+export type {
+  IdentityFileStatus,
+  ReviewSummary,
+} from "./review.js";
 export type {
   BudgetReport,
   ConsistencyReport,

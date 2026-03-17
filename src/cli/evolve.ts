@@ -1,6 +1,14 @@
 import { Command } from "commander";
 
 import {
+  buildReviewSummary,
+  formatReviewSummary,
+  identityFilePath,
+  readIdentityFile,
+  saveIdentityFile,
+  simpleDiff,
+} from "../identity/review.js";
+import {
   type AutonomyConfig,
   AutonomyError,
   DEFAULT_AUTONOMY_CONFIG,
@@ -12,6 +20,7 @@ import {
   rejectRecommendation,
 } from "../internal/autonomy/index.js";
 import type { AutonomyContext } from "../internal/autonomy/index.js";
+import { recordChange } from "../workspace/evolve-history.js";
 import {
   type EvolveContext,
   EvolveError,
@@ -105,6 +114,92 @@ export function createEvolveCommand(): Command {
           console.log(JSON.stringify(entries, null, 2));
         } else {
           console.log(formatAudit(entries));
+        }
+      } catch (err: unknown) {
+        console.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+        process.exitCode = 1;
+      }
+    });
+
+  // Identity governance review
+  evolveCmd
+    .command("identity")
+    .description("Review identity file health — token budget, staleness, consistency")
+    .option("--json", "Output as JSON")
+    .option("--edit <filename>", "Edit a specific identity file (e.g. AGENTS.md)")
+    .option("--new-content <content>", "New content for the file (non-interactive edit)")
+    .action(async (opts: { json?: boolean; edit?: string; newContent?: string }) => {
+      const parentOpts = evolveCmd.opts() as { home: string; clawhqDir: string };
+      const ctx = makeEvolveCtx(parentOpts);
+      const identityCtx = { openclawHome: ctx.openclawHome };
+
+      try {
+        // Build and show the review summary
+        const summary = await buildReviewSummary(identityCtx);
+
+        if (opts.edit) {
+          // Edit mode: apply new content to a specific file
+          const filePath = identityFilePath(identityCtx, opts.edit);
+          const originalContent = await readIdentityFile(filePath);
+
+          if (!originalContent) {
+            console.error(`Identity file not found: ${opts.edit}`);
+            process.exitCode = 1;
+            return;
+          }
+
+          if (!opts.newContent) {
+            // Show current content for reference (user provides content via --new-content)
+            console.log(`Current content of ${opts.edit}:`);
+            console.log("---");
+            console.log(originalContent);
+            console.log("---");
+            console.log("");
+            console.log("To edit, provide new content with --new-content or use your editor:");
+            console.log(`  $EDITOR ~/.openclaw/workspace/${opts.edit}`);
+            console.log("Then run `clawhq evolve identity` to verify.");
+            return;
+          }
+
+          // Show diff before saving
+          const diff = simpleDiff(originalContent, opts.newContent, opts.edit);
+          if (!diff) {
+            console.log("No changes detected.");
+            return;
+          }
+
+          console.log("Changes to apply:");
+          console.log("");
+          console.log(diff);
+          console.log("");
+
+          // Save with customizations preservation
+          const result = await saveIdentityFile(filePath, opts.newContent);
+
+          if (result.saved) {
+            // Record in evolve history for rollback
+            await recordChange(ctx, {
+              changeType: "identity_update",
+              target: opts.edit,
+              previousState: `${originalContent.length} chars`,
+              newState: `${opts.newContent.length} chars`,
+              rollbackSnapshotId: JSON.stringify({
+                filePath: `workspace/${opts.edit}`,
+                content: originalContent,
+              }),
+              requiresRebuild: false,
+            });
+
+            console.log(`Saved ${opts.edit}. Change recorded in evolve history.`);
+          }
+          return;
+        }
+
+        // Default: show review summary
+        if (opts.json) {
+          console.log(JSON.stringify(summary, null, 2));
+        } else {
+          console.log(formatReviewSummary(summary));
         }
       } catch (err: unknown) {
         console.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);

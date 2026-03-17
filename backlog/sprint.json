@@ -1,17 +1,13 @@
 {
-  "sprintId": "sprint-1773779191",
-  "startedAt": "2026-03-17T13:26:31-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773779486",
+  "startedAt": "2026-03-17T13:31:26-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-093",
-    "title": "Dashboard: Fleet management page",
+    "id": "FEAT-100",
+    "title": "Identity governance — prevent agent personality drift",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T13:26:31-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-17T13:31:24-07:00"
-  },
-  "completedAt": "2026-03-17T13:31:24-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-17T13:31:26-07:00"
+  }
 }
