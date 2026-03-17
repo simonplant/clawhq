@@ -294,11 +294,12 @@
       "category": "Phase 5: Refactor",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "DOWNGRADED must→could: This is internal refactor with zero user-visible value. The title explicitly says '(deferred)'. While code hygiene matters, user-facing items (dashboard, capability layer, memory lifecycle) are higher priority. The organic split is already partially in progress — additional modules (secrets.ts, tool.ts, trace.ts, fleet.ts, etc.) are already committed. Complete the split only when index.ts becomes a genuine maintenance blocker, not on a schedule. Sprint after all must/should user-value items are shipped."
+      "groomingNotes": "DOWNGRADED must→could: This is internal refactor with zero user-visible value. The title explicitly says '(deferred)'. While code hygiene matters, user-facing items (dashboard, capability layer, memory lifecycle) are higher priority. The organic split is already partially in progress — additional modules (secrets.ts, tool.ts, trace.ts, fleet.ts, etc.) are already committed. Complete the split only when index.ts becomes a genuine maintenance blocker, not on a schedule. Sprint after all must/should user-value items are shipped.",
+      "completedAt": "2026-03-16T22:25:27-07:00"
     },
     {
       "id": "FEAT-083",
