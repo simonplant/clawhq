@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { collectDigestEgress, filterByTimeRange, parseActivityLog } from "./collector.js";
+import { collectDigestEgress, filterByTimeRange, parseActivityLog, parseCronHistory, readPendingApprovals } from "./collector.js";
 import { formatDigestJson, formatDigestTable } from "./format.js";
 import { generateDigest } from "./generator.js";
 import type { ActivityEntry, DigestReport } from "./types.js";
@@ -10,9 +10,18 @@ import type { ActivityEntry, DigestReport } from "./types.js";
 const TEST_DIR = "/tmp/clawhq-digest-test";
 const ACTIVITY_LOG = `${TEST_DIR}/activity.log`;
 const EGRESS_LOG = `${TEST_DIR}/egress.log`;
+const APPROVALS_FILE = `${TEST_DIR}/approvals.jsonl`;
+const CRON_HISTORY = `${TEST_DIR}/cron/history.jsonl`;
+
+const EMPTY_REPORT_FIELDS = {
+  pendingApprovals: [],
+  cronRuns: [],
+  doctorWarnings: [],
+};
 
 beforeEach(async () => {
   await mkdir(TEST_DIR, { recursive: true });
+  await mkdir(`${TEST_DIR}/cron`, { recursive: true });
 });
 
 afterEach(async () => {
@@ -130,6 +139,78 @@ describe("collectDigestEgress", () => {
   });
 });
 
+// --- readPendingApprovals ---
+
+describe("readPendingApprovals", () => {
+  it("returns empty for missing file", async () => {
+    const result = await readPendingApprovals("/tmp/nonexistent/approvals.jsonl");
+    expect(result).toEqual([]);
+  });
+
+  it("reads only pending entries", async () => {
+    const lines = [
+      JSON.stringify({ id: "a1", status: "pending", category: "email", description: "Send reply", createdAt: "2026-03-14T10:00:00Z" }),
+      JSON.stringify({ id: "a2", status: "approved", category: "calendar", description: "Create event", createdAt: "2026-03-14T09:00:00Z" }),
+      JSON.stringify({ id: "a3", status: "pending", category: "tasks", description: "Delete item", createdAt: "2026-03-14T11:00:00Z" }),
+    ];
+    await writeFile(APPROVALS_FILE, lines.join("\n") + "\n");
+
+    const result = await readPendingApprovals(APPROVALS_FILE);
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("a1");
+    expect(result[0].category).toBe("email");
+    expect(result[1].id).toBe("a3");
+  });
+
+  it("skips malformed lines", async () => {
+    const lines = [
+      "{broken",
+      JSON.stringify({ id: "a1", status: "pending", category: "email", description: "Send", createdAt: "2026-03-14T10:00:00Z" }),
+    ];
+    await writeFile(APPROVALS_FILE, lines.join("\n") + "\n");
+
+    const result = await readPendingApprovals(APPROVALS_FILE);
+    expect(result).toHaveLength(1);
+  });
+});
+
+// --- parseCronHistory ---
+
+describe("parseCronHistory", () => {
+  it("returns empty for missing file", async () => {
+    const result = await parseCronHistory("/tmp/nonexistent/history.jsonl", "2026-01-01T00:00:00Z", "2027-01-01T00:00:00Z");
+    expect(result).toEqual([]);
+  });
+
+  it("parses cron history within time range", async () => {
+    const lines = [
+      JSON.stringify({ jobName: "heartbeat", ranAt: "2026-03-14T10:00:00Z", status: "success", summary: "HEARTBEAT_OK" }),
+      JSON.stringify({ jobName: "todoist-sync", ranAt: "2026-03-14T10:05:00Z", status: "failure", summary: "Connection timeout" }),
+      JSON.stringify({ jobName: "heartbeat", ranAt: "2020-01-01T00:00:00Z", status: "success" }),
+    ];
+    await writeFile(CRON_HISTORY, lines.join("\n") + "\n");
+
+    const result = await parseCronHistory(CRON_HISTORY, "2026-01-01T00:00:00Z", "2027-01-01T00:00:00Z");
+    expect(result).toHaveLength(2);
+    expect(result[0].jobName).toBe("heartbeat");
+    expect(result[0].status).toBe("success");
+    expect(result[1].jobName).toBe("todoist-sync");
+    expect(result[1].status).toBe("failure");
+    expect(result[1].summary).toBe("Connection timeout");
+  });
+
+  it("handles snake_case field names", async () => {
+    const lines = [
+      JSON.stringify({ job_name: "heartbeat", ran_at: "2026-03-14T10:00:00Z", status: "success" }),
+    ];
+    await writeFile(CRON_HISTORY, lines.join("\n") + "\n");
+
+    const result = await parseCronHistory(CRON_HISTORY, "2026-01-01T00:00:00Z", "2027-01-01T00:00:00Z");
+    expect(result).toHaveLength(1);
+    expect(result[0].jobName).toBe("heartbeat");
+  });
+});
+
 // --- generateDigest ---
 
 describe("generateDigest", () => {
@@ -137,12 +218,17 @@ describe("generateDigest", () => {
     const report = await generateDigest({
       activityLogPath: "/tmp/nonexistent/activity.log",
       egressLogPath: "/tmp/nonexistent/egress.log",
+      approvalsPath: "/tmp/nonexistent/approvals.jsonl",
+      cronHistoryPath: "/tmp/nonexistent/history.jsonl",
     });
 
     expect(report.totalEntries).toBe(0);
     expect(report.tasksCompleted).toEqual([]);
     expect(report.tasksQueued).toEqual([]);
     expect(report.problems).toEqual([]);
+    expect(report.pendingApprovals).toEqual([]);
+    expect(report.cronRuns).toEqual([]);
+    expect(report.doctorWarnings).toEqual([]);
     expect(report.egressSummary.zeroEgress).toBe(true);
   });
 
@@ -159,6 +245,8 @@ describe("generateDigest", () => {
     const report = await generateDigest({
       activityLogPath: ACTIVITY_LOG,
       egressLogPath: "/tmp/nonexistent/egress.log",
+      approvalsPath: "/tmp/nonexistent/approvals.jsonl",
+      cronHistoryPath: "/tmp/nonexistent/history.jsonl",
     });
 
     expect(report.tasksCompleted).toHaveLength(2);
@@ -181,6 +269,8 @@ describe("generateDigest", () => {
     const report = await generateDigest({
       activityLogPath: ACTIVITY_LOG,
       egressLogPath: "/tmp/nonexistent/egress.log",
+      approvalsPath: "/tmp/nonexistent/approvals.jsonl",
+      cronHistoryPath: "/tmp/nonexistent/history.jsonl",
       privacyMode: true,
     });
 
@@ -189,12 +279,66 @@ describe("generateDigest", () => {
     expect(report.problems[0].problem).toBe("Issue in calendar");
     expect(report.problems[0].proposal).toBe("Review activity log for details");
   });
+
+  it("includes pending approvals from queue", async () => {
+    const approvalLines = [
+      JSON.stringify({ id: "a1", status: "pending", category: "email", description: "Send reply to Bob", createdAt: "2026-03-14T10:00:00Z" }),
+      JSON.stringify({ id: "a2", status: "approved", category: "calendar", description: "Already done", createdAt: "2026-03-14T09:00:00Z" }),
+    ];
+    await writeFile(APPROVALS_FILE, approvalLines.join("\n") + "\n");
+
+    const report = await generateDigest({
+      activityLogPath: "/tmp/nonexistent/activity.log",
+      egressLogPath: "/tmp/nonexistent/egress.log",
+      approvalsPath: APPROVALS_FILE,
+      cronHistoryPath: "/tmp/nonexistent/history.jsonl",
+    });
+
+    expect(report.pendingApprovals).toHaveLength(1);
+    expect(report.pendingApprovals[0].description).toBe("Send reply to Bob");
+  });
+
+  it("privacy mode masks approval descriptions", async () => {
+    const approvalLines = [
+      JSON.stringify({ id: "a1", status: "pending", category: "email", description: "Send confidential reply", createdAt: "2026-03-14T10:00:00Z" }),
+    ];
+    await writeFile(APPROVALS_FILE, approvalLines.join("\n") + "\n");
+
+    const report = await generateDigest({
+      activityLogPath: "/tmp/nonexistent/activity.log",
+      egressLogPath: "/tmp/nonexistent/egress.log",
+      approvalsPath: APPROVALS_FILE,
+      cronHistoryPath: "/tmp/nonexistent/history.jsonl",
+      privacyMode: true,
+    });
+
+    expect(report.pendingApprovals[0].description).toBe("Pending action in email");
+  });
+
+  it("includes cron run history", async () => {
+    const now = new Date().toISOString();
+    const cronLines = [
+      JSON.stringify({ jobName: "heartbeat", ranAt: now, status: "success", summary: "HEARTBEAT_OK" }),
+    ];
+    await writeFile(CRON_HISTORY, cronLines.join("\n") + "\n");
+
+    const report = await generateDigest({
+      activityLogPath: "/tmp/nonexistent/activity.log",
+      egressLogPath: "/tmp/nonexistent/egress.log",
+      approvalsPath: "/tmp/nonexistent/approvals.jsonl",
+      cronHistoryPath: CRON_HISTORY,
+    });
+
+    expect(report.cronRuns).toHaveLength(1);
+    expect(report.cronRuns[0].jobName).toBe("heartbeat");
+    expect(report.cronRuns[0].status).toBe("success");
+  });
 });
 
 // --- formatDigestTable ---
 
 describe("formatDigestTable", () => {
-  it("renders empty digest", () => {
+  it("renders friendly empty state when no data", () => {
     const report: DigestReport = {
       since: "2026-03-14T00:00:00Z",
       until: "2026-03-14T23:59:59Z",
@@ -204,13 +348,14 @@ describe("formatDigestTable", () => {
       problems: [],
       categories: [],
       egressSummary: { totalCalls: 0, totalBytesOut: 0, providers: [], zeroEgress: true },
+      ...EMPTY_REPORT_FIELDS,
       totalEntries: 0,
     };
 
     const output = formatDigestTable(report);
     expect(output).toContain("ACTIVITY DIGEST");
-    expect(output).toContain("(none)");
-    expect(output).toContain("ZERO EGRESS");
+    expect(output).toContain("No activity recorded yet");
+    expect(output).not.toContain("TASKS COMPLETED");
   });
 
   it("renders tasks and problems", () => {
@@ -226,6 +371,7 @@ describe("formatDigestTable", () => {
         { category: "calendar", count: 1, highlights: ["CalDAV sync failed"] },
       ],
       egressSummary: { totalCalls: 2, totalBytesOut: 3072, providers: ["anthropic"], zeroEgress: false },
+      ...EMPTY_REPORT_FIELDS,
       totalEntries: 14,
     };
 
@@ -238,6 +384,78 @@ describe("formatDigestTable", () => {
     expect(output).toContain("14 activities recorded");
   });
 
+  it("renders pending approvals from queue", () => {
+    const report: DigestReport = {
+      since: "2026-03-14T00:00:00Z",
+      until: "2026-03-14T23:59:59Z",
+      privacyMode: false,
+      tasksCompleted: [],
+      tasksQueued: [],
+      problems: [],
+      categories: [],
+      egressSummary: { totalCalls: 0, totalBytesOut: 0, providers: [], zeroEgress: true },
+      pendingApprovals: [
+        { id: "a1", category: "email", description: "Send reply to Bob", createdAt: "2026-03-14T10:00:00Z" },
+      ],
+      cronRuns: [],
+      doctorWarnings: [],
+      totalEntries: 0,
+    };
+
+    const output = formatDigestTable(report);
+    expect(output).toContain("[email] Send reply to Bob");
+    expect(output).toContain("PENDING APPROVAL");
+  });
+
+  it("renders cron runs section", () => {
+    const report: DigestReport = {
+      since: "2026-03-14T00:00:00Z",
+      until: "2026-03-14T23:59:59Z",
+      privacyMode: false,
+      tasksCompleted: ["Did something"],
+      tasksQueued: [],
+      problems: [],
+      categories: [],
+      egressSummary: { totalCalls: 0, totalBytesOut: 0, providers: [], zeroEgress: true },
+      pendingApprovals: [],
+      cronRuns: [
+        { jobName: "heartbeat", ranAt: "2026-03-14T10:00:00Z", status: "success", summary: "HEARTBEAT_OK" },
+        { jobName: "todoist-sync", ranAt: "2026-03-14T10:05:00Z", status: "failure", summary: "Timeout" },
+      ],
+      doctorWarnings: [],
+      totalEntries: 1,
+    };
+
+    const output = formatDigestTable(report);
+    expect(output).toContain("CRON RUNS");
+    expect(output).toContain("[+] heartbeat");
+    expect(output).toContain("[!] todoist-sync");
+    expect(output).toContain("HEARTBEAT_OK");
+  });
+
+  it("renders doctor warnings in problems section", () => {
+    const report: DigestReport = {
+      since: "2026-03-14T00:00:00Z",
+      until: "2026-03-14T23:59:59Z",
+      privacyMode: false,
+      tasksCompleted: ["Did something"],
+      tasksQueued: [],
+      problems: [],
+      categories: [],
+      egressSummary: { totalCalls: 0, totalBytesOut: 0, providers: [], zeroEgress: true },
+      pendingApprovals: [],
+      cronRuns: [],
+      doctorWarnings: [
+        { name: "file-permissions", status: "warn", message: ".env permissions too open", fix: "chmod 600 .env" },
+      ],
+      totalEntries: 1,
+    };
+
+    const output = formatDigestTable(report);
+    expect(output).toContain("[doctor:warn] file-permissions");
+    expect(output).toContain("chmod 600 .env");
+  });
+
   it("shows privacy mode indicator", () => {
     const report: DigestReport = {
       since: "2026-03-14T00:00:00Z",
@@ -248,6 +466,7 @@ describe("formatDigestTable", () => {
       problems: [],
       categories: [],
       egressSummary: { totalCalls: 0, totalBytesOut: 0, providers: [], zeroEgress: true },
+      ...EMPTY_REPORT_FIELDS,
       totalEntries: 0,
     };
 
@@ -259,7 +478,7 @@ describe("formatDigestTable", () => {
 // --- formatDigestJson ---
 
 describe("formatDigestJson", () => {
-  it("produces valid JSON", () => {
+  it("produces valid JSON with new fields", () => {
     const report: DigestReport = {
       since: "2026-03-14T00:00:00Z",
       until: "2026-03-14T23:59:59Z",
@@ -269,6 +488,7 @@ describe("formatDigestJson", () => {
       problems: [],
       categories: [],
       egressSummary: { totalCalls: 0, totalBytesOut: 0, providers: [], zeroEgress: true },
+      ...EMPTY_REPORT_FIELDS,
       totalEntries: 0,
     };
 
@@ -276,5 +496,8 @@ describe("formatDigestJson", () => {
     const parsed = JSON.parse(json);
     expect(parsed.egressSummary.zeroEgress).toBe(true);
     expect(parsed.totalEntries).toBe(0);
+    expect(parsed.pendingApprovals).toEqual([]);
+    expect(parsed.cronRuns).toEqual([]);
+    expect(parsed.doctorWarnings).toEqual([]);
   });
 });

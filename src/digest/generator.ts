@@ -5,11 +5,12 @@
  * In privacy mode, summaries use category counts only (no content).
  */
 
-import { collectDigestEgress, filterByTimeRange, parseActivityLog } from "./collector.js";
+import { collectDigestEgress, filterByTimeRange, parseActivityLog, parseCronHistory, readPendingApprovals } from "./collector.js";
 import type {
   ActivityCategory,
   ActivityEntry,
   CategorySummary,
+  DigestApprovalEntry,
   DigestOptions,
   DigestReport,
   ProblemEntry,
@@ -95,12 +96,29 @@ function extractProblems(
 }
 
 /**
- * Generate a digest report from the activity and egress logs.
+ * Filter pending approvals by privacy mode.
+ */
+function maskApprovals(
+  approvals: DigestApprovalEntry[],
+  privacyMode: boolean,
+): DigestApprovalEntry[] {
+  if (!privacyMode) return approvals;
+  return approvals.map((a) => ({
+    ...a,
+    description: `Pending action in ${a.category}`,
+  }));
+}
+
+/**
+ * Generate a digest report from the activity and egress logs,
+ * approval queue, and cron run history.
  */
 export async function generateDigest(options: DigestOptions = {}): Promise<DigestReport> {
   const home = resolveHome(options.openclawHome ?? "~/.openclaw");
   const activityLogPath = options.activityLogPath ?? `${home}/activity.log`;
   const egressLogPath = options.egressLogPath ?? `${home}/egress.log`;
+  const approvalsPath = options.approvalsPath ?? `${home}/approvals.jsonl`;
+  const cronHistoryPath = options.cronHistoryPath ?? `${home}/cron/history.jsonl`;
   const now = new Date();
   const since = options.since ?? startOfDay(now).toISOString();
   const until = options.until ?? now.toISOString();
@@ -115,7 +133,7 @@ export async function generateDigest(options: DigestOptions = {}): Promise<Diges
     .filter((e) => e.type === "task_completed")
     .map((e) => privacyMode ? `Task in ${e.category}` : e.summary);
 
-  // Extract queued tasks (pending approval)
+  // Extract queued tasks (pending approval from activity log)
   const tasksQueued = entries
     .filter((e) => e.type === "approval_requested")
     .map((e) => privacyMode ? `Pending approval in ${e.category}` : e.summary);
@@ -129,6 +147,13 @@ export async function generateDigest(options: DigestOptions = {}): Promise<Diges
   // Collect egress summary
   const egressSummary = await collectDigestEgress(egressLogPath, since, until);
 
+  // Collect pending approvals from queue
+  const rawApprovals = await readPendingApprovals(approvalsPath);
+  const pendingApprovals = maskApprovals(rawApprovals, privacyMode);
+
+  // Collect cron run history
+  const cronRuns = await parseCronHistory(cronHistoryPath, since, until);
+
   return {
     since,
     until,
@@ -138,6 +163,9 @@ export async function generateDigest(options: DigestOptions = {}): Promise<Diges
     problems,
     categories,
     egressSummary,
+    pendingApprovals,
+    cronRuns,
+    doctorWarnings: [],
     totalEntries: entries.length,
   };
 }

@@ -26,6 +26,19 @@ function formatTimestamp(ts: string): string {
 // --- Table format ---
 
 /**
+ * Check if the digest has no data from any source.
+ */
+function isEmpty(report: DigestReport): boolean {
+  return (
+    report.totalEntries === 0 &&
+    report.pendingApprovals.length === 0 &&
+    report.cronRuns.length === 0 &&
+    report.doctorWarnings.length === 0 &&
+    report.egressSummary.zeroEgress
+  );
+}
+
+/**
  * Format the digest report as a human-readable table.
  */
 export function formatDigestTable(report: DigestReport): string {
@@ -41,6 +54,16 @@ export function formatDigestTable(report: DigestReport): string {
   }
   lines.push("");
 
+  // Friendly empty state
+  if (isEmpty(report)) {
+    lines.push("  No activity recorded yet.");
+    lines.push("");
+    lines.push("  Your agent hasn't logged any activity for this period.");
+    lines.push("  Once the agent starts processing tasks, this digest will");
+    lines.push("  show what it did, what it flagged, and what needs your attention.");
+    return lines.join("\n");
+  }
+
   // Tasks completed
   lines.push("  TASKS COMPLETED");
   lines.push(`  ${"-".repeat(46)}`);
@@ -53,12 +76,16 @@ export function formatDigestTable(report: DigestReport): string {
   }
   lines.push("");
 
-  // Tasks queued for approval
+  // Pending approvals (from queue)
   lines.push("  PENDING APPROVAL");
   lines.push(`  ${"-".repeat(46)}`);
-  if (report.tasksQueued.length === 0) {
+  if (report.pendingApprovals.length === 0 && report.tasksQueued.length === 0) {
     lines.push("  (none)");
   } else {
+    for (const approval of report.pendingApprovals) {
+      lines.push(`  - [${approval.category}] ${approval.description}`);
+    }
+    // Also show approval-requested entries from activity log not already in queue
     for (const task of report.tasksQueued) {
       lines.push(`  - ${task}`);
     }
@@ -68,15 +95,31 @@ export function formatDigestTable(report: DigestReport): string {
   // Problems found
   lines.push("  PROBLEMS FOUND");
   lines.push(`  ${"-".repeat(46)}`);
-  if (report.problems.length === 0) {
+  if (report.problems.length === 0 && report.doctorWarnings.length === 0) {
     lines.push("  (none)");
   } else {
     for (const problem of report.problems) {
       lines.push(`  [${problem.category}] ${problem.problem}`);
       lines.push(`    Proposal: ${problem.proposal}`);
     }
+    for (const warning of report.doctorWarnings) {
+      lines.push(`  [doctor:${warning.status}] ${warning.name}: ${warning.message}`);
+      lines.push(`    Fix: ${warning.fix}`);
+    }
   }
   lines.push("");
+
+  // Cron runs
+  if (report.cronRuns.length > 0) {
+    lines.push("  CRON RUNS");
+    lines.push(`  ${"-".repeat(46)}`);
+    for (const run of report.cronRuns) {
+      const icon = run.status === "success" ? "+" : run.status === "failure" ? "!" : "?";
+      const summary = run.summary ? ` — ${run.summary}` : "";
+      lines.push(`  [${icon}] ${run.jobName} at ${formatTimestamp(run.ranAt)}${summary}`);
+    }
+    lines.push("");
+  }
 
   // Category breakdown
   lines.push("  ACTIVITY BY CATEGORY");
