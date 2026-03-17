@@ -5,6 +5,7 @@
  * Falls back gracefully if network is unavailable.
  */
 
+import { notifyUpdateAvailable } from "../notifications/hooks.js";
 import type { ReleaseInfo, VersionCheckResult } from "./types.js";
 import { UpdateError } from "./types.js";
 
@@ -146,9 +147,15 @@ export async function checkForUpdate(
 ): Promise<VersionCheckResult> {
   const latest = await fetchLatestRelease(options);
 
-  return {
+  const result: VersionCheckResult = {
     current: currentTag,
     latest,
     updateAvailable: latest.tag !== currentTag,
   };
+
+  if (result.updateAvailable) {
+    void notifyUpdateAvailable(currentTag, latest);
+  }
+
+  return result;
 }
