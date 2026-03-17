@@ -237,14 +237,15 @@
       "category": "Phase 3: Distribution",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
       "groomingNotes": "SPRINT WITH FEAT-078 — CI quality gate pairs with npm publish to complete the distribution foundation. Both should land before dashboard work (FEAT-067) opens. Three parallel jobs, clear spec. Steps: (1) create .github/workflows/ci.yml; (2) trigger: on push to main + on pull_request; (3) job 'lint': checkout, node setup (20), npm ci, npm run lint; (4) job 'test': checkout, node matrix [20, 22], npm ci, npm test; (5) job 'typecheck': checkout, node setup (20), npm ci, npx tsc --noEmit; (6) jobs run in parallel (no needs:); (7) verify PR shows green/red status checks. Acceptance criteria: all three jobs appear as separate status checks on PRs; failed lint blocks merge; matrix test runs against both Node 20 and 22; workflow file passes yamllint; ci runs on push to main and on any PR.",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-16T19:29:56-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-16T19:52:04-07:00"
     },
     {
       "id": "FEAT-080",
