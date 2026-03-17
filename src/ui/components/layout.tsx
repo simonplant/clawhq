@@ -56,6 +56,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     phase: "Plan",
     items: [
+      { label: "Setup Wizard", href: "/init-wizard", icon: "\u2726" },
       { label: "Templates", href: "/templates", icon: "\u25A8" },
     ],
   },
@@ -74,7 +75,7 @@ function Sidebar() {
           <summary>{group.phase}</summary>
           <ul>
             {group.items.map((item) => (
-              <li id={item.href === "/fleet" ? "fleet-nav-item" : undefined} style={item.href === "/fleet" ? "display:none;" : undefined}>
+              <li id={item.href === "/fleet" ? "fleet-nav-item" : item.href === "/init-wizard" ? "wizard-nav-item" : undefined} style={item.href === "/fleet" ? "display:none;" : undefined}>
                 <a href={item.href}>
                   <span class="nav-icon">{item.icon}</span>
                   {item.label}
@@ -83,6 +84,9 @@ function Sidebar() {
                   )}
                   {item.href === "/fleet" && (
                     <span id="fleet-badge" class="nav-badge" style="display:none;" />
+                  )}
+                  {item.href === "/init-wizard" && (
+                    <span id="wizard-badge" class="nav-badge" style="display:none;">NEW</span>
                   )}
                 </a>
               </li>
@@ -258,6 +262,31 @@ export function Layout({ title, children }: LayoutProps) {
             }
             refreshFleetVisibility();
             setInterval(refreshFleetVisibility, 10000);
+
+            function refreshWizardVisibility() {
+              fetch('/api/v1/status')
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                  var wizardItem = document.getElementById('wizard-nav-item');
+                  var wizardBadge = document.getElementById('wizard-badge');
+                  if (!wizardItem) return;
+                  // Hide wizard link if agent is running (configured)
+                  if (res.ok && res.data && res.data.agent && res.data.agent.state === 'running') {
+                    wizardItem.style.display = 'none';
+                  } else {
+                    wizardItem.style.display = 'block';
+                    if (wizardBadge) wizardBadge.style.display = 'inline-block';
+                  }
+                })
+                .catch(function() {
+                  // Show wizard if status unavailable (no agent configured)
+                  var wizardItem = document.getElementById('wizard-nav-item');
+                  var wizardBadge = document.getElementById('wizard-badge');
+                  if (wizardItem) wizardItem.style.display = 'block';
+                  if (wizardBadge) wizardBadge.style.display = 'inline-block';
+                });
+            }
+            refreshWizardVisibility();
           })();
         `}</script>
       </body>
