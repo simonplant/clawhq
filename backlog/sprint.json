@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773774888",
   "startedAt": "2026-03-17T12:14:48-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-097",
     "title": "API provider management — clawhq provider add/list/remove/test",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T12:14:48-07:00"
-  }
+    "startedAt": "2026-03-17T12:14:48-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T12:17:51-07:00"
+  },
+  "completedAt": "2026-03-17T12:17:51-07:00",
+  "attempts": 1
 }
