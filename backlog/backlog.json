@@ -165,11 +165,12 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with /ws/logs) are both done. Live log streaming eliminates the 'I need terminal access' barrier for fleet operators managing remote deployments.\n\nSprint scope: (1) Create src/ui/pages/logs.tsx — Hono JSX page component; (2) Client-side: WebSocket connection to /ws/logs using browser WebSocket API (vendored in static/); (3) UI: scrollable log pane with auto-scroll toggle, service filter dropdown (all/agent/gateway/cron), pause/resume button; (4) Log lines color-coded: errors in red, warnings in yellow; (5) Register route as GET /logs in app.ts; (6) Add 'Logs' link to sidebar nav under Operate section; (7) The /ws/logs WebSocket handler in src/ui/ws.ts pipes DockerClient.streamLogs() stdout to each connected socket — adapter is minimal (child process stdout → ws.send()); (8) Acceptance criteria: /logs page connects to WebSocket and streams live container logs; category filter works; pause/resume works; auto-scroll enabled by default, disables on manual scroll up; uses established dashboard layout; tsc clean."
+      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with /ws/logs) are both done. Live log streaming eliminates the 'I need terminal access' barrier for fleet operators managing remote deployments.\n\nSprint scope: (1) Create src/ui/pages/logs.tsx — Hono JSX page component; (2) Client-side: WebSocket connection to /ws/logs using browser WebSocket API (vendored in static/); (3) UI: scrollable log pane with auto-scroll toggle, service filter dropdown (all/agent/gateway/cron), pause/resume button; (4) Log lines color-coded: errors in red, warnings in yellow; (5) Register route as GET /logs in app.ts; (6) Add 'Logs' link to sidebar nav under Operate section; (7) The /ws/logs WebSocket handler in src/ui/ws.ts pipes DockerClient.streamLogs() stdout to each connected socket — adapter is minimal (child process stdout → ws.send()); (8) Acceptance criteria: /logs page connects to WebSocket and streams live container logs; category filter works; pause/resume works; auto-scroll enabled by default, disables on manual scroll up; uses established dashboard layout; tsc clean.",
+      "completedAt": "2026-03-17T10:13:22-07:00"
     },
     {
       "id": "FEAT-074",
