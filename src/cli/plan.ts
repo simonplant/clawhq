@@ -5,7 +5,6 @@
 import { Command } from "commander";
 
 import { runSmartInit } from "../inference/index.js";
-import { markFirstRunComplete } from "./first-run.js";
 import { createReadlineIO, generate, getTemplateById, runWizard, writeBundle } from "../init/index.js";
 import type { WizardAnswers } from "../init/index.js";
 import {
@@ -14,6 +13,8 @@ import {
   generatePreview,
   loadBuiltInTemplates,
 } from "../templates/index.js";
+
+import { markFirstRunComplete } from "./first-run.js";
 
 /**
  * Run non-interactive init: use template defaults + CLI overrides,
