@@ -1,17 +1,30 @@
 {
-  "sprintId": "sprint-1773724703",
-  "startedAt": "2026-03-16T22:18:23-07:00",
+  "sprintId": "sprint-1773724856",
+  "startedAt": "2026-03-16T22:20:56-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-080",
-    "title": "GitHub Actions release workflow",
+    "id": "FEAT-091",
+    "title": "Integration provider management — swap providers without behavior changes",
     "sourceBacklog": "backlog.json",
-    "steps": [],
-    "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T22:18:23-07:00",
+    "steps": [
+      "Verify integrate module exists (types.ts, providers.ts, lifecycle.ts, index.ts)",
+      "Verify CLI command registered in cli/index.ts",
+      "Run integrate tests — 43 tests pass",
+      "Check for TODOs/stubs — none found",
+      "Run full test suite — 1498 tests pass",
+      "Run TypeScript type check — clean"
+    ],
+    "acceptanceCriteria": [
+      "integrate add walks through provider selection and credential setup",
+      "integrate swap changes provider without changing category interface",
+      "integrate remove cleans credentials and tightens egress firewall",
+      "integrate list shows health and status",
+      "No stubs or TODOs in lifecycle.ts/providers.ts"
+    ],
+    "startedAt": "2026-03-16T22:20:56-07:00",
     "status": "passed",
-    "completedAt": "2026-03-16T22:20:54-07:00"
+    "completedAt": "2026-03-16T22:23:34-07:00"
   },
-  "completedAt": "2026-03-16T22:20:54-07:00",
+  "completedAt": "2026-03-16T22:23:34-07:00",
   "attempts": 1
 }

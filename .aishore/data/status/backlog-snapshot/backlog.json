@@ -265,11 +265,12 @@
       "category": "Phase 3: Distribution",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-079 (CI workflow) done. Steps: (1) create .github/workflows/release.yml triggered on push to tags v*; (2) job 'validate': npm ci && npm test && npx tsc --noEmit; (3) job 'publish-npm' (needs: validate): npm ci && npm run build && npm publish using NPM_TOKEN secret; (4) job 'create-release' (needs: validate): gh release create $TAG --generate-notes; (5) create scripts/release.sh: bump version in package.json, git commit, git tag v$VERSION, git push --follow-tags. Validator ACs (local-verifiable): release.yml exists and is valid YAML; trigger is push.tags matching 'v*'; three jobs defined: validate, publish-npm, create-release; publish-npm and create-release both have 'needs: validate'; publish-npm uses secrets.NPM_TOKEN; scripts/release.sh exists and is executable."
+      "groomingNotes": "UNBLOCKED: FEAT-079 (CI workflow) done. Steps: (1) create .github/workflows/release.yml triggered on push to tags v*; (2) job 'validate': npm ci && npm test && npx tsc --noEmit; (3) job 'publish-npm' (needs: validate): npm ci && npm run build && npm publish using NPM_TOKEN secret; (4) job 'create-release' (needs: validate): gh release create $TAG --generate-notes; (5) create scripts/release.sh: bump version in package.json, git commit, git tag v$VERSION, git push --follow-tags. Validator ACs (local-verifiable): release.yml exists and is valid YAML; trigger is push.tags matching 'v*'; three jobs defined: validate, publish-npm, create-release; publish-npm and create-release both have 'needs: validate'; publish-npm uses secrets.NPM_TOKEN; scripts/release.sh exists and is executable.",
+      "completedAt": "2026-03-16T22:20:54-07:00"
     },
     {
       "id": "FEAT-081",
