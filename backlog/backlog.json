@@ -58,7 +58,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-060 (formatError) done. Create src/cli/errors.ts wrapping program.parseAsync() in try/catch. Steps: (1) create src/cli/errors.ts; (2) export handleError(err: unknown) mapping error types to formatError() calls; (3) handle 6 error types: Docker not installed (ENOENT on docker), daemon not running (connection refused), no config found (missing openclaw.json), port in use (EADDRINUSE), build fails no Dockerfile, permission denied on .env; (4) wrap program.parseAsync() call in src/cli/index.ts; (5) each error type has code, message, hint fields. AC: each of 6 error types shows styled output not stack trace; unknown errors show generic formatted message; tsc clean; no regression on existing commands."
+      "groomingNotes": "UNBLOCKED: FEAT-060 (formatError) done. Create src/cli/errors.ts wrapping program.parseAsync() in try/catch. Steps: (1) create src/cli/errors.ts; (2) export handleError(err: unknown) mapping error types to formatError() calls; (3) handle 6 error types: Docker not installed (ENOENT on docker), daemon not running (connection refused), no config found (missing openclaw.json), port in use (EADDRINUSE), build fails no Dockerfile, permission denied on .env; (4) wrap program.parseAsync() call in src/cli/index.ts; (5) each error type has code, message, hint fields. AC: each of 6 error types shows styled output not stack trace; unknown errors show generic formatted message; tsc clean; no regression on existing commands.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-16T21:14:14-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-064",
@@ -111,11 +114,12 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "FOUNDATION — all dashboard pages depend on this. Note: FEAT-068, 069, 070 were planned as separate items (auth, SSE/WS infrastructure, home page) but were merged into this item's scope — their functionality is already described here. Ship as unit with FEAT-071 (API endpoints): a partial dashboard with a broken home page is worse than no dashboard. Server + auth + home + nav + SSE must all land in one sprint. User outcome: 'clawhq dashboard' opens browser to working control panel. Acceptance criteria: Hono server starts on correct port; bearer-to-cookie auth works; sidebar nav renders with lifecycle phase grouping; home dashboard card shows agent state + integration health grid + memory metrics + approval/alert badges; SSE status updates fire every 5s. SPRINT PAIR: sprint FEAT-067 and FEAT-071 together — they are co-dependent and independently useless. Tech stack decided: Hono + htmx + Pico CSS (classless). Vendor htmx.min.js + pico.min.css in src/ui/static/. READY TO SPRINT: grooming is thorough, no external blockers."
+      "groomingNotes": "FOUNDATION — all dashboard pages depend on this. Note: FEAT-068, 069, 070 were planned as separate items (auth, SSE/WS infrastructure, home page) but were merged into this item's scope — their functionality is already described here. Ship as unit with FEAT-071 (API endpoints): a partial dashboard with a broken home page is worse than no dashboard. Server + auth + home + nav + SSE must all land in one sprint. User outcome: 'clawhq dashboard' opens browser to working control panel. Acceptance criteria: Hono server starts on correct port; bearer-to-cookie auth works; sidebar nav renders with lifecycle phase grouping; home dashboard card shows agent state + integration health grid + memory metrics + approval/alert badges; SSE status updates fire every 5s. SPRINT PAIR: sprint FEAT-067 and FEAT-071 together — they are co-dependent and independently useless. Tech stack decided: Hono + htmx + Pico CSS (classless). Vendor htmx.min.js + pico.min.css in src/ui/static/. READY TO SPRINT: grooming is thorough, no external blockers.",
+      "completedAt": "2026-03-16T21:24:32-07:00"
     },
     {
       "id": "FEAT-071",

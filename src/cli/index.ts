@@ -9,6 +9,7 @@ import { createAlertsCommand } from "./alerts.js";
 import { createBackupCommands } from "./backup.js";
 import { createBuildCommand } from "./build.js";
 import { createConnectCommand } from "./connect.js";
+import { createDashboardCommand } from "./dashboard.js";
 import { createDecommissionCommands } from "./decommission.js";
 import { createDeployCommands } from "./deploy.js";
 import { createDigestApprovalCommands } from "./digest-approval.js";
@@ -69,6 +70,7 @@ program.addCommand(createConnectCommand());
 // Operate phase
 program.commandsGroup("Operate:");
 createOperateCommands(program);
+program.addCommand(createDashboardCommand());
 program.addCommand(createRepairCommand());
 program.addCommand(createAlertsCommand());
 createBackupCommands(program);
