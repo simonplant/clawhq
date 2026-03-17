@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { searchMemory } from "./search.js";
 import { writeEntry } from "./store.js";
-import type { ContextEntry, PreferenceEntry, RelationshipEntry } from "./types.js";
+import type { PreferenceEntry } from "./types.js";
 
 function makePref(overrides: Partial<PreferenceEntry> = {}): PreferenceEntry {
   return {
