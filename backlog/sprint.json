@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773789268",
   "startedAt": "2026-03-17T16:14:28-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-077",
     "title": "Dashboard Init Wizard (web)",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T16:14:28-07:00"
-  }
+    "startedAt": "2026-03-17T16:14:28-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T16:22:11-07:00"
+  },
+  "completedAt": "2026-03-17T16:22:11-07:00",
+  "attempts": 1
 }
