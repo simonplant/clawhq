@@ -82,6 +82,7 @@ program.addCommand(createAlertsCommand());
 createBackupCommands(program);
 program.addCommand(createNotifyCommand());
 createDigestApprovalCommands(program);
+program.addCommand(createTraceCommand());
 
 // Evolve phase
 program.commandsGroup("Evolve:");
@@ -104,7 +105,6 @@ createDecommissionCommands(program);
 // Migrate phase
 program.commandsGroup("Migrate:");
 program.addCommand(createMigrateCommand());
-program.addCommand(createTraceCommand());
 
 checkFirstRun(program);
 

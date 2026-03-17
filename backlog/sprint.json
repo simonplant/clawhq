@@ -1,17 +1,13 @@
 {
-  "sprintId": "sprint-1773773788",
-  "startedAt": "2026-03-17T11:56:28-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773774043",
+  "startedAt": "2026-03-17T12:00:43-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-095",
-    "title": "Memory search — warm/cold tier search (clawhq memory search)",
+    "id": "FEAT-096",
+    "title": "Decision trace CLI — clawhq trace why/list",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T11:56:28-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-17T12:00:41-07:00"
-  },
-  "completedAt": "2026-03-17T12:00:41-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-17T12:00:43-07:00"
+  }
 }

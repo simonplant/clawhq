@@ -45,14 +45,14 @@ export function createTraceCommand(): Command {
     .description("Query agent decision traces — ask 'why did you do that?'");
 
   traceCmd
-    .command("show")
-    .description("Show the decision trace for a specific action")
-    .argument("<id>", "Decision ID to look up")
+    .command("why")
+    .description("Explain why the agent took a specific action (by ID or keyword)")
+    .argument("<query>", "Decision ID (dec-...) or keyword to search")
     .option("--clawhq-dir <path>", "ClawHQ data directory", "~/.clawhq")
     .option("--ollama-host <url>", "Ollama API host", "http://localhost:11434")
     .option("--ollama-model <name>", "Ollama model for explanation", "llama3:8b")
     .option("--no-explain", "Skip generating natural-language explanation")
-    .action(async (id: string, opts: {
+    .action(async (query: string, opts: {
       clawhqDir: string;
       ollamaHost: string;
       ollamaModel: string;
@@ -61,7 +61,27 @@ export function createTraceCommand(): Command {
       const ctx: TraceContext = { clawhqDir: resolveHome(opts.clawhqDir) };
 
       try {
-        const result = await queryTrace(ctx, { id });
+        // If it looks like a decision ID, query by ID; otherwise keyword search
+        const isId = query.startsWith("dec-");
+        const result = isId
+          ? await queryTrace(ctx, { id: query })
+          : await queryTrace(ctx, { keyword: query });
+
+        if (result.entries.length === 0) {
+          console.log(`No decisions found matching "${query}".`);
+          return;
+        }
+
+        if (result.entries.length > 1) {
+          console.log(`Found ${result.entries.length} matching decisions:\n`);
+          for (const entry of result.entries) {
+            console.log(formatEntry(entry));
+            console.log();
+          }
+          console.log("Tip: use a decision ID (dec-...) for a detailed explanation.");
+          return;
+        }
+
         const entry = result.entries[0];
 
         console.log("Decision trace:");
