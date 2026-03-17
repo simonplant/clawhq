@@ -43,7 +43,7 @@ const iptablesMocks = await import("./iptables.js") as unknown as {
   buildExpectedRules: typeof buildExpectedRules;
 };
 
-const { apply, buildConfig, deriveAllowlist, remove, verify } = await import("./firewall.js");
+const { apply, buildAirGappedConfig, buildConfig, deriveAllowlist, remove, verify } = await import("./firewall.js");
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -357,6 +357,42 @@ describe("verify", () => {
 
     expect(result.matches).toBe(false);
     expect(result.message).toContain("sudo required");
+  });
+});
+
+// --- buildAirGappedConfig ---
+
+describe("buildAirGappedConfig", () => {
+  it("returns empty allowlist", async () => {
+    const config = await buildAirGappedConfig();
+    expect(config.allowlist).toHaveLength(0);
+  });
+
+  it("uses default bridge interface", async () => {
+    const config = await buildAirGappedConfig();
+    expect(config.bridgeInterface).toBe("docker0");
+  });
+
+  it("uses custom bridge interface", async () => {
+    const config = await buildAirGappedConfig({ bridgeInterface: "br-custom" });
+    expect(config.bridgeInterface).toBe("br-custom");
+  });
+
+  it("uses CLAWHQ_FWD chain name", async () => {
+    const config = await buildAirGappedConfig();
+    expect(config.chainName).toBe(CHAIN_NAME);
+  });
+
+  it("generates rules that block all HTTPS when applied", async () => {
+    const config = await buildAirGappedConfig();
+    const rules = buildExpectedRules(config.chainName, config.allowlist);
+
+    // Should have: ESTABLISHED, DNS (x2), LOG, DROP — no HTTPS rules
+    const httpsRules = rules.filter((r) => r.includes("--dport 443"));
+    expect(httpsRules).toHaveLength(0);
+
+    // Should still have DROP at end
+    expect(rules[rules.length - 1]).toContain("DROP");
   });
 });
 

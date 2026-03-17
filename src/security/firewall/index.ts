@@ -3,6 +3,7 @@
 
 export {
   apply,
+  buildAirGappedConfig,
   buildConfig,
   deriveAllowlist,
   remove,

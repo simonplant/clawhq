@@ -123,6 +123,7 @@ export interface WizardAnswers {
   integrations: IntegrationSetup[];
   modelRouting: ModelRoutingSetup;
   emailAddress?: string;
+  airGapped?: boolean;
 }
 
 export interface WizardStepResult<T> {

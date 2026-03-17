@@ -23,11 +23,19 @@ export async function runWizard(
   options?: {
     validateCredential?: (envVar: string, value: string) => Promise<boolean>;
     fetchFn?: FetchFn;
+    airGapped?: boolean;
   },
 ): Promise<WizardResult> {
+  const airGapped = options?.airGapped ?? false;
+
   io.log("ClawHQ Init — Guided Setup");
   io.log("==========================");
   io.log("");
+  if (airGapped) {
+    io.log("AIR-GAPPED MODE: No cloud APIs, no external network access.");
+    io.log("Agent will use only local Ollama models. All outbound traffic blocked.");
+    io.log("");
+  }
   io.log("This wizard will walk you through setting up your OpenClaw agent.");
   io.log("Generated config will be written to: " + outputDir);
 
@@ -37,34 +45,65 @@ export async function runWizard(
   // Step 2: Template selection
   const template = await stepTemplate(io);
 
-  // Step 3: Auto-detection — prompt for email to enable provider discovery
-  io.log("");
-  const emailAddress = await io.prompt("Email address (for service auto-detection, optional)", "");
-  const detection = await stepDetection(io, template, emailAddress || undefined, options?.fetchFn);
+  let detection: DetectionResult;
+  let integrations;
+  let modelRouting;
 
-  // Show confirmation of detected services
-  const hasDetections = detection.discoveredIntegrations || detection.ollamaModels.length > 0;
-  if (hasDetections) {
-    const confirmed = await io.confirm("Proceed with detected services?", true);
-    if (!confirmed) {
-      io.log("  Auto-detection results cleared.");
-      detection.discoveredIntegrations = null;
-      detection.ollamaModels = [];
-      detection.routingSuggestions = [];
+  if (airGapped) {
+    // Air-gapped: skip auto-detection and external integrations entirely
+    io.log("");
+    io.log("Skipping auto-detection and external integrations (air-gapped mode).");
+    detection = {
+      discoveredIntegrations: null,
+      ollamaModels: [],
+      routingSuggestions: [],
+      ollamaAvailable: false,
+    };
+    integrations = await stepIntegrations(io, template, options?.validateCredential);
+    modelRouting = {
+      localOnly: true,
+      cloudProviders: [],
+      categories: [
+        { category: "email", cloudAllowed: false },
+        { category: "calendar", cloudAllowed: false },
+        { category: "research", cloudAllowed: false },
+        { category: "writing", cloudAllowed: false },
+        { category: "coding", cloudAllowed: false },
+      ],
+    };
+    io.log("");
+    io.log("Model routing: local-only (Ollama). No cloud providers configured.");
+  } else {
+    // Step 3: Auto-detection — prompt for email to enable provider discovery
+    io.log("");
+    const emailAddress = await io.prompt("Email address (for service auto-detection, optional)", "");
+    detection = await stepDetection(io, template, emailAddress || undefined, options?.fetchFn);
+
+    // Show confirmation of detected services
+    const hasDetections = detection.discoveredIntegrations || detection.ollamaModels.length > 0;
+    if (hasDetections) {
+      const confirmed = await io.confirm("Proceed with detected services?", true);
+      if (!confirmed) {
+        io.log("  Auto-detection results cleared.");
+        detection.discoveredIntegrations = null;
+        detection.ollamaModels = [];
+        detection.routingSuggestions = [];
+      }
     }
+
+    // Step 4: Integration setup (with detection pre-fill)
+    integrations = await stepIntegrations(io, template, options?.validateCredential, detection);
+
+    // Step 5: Model routing (with detection suggestions)
+    modelRouting = await stepModelRouting(io, detection);
   }
-
-  // Step 4: Integration setup (with detection pre-fill)
-  const integrations = await stepIntegrations(io, template, options?.validateCredential, detection);
-
-  // Step 5: Model routing (with detection suggestions)
-  const modelRouting = await stepModelRouting(io, detection);
 
   const answers: WizardAnswers = {
     basics,
     template,
     integrations,
     modelRouting,
+    ...(airGapped ? { airGapped: true } : {}),
   };
 
   // Step 6: Config generation

@@ -26,6 +26,7 @@ async function runNonInteractive(opts: {
   template: string;
   output: string;
   timezone?: string;
+  airGapped?: boolean;
 }): Promise<void> {
   const template = await getTemplateById(opts.template);
   if (!template) {
@@ -56,6 +57,7 @@ async function runNonInteractive(opts: {
         { category: "coding", cloudAllowed: false },
       ],
     },
+    ...(opts.airGapped ? { airGapped: true } : {}),
   };
 
   const config = generate(answers);
@@ -96,6 +98,7 @@ export function createPlanCommands(program: Command): void {
     .option("--guided", "Run interactive guided questionnaire")
     .option("--smart", "AI-powered config inference via local Ollama model")
     .option("--non-interactive", "Skip wizard, use template defaults (for scripted provisioning)")
+    .option("--air-gapped", "Air-gapped mode: no cloud APIs, no external network, Ollama-only")
     .option("--name <name>", "Agent name (required for --non-interactive)")
     .option("--template <id>", "Template ID (required for --non-interactive)")
     .option("--timezone <tz>", "IANA timezone (default: system timezone)")
@@ -106,6 +109,7 @@ export function createPlanCommands(program: Command): void {
       guided?: boolean;
       smart?: boolean;
       nonInteractive?: boolean;
+      airGapped?: boolean;
       name?: string;
       template?: string;
       timezone?: string;
@@ -129,6 +133,7 @@ export function createPlanCommands(program: Command): void {
           template: opts.template,
           output: opts.output,
           timezone: opts.timezone,
+          airGapped: opts.airGapped,
         });
         return;
       }
@@ -159,7 +164,9 @@ export function createPlanCommands(program: Command): void {
             console.log("");
           }
 
-          const result = await runWizard(io, outputDir);
+          const result = await runWizard(io, outputDir, {
+            airGapped: opts.airGapped,
+          });
 
           if (result.writeResult.errors.length > 0) {
             process.exitCode = 1;

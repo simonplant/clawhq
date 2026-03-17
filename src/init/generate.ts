@@ -176,6 +176,13 @@ function generateDockerCompose(answers: WizardAnswers): string {
     ...(envFile ? { env_file: envFile } : {}),
   };
 
+  // Air-gapped label — used by deploy/firewall to enforce strict network isolation
+  if (answers.airGapped) {
+    serviceConfig["labels"] = {
+      "clawhq.air-gapped": "true",
+    };
+  }
+
   // Ollama bridge — when local models are configured, the container needs
   // to reach the host's Ollama instance at host.docker.internal:11434
   const usesOllama = answers.modelRouting.localOnly ||
