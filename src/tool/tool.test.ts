@@ -1,11 +1,11 @@
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { loadRegistry } from "./registry.js";
-import { getRequiredBinaries, installTool, listTools, removeToolOp } from "./tool.js";
+import { getRequiredBinaries, installTool, listTools, patchDockerfile, removeToolOp } from "./tool.js";
 import type { ToolContext } from "./types.js";
 import { ToolError } from "./types.js";
 
@@ -134,6 +134,72 @@ describe("tool lifecycle", () => {
 
       const binaries = await getRequiredBinaries(ctx);
       expect(binaries.has("himalaya")).toBe(false);
+    });
+  });
+
+  describe("patchDockerfile", () => {
+    it("writes a Dockerfile with always-included tools", async () => {
+      const deployDir = join(tmpDir, "deploy");
+      const result = await patchDockerfile(ctx, deployDir);
+
+      expect(result.dockerfilePath).toBe(join(deployDir, "Dockerfile"));
+      expect(result.binaries).toContain("curl");
+      expect(result.binaries).toContain("jq");
+      expect(result.binaries).toContain("rg");
+
+      const content = await readFile(result.dockerfilePath, "utf-8");
+      expect(content).toContain("FROM openclaw:local");
+      expect(content).toContain("curl");
+      expect(content).toContain("jq");
+      expect(content).toContain("ripgrep");
+    });
+
+    it("includes installed tool in Dockerfile after install", async () => {
+      await installTool(ctx, "himalaya");
+      const deployDir = join(tmpDir, "deploy");
+      const result = await patchDockerfile(ctx, deployDir);
+
+      expect(result.binaries).toContain("himalaya");
+
+      const content = await readFile(result.dockerfilePath, "utf-8");
+      expect(content).toContain("himalaya");
+    });
+
+    it("excludes removed tool from Dockerfile after remove", async () => {
+      await installTool(ctx, "himalaya");
+      const deployDir = join(tmpDir, "deploy");
+
+      // Patch with himalaya
+      let result = await patchDockerfile(ctx, deployDir);
+      expect(result.binaries).toContain("himalaya");
+
+      // Remove and re-patch
+      await removeToolOp(ctx, "himalaya");
+      result = await patchDockerfile(ctx, deployDir);
+      expect(result.binaries).not.toContain("himalaya");
+
+      const content = await readFile(result.dockerfilePath, "utf-8");
+      expect(content).not.toContain("himalaya email client");
+    });
+
+    it("includes yq fragment when yq is installed", async () => {
+      await installTool(ctx, "yq");
+      const deployDir = join(tmpDir, "deploy");
+      const result = await patchDockerfile(ctx, deployDir);
+
+      expect(result.binaries).toContain("yq");
+
+      const content = await readFile(result.dockerfilePath, "utf-8");
+      expect(content).toContain("yq");
+      expect(content).toContain("mikefarah/yq");
+    });
+
+    it("creates deploy directory if it does not exist", async () => {
+      const deployDir = join(tmpDir, "nested", "deploy", "dir");
+      const result = await patchDockerfile(ctx, deployDir);
+
+      const content = await readFile(result.dockerfilePath, "utf-8");
+      expect(content).toContain("FROM openclaw:local");
     });
   });
 });

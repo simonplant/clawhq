@@ -6,6 +6,11 @@
  * that a container rebuild is needed.
  */
 
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+import { generateDockerfile } from "../docker/dockerfile.js";
+
 import {
   addTool,
   findKnownTool,
@@ -185,4 +190,37 @@ export async function getRequiredBinaries(ctx: ToolContext): Promise<Set<string>
   }
 
   return binaries;
+}
+
+// ---------------------------------------------------------------------------
+// Dockerfile patching
+// ---------------------------------------------------------------------------
+
+export interface PatchResult {
+  dockerfilePath: string;
+  binaries: string[];
+}
+
+/**
+ * Regenerate the Stage 2 Dockerfile based on the current tool registry.
+ *
+ * Called after install/remove to keep the Dockerfile in sync with the
+ * registry. The next `clawhq build` (or an auto-triggered rebuild)
+ * will pick up the changes.
+ */
+export async function patchDockerfile(
+  ctx: ToolContext,
+  deployDir: string,
+): Promise<PatchResult> {
+  const requiredBinaries = await getRequiredBinaries(ctx);
+  const content = generateDockerfile({ requiredBinaries });
+
+  await mkdir(deployDir, { recursive: true });
+  const dockerfilePath = join(deployDir, "Dockerfile");
+  await writeFile(dockerfilePath, content, "utf-8");
+
+  return {
+    dockerfilePath,
+    binaries: [...requiredBinaries].sort(),
+  };
 }

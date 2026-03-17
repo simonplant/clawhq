@@ -133,7 +133,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "API layer is the contract between server and web pages — all dashboard pages depend on these endpoints. Routes are thin adapters over existing business logic (no new logic here). Acceptance criteria: all 15 endpoints return {ok, data} or {ok:false, error} shape; streaming endpoints (deploy, build) use SSE correctly; /ws/logs proxies docker logs to browser. SPRINT PAIR: sprint with FEAT-067 (dashboard foundation) — the server scaffold and API layer must land together. The home page (FEAT-067) calls GET /api/v1/status — both must be functional in the same sprint. READY TO SPRINT: no blockers, pairs with FEAT-067."
+      "groomingNotes": "API layer is the contract between server and web pages — all dashboard pages depend on these endpoints. Routes are thin adapters over existing business logic (no new logic here). Acceptance criteria: all 15 endpoints return {ok, data} or {ok:false, error} shape; streaming endpoints (deploy, build) use SSE correctly; /ws/logs proxies docker logs to browser. SPRINT PAIR: sprint with FEAT-067 (dashboard foundation) — the server scaffold and API layer must land together. The home page (FEAT-067) calls GET /api/v1/status — both must be functional in the same sprint. READY TO SPRINT: no blockers, pairs with FEAT-067.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-16T21:34:32-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-072",
@@ -385,11 +388,12 @@
       "category": "Capability Layer",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "PARTIAL IMPL EXISTS: tool.ts (148L) already committed with clawhq tool install/list/remove CLI skeleton. The full acceptance criteria — allowlist validation, Dockerfile patching, and Stage 2 rebuild triggering — needs completion. Sprint should complete these three missing pieces, not start from scratch. CAPABILITY EXPANSION BACKBONE: 'Gets more capable over time' is a core design principle. Without the Dockerfile patching + rebuild trigger, users are stuck with day-1 tools forever. dependsOn: build.ts/two-stage build infrastructure must be functional. Acceptance criteria unchanged: clawhq tool install pandoc patches Stage 2 Dockerfile and triggers rebuild; clawhq tool list shows installed tools with version+health; unlisted packages flagged not silently blocked; clawhq tool remove triggers rebuild and cleans up. READY TO SPRINT: partial impl de-risks this — it's a completion sprint, not a build sprint. Must ship before FEAT-086 (Template toolbelts)."
+      "groomingNotes": "PARTIAL IMPL EXISTS: tool.ts (148L) already committed with clawhq tool install/list/remove CLI skeleton. The full acceptance criteria — allowlist validation, Dockerfile patching, and Stage 2 rebuild triggering — needs completion. Sprint should complete these three missing pieces, not start from scratch. CAPABILITY EXPANSION BACKBONE: 'Gets more capable over time' is a core design principle. Without the Dockerfile patching + rebuild trigger, users are stuck with day-1 tools forever. dependsOn: build.ts/two-stage build infrastructure must be functional. Acceptance criteria unchanged: clawhq tool install pandoc patches Stage 2 Dockerfile and triggers rebuild; clawhq tool list shows installed tools with version+health; unlisted packages flagged not silently blocked; clawhq tool remove triggers rebuild and cleans up. READY TO SPRINT: partial impl de-risks this — it's a completion sprint, not a build sprint. Must ship before FEAT-086 (Template toolbelts).",
+      "completedAt": "2026-03-16T21:43:20-07:00"
     },
     {
       "id": "FEAT-090",
