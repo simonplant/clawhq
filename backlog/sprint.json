@@ -1,17 +1,1 @@
-{
-  "sprintId": "sprint-1773715806",
-  "startedAt": "2026-03-16T19:50:06-07:00",
-  "status": "completed",
-  "item": {
-    "id": "FEAT-079",
-    "title": "GitHub Actions CI workflow",
-    "sourceBacklog": "backlog.json",
-    "steps": [],
-    "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T19:50:06-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-16T19:52:04-07:00"
-  },
-  "completedAt": "2026-03-16T19:52:04-07:00",
-  "attempts": 1
-}
+{"sprintId": null, "status": "idle", "item": null}
