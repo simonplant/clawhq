@@ -1,1 +1,13 @@
-{"sprintId": null, "status": "idle", "item": null}
+{
+  "sprintId": "sprint-1773720416",
+  "startedAt": "2026-03-16T21:06:56-07:00",
+  "status": "in_progress",
+  "item": {
+    "id": "FEAT-061",
+    "title": "Grouped CLI help output",
+    "sourceBacklog": "backlog.json",
+    "steps": [],
+    "acceptanceCriteria": [],
+    "startedAt": "2026-03-16T21:06:56-07:00"
+  }
+}
