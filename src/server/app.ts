@@ -10,10 +10,10 @@ import { fileURLToPath } from "node:url";
 
 import { Hono } from "hono";
 
+import { renderApprovalsPage } from "../ui/pages/approvals.js";
 import { renderDeployPage } from "../ui/pages/deploy.js";
 import { renderDoctorPage } from "../ui/pages/doctor.js";
 import { renderHomePage } from "../ui/pages/home.js";
-import { renderApprovalsPage } from "../ui/pages/approvals.js";
 import { renderLogsPage } from "../ui/pages/logs.js";
 
 import { createApiRouter } from "./api.js";
