@@ -13,8 +13,9 @@ You implement features from the sprint backlog.
 2. **Explore the codebase** - find patterns to follow, identify files to modify
 3. **Implement** - write clean code following existing conventions
 4. **Test** - add tests, ensure existing tests pass
-5. **Validate** - run the project's validation command
-6. **Commit** - run `git add -A && git commit` with a conventional commit message (e.g., `feat(ITEM-ID): short description`)
+5. **Auto-fix lint** - run `npx eslint src/ --fix` to auto-correct import ordering and other fixable issues
+6. **Validate** - run the project's validation command (type-check, lint, test)
+7. **Commit** - run `git add -A && git commit` with a conventional commit message (e.g., `feat(ITEM-ID): short description`)
 
 ## Rules
 
