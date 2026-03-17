@@ -1,17 +1,17 @@
 {
-  "sprintId": "sprint-1773766999",
-  "startedAt": "2026-03-17T10:03:19-07:00",
+  "sprintId": "sprint-1773767204",
+  "startedAt": "2026-03-17T10:06:44-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-072",
-    "title": "Dashboard Doctor page",
+    "id": "FEAT-073",
+    "title": "Dashboard Logs page with WebSocket streaming",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T10:03:19-07:00",
+    "startedAt": "2026-03-17T10:06:44-07:00",
     "status": "passed",
-    "completedAt": "2026-03-17T10:06:42-07:00"
+    "completedAt": "2026-03-17T10:13:22-07:00"
   },
-  "completedAt": "2026-03-17T10:06:42-07:00",
+  "completedAt": "2026-03-17T10:13:22-07:00",
   "attempts": 1
 }

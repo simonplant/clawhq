@@ -150,11 +150,12 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard server + layout) and FEAT-071 (API endpoints) are both done. Doctor page is the hero dashboard feature — the visual interface makes preventive diagnostics dramatically more accessible than the CLI for Privacy Migrants.\n\nSprint scope: (1) Create src/ui/pages/doctor.tsx — Hono JSX page component; (2) Page calls GET /api/v1/doctor and renders results as a table: check name, status icon (pass=green ✓, warn=yellow ⚠, fail=red ✗), message, fix hint; (3) 'Fix All' button triggers POST /api/v1/doctor/fix with htmx hx-post + hx-target to replace results table with fix output; (4) Register route in src/ui/app.ts as GET /doctor; (5) Add 'Doctor' link to sidebar nav in the appropriate lifecycle phase section; (6) Acceptance criteria: /doctor page renders check table from live runChecks() output; traffic-light icons for pass/warn/fail; Fix All button calls doctor/fix and updates page without full reload; uses established dashboard layout from FEAT-067; tsc clean."
+      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard server + layout) and FEAT-071 (API endpoints) are both done. Doctor page is the hero dashboard feature — the visual interface makes preventive diagnostics dramatically more accessible than the CLI for Privacy Migrants.\n\nSprint scope: (1) Create src/ui/pages/doctor.tsx — Hono JSX page component; (2) Page calls GET /api/v1/doctor and renders results as a table: check name, status icon (pass=green ✓, warn=yellow ⚠, fail=red ✗), message, fix hint; (3) 'Fix All' button triggers POST /api/v1/doctor/fix with htmx hx-post + hx-target to replace results table with fix output; (4) Register route in src/ui/app.ts as GET /doctor; (5) Add 'Doctor' link to sidebar nav in the appropriate lifecycle phase section; (6) Acceptance criteria: /doctor page renders check table from live runChecks() output; traffic-light icons for pass/warn/fail; Fix All button calls doctor/fix and updates page without full reload; uses established dashboard layout from FEAT-067; tsc clean.",
+      "completedAt": "2026-03-17T10:06:42-07:00"
     },
     {
       "id": "FEAT-073",

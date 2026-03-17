@@ -78,4 +78,50 @@ describe("createApp", () => {
     expect(html).toContain("/sse/status");
     expect(html).toContain("EventSource");
   });
+
+  it("serves the logs page at /logs", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/logs");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Logs");
+    expect(html).toContain("log-pane");
+  });
+
+  it("logs page includes category filter", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/logs");
+    const html = await res.text();
+    expect(html).toContain("category-filter");
+    expect(html).toContain("Agent");
+    expect(html).toContain("Gateway");
+    expect(html).toContain("Cron");
+    expect(html).toContain("Errors");
+  });
+
+  it("logs page includes pause/resume and auto-scroll controls", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/logs");
+    const html = await res.text();
+    expect(html).toContain("pause-btn");
+    expect(html).toContain("autoscroll-toggle");
+    expect(html).toContain("togglePause");
+  });
+
+  it("logs page connects to SSE /api/v1/logs", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/logs");
+    const html = await res.text();
+    expect(html).toContain("/api/v1/logs");
+    expect(html).toContain("EventSource");
+  });
+
+  it("logs page uses established dashboard layout", async () => {
+    const app = createApp(makeConfig());
+    const res = await app.request("/logs");
+    const html = await res.text();
+    expect(html).toContain("ClawHQ");
+    expect(html).toContain("pico.min.css");
+    expect(html).toContain("sidebar");
+  });
 });

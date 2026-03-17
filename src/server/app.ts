@@ -12,6 +12,7 @@ import { Hono } from "hono";
 
 import { renderDoctorPage } from "../ui/pages/doctor.js";
 import { renderHomePage } from "../ui/pages/home.js";
+import { renderLogsPage } from "../ui/pages/logs.js";
 
 import { createApiRouter } from "./api.js";
 import { authMiddleware } from "./auth.js";
@@ -62,6 +63,10 @@ export function createApp(config: ServerConfig): Hono<ServerEnv> {
 
   app.get("/doctor", (c) => {
     return c.html(renderDoctorPage());
+  });
+
+  app.get("/logs", (c) => {
+    return c.html(renderLogsPage());
   });
 
   return app;
