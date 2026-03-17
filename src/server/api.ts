@@ -531,5 +531,84 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
     });
   });
 
+  // ──────────────────────────────────────────
+  // POST /wizard/validate-credential — async credential validation
+  // ──────────────────────────────────────────
+  api.post("/wizard/validate-credential", async (c) => {
+    try {
+      const body = await c.req.json() as { envVar: string; value: string };
+      if (!body.envVar || !body.value) {
+        return c.json(fail("Missing envVar or value"), 400);
+      }
+      const { DEFAULT_PROBES } = await import("../security/credentials/index.js");
+      const probe = DEFAULT_PROBES.find((p) => p.envVar === body.envVar);
+      if (!probe) {
+        // No probe available for this credential — report as unknown
+        return c.json(ok({ valid: false, status: "unknown" }));
+      }
+      const result = await probe.check(body.value);
+      return c.json(ok({ valid: result.status === "valid", status: result.status, message: result.message }));
+    } catch (err: unknown) {
+      return c.json(fail(err instanceof Error ? err.message : String(err)), 500);
+    }
+  });
+
+  // ──────────────────────────────────────────
+  // POST /wizard/generate — generate deployment bundle from wizard answers
+  // ──────────────────────────────────────────
+  api.post("/wizard/generate", async (c) => {
+    try {
+      const body = await c.req.json() as {
+        basics: { agentName: string; timezone: string; wakingHoursStart: string; wakingHoursEnd: string };
+        templateId: string;
+        integrations: Array<{ provider: string; category: string; envVar: string; credential: string; validated: boolean }>;
+        modelRouting: { localOnly: boolean; cloudProviders: Array<{ provider: string; envVar: string; credential: string; validated: boolean }>; categories: Array<{ category: string; cloudAllowed: boolean }> };
+      };
+
+      if (!body.basics || !body.templateId) {
+        return c.json(fail("Missing basics or templateId"), 400);
+      }
+
+      const { getTemplateById } = await import("../init/templates.js");
+      const template = await getTemplateById(body.templateId);
+      if (!template) {
+        return c.json(fail(`Template not found: ${body.templateId}`), 404);
+      }
+
+      const { generate } = await import("../init/generate.js");
+      const { writeBundle } = await import("../init/writer.js");
+
+      const answers = {
+        basics: body.basics,
+        template,
+        integrations: body.integrations || [],
+        modelRouting: body.modelRouting || { localOnly: true, cloudProviders: [], categories: [] },
+      };
+
+      const config = generate(answers);
+
+      if (!config.validationPassed) {
+        const failures = config.validationResults.filter((r) => r.status === "fail");
+        return c.json(ok({
+          validationPassed: false,
+          validationErrors: failures.map((f) => `${f.rule}: ${f.message}`),
+          filesWritten: [],
+          errors: ["Validation failed — config not written"],
+        }));
+      }
+
+      const writeResult = await writeBundle(config.bundle, openclawHome);
+
+      return c.json(ok({
+        validationPassed: true,
+        validationErrors: [],
+        filesWritten: writeResult.filesWritten,
+        errors: writeResult.errors,
+      }));
+    } catch (err: unknown) {
+      return c.json(fail(err instanceof Error ? err.message : String(err)), 500);
+    }
+  });
+
   return api;
 }

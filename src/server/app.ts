@@ -15,6 +15,7 @@ import { renderDeployPage } from "../ui/pages/deploy.js";
 import { renderDoctorPage } from "../ui/pages/doctor.js";
 import { renderFleetPage } from "../ui/pages/fleet.js";
 import { renderHomePage } from "../ui/pages/home.js";
+import { renderInitWizardPage } from "../ui/pages/init-wizard.js";
 import { renderLogsPage } from "../ui/pages/logs.js";
 import { renderSkillsPage } from "../ui/pages/skills.js";
 
@@ -87,6 +88,10 @@ export function createApp(config: ServerConfig): Hono<ServerEnv> {
 
   app.get("/fleet", (c) => {
     return c.html(renderFleetPage());
+  });
+
+  app.get("/init-wizard", (c) => {
+    return c.html(renderInitWizardPage());
   });
 
   return app;
