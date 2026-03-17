@@ -431,11 +431,12 @@
       "category": "Capability Layer",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "INTERNAL IMPL EXISTS: src/internal/memory/ module is complete with hot/warm/cold tier transitions (transitions.ts), store (store.ts), ingestion (ingestion.ts), reflection (reflection.ts) — all with tests. What is MISSING: the CLI wrapper. Sprint should create the CLI surface only: (1) create src/cli/memory.ts with createMemoryCommand(): Command; (2) memory status subcommand: calls collectMemoryHealth() from internal/memory/store.ts, displays hot/warm/cold tier sizes with entry counts and total bytes, shows growth rate if calculable; (3) memory compact subcommand: calls runAllTransitions() from internal/memory/transitions.ts with fallbackSummarize as the summarizer, reports how many entries were transitioned; (4) register memory command in src/cli/index.ts: import { createMemoryCommand } and program.addCommand(createMemoryCommand()); (5) verify no cron entry is needed (cron auto-compaction can be a follow-up). AC: clawhq memory status shows hot/warm/cold tier sizes; clawhq memory compact triggers transitions and reports count; tsc clean; no regression on existing commands. Note: Phase B (qdrant vector search for clawhq memory search) is a separate future sprint — do not include search in this sprint."
+      "groomingNotes": "INTERNAL IMPL EXISTS: src/internal/memory/ module is complete with hot/warm/cold tier transitions (transitions.ts), store (store.ts), ingestion (ingestion.ts), reflection (reflection.ts) — all with tests. What is MISSING: the CLI wrapper. Sprint should create the CLI surface only: (1) create src/cli/memory.ts with createMemoryCommand(): Command; (2) memory status subcommand: calls collectMemoryHealth() from internal/memory/store.ts, displays hot/warm/cold tier sizes with entry counts and total bytes, shows growth rate if calculable; (3) memory compact subcommand: calls runAllTransitions() from internal/memory/transitions.ts with fallbackSummarize as the summarizer, reports how many entries were transitioned; (4) register memory command in src/cli/index.ts: import { createMemoryCommand } and program.addCommand(createMemoryCommand()); (5) verify no cron entry is needed (cron auto-compaction can be a follow-up). AC: clawhq memory status shows hot/warm/cold tier sizes; clawhq memory compact triggers transitions and reports count; tsc clean; no regression on existing commands. Note: Phase B (qdrant vector search for clawhq memory search) is a separate future sprint — do not include search in this sprint.",
+      "completedAt": "2026-03-16T21:46:33-07:00"
     },
     {
       "id": "FEAT-093",
