@@ -4,6 +4,7 @@
 
 import { resolve } from "node:path";
 
+import chalk from "chalk";
 import { Command } from "commander";
 
 import {
@@ -15,6 +16,8 @@ import {
 } from "../audit/index.js";
 import { formatCredTable, runProbesFromFile } from "../security/credentials/index.js";
 import { formatScanTable, scanFiles, scanGitHistory } from "../security/secrets/scanner.js";
+
+import { spinner, status } from "./ui.js";
 
 /**
  * Register Secure-phase commands (scan, creds, audit) on the program.
@@ -30,30 +33,42 @@ export function createSecureCommands(program: Command): void {
       const scanPath = opts.path.replace(/^~/, process.env.HOME ?? "~");
       const resolvedPath = resolve(scanPath);
 
+      const scanSpinner = spinner(`${chalk.yellow("Secure")} Scanning for secrets and PII...`);
+      scanSpinner.start();
+
       try {
         const result = await scanFiles(resolvedPath);
         let historyMatches: Awaited<ReturnType<typeof scanGitHistory>> = [];
 
         if (opts.history) {
+          scanSpinner.text = `${chalk.yellow("Secure")} Scanning git history...`;
           historyMatches = await scanGitHistory(resolvedPath);
+        }
+
+        const totalIssues = result.matches.length + historyMatches.length;
+        if (totalIssues === 0) {
+          scanSpinner.succeed(`${chalk.yellow("Secure")} ${status.pass} No secrets or PII found`);
+        } else {
+          scanSpinner.fail(`${chalk.yellow("Secure")} ${status.fail} ${totalIssues} issue${totalIssues > 1 ? "s" : ""} found`);
         }
 
         if (opts.json) {
           console.log(JSON.stringify({
             ...result,
             historyMatches,
-            totalIssues: result.matches.length + historyMatches.length,
+            totalIssues,
           }, null, 2));
         } else {
           console.log(formatScanTable(result, historyMatches));
         }
 
-        if (result.matches.length + historyMatches.length > 0) {
+        if (totalIssues > 0) {
           process.exitCode = 1;
         }
       } catch (err: unknown) {
+        scanSpinner.fail(`${chalk.yellow("Secure")} ${status.fail} Scan failed`);
         console.error(
-          `Scan failed: ${err instanceof Error ? err.message : String(err)}`,
+          err instanceof Error ? err.message : String(err),
         );
         process.exitCode = 1;
       }
@@ -67,8 +82,18 @@ export function createSecureCommands(program: Command): void {
     .action(async (opts: { env: string; json?: boolean }) => {
       const envPath = opts.env.replace(/^~/, process.env.HOME ?? "~");
 
+      const credsSpinner = spinner(`${chalk.yellow("Secure")} Checking credentials...`);
+      credsSpinner.start();
+
       try {
         const report = await runProbesFromFile(envPath);
+
+        const hasFailures = report.counts.failing > 0 || report.counts.expired > 0;
+        if (hasFailures) {
+          credsSpinner.fail(`${chalk.yellow("Secure")} ${status.fail} Credential issues detected`);
+        } else {
+          credsSpinner.succeed(`${chalk.yellow("Secure")} ${status.pass} All credentials healthy`);
+        }
 
         if (opts.json) {
           console.log(JSON.stringify(report, null, 2));
@@ -76,11 +101,11 @@ export function createSecureCommands(program: Command): void {
           console.log(formatCredTable(report));
         }
 
-        const hasFailures = report.counts.failing > 0 || report.counts.expired > 0;
         if (hasFailures) {
           process.exitCode = 1;
         }
       } catch (err: unknown) {
+        credsSpinner.fail(`${chalk.yellow("Secure")} ${status.fail} Credential check failed`);
         console.error(
           `Cannot read .env file at ${envPath}: ${err instanceof Error ? err.message : String(err)}`,
         );
@@ -115,6 +140,9 @@ export function createSecureCommands(program: Command): void {
         return;
       }
 
+      const auditSpinner = spinner(`${chalk.yellow("Secure")} Collecting egress audit...`);
+      auditSpinner.start();
+
       try {
         const report = await collectEgressAudit({
           openclawHome: opts.home,
@@ -122,6 +150,7 @@ export function createSecureCommands(program: Command): void {
           since: opts.since ?? null,
           includeDrops: opts.drops !== false,
         });
+        auditSpinner.succeed(`${chalk.yellow("Secure")} ${status.pass} Egress audit collected`);
 
         if (opts.zero) {
           const attestation = generateZeroEgressAttestation(report);
@@ -148,8 +177,9 @@ export function createSecureCommands(program: Command): void {
           console.log(formatEgressAuditTable(report));
         }
       } catch (err: unknown) {
+        auditSpinner.fail(`${chalk.yellow("Secure")} ${status.fail} Audit failed`);
         console.error(
-          `Audit failed: ${err instanceof Error ? err.message : String(err)}`,
+          err instanceof Error ? err.message : String(err),
         );
         process.exitCode = 1;
       }

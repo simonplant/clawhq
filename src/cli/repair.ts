@@ -2,6 +2,7 @@
  * `clawhq repair` command — health self-repair (auto-recovery).
  */
 
+import chalk from "chalk";
 import { Command } from "commander";
 
 import type { RepairConfig, RepairContext } from "../repair/index.js";
@@ -12,6 +13,8 @@ import {
   readRepairLog,
   runRepair,
 } from "../repair/index.js";
+
+import { spinner, status } from "./ui.js";
 
 /**
  * Create the `repair` command.
@@ -87,7 +90,16 @@ export function createRepairCommand(): Command {
         firewallReapply: opts.firewallReapply,
       };
 
+      const repairSpinner = spinner(`${chalk.magenta("Operate")} Running repair checks...`);
+      repairSpinner.start();
+
       const report = await runRepair(ctx, repairConfig);
+
+      if (report.allHealthy) {
+        repairSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} All systems healthy`);
+      } else {
+        repairSpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Issues detected`);
+      }
 
       if (opts.json) {
         console.log(formatRepairJson(report));

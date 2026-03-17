@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { Command } from "commander";
 
 import { createReadlineIO } from "../init/index.js";
@@ -20,6 +21,8 @@ import {
 import type { SkillContext } from "../skill/index.js";
 import { SkillError } from "../skill/types.js";
 import { recordChange } from "../workspace/evolve-history.js";
+
+import { spinner, status } from "./ui.js";
 
 function makeSkillCtx(opts: { home: string; clawhqDir: string }): SkillContext {
   return {
@@ -60,8 +63,10 @@ export function createSkillCommand(): Command {
 
       try {
         // Stage: fetch + vet
-        console.log(`Fetching skill from ${source}...`);
+        const fetchSpinner = spinner(`${chalk.magenta("Operate")} Fetching skill from ${source}...`);
+        fetchSpinner.start();
         const { manifest, vetResult, stagingDir } = await stageSkillInstall(ctx, source);
+        fetchSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} Skill fetched: ${manifest.name}@${manifest.version}`);
 
         // Show summary and basic vet results
         console.log("");
@@ -190,8 +195,10 @@ export function createSkillCommand(): Command {
       const ctx = makeSkillCtx(parentOpts);
 
       try {
-        console.log(`Fetching update for "${name}"...`);
+        const updateFetchSpinner = spinner(`${chalk.magenta("Operate")} Fetching update for "${name}"...`);
+        updateFetchSpinner.start();
         const { manifest, vetResult, stagingDir } = await stageSkillUpdate(ctx, name, opts.source);
+        updateFetchSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} Update fetched: ${manifest.name}@${manifest.version}`);
 
         console.log("");
         console.log(formatSkillSummary(

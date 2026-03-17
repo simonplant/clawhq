@@ -4,6 +4,7 @@
 
 import { resolve } from "node:path";
 
+import chalk from "chalk";
 import { Command } from "commander";
 
 import {
@@ -19,6 +20,8 @@ import {
   writeStage1Hash,
 } from "../docker/build.js";
 import { DockerClient } from "../docker/client.js";
+
+import { spinner, status } from "./ui.js";
 
 /**
  * Create the `build` command.
@@ -54,12 +57,13 @@ export function createBuildCommand(): Command {
           process.exitCode = 1;
           return;
         }
-        console.log("Verifying images against build manifest...");
+        const verifySpinner = spinner(`${chalk.blue("Build")} Verifying images against build manifest...`);
+        verifySpinner.start();
         const result = await verifyAgainstManifest(client, manifest);
         if (result.match) {
-          console.log("All images match the build manifest.");
+          verifySpinner.succeed(`${chalk.blue("Build")} ${status.pass} All images match the build manifest`);
         } else {
-          console.log(`Drift detected (${result.drifts.length} difference${result.drifts.length > 1 ? "s" : ""}):`);
+          verifySpinner.fail(`${chalk.blue("Build")} ${status.fail} Drift detected (${result.drifts.length} difference${result.drifts.length > 1 ? "s" : ""})`);
           for (const drift of result.drifts) {
             console.log(`  Stage ${drift.stage} ${drift.field}: expected ${drift.expected}, got ${drift.actual}`);
           }
@@ -87,7 +91,9 @@ export function createBuildCommand(): Command {
       }
 
       // Run the build
-      console.log(`Building from ${contextPath}...`);
+      const buildSpinner = spinner(`${chalk.blue("Build")} Building container image...`);
+      buildSpinner.start();
+
       const result = await twoStageBuild(client, {
         context: contextPath,
         baseTag: opts.baseTag,
@@ -96,12 +102,13 @@ export function createBuildCommand(): Command {
         skipStage1,
       });
 
+      buildSpinner.succeed(`${chalk.blue("Build")} ${status.pass} Container image built in ${formatDuration(result.totalDurationMs)}`);
+
       // Display results per stage
       if (result.stage1) {
-        console.log(`Stage 1: ${result.stage1.imageTag} built in ${formatDuration(result.stage1.durationMs)}`);
+        console.log(`  Stage 1: ${result.stage1.imageTag} built in ${formatDuration(result.stage1.durationMs)}`);
       }
-      console.log(`Stage 2: ${result.stage2.imageTag} built in ${formatDuration(result.stage2.durationMs)}`);
-      console.log(`Total build time: ${formatDuration(result.totalDurationMs)}`);
+      console.log(`  Stage 2: ${result.stage2.imageTag} built in ${formatDuration(result.stage2.durationMs)}`);
 
       // Generate and write build manifest
       const manifest = await generateManifest(client, {

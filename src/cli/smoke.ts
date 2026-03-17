@@ -2,9 +2,12 @@
  * `clawhq smoke` command — post-deploy smoke test.
  */
 
+import chalk from "chalk";
 import { Command } from "commander";
 
 import { runSmokeTest } from "../smoke/index.js";
+
+import { spinner, status } from "./ui.js";
 
 /**
  * Create the `smoke` command.
@@ -29,6 +32,9 @@ export function createSmokeCommand(): Command {
       const homePath = opts.home.replace(/^~/, process.env.HOME ?? "~");
       const configPath = opts.config.replace(/^~/, process.env.HOME ?? "~");
 
+      const smokeSpinner = spinner(`${chalk.green("Deploy")} Running smoke tests...`);
+      smokeSpinner.start();
+
       const result = await runSmokeTest({
         openclawHome: homePath,
         configPath,
@@ -36,6 +42,12 @@ export function createSmokeCommand(): Command {
         gatewayPort: parseInt(opts.gatewayPort, 10),
         responseTimeoutMs: parseInt(opts.timeout, 10),
       });
+
+      if (result.passed) {
+        smokeSpinner.succeed(`${chalk.green("Deploy")} ${status.pass} All smoke tests passed`);
+      } else {
+        smokeSpinner.fail(`${chalk.green("Deploy")} ${status.fail} Smoke tests failed`);
+      }
 
       if (opts.json) {
         console.log(JSON.stringify(result, null, 2));
