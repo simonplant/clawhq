@@ -5,13 +5,82 @@
 import { Command } from "commander";
 
 import { runSmartInit } from "../inference/index.js";
-import { createReadlineIO, runWizard } from "../init/index.js";
+import { createReadlineIO, generate, getTemplateById, runWizard, writeBundle } from "../init/index.js";
+import type { WizardAnswers } from "../init/index.js";
 import {
   formatPreview,
   formatTemplateList as formatYamlTemplateList,
   generatePreview,
   loadBuiltInTemplates,
 } from "../templates/index.js";
+
+/**
+ * Run non-interactive init: use template defaults + CLI overrides,
+ * skip the wizard entirely. For fleet provisioning / scripted use.
+ */
+async function runNonInteractive(opts: {
+  name: string;
+  template: string;
+  output: string;
+  timezone?: string;
+}): Promise<void> {
+  const template = await getTemplateById(opts.template);
+  if (!template) {
+    console.error(`Error: template "${opts.template}" not found`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const timezone = opts.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const answers: WizardAnswers = {
+    basics: {
+      agentName: opts.name,
+      timezone,
+      wakingHoursStart: "06:00",
+      wakingHoursEnd: "23:00",
+    },
+    template,
+    integrations: [],
+    modelRouting: {
+      localOnly: true,
+      cloudProviders: [],
+      categories: [
+        { category: "email", cloudAllowed: false },
+        { category: "calendar", cloudAllowed: false },
+        { category: "research", cloudAllowed: false },
+        { category: "writing", cloudAllowed: false },
+        { category: "coding", cloudAllowed: false },
+      ],
+    },
+  };
+
+  const config = generate(answers);
+
+  if (!config.validationPassed) {
+    const failures = config.validationResults.filter((r) => r.status === "fail");
+    console.error(`Error: validation failed (${failures.length} rule(s))`);
+    for (const f of failures) {
+      console.error(`  ${f.rule}: ${f.message}`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  const outputDir = opts.output.replace(/^~/, process.env.HOME ?? "~");
+  const writeResult = await writeBundle(config.bundle, outputDir);
+
+  if (writeResult.errors.length > 0) {
+    console.error(`Error: failed to write files`);
+    for (const e of writeResult.errors) {
+      console.error(`  ${e}`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(`ok ${opts.name} ${outputDir}`);
+}
 
 /**
  * Register Plan-phase commands (init, template) on the program.
@@ -22,10 +91,44 @@ export function createPlanCommands(program: Command): void {
     .description("Initialize a new agent deployment")
     .option("--guided", "Run interactive guided questionnaire")
     .option("--smart", "AI-powered config inference via local Ollama model")
+    .option("--non-interactive", "Skip wizard, use template defaults (for scripted provisioning)")
+    .option("--name <name>", "Agent name (required for --non-interactive)")
+    .option("--template <id>", "Template ID (required for --non-interactive)")
+    .option("--timezone <tz>", "IANA timezone (default: system timezone)")
     .option("--ollama-host <url>", "Ollama API host", "http://localhost:11434")
     .option("--ollama-model <name>", "Ollama model to use", "llama3:8b")
     .option("--output <path>", "Output directory for generated config", "~/.openclaw")
-    .action(async (opts: { guided?: boolean; smart?: boolean; ollamaHost: string; ollamaModel: string; output: string }) => {
+    .action(async (opts: {
+      guided?: boolean;
+      smart?: boolean;
+      nonInteractive?: boolean;
+      name?: string;
+      template?: string;
+      timezone?: string;
+      ollamaHost: string;
+      ollamaModel: string;
+      output: string;
+    }) => {
+      if (opts.nonInteractive) {
+        if (!opts.name) {
+          console.error("Error: --name is required with --non-interactive");
+          process.exitCode = 1;
+          return;
+        }
+        if (!opts.template) {
+          console.error("Error: --template is required with --non-interactive");
+          process.exitCode = 1;
+          return;
+        }
+        await runNonInteractive({
+          name: opts.name,
+          template: opts.template,
+          output: opts.output,
+          timezone: opts.timezone,
+        });
+        return;
+      }
+
       const outputDir = opts.output.replace(/^~/, process.env.HOME ?? "~");
 
       const { io, close } = createReadlineIO();
