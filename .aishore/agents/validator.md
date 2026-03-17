@@ -37,22 +37,25 @@ For each AC in sprint.json:
 
 ## Output
 
+Print a brief plain-text summary to stdout (one line per check, one line verdict). Example:
+
 ```
-VALIDATION REPORT
-=================
-Item: [ID] - [Title]
-
-Validation:
-- Type-check: PASS/FAIL
-- Lint: PASS/FAIL
-- Tests: PASS/FAIL
-
-Acceptance Criteria:
-1. [AC text] - MET/NOT MET
-2. [AC text] - MET/NOT MET
-
-Overall: PASS/FAIL
+Type-check: PASS | Lint: PASS | Tests: PASS (1498/1498) | Overall: PASS
 ```
+
+Then write `.aishore/data/status/result.json` using EXACTLY this format:
+
+On success:
+```json
+{"status": "pass", "summary": "brief description of what passed"}
+```
+
+On failure:
+```json
+{"status": "fail", "reason": "what specifically failed"}
+```
+
+**CRITICAL**: The result.json file MUST have a top-level `"status"` key set to `"pass"` or `"fail"`. Do NOT use any other schema (no `"overall"`, no `"checks"` object, no nested structure). The orchestrator parses this file with jq and rejects any other format.
 
 ## Rules
 
@@ -60,3 +63,4 @@ Overall: PASS/FAIL
 - If validation passes and all ACs are met, report PASS
 - If anything fails, report FAIL with clear reasons
 - Do not fix code - only validate
+- Keep stdout output concise — one or two lines max
