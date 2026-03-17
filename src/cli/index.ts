@@ -46,64 +46,55 @@ program
     console.log(`clawhq v${pkg.version}`);
   });
 
-// Quickstart (orchestrates init → build → deploy → smoke)
-program.addCommand(createQuickstartCommand());
-
 // Plan phase
+program.commandsGroup("Plan:");
+program.addCommand(createQuickstartCommand());
 createPlanCommands(program);
 
 // Build phase
+program.commandsGroup("Build:");
 program.addCommand(createBuildCommand());
 
 // Secure phase
+program.commandsGroup("Secure:");
 createSecureCommands(program);
 program.addCommand(createSecretsCommand());
-program.addCommand(createProviderCommand());
-program.addCommand(createFleetCommand());
-program.addCommand(createMigrateCommand());
-program.addCommand(createTraceCommand());
 
 // Deploy phase
+program.commandsGroup("Deploy:");
 createDeployCommands(program);
-
-// Smoke test
 program.addCommand(createSmokeCommand());
-
-// Connect
 program.addCommand(createConnectCommand());
 
 // Operate phase
+program.commandsGroup("Operate:");
 createOperateCommands(program);
-
-// Repair
 program.addCommand(createRepairCommand());
-
-// Alerts
 program.addCommand(createAlertsCommand());
-
-// Backup & Update
 createBackupCommands(program);
+createDigestApprovalCommands(program);
 
-// Agent management
+// Evolve phase
+program.commandsGroup("Evolve:");
 program.addCommand(createAgentCommand());
-
-// Evolve phase (includes autonomy tuning)
 program.addCommand(createEvolveCommand());
-
-// CLI tool management
 registerToolCommand(program);
-
-// Skill management
 program.addCommand(createSkillCommand());
-
-// Integration management
 program.addCommand(createIntegrateCommand());
+program.addCommand(createProviderCommand());
+
+// Fleet phase
+program.commandsGroup("Fleet:");
+program.addCommand(createFleetCommand());
 
 // Decommission phase
+program.commandsGroup("Decommission:");
 createDecommissionCommands(program);
 
-// Digest & Approval
-createDigestApprovalCommands(program);
+// Migrate phase
+program.commandsGroup("Migrate:");
+program.addCommand(createMigrateCommand());
+program.addCommand(createTraceCommand());
 
 program.parse();
 

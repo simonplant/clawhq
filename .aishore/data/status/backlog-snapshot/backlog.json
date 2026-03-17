@@ -26,9 +26,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "First impression feature — help output is what users read to understand the tool. Grouped by lifecycle phase (Plan/Build/Secure/Deploy/Operate/Evolve/Decommission) matches mental model in PRODUCT.md and website copy. Zero behavior change — pure display improvement. User outcome: user can discover commands without reading docs."
+      "groomingNotes": "UNBLOCKED: FEAT-060 done. Pure Commander configureHelp() display change, ~20 lines. Steps: (1) use program.configureHelp() to override formatHelp; (2) group commands into lifecycle phases: Plan, Build, Secure, Deploy, Operate, Evolve, Decommission; (3) add section headers from ui.ts sectionHeader(); (4) verify non-TTY environments still work; (5) all command names/flags unchanged. AC: clawhq --help shows grouped sections; no behavior change; tsc clean; existing commands unaffected."
     },
     {
       "id": "FEAT-062",
@@ -55,9 +55,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "SHOWSTOPPER FOR ADOPTION — depends on FEAT-060 for formatError(). dependsOn: FEAT-060. SPRINT GATE: only begin this sprint after FEAT-060 ships. Steps: (1) create src/cli/errors.ts; (2) export handleCliError(err: unknown): never; (3) wrap program.parseAsync() in src/cli/index.ts with try/catch calling handleCliError; (4) handle 6 error types with formatError(): (a) Docker not installed (ENOENT on docker binary) → 'Install Docker: https://docs.docker.com/get-docker/'; (b) Docker daemon not running (connection refused) → 'Start Docker daemon: sudo systemctl start docker'; (c) No config found (config file missing) → 'Run clawhq init to create your first agent'; (d) Port in use (EADDRINUSE) → 'Port $PORT already in use. Run: clawhq down, or change port in config'; (e) Build fails no Dockerfile → 'Run clawhq build first'; (f) Permission denied on .env → 'Fix permissions: chmod 600 .env'; (5) --debug flag passes through to show full stack trace. Acceptance criteria: each of the 6 error types shows formatted hint not raw stack trace; clawhq --debug shows full trace; non-handled errors still bubble as formatted unknown errors; TypeScript compiles clean."
+      "groomingNotes": "UNBLOCKED: FEAT-060 (formatError) done. Create src/cli/errors.ts wrapping program.parseAsync() in try/catch. Steps: (1) create src/cli/errors.ts; (2) export handleError(err: unknown) mapping error types to formatError() calls; (3) handle 6 error types: Docker not installed (ENOENT on docker), daemon not running (connection refused), no config found (missing openclaw.json), port in use (EADDRINUSE), build fails no Dockerfile, permission denied on .env; (4) wrap program.parseAsync() call in src/cli/index.ts; (5) each error type has code, message, hint fields. AC: each of 6 error types shows styled output not stack trace; unknown errors show generic formatted message; tsc clean; no regression on existing commands."
     },
     {
       "id": "FEAT-064",
@@ -69,9 +69,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Helpful but quickstart already guides new users. Value: reduces friction for someone who installs clawhq then wanders around CLI without reading docs. The one-line hint to run quickstart prevents 'I installed it but nothing happened' confusion. Low risk, low effort."
+      "groomingNotes": "UNBLOCKED: FEAT-060 (ui.ts with spinner/formatError) is done. Steps: (1) create src/cli/first-run.ts; (2) define state file path ~/.clawhq/state.json with firstRunComplete boolean; (3) export checkFirstRun(program: Command): void that registers a preAction hook; (4) hook logic: skip if non-TTY (process.stdout.isTTY === false), skip if --json flag present, skip if CI env (process.env.CI), skip if command is init/quickstart/dashboard/help/version; (5) if ~/.openclaw/openclaw.json does not exist AND firstRunComplete=false, print one-line chalk hint: 'Run clawhq quickstart to set up your agent.'; (6) export markFirstRunComplete(clawhqDir: string): Promise<void> that writes state.json with firstRunComplete=true; (7) call markFirstRunComplete from quickstart and init success paths in their respective CLI modules; (8) import and call checkFirstRun(program) in src/cli/index.ts before program.parseAsync. AC: running clawhq doctor on fresh install (no openclaw.json) prints one-line quickstart hint; hint not shown when already set up; hint not shown in CI (process.env.CI=true); hint not shown with --json flag; hint not shown for init/quickstart commands themselves; markFirstRunComplete suppresses hint on next run; tsc clean."
     },
     {
       "id": "FEAT-065",
@@ -83,9 +83,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Polish that signals professionalism. dependsOn: FEAT-060. SPRINT GATE: only begin after FEAT-060 ships. Build, deploy, doctor, backup are long-running operations — silent wait feels broken. Spinners with phase labels give users confidence the tool is working. Acceptance criteria: no command output changes except progress indicators added; spinner appears for any operation >500ms."
+      "groomingNotes": "UNBLOCKED: FEAT-060 (spinner factory) done. Modify action handlers in src/cli/index.ts to add ora spinners for long-running operations. Steps: (1) import spinner() from src/cli/ui.ts; (2) build command: const s = spinner('Building Stage 1...'); ... s.succeed('Stage 1 complete'); per Docker stage; (3) up/down/restart: spinner per deploy step (compose up, firewall apply, health check); (4) doctor: single spinner while checks run, then show per-check results; (5) backup create/restore: spinner during operation; (6) update: spinners for check and apply phases; (7) scan: spinner while scanning. Pattern is consistent. AC: all listed commands show spinner during operation; spinner.succeed() on success, spinner.fail() on error; non-TTY environments degrade gracefully; no behavior change; tsc clean."
     },
     {
       "id": "FEAT-066",
@@ -112,9 +112,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "FOUNDATION — all dashboard pages depend on this. Note: FEAT-068, 069, 070 were planned as separate items (auth, SSE/WS infrastructure, home page) but were merged into this item's scope — their functionality is already described here. Ship as unit with FEAT-071 (API endpoints): a partial dashboard with a broken home page is worse than no dashboard. Server + auth + home + nav + SSE must all land in one sprint. User outcome: 'clawhq dashboard' opens browser to working control panel. Acceptance criteria: Hono server starts on correct port; bearer-to-cookie auth works; sidebar nav renders with lifecycle phase grouping; home dashboard card shows agent state + integration health grid + memory metrics + approval/alert badges; SSE status updates fire every 5s."
+      "groomingNotes": "FOUNDATION — all dashboard pages depend on this. Note: FEAT-068, 069, 070 were planned as separate items (auth, SSE/WS infrastructure, home page) but were merged into this item's scope — their functionality is already described here. Ship as unit with FEAT-071 (API endpoints): a partial dashboard with a broken home page is worse than no dashboard. Server + auth + home + nav + SSE must all land in one sprint. User outcome: 'clawhq dashboard' opens browser to working control panel. Acceptance criteria: Hono server starts on correct port; bearer-to-cookie auth works; sidebar nav renders with lifecycle phase grouping; home dashboard card shows agent state + integration health grid + memory metrics + approval/alert badges; SSE status updates fire every 5s. SPRINT PAIR: sprint FEAT-067 and FEAT-071 together — they are co-dependent and independently useless. Tech stack decided: Hono + htmx + Pico CSS (classless). Vendor htmx.min.js + pico.min.css in src/ui/static/. READY TO SPRINT: grooming is thorough, no external blockers."
     },
     {
       "id": "FEAT-071",
@@ -126,9 +126,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "API layer is the contract between server and web pages — all dashboard pages depend on these endpoints. Routes are thin adapters over existing business logic (no new logic here). Acceptance criteria: all 15 endpoints return {ok, data} or {ok:false, error} shape; streaming endpoints (deploy, build) use SSE correctly; /ws/logs proxies docker logs to browser."
+      "groomingNotes": "API layer is the contract between server and web pages — all dashboard pages depend on these endpoints. Routes are thin adapters over existing business logic (no new logic here). Acceptance criteria: all 15 endpoints return {ok, data} or {ok:false, error} shape; streaming endpoints (deploy, build) use SSE correctly; /ws/logs proxies docker logs to browser. SPRINT PAIR: sprint with FEAT-067 (dashboard foundation) — the server scaffold and API layer must land together. The home page (FEAT-067) calls GET /api/v1/status — both must be functional in the same sprint. READY TO SPRINT: no blockers, pairs with FEAT-067."
     },
     {
       "id": "FEAT-072",
@@ -237,14 +237,14 @@
       "category": "Phase 3: Distribution",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
+      "status": "done",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "SPRINT WITH FEAT-078 — CI quality gate pairs with npm publish to complete the distribution foundation. Both should land before dashboard work (FEAT-067) opens. Three parallel jobs, clear spec. Steps: (1) create .github/workflows/ci.yml; (2) trigger: on push to main + on pull_request; (3) job 'lint': checkout, node setup (20), npm ci, npm run lint; (4) job 'test': checkout, node matrix [20, 22], npm ci, npm test; (5) job 'typecheck': checkout, node setup (20), npm ci, npx tsc --noEmit; (6) jobs run in parallel (no needs:); (7) verify PR shows green/red status checks. Acceptance criteria: all three jobs appear as separate status checks on PRs; failed lint blocks merge; matrix test runs against both Node 20 and 22; workflow file passes yamllint; ci runs on push to main and on any PR.",
+      "groomingNotes": "RETRY NEEDED: Has failed validator twice (failCount: 2). Root cause: the acceptance criteria include 'verify PR shows green/red status checks' which cannot be validated locally — the validator has no GitHub context. REVISED AC FOR VALIDATOR: (1) .github/workflows/ci.yml exists and passes yamllint; (2) trigger block includes 'push: branches: [main]' AND 'pull_request'; (3) three separate jobs named 'lint', 'test', 'typecheck' are defined; (4) test job has strategy.matrix with node-version: [20, 22]; (5) all jobs run npm ci before their main command; (6) no 'needs:' dependencies between jobs (they are parallel). Validator should use 'npx js-yaml .github/workflows/ci.yml' or 'python3 -c \"import yaml; yaml.safe_load(open(\".github/workflows/ci.yml\"))\"' to verify YAML is valid. The ci.yml file already exists and looks structurally correct — the validator should pass on retry with these concrete local ACs.",
       "lastFailReason": "Validator agent rejected implementation",
-      "lastFailAt": "2026-03-16T19:29:56-07:00",
-      "failCount": 1
+      "lastFailAt": "2026-03-16T19:42:47-07:00",
+      "failCount": 2
     },
     {
       "id": "FEAT-080",
@@ -256,9 +256,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Release automation — depends on FEAT-079 (CI) being done first. Steps: (1) create .github/workflows/release.yml triggered on push to tags matching v*; (2) job 'validate': run full test suite (npm ci && npm test && npx tsc --noEmit); (3) job 'publish-npm' (needs: validate): npm ci && npm run build && npm publish using NPM_TOKEN secret; (4) job 'create-release' (needs: validate): gh release create $TAG --generate-notes; (5) create scripts/release.sh: bumps version in package.json, commits, tags, pushes; (6) test dry-run with npm publish --dry-run in CI. Acceptance criteria: pushing v* tag triggers full pipeline; npm package published to registry; GitHub Release created with auto-generated notes; NPM_TOKEN used correctly from secrets; failed validation blocks publish; scripts/release.sh automates the version bump + tag + push sequence."
+      "groomingNotes": "UNBLOCKED: FEAT-079 (CI workflow) done. Steps: (1) create .github/workflows/release.yml triggered on push to tags v*; (2) job 'validate': npm ci && npm test && npx tsc --noEmit; (3) job 'publish-npm' (needs: validate): npm ci && npm run build && npm publish using NPM_TOKEN secret; (4) job 'create-release' (needs: validate): gh release create $TAG --generate-notes; (5) create scripts/release.sh: bump version in package.json, git commit, git tag v$VERSION, git push --follow-tags. Validator ACs (local-verifiable): release.yml exists and is valid YAML; trigger is push.tags matching 'v*'; three jobs defined: validate, publish-npm, create-release; publish-npm and create-release both have 'needs: validate'; publish-npm uses secrets.NPM_TOKEN; scripts/release.sh exists and is executable."
     },
     {
       "id": "FEAT-081",
@@ -278,15 +278,15 @@
       "id": "FEAT-082",
       "title": "CLI monolith split (deferred)",
       "description": "Split src/cli/index.ts (~2655 lines) into src/cli/commands/ modules: plan.ts, build.ts, secure.ts, deploy.ts, operate.ts, evolve.ts, approval.ts, decommission.ts, cloud.ts. Each exports register(program: Command): void. Action handlers use dynamic import() for lazy loading. Index.ts becomes ~80 lines. DEFERRED — only do when index.ts becomes a maintenance problem.",
-      "priority": "should",
+      "priority": "could",
       "category": "Phase 5: Refactor",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "IN PROGRESS (organic): CLI split is actively underway despite 'future' label. Already committed: secrets.ts (696L), tool.ts (148L), trace.ts (200L), fleet.ts, migrate.ts, provider.ts. Untracked new modules in progress: plan.ts, deploy.ts, operate.ts, build.ts, secure.ts, skill.ts, agent.ts, backup.ts, connect.ts, decommission.ts, digest-approval.ts, evolve.ts, integrate.ts, repair.ts, alerts.ts, smoke.ts. index.ts remains at 2654 lines as authoritative entrypoint. Upgrade from future to should — half done already, reduces DX friction for contributors, enables unit-testability per-command, and makes FEAT-061 (grouped help) cleaner. User outcome: contributors can reason about individual command modules; commands become independently testable."
+      "groomingNotes": "DOWNGRADED must→could: This is internal refactor with zero user-visible value. The title explicitly says '(deferred)'. While code hygiene matters, user-facing items (dashboard, capability layer, memory lifecycle) are higher priority. The organic split is already partially in progress — additional modules (secrets.ts, tool.ts, trace.ts, fleet.ts, etc.) are already committed. Complete the split only when index.ts becomes a genuine maintenance blocker, not on a schedule. Sprint after all must/should user-value items are shipped."
     },
     {
       "id": "FEAT-083",
@@ -328,7 +328,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "PARTIAL IMPL EXISTS: trace.ts (200L) already committed implementing the 'why did you do that?' query interface — users can query decision history and submit corrections. This backlog item covers the broader tool execution AUDIT TRAIL: JSONL log of ALL tool invocations (not just decision traces). The missing pieces: (1) JSONL audit log writing from within agent activity (the append side), (2) clawhq audit --compliance exportable report aligned with OWASP GenAI Top 10. Verify whether trace.ts already appends to audit JSONL — if so, the writing side is done and only the compliance report remains. could priority — egress audit (FEAT-059 done) is the higher-stakes case; this adds completeness for compliance-conscious Fleet Operators."
+      "groomingNotes": "CLARIFICATION: Two separate things exist and both are incomplete for this item. (1) src/cli/trace.ts + src/internal/trace/ — implements 'why did you do that?' decision trace (FEAT covered in PRODUCT.md §7). This is the query/explain side — records DecisionEntry objects to decision-trace.json. NOT a general tool execution audit log. (2) This backlog item (FEAT-085) covers the SEPARATE tool execution audit trail: JSONL log of ALL tool invocations (tasks, calendar, email, etc.) not just decision traces. The writing side does NOT exist yet — no code appends tool invocations to audit.jsonl. Steps needed: (1) create src/audit/ module with types.ts (AuditEntry: timestamp, toolName, redactedInputs, summarizedOutput, sessionId), appender.ts (appendAuditEntry to ~/.clawhq/audit.jsonl), reader.ts (queryAuditLog with since/export filters); (2) hook appender into agent tool execution paths; (3) create src/cli/audit.ts with: audit show (paginated list), audit --since <date>, audit --export (write to file), audit --compliance (OWASP GenAI Top 10 report); (4) register audit command in index.ts. Note: this is could priority — egress audit (FEAT-059 done) covers the higher-stakes case. Only sprint when compliance reporting is a user request. Dependencies: requires hooking into tool execution paths which may need OpenClaw integration surface work."
     },
     {
       "id": "FEAT-086",
@@ -382,9 +382,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "PARTIAL IMPL EXISTS: tool.ts (148L) already committed with clawhq tool install/list/remove CLI skeleton. The full acceptance criteria — allowlist validation, Dockerfile patching, and Stage 2 rebuild triggering — needs completion. Sprint should complete these three missing pieces, not start from scratch. CAPABILITY EXPANSION BACKBONE: 'Gets more capable over time' is a core design principle. Without the Dockerfile patching + rebuild trigger, users are stuck with day-1 tools forever. dependsOn: build.ts/two-stage build infrastructure must be functional. Acceptance criteria unchanged: clawhq tool install pandoc patches Stage 2 Dockerfile and triggers rebuild; clawhq tool list shows installed tools with version+health; unlisted packages flagged not silently blocked; clawhq tool remove triggers rebuild and cleans up."
+      "groomingNotes": "PARTIAL IMPL EXISTS: tool.ts (148L) already committed with clawhq tool install/list/remove CLI skeleton. The full acceptance criteria — allowlist validation, Dockerfile patching, and Stage 2 rebuild triggering — needs completion. Sprint should complete these three missing pieces, not start from scratch. CAPABILITY EXPANSION BACKBONE: 'Gets more capable over time' is a core design principle. Without the Dockerfile patching + rebuild trigger, users are stuck with day-1 tools forever. dependsOn: build.ts/two-stage build infrastructure must be functional. Acceptance criteria unchanged: clawhq tool install pandoc patches Stage 2 Dockerfile and triggers rebuild; clawhq tool list shows installed tools with version+health; unlisted packages flagged not silently blocked; clawhq tool remove triggers rebuild and cleans up. READY TO SPRINT: partial impl de-risks this — it's a completion sprint, not a build sprint. Must ship before FEAT-086 (Template toolbelts)."
     },
     {
       "id": "FEAT-090",
@@ -410,9 +410,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "FINISHING EXISTING WORK — src/integrate/ module already committed with lifecycle.ts, providers.ts, types.ts implementing the provider abstraction. Sprint closes the loop: (1) verify src/integrate/ fully implements provider abstraction interface, (2) complete + commit integrate.ts CLI module (currently in-progress/untracked in CLI split work), (3) wire firewall allowlist update on integrate add/remove. The 'swap calendar --from A --to B' migration path is the highest-value differentiator — verify this is in lifecycle.ts. Do not restart from scratch — this sprint is a finish line, not a starting line. Acceptance criteria: clawhq integrate add calendar --provider caldav walks through setup and validates credential live; clawhq integrate swap category --from A --to B leaves agent behavior unchanged; clawhq integrate list shows health and last-used; removing an integration tightens egress firewall allowlist automatically."
+      "groomingNotes": "IMPLEMENTATION FURTHER ALONG THAN NOTES SUGGEST: src/integrate/ module is complete (lifecycle.ts, providers.ts, types.ts) AND src/cli/integrate.ts (401L) is already committed and registered in index.ts. The CLI implements: integrate add <category> (with provider selection, credential setup, firewall update), integrate remove <category>, integrate swap <category> <provider>, integrate list. Sprint should VERIFY + TEST not rebuild: (1) run npm test — verify integrate tests pass; (2) verify integrate add walks through credential validation live; (3) verify swap leaves agent behavior unchanged (same category interface); (4) verify integrate remove tightens egress firewall allowlist; (5) verify integrate list shows health and last-used; (6) check for any TODOs or stubs in lifecycle.ts/providers.ts that are not yet implemented; (7) run clawhq integrate list manually to verify the command works end-to-end. If all ACs pass on review, mark passes:true. If stubs are found, sprint to complete them. Acceptance criteria unchanged from original grooming."
     },
     {
       "id": "FEAT-092",
@@ -424,9 +424,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "PREVENTS AGENT DEATH — memory bloat is the #1 abandonment driver per PRODUCT.md. PHASE A (sprint immediately, no qdrant): file-based hot→warm→cold tier transitions, summarization, compression, PII masking, cron auto-promotion. PHASE B (after FEAT-090): add qdrant for semantic memory search. Do NOT block Phase A on Phase B — Phase A can ship as standalone sprint with full user value. Phase A acceptance criteria: agent running 90+ days stays under performance thresholds without manual intervention; clawhq memory status shows per-tier sizes; auto-transition via cron fires without user action; clawhq memory compact works on demand. Phase B adds: clawhq memory search <query> with vector search via qdrant."
+      "groomingNotes": "INTERNAL IMPL EXISTS: src/internal/memory/ module is complete with hot/warm/cold tier transitions (transitions.ts), store (store.ts), ingestion (ingestion.ts), reflection (reflection.ts) — all with tests. What is MISSING: the CLI wrapper. Sprint should create the CLI surface only: (1) create src/cli/memory.ts with createMemoryCommand(): Command; (2) memory status subcommand: calls collectMemoryHealth() from internal/memory/store.ts, displays hot/warm/cold tier sizes with entry counts and total bytes, shows growth rate if calculable; (3) memory compact subcommand: calls runAllTransitions() from internal/memory/transitions.ts with fallbackSummarize as the summarizer, reports how many entries were transitioned; (4) register memory command in src/cli/index.ts: import { createMemoryCommand } and program.addCommand(createMemoryCommand()); (5) verify no cron entry is needed (cron auto-compaction can be a follow-up). AC: clawhq memory status shows hot/warm/cold tier sizes; clawhq memory compact triggers transitions and reports count; tsc clean; no regression on existing commands. Note: Phase B (qdrant vector search for clawhq memory search) is a separate future sprint — do not include search in this sprint."
     },
     {
       "id": "FEAT-093",
