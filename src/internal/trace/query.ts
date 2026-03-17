@@ -33,7 +33,13 @@ export async function queryTrace(
   // Filter by criteria
   const entries = filterEntries(store, query);
 
-  return { entries, chain: [] };
+  // When keyword search returns exactly one result, build its chain
+  const chain =
+    query.keyword && entries.length === 1
+      ? buildChain(store, entries[0])
+      : [];
+
+  return { entries, chain };
 }
 
 /**
@@ -69,13 +75,30 @@ function buildChain(store: DecisionStore, entry: DecisionEntry): DecisionEntry[]
 }
 
 /**
- * Filter entries by action type and/or time range.
+ * Check whether an entry matches a keyword (case-insensitive).
+ * Searches summary, outcome, and factor content fields.
+ */
+function matchesKeyword(entry: DecisionEntry, keyword: string): boolean {
+  const lower = keyword.toLowerCase();
+  if (entry.summary.toLowerCase().includes(lower)) return true;
+  if (entry.outcome.toLowerCase().includes(lower)) return true;
+  if (entry.actionType.toLowerCase().includes(lower)) return true;
+  return entry.factors.some((f) => f.content.toLowerCase().includes(lower));
+}
+
+/**
+ * Filter entries by action type, keyword, and/or time range.
  */
 function filterEntries(store: DecisionStore, query: TraceQuery): DecisionEntry[] {
   let entries = store.entries;
 
   if (query.actionType) {
     entries = entries.filter((e) => e.actionType === query.actionType);
+  }
+
+  if (query.keyword) {
+    const kw = query.keyword;
+    entries = entries.filter((e) => matchesKeyword(e, kw));
   }
 
   if (query.since) {

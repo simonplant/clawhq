@@ -505,11 +505,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: src/cli/trace.ts and src/internal/trace/ already exist — this is just the user-facing CLI wiring. Sprint scope is minimal: (1) Inspect existing src/cli/trace.ts and src/internal/trace/ to understand what's already implemented — likely DecisionEntry type with timestamp, sessionId, category, reasoning, action fields stored in ~/.clawhq/decision-trace.json (JSONL); (2) Add 'trace list' subcommand: reads decision-trace.json, shows last 20 entries with timestamp, category, and truncated action summary — paginated with --limit flag; (3) Add 'trace why <session-id|keyword>' subcommand: queries decision-trace.json for entries matching session-id or keyword in reasoning/action fields, prints full DecisionEntry in human-readable format; (4) Ensure the command is registered in src/cli/index.ts — it may already be registered but with stub implementations; (5) Verify the writing side (appending DecisionEntry to the JSONL file) exists somewhere in the agent execution path — if not, add a note but do not scope the agent-side writing into this sprint. Acceptance criteria: clawhq trace list shows at least the last 20 decision entries; clawhq trace why <keyword> filters and shows matching entries; output is human-readable (not raw JSON unless --json flag); if trace log doesn't exist, show friendly 'no trace entries found' message; tsc clean."
+      "groomingNotes": "READY TO SPRINT: src/cli/trace.ts and src/internal/trace/ already exist — this is just the user-facing CLI wiring. Sprint scope is minimal: (1) Inspect existing src/cli/trace.ts and src/internal/trace/ to understand what's already implemented — likely DecisionEntry type with timestamp, sessionId, category, reasoning, action fields stored in ~/.clawhq/decision-trace.json (JSONL); (2) Add 'trace list' subcommand: reads decision-trace.json, shows last 20 entries with timestamp, category, and truncated action summary — paginated with --limit flag; (3) Add 'trace why <session-id|keyword>' subcommand: queries decision-trace.json for entries matching session-id or keyword in reasoning/action fields, prints full DecisionEntry in human-readable format; (4) Ensure the command is registered in src/cli/index.ts — it may already be registered but with stub implementations; (5) Verify the writing side (appending DecisionEntry to the JSONL file) exists somewhere in the agent execution path — if not, add a note but do not scope the agent-side writing into this sprint. Acceptance criteria: clawhq trace list shows at least the last 20 decision entries; clawhq trace why <keyword> filters and shows matching entries; output is human-readable (not raw JSON unless --json flag); if trace log doesn't exist, show friendly 'no trace entries found' message; tsc clean.",
+      "completedAt": "2026-03-17T12:06:26-07:00"
     }
   ],
   "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",

@@ -170,6 +170,69 @@ describe("queryTrace", () => {
     });
   });
 
+  describe("query by keyword", () => {
+    it("matches keyword in summary", async () => {
+      const result = await queryTrace(ctx, { keyword: "standup" });
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0].id).toBe("dec-003");
+    });
+
+    it("matches keyword in outcome", async () => {
+      const result = await queryTrace(ctx, { keyword: "drafted" });
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0].id).toBe("dec-004");
+    });
+
+    it("matches keyword in factor content", async () => {
+      const result = await queryTrace(ctx, { keyword: "VIP contacts" });
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0].id).toBe("dec-002");
+    });
+
+    it("matches keyword in actionType", async () => {
+      const result = await queryTrace(ctx, { keyword: "calendar" });
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0].id).toBe("dec-003");
+    });
+
+    it("is case-insensitive", async () => {
+      const result = await queryTrace(ctx, { keyword: "JOHN" });
+      expect(result.entries).toHaveLength(2);
+    });
+
+    it("returns empty for non-matching keyword", async () => {
+      const result = await queryTrace(ctx, { keyword: "nonexistent_xyz" });
+      expect(result.entries).toHaveLength(0);
+    });
+
+    it("builds chain when keyword matches exactly one entry", async () => {
+      const result = await queryTrace(ctx, { keyword: "standup" });
+      expect(result.entries).toHaveLength(1);
+      expect(result.chain).toHaveLength(1);
+      expect(result.chain[0].id).toBe("dec-003");
+    });
+
+    it("returns empty chain when keyword matches multiple entries", async () => {
+      const result = await queryTrace(ctx, { keyword: "email" });
+      expect(result.entries.length).toBeGreaterThan(1);
+      expect(result.chain).toHaveLength(0);
+    });
+
+    it("combines keyword with action type filter", async () => {
+      const result = await queryTrace(ctx, {
+        keyword: "John",
+        actionType: "email_reply",
+      });
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0].id).toBe("dec-004");
+    });
+
+    it("combines keyword with limit", async () => {
+      const result = await queryTrace(ctx, { keyword: "email", limit: 1 });
+      expect(result.entries).toHaveLength(1);
+    });
+  });
+
   describe("empty store", () => {
     it("returns empty results", async () => {
       await writeFile(

@@ -64,6 +64,8 @@ export interface TraceQuery {
   id?: string;
   /** Filter by action type. */
   actionType?: string;
+  /** Case-insensitive keyword search across summary, outcome, and factor content. */
+  keyword?: string;
   /** Return decisions after this ISO timestamp. */
   since?: string;
   /** Return decisions before this ISO timestamp. */
