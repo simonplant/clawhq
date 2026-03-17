@@ -5,7 +5,7 @@
 # Usage: .aishore/aishore <command> [options]
 #
 # Commands:
-#   run [count|ID]  Run sprints (default: 1) or specific item by ID
+#   run [count|ID]  Run sprints (default: 1, feature branches, auto-commit)
 #   groom           Groom bugs/tech debt (Tech Lead)
 #   groom --backlog Groom features (Product Owner)
 #   review          Architecture review
@@ -19,7 +19,15 @@ set -euo pipefail
 
 AISHORE_TMPDIR=""
 AISHORE_DID_STASH=""
+AISHORE_BASE_BRANCH=""
+AISHORE_FEATURE_BRANCH=""
 cleanup_exit() {
+    # Clean up feature branch on unexpected exit
+    if [[ -n "$AISHORE_FEATURE_BRANCH" && -n "$AISHORE_BASE_BRANCH" ]]; then
+        git checkout "$AISHORE_BASE_BRANCH" >/dev/null 2>&1 || true
+        git branch -D "$AISHORE_FEATURE_BRANCH" >/dev/null 2>&1 || true
+        AISHORE_FEATURE_BRANCH=""
+    fi
     # Restore stashed changes on unexpected exit
     if [[ "$AISHORE_DID_STASH" == "true" ]]; then
         git stash pop >/dev/null 2>&1 || true
@@ -217,10 +225,10 @@ This project uses [aishore](https://github.com/simonweniger/aishore) for AI-assi
 ### Commands
 
 ```bash
-# Sprints
+# Sprints (each item gets a feature branch, committed, merged, pushed)
 .aishore/aishore run [count]        # Run N sprints (default: 1)
 .aishore/aishore run FEAT-001       # Run specific item by ID
-.aishore/aishore run --auto-commit  # Auto-commit after each sprint
+.aishore/aishore run --no-merge     # Keep branches for PR review
 
 # Grooming
 .aishore/aishore groom              # Tech lead: groom bugs
@@ -825,17 +833,27 @@ check_result() {
     fi
 
     local status
-    status=$(jq -r '.status // "unknown"' "$STATUS_DIR/result.json" 2>/dev/null)
+    # Support both simple format {"status":"pass"} and detailed format {"overall":"PASS"}
+    status=$(jq -r '.status // .overall // "unknown"' "$STATUS_DIR/result.json" 2>/dev/null)
+    # Normalize to lowercase so PASS/pass both match
+    status=$(echo "$status" | tr '[:upper:]' '[:lower:]')
 
     if [[ "$status" == "pass" ]]; then
         local summary
-        summary=$(jq -r '.summary // "completed"' "$STATUS_DIR/result.json")
+        summary=$(jq -r '.summary // .checks // "completed"' "$STATUS_DIR/result.json")
         log_success "$summary"
         return 0
     else
         local reason
         reason=$(jq -r '.reason // "unknown error"' "$STATUS_DIR/result.json")
-        log_error "$reason"
+        if [[ "$reason" == "unknown error" ]]; then
+            # Include actual file contents to aid debugging
+            local raw_content
+            raw_content=$(cat "$STATUS_DIR/result.json" 2>/dev/null || echo "(unreadable)")
+            log_error "Unexpected result format: $raw_content"
+        else
+            log_error "$reason"
+        fi
         return 1
     fi
 }
@@ -844,10 +862,56 @@ check_result() {
 # FAILURE RECOVERY
 # ============================================================================
 
+save_backlog_snapshot() {
+    local snapshot_dir="$STATUS_DIR/backlog-snapshot"
+    mkdir -p "$snapshot_dir"
+    for f in "backlog.json" "bugs.json"; do
+        [[ -f "$BACKLOG_DIR/$f" ]] && cp "$BACKLOG_DIR/$f" "$snapshot_dir/$f" || true
+    done
+}
+
+restore_backlog_snapshot() {
+    local snapshot_dir="$STATUS_DIR/backlog-snapshot"
+    for f in "backlog.json" "bugs.json"; do
+        [[ -f "$snapshot_dir/$f" ]] && cp "$snapshot_dir/$f" "$BACKLOG_DIR/$f" || true
+    done
+}
+
+mark_item_failed() {
+    local item_id="$1"
+    local reason="$2"
+    local source="$3"
+    [[ -z "$source" ]] && return 0
+    local now
+    now=$(date -Iseconds)
+    update_item "$source" "$item_id" \
+        '| . + {lastFailReason: $reason, lastFailAt: $ts, failCount: ((.failCount // 0) + 1)}' \
+        --arg reason "$reason" --arg ts "$now" 2>/dev/null || true
+}
+
 handle_sprint_failure() {
     log_warning "Resetting working tree after sprint failure"
-    git checkout -- . 2>/dev/null || true
-    git clean -fd 2>/dev/null || true
+    # If on a feature branch, switch back to base and delete the branch
+    # (base branch still has backlog state from earlier successful sprints)
+    if [[ -n "$AISHORE_FEATURE_BRANCH" && -n "$AISHORE_BASE_BRANCH" ]]; then
+        local fb="$AISHORE_FEATURE_BRANCH"
+        AISHORE_FEATURE_BRANCH=""
+        git checkout "$AISHORE_BASE_BRANCH" 2>/dev/null || true
+        git branch -D "$fb" 2>/dev/null || true
+    else
+        # Fallback for non-branching context
+        local snapshot_dir="$STATUS_DIR/backlog-snapshot"
+        local has_snapshot=false
+        [[ -d "$snapshot_dir" ]] && has_snapshot=true
+
+        git reset HEAD -- . 2>/dev/null || true
+        git checkout -- . 2>/dev/null || true
+        git clean -fd -e '.aishore' 2>/dev/null || true
+
+        if [[ "$has_snapshot" == true ]]; then
+            restore_backlog_snapshot
+        fi
+    fi
     reset_sprint
 }
 
@@ -913,15 +977,15 @@ cmd_run() {
     require_tool git
 
     local count=1
-    local auto_commit=false
     local dry_run=false
     local specific_id=""
     local retries=0
+    local no_merge=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dry-run) dry_run=true; shift ;;
-            --auto-commit) auto_commit=true; shift ;;
+            --no-merge) no_merge=true; shift ;;
             --retries)
                 shift
                 if [[ $# -eq 0 || ! "$1" =~ ^[0-9]+$ ]]; then
@@ -942,11 +1006,6 @@ cmd_run() {
         esac
     done
 
-    # --dry-run and --auto-commit are mutually exclusive
-    if [[ "$dry_run" == "true" && "$auto_commit" == "true" ]]; then
-        log_error "--dry-run and --auto-commit cannot be used together"
-        return 1
-    fi
 
     # Dry-run mode: show what would happen without modifying anything
     if [[ "$dry_run" == "true" ]]; then
@@ -1019,9 +1078,15 @@ cmd_run() {
     else
         echo "Sprints: $count"
     fi
-    [[ "$auto_commit" == "true" ]] && echo "Auto-commit: enabled"
+    echo "Branching: feature branches (agent commits)"
+    [[ "$no_merge" == "true" ]] && echo "Merge: disabled (branches kept for review)"
     [[ "$retries" -gt 0 ]] && echo "Retries: $retries"
     echo ""
+
+    # Save base branch for feature branching
+    local base_branch
+    base_branch=$(git rev-parse --abbrev-ref HEAD)
+    AISHORE_BASE_BRANCH="$base_branch"
 
     local passed=0 failed=0
     declare -A FAILED_IDS
@@ -1058,6 +1123,21 @@ cmd_run() {
 
         create_sprint "$item_json" "$item_source"
 
+        # Snapshot backlog before developer runs (safety net for non-branching fallback)
+        save_backlog_snapshot
+
+        # Create feature branch for this sprint item
+        local branch_name="aishore/${ITEM_ID}"
+        # Sanitize branch name (replace spaces/special chars)
+        branch_name=$(echo "$branch_name" | sed 's/[^a-zA-Z0-9/_-]/-/g')
+        log_info "Creating branch: $branch_name"
+        git checkout -b "$branch_name" 2>/dev/null || {
+            # Branch might already exist from a previous failed run
+            git branch -D "$branch_name" 2>/dev/null || true
+            git checkout -b "$branch_name"
+        }
+        AISHORE_FEATURE_BRANCH="$branch_name"
+
         # Run developer and validation with retry loop
         local attempt=0
         local sprint_passed=false
@@ -1075,7 +1155,7 @@ cmd_run() {
                 if [[ $attempt -lt $retries ]]; then
                     local fail_reason=""
                     if [[ -f "$STATUS_DIR/result.json" ]]; then
-                        fail_reason=$(jq -r '.reason // "unknown error"' "$STATUS_DIR/result.json" 2>/dev/null)
+                        fail_reason=$(jq -r '.reason // .summary // "unknown error"' "$STATUS_DIR/result.json" 2>/dev/null)
                     fi
                     retry_extra_prompt="Previous attempt failed during implementation. Failure reason: ${fail_reason}. Fix the issues and ensure all acceptance criteria pass."
                     log_info "Will retry with failure context"
@@ -1083,6 +1163,7 @@ cmd_run() {
                 fi
                 failed=$((failed + 1))
                 FAILED_IDS["$ITEM_ID"]="Implementation failed"
+                mark_item_failed "$ITEM_ID" "Implementation failed" "$item_source"
                 sprint_results+=("fail")
                 sprint_items+=("$ITEM_ID")
                 sprint_times+=("$(( $(date +%s) - sprint_start ))")
@@ -1128,6 +1209,7 @@ Fix the issues and ensure all acceptance criteria pass."
                 fi
                 failed=$((failed + 1))
                 FAILED_IDS["$ITEM_ID"]="Validation failed"
+                mark_item_failed "$ITEM_ID" "Validation command failed" "$item_source"
                 sprint_results+=("fail")
                 sprint_items+=("$ITEM_ID")
                 sprint_times+=("$(( $(date +%s) - sprint_start ))")
@@ -1143,7 +1225,7 @@ Fix the issues and ensure all acceptance criteria pass."
                 if [[ $attempt -lt $retries ]]; then
                     local agent_fail_reason=""
                     if [[ -f "$STATUS_DIR/result.json" ]]; then
-                        agent_fail_reason=$(jq -r '.reason // "unknown error"' "$STATUS_DIR/result.json" 2>/dev/null)
+                        agent_fail_reason=$(jq -r '.reason // .summary // "unknown error"' "$STATUS_DIR/result.json" 2>/dev/null)
                     fi
                     retry_extra_prompt="Previous attempt failed validator agent review. Failure reason: ${agent_fail_reason}."
                     if [[ -n "$validate_output" ]]; then
@@ -1155,6 +1237,7 @@ Fix the issues and ensure all acceptance criteria pass."
                 fi
                 failed=$((failed + 1))
                 FAILED_IDS["$ITEM_ID"]="Validator failed"
+                mark_item_failed "$ITEM_ID" "Validator agent rejected implementation" "$item_source"
                 sprint_results+=("fail")
                 sprint_items+=("$ITEM_ID")
                 sprint_times+=("$(( $(date +%s) - sprint_start ))")
@@ -1192,22 +1275,49 @@ Fix the issues and ensure all acceptance criteria pass."
             continue
         fi
 
-        # Handle commits
-        if [[ "$auto_commit" == "true" ]]; then
-            git add -A && git diff --cached --quiet || \
-                git commit -m "feat($ITEM_ID): implement sprint item
+        # Ensure agent's work is committed (safety net if agent missed it)
+        if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null || [[ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ]]; then
+            log_warning "Agent left uncommitted changes — committing"
+            git add -A
+            git commit -m "feat($ITEM_ID): implement sprint item
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
-        elif [[ $count -eq 1 ]]; then
-            echo ""
-            git status --short
-            read -r -p "Commit? [y/N] " c
-            if [[ $c == [yY] ]]; then
-                git add -A && git commit -m "feat($ITEM_ID): implement sprint item
+        fi
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
+        # Merge feature branch back to base, push, and pull before next item
+        if [[ "$no_merge" == "true" ]]; then
+            log_info "Branch $AISHORE_FEATURE_BRANCH kept for review"
+            # Push the feature branch so it's available for PRs
+            if git remote get-url origin &>/dev/null; then
+                git push -u origin "$AISHORE_FEATURE_BRANCH" 2>/dev/null || \
+                    log_warning "Failed to push $AISHORE_FEATURE_BRANCH — push manually"
+            fi
+            git checkout "$base_branch"
+        else
+            log_info "Merging $AISHORE_FEATURE_BRANCH → $base_branch"
+            git checkout "$base_branch"
+            if git merge --no-ff "$AISHORE_FEATURE_BRANCH" -m "merge: $ITEM_ID sprint branch
+
+Co-Authored-By: Claude <noreply@anthropic.com>"; then
+                git branch -d "$AISHORE_FEATURE_BRANCH" 2>/dev/null || true
+                log_success "Merged and cleaned up $AISHORE_FEATURE_BRANCH"
+            else
+                log_error "Merge conflict on $AISHORE_FEATURE_BRANCH — resolve manually"
+                # Leave both branches intact for manual resolution
+                AISHORE_FEATURE_BRANCH=""
+                break
+            fi
+
+            # Push merged base branch and pull latest before next sprint
+            if git remote get-url origin &>/dev/null; then
+                log_info "Syncing with remote"
+                git push origin "$base_branch" 2>/dev/null || \
+                    log_warning "Failed to push — continuing offline"
+                git pull --rebase origin "$base_branch" 2>/dev/null || \
+                    log_warning "Failed to pull — continuing with local state"
             fi
         fi
+        AISHORE_FEATURE_BRANCH=""
     done
 
     # Print batch summary for multi-sprint runs
@@ -2527,10 +2637,10 @@ Commands:
   backlog rm <ID>   Remove an item (with confirmation)
     --force         Skip confirmation
 
-  run [count]       Run N sprints (default: 1)
+  run [count]       Run N sprints (default: 1, feature branches, push/pull)
   run <ID>          Run specific item by ID (e.g., TEST-006)
     --dry-run       Preview what would happen without running agents
-    --auto-commit   Automatically commit after each sprint
+    --no-merge      Keep feature branches for PR review (push, don't merge)
     --retries N     Allow up to N retry attempts on validation failure
 
   groom             Groom bugs/tech debt (Tech Lead mode)
@@ -2560,12 +2670,12 @@ Commands:
   help              Show this help
 
 Examples:
-  .aishore/aishore run              # Run 1 sprint (auto-pick)
-  .aishore/aishore run 5            # Run 5 sprints
+  .aishore/aishore run              # Run 1 sprint (branch, commit, merge, push)
+  .aishore/aishore run 5            # Run 5 sprints (each on its own branch)
   .aishore/aishore run TEST-006     # Run specific item
   .aishore/aishore run --dry-run        # Preview without running
   .aishore/aishore run --dry-run FEAT-002  # Preview specific item
-  .aishore/aishore run --auto-commit 3
+  .aishore/aishore run --no-merge 3     # Keep branches for PR review
   .aishore/aishore run --retries 2    # Allow 2 retries on failure
   .aishore/aishore groom
   .aishore/aishore update --dry-run

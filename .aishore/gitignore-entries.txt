@@ -3,3 +3,4 @@
 .aishore/data/status/result.json
 .aishore/data/status/.item_source
 .aishore/data/status/.aishore.lock
+.aishore/data/status/backlog-snapshot/

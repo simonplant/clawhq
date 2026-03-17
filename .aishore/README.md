@@ -94,15 +94,17 @@ Multiple flags can be combined in a single edit command.
 ## Sprint Execution
 
 ```bash
-.aishore/aishore run                # Run 1 sprint (auto-picks highest priority ready item)
-.aishore/aishore run 5              # Run 5 sprints
+.aishore/aishore run                # Run 1 sprint (branch, commit, merge, push)
+.aishore/aishore run 5              # Run 5 sprints (each on its own branch)
 .aishore/aishore run FEAT-001       # Run specific item
 .aishore/aishore run --dry-run      # Preview what would run without executing
-.aishore/aishore run --auto-commit  # Auto-commit after each sprint
+.aishore/aishore run --no-merge 3   # Keep feature branches for PR review
 .aishore/aishore run --retries 2    # Allow 2 retries on validation failure
 ```
 
-**Flow:** Pick Item → Developer Agent → Validation Command → Validator Agent → Archive
+**Flow:** Pick Item → Create Branch (`aishore/<ID>`) → Developer Agent (commits) → Validation Command → Validator Agent → Merge → Push → Archive
+
+Each sprint item runs on its own feature branch. The developer agent commits directly. On success, the branch is merged back with `--no-ff`, pushed, and latest is pulled before the next item. Use `--no-merge` to keep branches for PR review instead.
 
 Items must have `readyForSprint: true` to be auto-picked. Use `groom` or `backlog edit <ID> --ready` to mark items ready.
 
@@ -128,6 +130,8 @@ Grooming agents review items, add implementation steps and acceptance criteria, 
 .aishore/aishore clean --dry-run               # Show what would be removed
 .aishore/aishore update                        # Update from upstream (checksum-verified)
 .aishore/aishore update --dry-run              # Check for updates without applying
+.aishore/aishore update --force                # Update even if already on latest
+.aishore/aishore update --force --no-verify    # Skip checksum verification
 .aishore/aishore checksums                     # Regenerate checksums after editing .aishore/ files
 .aishore/aishore help                          # Full command reference
 ```
@@ -193,6 +197,8 @@ Edit `.aishore/config.yaml` to override defaults, or use environment variables:
 ## Updating
 
 ```bash
-.aishore/aishore update --dry-run   # Check for updates
 .aishore/aishore update             # Checksum-verified update
+.aishore/aishore update --dry-run   # Check for updates without applying
+.aishore/aishore update --force     # Update even if already on latest version
+.aishore/aishore update --force --no-verify  # Skip checksum verification
 ```

@@ -14,7 +14,7 @@ You implement features from the sprint backlog.
 3. **Implement** - write clean code following existing conventions
 4. **Test** - add tests, ensure existing tests pass
 5. **Validate** - run the project's validation command
-6. **Stage** - run `git add -A`
+6. **Commit** - run `git add -A && git commit` with a conventional commit message (e.g., `feat(ITEM-ID): short description`)
 
 ## Rules
 
@@ -22,7 +22,7 @@ You implement features from the sprint backlog.
 - Follow acceptance criteria exactly
 - Match existing code style
 - NO over-engineering
-- DO NOT commit (only stage)
+- ALWAYS commit your work with a meaningful message before signaling completion
 
 ## Output
 
