@@ -95,11 +95,12 @@
       "category": "Phase 1: CLI UX",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Fleet provisioning feature — extends existing init command. Steps: (1) add --non-interactive flag to 'clawhq init' command in src/cli/index.ts; (2) add --name <name> flag to init command; (3) add --template <id> flag to init command (may already exist); (4) when --non-interactive is set, skip runWizard() and call generateBundle() directly with template defaults + provided overrides; (5) print single-line success/failure to stdout (no spinners or prompts in non-interactive mode); (6) exit 0 on success, non-zero on failure. Acceptance criteria: clawhq init --template personal-assistant --name agent-2 --non-interactive produces same output as guided wizard with template defaults without prompting; works correctly in a shell loop provisioning multiple agents; exits 0 on success; exits non-zero with error message (not stack trace) on failure; does not print interactive prompts."
+      "groomingNotes": "Fleet provisioning feature — extends existing init command. Steps: (1) add --non-interactive flag to 'clawhq init' command in src/cli/index.ts; (2) add --name <name> flag to init command; (3) add --template <id> flag to init command (may already exist); (4) when --non-interactive is set, skip runWizard() and call generateBundle() directly with template defaults + provided overrides; (5) print single-line success/failure to stdout (no spinners or prompts in non-interactive mode); (6) exit 0 on success, non-zero on failure. Acceptance criteria: clawhq init --template personal-assistant --name agent-2 --non-interactive produces same output as guided wizard with template defaults without prompting; works correctly in a shell loop provisioning multiple agents; exits 0 on success; exits non-zero with error message (not stack trace) on failure; does not print interactive prompts.",
+      "completedAt": "2026-03-16T19:34:09-07:00"
     },
     {
       "id": "FEAT-067",
