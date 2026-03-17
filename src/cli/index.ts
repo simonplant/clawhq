@@ -6,7 +6,6 @@ import { Command } from "commander";
 
 import { createAgentCommand } from "./agent.js";
 import { createAlertsCommand } from "./alerts.js";
-import { handleCliError } from "./errors.js";
 import { createBackupCommands } from "./backup.js";
 import { createBuildCommand } from "./build.js";
 import { createConnectCommand } from "./connect.js";
@@ -14,6 +13,7 @@ import { createDashboardCommand } from "./dashboard.js";
 import { createDecommissionCommands } from "./decommission.js";
 import { createDeployCommands } from "./deploy.js";
 import { createDigestApprovalCommands } from "./digest-approval.js";
+import { handleCliError } from "./errors.js";
 import { createEvolveCommand } from "./evolve.js";
 import { checkFirstRun } from "./first-run.js";
 import { createFleetCommand } from "./fleet.js";
