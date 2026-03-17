@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import { Hono } from "hono";
 
+import { renderDeployPage } from "../ui/pages/deploy.js";
 import { renderDoctorPage } from "../ui/pages/doctor.js";
 import { renderHomePage } from "../ui/pages/home.js";
 import { renderLogsPage } from "../ui/pages/logs.js";
@@ -59,6 +60,10 @@ export function createApp(config: ServerConfig): Hono<ServerEnv> {
   // --- Pages ---
   app.get("/", (c) => {
     return c.html(renderHomePage());
+  });
+
+  app.get("/deploy", (c) => {
+    return c.html(renderDeployPage());
   });
 
   app.get("/doctor", (c) => {

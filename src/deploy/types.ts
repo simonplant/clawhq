@@ -42,6 +42,8 @@ export interface DeployOptions {
   secretsTmpfsPath?: string;
   /** AbortSignal for cancellation. */
   signal?: AbortSignal;
+  /** Optional callback invoked as each deploy step progresses. */
+  onStep?: (stepName: string, status: "running" | "done" | "failed") => void;
 }
 
 export type StepStatus = "running" | "done" | "failed" | "skipped";

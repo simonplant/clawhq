@@ -29,17 +29,22 @@ import type {
 async function timedStep(
   name: string,
   fn: () => Promise<{ passed: boolean; message: string }>,
+  onStep?: (stepName: string, status: "running" | "done" | "failed") => void,
 ): Promise<StepResult> {
   const start = Date.now();
+  onStep?.(name, "running");
   try {
     const { passed, message } = await fn();
+    const status = passed ? "done" : "failed";
+    onStep?.(name, status);
     return {
       name,
-      status: passed ? "done" : "failed",
+      status,
       message,
       durationMs: Date.now() - start,
     };
   } catch (err: unknown) {
+    onStep?.(name, "failed");
     return {
       name,
       status: "failed",
@@ -57,12 +62,16 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
   const healthTimeoutMs = opts.healthTimeoutMs ?? 60_000;
   const gatewayHost = opts.gatewayHost ?? "127.0.0.1";
   const gatewayPort = opts.gatewayPort ?? 18789;
+  const { onStep } = opts;
 
   // Step 1: Pre-flight checks
+  onStep?.("Pre-flight checks", "running");
   const preflight = await runPreflight(opts);
+  const preflightStatus = preflight.passed ? "done" as const : "failed" as const;
+  onStep?.("Pre-flight checks", preflightStatus);
   steps.push({
     name: "Pre-flight checks",
-    status: preflight.passed ? "done" : "failed",
+    status: preflightStatus,
     message: preflight.passed
       ? `All ${preflight.steps.length} checks passed`
       : `${preflight.steps.filter((s) => s.status === "failed").length} check(s) failed`,
@@ -84,7 +93,7 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
       await mkdir(dirname(tmpfsPath), { recursive: true, mode: 0o700 });
       await decryptForDeploy(encPath, tmpfsPath, opts.encryptedEnvPassphrase as string);
       return { passed: true, message: `Secrets decrypted to ${tmpfsPath} (tmpfs — never written to persistent disk)` };
-    });
+    }, onStep);
     steps.push(decryptStep);
 
     if (decryptStep.status === "failed") {
@@ -100,7 +109,7 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
   const composeStep = await timedStep("Compose up", async () => {
     await composeClient.up({ detach: true, signal: opts.signal });
     return { passed: true, message: "Containers started" };
-  });
+  }, onStep);
   steps.push(composeStep);
 
   if (composeStep.status === "failed") {
@@ -119,7 +128,7 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
       return { passed: false, message: `Firewall failed: ${result.message}. Fix: Ensure iptables is available (sudo required)` };
     }
     return { passed: true, message: result.message };
-  });
+  }, onStep);
   steps.push(firewallStep);
 
   // Firewall failure is not fatal — warn but continue
@@ -164,7 +173,7 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
       }
       throw err;
     }
-  });
+  }, onStep);
   steps.push(healthStep);
 
   // Get container ID on success
@@ -222,7 +231,7 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
         .map((c) => `${c.name}: ${c.status}`)
         .join(", ");
       return { passed: true, message: summary };
-    });
+    }, onStep);
     steps.push(smokeStep);
   }
 
@@ -234,6 +243,7 @@ export async function deployUp(opts: DeployOptions = {}): Promise<DeployResult> 
 
 export async function deployDown(opts: DeployOptions = {}): Promise<ShutdownResult> {
   const steps: StepResult[] = [];
+  const { onStep } = opts;
   const composeClient = opts.composePath
     ? new DockerClient({ cwd: opts.composePath.replace(/\/[^/]+$/, "") })
     : new DockerClient();
@@ -242,7 +252,7 @@ export async function deployDown(opts: DeployOptions = {}): Promise<ShutdownResu
   steps.push(await timedStep("Compose down", async () => {
     await composeClient.down({ signal: opts.signal });
     return { passed: true, message: "Containers stopped gracefully" };
-  }));
+  }, onStep));
 
   const success = steps.every((s) => s.status === "done");
   return { success, steps };
@@ -255,6 +265,7 @@ export async function deployRestart(opts: DeployOptions = {}): Promise<RestartRe
   const healthTimeoutMs = opts.healthTimeoutMs ?? 60_000;
   const gatewayHost = opts.gatewayHost ?? "127.0.0.1";
   const gatewayPort = opts.gatewayPort ?? 18789;
+  const { onStep } = opts;
 
   const composeClient = opts.composePath
     ? new DockerClient({ cwd: opts.composePath.replace(/\/[^/]+$/, "") })
@@ -264,7 +275,7 @@ export async function deployRestart(opts: DeployOptions = {}): Promise<RestartRe
   steps.push(await timedStep("Compose down", async () => {
     await composeClient.down({ signal: opts.signal });
     return { passed: true, message: "Containers stopped" };
-  }));
+  }, onStep));
 
   if (steps[steps.length - 1].status === "failed") {
     return { success: false, steps };
@@ -274,7 +285,7 @@ export async function deployRestart(opts: DeployOptions = {}): Promise<RestartRe
   steps.push(await timedStep("Compose up", async () => {
     await composeClient.up({ detach: true, signal: opts.signal });
     return { passed: true, message: "Containers restarted" };
-  }));
+  }, onStep));
 
   if (steps[steps.length - 1].status === "failed") {
     return { success: false, steps };
@@ -292,7 +303,7 @@ export async function deployRestart(opts: DeployOptions = {}): Promise<RestartRe
       return { passed: false, message: `Firewall failed: ${result.message}. Fix: Ensure iptables is available (sudo required)` };
     }
     return { passed: true, message: result.message };
-  });
+  }, onStep);
   steps.push(firewallStep);
 
   // Step 4: Health re-verify
@@ -315,7 +326,7 @@ export async function deployRestart(opts: DeployOptions = {}): Promise<RestartRe
       }
       throw err;
     }
-  }));
+  }, onStep));
 
   // Get container ID
   try {
