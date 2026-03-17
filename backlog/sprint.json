@@ -1,17 +1,13 @@
 {
-  "sprintId": "sprint-1773725016",
-  "startedAt": "2026-03-16T22:23:36-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773766215",
+  "startedAt": "2026-03-17T09:50:15-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-082",
-    "title": "CLI monolith split (deferred)",
+    "id": "FEAT-063",
+    "title": "Friendly error handler (src/cli/errors.ts)",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T22:23:36-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-16T22:25:27-07:00"
-  },
-  "completedAt": "2026-03-16T22:25:27-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-17T09:50:15-07:00"
+  }
 }

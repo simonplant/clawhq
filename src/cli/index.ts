@@ -6,6 +6,7 @@ import { Command } from "commander";
 
 import { createAgentCommand } from "./agent.js";
 import { createAlertsCommand } from "./alerts.js";
+import { handleCliError } from "./errors.js";
 import { createBackupCommands } from "./backup.js";
 import { createBuildCommand } from "./build.js";
 import { createConnectCommand } from "./connect.js";
@@ -103,8 +104,11 @@ program.addCommand(createTraceCommand());
 
 checkFirstRun(program);
 
-program.parse();
-
 if (!process.argv.slice(2).length) {
   program.outputHelp();
+} else {
+  program.parseAsync(process.argv).catch((err: unknown) => {
+    handleCliError(err);
+    process.exit(1);
+  });
 }

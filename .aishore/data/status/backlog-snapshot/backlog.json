@@ -58,7 +58,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-060 (formatError) done. Create src/cli/errors.ts wrapping program.parseAsync() in try/catch. Steps: (1) create src/cli/errors.ts; (2) export handleError(err: unknown) mapping error types to formatError() calls; (3) handle 6 error types: Docker not installed (ENOENT on docker), daemon not running (connection refused), no config found (missing openclaw.json), port in use (EADDRINUSE), build fails no Dockerfile, permission denied on .env; (4) wrap program.parseAsync() call in src/cli/index.ts; (5) each error type has code, message, hint fields. AC: each of 6 error types shows styled output not stack trace; unknown errors show generic formatted message; tsc clean; no regression on existing commands.",
+      "groomingNotes": "RETRY GUIDANCE (failCount: 2): Previous failures likely due to overly complex error mapping or TypeScript issues. Keep it simple.\n\nIMPLEMENTATION APPROACH — minimal surface area:\n\n(1) Create src/cli/errors.ts with a single exported function:\n```typescript\nimport { formatError } from './ui.js';\n\nexport function handleCliError(err: unknown): void {\n  const message = err instanceof Error ? err.message : String(err);\n  const stack = err instanceof Error ? err.stack ?? '' : '';\n\n  if (message.includes('ENOENT') && (message.includes('docker') || stack.includes('docker'))) {\n    formatError('DOCKER_NOT_FOUND', 'Docker is not installed or not in PATH', 'Install Docker Desktop from docker.com and ensure it is running');\n  } else if (message.includes('ECONNREFUSED') || message.includes('Cannot connect to Docker')) {\n    formatError('DOCKER_NOT_RUNNING', 'Docker daemon is not running', 'Start Docker Desktop or run: sudo systemctl start docker');\n  } else if (message.includes('openclaw.json') && (message.includes('ENOENT') || message.includes('not found'))) {\n    formatError('NO_CONFIG', 'No agent config found', 'Run: clawhq init to set up your agent');\n  } else if (message.includes('EADDRINUSE')) {\n    formatError('PORT_IN_USE', 'Port is already in use', 'Check what is using the port: lsof -i :<port>');\n  } else if (message.includes('Dockerfile') && (message.includes('not found') || message.includes('ENOENT'))) {\n    formatError('NO_DOCKERFILE', 'Dockerfile not found — run clawhq build first', 'Run: clawhq build to generate the Dockerfile');\n  } else if (message.includes('EACCES') && message.includes('.env')) {\n    formatError('PERMISSION_DENIED', 'Permission denied reading .env file', 'Fix permissions: chmod 600 .env');\n  } else {\n    formatError('UNKNOWN_ERROR', message || 'An unexpected error occurred', 'Run with DEBUG=1 for full details');\n  }\n}\n```\n\n(2) In src/cli/index.ts, wrap the program.parseAsync() call:\n```typescript\nimport { handleCliError } from './errors.js';\n\nprogram.parseAsync(process.argv).catch((err) => {\n  handleCliError(err);\n  process.exit(1);\n});\n```\n\nVALIDATOR ACs (all locally checkable):\n- src/cli/errors.ts exists and exports handleCliError(err: unknown): void\n- handleCliError covers exactly 6 error cases: DOCKER_NOT_FOUND, DOCKER_NOT_RUNNING, NO_CONFIG, PORT_IN_USE, NO_DOCKERFILE, PERMISSION_DENIED\n- Unknown errors show UNKNOWN_ERROR not a stack trace\n- program.parseAsync() in index.ts is wrapped in .catch(handleCliError)\n- tsc --noEmit passes clean\n- No regression: existing commands still work (test with clawhq --version)",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-16T21:53:12-07:00",
       "failCount": 2
@@ -151,9 +151,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Doctor is the hero feature — the visual interface makes it dramatically more accessible than the CLI for Privacy Migrants. Seeing all checks as a table with traffic-light icons and a single 'Fix All' button is the intended UX. Tier A: ship right after dashboard foundation."
+      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard server + layout) and FEAT-071 (API endpoints) are both done. Doctor page is the hero dashboard feature — the visual interface makes preventive diagnostics dramatically more accessible than the CLI for Privacy Migrants.\n\nSprint scope: (1) Create src/ui/pages/doctor.tsx — Hono JSX page component; (2) Page calls GET /api/v1/doctor and renders results as a table: check name, status icon (pass=green ✓, warn=yellow ⚠, fail=red ✗), message, fix hint; (3) 'Fix All' button triggers POST /api/v1/doctor/fix with htmx hx-post + hx-target to replace results table with fix output; (4) Register route in src/ui/app.ts as GET /doctor; (5) Add 'Doctor' link to sidebar nav in the appropriate lifecycle phase section; (6) Acceptance criteria: /doctor page renders check table from live runChecks() output; traffic-light icons for pass/warn/fail; Fix All button calls doctor/fix and updates page without full reload; uses established dashboard layout from FEAT-067; tsc clean."
     },
     {
       "id": "FEAT-073",
@@ -165,9 +165,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Live log streaming in browser eliminates 'I need terminal access' barrier for fleet operators managing remote deployments. Category filter prevents noise. Tier A: high diagnostic value for any user troubleshooting a misbehaving agent."
+      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with /ws/logs) are both done. Live log streaming eliminates the 'I need terminal access' barrier for fleet operators managing remote deployments.\n\nSprint scope: (1) Create src/ui/pages/logs.tsx — Hono JSX page component; (2) Client-side: WebSocket connection to /ws/logs using browser WebSocket API (vendored in static/); (3) UI: scrollable log pane with auto-scroll toggle, service filter dropdown (all/agent/gateway/cron), pause/resume button; (4) Log lines color-coded: errors in red, warnings in yellow; (5) Register route as GET /logs in app.ts; (6) Add 'Logs' link to sidebar nav under Operate section; (7) The /ws/logs WebSocket handler in src/ui/ws.ts pipes DockerClient.streamLogs() stdout to each connected socket — adapter is minimal (child process stdout → ws.send()); (8) Acceptance criteria: /logs page connects to WebSocket and streams live container logs; category filter works; pause/resume works; auto-scroll enabled by default, disables on manual scroll up; uses established dashboard layout; tsc clean."
     },
     {
       "id": "FEAT-074",
@@ -179,9 +179,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Deploy controls let Privacy Migrants manage their agent without remembering CLI flags. Up/down/restart with SSE progress streaming matches the quickstart experience (FEAT-062) but from the browser. Requires non-breaking callback addition to deploy.ts. Tier A."
+      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with SSE deploy endpoints) are both done. Deploy controls in the browser let Privacy Migrants manage their agent without remembering CLI flags.\n\nSprint scope: (1) Create src/ui/pages/deploy.tsx — Hono JSX page component; (2) Three action buttons: Up, Down, Restart — each with confirmation dialog (htmx hx-confirm); (3) Each button triggers SSE endpoint via htmx hx-get with hx-swap=innerHTML to a status pane that shows step-by-step progress from the SSE stream; (4) Status pane shows each deploy step as it completes: spinner → pass/fail icon; (5) Add optional onStep callback parameter to deployUp(), deployDown(), deployRestart() in src/deploy/deploy.ts — callback receives (stepName: string, status: 'running'|'done'|'failed') — fully backward compatible since callback is optional; (6) SSE endpoints /api/v1/deploy/up etc. call the deploy functions with onStep wired to sse.send(); (7) Register route as GET /deploy in app.ts; (8) Add 'Deploy' link to sidebar nav under Deploy section; (9) Acceptance criteria: Up/Down/Restart buttons work with confirmation; SSE progress streams step-by-step results; deploy.ts onStep callback is optional and backward compatible; existing CLI deploy commands unaffected; tsc clean."
     },
     {
       "id": "FEAT-075",
@@ -193,9 +193,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Approvals in the browser complete the approval loop for users who are already on the dashboard. Currently approvals come via messaging channel (FEAT-022) — the dashboard is a second approval surface, not a replacement. Tier A: high trust-building feature — users see what the agent wants to do before it acts."
+      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with /api/v1/approvals endpoints) are both done. Approval queue in the browser completes the trust loop — users see what the agent wants to do before it acts.\n\nSprint scope: (1) Create src/ui/pages/approvals.tsx — Hono JSX page component; (2) Page calls GET /api/v1/approvals and renders pending approvals as cards; (3) Each card shows: action description (plain language), timestamp queued, context/category, Approve and Reject buttons; (4) Approve button: htmx hx-post to /api/v1/approvals/:id/approve, updates card to 'Approved' state; (5) Reject button: htmx hx-post to /api/v1/approvals/:id/reject with optional reason input, updates card to 'Rejected' state; (6) Empty state: friendly 'No pending approvals — your agent is waiting for nothing' message; (7) Badge in sidebar nav showing pending count (pulled from GET /api/v1/approvals at page load, SSE updates every 5s); (8) Register route as GET /approvals in app.ts; (9) Add 'Approvals' link to sidebar nav under Operate section with count badge; (10) Acceptance criteria: approval cards render from live queue; approve/reject actions work and update card state without page reload; empty state renders correctly; sidebar badge shows pending count; tsc clean."
     },
     {
       "id": "FEAT-076",
@@ -284,7 +284,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Upgraded to should: Push notifications complete the autopilot experience. The approval queue (FEAT-022, done) already proves the messaging channel pattern — this extends it to system alerts (backup failed, credential expired, health degraded). Without this, the user must actively check the dashboard or run clawhq doctor to discover problems. Telegram integration is the primary channel (matches approval queue UX). Ship after dashboard is stable."
+      "groomingNotes": "SEQUENCING: Ship after dashboard Tier A pages (FEAT-072-075) are validated. Notifications complete the autopilot loop — the agent finds problems, the dashboard shows them, notifications push them to you without checking the dashboard.\n\nUNBLOCKING CONDITION: Dashboard Tier A pages must be validated with at least one real user before sprinting this. Without dashboard validation, we don't know which notification events matter most.\n\nWhen ready to sprint: (1) Create src/notifications/types.ts — NotificationChannel (webhook|telegram|slack|email), EventSubscription (alert.critical, alert.warning, approval.pending, health.degraded, health.recovered, update.available, backup.failed); (2) src/notifications/store.ts — read/write ~/.clawhq/notifications.json; (3) src/notifications/dispatcher.ts — dispatchEvent(event: EventSubscription, payload: object) iterates channels, filters by subscription, sends; (4) Webhook payloads signed with HMAC-SHA256 using channel-specific secret; (5) src/cli/notify.ts — commands: notify add (walk through channel type + URL/token + event subscriptions), notify list, notify remove <id>, notify test <id>; (6) Register notify command in src/cli/index.ts; (7) Hook dispatcher into: src/alerts/ (generateAlerts → dispatch alert events), src/approval/ (queueAction → dispatch approval.pending), src/status/ (health degraded/recovered), src/update/ (update.available); (8) Telegram is primary channel — matches approval queue UX from FEAT-022.\n\nAC: clawhq notify add walks through channel setup; notify list shows channels with subscriptions; notify test <id> sends a test event and confirms delivery; webhook payloads are HMAC-signed; at least 3 event types fire from real system events (alert, approval, health); tsc clean."
     },
     {
       "id": "FEAT-082",
@@ -294,11 +294,12 @@
       "category": "Phase 5: Refactor",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "DOWNGRADED must→could: This is internal refactor with zero user-visible value. The title explicitly says '(deferred)'. While code hygiene matters, user-facing items (dashboard, capability layer, memory lifecycle) are higher priority. The organic split is already partially in progress — additional modules (secrets.ts, tool.ts, trace.ts, fleet.ts, etc.) are already committed. Complete the split only when index.ts becomes a genuine maintenance blocker, not on a schedule. Sprint after all must/should user-value items are shipped."
+      "groomingNotes": "DOWNGRADED must→could: This is internal refactor with zero user-visible value. The title explicitly says '(deferred)'. While code hygiene matters, user-facing items (dashboard, capability layer, memory lifecycle) are higher priority. The organic split is already partially in progress — additional modules (secrets.ts, tool.ts, trace.ts, fleet.ts, etc.) are already committed. Complete the split only when index.ts becomes a genuine maintenance blocker, not on a schedule. Sprint after all must/should user-value items are shipped.",
+      "completedAt": "2026-03-16T22:25:27-07:00"
     },
     {
       "id": "FEAT-083",
@@ -352,9 +353,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "CORE PRODUCT PROMISE — blocks 'Replace my X' headline story. Templates are the 'Replace my X' story for Privacy Migrants. Without compelling preconfigured toolbelts, quickstart (FEAT-062) delivers a blank slate not a useful agent. The 6 archetypes (Assistant/Researcher/Coach/Analyst/Guardian/Companion) must map to real replacing decisions. DEPENDENCY: requires FEAT-089 (tool installation Dockerfile patching) to be complete first — a template that installs tools but can't wire them into the container is broken on arrival. Sprint path: FEAT-089 completion → FEAT-086. Acceptance criteria unchanged: clawhq quickstart --template personal-assistant produces an agent immediately useful for email/calendar/tasks with correct tools wired, security posture applied, and skills installed; clawhq template show <name> previews what gets installed before commitment."
+      "groomingNotes": "UNBLOCKED: FEAT-089 (tool installation framework) is now done — the missing prerequisite is complete. FEAT-086 is the core product promise: 'Replace my X' headline story. Without compelling preconfigured toolbelts, quickstart delivers a blank slate not a useful agent.\n\nThe 6 template archetypes map to real replacing decisions:\n- personal-assistant (email+calendar+tasks) → Replace Google Assistant / PA\n- researcher (web+notes+files) → Replace ChatGPT Plus / Perplexity\n- coach (messaging+health+goals) → Replace life coach apps\n- analyst (finance+data+reports) → Replace manual reporting workflows\n- guardian (security-focused minimal surface) → Privacy-first baseline\n- companion (messaging+memory-heavy) → Replace ChatGPT daily companion\n\nSprint scope: (1) Define TemplateToolbelt type (tools[], skills[], personality/role, securityPosture, integrations) in src/init/templates.ts; (2) Expand the 6 existing templates to include full toolbelt definitions (tools array with install instructions, skills to pre-install, security posture override); (3) Add 'clawhq template show <name>' subcommand that renders a preview: what gets installed, what the agent will handle, what data leaves the machine; (4) Wire toolbelt application into quickstart flow — when a template is selected, its tools and skills are applied; (5) Acceptance criteria: clawhq quickstart --template personal-assistant produces an agent immediately useful for email/calendar/tasks (correct tools wired, security posture applied, skills installed); clawhq template show <name> previews the full bundle before commitment; tsc clean."
     },
     {
       "id": "FEAT-087",
