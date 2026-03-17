@@ -16,6 +16,10 @@ import {
   overrideToYaml,
   type SecurityPosture,
 } from "../docker/hardening.js";
+import {
+  ensureCustomizationsBlock,
+  mergeCustomizations,
+} from "../identity/customizations.js";
 import { generateAgentsMd } from "../workspace/identity/agents.js";
 import { generateHeartbeatMd } from "../workspace/identity/heartbeat.js";
 import { generateIdentityMd } from "../workspace/identity/identity.js";
@@ -274,6 +278,7 @@ function generateIdentityFiles(
   answers: WizardAnswers,
   enabledTools: string[],
   cronJobs: CronJobDefinition[],
+  existingFiles?: Record<string, string>,
 ): Record<string, string> {
   const { basics, template } = answers;
   const files: Record<string, string> = {};
@@ -341,6 +346,21 @@ function generateIdentityFiles(
   // CHANNELS.md — template-driven channel documentation
   files["CHANNELS.md"] = generateChannelsMd(answers);
 
+  // Add customizations blocks to all generated files
+  for (const filename of Object.keys(files)) {
+    files[filename] = ensureCustomizationsBlock(files[filename]);
+  }
+
+  // Preserve existing customizations on re-generate
+  if (existingFiles) {
+    for (const [filename, newContent] of Object.entries(files)) {
+      const existing = existingFiles[filename];
+      if (existing) {
+        files[filename] = mergeCustomizations(newContent, existing);
+      }
+    }
+  }
+
   return files;
 }
 
@@ -385,7 +405,10 @@ function generateChannelsMd(answers: WizardAnswers): string {
 
 // --- Main generate function ---
 
-export function generate(answers: WizardAnswers): GeneratedConfig {
+export function generate(
+  answers: WizardAnswers,
+  existingIdentityFiles?: Record<string, string>,
+): GeneratedConfig {
   const openclawConfig = generateOpenClawConfig(answers);
   const envVars = generateEnvVars(answers);
   const dockerCompose = generateDockerCompose(answers);
@@ -415,7 +438,7 @@ export function generate(answers: WizardAnswers): GeneratedConfig {
     includeMarkets,
     toolbeltTools: toolbelt?.tools,
   });
-  const identityFiles = generateIdentityFiles(answers, enabledTools, cronJobs);
+  const identityFiles = generateIdentityFiles(answers, enabledTools, cronJobs, existingIdentityFiles);
 
   // Generate skills
   const skills = generateSkills(answers.template.skillsIncluded);
