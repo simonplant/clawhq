@@ -6,3 +6,4 @@
 
 export { Layout } from "./components/layout.js";
 export { renderHomePage } from "./pages/home.js";
+export { renderDoctorPage } from "./pages/doctor.js";
