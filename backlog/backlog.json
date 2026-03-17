@@ -60,8 +60,8 @@
       "groomedAt": "2026-03-16",
       "groomingNotes": "UNBLOCKED: FEAT-060 (formatError) done. Create src/cli/errors.ts wrapping program.parseAsync() in try/catch. Steps: (1) create src/cli/errors.ts; (2) export handleError(err: unknown) mapping error types to formatError() calls; (3) handle 6 error types: Docker not installed (ENOENT on docker), daemon not running (connection refused), no config found (missing openclaw.json), port in use (EADDRINUSE), build fails no Dockerfile, permission denied on .env; (4) wrap program.parseAsync() call in src/cli/index.ts; (5) each error type has code, message, hint fields. AC: each of 6 error types shows styled output not stack trace; unknown errors show generic formatted message; tsc clean; no regression on existing commands.",
       "lastFailReason": "Validator agent rejected implementation",
-      "lastFailAt": "2026-03-16T21:14:14-07:00",
-      "failCount": 1
+      "lastFailAt": "2026-03-16T21:53:12-07:00",
+      "failCount": 2
     },
     {
       "id": "FEAT-064",
@@ -129,14 +129,15 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
       "groomingNotes": "API layer is the contract between server and web pages — all dashboard pages depend on these endpoints. Routes are thin adapters over existing business logic (no new logic here). Acceptance criteria: all 15 endpoints return {ok, data} or {ok:false, error} shape; streaming endpoints (deploy, build) use SSE correctly; /ws/logs proxies docker logs to browser. SPRINT PAIR: sprint with FEAT-067 (dashboard foundation) — the server scaffold and API layer must land together. The home page (FEAT-067) calls GET /api/v1/status — both must be functional in the same sprint. READY TO SPRINT: no blockers, pairs with FEAT-067.",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-16T21:34:32-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-16T22:02:55-07:00"
     },
     {
       "id": "FEAT-072",

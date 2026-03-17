@@ -14,6 +14,7 @@ import { resolveConfig } from "./context.js";
 export type { ServerConfig } from "./context.js";
 export { resolveConfig } from "./context.js";
 export { createApp } from "./app.js";
+export { createApiRouter } from "./api.js";
 
 export interface DashboardServer {
   /** The URL the server is listening on. */
