@@ -8,6 +8,7 @@
 import { cp, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 
+import { findCatalogSkill } from "./catalog.js";
 import {
   addSkill,
   findSkill,
@@ -82,14 +83,28 @@ export async function fetchSkill(
     await cp(uri, stagingDir, { recursive: true });
   } else if (source === "url") {
     throw new SkillError(
-      "URL-based skill installation is not yet implemented. Use a local path instead.",
+      "URL-based skill installation is not yet implemented. Use a local path or registry name instead.",
       "NOT_IMPLEMENTED",
     );
   } else {
-    throw new SkillError(
-      "Registry-based skill installation is not yet implemented. Use a local path instead.",
-      "NOT_IMPLEMENTED",
-    );
+    // Registry source — look up in built-in catalog
+    const catalogEntry = findCatalogSkill(uri);
+    if (!catalogEntry) {
+      throw new SkillError(
+        `Skill "${uri}" not found in the built-in registry. Use \`clawhq skill search <query>\` to discover available skills.`,
+        "NOT_FOUND_IN_REGISTRY",
+      );
+    }
+    // Materialize catalog files into staging directory
+    const { writeFile } = await import("node:fs/promises");
+    for (const [relPath, content] of Object.entries(catalogEntry.files)) {
+      const fullPath = join(stagingDir, relPath);
+      const dir = fullPath.substring(0, fullPath.lastIndexOf("/"));
+      if (dir !== stagingDir) {
+        await mkdir(dir, { recursive: true });
+      }
+      await writeFile(fullPath, content, "utf-8");
+    }
   }
 
   return parseSkillManifest(stagingDir);
