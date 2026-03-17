@@ -221,11 +221,12 @@
       "category": "Phase 3: Distribution",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "SPRINT THIS FIRST — before dashboard work (FEAT-067) begins. Users cannot benefit from the CLI or dashboard until the package is installable. Standalone distribution setup — no code deps, just package.json config. Steps: (1) set files array in package.json: ['dist/', 'configs/', 'README.md', 'LICENSE']; (2) add postbuild script: 'cp -r src/ui/static dist/ui/static' (no-op if dir doesn't exist yet); (3) add prepublishOnly script: 'npm run build && npm test'; (4) set main/bin fields correctly in package.json; (5) run npm pack --dry-run and verify the file list matches exactly dist/, configs/, README.md, LICENSE; (6) install globally with npm install -g . and verify clawhq --version works. Acceptance criteria: npm pack --dry-run shows exactly the right files with no extras (no .env, no src/, no node_modules/); npm install -g . on clean machine works; clawhq --version returns correct version; prepublishOnly runs build + test before publish."
+      "groomingNotes": "SPRINT THIS FIRST — before dashboard work (FEAT-067) begins. Users cannot benefit from the CLI or dashboard until the package is installable. Standalone distribution setup — no code deps, just package.json config. Steps: (1) set files array in package.json: ['dist/', 'configs/', 'README.md', 'LICENSE']; (2) add postbuild script: 'cp -r src/ui/static dist/ui/static' (no-op if dir doesn't exist yet); (3) add prepublishOnly script: 'npm run build && npm test'; (4) set main/bin fields correctly in package.json; (5) run npm pack --dry-run and verify the file list matches exactly dist/, configs/, README.md, LICENSE; (6) install globally with npm install -g . and verify clawhq --version works. Acceptance criteria: npm pack --dry-run shows exactly the right files with no extras (no .env, no src/, no node_modules/); npm install -g . on clean machine works; clawhq --version returns correct version; prepublishOnly runs build + test before publish.",
+      "completedAt": "2026-03-16T19:27:40-07:00"
     },
     {
       "id": "FEAT-079",

@@ -38,11 +38,12 @@
       "category": "Phase 1: CLI UX",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "HEADLINE FEATURE — orchestrates existing functions, no new business logic. Steps: (1) add 'quickstart' command to src/cli/index.ts; (2) flags: --template <id> (default: personal-assistant), --smart (use AI inference), --skip-build, --skip-deploy; (3) step 1: call runWizard() or non-interactive init with --template; show phase-labeled spinner 'Plan...' (cyan); (4) step 2 (skip if --skip-build): call twoStageBuild(); show spinner 'Build...' (blue); (5) step 3 (skip if --skip-deploy): call deployUp(); show spinner 'Deploy...' (green); (6) step 4: run smoke checks via gateway health endpoint; show spinner 'Verify...' (magenta); (7) on any step failure, show formatError() with actionable hint (not raw stack trace); (8) on success, print friendly summary with access instructions. Note: depends on FEAT-060 for spinner/formatError. Acceptance criteria: clawhq quickstart --template personal-assistant completes end-to-end with phase-labeled spinners; --skip-build and --skip-deploy flags skip those steps; failure at any step shows formatted error with fix hint; --help shows correct usage."
+      "groomingNotes": "HEADLINE FEATURE — orchestrates existing functions, no new business logic. Steps: (1) add 'quickstart' command to src/cli/index.ts; (2) flags: --template <id> (default: personal-assistant), --smart (use AI inference), --skip-build, --skip-deploy; (3) step 1: call runWizard() or non-interactive init with --template; show phase-labeled spinner 'Plan...' (cyan); (4) step 2 (skip if --skip-build): call twoStageBuild(); show spinner 'Build...' (blue); (5) step 3 (skip if --skip-deploy): call deployUp(); show spinner 'Deploy...' (green); (6) step 4: run smoke checks via gateway health endpoint; show spinner 'Verify...' (magenta); (7) on any step failure, show formatError() with actionable hint (not raw stack trace); (8) on success, print friendly summary with access instructions. Note: depends on FEAT-060 for spinner/formatError. Acceptance criteria: clawhq quickstart --template personal-assistant completes end-to-end with phase-labeled spinners; --skip-build and --skip-deploy flags skip those steps; failure at any step shows formatted error with fix hint; --help shows correct usage.",
+      "completedAt": "2026-03-16T19:07:33-07:00"
     },
     {
       "id": "FEAT-063",
@@ -56,7 +57,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "SHOWSTOPPER FOR ADOPTION — depends on FEAT-060 for formatError(). Steps: (1) create src/cli/errors.ts; (2) export handleCliError(err: unknown): never; (3) wrap program.parseAsync() in src/cli/index.ts with try/catch calling handleCliError; (4) handle 6 error types with formatError(): (a) Docker not installed (ENOENT on docker binary) → 'Install Docker: https://docs.docker.com/get-docker/'; (b) Docker daemon not running (connection refused) → 'Start Docker daemon: sudo systemctl start docker'; (c) No config found (config file missing) → 'Run clawhq init to create your first agent'; (d) Port in use (EADDRINUSE) → 'Port $PORT already in use. Run: clawhq down, or change port in config'; (e) Build fails no Dockerfile → 'Run clawhq build first'; (f) Permission denied on .env → 'Fix permissions: chmod 600 .env'; (5) --debug flag passes through to show full stack trace. Acceptance criteria: each of the 6 error types shows formatted hint not raw stack trace; clawhq --debug shows full trace; non-handled errors still bubble as formatted unknown errors; TypeScript compiles clean."
+      "groomingNotes": "SHOWSTOPPER FOR ADOPTION — depends on FEAT-060 for formatError(). dependsOn: FEAT-060. SPRINT GATE: only begin this sprint after FEAT-060 ships. Steps: (1) create src/cli/errors.ts; (2) export handleCliError(err: unknown): never; (3) wrap program.parseAsync() in src/cli/index.ts with try/catch calling handleCliError; (4) handle 6 error types with formatError(): (a) Docker not installed (ENOENT on docker binary) → 'Install Docker: https://docs.docker.com/get-docker/'; (b) Docker daemon not running (connection refused) → 'Start Docker daemon: sudo systemctl start docker'; (c) No config found (config file missing) → 'Run clawhq init to create your first agent'; (d) Port in use (EADDRINUSE) → 'Port $PORT already in use. Run: clawhq down, or change port in config'; (e) Build fails no Dockerfile → 'Run clawhq build first'; (f) Permission denied on .env → 'Fix permissions: chmod 600 .env'; (5) --debug flag passes through to show full stack trace. Acceptance criteria: each of the 6 error types shows formatted hint not raw stack trace; clawhq --debug shows full trace; non-handled errors still bubble as formatted unknown errors; TypeScript compiles clean."
     },
     {
       "id": "FEAT-064",
@@ -84,7 +85,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Polish that signals professionalism. Build, deploy, doctor, backup are long-running operations — silent wait feels broken. Spinners with phase labels give users confidence the tool is working. Requires FEAT-060 first. Acceptance criteria: no command output changes except progress indicators added; spinner appears for any operation >500ms."
+      "groomingNotes": "Polish that signals professionalism. dependsOn: FEAT-060. SPRINT GATE: only begin after FEAT-060 ships. Build, deploy, doctor, backup are long-running operations — silent wait feels broken. Spinners with phase labels give users confidence the tool is working. Acceptance criteria: no command output changes except progress indicators added; spinner appears for any operation >500ms."
     },
     {
       "id": "FEAT-066",
@@ -224,7 +225,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Standalone distribution setup — no code deps, just package.json config. Steps: (1) set files array in package.json: ['dist/', 'configs/', 'README.md', 'LICENSE']; (2) add postbuild script: 'cp -r src/ui/static dist/ui/static' (no-op if dir doesn't exist yet); (3) add prepublishOnly script: 'npm run build && npm test'; (4) set main/bin fields correctly in package.json; (5) run npm pack --dry-run and verify the file list matches exactly dist/, configs/, README.md, LICENSE; (6) install globally with npm install -g . and verify clawhq --version works. Acceptance criteria: npm pack --dry-run shows exactly the right files with no extras (no .env, no src/, no node_modules/); npm install -g . on clean machine works; clawhq --version returns correct version; prepublishOnly runs build + test before publish."
+      "groomingNotes": "SPRINT THIS FIRST — before dashboard work (FEAT-067) begins. Users cannot benefit from the CLI or dashboard until the package is installable. Standalone distribution setup — no code deps, just package.json config. Steps: (1) set files array in package.json: ['dist/', 'configs/', 'README.md', 'LICENSE']; (2) add postbuild script: 'cp -r src/ui/static dist/ui/static' (no-op if dir doesn't exist yet); (3) add prepublishOnly script: 'npm run build && npm test'; (4) set main/bin fields correctly in package.json; (5) run npm pack --dry-run and verify the file list matches exactly dist/, configs/, README.md, LICENSE; (6) install globally with npm install -g . and verify clawhq --version works. Acceptance criteria: npm pack --dry-run shows exactly the right files with no extras (no .env, no src/, no node_modules/); npm install -g . on clean machine works; clawhq --version returns correct version; prepublishOnly runs build + test before publish."
     },
     {
       "id": "FEAT-079",
@@ -238,7 +239,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "CI quality gate — three parallel jobs, clear spec. Steps: (1) create .github/workflows/ci.yml; (2) trigger: on push to main + on pull_request; (3) job 'lint': checkout, node setup (20), npm ci, npm run lint; (4) job 'test': checkout, node matrix [20, 22], npm ci, npm test; (5) job 'typecheck': checkout, node setup (20), npm ci, npx tsc --noEmit; (6) jobs run in parallel (no needs:); (7) verify PR shows green/red status checks. Acceptance criteria: all three jobs appear as separate status checks on PRs; failed lint blocks merge; matrix test runs against both Node 20 and 22; workflow file passes yamllint; ci runs on push to main and on any PR."
+      "groomingNotes": "SPRINT WITH FEAT-078 — CI quality gate pairs with npm publish to complete the distribution foundation. Both should land before dashboard work (FEAT-067) opens. Three parallel jobs, clear spec. Steps: (1) create .github/workflows/ci.yml; (2) trigger: on push to main + on pull_request; (3) job 'lint': checkout, node setup (20), npm ci, npm run lint; (4) job 'test': checkout, node matrix [20, 22], npm ci, npm test; (5) job 'typecheck': checkout, node setup (20), npm ci, npx tsc --noEmit; (6) jobs run in parallel (no needs:); (7) verify PR shows green/red status checks. Acceptance criteria: all three jobs appear as separate status checks on PRs; failed lint blocks merge; matrix test runs against both Node 20 and 22; workflow file passes yamllint; ci runs on push to main and on any PR."
     },
     {
       "id": "FEAT-080",
@@ -406,7 +407,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "SUBSTANTIAL IMPL EXISTS: src/integrate/ module committed with lifecycle.ts, providers.ts, types.ts implementing the provider abstraction layer. CLI module (src/cli/integrate.ts) is in-progress/untracked — being extracted as part of CLI split work. Sprint should: (1) verify src/integrate/ fully implements the provider abstraction interface, (2) complete + commit integrate.ts CLI module, (3) wire firewall allowlist update on integrate add/remove. The 'swap calendar --from A --to B' migration path is the highest-value differentiator — verify this is in lifecycle.ts. Business logic is largely done; this sprint closes the CLI surface and firewall integration. Acceptance criteria: clawhq integrate add calendar --provider caldav walks through setup and validates credential live; clawhq integrate swap category --from A --to B leaves agent behavior unchanged; clawhq integrate list shows health and last-used; removing an integration tightens egress firewall allowlist automatically."
+      "groomingNotes": "FINISHING EXISTING WORK — src/integrate/ module already committed with lifecycle.ts, providers.ts, types.ts implementing the provider abstraction. Sprint closes the loop: (1) verify src/integrate/ fully implements provider abstraction interface, (2) complete + commit integrate.ts CLI module (currently in-progress/untracked in CLI split work), (3) wire firewall allowlist update on integrate add/remove. The 'swap calendar --from A --to B' migration path is the highest-value differentiator — verify this is in lifecycle.ts. Do not restart from scratch — this sprint is a finish line, not a starting line. Acceptance criteria: clawhq integrate add calendar --provider caldav walks through setup and validates credential live; clawhq integrate swap category --from A --to B leaves agent behavior unchanged; clawhq integrate list shows health and last-used; removing an integration tightens egress firewall allowlist automatically."
     },
     {
       "id": "FEAT-092",
@@ -420,7 +421,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "PREVENTS AGENT DEATH — memory bloat is the #1 abandonment driver per PRODUCT.md. DEPENDENCY CHAIN clarification: clawhq memory search <query> with vector search requires qdrant (FEAT-090 service management). However the hot→warm→cold tier transitions (summarization, compression, PII masking) do NOT require qdrant — they can ship as file-based transitions first, with vector search added later. RECOMMENDED SPLIT: sprint path 1 = file-based tier transitions + cron auto-promotion (no qdrant required, unblocks the retention metric); sprint path 2 = add qdrant for semantic memory search after FEAT-090. Mark FEAT-090 as optional dependency for the search feature only, not for the core tier management. Acceptance criteria: agent running 90+ days stays under performance thresholds without manual intervention; clawhq memory status shows per-tier sizes; auto-transition via cron fires without user action; clawhq memory compact works on demand."
+      "groomingNotes": "PREVENTS AGENT DEATH — memory bloat is the #1 abandonment driver per PRODUCT.md. PHASE A (sprint immediately, no qdrant): file-based hot→warm→cold tier transitions, summarization, compression, PII masking, cron auto-promotion. PHASE B (after FEAT-090): add qdrant for semantic memory search. Do NOT block Phase A on Phase B — Phase A can ship as standalone sprint with full user value. Phase A acceptance criteria: agent running 90+ days stays under performance thresholds without manual intervention; clawhq memory status shows per-tier sizes; auto-transition via cron fires without user action; clawhq memory compact works on demand. Phase B adds: clawhq memory search <query> with vector search via qdrant."
     },
     {
       "id": "FEAT-093",

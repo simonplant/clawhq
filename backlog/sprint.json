@@ -1,17 +1,17 @@
 {
-  "sprintId": "sprint-1773712965",
-  "startedAt": "2026-03-16T19:02:45-07:00",
+  "sprintId": "sprint-1773714229",
+  "startedAt": "2026-03-16T19:23:49-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-062",
-    "title": "clawhq quickstart command",
+    "id": "FEAT-078",
+    "title": "npm publish setup",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T19:02:45-07:00",
+    "startedAt": "2026-03-16T19:23:49-07:00",
     "status": "passed",
-    "completedAt": "2026-03-16T19:07:33-07:00"
+    "completedAt": "2026-03-16T19:27:40-07:00"
   },
-  "completedAt": "2026-03-16T19:07:33-07:00",
+  "completedAt": "2026-03-16T19:27:40-07:00",
   "attempts": 1
 }
