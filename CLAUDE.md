@@ -149,8 +149,7 @@ This project uses [aishore](https://github.com/simonweniger/aishore) for AI-assi
 ```bash
 # Sprints
 .aishore/aishore run [count]        # Run N sprints (default: 1)
-.aishore/aishore run FEAT-001       # Run specific item by ID
-.aishore/aishore run --auto-commit  # Auto-commit after each sprint
+.aishore/aishore run FEAT-001       # Run specific 
 
 # Grooming
 .aishore/aishore groom              # Tech lead: groom bugs

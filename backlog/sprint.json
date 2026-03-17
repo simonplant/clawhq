@@ -1,17 +1,17 @@
 {
-  "sprintId": "sprint-1773714229",
-  "startedAt": "2026-03-16T19:23:49-07:00",
+  "sprintId": "sprint-1773714596",
+  "startedAt": "2026-03-16T19:29:56-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-078",
-    "title": "npm publish setup",
+    "id": "FEAT-066",
+    "title": "Non-interactive init for fleet provisioning",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T19:23:49-07:00",
+    "startedAt": "2026-03-16T19:29:56-07:00",
     "status": "passed",
-    "completedAt": "2026-03-16T19:27:40-07:00"
+    "completedAt": "2026-03-16T19:34:09-07:00"
   },
-  "completedAt": "2026-03-16T19:27:40-07:00",
+  "completedAt": "2026-03-16T19:34:09-07:00",
   "attempts": 1
 }
