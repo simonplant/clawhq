@@ -10,8 +10,8 @@ import chalk from "chalk";
 import { Command } from "commander";
 
 import { deployUp } from "../deploy/deploy.js";
-import { DockerClient } from "../docker/client.js";
 import { twoStageBuild } from "../docker/build.js";
+import { DockerClient } from "../docker/client.js";
 import { runSmartInit } from "../inference/index.js";
 import { createReadlineIO, runWizard } from "../init/index.js";
 import { runSmokeTest } from "../smoke/index.js";

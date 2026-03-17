@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 
 import { Command } from "commander";
 
+import type { DoctorContext } from "../doctor/types.js";
 import { createReadlineIO } from "../init/index.js";
 import {
   addIntegration,
@@ -18,7 +19,6 @@ import {
 } from "../integrate/index.js";
 import type { IntegrateContext } from "../integrate/index.js";
 import { recordChange } from "../workspace/evolve-history.js";
-import type { DoctorContext } from "../doctor/types.js";
 
 function makeIntegrateCtx(opts: { home: string; clawhqDir: string }): IntegrateContext {
   return {

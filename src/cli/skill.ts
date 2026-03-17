@@ -2,6 +2,10 @@ import { Command } from "commander";
 
 import { createReadlineIO } from "../init/index.js";
 import {
+  formatVettingResult,
+  runVettingPipeline,
+} from "../security/vetting.js";
+import {
   activateSkill,
   applySkillUpdate,
   formatSkillList,
@@ -15,10 +19,6 @@ import {
 } from "../skill/index.js";
 import type { SkillContext } from "../skill/index.js";
 import { SkillError } from "../skill/types.js";
-import {
-  formatVettingResult,
-  runVettingPipeline,
-} from "../security/vetting.js";
 import { recordChange } from "../workspace/evolve-history.js";
 
 function makeSkillCtx(opts: { home: string; clawhqDir: string }): SkillContext {

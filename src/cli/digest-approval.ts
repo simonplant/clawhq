@@ -1,10 +1,5 @@
 import { Command } from "commander";
 
-import {
-  formatDigestJson,
-  formatDigestTable,
-  generateDigest,
-} from "../digest/index.js";
 import type { ApprovalCategory } from "../approval/index.js";
 import {
   approve as approveAction,
@@ -18,6 +13,11 @@ import {
   readQueue,
   reject as rejectAction,
 } from "../approval/index.js";
+import {
+  formatDigestJson,
+  formatDigestTable,
+  generateDigest,
+} from "../digest/index.js";
 
 export function createDigestApprovalCommands(program: Command): void {
   program

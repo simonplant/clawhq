@@ -6,9 +6,7 @@ import { Command } from "commander";
 
 import {
   collectMetrics,
-  formatAlertJson,
   formatAlertSummary,
-  formatAlertTable,
   generateAlerts,
 } from "../alerts/index.js";
 import { appendSnapshot, loadHistory as loadAlertHistory } from "../alerts/store.js";

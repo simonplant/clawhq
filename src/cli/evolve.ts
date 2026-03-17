@@ -1,16 +1,6 @@
 import { Command } from "commander";
 
 import {
-  type EvolveContext,
-  EvolveError,
-  formatAudit,
-  formatHistory,
-  getHistory,
-  loadHistory,
-  recordChange,
-  rollbackChange,
-} from "../workspace/evolve-history.js";
-import {
   type AutonomyConfig,
   AutonomyError,
   DEFAULT_AUTONOMY_CONFIG,
@@ -22,6 +12,15 @@ import {
   rejectRecommendation,
 } from "../internal/autonomy/index.js";
 import type { AutonomyContext } from "../internal/autonomy/index.js";
+import {
+  type EvolveContext,
+  EvolveError,
+  formatAudit,
+  formatHistory,
+  getHistory,
+  loadHistory,
+  rollbackChange,
+} from "../workspace/evolve-history.js";
 
 function makeEvolveCtx(opts: { home: string; clawhqDir: string }): EvolveContext {
   return {

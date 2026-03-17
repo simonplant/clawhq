@@ -2,9 +2,9 @@ import { resolve } from "node:path";
 
 import { Command } from "commander";
 
-import { createExport } from "../export/export.js";
 import { destroy, dryRun } from "../destroy/destroy.js";
 import type { DestroyStep } from "../destroy/types.js";
+import { createExport } from "../export/export.js";
 
 export function createDecommissionCommands(program: Command): void {
   program
