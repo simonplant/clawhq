@@ -217,7 +217,7 @@ description: "Logs expenses from natural language, categorizes spending, and gen
 
 # Expense Tracking
 
-Track expenses through natural language (\"spent $45 on groceries\"). Categorizes automatically, stores locally, and generates summary reports.
+Track expenses through natural language ("spent $45 on groceries"). Categorizes automatically, stores locally, and generates summary reports.
 
 ## Usage
 

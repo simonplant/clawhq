@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -98,7 +98,8 @@ describe("formatCatalogSearch", () => {
 
 describe("formatCatalogInfo", () => {
   it("formats skill details", () => {
-    const skill = findCatalogSkill("morning-brief")!;
+    const skill = findCatalogSkill("morning-brief");
+    if (!skill) throw new Error("morning-brief not found in catalog");
     const output = formatCatalogInfo(skill);
     expect(output).toContain("Morning Brief");
     expect(output).toContain("todoist");
@@ -108,7 +109,8 @@ describe("formatCatalogInfo", () => {
   });
 
   it("shows standalone for skills with no integrations", () => {
-    const skill = findCatalogSkill("meal-planning")!;
+    const skill = findCatalogSkill("meal-planning");
+    if (!skill) throw new Error("meal-planning not found in catalog");
     const output = formatCatalogInfo(skill);
     expect(output).toContain("none (standalone)");
   });
