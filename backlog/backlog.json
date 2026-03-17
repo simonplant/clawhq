@@ -535,11 +535,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: No blockers — reads from existing data sources (approval queue, cron history, egress log, doctor alerts). PART A — clawhq digest command: (1) Create src/cli/digest.ts with createDigestCommand(); (2) reads from available data: recent approval queue events (src/approval/), cron run history (~/.clawhq/cron/), egress log (~/.clawhq/audit-egress.jsonl), doctor alerts (src/doctor/); (3) renders human-readable summary sections: autonomous tasks completed, tasks pending approval, problems found with proposed solutions, integrations used, errors encountered, data egress summary (zero-egress badge if applicable); (4) --since <date> flag for filtering; (5) --json flag for machine-readable output; (6) Register command in src/cli/index.ts. PART B — verify heartbeat hook (non-blocking): check src/workspace/identity/heartbeat.ts generates a cron that runs and surfaces actionable items; verify FEAT-081 notification dispatch fires for new approvals. Acceptance criteria: clawhq digest shows meaningful summary from available agent data; --since filters correctly; no data → friendly 'no activity recorded yet'; tsc clean."
+      "groomingNotes": "READY TO SPRINT: No blockers — reads from existing data sources (approval queue, cron history, egress log, doctor alerts). PART A — clawhq digest command: (1) Create src/cli/digest.ts with createDigestCommand(); (2) reads from available data: recent approval queue events (src/approval/), cron run history (~/.clawhq/cron/), egress log (~/.clawhq/audit-egress.jsonl), doctor alerts (src/doctor/); (3) renders human-readable summary sections: autonomous tasks completed, tasks pending approval, problems found with proposed solutions, integrations used, errors encountered, data egress summary (zero-egress badge if applicable); (4) --since <date> flag for filtering; (5) --json flag for machine-readable output; (6) Register command in src/cli/index.ts. PART B — verify heartbeat hook (non-blocking): check src/workspace/identity/heartbeat.ts generates a cron that runs and surfaces actionable items; verify FEAT-081 notification dispatch fires for new approvals. Acceptance criteria: clawhq digest shows meaningful summary from available agent data; --since filters correctly; no data → friendly 'no activity recorded yet'; tsc clean.",
+      "completedAt": "2026-03-17T12:27:47-07:00"
     },
     {
       "id": "FEAT-099",

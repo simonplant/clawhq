@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1773775074",
   "startedAt": "2026-03-17T12:17:54-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-098",
     "title": "Activity digest — proactive daily summary and monitoring",
@@ -23,6 +23,10 @@
       "TypeScript compiles clean (tsc --noEmit passes)",
       "All 1595 tests pass"
     ],
-    "startedAt": "2026-03-17T12:17:54-07:00"
-  }
+    "startedAt": "2026-03-17T12:17:54-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T12:27:47-07:00"
+  },
+  "completedAt": "2026-03-17T12:27:47-07:00",
+  "attempts": 1
 }
