@@ -3,21 +3,43 @@
   "version": "0.1.0",
   "description": "Control panel for OpenClaw agents",
   "type": "module",
+  "main": "./dist/cli/index.js",
+  "exports": {
+    ".": "./dist/cli/index.js"
+  },
   "bin": {
     "clawhq": "./dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "configs"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "prepublishOnly": "npm run build && npm run lint && npm run test",
+    "prepack": "npm run build"
   },
   "keywords": [
     "openclaw",
     "ai",
     "agent",
-    "control-panel"
+    "control-panel",
+    "docker",
+    "security",
+    "self-hosted"
   ],
+  "author": "Simon Weniger",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clawhq/clawhq.git"
+  },
+  "homepage": "https://clawhq.com",
+  "bugs": {
+    "url": "https://github.com/clawhq/clawhq/issues"
+  },
   "engines": {
     "node": ">=20.0.0"
   },
