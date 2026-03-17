@@ -29,6 +29,7 @@ import { createRepairCommand } from "./repair.js";
 import { createRoleCommand } from "./role.js";
 import { createSecretsCommand } from "./secrets.js";
 import { createSecureCommands } from "./secure.js";
+import { createServiceCommand } from "./service.js";
 import { createSkillCommand } from "./skill.js";
 import { createSmokeCommand } from "./smoke.js";
 import { registerToolCommand } from "./tool.js";
@@ -71,6 +72,7 @@ program.commandsGroup("Deploy:");
 createDeployCommands(program);
 program.addCommand(createSmokeCommand());
 program.addCommand(createConnectCommand());
+program.addCommand(createServiceCommand());
 
 // Operate phase
 program.commandsGroup("Operate:");

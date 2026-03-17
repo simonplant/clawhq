@@ -1,17 +1,13 @@
 {
-  "sprintId": "sprint-1773776257",
-  "startedAt": "2026-03-17T12:37:37-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773778796",
+  "startedAt": "2026-03-17T13:19:56-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-099",
-    "title": "Evolve rollback — undo any capability change",
+    "id": "FEAT-090",
+    "title": "Service management — backing services for agents",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T12:37:37-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-17T12:46:15-07:00"
-  },
-  "completedAt": "2026-03-17T12:46:15-07:00",
-  "attempts": 2
+    "startedAt": "2026-03-17T13:19:56-07:00"
+  }
 }
