@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773766999",
   "startedAt": "2026-03-17T10:03:19-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-072",
     "title": "Dashboard Doctor page",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T10:03:19-07:00"
-  }
+    "startedAt": "2026-03-17T10:03:19-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T10:06:42-07:00"
+  },
+  "completedAt": "2026-03-17T10:06:42-07:00",
+  "attempts": 1
 }
