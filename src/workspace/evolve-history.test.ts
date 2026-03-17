@@ -484,6 +484,140 @@ describe("rollbackChange", () => {
     expect(regContent.integrations).toHaveLength(0);
   });
 
+  it("rolls back a provider_add by removing the provider", async () => {
+    // Set up: provider was added, registry has it
+    const providerPath = join(ctx.openclawHome, "providers.json");
+    await writeFile(providerPath, JSON.stringify({
+      providers: [{
+        id: "openai",
+        label: "OpenAI",
+        category: "llm",
+        envVar: "OPENAI_API_KEY",
+        domains: ["api.openai.com"],
+        status: "active",
+        addedAt: "2026-03-13T00:00:00Z",
+      }],
+    }));
+
+    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    await saveHistory(ctx, {
+      changes: [
+        {
+          id: "evolve-prov-add",
+          timestamp: "2026-03-13T00:00:00Z",
+          changeType: "provider_add",
+          target: "openai",
+          previousState: "not configured",
+          newState: "OpenAI (openai)",
+          rollbackSnapshotId: JSON.stringify({
+            action: "add",
+            provider: {
+              id: "openai",
+              label: "OpenAI",
+              category: "llm",
+              envVar: "OPENAI_API_KEY",
+              domains: ["api.openai.com"],
+              status: "active",
+              addedAt: "2026-03-13T00:00:00Z",
+            },
+          }),
+          rollbackExpiresAt: future,
+          requiresRebuild: false,
+        },
+      ],
+    });
+
+    const result = await rollbackChange(ctx, "evolve-prov-add");
+
+    expect(result.change.target).toBe("openai");
+    expect(result.requiresRebuild).toBe(false);
+
+    // Verify provider removed from registry
+    const regContent = JSON.parse(await readFile(providerPath, "utf-8"));
+    expect(regContent.providers).toHaveLength(0);
+  });
+
+  it("rolls back a provider_remove by restoring the provider", async () => {
+    // Set up: provider was removed, registry is empty
+    const providerPath = join(ctx.openclawHome, "providers.json");
+    await writeFile(providerPath, JSON.stringify({ providers: [] }));
+
+    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    await saveHistory(ctx, {
+      changes: [
+        {
+          id: "evolve-prov-remove",
+          timestamp: "2026-03-13T00:00:00Z",
+          changeType: "provider_remove",
+          target: "anthropic",
+          previousState: "Anthropic (anthropic)",
+          newState: "removed",
+          rollbackSnapshotId: JSON.stringify({
+            action: "remove",
+            provider: {
+              id: "anthropic",
+              label: "Anthropic",
+              category: "llm",
+              envVar: "ANTHROPIC_API_KEY",
+              domains: ["api.anthropic.com"],
+              status: "active",
+              addedAt: "2026-03-13T00:00:00Z",
+            },
+          }),
+          rollbackExpiresAt: future,
+          requiresRebuild: false,
+        },
+      ],
+    });
+
+    const result = await rollbackChange(ctx, "evolve-prov-remove");
+
+    expect(result.change.target).toBe("anthropic");
+
+    // Verify provider restored to registry
+    const regContent = JSON.parse(await readFile(providerPath, "utf-8"));
+    expect(regContent.providers).toHaveLength(1);
+    expect(regContent.providers[0].id).toBe("anthropic");
+  });
+
+  it("rolls back an identity_update by restoring previous file content", async () => {
+    // Set up: identity file was updated
+    const identityDir = join(ctx.openclawHome, "workspace");
+    await mkdir(identityDir, { recursive: true });
+    const identityFile = join(identityDir, "IDENTITY.md");
+    await writeFile(identityFile, "# Updated identity\nNew content here.");
+
+    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const originalContent = "# Original identity\nOld content here.";
+    await saveHistory(ctx, {
+      changes: [
+        {
+          id: "evolve-identity",
+          timestamp: "2026-03-13T00:00:00Z",
+          changeType: "identity_update",
+          target: "IDENTITY.md",
+          previousState: "previous version",
+          newState: "updated version",
+          rollbackSnapshotId: JSON.stringify({
+            filePath: "workspace/IDENTITY.md",
+            content: originalContent,
+          }),
+          rollbackExpiresAt: future,
+          requiresRebuild: false,
+        },
+      ],
+    });
+
+    const result = await rollbackChange(ctx, "evolve-identity");
+
+    expect(result.change.target).toBe("IDENTITY.md");
+    expect(result.requiresRebuild).toBe(false);
+
+    // Verify file content restored
+    const content = await readFile(identityFile, "utf-8");
+    expect(content).toBe(originalContent);
+  });
+
   it("records rollback as a new change in history", async () => {
     // Set up tool rollback scenario
     const toolCtx = { openclawHome: ctx.openclawHome, clawhqDir: ctx.clawhqDir };

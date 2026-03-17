@@ -19,6 +19,7 @@ import {
   removeProvider,
   testProvider,
 } from "../provider/index.js";
+import { recordChange } from "../workspace/evolve-history.js";
 
 /**
  * Prompt for a secret value with masked input (no echo).
@@ -87,7 +88,8 @@ async function promptMaskedInput(prompt: string): Promise<string> {
 export function createProviderCommand(): Command {
   const providerCmd = new Command("provider")
     .description("Manage API providers — add, list, remove, and test")
-    .option("--home <path>", "OpenClaw home directory", "~/.openclaw");
+    .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
+    .option("--clawhq-dir <path>", "ClawHQ data directory", "~/.clawhq");
 
   providerCmd
     .command("add <id>")
@@ -124,6 +126,22 @@ export function createProviderCommand(): Command {
         }
 
         const result = await addProvider(homeDir, id, apiKey);
+
+        // Record evolve change
+        const parentAllOpts = providerCmd.opts() as { home: string; clawhqDir: string };
+        const clawhqDir = parentAllOpts.clawhqDir.replace(/^~/, process.env.HOME ?? "~");
+        await recordChange(
+          { openclawHome: homeDir, clawhqDir },
+          {
+            changeType: "provider_add",
+            target: result.provider.id,
+            previousState: "not configured",
+            newState: `${result.provider.label} (${result.provider.id})`,
+            rollbackSnapshotId: JSON.stringify({ action: "add", provider: result.provider }),
+            requiresRebuild: false,
+          },
+        );
+
         console.log(`Provider ${result.provider.label} added successfully`);
         console.log(`  Credential: ${result.provider.envVar} stored in .env`);
 
@@ -187,7 +205,28 @@ export function createProviderCommand(): Command {
       const homeDir = parentOpts.home.replace(/^~/, process.env.HOME ?? "~");
 
       try {
+        // Capture previous state before removal
+        const providersBefore = await listProviders(homeDir);
+        const removedProvider = providersBefore.find((p) => p.id === id);
+
         const result = await removeProvider(homeDir, id);
+
+        // Record evolve change
+        const parentAllOpts = providerCmd.opts() as { home: string; clawhqDir: string };
+        const clawhqDir = parentAllOpts.clawhqDir.replace(/^~/, process.env.HOME ?? "~");
+        await recordChange(
+          { openclawHome: homeDir, clawhqDir },
+          {
+            changeType: "provider_remove",
+            target: id,
+            previousState: removedProvider ? `${removedProvider.label} (${removedProvider.id})` : id,
+            newState: "removed",
+            rollbackSnapshotId: removedProvider
+              ? JSON.stringify({ action: "remove", provider: removedProvider })
+              : null,
+            requiresRebuild: false,
+          },
+        );
 
         console.log(`Provider "${id}" removed`);
         if (result.credentialRemoved) {
