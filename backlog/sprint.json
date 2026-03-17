@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773789028",
   "startedAt": "2026-03-17T16:10:28-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-102",
     "title": "ChatGPT conversation import — clawhq migrate --from chatgpt",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T16:10:28-07:00"
-  }
+    "startedAt": "2026-03-17T16:10:28-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T16:14:26-07:00"
+  },
+  "completedAt": "2026-03-17T16:14:26-07:00",
+  "attempts": 1
 }
