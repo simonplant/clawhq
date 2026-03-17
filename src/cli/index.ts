@@ -19,6 +19,7 @@ import { createMigrateCommand } from "./migrate.js";
 import { createOperateCommands } from "./operate.js";
 import { createPlanCommands } from "./plan.js";
 import { createProviderCommand } from "./provider.js";
+import { createQuickstartCommand } from "./quickstart.js";
 import { createRepairCommand } from "./repair.js";
 import { createSecureCommands } from "./secure.js";
 import { createSecretsCommand } from "./secrets.js";
@@ -44,6 +45,9 @@ program
   .action(() => {
     console.log(`clawhq v${pkg.version}`);
   });
+
+// Quickstart (orchestrates init → build → deploy → smoke)
+program.addCommand(createQuickstartCommand());
 
 // Plan phase
 createPlanCommands(program);

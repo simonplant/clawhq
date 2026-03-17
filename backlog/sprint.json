@@ -1,17 +1,13 @@
 {
-  "sprintId": "sprint-1773712762",
-  "startedAt": "2026-03-16T18:59:22-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773712965",
+  "startedAt": "2026-03-16T19:02:45-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-060",
-    "title": "CLI UI module (src/cli/ui.ts)",
+    "id": "FEAT-062",
+    "title": "clawhq quickstart command",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T18:59:22-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-16T19:02:40-07:00"
-  },
-  "completedAt": "2026-03-16T19:02:40-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-16T19:02:45-07:00"
+  }
 }
