@@ -71,11 +71,12 @@
       "category": "Phase 1: CLI UX",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-060 (ui.ts with spinner/formatError) is done. Steps: (1) create src/cli/first-run.ts; (2) define state file path ~/.clawhq/state.json with firstRunComplete boolean; (3) export checkFirstRun(program: Command): void that registers a preAction hook; (4) hook logic: skip if non-TTY (process.stdout.isTTY === false), skip if --json flag present, skip if CI env (process.env.CI), skip if command is init/quickstart/dashboard/help/version; (5) if ~/.openclaw/openclaw.json does not exist AND firstRunComplete=false, print one-line chalk hint: 'Run clawhq quickstart to set up your agent.'; (6) export markFirstRunComplete(clawhqDir: string): Promise<void> that writes state.json with firstRunComplete=true; (7) call markFirstRunComplete from quickstart and init success paths in their respective CLI modules; (8) import and call checkFirstRun(program) in src/cli/index.ts before program.parseAsync. AC: running clawhq doctor on fresh install (no openclaw.json) prints one-line quickstart hint; hint not shown when already set up; hint not shown in CI (process.env.CI=true); hint not shown with --json flag; hint not shown for init/quickstart commands themselves; markFirstRunComplete suppresses hint on next run; tsc clean."
+      "groomingNotes": "UNBLOCKED: FEAT-060 (ui.ts with spinner/formatError) is done. Steps: (1) create src/cli/first-run.ts; (2) define state file path ~/.clawhq/state.json with firstRunComplete boolean; (3) export checkFirstRun(program: Command): void that registers a preAction hook; (4) hook logic: skip if non-TTY (process.stdout.isTTY === false), skip if --json flag present, skip if CI env (process.env.CI), skip if command is init/quickstart/dashboard/help/version; (5) if ~/.openclaw/openclaw.json does not exist AND firstRunComplete=false, print one-line chalk hint: 'Run clawhq quickstart to set up your agent.'; (6) export markFirstRunComplete(clawhqDir: string): Promise<void> that writes state.json with firstRunComplete=true; (7) call markFirstRunComplete from quickstart and init success paths in their respective CLI modules; (8) import and call checkFirstRun(program) in src/cli/index.ts before program.parseAsync. AC: running clawhq doctor on fresh install (no openclaw.json) prints one-line quickstart hint; hint not shown when already set up; hint not shown in CI (process.env.CI=true); hint not shown with --json flag; hint not shown for init/quickstart commands themselves; markFirstRunComplete suppresses hint on next run; tsc clean.",
+      "completedAt": "2026-03-16T22:09:56-07:00"
     },
     {
       "id": "FEAT-065",
