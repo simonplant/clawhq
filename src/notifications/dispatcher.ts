@@ -5,8 +5,8 @@
  * whose subscriptions match the event type.
  */
 
-import { loadChannels } from "./store.js";
 import { sendSlack } from "./slack.js";
+import { loadChannels } from "./store.js";
 import { sendTelegram } from "./telegram.js";
 import type { DispatchResult, NotificationChannel, NotificationEvent } from "./types.js";
 import { sendWebhook } from "./webhook.js";

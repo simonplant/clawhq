@@ -6,6 +6,7 @@
  */
 
 import { notifyUpdateAvailable } from "../notifications/hooks.js";
+
 import type { ReleaseInfo, VersionCheckResult } from "./types.js";
 import { UpdateError } from "./types.js";
 

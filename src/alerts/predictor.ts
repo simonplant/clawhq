@@ -7,6 +7,7 @@
  */
 
 import { notifyAlerts } from "../notifications/hooks.js";
+
 import { analyzeTrend, projectDaysToLimit } from "./analyzer.js";
 import { extractTimeSeries } from "./store.js";
 import type {

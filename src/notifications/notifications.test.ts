@@ -13,7 +13,6 @@ import {
   saveChannels,
 } from "./store.js";
 import type {
-  NotificationChannel,
   NotificationEvent,
   TelegramChannel,
   WebhookChannel,
@@ -200,7 +199,7 @@ describe("getChannel", () => {
 
     const found = await getChannel("find1", TEST_DIR, STORE_PATH);
     expect(found).toBeDefined();
-    expect(found!.name).toBe("findme");
+    expect(found?.name).toBe("findme");
   });
 });
 

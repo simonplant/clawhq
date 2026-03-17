@@ -9,6 +9,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import { notifyBackupFailed } from "../notifications/hooks.js";
+
 import { createManifest, generateBackupId, writeManifest } from "./manifest.js";
 import { collectFiles, createTarArchive, encryptWithGpg } from "./snapshot.js";
 import type { BackupOptions, BackupResult } from "./types.js";

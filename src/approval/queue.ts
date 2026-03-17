@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 
 import { notifyApprovalPending } from "../notifications/hooks.js";
+
 import type {
   ApprovalCategory,
   ApprovalEntry,
