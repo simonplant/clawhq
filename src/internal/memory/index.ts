@@ -50,3 +50,6 @@ export {
 export type { Summarizer } from "./transitions.js";
 
 export { reflect } from "./reflection.js";
+
+export { searchMemory } from "./search.js";
+export type { MemorySearchOptions, MemorySearchResult } from "./search.js";
