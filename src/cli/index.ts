@@ -26,6 +26,7 @@ import { createPlanCommands } from "./plan.js";
 import { createProviderCommand } from "./provider.js";
 import { createQuickstartCommand } from "./quickstart.js";
 import { createRepairCommand } from "./repair.js";
+import { createRoleCommand } from "./role.js";
 import { createSecretsCommand } from "./secrets.js";
 import { createSecureCommands } from "./secure.js";
 import { createSkillCommand } from "./skill.js";
@@ -90,6 +91,7 @@ registerToolCommand(program);
 program.addCommand(createSkillCommand());
 program.addCommand(createIntegrateCommand());
 program.addCommand(createProviderCommand());
+program.addCommand(createRoleCommand());
 
 // Fleet phase
 program.commandsGroup("Fleet:");
