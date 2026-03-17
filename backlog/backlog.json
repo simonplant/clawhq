@@ -195,11 +195,12 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with /api/v1/approvals endpoints) are both done. Approval queue in the browser completes the trust loop — users see what the agent wants to do before it acts.\n\nSprint scope: (1) Create src/ui/pages/approvals.tsx — Hono JSX page component; (2) Page calls GET /api/v1/approvals and renders pending approvals as cards; (3) Each card shows: action description (plain language), timestamp queued, context/category, Approve and Reject buttons; (4) Approve button: htmx hx-post to /api/v1/approvals/:id/approve, updates card to 'Approved' state; (5) Reject button: htmx hx-post to /api/v1/approvals/:id/reject with optional reason input, updates card to 'Rejected' state; (6) Empty state: friendly 'No pending approvals — your agent is waiting for nothing' message; (7) Badge in sidebar nav showing pending count (pulled from GET /api/v1/approvals at page load, SSE updates every 5s); (8) Register route as GET /approvals in app.ts; (9) Add 'Approvals' link to sidebar nav under Operate section with count badge; (10) Acceptance criteria: approval cards render from live queue; approve/reject actions work and update card state without page reload; empty state renders correctly; sidebar badge shows pending count; tsc clean."
+      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with /api/v1/approvals endpoints) are both done. Approval queue in the browser completes the trust loop — users see what the agent wants to do before it acts.\n\nSprint scope: (1) Create src/ui/pages/approvals.tsx — Hono JSX page component; (2) Page calls GET /api/v1/approvals and renders pending approvals as cards; (3) Each card shows: action description (plain language), timestamp queued, context/category, Approve and Reject buttons; (4) Approve button: htmx hx-post to /api/v1/approvals/:id/approve, updates card to 'Approved' state; (5) Reject button: htmx hx-post to /api/v1/approvals/:id/reject with optional reason input, updates card to 'Rejected' state; (6) Empty state: friendly 'No pending approvals — your agent is waiting for nothing' message; (7) Badge in sidebar nav showing pending count (pulled from GET /api/v1/approvals at page load, SSE updates every 5s); (8) Register route as GET /approvals in app.ts; (9) Add 'Approvals' link to sidebar nav under Operate section with count badge; (10) Acceptance criteria: approval cards render from live queue; approve/reject actions work and update card state without page reload; empty state renders correctly; sidebar badge shows pending count; tsc clean.",
+      "completedAt": "2026-03-17T10:26:41-07:00"
     },
     {
       "id": "FEAT-076",

@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773768045",
   "startedAt": "2026-03-17T10:20:45-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-075",
     "title": "Dashboard Approvals page",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T10:20:45-07:00"
-  }
+    "startedAt": "2026-03-17T10:20:45-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-17T10:26:41-07:00"
+  },
+  "completedAt": "2026-03-17T10:26:41-07:00",
+  "attempts": 2
 }
