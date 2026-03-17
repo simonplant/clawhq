@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773720854",
   "startedAt": "2026-03-16T21:14:14-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-067",
     "title": "Web dashboard server + layout (Hono/htmx/Pico CSS)",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T21:14:14-07:00"
-  }
+    "startedAt": "2026-03-16T21:14:14-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-16T21:24:32-07:00"
+  },
+  "completedAt": "2026-03-16T21:24:32-07:00",
+  "attempts": 1
 }
