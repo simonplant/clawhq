@@ -17,9 +17,10 @@ export {
   getRequiredBinaries,
   installTool,
   listTools,
+  patchDockerfile,
   removeToolOp,
 } from "./tool.js";
-export type { InstallResult, RemoveResult } from "./tool.js";
+export type { InstallResult, PatchResult, RemoveResult } from "./tool.js";
 export type {
   InstalledTool,
   ToolContext,

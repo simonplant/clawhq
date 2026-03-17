@@ -133,7 +133,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "API layer is the contract between server and web pages — all dashboard pages depend on these endpoints. Routes are thin adapters over existing business logic (no new logic here). Acceptance criteria: all 15 endpoints return {ok, data} or {ok:false, error} shape; streaming endpoints (deploy, build) use SSE correctly; /ws/logs proxies docker logs to browser. SPRINT PAIR: sprint with FEAT-067 (dashboard foundation) — the server scaffold and API layer must land together. The home page (FEAT-067) calls GET /api/v1/status — both must be functional in the same sprint. READY TO SPRINT: no blockers, pairs with FEAT-067."
+      "groomingNotes": "API layer is the contract between server and web pages — all dashboard pages depend on these endpoints. Routes are thin adapters over existing business logic (no new logic here). Acceptance criteria: all 15 endpoints return {ok, data} or {ok:false, error} shape; streaming endpoints (deploy, build) use SSE correctly; /ws/logs proxies docker logs to browser. SPRINT PAIR: sprint with FEAT-067 (dashboard foundation) — the server scaffold and API layer must land together. The home page (FEAT-067) calls GET /api/v1/status — both must be functional in the same sprint. READY TO SPRINT: no blockers, pairs with FEAT-067.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-16T21:34:32-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-072",

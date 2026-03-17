@@ -3,16 +3,22 @@
  *
  * Manages CLI binaries in the agent's Docker image. This is separate from
  * workspace tools (integration scripts) and skills (OpenClaw plugins).
+ *
+ * After install/remove, the Stage 2 Dockerfile is regenerated automatically.
+ * A Stage 2 rebuild is triggered unless --no-rebuild is passed.
  */
 
 import type { Command } from "commander";
 
+import { twoStageBuild } from "../docker/build.js";
+import { DockerClient } from "../docker/client.js";
 import { isAllowlisted, loadAllowlist } from "../security/vetting.js";
 import type { ToolContext } from "../tool/index.js";
 import {
   formatToolList,
   installTool,
   listTools,
+  patchDockerfile,
   removeToolOp,
   ToolError,
 } from "../tool/index.js";
@@ -26,6 +32,41 @@ function makeToolCtx(opts: { home: string; clawhqDir: string }): ToolContext {
 }
 
 /**
+ * Patch the Stage 2 Dockerfile and optionally trigger a rebuild.
+ * Returns true if rebuild was triggered successfully.
+ */
+async function patchAndRebuild(
+  ctx: ToolContext,
+  opts: { noRebuild?: boolean; deployDir: string },
+): Promise<boolean> {
+  const patch = await patchDockerfile(ctx, opts.deployDir);
+  console.log(`Dockerfile updated: ${patch.binaries.join(", ")}`);
+
+  if (opts.noRebuild) {
+    console.log("");
+    console.log("Run `clawhq build` to rebuild the agent image.");
+    return false;
+  }
+
+  console.log("Triggering Stage 2 rebuild...");
+  try {
+    const client = new DockerClient({ cwd: opts.deployDir });
+    const result = await twoStageBuild(client, {
+      context: opts.deployDir,
+      baseTag: "openclaw:local",
+      finalTag: "openclaw:custom",
+      skipStage1: true,
+    });
+    console.log(`Rebuild complete (${Math.round(result.stage2.durationMs / 1000)}s).`);
+    return true;
+  } catch (err: unknown) {
+    console.warn(`Rebuild failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.warn("Run `clawhq build` manually to retry.");
+    return false;
+  }
+}
+
+/**
  * Register the `tool` subcommand group on the given program.
  */
 export function registerToolCommand(program: Command): void {
@@ -33,7 +74,8 @@ export function registerToolCommand(program: Command): void {
     .command("tool")
     .description("Manage CLI tools — install, list, remove binaries in the agent image")
     .option("--home <path>", "OpenClaw home directory", "~/.openclaw")
-    .option("--clawhq-dir <path>", "ClawHQ data directory", "~/.clawhq");
+    .option("--clawhq-dir <path>", "ClawHQ data directory", "~/.clawhq")
+    .option("--deploy-dir <path>", "Deployment directory (where Dockerfile lives)", ".");
 
   toolCmd
     .command("list", { isDefault: true })
@@ -61,8 +103,9 @@ export function registerToolCommand(program: Command): void {
     .command("install <name>")
     .description("Install a CLI tool into the agent's Docker image")
     .option("--force", "Override allowlist check for non-allowlisted packages")
-    .action(async (name: string, opts: { force?: boolean }) => {
-      const parentOpts = toolCmd.opts() as { home: string; clawhqDir: string };
+    .option("--no-rebuild", "Skip automatic Stage 2 Docker image rebuild")
+    .action(async (name: string, opts: { force?: boolean; noRebuild?: boolean }) => {
+      const parentOpts = toolCmd.opts() as { home: string; clawhqDir: string; deployDir: string };
       const ctx = makeToolCtx(parentOpts);
 
       try {
@@ -97,9 +140,14 @@ export function registerToolCommand(program: Command): void {
 
         console.log(`Tool "${result.tool.name}" installed.`);
         console.log(`  ${result.definition.description}`);
+
+        // Patch Dockerfile and trigger rebuild
         if (result.requiresRebuild) {
           console.log("");
-          console.log("Run `clawhq build` to rebuild the agent image with this tool.");
+          await patchAndRebuild(ctx, {
+            noRebuild: opts.noRebuild,
+            deployDir: parentOpts.deployDir,
+          });
         }
       } catch (err: unknown) {
         if (err instanceof ToolError) {
@@ -114,8 +162,9 @@ export function registerToolCommand(program: Command): void {
   toolCmd
     .command("remove <name>")
     .description("Remove a CLI tool from the agent's Docker image")
-    .action(async (name: string) => {
-      const parentOpts = toolCmd.opts() as { home: string; clawhqDir: string };
+    .option("--no-rebuild", "Skip automatic Stage 2 Docker image rebuild")
+    .action(async (name: string, opts: { noRebuild?: boolean }) => {
+      const parentOpts = toolCmd.opts() as { home: string; clawhqDir: string; deployDir: string };
       const ctx = makeToolCtx(parentOpts);
 
       try {
@@ -132,9 +181,14 @@ export function registerToolCommand(program: Command): void {
         });
 
         console.log(`Tool "${result.tool.name}" removed.`);
+
+        // Patch Dockerfile and trigger rebuild
         if (result.requiresRebuild) {
           console.log("");
-          console.log("Run `clawhq build` to rebuild the agent image without this tool.");
+          await patchAndRebuild(ctx, {
+            noRebuild: opts.noRebuild,
+            deployDir: parentOpts.deployDir,
+          });
         }
       } catch (err: unknown) {
         if (err instanceof ToolError) {

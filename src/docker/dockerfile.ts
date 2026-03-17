@@ -117,6 +117,20 @@ const FRAGMENTS: Record<string, BinaryFragment> = {
     chmod 755 /usr/local/bin/ffmpeg /usr/local/bin/ffprobe && \\
     rm -rf /tmp/ffmpeg*`,
   },
+  yq: {
+    name: "yq",
+    comment: "yq (latest release — YAML/JSON/XML processor)",
+    run: `RUN set -e && \\
+    RELEASE_JSON=$(curl -fsSL https://api.github.com/repos/mikefarah/yq/releases/latest) && \\
+    URL=$(echo "$RELEASE_JSON" | grep -o 'https://github.com/mikefarah/yq/releases/download/[^"]*yq_linux_amd64' | head -1) && \\
+    CHECKSUM_URL=$(echo "$RELEASE_JSON" | grep -o 'https://github.com/mikefarah/yq/releases/download/[^"]*checksums' | head -1) && \\
+    curl -fsSL "$URL" -o /usr/local/bin/yq && \\
+    if [ -n "$CHECKSUM_URL" ]; then \\
+      EXPECTED=$(curl -fsSL "$CHECKSUM_URL" | grep 'yq_linux_amd64 ' | awk '{print $NF}') && \\
+      echo "$EXPECTED /usr/local/bin/yq" | sha256sum -c -; \\
+    fi && \\
+    chmod 755 /usr/local/bin/yq`,
+  },
 };
 
 const WHISPER_FRAGMENT = `# OpenAI Whisper for audio transcription
@@ -155,7 +169,7 @@ export function generateDockerfile(options: DockerfileOptions): string {
   ];
 
   // Add fragments in a deterministic order
-  const order = ["himalaya", "gh", "curl", "jq", "rg", "git", "ffmpeg"];
+  const order = ["himalaya", "gh", "curl", "jq", "rg", "git", "ffmpeg", "yq"];
   for (const name of order) {
     if (!needed.has(name)) continue;
     const fragment = FRAGMENTS[name];

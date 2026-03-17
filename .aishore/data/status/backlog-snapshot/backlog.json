@@ -114,11 +114,12 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "FOUNDATION — all dashboard pages depend on this. Note: FEAT-068, 069, 070 were planned as separate items (auth, SSE/WS infrastructure, home page) but were merged into this item's scope — their functionality is already described here. Ship as unit with FEAT-071 (API endpoints): a partial dashboard with a broken home page is worse than no dashboard. Server + auth + home + nav + SSE must all land in one sprint. User outcome: 'clawhq dashboard' opens browser to working control panel. Acceptance criteria: Hono server starts on correct port; bearer-to-cookie auth works; sidebar nav renders with lifecycle phase grouping; home dashboard card shows agent state + integration health grid + memory metrics + approval/alert badges; SSE status updates fire every 5s. SPRINT PAIR: sprint FEAT-067 and FEAT-071 together — they are co-dependent and independently useless. Tech stack decided: Hono + htmx + Pico CSS (classless). Vendor htmx.min.js + pico.min.css in src/ui/static/. READY TO SPRINT: grooming is thorough, no external blockers."
+      "groomingNotes": "FOUNDATION — all dashboard pages depend on this. Note: FEAT-068, 069, 070 were planned as separate items (auth, SSE/WS infrastructure, home page) but were merged into this item's scope — their functionality is already described here. Ship as unit with FEAT-071 (API endpoints): a partial dashboard with a broken home page is worse than no dashboard. Server + auth + home + nav + SSE must all land in one sprint. User outcome: 'clawhq dashboard' opens browser to working control panel. Acceptance criteria: Hono server starts on correct port; bearer-to-cookie auth works; sidebar nav renders with lifecycle phase grouping; home dashboard card shows agent state + integration health grid + memory metrics + approval/alert badges; SSE status updates fire every 5s. SPRINT PAIR: sprint FEAT-067 and FEAT-071 together — they are co-dependent and independently useless. Tech stack decided: Hono + htmx + Pico CSS (classless). Vendor htmx.min.js + pico.min.css in src/ui/static/. READY TO SPRINT: grooming is thorough, no external blockers.",
+      "completedAt": "2026-03-16T21:24:32-07:00"
     },
     {
       "id": "FEAT-071",
@@ -132,7 +133,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "API layer is the contract between server and web pages — all dashboard pages depend on these endpoints. Routes are thin adapters over existing business logic (no new logic here). Acceptance criteria: all 15 endpoints return {ok, data} or {ok:false, error} shape; streaming endpoints (deploy, build) use SSE correctly; /ws/logs proxies docker logs to browser. SPRINT PAIR: sprint with FEAT-067 (dashboard foundation) — the server scaffold and API layer must land together. The home page (FEAT-067) calls GET /api/v1/status — both must be functional in the same sprint. READY TO SPRINT: no blockers, pairs with FEAT-067."
+      "groomingNotes": "API layer is the contract between server and web pages — all dashboard pages depend on these endpoints. Routes are thin adapters over existing business logic (no new logic here). Acceptance criteria: all 15 endpoints return {ok, data} or {ok:false, error} shape; streaming endpoints (deploy, build) use SSE correctly; /ws/logs proxies docker logs to browser. SPRINT PAIR: sprint with FEAT-067 (dashboard foundation) — the server scaffold and API layer must land together. The home page (FEAT-067) calls GET /api/v1/status — both must be functional in the same sprint. READY TO SPRINT: no blockers, pairs with FEAT-067.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-16T21:34:32-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-072",
