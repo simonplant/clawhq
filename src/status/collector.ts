@@ -6,6 +6,7 @@
 
 import { collectChannelHealth } from "../connect/format.js";
 import { collectMemoryHealth } from "../internal/memory/index.js";
+import { notifyHealthChange } from "../notifications/hooks.js";
 import { getSourceStatus, resolveSourceConfig } from "../source/index.js";
 
 import { collectAgentStatus } from "./agent.js";
@@ -54,7 +55,7 @@ export async function collectStatus(options: StatusOptions = {}): Promise<Status
     displayName: ch.displayName,
   }));
 
-  return {
+  const report: StatusReport = {
     timestamp: new Date().toISOString(),
     agent,
     openclawSource: openclawSourceRaw,
@@ -64,6 +65,17 @@ export async function collectStatus(options: StatusOptions = {}): Promise<Status
     structuredMemory,
     egress,
   };
+
+  // Fire health notifications based on agent state (fire-and-forget)
+  if (agent.state === "degraded" || agent.state === "stopped") {
+    void notifyHealthChange(
+      "degraded",
+      `Agent ${agent.state}`,
+      `Agent is ${agent.state}. Gateway: ${agent.gatewayStatus}.`,
+    );
+  }
+
+  return report;
 }
 
 /**

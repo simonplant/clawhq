@@ -6,6 +6,8 @@
  * produce actionable alerts with projected timelines.
  */
 
+import { notifyAlerts } from "../notifications/hooks.js";
+
 import { analyzeTrend, projectDaysToLimit } from "./analyzer.js";
 import { extractTimeSeries } from "./store.js";
 import type {
@@ -385,6 +387,12 @@ export function generateAlerts(
         trendingCount++;
       }
     }
+  }
+
+  // Dispatch notifications for critical/warning alerts (fire-and-forget)
+  const notifiable = alerts.filter((a) => a.severity === "critical" || a.severity === "warning");
+  if (notifiable.length > 0) {
+    void notifyAlerts(notifiable);
   }
 
   return {

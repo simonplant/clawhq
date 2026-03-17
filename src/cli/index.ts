@@ -20,6 +20,7 @@ import { createFleetCommand } from "./fleet.js";
 import { createIntegrateCommand } from "./integrate.js";
 import { createMemoryCommand } from "./memory.js";
 import { createMigrateCommand } from "./migrate.js";
+import { createNotifyCommand } from "./notify.js";
 import { createOperateCommands } from "./operate.js";
 import { createPlanCommands } from "./plan.js";
 import { createProviderCommand } from "./provider.js";
@@ -78,6 +79,7 @@ program.addCommand(createDashboardCommand());
 program.addCommand(createRepairCommand());
 program.addCommand(createAlertsCommand());
 createBackupCommands(program);
+program.addCommand(createNotifyCommand());
 createDigestApprovalCommands(program);
 
 // Evolve phase

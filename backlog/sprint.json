@@ -1,17 +1,17 @@
 {
-  "sprintId": "sprint-1773771716",
-  "startedAt": "2026-03-17T11:21:56-07:00",
+  "sprintId": "sprint-1773772006",
+  "startedAt": "2026-03-17T11:26:46-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-076",
-    "title": "Dashboard: Skills & Tools management page",
+    "id": "FEAT-081",
+    "title": "Admin notification dispatcher",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T11:21:56-07:00",
+    "startedAt": "2026-03-17T11:26:46-07:00",
     "status": "passed",
-    "completedAt": "2026-03-17T11:26:44-07:00"
+    "completedAt": "2026-03-17T11:40:00-07:00"
   },
-  "completedAt": "2026-03-17T11:26:44-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-17T11:40:00-07:00",
+  "attempts": 2
 }

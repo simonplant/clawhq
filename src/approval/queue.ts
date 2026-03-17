@@ -9,6 +9,8 @@
 import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 
+import { notifyApprovalPending } from "../notifications/hooks.js";
+
 import type {
   ApprovalCategory,
   ApprovalEntry,
@@ -103,6 +105,10 @@ export async function enqueue(
 
   entries.push(entry);
   await writeQueue(entries, options);
+
+  // Fire notification (best-effort, never blocks)
+  void notifyApprovalPending(entry);
+
   return entry;
 }
 
