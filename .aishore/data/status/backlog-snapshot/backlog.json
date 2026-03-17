@@ -486,11 +486,12 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT — unchanged from prior grooming notes. Both pages (Backups + Alerts) are well-specified and unblocked. Sprint this next after FEAT-085 (the implementation files are already there for 085, making it even faster). Two independent dashboard pages with clear API contracts already in place from FEAT-071."
+      "groomingNotes": "READY TO SPRINT — unchanged from prior grooming notes. Both pages (Backups + Alerts) are well-specified and unblocked. Sprint this next after FEAT-085 (the implementation files are already there for 085, making it even faster). Two independent dashboard pages with clear API contracts already in place from FEAT-071.",
+      "completedAt": "2026-03-17T16:34:54-07:00"
     },
     {
       "id": "FEAT-095",
