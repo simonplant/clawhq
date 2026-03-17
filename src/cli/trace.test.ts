@@ -12,7 +12,9 @@ describe("createTraceCommand", () => {
   it("has a why subcommand", () => {
     const why = cmd.commands.find((c) => c.name() === "why");
     expect(why).toBeDefined();
-    expect(why!.description()).toMatch(/explain|why/i);
+    if (why) {
+      expect(why.description()).toMatch(/explain|why/i);
+    }
   });
 
   it("has a list subcommand", () => {
@@ -26,14 +28,19 @@ describe("createTraceCommand", () => {
   });
 
   it("why subcommand accepts a query argument", () => {
-    const why = cmd.commands.find((c) => c.name() === "why")!;
-    const args = why.registeredArguments;
-    expect(args).toHaveLength(1);
-    expect(args[0].name()).toBe("query");
+    const why = cmd.commands.find((c) => c.name() === "why");
+    expect(why).toBeDefined();
+    if (why) {
+      const args = why.registeredArguments;
+      expect(args).toHaveLength(1);
+      expect(args[0].name()).toBe("query");
+    }
   });
 
   it("list subcommand has filtering options", () => {
-    const list = cmd.commands.find((c) => c.name() === "list")!;
+    const list = cmd.commands.find((c) => c.name() === "list");
+    expect(list).toBeDefined();
+    if (!list) return;
     const optionNames = list.options.map((o) => o.long);
     expect(optionNames).toContain("--action-type");
     expect(optionNames).toContain("--since");
