@@ -16,6 +16,7 @@ import { runSmartInit } from "../inference/index.js";
 import { createReadlineIO, runWizard } from "../init/index.js";
 import { runSmokeTest } from "../smoke/index.js";
 
+import { markFirstRunComplete } from "./first-run.js";
 import { formatError, spinner, status } from "./ui.js";
 
 interface QuickstartOptions {
@@ -192,6 +193,9 @@ export function createQuickstartCommand(): Command {
           return;
         }
       }
+
+      // ── Mark first-run complete ──────────────────────────────
+      await markFirstRunComplete("~/.clawhq");
 
       // ── Summary ───────────────────────────────────────────────
       console.log("");

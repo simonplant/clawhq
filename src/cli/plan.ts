@@ -5,6 +5,7 @@
 import { Command } from "commander";
 
 import { runSmartInit } from "../inference/index.js";
+import { markFirstRunComplete } from "./first-run.js";
 import { createReadlineIO, generate, getTemplateById, runWizard, writeBundle } from "../init/index.js";
 import type { WizardAnswers } from "../init/index.js";
 import {
@@ -79,6 +80,7 @@ async function runNonInteractive(opts: {
     return;
   }
 
+  await markFirstRunComplete("~/.clawhq");
   console.log(`ok ${opts.name} ${outputDir}`);
 }
 
@@ -143,6 +145,8 @@ export function createPlanCommands(program: Command): void {
 
           if (result.writeResult.errors.length > 0) {
             process.exitCode = 1;
+          } else {
+            await markFirstRunComplete("~/.clawhq");
           }
         } else {
           if (!opts.guided) {
@@ -157,6 +161,8 @@ export function createPlanCommands(program: Command): void {
 
           if (result.writeResult.errors.length > 0) {
             process.exitCode = 1;
+          } else {
+            await markFirstRunComplete("~/.clawhq");
           }
         }
       } finally {
