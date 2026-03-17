@@ -1,13 +1,17 @@
 {
   "sprintId": "sprint-1773724703",
   "startedAt": "2026-03-16T22:18:23-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-080",
     "title": "GitHub Actions release workflow",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-16T22:18:23-07:00"
-  }
+    "startedAt": "2026-03-16T22:18:23-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-16T22:20:54-07:00"
+  },
+  "completedAt": "2026-03-16T22:20:54-07:00",
+  "attempts": 1
 }
