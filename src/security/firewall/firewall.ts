@@ -209,4 +209,21 @@ export async function verify(config: FirewallConfig): Promise<VerifyResult> {
   }
 }
 
+/**
+ * Build an air-gapped FirewallConfig.
+ *
+ * Blocks ALL outbound HTTPS traffic. Only DNS (for local resolution)
+ * and ESTABLISHED/RELATED (return traffic) are allowed.
+ * No domains are allowlisted — defense in depth for zero external access.
+ */
+export async function buildAirGappedConfig(options?: {
+  bridgeInterface?: string;
+}): Promise<FirewallConfig> {
+  return {
+    chainName: CHAIN_NAME,
+    bridgeInterface: options?.bridgeInterface ?? "docker0",
+    allowlist: [],
+  };
+}
+
 export { AllowlistEntry, FirewallConfig, FirewallResult, VerifyResult };

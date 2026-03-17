@@ -1,17 +1,17 @@
 {
-  "sprintId": "sprint-1773790496",
-  "startedAt": "2026-03-17T16:34:56-07:00",
+  "sprintId": "sprint-1773791246",
+  "startedAt": "2026-03-17T16:47:26-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-103",
-    "title": "Google Assistant routine import — clawhq migrate --from google-assistant",
+    "id": "FEAT-105",
+    "title": "Air-gapped mode — clawhq init --air-gapped",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T16:34:56-07:00",
+    "startedAt": "2026-03-17T16:47:26-07:00",
     "status": "passed",
-    "completedAt": "2026-03-17T16:47:24-07:00"
+    "completedAt": "2026-03-17T16:55:29-07:00"
   },
-  "completedAt": "2026-03-17T16:47:24-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-17T16:55:29-07:00",
+  "attempts": 1
 }

@@ -166,6 +166,7 @@ export interface ClawHQConfig {
   };
   security?: {
     posture?: "standard" | "hardened" | "paranoid";
+    airGapped?: boolean;
   };
   cloud?: {
     enabled?: boolean;

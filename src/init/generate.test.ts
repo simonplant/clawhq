@@ -141,4 +141,28 @@ describe("generate", () => {
     // Replace Google Assistant includes morning-brief and construct
     expect(Object.keys(result.bundle.skills).length).toBeGreaterThan(0);
   });
+
+  it("generates air-gapped config with no cloud providers", () => {
+    const result = generate(makeAnswers({ airGapped: true }));
+
+    expect(result.validationPassed).toBe(true);
+    // No cloud provider config
+    expect(result.bundle.openclawConfig.models?.providers).toBeUndefined();
+    // No cloud API keys in env
+    expect(result.bundle.envVars["ANTHROPIC_API_KEY"]).toBeUndefined();
+    expect(result.bundle.envVars["OPENAI_API_KEY"]).toBeUndefined();
+  });
+
+  it("generates air-gapped docker-compose with air-gapped label", () => {
+    const result = generate(makeAnswers({ airGapped: true }));
+
+    expect(result.bundle.dockerCompose).toContain("clawhq.air-gapped");
+    expect(result.bundle.dockerCompose).toContain("true");
+  });
+
+  it("air-gapped config still includes Ollama bridge", () => {
+    const result = generate(makeAnswers({ airGapped: true }));
+
+    expect(result.bundle.dockerCompose).toContain("host.docker.internal");
+  });
 });

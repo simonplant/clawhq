@@ -314,6 +314,78 @@ describe("runWizard", () => {
     expect(result.detection?.ollamaModels[0].name).toBe("llama3:8b");
     expect(result.detection?.ollamaAvailable).toBe(true);
   });
+
+  it("completes air-gapped wizard with no detection or cloud steps", async () => {
+    const { io, logs } = createMockIO([
+      "air-agent",           // agent name
+      "UTC",                 // timezone
+      "06:00",               // waking start
+      "23:00",               // waking end
+      "3",                   // template: Replace Google Assistant
+      "tok",                 // messaging (required) credential
+      "n", "n", "n",         // skip recommended integrations
+    ]);
+
+    const result = await runWizard(io, tempDir, {
+      fetchFn: mockFetchFail,
+      airGapped: true,
+    });
+
+    // Air-gapped flag should be set
+    expect(result.answers.airGapped).toBe(true);
+    // Should be local-only with no cloud providers
+    expect(result.answers.modelRouting.localOnly).toBe(true);
+    expect(result.answers.modelRouting.cloudProviders).toHaveLength(0);
+    // All categories should disallow cloud
+    for (const cat of result.answers.modelRouting.categories) {
+      expect(cat.cloudAllowed).toBe(false);
+    }
+    // Config should validate and write successfully
+    expect(result.config.validationPassed).toBe(true);
+    expect(result.writeResult.errors).toHaveLength(0);
+    // Should log air-gapped banner
+    expect(logs.some((l) => l.includes("AIR-GAPPED MODE"))).toBe(true);
+    // Should NOT have email detection prompt in logs (skipped)
+    expect(logs.some((l) => l.includes("Auto-Detection"))).toBe(false);
+  });
+
+  it("air-gapped config has no cloud API env vars", async () => {
+    const { io } = createMockIO([
+      "air-agent", "UTC", "06:00", "23:00",
+      "3",                   // template
+      "tok",                 // messaging
+      "n", "n", "n",         // skip integrations
+    ]);
+
+    const result = await runWizard(io, tempDir, {
+      fetchFn: mockFetchFail,
+      airGapped: true,
+    });
+
+    const envPath = join(tempDir, ".env");
+    const envContent = await readFile(envPath, "utf-8");
+    expect(envContent).not.toContain("ANTHROPIC_API_KEY");
+    expect(envContent).not.toContain("OPENAI_API_KEY");
+    expect(result.config.validationPassed).toBe(true);
+  });
+
+  it("air-gapped docker-compose includes air-gapped label", async () => {
+    const { io } = createMockIO([
+      "air-agent", "UTC", "06:00", "23:00",
+      "3",                   // template
+      "tok",                 // messaging
+      "n", "n", "n",         // skip integrations
+    ]);
+
+    await runWizard(io, tempDir, {
+      fetchFn: mockFetchFail,
+      airGapped: true,
+    });
+
+    const composePath = join(tempDir, "docker-compose.yml");
+    const compose = await readFile(composePath, "utf-8");
+    expect(compose).toContain("clawhq.air-gapped");
+  });
 });
 
 describe("getBuiltInTemplates", () => {
