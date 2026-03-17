@@ -5,6 +5,7 @@
  */
 
 export { Layout } from "./components/layout.js";
+export { renderApprovalsPage } from "./pages/approvals.js";
 export { renderDeployPage } from "./pages/deploy.js";
 export { renderHomePage } from "./pages/home.js";
 export { renderDoctorPage } from "./pages/doctor.js";

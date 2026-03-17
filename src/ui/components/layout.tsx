@@ -77,6 +77,9 @@ function Sidebar() {
                 <a href={item.href}>
                   <span class="nav-icon">{item.icon}</span>
                   {item.label}
+                  {item.href === "/approvals" && (
+                    <span id="approvals-badge" class="nav-badge" style="display:none;" />
+                  )}
                 </a>
               </li>
             ))}
@@ -154,6 +157,15 @@ export function Layout({ title, children }: LayoutProps) {
           .nav-icon {
             margin-right: 0.5rem;
           }
+          .nav-badge {
+            margin-left: 0.4rem;
+            padding: 0.05rem 0.4rem;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: #e76f51;
+            color: #fff;
+          }
           .main-content {
             margin-left: var(--sidebar-width);
             flex: 1;
@@ -201,6 +213,26 @@ export function Layout({ title, children }: LayoutProps) {
         <main class="main-content">
           {children}
         </main>
+        <script>{`
+          (function() {
+            function refreshApprovalBadge() {
+              fetch('/api/v1/approvals')
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                  if (!res.ok) return;
+                  var count = res.data.filter(function(a) { return a.status === 'pending'; }).length;
+                  var badge = document.getElementById('approvals-badge');
+                  if (badge) {
+                    badge.textContent = count > 0 ? count : '';
+                    badge.style.display = count > 0 ? 'inline-block' : 'none';
+                  }
+                })
+                .catch(function() {});
+            }
+            refreshApprovalBadge();
+            setInterval(refreshApprovalBadge, 5000);
+          })();
+        `}</script>
       </body>
     </html>
   );
