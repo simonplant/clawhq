@@ -1,17 +1,13 @@
 {
-  "sprintId": "sprint-1773767604",
-  "startedAt": "2026-03-17T10:13:24-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773768045",
+  "startedAt": "2026-03-17T10:20:45-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-074",
-    "title": "Dashboard Deploy Controls page",
+    "id": "FEAT-075",
+    "title": "Dashboard Approvals page",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T10:13:24-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-17T10:20:42-07:00"
-  },
-  "completedAt": "2026-03-17T10:20:42-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-17T10:20:45-07:00"
+  }
 }
