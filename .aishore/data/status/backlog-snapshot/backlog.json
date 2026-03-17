@@ -195,11 +195,12 @@
       "category": "Phase 2: Web Dashboard",
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with /api/v1/approvals endpoints) are both done. Approval queue in the browser completes the trust loop — users see what the agent wants to do before it acts.\n\nSprint scope: (1) Create src/ui/pages/approvals.tsx — Hono JSX page component; (2) Page calls GET /api/v1/approvals and renders pending approvals as cards; (3) Each card shows: action description (plain language), timestamp queued, context/category, Approve and Reject buttons; (4) Approve button: htmx hx-post to /api/v1/approvals/:id/approve, updates card to 'Approved' state; (5) Reject button: htmx hx-post to /api/v1/approvals/:id/reject with optional reason input, updates card to 'Rejected' state; (6) Empty state: friendly 'No pending approvals — your agent is waiting for nothing' message; (7) Badge in sidebar nav showing pending count (pulled from GET /api/v1/approvals at page load, SSE updates every 5s); (8) Register route as GET /approvals in app.ts; (9) Add 'Approvals' link to sidebar nav under Operate section with count badge; (10) Acceptance criteria: approval cards render from live queue; approve/reject actions work and update card state without page reload; empty state renders correctly; sidebar badge shows pending count; tsc clean."
+      "groomingNotes": "UNBLOCKED: FEAT-067 (dashboard) and FEAT-071 (API with /api/v1/approvals endpoints) are both done. Approval queue in the browser completes the trust loop — users see what the agent wants to do before it acts.\n\nSprint scope: (1) Create src/ui/pages/approvals.tsx — Hono JSX page component; (2) Page calls GET /api/v1/approvals and renders pending approvals as cards; (3) Each card shows: action description (plain language), timestamp queued, context/category, Approve and Reject buttons; (4) Approve button: htmx hx-post to /api/v1/approvals/:id/approve, updates card to 'Approved' state; (5) Reject button: htmx hx-post to /api/v1/approvals/:id/reject with optional reason input, updates card to 'Rejected' state; (6) Empty state: friendly 'No pending approvals — your agent is waiting for nothing' message; (7) Badge in sidebar nav showing pending count (pulled from GET /api/v1/approvals at page load, SSE updates every 5s); (8) Register route as GET /approvals in app.ts; (9) Add 'Approvals' link to sidebar nav under Operate section with count badge; (10) Acceptance criteria: approval cards render from live queue; approve/reject actions work and update card state without page reload; empty state renders correctly; sidebar badge shows pending count; tsc clean.",
+      "completedAt": "2026-03-17T10:26:41-07:00"
     },
     {
       "id": "FEAT-076",
@@ -211,9 +212,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-16",
-      "groomingNotes": "Tier B dashboard pages expand coverage but CLI is adequate for all four (clawhq doctor, clawhq backup, clawhq skill list, clawhq fleet). Ship after Tier A pages (FEAT-072-075) are validated. Fleet page only valuable when fleet features are actively used."
+      "readyForSprint": true,
+      "groomedAt": "2026-03-17",
+      "groomingNotes": "READY TO SPRINT: FEAT-067 (dashboard) and FEAT-071 (API endpoints with GET/POST/DELETE /api/v1/skills) are both done. This is a Tier B dashboard page — ship after confirming Tier A (FEAT-072-075) validated. Sprint scope: (1) Create src/ui/pages/skills.tsx — Hono JSX page component with two tabs: Skills and Tools; (2) Skills tab: GET /api/v1/skills → render card list of installed skills with name, version, source, status (active/disabled), last-used; each card has Enable/Disable toggle (htmx hx-patch) and Remove button (htmx hx-delete with hx-confirm); install form at top: text input for skill name or URL + Install button (htmx hx-post to /api/v1/skills); (3) Tools tab: GET /api/v1/fleet (or dedicated tools endpoint) → render installed tools table with name, version, health status; install form for package name; (4) Register route as GET /skills in app.ts; (5) Add 'Skills & Tools' link to sidebar nav under Evolve section; (6) Note: the API endpoint for tools (clawhq tool list/install) may need a new /api/v1/tools endpoint added to src/ui/app.ts — scope that in sprint if needed. Acceptance criteria: /skills page renders installed skills from live API; install form works for skill name and URL; enable/disable toggle works; remove button works with confirmation; Tools tab shows installed tools; uses established dashboard layout; tsc clean."
     },
     {
       "id": "FEAT-077",
@@ -286,9 +287,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-16",
-      "groomingNotes": "SEQUENCING: Ship after dashboard Tier A pages (FEAT-072-075) are validated. Notifications complete the autopilot loop — the agent finds problems, the dashboard shows them, notifications push them to you without checking the dashboard.\n\nUNBLOCKING CONDITION: Dashboard Tier A pages must be validated with at least one real user before sprinting this. Without dashboard validation, we don't know which notification events matter most.\n\nWhen ready to sprint: (1) Create src/notifications/types.ts — NotificationChannel (webhook|telegram|slack|email), EventSubscription (alert.critical, alert.warning, approval.pending, health.degraded, health.recovered, update.available, backup.failed); (2) src/notifications/store.ts — read/write ~/.clawhq/notifications.json; (3) src/notifications/dispatcher.ts — dispatchEvent(event: EventSubscription, payload: object) iterates channels, filters by subscription, sends; (4) Webhook payloads signed with HMAC-SHA256 using channel-specific secret; (5) src/cli/notify.ts — commands: notify add (walk through channel type + URL/token + event subscriptions), notify list, notify remove <id>, notify test <id>; (6) Register notify command in src/cli/index.ts; (7) Hook dispatcher into: src/alerts/ (generateAlerts → dispatch alert events), src/approval/ (queueAction → dispatch approval.pending), src/status/ (health degraded/recovered), src/update/ (update.available); (8) Telegram is primary channel — matches approval queue UX from FEAT-022.\n\nAC: clawhq notify add walks through channel setup; notify list shows channels with subscriptions; notify test <id> sends a test event and confirms delivery; webhook payloads are HMAC-signed; at least 3 event types fire from real system events (alert, approval, health); tsc clean."
+      "readyForSprint": true,
+      "groomedAt": "2026-03-17",
+      "groomingNotes": "READY TO SPRINT: All dependencies met (Dashboard Tier A pages FEAT-072-075 completed 2026-03-17). Sprint scope is well-defined in previous notes. Implementation plan: (1) Create src/notifications/types.ts — NotificationChannel type (webhook/telegram/slack/email) with event subscriptions (alert.critical, alert.warning, approval.pending, health.degraded/recovered, update.available, backup.failed); (2) Create src/notifications/store.ts — load/save channels from ~/.clawhq/notifications.json; (3) Create src/notifications/dispatcher.ts — dispatch(event, payload) iterates channels, sends to matching subscriptions, HMAC-SHA256 signs webhook payloads; (4) Create src/notifications/telegram.ts — sendTelegram(token, chatId, message): calls Telegram Bot API; (5) Create src/notifications/webhook.ts — sendWebhook(url, payload, secret): signs with HMAC-SHA256, sends POST; (6) Create src/cli/notify.ts — createNotifyCommand(): Command with subcommands add/list/remove/test; (7) Register notify command in src/cli/index.ts; (8) Hook dispatcher into src/alerts/ (critical/warning events), src/approval/ (pending events), src/status/ (health.degraded/recovered events), src/update/ (update.available events). Acceptance criteria: clawhq notify add telegram --token <T> --chat-id <C> --events approval.pending,health.degraded adds channel to notifications.json; clawhq notify list shows configured channels; clawhq notify test <id> sends test message to channel; dispatcher fires on real events (e.g., new approval queued); webhook payloads are HMAC-signed; tsc clean."
     },
     {
       "id": "FEAT-082",
@@ -372,9 +373,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-16",
-      "groomingNotes": "PART OF TEMPLATES: Role/personality is delivered inside each template bundle (FEAT-086) — a template IS a personality preset. Standalone clawhq role set/customize is a Tinkerer power feature, not day-1 adoption bloat. Downgraded from must to should. Ship after FEAT-086 delivers baked-in template personalities. dependsOn: FEAT-086. User outcome: Tinkerer can customize agent communication style, formality, and domain framing without editing raw identity files directly."
+      "readyForSprint": true,
+      "groomedAt": "2026-03-17",
+      "groomingNotes": "READY TO SPRINT: FEAT-086 (Template toolbelts) completed — each template has baked-in personality. This item adds the Tinkerer power feature. Sprint scope: (1) Create src/cli/role.ts — createRoleCommand(): Command with two subcommands: 'role set <preset>' and 'role customize'; (2) Define RolePreset type in src/init/templates.ts or new src/role/presets.ts — 6 presets mapping to template archetypes: executive-assistant, research-analyst, life-coach, data-analyst, security-guardian, companion — each preset defines: tone (formal/casual/professional), formality (high/medium/low), proactivity (high/medium/low), domainExpertise string, communicationStyle string; (3) role set <preset>: reads current ~/.openclaw/workspace/IDENTITY.md, patches the role section with the preset's tone/formality/proactivity/domain framing, writes back with diff shown before applying; (4) role customize: opens  with current IDENTITY.md, shows diff before applying, preserves manual customizations on subsequent template updates by tracking a 'manual_customizations' block; (5) Add read-only enforcement: verify IDENTITY.md mount in docker-compose has 'read_only: true' flag — warn if not set; (6) Register role command in src/cli/index.ts. Acceptance criteria: clawhq role set executive-assistant updates IDENTITY.md with formal/high-proactivity/PA-domain framing; clawhq role customize opens editor with diff shown before saving; manual customizations are preserved when template is re-applied; IDENTITY.md mount verified read-only; tsc clean."
     },
     {
       "id": "FEAT-088",
@@ -386,9 +387,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-16",
-      "groomingNotes": "DISCOVERY NOT BLOCKING: The current clawhq skill install <url|local> pipeline already enables skill addition. A searchable registry is a discovery and community feature — valuable but not blocking the 'Gets more capable over time' design principle, which is served by the install pipeline (FEAT-089) and template skill bundles (FEAT-086). Downgraded from must to should. Ship after FEAT-086 and FEAT-089 are validated. User outcome: user can search and discover community skills by category without knowing the exact URL or name."
+      "readyForSprint": true,
+      "groomedAt": "2026-03-17",
+      "groomingNotes": "READY TO SPRINT: FEAT-086 (Template toolbelts) and FEAT-089 (Tool installation framework) both done. Sprint scope: (1) Create src/skill/registry.ts — define BuiltinSkillEntry type (id, name, description, tags, requiredIntegrations, cronSchedule, scriptTemplate); export BUILTIN_SKILLS array with 10+ skills: morning-brief (requires email+calendar), email-digest (requires email), meal-planning (standalone), meeting-prep (requires calendar+email), expense-tracking (requires finance), journaling (standalone), workout-planning (standalone), research-brief (requires research), task-review (requires tasks), focus-block (requires calendar); (2) Create src/cli/skill-registry.ts or extend src/cli/skill-commands/ — add 'clawhq skill search <query>' command that filters BUILTIN_SKILLS by name/description/tags and prints results table with required integrations; (3) Add 'clawhq skill info <name>' command that shows full details: description, required integrations, cron schedule, what data it accesses; (4) Wire clawhq skill install <name> to check BUILTIN_SKILLS first — if found, use the skill's scriptTemplate directly without requiring a URL; (5) Register updated skill commands in src/cli/index.ts. Acceptance criteria: clawhq skill search email returns at least email-digest and morning-brief; clawhq skill info morning-brief shows description, required integrations, cron schedule; clawhq skill install morning-brief works without a URL (built-in registry lookup); at least 10 skills in registry; tsc clean."
     },
     {
       "id": "FEAT-089",
@@ -476,6 +477,34 @@
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
       "groomingNotes": "TIER B DASHBOARD PAGES: Both backups and alerts have adequate CLI equivalents (clawhq backup, clawhq doctor). The visual upgrade is real — traffic-light alert cards and a one-click restore button are dramatically more accessible for Privacy Migrants — but these are not blocking adoption when the CLI works. Ship after Tier A dashboard pages (FEAT-072-075) are validated with real users. Acceptance criteria: Backups page shows snapshot table with date/size/type and working create/restore buttons with confirmation dialog; Alerts page shows severity-grouped cards with dismiss/acknowledge actions; both pages use the established dashboard layout from FEAT-067."
+    },
+    {
+      "id": "FEAT-095",
+      "title": "Memory search — warm/cold tier search (clawhq memory search)",
+      "description": "clawhq memory search <query> searches across warm and cold memory tiers. Phase B of FEAT-092 which explicitly deferred search. v1 can use simple text matching without qdrant — keyword search over warm/cold tier JSONL files is sufficient for the initial use case. qdrant vector search (FEAT-090 dependency) is a Phase B upgrade. Sprint this after FEAT-092 is validated with real users.",
+      "priority": "could",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-17",
+      "groomingNotes": "READY TO SPRINT: Phase B of FEAT-092 (memory lifecycle). FEAT-092 is done — hot/warm/cold tiers exist at ~/.clawhq/memory/hot.jsonl, warm.jsonl, cold.jsonl (or similar paths from src/internal/memory/store.ts). Sprint scope: (1) Inspect src/internal/memory/store.ts and reader.ts to understand exact file paths and MemoryEntry type; (2) Add 'memory search <query>' subcommand to the existing src/cli/memory.ts createMemoryCommand(); (3) Search implementation: read warm.jsonl and cold.jsonl, parse each MemoryEntry, do case-insensitive substring match on content/summary fields, return ranked results (exact phrase match > word match); (4) Output format: table with tier (warm/cold), timestamp, relevance snippet (truncated to 80 chars), entry ID; (5) Add --since <date> flag to limit search to entries after a date; (6) Add --tier hot|warm|cold flag to limit to a specific tier; (7) v1 is intentionally keyword-only — no qdrant/vector search (that's FEAT-090 dependency, deferred). Acceptance criteria: clawhq memory search 'meeting' returns matching entries from warm and cold tiers; results show tier, timestamp, and content snippet; --since 2026-01-01 filters by date; empty result shows friendly 'no matches found' message; tsc clean."
+    },
+    {
+      "id": "FEAT-096",
+      "title": "Decision trace CLI — clawhq trace why/list",
+      "description": "CLI surface for the existing src/internal/trace/ decision trace module. PRODUCT.md §7 Transparency P1. Internal impl already exists (src/cli/trace.ts + src/internal/trace/) — this is the user-facing CLI wiring. clawhq trace why <session-id|keyword> explains why the agent took a specific action by surfacing the DecisionEntry record. clawhq trace list shows recent decisions with timestamps and categories. Distinct from FEAT-085 (tool execution audit trail) — this is the reasoning trace, not the execution log.",
+      "priority": "could",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-17",
+      "groomingNotes": "READY TO SPRINT: src/cli/trace.ts and src/internal/trace/ already exist — this is just the user-facing CLI wiring. Sprint scope is minimal: (1) Inspect existing src/cli/trace.ts and src/internal/trace/ to understand what's already implemented — likely DecisionEntry type with timestamp, sessionId, category, reasoning, action fields stored in ~/.clawhq/decision-trace.json (JSONL); (2) Add 'trace list' subcommand: reads decision-trace.json, shows last 20 entries with timestamp, category, and truncated action summary — paginated with --limit flag; (3) Add 'trace why <session-id|keyword>' subcommand: queries decision-trace.json for entries matching session-id or keyword in reasoning/action fields, prints full DecisionEntry in human-readable format; (4) Ensure the command is registered in src/cli/index.ts — it may already be registered but with stub implementations; (5) Verify the writing side (appending DecisionEntry to the JSONL file) exists somewhere in the agent execution path — if not, add a note but do not scope the agent-side writing into this sprint. Acceptance criteria: clawhq trace list shows at least the last 20 decision entries; clawhq trace why <keyword> filters and shows matching entries; output is human-readable (not raw JSON unless --json flag); if trace log doesn't exist, show friendly 'no trace entries found' message; tsc clean."
     }
   ],
   "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",

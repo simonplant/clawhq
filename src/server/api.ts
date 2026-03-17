@@ -382,6 +382,37 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   });
 
   // ──────────────────────────────────────────
+  // GET /tools — list workspace tools
+  // ──────────────────────────────────────────
+  api.get("/tools", async (c) => {
+    try {
+      const { readdir } = await import("node:fs/promises");
+      const { join } = await import("node:path");
+      const { TOOL_BINARY_DEPS } = await import("../workspace/tools/registry.js");
+
+      const toolsDir = join(openclawHome, "workspace", "tools");
+      let files: string[] = [];
+      try {
+        files = await readdir(toolsDir);
+      } catch {
+        // tools dir may not exist yet
+      }
+
+      const tools = files
+        .filter((f) => !f.startsWith("."))
+        .map((f) => ({
+          name: f,
+          dependencies: TOOL_BINARY_DEPS[f] ?? [],
+          exists: true,
+        }));
+
+      return c.json(ok(tools));
+    } catch (err: unknown) {
+      return c.json(fail(err instanceof Error ? err.message : String(err)), 500);
+    }
+  });
+
+  // ──────────────────────────────────────────
   // GET /fleet — fleet status
   // ──────────────────────────────────────────
   api.get("/fleet", async (c) => {
