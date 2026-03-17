@@ -520,11 +520,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: All dependencies met (src/security/firewall/ and src/security/credentials/ confirmed in CLAUDE.md). Clear implementation path: (1) Create src/cli/provider.ts with createProviderCommand() - add/list/remove/test subcommands; (2) provider add: walks API key setup, validates credential via health probe, stores in .env, configures allowed task categories (interactive selection), updates egress firewall allowlist; (3) provider list: table with name/credential-status/allowed-categories/egress-stats/routing-priority; (4) provider remove: cleans .env, updates routing policy, tightens firewall; (5) provider test: test inference call (model list or ping); (6) Register in src/cli/index.ts. Acceptance criteria: clawhq provider add openai walks setup and validates credential; allowed categories are configurable; clawhq provider list shows routing priority and egress stats; provider remove tightens firewall; tsc clean."
+      "groomingNotes": "READY TO SPRINT: All dependencies met (src/security/firewall/ and src/security/credentials/ confirmed in CLAUDE.md). Clear implementation path: (1) Create src/cli/provider.ts with createProviderCommand() - add/list/remove/test subcommands; (2) provider add: walks API key setup, validates credential via health probe, stores in .env, configures allowed task categories (interactive selection), updates egress firewall allowlist; (3) provider list: table with name/credential-status/allowed-categories/egress-stats/routing-priority; (4) provider remove: cleans .env, updates routing policy, tightens firewall; (5) provider test: test inference call (model list or ping); (6) Register in src/cli/index.ts. Acceptance criteria: clawhq provider add openai walks setup and validates credential; allowed categories are configurable; clawhq provider list shows routing priority and egress stats; provider remove tightens firewall; tsc clean.",
+      "completedAt": "2026-03-17T12:17:51-07:00"
     },
     {
       "id": "FEAT-098",
