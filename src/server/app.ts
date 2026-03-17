@@ -10,7 +10,9 @@ import { fileURLToPath } from "node:url";
 
 import { Hono } from "hono";
 
+import { renderAlertsPage } from "../ui/pages/alerts.js";
 import { renderApprovalsPage } from "../ui/pages/approvals.js";
+import { renderBackupsPage } from "../ui/pages/backups.js";
 import { renderDeployPage } from "../ui/pages/deploy.js";
 import { renderDoctorPage } from "../ui/pages/doctor.js";
 import { renderFleetPage } from "../ui/pages/fleet.js";
@@ -78,8 +80,16 @@ export function createApp(config: ServerConfig): Hono<ServerEnv> {
     return c.html(renderLogsPage());
   });
 
+  app.get("/alerts", (c) => {
+    return c.html(renderAlertsPage());
+  });
+
   app.get("/approvals", (c) => {
     return c.html(renderApprovalsPage());
+  });
+
+  app.get("/backups", (c) => {
+    return c.html(renderBackupsPage());
   });
 
   app.get("/skills", (c) => {

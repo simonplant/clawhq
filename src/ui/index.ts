@@ -5,7 +5,9 @@
  */
 
 export { Layout } from "./components/layout.js";
+export { renderAlertsPage } from "./pages/alerts.js";
 export { renderApprovalsPage } from "./pages/approvals.js";
+export { renderBackupsPage } from "./pages/backups.js";
 export { renderDeployPage } from "./pages/deploy.js";
 export { renderHomePage } from "./pages/home.js";
 export { renderDoctorPage } from "./pages/doctor.js";

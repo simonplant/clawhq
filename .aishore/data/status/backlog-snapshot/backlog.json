@@ -345,11 +345,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "IMPLEMENTATION PARTIALLY DONE: src/audit/appender.ts, reader.ts, tool-format.ts, types.ts already exist in working tree (untracked from prior work). Core data model and read/write logic is in place. Sprint scope is now minimal: (1) verify existing files match AuditEntry type spec; (2) create src/cli/audit.ts — createAuditCommand() with 'audit show', '--since', '--export', '--compliance' subcommands calling existing reader.ts; (3) register in src/cli/index.ts; (4) commit the untracked src/audit/ files. The --compliance OWASP GenAI Top 10 report is the highest-value output — prioritize that output shape. Sprint this now — implementation is 70% done."
+      "groomingNotes": "IMPLEMENTATION PARTIALLY DONE: src/audit/appender.ts, reader.ts, tool-format.ts, types.ts already exist in working tree (untracked from prior work). Core data model and read/write logic is in place. Sprint scope is now minimal: (1) verify existing files match AuditEntry type spec; (2) create src/cli/audit.ts — createAuditCommand() with 'audit show', '--since', '--export', '--compliance' subcommands calling existing reader.ts; (3) register in src/cli/index.ts; (4) commit the untracked src/audit/ files. The --compliance OWASP GenAI Top 10 report is the highest-value output — prioritize that output shape. Sprint this now — implementation is 70% done.",
+      "completedAt": "2026-03-17T16:29:16-07:00"
     },
     {
       "id": "FEAT-086",
