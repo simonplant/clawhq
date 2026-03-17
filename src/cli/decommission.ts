@@ -1,10 +1,13 @@
 import { resolve } from "node:path";
 
+import chalk from "chalk";
 import { Command } from "commander";
 
 import { destroy, dryRun } from "../destroy/destroy.js";
 import type { DestroyStep } from "../destroy/types.js";
 import { createExport } from "../export/export.js";
+
+import { spinner, status } from "./ui.js";
 
 export function createDecommissionCommands(program: Command): void {
   program
@@ -30,7 +33,8 @@ export function createDecommissionCommands(program: Command): void {
       if (opts.maskPii) flags.push("PII masking");
       if (noMemory) flags.push("identity + config only");
       const flagsNote = flags.length > 0 ? ` (${flags.join(", ")})` : "";
-      console.log(`Creating export bundle${flagsNote}...`);
+      const exportSpinner = spinner(`${chalk.magenta("Operate")} Creating export bundle${flagsNote}...`);
+      exportSpinner.start();
 
       try {
         const result = await createExport({
@@ -40,7 +44,7 @@ export function createDecommissionCommands(program: Command): void {
           noMemory,
         });
 
-        console.log(`Export created: ${result.exportId}`);
+        exportSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} Export created: ${result.exportId}`);
         console.log(`  Files: ${result.manifest.files.length}`);
         console.log(`  Archive: ${result.archivePath}`);
 
@@ -51,8 +55,9 @@ export function createDecommissionCommands(program: Command): void {
           console.log("  Memory: excluded");
         }
       } catch (err: unknown) {
+        exportSpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Export failed`);
         console.error(
-          `Export failed: ${err instanceof Error ? err.message : String(err)}`,
+          err instanceof Error ? err.message : String(err),
         );
         process.exitCode = 1;
       }
@@ -146,11 +151,17 @@ export function createDecommissionCommands(program: Command): void {
       }
 
       // Execute destruction
-      console.log(`Destroying deployment "${opts.name}"...`);
-      console.log("");
+      const destroySpinner = spinner(`${chalk.magenta("Operate")} Destroying deployment "${opts.name}"...`);
+      destroySpinner.start();
 
       try {
         const result = await destroy(destroyOpts);
+
+        if (result.success) {
+          destroySpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} Destruction complete`);
+        } else {
+          destroySpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Destruction failed`);
+        }
 
         const total = result.steps.length;
         for (let i = 0; i < total; i++) {
@@ -182,8 +193,9 @@ export function createDecommissionCommands(program: Command): void {
           process.exitCode = 1;
         }
       } catch (err: unknown) {
+        destroySpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Destruction failed`);
         console.error(
-          `Destruction failed: ${err instanceof Error ? err.message : String(err)}`,
+          err instanceof Error ? err.message : String(err),
         );
         process.exitCode = 1;
       }

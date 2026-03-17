@@ -2,11 +2,14 @@
  * `clawhq connect` command — messaging channel setup.
  */
 
+import chalk from "chalk";
 import { Command } from "commander";
 
 import type { ChannelSetupFlow } from "../connect/index.js";
 import { formatTestResult, readOpenClawChannels, telegramFlow, whatsappFlow } from "../connect/index.js";
 import { createReadlineIO } from "../init/index.js";
+
+import { spinner, status } from "./ui.js";
 
 const CHANNEL_FLOWS: Record<string, ChannelSetupFlow> = {
   telegram: telegramFlow,
@@ -44,9 +47,14 @@ async function runConnectAction(
   }
 
   if (opts.test) {
-    console.log(`Testing ${channelName} connection...`);
-    console.log("");
+    const testSpinner = spinner(`${chalk.green("Deploy")} Testing ${channelName} connection...`);
+    testSpinner.start();
     const result = await flow.test(connectOpts);
+    if (result.success) {
+      testSpinner.succeed(`${chalk.green("Deploy")} ${status.pass} ${channelName} connection verified`);
+    } else {
+      testSpinner.fail(`${chalk.green("Deploy")} ${status.fail} ${channelName} connection failed`);
+    }
     console.log(formatTestResult(result));
     if (!result.success) {
       process.exitCode = 1;

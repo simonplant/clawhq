@@ -4,6 +4,7 @@
 
 import { resolve } from "node:path";
 
+import chalk from "chalk";
 import { Command } from "commander";
 
 import { createBackup } from "../backup/backup.js";
@@ -11,6 +12,8 @@ import { formatBackupTable, listBackups } from "../backup/list.js";
 import { restoreBackup } from "../backup/restore.js";
 import { formatStepResult } from "../deploy/format.js";
 import { formatCheckResult, runUpdate } from "../update/update.js";
+
+import { spinner, status } from "./ui.js";
 
 /**
  * Register backup and update commands on the program.
@@ -42,6 +45,10 @@ export function createBackupCommands(program: Command): void {
         return;
       }
 
+      const type = opts.secretsOnly ? "secrets-only" : "full";
+      const backupSpinner = spinner(`${chalk.magenta("Operate")} Creating ${type} backup...`);
+      backupSpinner.start();
+
       try {
         const result = await createBackup({
           openclawHome: homePath,
@@ -50,13 +57,13 @@ export function createBackupCommands(program: Command): void {
           secretsOnly: opts.secretsOnly,
         });
 
-        const type = opts.secretsOnly ? "secrets-only" : "full";
-        console.log(`Backup created: ${result.backupId} (${type})`);
+        backupSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} Backup created: ${result.backupId}`);
         console.log(`  Files: ${result.manifest.files.length}`);
         console.log(`  Archive: ${result.archivePath}`);
       } catch (err: unknown) {
+        backupSpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Backup failed`);
         console.error(
-          `Backup failed: ${err instanceof Error ? err.message : String(err)}`,
+          err instanceof Error ? err.message : String(err),
         );
         process.exitCode = 1;
       }
@@ -95,6 +102,9 @@ export function createBackupCommands(program: Command): void {
       const homePath = opts.home.replace(/^~/, process.env.HOME ?? "~");
       const backupDir = opts.backupDir.replace(/^~/, process.env.HOME ?? "~");
 
+      const restoreSpinner = spinner(`${chalk.magenta("Operate")} Restoring backup ${id}...`);
+      restoreSpinner.start();
+
       try {
         const result = await restoreBackup({
           backupId: id,
@@ -102,7 +112,11 @@ export function createBackupCommands(program: Command): void {
           openclawHome: homePath,
         });
 
-        console.log(`Restored backup: ${result.backupId}`);
+        if (result.doctorPassed) {
+          restoreSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} Backup restored: ${result.backupId}`);
+        } else {
+          restoreSpinner.warn(`${chalk.magenta("Operate")} ${status.warn} Backup restored with warnings`);
+        }
         console.log(`  Files restored: ${result.filesRestored}`);
         console.log(`  Integrity: ${result.integrityPassed ? "PASS" : "FAIL"}`);
         console.log(`  Doctor: ${result.doctorPassed ? "PASS" : "FAIL"} (${result.doctorChecks.pass} passed, ${result.doctorChecks.warn} warnings, ${result.doctorChecks.fail} failed)`);
@@ -112,8 +126,9 @@ export function createBackupCommands(program: Command): void {
           console.log("Run `clawhq doctor` for detailed diagnostics.");
         }
       } catch (err: unknown) {
+        restoreSpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Restore failed`);
         console.error(
-          `Restore failed: ${err instanceof Error ? err.message : String(err)}`,
+          err instanceof Error ? err.message : String(err),
         );
         process.exitCode = 1;
       }
@@ -177,8 +192,8 @@ export function createBackupCommands(program: Command): void {
         return;
       }
 
-      console.log("Starting update...");
-      console.log("");
+      const updateSpinner = spinner(`${chalk.magenta("Operate")} Running update...`);
+      updateSpinner.start();
 
       const result = await runUpdate({
         openclawHome: opts.home.replace(/^~/, process.env.HOME ?? "~"),
@@ -199,6 +214,14 @@ export function createBackupCommands(program: Command): void {
         force: opts.force,
         repo: opts.repo,
       });
+
+      if (result.success) {
+        updateSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} Update complete`);
+      } else if (result.rolledBack) {
+        updateSpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Update failed — rolled back`);
+      } else {
+        updateSpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Update failed`);
+      }
 
       for (let i = 0; i < result.steps.length; i++) {
         console.log(formatStepResult(i + 1, result.steps.length, result.steps[i]));

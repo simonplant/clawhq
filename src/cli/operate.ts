@@ -2,6 +2,7 @@
  * `clawhq doctor`, `clawhq status`, and `clawhq logs` commands.
  */
 
+import chalk from "chalk";
 import { Command } from "commander";
 
 import {
@@ -21,6 +22,8 @@ import {
 } from "../logs/index.js";
 import { collectStatus } from "../status/collector.js";
 import { formatDashboard, formatJson as formatStatusJson } from "../status/format.js";
+
+import { spinner, status } from "./ui.js";
 
 /**
  * Register operate-phase commands (doctor, status, logs) on the program.
@@ -61,16 +64,23 @@ export function createOperateCommands(program: Command): void {
 
       // Run --fix mode
       if (opts.fix) {
+        const fixSpinner = spinner(`${chalk.magenta("Operate")} Auto-fixing issues...`);
+        fixSpinner.start();
         const fixes = await runFixes(ctx);
         if (fixes.length === 0) {
-          console.log("No auto-fixable issues found.");
+          fixSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} No auto-fixable issues found`);
           return;
+        }
+        const allFixed = fixes.every((f) => f.fixed);
+        if (allFixed) {
+          fixSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} Fixed ${fixes.length} issue${fixes.length > 1 ? "s" : ""}`);
+        } else {
+          fixSpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Some issues could not be fixed`);
         }
         for (const fix of fixes) {
           const icon = fix.fixed ? "FIXED" : "ERROR";
           console.log(`${icon}  ${fix.name}: ${fix.message}`);
         }
-        const allFixed = fixes.every((f) => f.fixed);
         if (!allFixed) {
           process.exitCode = 1;
         }
@@ -78,7 +88,15 @@ export function createOperateCommands(program: Command): void {
       }
 
       // Run diagnostics
+      const doctorSpinner = spinner(`${chalk.magenta("Operate")} Running diagnostics...`);
+      doctorSpinner.start();
       const report = await runChecks(ctx);
+
+      if (report.passed) {
+        doctorSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} All checks passed`);
+      } else {
+        doctorSpinner.fail(`${chalk.magenta("Operate")} ${status.fail} Issues detected`);
+      }
 
       if (opts.json) {
         console.log(formatJson(report));
@@ -121,8 +139,16 @@ export function createOperateCommands(program: Command): void {
         egressLogPath: opts.egressLog?.replace(/^~/, process.env.HOME ?? "~"),
       };
 
-      const run = async () => {
+      const run = async (showSpinner: boolean) => {
+        let statusSpinner: ReturnType<typeof spinner> | null = null;
+        if (showSpinner) {
+          statusSpinner = spinner(`${chalk.magenta("Operate")} Collecting status...`);
+          statusSpinner.start();
+        }
         const report = await collectStatus(statusOpts);
+        if (statusSpinner) {
+          statusSpinner.succeed(`${chalk.magenta("Operate")} ${status.pass} Status collected`);
+        }
 
         // Collect metrics and append to history for trend analysis
         const snapshot = collectMetrics(report);
@@ -145,14 +171,14 @@ export function createOperateCommands(program: Command): void {
       };
 
       if (!opts.watch) {
-        await run();
+        await run(true);
         return;
       }
 
       // Watch mode: clear screen and refresh every 5 seconds
       const refresh = async () => {
         process.stdout.write("\x1B[2J\x1B[H");
-        await run();
+        await run(false);
       };
 
       await refresh();

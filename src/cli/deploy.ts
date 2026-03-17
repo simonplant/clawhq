@@ -2,10 +2,13 @@
  * `clawhq up`, `clawhq down`, and `clawhq restart` commands — Deploy phase.
  */
 
+import chalk from "chalk";
 import { Command } from "commander";
 
 import { deployDown, deployRestart, deployUp } from "../deploy/deploy.js";
 import { formatStepResult, formatSummary } from "../deploy/format.js";
+
+import { spinner, status } from "./ui.js";
 
 /**
  * Register Deploy-phase commands (up, down, restart) on the program.
@@ -42,8 +45,8 @@ export function createDeployCommands(program: Command): void {
       const configPath = opts.config.replace(/^~/, process.env.HOME ?? "~");
       const envPath = opts.env?.replace(/^~/, process.env.HOME ?? "~");
 
-      console.log("Starting deployment...");
-      console.log("");
+      const deploySpinner = spinner(`${chalk.green("Deploy")} Starting deployment...`);
+      deploySpinner.start();
 
       const result = await deployUp({
         openclawHome: homePath,
@@ -58,6 +61,12 @@ export function createDeployCommands(program: Command): void {
         enabledProviders: opts.providers?.split(",").map((p) => p.trim()),
         bridgeInterface: opts.bridge,
       });
+
+      if (result.success) {
+        deploySpinner.succeed(`${chalk.green("Deploy")} ${status.pass} Deployment complete`);
+      } else {
+        deploySpinner.fail(`${chalk.green("Deploy")} ${status.fail} Deployment failed`);
+      }
 
       for (let i = 0; i < result.steps.length; i++) {
         console.log(formatStepResult(i + 1, result.steps.length, result.steps[i]));
@@ -85,10 +94,16 @@ export function createDeployCommands(program: Command): void {
     .description("Stop agent container gracefully, preserving workspace state")
     .option("--compose <path>", "Path to docker-compose.yml")
     .action(async (opts: { compose?: string }) => {
-      console.log("Stopping deployment...");
-      console.log("");
+      const downSpinner = spinner(`${chalk.green("Deploy")} Stopping deployment...`);
+      downSpinner.start();
 
       const result = await deployDown({ composePath: opts.compose });
+
+      if (result.success) {
+        downSpinner.succeed(`${chalk.green("Deploy")} ${status.pass} Shutdown complete`);
+      } else {
+        downSpinner.fail(`${chalk.green("Deploy")} ${status.fail} Shutdown failed`);
+      }
 
       for (let i = 0; i < result.steps.length; i++) {
         console.log(formatStepResult(i + 1, result.steps.length, result.steps[i]));
@@ -120,8 +135,8 @@ export function createDeployCommands(program: Command): void {
       providers?: string;
       bridge: string;
     }) => {
-      console.log("Restarting deployment...");
-      console.log("");
+      const restartSpinner = spinner(`${chalk.green("Deploy")} Restarting deployment...`);
+      restartSpinner.start();
 
       const result = await deployRestart({
         openclawHome: opts.home.replace(/^~/, process.env.HOME ?? "~"),
@@ -132,6 +147,12 @@ export function createDeployCommands(program: Command): void {
         enabledProviders: opts.providers?.split(",").map((p) => p.trim()),
         bridgeInterface: opts.bridge,
       });
+
+      if (result.success) {
+        restartSpinner.succeed(`${chalk.green("Deploy")} ${status.pass} Restart complete`);
+      } else {
+        restartSpinner.fail(`${chalk.green("Deploy")} ${status.fail} Restart failed`);
+      }
 
       for (let i = 0; i < result.steps.length; i++) {
         console.log(formatStepResult(i + 1, result.steps.length, result.steps[i]));
