@@ -1,5 +1,5 @@
 {
-  "description": "ClawHQ feature backlog \u2014 six modules (ClawSmith, ClawOps, ClawAdmin, ClawConstruct, ClawForge, ClawHQ Cloud). See backlog/GAP-ANALYSIS.md for AS-IS/TO-BE comparison.",
+  "description": "ClawHQ feature backlog \u2014 parallel tracks. See backlog/GAP-ANALYSIS.md for AS-IS/TO-BE analysis.",
   "items": [
     {
       "id": "FEAT-060",
@@ -657,10 +657,10 @@
     },
     {
       "id": "FEAT-106",
-      "title": "Distro directory structure (~/.clawhq/)",
-      "description": "Implement the ~/.clawhq/ distro directory structure with engine/, workspace/, ops/, security/, cron/, cloud/ subdirectories. Create clawhq.yaml meta-config (version, install method, cloud token). Update all file path references across the codebase to use the new structure. Provide migration path from existing ~/.openclaw/ deployments.",
+      "title": "Email Manager template YAML + init integration",
+      "description": "Create configs/templates/email-manager.yaml with full operational profile for 'Run my emails' use case. Identity: professional, concise, protective of time. Tools: email + calendar + tasks. Skills: email-digest, morning-brief. Cron: inbox check 15min, digest 8am. Security: hardened, egress mail server only. Wire into template loader so `clawhq init --guided` offers it as a choice. This proves the use-case template model end-to-end with existing code.",
       "priority": "must",
-      "category": "ClawForge: Build It",
+      "category": "Track A: Templates",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -669,73 +669,58 @@
     },
     {
       "id": "FEAT-107",
-      "title": "Pre-requisite detection and guided install",
-      "description": "Implement pre-req checker for clawhq install: detect Docker (install guide or auto-install), Node.js >=20 (install guide or nvm), Ollama (optional, detect and offer), disk space (>=10GB warning), platform detection (Linux, macOS, WSL). Output clear, actionable guidance for any missing pre-req.",
-      "priority": "must",
-      "category": "ClawForge: Build It",
+      "title": "Stock Trading Assistant template YAML",
+      "description": "Create configs/templates/stock-trading.yaml. Identity: analytical, data-driven, conservative risk warnings. Tools: quote, web-search, tasks. Skills: market-scan, portfolio-alert. Cron: pre-market 6am, hourly during market. Security: hardened, egress finance APIs + email only. Autonomy: auto-monitor, flag before trade suggestions.",
+      "priority": "should",
+      "category": "Track A: Templates",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
-      "dependsOn": [
-        "FEAT-106"
-      ]
+      "readyForSprint": false
     },
     {
       "id": "FEAT-108",
-      "title": "Engine acquisition from trusted cache",
-      "description": "Implement default engine acquisition path: download pre-built OpenClaw package from clawhq.com/releases, verify SHA256 checksum, verify GPG signature against pinned public key. Store in ~/.clawhq/engine/. Show verification status to user.",
-      "priority": "must",
-      "category": "ClawForge: Build It",
+      "title": "Meal Planner template YAML",
+      "description": "Create configs/templates/meal-planner.yaml. Identity: health-conscious, practical. Tools: web-search, tasks, calendar. Skills: meal-plan, shopping-list. Cron: weekly plan Sunday 6pm, daily prep. Autonomy: auto-plan within dietary prefs, approval for shopping list.",
+      "priority": "should",
+      "category": "Track A: Templates",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
-      "dependsOn": [
-        "FEAT-106"
-      ]
+      "readyForSprint": false
     },
     {
       "id": "FEAT-109",
-      "title": "Engine acquisition from source (zero-trust)",
-      "description": "Implement --from-source acquisition path: clone OpenClaw repo, allow user to inspect before build, full two-stage Docker build from source, generate build manifest for drift detection. Integrate with existing src/source/ module. --verify flag for additional integrity checks.",
-      "priority": "must",
-      "category": "ClawForge: Build It",
+      "title": "Founder's Ops template YAML",
+      "description": "Create configs/templates/founders-ops.yaml. Identity: professional, decisive, protective of time. Tools: email, calendar, tasks, web-search. Skills: email-digest, investor-update, hiring-pipeline. Cron: morning triage 7am, weekly investor prep. Autonomy: auto-triage, approval for external sends.",
+      "priority": "should",
+      "category": "Track A: Templates",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
-      "dependsOn": [
-        "FEAT-106"
-      ]
+      "readyForSprint": false
     },
     {
       "id": "FEAT-110",
-      "title": "clawhq install end-to-end orchestrator",
-      "description": "Create the clawhq install command that orchestrates the full distro install: pre-req check (FEAT-107), engine acquisition (FEAT-108 or FEAT-109 based on --from-source flag), distro directory scaffold (FEAT-106), initial clawhq.yaml creation. One command, working distro directory. This is the entry point.",
-      "priority": "must",
-      "category": "ClawForge: Build It",
+      "title": "Family Hub template YAML",
+      "description": "Create configs/templates/family-hub.yaml. Identity: warm, organized, patient. Tools: calendar, tasks, web-search. Skills: meal-plan, chore-assign, family-brief. Cron: daily brief, weekly meal plan, chore rotation. Autonomy: auto-schedule, approval for external messages.",
+      "priority": "should",
+      "category": "Track A: Templates",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
-      "dependsOn": [
-        "FEAT-106",
-        "FEAT-107",
-        "FEAT-108",
-        "FEAT-109"
-      ]
+      "readyForSprint": false
     },
     {
       "id": "FEAT-111",
-      "title": "Use-case template: Email Manager",
-      "description": "Full operational template for 'Run my emails' \u2014 inbox zero, triage, auto-reply. Identity: professional, concise, protective of time. Tools: email (himalaya), calendar (CalDAV), tasks. Skills: email-digest, morning-brief, auto-reply. Cron: inbox check 15min, daily digest 8am. Security: hardened, egress to mail server only. Autonomy: auto-triage, approval before sending.",
-      "priority": "must",
-      "category": "ClawSmith: The Product",
+      "title": "AI Blog Maintainer template YAML",
+      "description": "Create configs/templates/ai-blog.yaml. Identity: editorial voice, thoughtful, original perspectives. Tools: web-search, tasks. Skills: research-digest, draft-post. Cron: daily research, weekly draft. Autonomy: auto-research, approval before publishing.",
+      "priority": "should",
+      "category": "Track A: Templates",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -744,10 +729,10 @@
     },
     {
       "id": "FEAT-112",
-      "title": "Use-case template: Stock Trading Assistant",
-      "description": "Full operational template for market monitoring and research. Identity: analytical, data-driven, conservative risk warnings. Tools: quote (market data), web-search (research), tasks (trade log). Skills: market-scan, portfolio-alert, research-digest. Cron: pre-market scan 6am, hourly during market hours. Security: hardened, egress to finance APIs + email only. Autonomy: auto-monitor/alert, flag before trade suggestions.",
-      "priority": "should",
-      "category": "ClawSmith: The Product",
+      "title": "Template personalizer: preference questions per template",
+      "description": "Extend init wizard to ask template-specific preference questions. Email Manager: communication style, priority contacts, auto-reply policy. Trading: risk tolerance, markets, alert threshold. Meal: dietary restrictions, cuisine preferences, household size. Apply answers to customize template before generating config. 1-3 extra questions per template, not a long form.",
+      "priority": "must",
+      "category": "Track A: Templates",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -756,10 +741,10 @@
     },
     {
       "id": "FEAT-113",
-      "title": "Use-case template: Meal Planner",
-      "description": "Full operational template for nutrition, recipes, and shopping. Identity: health-conscious, practical, considers dietary preferences. Tools: web-search (recipes), tasks (shopping list), calendar (meal schedule). Skills: meal-plan, shopping-list, nutrition-track. Cron: weekly meal plan Sunday 6pm, daily prep reminders. Autonomy: auto-plan within dietary prefs, approval for shopping list.",
-      "priority": "should",
-      "category": "ClawSmith: The Product",
+      "title": "clawhq install: pre-req detection + distro scaffold",
+      "description": "Single command: detect Docker (guide if missing), detect Node.js >=20 (guide if missing), detect Ollama (optional), check disk space. Create ~/.clawhq/ directory with clawhq.yaml meta-config. Scaffold engine/, workspace/, ops/, security/, cron/, cloud/ subdirs. This is the foundation \u2014 no engine acquisition yet, just the structure and checks.",
+      "priority": "must",
+      "category": "Track B: Installer",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -768,34 +753,40 @@
     },
     {
       "id": "FEAT-114",
-      "title": "Use-case template: AI Blog Maintainer",
-      "description": "Full operational template for research, writing, and publishing. Identity: editorial voice, thoughtful, original perspectives. Tools: web-search (research), tasks (editorial queue). Skills: research-digest, draft-post, publish-review. Cron: daily research scan, weekly draft, review queue. Autonomy: auto-research, approval before publishing.",
-      "priority": "should",
-      "category": "ClawSmith: The Product",
+      "title": "clawhq install: engine acquisition from source",
+      "description": "Extend clawhq install to clone OpenClaw source, run existing two-stage Docker build (src/docker/build.ts already works), store in ~/.clawhq/engine/. Wire existing src/source/ module. --from-source flag. Default path for now \u2014 trusted cache comes later when we have a release server.",
+      "priority": "must",
+      "category": "Track B: Installer",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
+      "readyForSprint": false,
+      "dependsOn": [
+        "FEAT-113"
+      ]
     },
     {
       "id": "FEAT-115",
-      "title": "Use-case template: Founder's Ops",
-      "description": "Full operational template for inbox zero, investor updates, hiring pipeline. Identity: professional, decisive, protective of founder's time. Tools: email, calendar, tasks, web-search. Skills: email-digest, investor-update, hiring-pipeline. Cron: morning triage 7am, weekly investor prep, hiring pipeline review. Autonomy: auto-triage email, approval for external sends.",
-      "priority": "should",
-      "category": "ClawSmith: The Product",
+      "title": "Migrate file paths from ~/.openclaw/ to ~/.clawhq/engine/",
+      "description": "Update all hardcoded ~/.openclaw/ references to use configurable distro root from clawhq.yaml. Default: ~/.clawhq/engine/ for new installs, ~/.openclaw/ for existing. Add migration command: clawhq migrate-layout that moves files from old to new structure. Non-breaking \u2014 existing deployments keep working.",
+      "priority": "must",
+      "category": "Track B: Installer",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
+      "readyForSprint": false,
+      "dependsOn": [
+        "FEAT-113"
+      ]
     },
     {
       "id": "FEAT-116",
-      "title": "Use-case template: Family Hub",
-      "description": "Full operational template for shared calendar, chores, meals, family coordination. Identity: warm, organized, patient. Tools: calendar, tasks, web-search. Skills: meal-plan, chore-assign, family-brief. Cron: daily family brief, weekly meal plan, chore rotation. Autonomy: auto-schedule within boundaries, approval for any external messages.",
-      "priority": "should",
-      "category": "ClawSmith: The Product",
+      "title": "Skill: email-digest (triage and summarize inbox)",
+      "description": "Workspace skill that triages inbox: categorize emails (urgent/action/info/spam), summarize key messages, propose responses for approval. SKILL.md + supporting prompts. Used by Email Manager and Founder's Ops templates. Leverages existing email tool wrapper.",
+      "priority": "must",
+      "category": "Track C: Skills",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -804,10 +795,10 @@
     },
     {
       "id": "FEAT-117",
-      "title": "Template personalizer engine",
-      "description": "Build the personalization layer that sits between template selection and config generation. Ask user-specific preferences based on template type (dietary prefs for meal planner, risk tolerance for trading, communication style for email manager). Apply preferences to customize the template before generating the config bundle.",
-      "priority": "must",
-      "category": "ClawSmith: The Product",
+      "title": "Skill: auto-reply (draft + approval gate)",
+      "description": "Workspace skill that drafts email replies matching user's voice. Queues via existing approval system (src/approval/) before sending. Learns from corrections. SKILL.md + prompts. Used by Email Manager template.",
+      "priority": "should",
+      "category": "Track C: Skills",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -816,10 +807,10 @@
     },
     {
       "id": "FEAT-118",
-      "title": "credentials.json store (mode 0600)",
-      "description": "Implement separate credentials.json file for integration credentials, distinct from .env for environment secrets. Mode 0600. CRUD operations via CLI (clawhq admin creds add/remove/list). Health probe integration. Migration from existing .env-only setup.",
+      "title": "Skill: market-scan (pre-market research digest)",
+      "description": "Workspace skill for daily market scan. Uses quote tool for watchlist prices, web-search for overnight news, generates morning brief with key moves and alerts. SKILL.md + prompts. Used by Stock Trading template.",
       "priority": "should",
-      "category": "ClawAdmin: Lock It Down",
+      "category": "Track C: Skills",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -828,10 +819,10 @@
     },
     {
       "id": "FEAT-119",
-      "title": "Cloud audit trail (ops/audit/cloud.jsonl)",
-      "description": "Append-only JSONL log for all cloud interactions. Log direction (in/out), type (heartbeat/command/advisory), data sent, command signatures, execution results. CLI: clawhq cloud audit, clawhq cloud audit --outbound, clawhq cloud inspect <cmd-id>.",
+      "title": "Skill: meal-plan (weekly planning + shopping list)",
+      "description": "Workspace skill that generates weekly meal plans based on dietary preferences, generates shopping lists, schedules prep reminders via calendar. SKILL.md + prompts. Used by Meal Planner and Family Hub templates.",
       "priority": "should",
-      "category": "ClawAdmin: Lock It Down",
+      "category": "Track C: Skills",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -840,10 +831,10 @@
     },
     {
       "id": "FEAT-120",
-      "title": "Monitor daemon configuration",
-      "description": "Implement ops/monitor/ with monitor.yaml (what to watch, thresholds, intervals) and alerts.yaml (alert routing: terminal, email, webhook, cloud). Background health check loop. Integrate with existing alerts/ predictive health system.",
+      "title": "Trust mode config + kill switch",
+      "description": "Add trust_mode field to clawhq.yaml: paranoid (default, no cloud), zero-trust, managed. CLI: clawhq cloud mode [paranoid|zero-trust|managed]. Kill switch: clawhq cloud disconnect \u2014 sets to paranoid immediately. Foundation for all cloud features. No cloud server needed yet \u2014 just the local config and mode switching.",
       "priority": "should",
-      "category": "ClawOps: Keep It Alive",
+      "category": "Track D: Cloud",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -852,40 +843,40 @@
     },
     {
       "id": "FEAT-121",
-      "title": "Zero-trust remote admin: trust mode management",
-      "description": "Implement three trust modes: Paranoid (no cloud, default self-managed), Zero-Trust (outbound only, signed commands, user-approved, default managed), Managed (auto-approved ops, content architecturally blocked). Store in clawhq.yaml. CLI: clawhq cloud mode [paranoid|zero-trust|managed]. Kill switch: clawhq cloud disconnect.",
-      "priority": "must",
-      "category": "ClawHQ Cloud: The Business",
+      "title": "Health heartbeat: outbound-only status reporter",
+      "description": "Agent-initiated HTTPS POST to configurable endpoint. Reports: agent state, uptime, container health, integration status, memory sizes, version, error codes. NEVER reports content. Runs on interval from clawhq.yaml. Logs every outbound payload to ops/audit/cloud.jsonl for user inspection. clawhq cloud audit shows what was sent.",
+      "priority": "should",
+      "category": "Track D: Cloud",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": false,
       "dependsOn": [
-        "FEAT-106"
+        "FEAT-120"
       ]
     },
     {
       "id": "FEAT-122",
-      "title": "Zero-trust remote admin: command queue protocol",
-      "description": "Agent-initiated command queue: agent polls cloud for commands on its schedule, verifies cryptographic signature against pinned public key, checks command against ALLOWED_COMMANDS for current trust mode, logs to local audit trail, executes or rejects. No inbound ports. Cloud puts commands in queue, agent pulls. Content access handlers MUST NOT EXIST in code (architecturally blocked).",
-      "priority": "must",
-      "category": "ClawHQ Cloud: The Business",
+      "title": "Command queue: pull, verify signature, execute or reject",
+      "description": "Agent polls cloud endpoint for pending commands. Each command is cryptographically signed. Agent verifies against pinned public key, checks command against allowed list for current trust mode, logs to audit trail, executes or rejects. Content-access commands have NO handler (architecturally blocked). Allowed ops commands: restart, check-update, trigger-backup.",
+      "priority": "should",
+      "category": "Track D: Cloud",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": false,
       "dependsOn": [
-        "FEAT-121"
+        "FEAT-120"
       ]
     },
     {
       "id": "FEAT-123",
-      "title": "agentd daemon for managed mode",
-      "description": "Implement agentd \u2014 the ClawHQ distro running as a daemon in managed mode. Maintains outbound connection to cloud console. Pulls and executes signed commands (ops only: restart, update, backup). Streams health heartbeat. Never accepts content-access commands. Runs all install phases. Same distro, different lifecycle management.",
-      "priority": "must",
-      "category": "ClawHQ Cloud: The Business",
+      "title": "agentd: managed mode daemon wrapper",
+      "description": "Wrapper that runs ClawHQ distro as a daemon. Starts heartbeat (FEAT-121), starts command poller (FEAT-122), manages lifecycle. Installable as systemd/launchd service. Same distro, automated lifecycle. Foundation for managed hosting.",
+      "priority": "could",
+      "category": "Track D: Cloud",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -898,25 +889,22 @@
     },
     {
       "id": "FEAT-124",
-      "title": "Health heartbeat protocol",
-      "description": "Implement outbound health heartbeat from agent to cloud. Reports: agent state (up/down/degraded), uptime, container health, integration status, memory tier sizes, software version, error codes, model routing summary, cost metrics, firewall status. NEVER reports: conversations, memory contents, identity files, credential values, tool inputs/outputs. Configurable interval (default 5min).",
-      "priority": "must",
-      "category": "ClawHQ Cloud: The Business",
+      "title": "Source reorg: create module barrel exports",
+      "description": "Create index.ts barrel exports for each target module boundary WITHOUT moving files yet. src/smith/index.ts re-exports from init/, templates/, workspace/tools/, workspace/identity/, inference/. Same for ops/, admin/, construct/, forge/, cloud/. This is the non-breaking first step \u2014 existing imports still work, new module imports also work.",
+      "priority": "should",
+      "category": "Track E: Source Reorg",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
-      "dependsOn": [
-        "FEAT-121"
-      ]
+      "readyForSprint": false
     },
     {
       "id": "FEAT-125",
-      "title": "Cloud console web application (MVP)",
-      "description": "Web application for clawhq.com. Account management, agent health dashboard (from heartbeats), fleet view for multi-agent operators, update notification display, security advisory display. Never shows agent content \u2014 only operational metadata. Separate repo/deployment from the distro.",
-      "priority": "should",
-      "category": "ClawHQ Cloud: The Business",
+      "title": "Source reorg: move files to module directories",
+      "description": "Physical file moves into module directories (smith/, ops/, admin/, construct/, forge/, cloud/). Update all import paths. Run full test suite. This follows FEAT-124 (barrel exports already established). Single PR, one clean move. Use barrel exports as bridge during transition.",
+      "priority": "could",
+      "category": "Track E: Source Reorg",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -928,10 +916,46 @@
     },
     {
       "id": "FEAT-126",
-      "title": "Managed hosting provisioning (DigitalOcean)",
-      "description": "One-click provisioning on DigitalOcean: create droplet, install distro via cloud-init, configure agentd, DNS + SSL automation (Let's Encrypt), reverse proxy setup. Start with single provider, expand later.",
+      "title": "credentials.json separate credential store",
+      "description": "Add credentials.json (mode 0600) alongside .env for integration credentials. CRUD via clawhq creds add/remove/list (extend existing creds command). Health probe integration reads from credentials.json. Migration: existing .env credentials auto-copied on first run. Non-breaking.",
       "priority": "should",
-      "category": "ClawHQ Cloud: The Business",
+      "category": "Track F: Polish",
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-127",
+      "title": "Monitor daemon with configurable alerts",
+      "description": "Background health check loop using existing alerts/ system. ops/monitor/monitor.yaml defines what to watch + thresholds. ops/monitor/alerts.yaml routes alerts to terminal, webhook, or cloud. clawhq monitor start/stop/status. Wraps existing predictive health (src/alerts/) into a daemon.",
+      "priority": "should",
+      "category": "Track F: Polish",
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-128",
+      "title": "Local web dashboard: functional pages",
+      "description": "Build functional UI pages for existing Hono server scaffold. Pages: Doctor results, Status dashboard, Log viewer, Deploy controls (up/down/restart buttons). Use htmx (already included) for interactivity. Calls same functions as CLI. 5 pages, minimal styling.",
+      "priority": "could",
+      "category": "Track F: Polish",
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-129",
+      "title": "Managed hosting: DigitalOcean provisioning",
+      "description": "clawhq cloud provision --provider digitalocean. Create droplet, install distro via cloud-init, configure agentd, setup DNS + SSL (Let's Encrypt). Requires agentd (FEAT-123) and cloud console to exist.",
+      "priority": "future",
+      "category": "Track D: Cloud",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -942,124 +966,34 @@
       ]
     },
     {
-      "id": "FEAT-127",
-      "title": "Source reorganization: ClawSmith module",
-      "description": "Move init/, templates/, workspace/tools/, workspace/identity/, inference/ into src/smith/. Create barrel exports (index.ts) for each submodule. Update all import paths. Ensure all tests pass after move.",
-      "priority": "should",
-      "category": "Source Reorganization",
-      "steps": [],
-      "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-128",
-      "title": "Source reorganization: ClawOps module",
-      "description": "Move doctor/, status/, backup/, update/, logs/, alerts/, repair/, digest/ into src/ops/. Create barrel exports. Update all import paths. Ensure all tests pass.",
-      "priority": "should",
-      "category": "Source Reorganization",
-      "steps": [],
-      "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-129",
-      "title": "Source reorganization: ClawAdmin module",
-      "description": "Move security/, audit/ into src/admin/. Create harden/, credentials/, firewall/, audit/, scanner/, sandbox/, validate/ submodules. Create barrel exports. Update all import paths. Ensure all tests pass.",
-      "priority": "should",
-      "category": "Source Reorganization",
-      "steps": [],
-      "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
       "id": "FEAT-130",
-      "title": "Source reorganization: ClawConstruct module",
-      "description": "Move skill/, tool/, export/, destroy/, internal/, role/ into src/construct/. Create skills/, evolve/, rollback/, lifecycle/ submodules. Create barrel exports. Update all import paths. Ensure all tests pass.",
-      "priority": "should",
-      "category": "Source Reorganization",
+      "title": "Cloud console web app MVP",
+      "description": "Separate web application for clawhq.com. Account management, agent health dashboard from heartbeats, fleet view. Never shows agent content. Separate repo.",
+      "priority": "future",
+      "category": "Track D: Cloud",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
+      "readyForSprint": false,
+      "dependsOn": [
+        "FEAT-121"
+      ]
     },
     {
       "id": "FEAT-131",
-      "title": "Source reorganization: ClawForge module",
-      "description": "Move docker/, deploy/, source/, smoke/ into src/forge/. Create installer/, docker/, launcher/ submodules. Create barrel exports. Update all import paths. Ensure all tests pass.",
-      "priority": "should",
-      "category": "Source Reorganization",
+      "title": "Template marketplace: submission + search",
+      "description": "Community template contributions. YAML submission format, validation (can't loosen Layer 1 security), clawhq template submit/search. Requires cloud console.",
+      "priority": "future",
+      "category": "Track A: Templates",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-132",
-      "title": "Source reorganization: ClawHQ Cloud module",
-      "description": "Move cloud/, fleet/, notifications/ into src/cloud/. Create agentd/, heartbeat/, commands/, fleet/ submodules. Create barrel exports. Update all import paths. Ensure all tests pass.",
-      "priority": "should",
-      "category": "Source Reorganization",
-      "steps": [],
-      "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-133",
-      "title": "Template-driven tool generator: travel planner",
-      "description": "CLI tool wrapper for travel planning. Search flights, hotels, itineraries via web-search integration. Generate travel-specific prompts. Include in templates that specify travel planning use case.",
-      "priority": "could",
-      "category": "ClawSmith: The Product",
-      "steps": [],
-      "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-134",
-      "title": "Template-driven tool generator: nutrition/meals",
-      "description": "CLI tool wrapper for meal planning and nutrition tracking. Recipe search, nutritional info lookup, shopping list generation. Include in meal planner template.",
-      "priority": "could",
-      "category": "ClawSmith: The Product",
-      "steps": [],
-      "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-135",
-      "title": "Local web dashboard: functional UI components",
-      "description": "Build out the scaffolded UI components for the local web dashboard. Doctor results page, status dashboard, log viewer, deploy controls, skill management. Uses Hono server already implemented. Local-only, no cloud required.",
-      "priority": "could",
-      "category": "ClawOps: Keep It Alive",
-      "steps": [],
-      "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-136",
-      "title": "Template marketplace: community contribution pipeline",
-      "description": "Infrastructure for community template contributions. Template submission format (YAML), validation pipeline, safety checks (templates cannot loosen Layer 1 security), review workflow. clawhq template submit and clawhq template search commands.",
-      "priority": "could",
-      "category": "ClawSmith: The Product",
-      "steps": [],
-      "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
+      "readyForSprint": false,
+      "dependsOn": [
+        "FEAT-130"
+      ]
     }
   ],
   "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done.",
@@ -1121,49 +1055,48 @@
     ]
   },
   "phases": {
-    "phase1_ship_distro": [
+    "track_a_templates": [
       "FEAT-106",
       "FEAT-107",
       "FEAT-108",
       "FEAT-109",
       "FEAT-110",
       "FEAT-111",
-      "FEAT-117",
-      "FEAT-118"
-    ],
-    "phase2_templates_ops": [
       "FEAT-112",
+      "FEAT-131"
+    ],
+    "track_b_installer": [
       "FEAT-113",
       "FEAT-114",
-      "FEAT-115",
+      "FEAT-115"
+    ],
+    "track_c_skills": [
       "FEAT-116",
+      "FEAT-117",
+      "FEAT-118",
+      "FEAT-119"
+    ],
+    "track_d_cloud": [
       "FEAT-120",
-      "FEAT-133",
-      "FEAT-134"
-    ],
-    "phase3_source_reorg": [
-      "FEAT-127",
-      "FEAT-128",
-      "FEAT-129",
-      "FEAT-130",
-      "FEAT-131",
-      "FEAT-132"
-    ],
-    "phase4_cloud_managed": [
-      "FEAT-119",
       "FEAT-121",
       "FEAT-122",
       "FEAT-123",
-      "FEAT-124",
-      "FEAT-125",
-      "FEAT-126",
-      "FEAT-083"
+      "FEAT-129",
+      "FEAT-130"
     ],
-    "phase5_ecosystem": [
-      "FEAT-104",
-      "FEAT-135",
-      "FEAT-136",
-      "FEAT-084"
+    "track_e_source_reorg": [
+      "FEAT-124",
+      "FEAT-125"
+    ],
+    "track_f_polish": [
+      "FEAT-126",
+      "FEAT-127",
+      "FEAT-128"
+    ],
+    "existing_todo": [
+      "FEAT-083",
+      "FEAT-084",
+      "FEAT-104"
     ]
   }
 }
