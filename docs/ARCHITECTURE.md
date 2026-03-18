@@ -20,7 +20,7 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 │  Managed hosting · Remote monitoring · Template marketplace  │
 ├─────────────────────────────────────────────────────────────┤
 │  LAYER 2: Template Engine (the product)                      │
-│  Use-case templates: hundreds of recipes.                    │
+│  Use-case templates: recipes for specific jobs.                    │
 │  During setup, ClawHQ "cooks" ~10 personalized for the user:│
 │  asks preferences, connects services, validates credentials, │
 │  generates all config, tools, skills, identity, cron.        │
@@ -38,7 +38,7 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 - **One install, one CLI, one binary.** ClawHQ is WordPress, not sed+awk+grep. Users install one thing (`clawhq`), run flat commands (`clawhq doctor`, `clawhq init`). Modules are internal architecture for developers — never user-facing. Multiple binaries communicate "you're the operator"; one binary communicates "we handle everything."
 - **Unix philosophy lives in the agent's tools, not in ClawHQ.** `email`, `calendar`, `tasks`, `quote` — small, composable, single-purpose workspace tools. Templates compose them into purpose-built agents. ClawHQ is the orchestrator that assembles the right tools for the job.
 - **ClawHQ is the install.** Users don't install OpenClaw separately. ClawHQ acquires, configures, and manages the engine.
-- **Templates are recipes, not config files.** ClawHQ has hundreds of recipes and cooks ~10 personalized for the user during setup — asking preferences, connecting services, generating everything.
+- **Templates are recipes, not config files.** ClawHQ has use-case recipes and cooks them personalized for the user during setup — asking preferences, connecting services, generating everything.
 - **OpenClaw's Gateway UI is fine for basic management.** ClawHQ doesn't compete with it. It sits on top and makes the engine do something specific.
 - **Everything is programmatic.** Every aspect of OpenClaw is a file or API call. ClawHQ controls all of it — no manual config editing required.
 - **Tight coupling to OpenClaw.** No abstraction layer. We use OpenClaw's TypeBox config schema, WebSocket RPC, file paths, and container structure directly.
@@ -79,7 +79,7 @@ This is the product. Everything else is infrastructure.
 
 ### Templates Are Recipes
 
-ClawHQ maintains a library of hundreds of recipes — complete operational profiles for specific use cases. During setup, ClawHQ "cooks" a personalized configuration:
+ClawHQ maintains a library of use-case recipes — complete operational profiles for specific use cases. During setup, ClawHQ "cooks" a personalized configuration:
 
 1. **User describes what they want** — "manage my email," "help with stock trading," "plan meals for my family"
 2. **ClawHQ selects and personalizes recipes** — asks preferences, dietary restrictions, risk tolerance, communication style
@@ -234,13 +234,7 @@ ClawHQ integrates through four surfaces — all programmatic:
 
 ### What OpenClaw Already Handles (Don't Replicate)
 
-- Message routing (channel → session → agent dispatch)
-- Model API calls (selection, failover, streaming)
-- Tool execution (dispatch + sandboxing)
-- Session persistence
-- Channel protocol handling
-- Config schema validation (Gateway is the final authority)
-- **The Gateway UI** — basic management panel. Let it be cPanel.
+Message routing, model API calls, tool execution, session persistence, channel protocols, config schema validation, and **the Gateway UI** (basic management — let it be cPanel). See `docs/OPENCLAW-REFERENCE.md` for full details.
 
 ---
 
@@ -404,7 +398,7 @@ clawhq/
 │   │
 │   ├── smith/                      # ClawSmith — THE PRODUCT
 │   │   ├── templates/              # Template engine
-│   │   │   ├── registry.ts         # Template library (hundreds of recipes)
+│   │   │   ├── registry.ts         # Template library (use-case recipes)
 │   │   │   ├── loader.ts           # YAML template parsing + validation
 │   │   │   ├── mapper.ts           # Template + preferences → config values
 │   │   │   ├── personalizer.ts     # User preferences → template customization
@@ -483,7 +477,7 @@ ClawHQ is composed of six modules, each a distinct domain with clear boundaries:
 
 | Module | Domain | What It Owns |
 |---|---|---|
-| **ClawSmith** | Forge personalized agents | Template engine, configuration, personalization, setup wizard. Hundreds of recipes, cook ~10 for the user. THE PRODUCT. |
+| **ClawSmith** | Forge personalized agents | Template engine, configuration, personalization, setup wizard. Use-case recipes, cooked personalized for the user. THE PRODUCT. |
 | **ClawOps** | Keep it alive | Doctor, monitor, backup, update, status, logs, alerting. Day-2 through day-365. |
 | **ClawAdmin** | Lock it down | Security posture, credentials, firewall, audit trail, permissions, sandbox. |
 | **ClawConstruct** | Grow it | Skill install/update/remove, tool installation, self-improvement, evolution, rollback. Agent gets more capable over time. |
@@ -644,9 +638,4 @@ Decisions that are settled and should not be revisited without strong reason.
 
 ## Implementation Priority
 
-1. **Template engine + configure + launch** — Recipes → running agent
-2. **Distro installer + harden** — One command end-to-end
-3. **Tools + skills** — Agent has hands and brain
-4. **Ops** — Doctor, backup, status, updates
-5. **Cloud service + managed hosting** — The business
-6. **Template marketplace** — The ecosystem
+See `docs/PRODUCT.md` → Build Order for parallel tracks and `backlog/backlog.json` for sprint-ready items.

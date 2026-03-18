@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ClawHQ turns generic, unsecured open-source software (OpenClaw) into personalized digital agents — without the user knowing how any of it works. They get a Signal, Telegram, or Discord UI. We do the rest.
 
-OpenClaw has its own control panel (Gateway UI). That's cPanel. ClawHQ is WordPress — the intelligent configuration layer with hundreds of use-case recipes that programmatically configure every dimension of OpenClaw for a specific job. Everything in OpenClaw is a file or API call. ClawHQ controls all of it.
+OpenClaw has its own control panel (Gateway UI). That's cPanel. ClawHQ is WordPress — the intelligent configuration layer with use-case recipes that programmatically configure every dimension of OpenClaw for a specific job. Everything in OpenClaw is a file or API call. ClawHQ controls all of it.
 
 **Current status: Active development.** Full CLI implementation with operational tooling. Key docs:
 - `README.md` — Executive summary and positioning
@@ -20,11 +20,11 @@ See `docs/ARCHITECTURE.md` for the full solution architecture.
 
 **Three layers:**
 - **Layer 1 (Distro — table stakes):** Install, harden, launch, ops. Acquire engine, secure it, keep it alive. Same for every agent.
-- **Layer 2 (Template Engine — THE PRODUCT):** Hundreds of recipes. During setup, ClawHQ cooks ~10 personalized for the user — configuring identity, tools, skills, cron, integrations, security, autonomy, memory, model routing, egress rules. The agent is purpose-built for a specific job.
+- **Layer 2 (Template Engine — THE PRODUCT):** Use-case recipes. During setup, ClawHQ cooks ~10 personalized for the user — configuring identity, tools, skills, cron, integrations, security, autonomy, memory, model routing, egress rules. The agent is purpose-built for a specific job.
 - **Layer 3 (Cloud Service — the business):** Managed hosting, remote monitoring, template marketplace. Optional.
 
 **Six modules:**
-- **ClawSmith** — Template engine. THE PRODUCT. Hundreds of recipes → personalized agent.
+- **ClawSmith** — Template engine. THE PRODUCT. Use-case recipes → personalized agent.
 - **ClawOps** — Doctor, monitor, backup, update, status, logs. Keep it alive.
 - **ClawAdmin** — Security, credentials, firewall, audit, sandbox. Lock it down.
 - **ClawConstruct** — Skills, tools, evolution, rollback. Grow it.
