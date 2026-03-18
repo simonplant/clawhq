@@ -10,14 +10,14 @@ import { createInterface } from "node:readline";
 
 import { Command } from "commander";
 
-import { DEFAULT_PROBES, runProbes } from "../security/credentials/index.js";
+import { DEFAULT_PROBES, runProbes } from "../secure/credentials/index.js";
 import {
   emitSecretAuditEvent,
   readAuditEvents,
   verifyAuditChain,
-} from "../security/secrets/audit.js";
-import type { SecretAuditEvent } from "../security/secrets/audit.js";
-import { migrateToEncrypted, decryptForDeploy } from "../security/secrets/encrypted-store.js";
+} from "../secure/secrets/audit.js";
+import type { SecretAuditEvent } from "../secure/secrets/audit.js";
+import { migrateToEncrypted, decryptForDeploy } from "../secure/secrets/encrypted-store.js";
 import {
   atomicWriteEnvFile,
   getEnvValue,
@@ -25,14 +25,14 @@ import {
   removeEnvValue,
   setEnvValue,
   writeEnvFile,
-} from "../security/secrets/env.js";
-import type { EnvFile } from "../security/secrets/env.js";
-import { inferCategory, readMetadata, removeSecretMetadata, setSecretMetadata } from "../security/secrets/metadata.js";
-import { enforceEnvPermissions } from "../security/secrets/permissions.js";
-import { PlaintextEnvStore, decryptArchive } from "../security/secrets/plaintext-store.js";
-import { scanDanglingReferences } from "../security/secrets/references.js";
-import type { SecretArchive } from "../security/secrets/store.js";
-import type { SecretEntry } from "../security/secrets/types.js";
+} from "../secure/secrets/env.js";
+import type { EnvFile } from "../secure/secrets/env.js";
+import { inferCategory, readMetadata, removeSecretMetadata, setSecretMetadata } from "../secure/secrets/metadata.js";
+import { enforceEnvPermissions } from "../secure/secrets/permissions.js";
+import { PlaintextEnvStore, decryptArchive } from "../secure/secrets/plaintext-store.js";
+import { scanDanglingReferences } from "../secure/secrets/references.js";
+import type { SecretArchive } from "../secure/secrets/store.js";
+import type { SecretEntry } from "../secure/secrets/types.js";
 
 /**
  * Prompt for a secret value with masked input (no echo).

@@ -15,8 +15,8 @@ import {
   convertRoutines,
   parseGoogleAssistantExport,
   writeCronJobs,
-} from "../internal/migrate/google-assistant/index.js";
-import type { ConversionResult } from "../internal/migrate/google-assistant/index.js";
+} from "../evolve/migrate/google-assistant/index.js";
+import type { ConversionResult } from "../evolve/migrate/google-assistant/index.js";
 import {
   buildConversationTexts,
   extract,
@@ -26,8 +26,8 @@ import {
   reviewItems,
   appendToUserMd,
   writeToWarmMemory,
-} from "../internal/migrate/index.js";
-import type { MigrateIO } from "../internal/migrate/index.js";
+} from "../evolve/migrate/index.js";
+import type { MigrateIO } from "../evolve/migrate/index.js";
 
 const SUPPORTED_SOURCES = ["chatgpt", "google-assistant"];
 

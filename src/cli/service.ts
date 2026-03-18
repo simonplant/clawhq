@@ -6,10 +6,10 @@ import {
   formatServiceList,
   listServices,
   removeService,
-} from "../service/manager.js";
-import type { ServiceContext } from "../service/manager.js";
-import { BUILTIN_SERVICES, ServiceError } from "../service/types.js";
-import { recordChange } from "../workspace/evolve-history.js";
+} from "../build/service/manager.js";
+import type { ServiceContext } from "../build/service/manager.js";
+import { BUILTIN_SERVICES, ServiceError } from "../build/service/types.js";
+import { recordChange } from "../evolve/history.js";
 
 import { spinner, status } from "./ui.js";
 

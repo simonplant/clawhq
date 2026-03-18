@@ -5,8 +5,8 @@
 import chalk from "chalk";
 import { Command } from "commander";
 
-import { deployDown, deployRestart, deployUp } from "../deploy/deploy.js";
-import { formatStepResult, formatSummary } from "../deploy/format.js";
+import { deployDown, deployRestart, deployUp } from "../build/launcher/deploy.js";
+import { formatStepResult, formatSummary } from "../build/launcher/format.js";
 
 import { spinner, status } from "./ui.js";
 

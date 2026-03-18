@@ -32,7 +32,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   // ──────────────────────────────────────────
   api.get("/status", async (c) => {
     try {
-      const { collectStatus } = await import("../status/index.js");
+      const { collectStatus } = await import("../operate/status/index.js");
       const report = await collectStatus({ openclawHome });
       return c.json(ok(report));
     } catch (err: unknown) {
@@ -45,7 +45,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   // ──────────────────────────────────────────
   api.get("/doctor", async (c) => {
     try {
-      const { runChecks, DEFAULT_CHECKS } = await import("../doctor/index.js");
+      const { runChecks, DEFAULT_CHECKS } = await import("../operate/doctor/index.js");
       const ctx = {
         openclawHome,
         configPath: `${openclawHome}/openclaw.json`,
@@ -62,7 +62,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   // ──────────────────────────────────────────
   api.post("/doctor/fix", async (c) => {
     try {
-      const { runFixes, DEFAULT_CHECKS, isFixable } = await import("../doctor/index.js");
+      const { runFixes, DEFAULT_CHECKS, isFixable } = await import("../operate/doctor/index.js");
       const ctx = {
         openclawHome,
         configPath: `${openclawHome}/openclaw.json`,
@@ -82,7 +82,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
     return streamSSE(c, async (stream) => {
       let id = 0;
       try {
-        const { deployUp } = await import("../deploy/deploy.js");
+        const { deployUp } = await import("../build/launcher/deploy.js");
         const result = await deployUp({
           openclawHome,
           onStep: (stepName, status) => {
@@ -115,7 +115,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
     return streamSSE(c, async (stream) => {
       let id = 0;
       try {
-        const { deployDown } = await import("../deploy/deploy.js");
+        const { deployDown } = await import("../build/launcher/deploy.js");
         const result = await deployDown({
           openclawHome,
           onStep: (stepName, status) => {
@@ -148,7 +148,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
     return streamSSE(c, async (stream) => {
       let id = 0;
       try {
-        const { deployRestart } = await import("../deploy/deploy.js");
+        const { deployRestart } = await import("../build/launcher/deploy.js");
         const result = await deployRestart({
           openclawHome,
           onStep: (stepName, status) => {
@@ -181,8 +181,8 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
     return streamSSE(c, async (stream) => {
       let id = 0;
       try {
-        const { twoStageBuild } = await import("../docker/build.js");
-        const { DockerClient } = await import("../docker/client.js");
+        const { twoStageBuild } = await import("../build/docker/build.js");
+        const { DockerClient } = await import("../build/docker/client.js");
         const client = new DockerClient();
         const result = await twoStageBuild(client, {
           context: openclawHome,
@@ -221,7 +221,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   // ──────────────────────────────────────────
   api.get("/approvals", async (c) => {
     try {
-      const { getPending } = await import("../approval/index.js");
+      const { getPending } = await import("../operate/approval/index.js");
       const pending = await getPending({ openclawHome });
       return c.json(ok(pending));
     } catch (err: unknown) {
@@ -235,7 +235,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   api.post("/approvals/:id/approve", async (c) => {
     try {
       const id = c.req.param("id");
-      const { approve } = await import("../approval/index.js");
+      const { approve } = await import("../operate/approval/index.js");
       const result = await approve(id, { openclawHome });
       return c.json(ok(result));
     } catch (err: unknown) {
@@ -250,7 +250,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
     try {
       const id = c.req.param("id");
       const body = await c.req.json().catch(() => ({})) as { reason?: string };
-      const { reject } = await import("../approval/index.js");
+      const { reject } = await import("../operate/approval/index.js");
       const result = await reject(id, body.reason, { openclawHome });
       return c.json(ok(result));
     } catch (err: unknown) {
@@ -263,7 +263,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   // ──────────────────────────────────────────
   api.get("/alerts", async (c) => {
     try {
-      const { generateAlerts, loadHistory } = await import("../alerts/index.js");
+      const { generateAlerts, loadHistory } = await import("../operate/alerts/index.js");
       const snapshots = await loadHistory(openclawHome);
       const report = generateAlerts(snapshots);
       return c.json(ok(report));
@@ -277,7 +277,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   // ──────────────────────────────────────────
   api.get("/backups", async (c) => {
     try {
-      const { listBackups } = await import("../backup/index.js");
+      const { listBackups } = await import("../operate/backup/index.js");
       const backups = await listBackups(`${openclawHome}/../.clawhq/backups`);
       return c.json(ok(backups));
     } catch (err: unknown) {
@@ -294,7 +294,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
         gpgRecipient?: string;
         secretsOnly?: boolean;
       };
-      const { createBackup } = await import("../backup/index.js");
+      const { createBackup } = await import("../operate/backup/index.js");
       const result = await createBackup({
         openclawHome,
         backupDir: `${openclawHome}/../.clawhq/backups`,
@@ -313,7 +313,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   api.post("/backups/:id/restore", async (c) => {
     try {
       const backupId = c.req.param("id");
-      const { restoreBackup } = await import("../backup/index.js");
+      const { restoreBackup } = await import("../operate/backup/index.js");
       const result = await restoreBackup({
         backupId,
         backupDir: `${openclawHome}/../.clawhq/backups`,
@@ -330,7 +330,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   // ──────────────────────────────────────────
   api.get("/skills", async (c) => {
     try {
-      const { loadRegistry } = await import("../skill/index.js");
+      const { loadRegistry } = await import("../evolve/skills/index.js");
       const registry = await loadRegistry({
         openclawHome,
         clawhqDir: `${openclawHome}/../.clawhq`,
@@ -350,7 +350,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
       if (!body.source) {
         return c.json(fail("Missing required field: source"), 400);
       }
-      const { stageSkillInstall, activateSkill } = await import("../skill/index.js");
+      const { stageSkillInstall, activateSkill } = await import("../evolve/skills/index.js");
       const ctx = {
         openclawHome,
         clawhqDir: `${openclawHome}/../.clawhq`,
@@ -369,7 +369,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   api.delete("/skills/:name", async (c) => {
     try {
       const name = c.req.param("name");
-      const { removeSkillOp } = await import("../skill/index.js");
+      const { removeSkillOp } = await import("../evolve/skills/index.js");
       const ctx = {
         openclawHome,
         clawhqDir: `${openclawHome}/../.clawhq`,
@@ -388,7 +388,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
     try {
       const { readdir } = await import("node:fs/promises");
       const { join } = await import("node:path");
-      const { TOOL_BINARY_DEPS } = await import("../workspace/tools/registry.js");
+      const { TOOL_BINARY_DEPS } = await import("../design/tools/registry.js");
 
       const toolsDir = join(openclawHome, "workspace", "tools");
       let files: string[] = [];
@@ -417,7 +417,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   // ──────────────────────────────────────────
   api.get("/fleet", async (c) => {
     try {
-      const { discoverAgents, collectFleetStatus } = await import("../fleet/index.js");
+      const { discoverAgents, collectFleetStatus } = await import("../cloud/fleet/index.js");
       const agents = await discoverAgents({ openclawHome });
       const report = await collectFleetStatus(agents);
       return c.json(ok(report));
@@ -431,7 +431,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
   // ──────────────────────────────────────────
   api.get("/templates", async (c) => {
     try {
-      const { loadBuiltInTemplateChoices } = await import("../templates/index.js");
+      const { loadBuiltInTemplateChoices } = await import("../design/blueprints/index.js");
       const choices = await loadBuiltInTemplateChoices();
       return c.json(ok(choices));
     } catch (err: unknown) {
@@ -457,8 +457,8 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
       });
 
       try {
-        const { DockerClient } = await import("../docker/client.js");
-        const { filterByCategory } = await import("../logs/index.js");
+        const { DockerClient } = await import("../build/docker/client.js");
+        const { filterByCategory } = await import("../operate/logs/index.js");
         const docker = new DockerClient();
 
         const chunks: string[] = [];
@@ -540,7 +540,7 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
       if (!body.envVar || !body.value) {
         return c.json(fail("Missing envVar or value"), 400);
       }
-      const { DEFAULT_PROBES } = await import("../security/credentials/index.js");
+      const { DEFAULT_PROBES } = await import("../secure/credentials/index.js");
       const probe = DEFAULT_PROBES.find((p) => p.envVar === body.envVar);
       if (!probe) {
         // No probe available for this credential — report as unknown
@@ -569,14 +569,14 @@ export function createApiRouter(config: ServerConfig): Hono<ServerEnv> {
         return c.json(fail("Missing basics or templateId"), 400);
       }
 
-      const { getTemplateById } = await import("../init/templates.js");
+      const { getTemplateById } = await import("../design/configure/templates.js");
       const template = await getTemplateById(body.templateId);
       if (!template) {
         return c.json(fail(`Template not found: ${body.templateId}`), 404);
       }
 
-      const { generate } = await import("../init/generate.js");
-      const { writeBundle } = await import("../init/writer.js");
+      const { generate } = await import("../design/configure/generate.js");
+      const { writeBundle } = await import("../design/configure/writer.js");
 
       const answers = {
         basics: body.basics,

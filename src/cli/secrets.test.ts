@@ -4,8 +4,8 @@ import { join } from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseEnv } from "../security/secrets/env.js";
-import type { SecretEntry } from "../security/secrets/types.js";
+import { parseEnv } from "../secure/secrets/env.js";
+import type { SecretEntry } from "../secure/secrets/types.js";
 
 import { buildSecretList, formatAge, formatSecretsTable } from "./secrets.js";
 

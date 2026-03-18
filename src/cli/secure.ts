@@ -18,9 +18,9 @@ import {
   generateExportReport,
   generateToolExportReport,
   generateZeroEgressAttestation,
-} from "../audit/index.js";
-import { formatCredTable, runProbesFromFile } from "../security/credentials/index.js";
-import { formatScanTable, scanFiles, scanGitHistory } from "../security/secrets/scanner.js";
+} from "../secure/audit/index.js";
+import { formatCredTable, runProbesFromFile } from "../secure/credentials/index.js";
+import { formatScanTable, scanFiles, scanGitHistory } from "../secure/secrets/scanner.js";
 
 import { spinner, status } from "./ui.js";
 

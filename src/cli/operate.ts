@@ -9,19 +9,19 @@ import {
   collectMetrics,
   formatAlertSummary,
   generateAlerts,
-} from "../alerts/index.js";
-import { appendSnapshot, loadHistory as loadAlertHistory } from "../alerts/store.js";
-import { runFixes } from "../doctor/fix.js";
-import { formatJson, formatTable, runChecks } from "../doctor/runner.js";
-import type { DoctorContext } from "../doctor/types.js";
-import type { LogCategory } from "../logs/index.js";
+} from "../operate/alerts/index.js";
+import { appendSnapshot, loadHistory as loadAlertHistory } from "../operate/alerts/store.js";
+import { runFixes } from "../operate/doctor/fix.js";
+import { formatJson, formatTable, runChecks } from "../operate/doctor/runner.js";
+import type { DoctorContext } from "../operate/doctor/types.js";
+import type { LogCategory } from "../operate/logs/index.js";
 import {
   formatCronHistory,
   readCronHistory,
   streamContainerLogs,
-} from "../logs/index.js";
-import { collectStatus } from "../status/collector.js";
-import { formatDashboard, formatJson as formatStatusJson } from "../status/format.js";
+} from "../operate/logs/index.js";
+import { collectStatus } from "../operate/status/collector.js";
+import { formatDashboard, formatJson as formatStatusJson } from "../operate/status/format.js";
 
 import { spinner, status } from "./ui.js";
 

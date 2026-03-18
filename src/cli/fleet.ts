@@ -15,7 +15,7 @@ import {
   formatFleetDoctorTable,
   formatFleetJson,
   runFleetDoctor,
-} from "../fleet/index.js";
+} from "../cloud/fleet/index.js";
 
 /**
  * Create the `fleet` command group.

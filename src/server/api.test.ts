@@ -12,7 +12,7 @@ function makeConfig(): ServerConfig {
 }
 
 // Mock all business logic modules with dynamic imports
-vi.mock("../status/index.js", () => ({
+vi.mock("../operate/status/index.js", () => ({
   collectStatus: vi.fn().mockResolvedValue({
     timestamp: "2026-03-16T00:00:00Z",
     agent: { state: "running", containerId: "abc123" },
@@ -22,7 +22,7 @@ vi.mock("../status/index.js", () => ({
   }),
 }));
 
-vi.mock("../doctor/index.js", () => {
+vi.mock("../operate/doctor/index.js", () => {
   const check = {
     name: "test-check",
     run: vi.fn().mockResolvedValue({ name: "test-check", status: "pass", message: "OK", fix: "" }),
@@ -42,13 +42,13 @@ vi.mock("../doctor/index.js", () => {
   };
 });
 
-vi.mock("../approval/index.js", () => ({
+vi.mock("../operate/approval/index.js", () => ({
   getPending: vi.fn().mockResolvedValue([]),
   approve: vi.fn().mockResolvedValue({ id: "a1", status: "approved" }),
   reject: vi.fn().mockResolvedValue({ id: "a1", status: "rejected" }),
 }));
 
-vi.mock("../alerts/index.js", () => ({
+vi.mock("../operate/alerts/index.js", () => ({
   loadHistory: vi.fn().mockResolvedValue([]),
   generateAlerts: vi.fn().mockReturnValue({
     timestamp: "2026-03-16T00:00:00Z",
@@ -58,7 +58,7 @@ vi.mock("../alerts/index.js", () => ({
   }),
 }));
 
-vi.mock("../backup/index.js", () => ({
+vi.mock("../operate/backup/index.js", () => ({
   listBackups: vi.fn().mockResolvedValue([]),
   createBackup: vi.fn().mockResolvedValue({
     backupId: "bk-001",
@@ -73,7 +73,7 @@ vi.mock("../backup/index.js", () => ({
   }),
 }));
 
-vi.mock("../skill/index.js", () => ({
+vi.mock("../evolve/skills/index.js", () => ({
   loadRegistry: vi.fn().mockResolvedValue({ skills: [] }),
   stageSkillInstall: vi.fn().mockResolvedValue({
     manifest: { name: "test-skill", version: "1.0.0" },
@@ -87,7 +87,7 @@ vi.mock("../skill/index.js", () => ({
   }),
 }));
 
-vi.mock("../fleet/index.js", () => ({
+vi.mock("../cloud/fleet/index.js", () => ({
   discoverAgents: vi.fn().mockResolvedValue([]),
   collectFleetStatus: vi.fn().mockResolvedValue({
     agents: [],
@@ -95,7 +95,7 @@ vi.mock("../fleet/index.js", () => ({
   }),
 }));
 
-vi.mock("../templates/index.js", () => ({
+vi.mock("../design/blueprints/index.js", () => ({
   loadBuiltInTemplateChoices: vi.fn().mockResolvedValue([
     { name: "personal-assistant", title: "Replace my PA" },
   ]),

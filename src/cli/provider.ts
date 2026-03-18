@@ -18,8 +18,8 @@ import {
   ProviderError,
   removeProvider,
   testProvider,
-} from "../provider/index.js";
-import { recordChange } from "../workspace/evolve-history.js";
+} from "../design/provider/index.js";
+import { recordChange } from "../evolve/history.js";
 
 /**
  * Prompt for a secret value with masked input (no echo).

@@ -1,13 +1,13 @@
 import chalk from "chalk";
 import { Command } from "commander";
 
-import { createReadlineIO } from "../init/index.js";
+import { createReadlineIO } from "../design/configure/index.js";
 import {
   formatVettingResult,
   runVettingPipeline,
-} from "../security/vetting.js";
-import { formatCatalogInfo, formatCatalogSearch } from "../skill/catalog-format.js";
-import { BUILTIN_SKILLS, findCatalogSkill, searchCatalog } from "../skill/catalog.js";
+} from "../secure/vetting.js";
+import { formatCatalogInfo, formatCatalogSearch } from "../evolve/skills/catalog-format.js";
+import { BUILTIN_SKILLS, findCatalogSkill, searchCatalog } from "../evolve/skills/catalog.js";
 import {
   activateSkill,
   applySkillUpdate,
@@ -19,10 +19,10 @@ import {
   resolveSource,
   stageSkillInstall,
   stageSkillUpdate,
-} from "../skill/index.js";
-import type { SkillContext } from "../skill/index.js";
-import { SkillError } from "../skill/types.js";
-import { recordChange } from "../workspace/evolve-history.js";
+} from "../evolve/skills/index.js";
+import type { SkillContext } from "../evolve/skills/index.js";
+import { SkillError } from "../evolve/skills/types.js";
+import { recordChange } from "../evolve/history.js";
 
 import { spinner, status } from "./ui.js";
 

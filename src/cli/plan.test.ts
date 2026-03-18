@@ -4,8 +4,8 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { generate, getBuiltInTemplates, getTemplateById, writeBundle } from "../init/index.js";
-import type { WizardAnswers } from "../init/index.js";
+import { generate, getBuiltInTemplates, getTemplateById, writeBundle } from "../design/configure/index.js";
+import type { WizardAnswers } from "../design/configure/index.js";
 
 /**
  * Tests for non-interactive init flow (--non-interactive).

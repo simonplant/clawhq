@@ -7,11 +7,11 @@ import { resolve } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 
-import { createBackup } from "../backup/backup.js";
-import { formatBackupTable, listBackups } from "../backup/list.js";
-import { restoreBackup } from "../backup/restore.js";
-import { formatStepResult } from "../deploy/format.js";
-import { formatCheckResult, runUpdate } from "../update/update.js";
+import { createBackup } from "../operate/backup/backup.js";
+import { formatBackupTable, listBackups } from "../operate/backup/list.js";
+import { restoreBackup } from "../operate/backup/restore.js";
+import { formatStepResult } from "../build/launcher/format.js";
+import { formatCheckResult, runUpdate } from "../operate/updater/update.js";
 
 import { spinner, status } from "./ui.js";
 

@@ -16,14 +16,14 @@ import { join } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 
-import { createReadlineIO } from "../init/index.js";
+import { createReadlineIO } from "../design/configure/index.js";
 import {
   applyRoleToIdentity,
   generateRoleSection,
   parseRoleSection,
   PRESET_IDS,
   ROLE_PRESETS,
-} from "../role/presets.js";
+} from "../design/roles/presets.js";
 
 import { status } from "./ui.js";
 

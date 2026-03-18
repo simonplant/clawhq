@@ -5,9 +5,9 @@
 import chalk from "chalk";
 import { Command } from "commander";
 
-import type { ChannelSetupFlow } from "../connect/index.js";
-import { formatTestResult, readOpenClawChannels, telegramFlow, whatsappFlow } from "../connect/index.js";
-import { createReadlineIO } from "../init/index.js";
+import type { ChannelSetupFlow } from "../design/connect/index.js";
+import { formatTestResult, readOpenClawChannels, telegramFlow, whatsappFlow } from "../design/connect/index.js";
+import { createReadlineIO } from "../design/configure/index.js";
 
 import { spinner, status } from "./ui.js";
 

@@ -7,8 +7,8 @@
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
 
-import type { StatusReport } from "../status/index.js";
-import { collectStatus } from "../status/index.js";
+import type { StatusReport } from "../operate/status/index.js";
+import { collectStatus } from "../operate/status/index.js";
 
 import type { ServerEnv } from "./context.js";
 

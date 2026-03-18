@@ -4,16 +4,16 @@
 
 import { Command } from "commander";
 
-import { runSmartInit } from "../inference/index.js";
-import { createReadlineIO, generate, getTemplateById, runWizard, writeBundle } from "../init/index.js";
-import type { WizardAnswers } from "../init/index.js";
+import { runSmartInit } from "../design/inference/index.js";
+import { createReadlineIO, generate, getTemplateById, runWizard, writeBundle } from "../design/configure/index.js";
+import type { WizardAnswers } from "../design/configure/index.js";
 import {
   formatPreview,
   formatTemplateList as formatYamlTemplateList,
   formatTemplateShow,
   generatePreview,
   loadBuiltInTemplates,
-} from "../templates/index.js";
+} from "../design/blueprints/index.js";
 
 import { markFirstRunComplete } from "./first-run.js";
 
@@ -188,7 +188,7 @@ export function createPlanCommands(program: Command): void {
     .description("List available templates")
     .action(async () => {
       const results = await loadBuiltInTemplates();
-      const templates = new Map<string, import("../templates/index.js").Template>();
+      const templates = new Map<string, import("../design/blueprints/index.js").Template>();
       for (const [id, result] of results) {
         if (result.template) {
           templates.set(id, result.template);

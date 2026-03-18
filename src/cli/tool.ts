@@ -10,10 +10,10 @@
 
 import type { Command } from "commander";
 
-import { twoStageBuild } from "../docker/build.js";
-import { DockerClient } from "../docker/client.js";
-import { isAllowlisted, loadAllowlist } from "../security/vetting.js";
-import type { ToolContext } from "../tool/index.js";
+import { twoStageBuild } from "../build/docker/build.js";
+import { DockerClient } from "../build/docker/client.js";
+import { isAllowlisted, loadAllowlist } from "../secure/vetting.js";
+import type { ToolContext } from "../evolve/tools/index.js";
 import {
   formatToolList,
   installTool,
@@ -21,8 +21,8 @@ import {
   patchDockerfile,
   removeToolOp,
   ToolError,
-} from "../tool/index.js";
-import { recordChange } from "../workspace/evolve-history.js";
+} from "../evolve/tools/index.js";
+import { recordChange } from "../evolve/history.js";
 
 function makeToolCtx(opts: { home: string; clawhqDir: string }): ToolContext {
   return {

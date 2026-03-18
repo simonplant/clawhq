@@ -9,12 +9,12 @@ import { resolve } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 
-import { deployUp } from "../deploy/deploy.js";
-import { twoStageBuild } from "../docker/build.js";
-import { DockerClient } from "../docker/client.js";
-import { runSmartInit } from "../inference/index.js";
-import { createReadlineIO, runWizard } from "../init/index.js";
-import { runSmokeTest } from "../smoke/index.js";
+import { deployUp } from "../build/launcher/deploy.js";
+import { twoStageBuild } from "../build/docker/build.js";
+import { DockerClient } from "../build/docker/client.js";
+import { runSmartInit } from "../design/inference/index.js";
+import { createReadlineIO, runWizard } from "../design/configure/index.js";
+import { runSmokeTest } from "../build/smoke/index.js";
 
 import { markFirstRunComplete } from "./first-run.js";
 import { formatError, spinner, status } from "./ui.js";

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import type { ApprovalCategory } from "../approval/index.js";
+import type { ApprovalCategory } from "../operate/approval/index.js";
 import {
   approve as approveAction,
   enqueue,
@@ -12,12 +12,12 @@ import {
   notifyTelegram,
   readQueue,
   reject as rejectAction,
-} from "../approval/index.js";
+} from "../operate/approval/index.js";
 import {
   formatDigestJson,
   formatDigestTable,
   generateDigest,
-} from "../digest/index.js";
+} from "../operate/digest/index.js";
 
 export function createDigestApprovalCommands(program: Command): void {
   program

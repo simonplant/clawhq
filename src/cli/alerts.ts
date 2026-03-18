@@ -8,8 +8,8 @@ import {
   formatAlertJson,
   formatAlertTable,
   generateAlerts,
-} from "../alerts/index.js";
-import { loadHistory as loadAlertHistory } from "../alerts/store.js";
+} from "../operate/alerts/index.js";
+import { loadHistory as loadAlertHistory } from "../operate/alerts/store.js";
 
 /**
  * Create the `alerts` command.

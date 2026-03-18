@@ -2,8 +2,8 @@ import { resolve } from "node:path";
 
 import { Command } from "commander";
 
-import type { DoctorContext } from "../doctor/types.js";
-import { createReadlineIO } from "../init/index.js";
+import type { DoctorContext } from "../operate/doctor/types.js";
+import { createReadlineIO } from "../design/configure/index.js";
 import {
   addIntegration,
   checkCronDependencies,
@@ -16,9 +16,9 @@ import {
   removeIntegration,
   swapIntegration,
   updateFirewallAllowlist,
-} from "../integrate/index.js";
-import type { IntegrateContext } from "../integrate/index.js";
-import { recordChange } from "../workspace/evolve-history.js";
+} from "../evolve/integrate/index.js";
+import type { IntegrateContext } from "../evolve/integrate/index.js";
+import { recordChange } from "../evolve/history.js";
 
 function makeIntegrateCtx(opts: { home: string; clawhqDir: string }): IntegrateContext {
   return {
@@ -127,7 +127,7 @@ export function createIntegrateCommand(): Command {
         try {
           // Write credential to a temp env to validate it
           const { parseEnv, setEnvValue: setTmpEnvValue } = await import(
-            "../security/secrets/env.js"
+            "../secure/secrets/env.js"
           );
           const envPath = resolve(ctx.openclawHome, ".env");
           let existingContent = "";
@@ -139,7 +139,7 @@ export function createIntegrateCommand(): Command {
           setTmpEnvValue(tmpEnv, provDef.envVar, credential);
 
           const { runProbes, DEFAULT_PROBES } = await import(
-            "../security/credentials/index.js"
+            "../secure/credentials/index.js"
           );
           const report = await runProbes(tmpEnv, DEFAULT_PROBES);
           const selectedProvider = providerName ?? "";
@@ -208,8 +208,8 @@ export function createIntegrateCommand(): Command {
             configPath: resolve(ctx.openclawHome, "openclaw.json"),
             envPath: resolve(ctx.openclawHome, ".env"),
           };
-          const { runChecks: runDoctorChecks } = await import("../doctor/runner.js");
-          const { firewallCheck } = await import("../doctor/checks/firewall.js");
+          const { runChecks: runDoctorChecks } = await import("../operate/doctor/runner.js");
+          const { firewallCheck } = await import("../operate/doctor/checks/firewall.js");
           const report = await runDoctorChecks(doctorCtx, [firewallCheck]);
           for (const check of report.checks) {
             const icon = check.status === "pass" ? "✓" : check.status === "warn" ? "!" : "✗";
@@ -253,7 +253,7 @@ export function createIntegrateCommand(): Command {
         }
 
         // Capture previous state for rollback before removing
-        const { loadRegistry: loadIntRegistry } = await import("../integrate/lifecycle.js");
+        const { loadRegistry: loadIntRegistry } = await import("../evolve/integrate/lifecycle.js");
         const intRegistry = await loadIntRegistry(ctx);
         const previousIntegration = intRegistry.integrations.find((i) => i.category === category);
 
@@ -348,7 +348,7 @@ export function createIntegrateCommand(): Command {
         }
 
         // Capture previous state for rollback before swapping
-        const { loadRegistry: loadIntRegSwap } = await import("../integrate/lifecycle.js");
+        const { loadRegistry: loadIntRegSwap } = await import("../evolve/integrate/lifecycle.js");
         const intRegSwap = await loadIntRegSwap(ctx);
         const previousSwapIntegration = intRegSwap.integrations.find((i) => i.category === category);
 

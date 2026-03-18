@@ -8,8 +8,8 @@
  * which calls the same underlying generators.
  */
 
-import { generate } from "../init/generate.js";
-import type { WizardAnswers } from "../init/types.js";
+import { generate } from "../design/configure/generate.js";
+import type { WizardAnswers } from "../design/configure/types.js";
 
 import type {
   ClawHQConfig,

@@ -5,7 +5,7 @@
 import chalk from "chalk";
 import { Command } from "commander";
 
-import { runSmokeTest } from "../smoke/index.js";
+import { runSmokeTest } from "../build/smoke/index.js";
 
 import { spinner, status } from "./ui.js";
 

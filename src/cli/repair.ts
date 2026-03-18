@@ -5,7 +5,7 @@
 import chalk from "chalk";
 import { Command } from "commander";
 
-import type { RepairConfig, RepairContext } from "../repair/index.js";
+import type { RepairConfig, RepairContext } from "../operate/repair/index.js";
 import {
   DEFAULT_REPAIR_CONFIG,
   formatRepairJson,
@@ -13,7 +13,7 @@ import {
   readRepairLog,
   runRepair,
   startWatcher,
-} from "../repair/index.js";
+} from "../operate/repair/index.js";
 
 import { spinner, status } from "./ui.js";
 

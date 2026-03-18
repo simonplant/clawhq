@@ -7,14 +7,14 @@
 
 import { Command } from "commander";
 
-import type { LearningContext } from "../internal/learning/index.js";
+import type { LearningContext } from "../evolve/learning/index.js";
 import {
   explain,
   processCorrection,
   queryTrace,
   TraceError,
-} from "../internal/trace/index.js";
-import type { DecisionEntry, TraceContext } from "../internal/trace/index.js";
+} from "../evolve/trace/index.js";
+import type { DecisionEntry, TraceContext } from "../evolve/trace/index.js";
 
 function resolveHome(path: string): string {
   return path.replace(/^~/, process.env.HOME ?? "~");

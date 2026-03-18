@@ -18,8 +18,8 @@ import {
   verifyAgainstManifest,
   writeManifest as writeBuildManifest,
   writeStage1Hash,
-} from "../docker/build.js";
-import { DockerClient } from "../docker/client.js";
+} from "../build/docker/build.js";
+import { DockerClient } from "../build/docker/client.js";
 
 import { spinner, status } from "./ui.js";
 

@@ -13,11 +13,11 @@ import {
   loadChannels,
   newChannelId,
   removeChannel,
-} from "../notifications/index.js";
+} from "../operate/notifications/index.js";
 import type {
   NotificationChannel,
   NotificationEventType,
-} from "../notifications/index.js";
+} from "../operate/notifications/index.js";
 
 import { spinner, status } from "./ui.js";
 

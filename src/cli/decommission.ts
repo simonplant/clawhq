@@ -3,9 +3,9 @@ import { resolve } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 
-import { destroy, dryRun } from "../destroy/destroy.js";
-import type { DestroyStep } from "../destroy/types.js";
-import { createExport } from "../export/export.js";
+import { destroy, dryRun } from "../evolve/lifecycle/destroy/destroy.js";
+import type { DestroyStep } from "../evolve/lifecycle/destroy/types.js";
+import { createExport } from "../evolve/lifecycle/export/export.js";
 
 import { spinner, status } from "./ui.js";
 

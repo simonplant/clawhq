@@ -7,7 +7,7 @@ import {
   readIdentityFile,
   saveIdentityFile,
   simpleDiff,
-} from "../identity/review.js";
+} from "../design/governance/review.js";
 import {
   type AutonomyConfig,
   AutonomyError,
@@ -18,9 +18,9 @@ import {
   acceptRecommendation,
   loadStore as loadAutonomyStore,
   rejectRecommendation,
-} from "../internal/autonomy/index.js";
-import type { AutonomyContext } from "../internal/autonomy/index.js";
-import { recordChange } from "../workspace/evolve-history.js";
+} from "../evolve/autonomy/index.js";
+import type { AutonomyContext } from "../evolve/autonomy/index.js";
+import { recordChange } from "../evolve/history.js";
 import {
   type EvolveContext,
   EvolveError,
@@ -29,7 +29,7 @@ import {
   getHistory,
   loadHistory,
   rollbackChange,
-} from "../workspace/evolve-history.js";
+} from "../evolve/history.js";
 
 function makeEvolveCtx(opts: { home: string; clawhqDir: string }): EvolveContext {
   return {

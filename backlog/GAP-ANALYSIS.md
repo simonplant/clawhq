@@ -56,47 +56,65 @@
 | Cloud | STUB | 3 | 0 | Single placeholder file |
 | UI components | SCAFFOLD | ~200 | 0 | Structure only |
 
-### Current Source Organization
+### Current Source Organization (post-reorganization)
 
 ```
 src/
-├── cli/          — 33 command handlers (monolithic)
-├── config/       — schema, validator, loader, generator
-├── init/         — wizard, generate, steps, writer, detect
-├── docker/       — build, hardening, compose, dockerfile
-├── deploy/       — deploy orchestration, preflight
-├── doctor/       — runner, fix, 11 check files
-├── security/     — secrets/, credentials/, firewall/, vetting
-├── workspace/    — tools/, identity/, skills/
-├── templates/    — loader, mapper, preview
-├── gateway/      — websocket, health, config-rpc
-├── status/       — collector, agent, integrations, workspace
-├── backup/       — backup, restore, manifest, snapshot
-├── update/       — version, changelog, rollback
-├── skill/        — lifecycle, catalog, registry, vet
-├── audit/        — tool-trail, egress, appender, reader
-├── export/       — bundle, manifest, pii-mask
-├── destroy/      — destroy, manifest, confirmation
-├── internal/     — memory/, learning/, autonomy/, trace/, migrate/
-├── alerts/       — metrics, threshold, trending
-├── approval/     — queue, resolver, notifications
-├── notifications/— telegram, slack, webhook, email
-├── fleet/        — discovery, dashboard, doctor
-├── integrate/    — add, remove, swap
-├── provider/     — add, remove, test, registry
-├── connect/      — telegram, whatsapp, channel-health
-├── repair/       — detect, fix, logging
-├── smoke/        — checks, runner
-├── inference/    — ollama, prompt, parser
-├── server/       — hono server, routes
-├── logs/         — stream, cron-history
-├── source/       — clone, pin, verify
-├── digest/       — collector, formatter
-├── service/      — backing services
-├── role/         — presets
-├── tool/         — install, remove
-├── cloud/        — stub
-└── ui/           — scaffold
+├── cli/                         — 33 command handlers
+├── config/                      — schema, validator, loader, generator
+├── gateway/                     — websocket, health, config-rpc
+├── server/                      — hono server, routes
+├── ui/                          — web dashboard scaffold
+│
+├── design/                      — Blueprint engine
+│   ├── blueprints/              — loader, mapper, preview
+│   ├── configure/               — wizard, generate, steps, writer
+│   ├── tools/                   — email, tasks, todoist, ical, etc.
+│   ├── identity/                — agents, heartbeat, memory, tools-doc
+│   ├── inference/               — ollama, prompt, parser
+│   ├── connect/                 — telegram, whatsapp
+│   ├── governance/              — identity governance, review
+│   ├── roles/                   — presets
+│   └── provider/                — add, remove, test, registry
+│
+├── build/                       — Install and deploy
+│   ├── docker/                  — build, hardening, compose, dockerfile
+│   ├── launcher/                — deploy, preflight
+│   ├── smoke/                   — checks, runner
+│   ├── service/                 — backing services
+│   └── source/                  — clone, pin, verify
+│
+├── secure/                      — Security and compliance
+│   ├── credentials/             — store, probes
+│   ├── firewall/                — iptables management
+│   ├── secrets/                 — scanner, env, encrypted store
+│   └── audit/                   — tool-trail, egress
+│
+├── operate/                     — Monitoring and maintenance
+│   ├── doctor/                  — runner, fix, 11 check files
+│   ├── alerts/                  — metrics, threshold, trending
+│   ├── repair/                  — detect, fix, logging
+│   ├── backup/                  — backup, restore, manifest
+│   ├── updater/                 — version, changelog, rollback
+│   ├── status/                  — collector, dashboard
+│   ├── logs/                    — stream, cron-history
+│   ├── digest/                  — collector, formatter
+│   ├── notifications/           — telegram, slack, webhook
+│   └── approval/                — queue, resolver
+│
+├── evolve/                      — Grow the agent
+│   ├── skills/                  — lifecycle, catalog, registry, vet
+│   ├── tools/                   — install, remove
+│   ├── integrate/               — add, remove, swap
+│   ├── autonomy/                — recommendation engine
+│   ├── learning/                — preference learning
+│   ├── memory/                  — full lifecycle
+│   ├── trace/                   — decision explanation
+│   ├── migrate/                 — ChatGPT, Google import
+│   └── lifecycle/               — export, destroy
+│
+└── cloud/                       — Remote monitoring
+    └── fleet/                   — discovery, dashboard, doctor
 ```
 
 ---
@@ -107,72 +125,82 @@ Six modules, three layers. See `docs/ARCHITECTURE.md`.
 
 ```
 src/
-├── cli/                — Thin CLI layer (unchanged)
+├── cli/                         — Thin CLI layer (unchanged)
 │
-├── smith/              — design: THE PRODUCT
-│   ├── templates/      — Recipe library, loader, mapper, personalizer
-│   ├── configure/      — Wizard, generate, writer
-│   ├── tools/          — CLI tool generators
-│   └── identity/       — Identity file generators
+├── design/                      — THE PRODUCT: blueprint engine
+│   ├── blueprints/              — Blueprint library, loader, mapper
+│   ├── configure/               — Wizard, generate, writer
+│   ├── tools/                   — CLI tool generators
+│   ├── identity/                — Identity file generators
+│   ├── inference/               — Smart config (Ollama)
+│   ├── connect/                 — Channel setup
+│   ├── governance/              — Identity governance
+│   ├── roles/                   — Role presets
+│   └── provider/                — LLM provider management
 │
-├── ops/                — operate: keep it alive
-│   ├── doctor/         — Diagnostics + auto-fix
-│   ├── monitor/        — Health monitoring
-│   ├── backup/         — Encrypted backup/restore
-│   ├── updater/        — Safe updates + rollback
-│   ├── status/         — Dashboard
-│   └── logs/           — Log streaming
+├── build/                       — Install and deploy
+│   ├── docker/                  — Two-stage build, compose, Dockerfile
+│   ├── launcher/                — Deploy orchestration
+│   ├── smoke/                   — Post-deploy verification
+│   ├── service/                 — Backing services
+│   ├── source/                  — Source acquisition
+│   └── installer/               — (future: distro installer)
 │
-├── admin/              — secure: lock it down
-│   ├── harden/         — Container security
-│   ├── credentials/    — Credential store + probes
-│   ├── firewall/       — iptables management
-│   ├── audit/          — Audit logging
-│   ├── scanner/        — PII + secret scanning
-│   ├── sandbox/        — Tool execution sandbox
-│   └── validate/       — 14 landmine rules
+├── secure/                      — Security and compliance
+│   ├── credentials/             — Credential store + probes
+│   ├── firewall/                — iptables management
+│   ├── secrets/                 — Secret scanning + storage
+│   └── audit/                   — Audit logging
 │
-├── construct/          — evolve: grow it
-│   ├── skills/         — Skill lifecycle + vetting
-│   ├── evolve/         — Capability evolution
-│   ├── rollback/       — Change rollback
-│   └── lifecycle/      — Export + destroy
+├── operate/                     — Monitoring and maintenance
+│   ├── doctor/                  — Diagnostics + auto-fix
+│   ├── alerts/                  — Predictive health alerts
+│   ├── repair/                  — Self-healing
+│   ├── backup/                  — Encrypted backup/restore
+│   ├── updater/                 — Safe updates + rollback
+│   ├── status/                  — Dashboard
+│   ├── logs/                    — Log streaming
+│   ├── digest/                  — Daily summary
+│   ├── notifications/           — Multi-channel notifications
+│   └── approval/                — Approval queue
 │
-├── forge/              — build: build it
-│   ├── installer/      — Pre-reqs, engine acquisition, scaffold
-│   ├── docker/         — Two-stage build, compose, Dockerfile
-│   └── launcher/       — Deploy orchestration
+├── evolve/                      — Grow the agent
+│   ├── skills/                  — Skill lifecycle + vetting
+│   ├── tools/                   — Tool install/remove
+│   ├── integrate/               — Integration management
+│   ├── autonomy/                — Autonomy recommendations
+│   ├── learning/                — Preference learning
+│   ├── memory/                  — Memory management
+│   ├── trace/                   — Decision explanation
+│   ├── migrate/                 — Platform migration
+│   └── lifecycle/               — Export + destroy
 │
-├── cloud/              — cloud: the business
-│   ├── agentd/         — Managed mode daemon
-│   ├── heartbeat/      — Health reporting
-│   ├── commands/       — Command queue (pull, verify, execute)
-│   └── fleet/          — Multi-agent management
+├── cloud/                       — Remote monitoring + managed hosting
+│   └── fleet/                   — Multi-agent management
+│   (agentd/, heartbeat/, commands/ — future work)
 │
-├── gateway/            — Cross-cutting: OpenClaw communication
-└── config/             — Cross-cutting: types + schema
+├── gateway/                     — Cross-cutting: OpenClaw communication
+├── config/                      — Cross-cutting: types + schema
+├── server/                      — Cross-cutting: web dashboard
+└── ui/                          — Cross-cutting: web UI
 ```
 
 ---
 
 ## GAP ANALYSIS
 
-### GAP 1: Source Reorganization (AS-IS → TO-BE module structure)
+### GAP 1: Source Reorganization (AS-IS → TO-BE module structure) — DONE
 
-**Current:** 40+ flat directories under `src/`. No module boundaries.
-**Target:** Six modules (`smith/`, `ops/`, `admin/`, `construct/`, `forge/`, `cloud/`).
-**Impact:** HIGH — every import path changes. Must be done carefully with barrel exports.
-**Risk:** Low (all code exists, just needs moving + re-exporting).
+**Status:** COMPLETE. All 40+ flat directories reorganized into 6 modules (`design/`, `build/`, `secure/`, `operate/`, `evolve/`, `cloud/`) plus cross-cutting (`cli/`, `gateway/`, `config/`, `server/`, `ui/`). 368 files moved, 300+ import paths rewritten, all 1745 tests passing.
 
-| Current Location | Target Module | Target Location |
+| Old Location | Module | New Location |
 |---|---|---|
-| `init/`, `templates/`, `workspace/tools/`, `workspace/identity/`, `inference/` | design | `smith/` |
-| `doctor/`, `status/`, `backup/`, `update/`, `logs/`, `alerts/`, `repair/`, `digest/` | operate | `ops/` |
-| `security/`, `audit/` | secure | `admin/` |
-| `skill/`, `tool/`, `export/`, `destroy/`, `internal/`, `role/` | evolve | `construct/` |
-| `docker/`, `deploy/`, `source/`, `smoke/` | build | `forge/` |
-| `cloud/`, `fleet/`, `notifications/` | cloud | `cloud/` |
-| `connect/`, `integrate/`, `provider/`, `service/`, `approval/` | Cross-cutting or Smith | TBD |
+| `init/`, `templates/`, `workspace/tools/`, `workspace/identity/`, `inference/`, `connect/`, `identity/`, `role/`, `provider/` | design | `design/` |
+| `doctor/`, `status/`, `backup/`, `update/`, `logs/`, `alerts/`, `repair/`, `digest/`, `notifications/`, `approval/` | operate | `operate/` |
+| `security/`, `audit/` | secure | `secure/` |
+| `skill/`, `tool/`, `export/`, `destroy/`, `internal/`, `integrate/` | evolve | `evolve/` |
+| `docker/`, `deploy/`, `source/`, `smoke/`, `service/` | build | `build/` |
+| `fleet/` | cloud | `cloud/` |
 
 ### GAP 2: Distro Installer (build — does not exist)
 

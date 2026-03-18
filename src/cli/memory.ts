@@ -5,8 +5,8 @@ import {
   fallbackSummarize,
   runAllTransitions,
   searchMemory,
-} from "../internal/memory/index.js";
-import type { MemoryHealthReport, MemoryTierName } from "../internal/memory/index.js";
+} from "../evolve/memory/index.js";
+import type { MemoryHealthReport, MemoryTierName } from "../evolve/memory/index.js";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
