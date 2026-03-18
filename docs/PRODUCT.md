@@ -2,7 +2,7 @@
 
 > One-liner: Your AI agent runs on your hardware, talks to your services, and never sends a byte to anyone you didn't choose. ClawHQ makes that possible without a PhD in DevOps.
 
-**Owner:** [Name] · **Status:** Active Development · **Updated:** 2026-03-13
+**Owner:** [Name] · **Status:** Active Development · **Updated:** 2026-03-17
 
 ---
 
@@ -18,13 +18,19 @@ So today you choose between **surveillance AI** (polished, easy, you own nothing
 
 ## Why Now
 
-10+ hosting providers have appeared for OpenClaw, proving demand — but they all stop at deploy and most just run default config on shared infrastructure, which is barely better than the big 4 for privacy. Meanwhile, the big 4 are accelerating: ChatGPT's memory is persistent, Gemini is embedded in every Google service, Apple Intelligence is on-device but locked to their ecosystem. Every month that passes, more people hand over more data to platforms they don't control. The framework itself is maturing fast (sandbox isolation, Ollama integration, plugin channels), creating a real technical foundation for local-first agents — but also more configuration surface area that users can't manage. The window for a privacy-first control panel is now.
+10+ hosting providers have appeared for OpenClaw, proving demand — but they all stop at deploy and most just run default config on shared infrastructure, which is barely better than the big 4 for privacy. Meanwhile, the big 4 are accelerating: ChatGPT's memory is persistent, Gemini is embedded in every Google service, Apple Intelligence is on-device but locked to their ecosystem. Every month that passes, more people hand over more data to platforms they don't control. The framework itself is maturing fast (sandbox isolation, Ollama integration, plugin channels), creating a real technical foundation for local-first agents — but also more configuration surface area that users can't manage. The window for a purpose-built agent distribution is now.
 
 ---
 
 ## The Solution
 
-ClawHQ is the operational layer that tames OpenClaw — turning a powerful but immature framework into something that actually survives in production. It covers the complete agent lifecycle — Plan, Build, Secure, Deploy, Operate, Evolve, Decommission — as a CLI you install on your own hardware. Local models are the default. Cloud APIs are opt-in, per-task, with full visibility into what data leaves your machine. Templates map to the things you're actually replacing (Google Assistant, ChatGPT Plus, a human PA). Setup takes minutes, not weeks — describe what you want and the system figures out the config. The agent doesn't just execute commands; it monitors your integrations, surfaces problems with proposed solutions, and gets smarter over time through structured memory that actually learns your patterns instead of accumulating raw conversation logs.
+ClawHQ turns generic, unsecured open-source software into your personalized digital agent — without you knowing how any of it works. You get a Signal, Telegram, or Discord UI. We do the rest.
+
+OpenClaw already has a control panel (the Gateway UI). That's cPanel — fine for basic management. ClawHQ is WordPress. We have hundreds of recipes — complete operational profiles for every use case — and during setup we cook ~10 personalized for you. "Manage my email" → email tools, triage skills, inbox-check cron, morning digest, auto-reply with approval gates. "Help with meal planning" → nutrition tools, recipe research, weekly meal plan, shopping list, dietary preferences baked into identity. "Assist with stock trading" → market data tools, research skills, pre-market alerts, portfolio monitoring, risk guardrails.
+
+Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically — identity, tools, skills, cron, integrations, security, autonomy, memory, model routing, egress firewall — through templates that configure a complete agent for a specific job.
+
+One command gives you a running, hardened, purpose-built agent. The same stack runs everywhere — your PC, a Mac Mini, a DigitalOcean droplet. Self-managed or fully managed. The only difference is who maintains the host.
 
 **Core bet:** People will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
 
@@ -106,7 +112,8 @@ This pipeline — discover → vet → sandbox → approve → install → monit
 ## What We're Building
 
 <!--
-Each toolchain is a feature. Stories are atomic — one behavior each.
+Organized by install phases, not toolchains. Each phase produces a working state.
+Stories are atomic — one behavior each.
 Personas: Privacy Migrant, Tinkerer, Fleet Operator.
 Impl notes reference OPENCLAW-REFERENCE.md for implementation details.
 
@@ -571,30 +578,34 @@ End of life done right. Export everything portable. Destroy everything else. Ver
 
 ## Why Not the Alternatives
 
-10+ OpenClaw hosting providers exist — they all stop at deploy. You get default config on shared infrastructure with no lifecycle management. NanoClaw solves container isolation brilliantly but has no configuration management, no memory lifecycle, no operational tooling, and no path for non-technical users — it's "fork the code and have Claude rewrite it," which is powerful for hackers and useless for everyone else. memU has the best memory architecture in the space but it's a memory layer, not a control panel — it doesn't handle security, deployment, identity governance, or decommissioning. Point tools exist for security scanning, dashboards exist for monitoring, and guides exist for hardening — but nobody stitches the full lifecycle together. ClawHQ's moat is that it covers all seven phases from plan through decommission in one product, with opinionated security defaults that work out of the box, and a feedback loop that makes the agent get better over time. Nobody else goes past deploy.
+10+ OpenClaw hosting providers exist — they all stop at deploy. You get default config on shared infrastructure with no lifecycle management. NanoClaw solves container isolation brilliantly but has no configuration management, no memory lifecycle, no operational tooling, and no path for non-technical users — it's "fork the code and have Claude rewrite it," which is powerful for hackers and useless for everyone else. memU has the best memory architecture in the space but it's a memory layer, not a distribution — it doesn't handle security, deployment, identity governance, or decommissioning. Point tools exist for security scanning, dashboards exist for monitoring, and guides exist for hardening — but nobody stitches the full lifecycle together. ClawHQ's moat is that it's the complete distribution — from install through decommission — with opinionated security defaults that work out of the box, and a feedback loop that makes the agent get better over time. Nobody else goes past deploy. Nobody else is the install.
 
 ---
 
 ## Build Order
 
 **Phase 0 — Concierge**
-Stories: None (manual). We set up 3-5 agents by hand for real users. We ARE the control panel. Focus on Privacy Migrants leaving specific big-tech products. Document exactly what they're migrating from, what features they depend on, and what breaks when they switch — this research directly shapes use-case templates (Phase 2) and migration tooling (Phase 3).
+Stories: None (manual). We set up 3-5 agents by hand for real users. We ARE the distro. Focus on Privacy Migrants leaving specific big-tech products. Document exactly what they're migrating from, what features they depend on, and what breaks when they switch — this research directly shapes use-case templates and migration tooling.
 Done when: We know which use-case templates matter, which integrations are most requested, what breaks first, what keeps people engaged at 30 days, and what the migration experience from each big-tech product actually requires.
 
-**Phase 1 — Self-install panel (Operate + Secure + Deploy + Model Routing)**
-Stories: Doctor, Predictive health alerts, Status dashboard, Intelligent cost routing, Full deploy sequence, Pre-flight checks, Graceful shutdown, Egress firewall (with domain allowlisting), Container hardening, Secrets lifecycle management, Encrypted backup, Safe upstream updates, Two-stage Docker build, Health self-repair, Local-first model routing, Per-category cloud opt-in, Data egress visibility
-Done when: A Tinkerer installs the CLI on an existing OpenClaw deployment and immediately gets value: diagnostics, security hardening with per-context container isolation, local-first model routing with egress visibility. They can `clawhq up` / `clawhq down` / `clawhq backup` / `clawhq update` with full safety. Zero data leaves the machine unless they opt in.
+**Phase 1 — The Distro (Install → Configure → Harden → Launch)**
+Stories: Installer (pre-reqs, source acquisition, distro directory), guided questionnaire, config generation with landmine prevention, config validation engine, container hardening, egress firewall (domain allowlisting), credentials manager (credentials.json mode 0600), two-stage Docker build, full deploy sequence, pre-flight checks, graceful shutdown, local-first model routing, per-category cloud opt-in
+Done when: A user runs one command and gets a running, hardened, functional agent. The installer acquires OpenClaw (from trusted cache or source), configures it via guided setup, hardens it automatically, and launches it. Zero data leaves the machine unless they opt in. This is the end-to-end distro experience.
 
-**Phase 2 — Full panel (Plan + Evolve + Transparency + Decommission)**
-Stories: Use-case templates, AI-powered config inference, Guided questionnaire, Integration auto-detection, Config generation, Config validation, Skill management, Integration management, API provider management, CLI tool installation, Identity governance, Supply chain security, Evolve rollback, Activity digest (proactive), Approval queue, Data egress audit, Portable export, Verified destruction, Pre-decommission checklist, PII scanning, Channel connection, Post-deploy smoke test, Intelligent task-level routing
-Done when: A Privacy Migrant goes from zero to working agent using only `clawhq init` in under 5 minutes. A Tinkerer can safely expand their agent — installing skills, connecting new services, adding API providers — through a validated pipeline with rollback. The user knows exactly what the agent did and what data left their machine.
+**Phase 2 — Tools + Skills + Ops (equip → operate)**
+Stories: CLI tool generators (email, calendar, tasks, web-search, travel, meals, etc.), skill installation (morning-brief, construct, email-digest, meeting-prep), doctor (14+ checks with auto-fix), predictive health alerts, status dashboard, intelligent cost routing, encrypted backup/restore, safe upstream updates, health self-repair, data egress visibility, PII scanning, credential health probes, audit logging (tool execution, secret lifecycle, egress), channel connection, post-deploy smoke test
+Done when: The agent has hands (tools), brain (skills), and a safety net (ops). A Tinkerer gets immediate day-2 value: diagnostics, monitoring, backups, safe updates. The agent is proactive — morning briefs, email triage, scheduled heartbeats.
 
-**Phase 3 — Migration + Managed hosting**
-Stories: ChatGPT conversation import, Google Assistant routine import, Contact/calendar bootstrapping, "Replace my X" wizard, Infrastructure provisioning, Fleet management, Web console, Access control
-Done when: A non-technical Privacy Migrant can switch from ChatGPT/Google Assistant to ClawHQ with their history and routines intact. Managed mode available for those who accept the trade-off.
+**Phase 3 — Evolve + Transparency + Decommission (grow → trust → exit)**
+Stories: Skill management (install/update/remove with vetting), integration management (add/remove/swap), API provider management, CLI tool installation, identity governance, supply chain security, evolve rollback, activity digest (proactive), approval queue, data egress audit, "why did you do that?" trace, portable export, verified destruction, pre-decommission checklist, intelligent task-level routing, use-case templates (community), AI-powered config inference
+Done when: The agent grows safely over time. A user can install skills, connect services, add providers — all through a validated, sandboxed, rollback-capable pipeline. The user knows exactly what the agent did and what data left their machine. Clean exit with cryptographic verification.
 
-**Phase 4 — Ecosystem**
-Stories: Community templates, Supply chain security, "Why did you do that?" trace, Air-gapped mode, Template marketplace, Agent swarms (task-level multi-agent collaboration)
+**Phase 4 — Managed Service + Migration (cloud + onramp)**
+Stories: Cloud monitoring service (remote health dashboard, security advisories, update notifications), managed hosting (DigitalOcean, Hetzner, Mac Mini), agentd daemon, web console, fleet management, ChatGPT conversation import, Google Assistant routine import, contact/calendar bootstrapping, "Replace my X" wizard, infrastructure provisioning, access control
+Done when: The same distro runs as a managed service. A non-technical Privacy Migrant can get a working agent without touching a terminal. Migration from ChatGPT/Google Assistant with history and routines intact.
+
+**Phase 5 — Ecosystem**
+Stories: Community templates, template marketplace, air-gapped mode, agent swarms (multi-agent collaboration), mobile companion app
 Done when: Community is contributing use-case templates. The WordPress flywheel is turning.
 
 ---

@@ -1,67 +1,234 @@
 # ClawHQ Architecture
 
-> Solution architecture for ClawHQ — the control panel for OpenClaw agents.
+> Architecture for ClawHQ — WordPress for AI agents.
 
-**Status:** Active Development · **Updated:** 2026-03-13
+**Status:** Active Development · **Updated:** 2026-03-17
+
+---
+
+## The Model
+
+OpenClaw is a powerful engine with its own control panel (the Gateway UI). That's cPanel — fine for basic management. ClawHQ is WordPress — the template engine that makes the agent do something specific and valuable.
+
+Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically — identity, tools, skills, cron, integrations, security, autonomy, memory, model routing — through use-case templates that configure a complete agent for a specific job.
+
+### Three Layers
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER 3: Cloud Service (the business)                       │
+│  Managed hosting · Remote monitoring · Template marketplace  │
+├─────────────────────────────────────────────────────────────┤
+│  LAYER 2: Template Engine (the product)                      │
+│  Use-case templates: hundreds of recipes.                    │
+│  During setup, ClawHQ "cooks" ~10 personalized for the user:│
+│  asks preferences, connects services, validates credentials, │
+│  generates all config, tools, skills, identity, cron.        │
+│  The agent is purpose-built for a specific job.              │
+├─────────────────────────────────────────────────────────────┤
+│  LAYER 1: Distro (table stakes)                              │
+│  Install · Harden · Launch · Ops · Update                    │
+│  Acquire engine, secure it, keep it alive.                   │
+│  Same for every agent.                                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Design Principles
+
+- **ClawHQ is the install.** Users don't install OpenClaw separately. ClawHQ acquires, configures, and manages the engine.
+- **Templates are recipes, not config files.** ClawHQ has hundreds of recipes and cooks ~10 personalized for the user during setup — asking preferences, connecting services, generating everything.
+- **OpenClaw's Gateway UI is fine for basic management.** ClawHQ doesn't compete with it. It sits on top and makes the engine do something specific.
+- **Everything is programmatic.** Every aspect of OpenClaw is a file or API call. ClawHQ controls all of it — no manual config editing required.
+- **Tight coupling to OpenClaw.** No abstraction layer. We use OpenClaw's TypeBox config schema, WebSocket RPC, file paths, and container structure directly.
+- **TypeScript throughout.** Shares types with OpenClaw. Validates against the actual schema.
+- **Security is the baseline.** Hardening happens automatically, not as an opt-in feature.
 
 ---
 
 ## System Overview
 
-ClawHQ is a three-tier system. The local panel (Tier 2) is the core product and works standalone. The cloud service (Tier 3) adds convenience features but is never required.
-
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Tier 3: ClawHQ Cloud                                   │
-│  Account · Install · Updates · Remote health ·          │
-│  Security advisories · Fleet view · Billing             │
-│  ─── optional — loses features without it ───           │
+│  Managed hosting · Remote health · Template marketplace │
+│  ─── optional — product works without this ───          │
 └────────────────────────┬────────────────────────────────┘
-                         │ HTTPS API (heartbeat, updates, alerts)
-                         │ Minimal, auditable protocol
+                         │ HTTPS (health status only)
 ┌────────────────────────┴────────────────────────────────┐
-│  Tier 2: ClawHQ Local                                   │
-│  Local web UI + CLI on the machine running OpenClaw.    │
-│  The full lifecycle: init, build, deploy, doctor,       │
-│  backup, status, connect, export, destroy.              │
-│  ─── works standalone in paranoid mode ───              │
+│  Tier 2: ClawHQ Local (THE PRODUCT)                     │
+│  Template engine + distro + ops tooling.                │
+│  Recipes → personalized config → running agent.         │
+│  ─── works standalone — this is the product ───         │
 └────────────────────────┬────────────────────────────────┘
                          │ WebSocket RPC · Docker API · Filesystem
 ┌────────────────────────┴────────────────────────────────┐
-│  Tier 1: OpenClaw                                       │
-│  Gateway process · Channels · Agent runtime ·           │
-│  Tools · Memory · Cron · Skills                         │
-│  ─── unmodified — ClawHQ wraps, never forks ───         │
+│  Tier 1: OpenClaw (THE ENGINE)                          │
+│  Gateway process · Gateway UI · Channels · Agent        │
+│  runtime · Tools · Memory · Cron · Skills               │
+│  ─── unmodified — ClawHQ configures, never forks ───    │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Design Principles
+---
 
-- **Tier 2 is the product.** Everything of value works without Tier 3. Paranoid mode is not a degraded experience — it's the default. Cloud is opt-in.
-- **Tight coupling to OpenClaw.** No abstraction layer. We use OpenClaw's TypeBox config schema, WebSocket RPC protocol, file paths, and container structure directly.
-- **TypeScript throughout.** OpenClaw is Node.js with TypeBox schemas. ClawHQ shares the same language, can import types directly, and validates config against the actual schema — not a reimplementation.
-- **OpenClaw handles model routing.** ClawHQ generates config that tells OpenClaw how to route models. It does not make LLM calls itself (except during `init --smart` for config inference via local Ollama).
+## Layer 2: The Template Engine
+
+This is the product. Everything else is infrastructure.
+
+### Templates Are Recipes
+
+ClawHQ maintains a library of hundreds of recipes — complete operational profiles for specific use cases. During setup, ClawHQ "cooks" a personalized configuration:
+
+1. **User describes what they want** — "manage my email," "help with stock trading," "plan meals for my family"
+2. **ClawHQ selects and personalizes recipes** — asks preferences, dietary restrictions, risk tolerance, communication style
+3. **Credentials connected and validated** — each integration tested live before proceeding
+4. **Everything generated** — config, identity, tools, skills, cron, security, egress rules
+5. **Agent launches purpose-built** — not a generic agent with a personality swap, but a fully configured system designed for a specific job
+
+### What a Template Controls
+
+Every dimension of OpenClaw, configured programmatically:
+
+| Dimension | What Gets Generated | Example: "Assist Stock Trading" |
+|---|---|---|
+| **Identity** | SOUL.md, AGENTS.md, IDENTITY.md, personality, boundaries | Analytical, data-driven, conservative risk warnings |
+| **Tools** | CLI wrappers installed to workspace | `quote` (market data), `web-search` (research), `tasks` (trade log) |
+| **Skills** | Autonomous capability scripts | market-scan, portfolio-alert, research-digest |
+| **Cron** | Scheduled jobs in OpenClaw-native format | Pre-market scan at 6am, portfolio check every hour during market |
+| **Integrations** | Service connections + credential validation | Yahoo Finance, Tavily research, email for alerts |
+| **Security** | Posture, egress firewall, sandbox | Hardened, egress to finance APIs + email only |
+| **Autonomy** | What agent does alone vs. asks permission | Auto-monitor, auto-alert; flag before any trade suggestion |
+| **Memory** | Retention policy, tier configuration | Remember positions, preferences, market patterns |
+| **Models** | Local vs. cloud routing per task type | Local for monitoring, cloud for deep research synthesis |
+| **Egress** | Domain allowlist for firewall | finance APIs + research API + email server, nothing else |
+
+### Template Examples
+
+| Template | Use Case | Key Tools | Key Skills | Cron |
+|---|---|---|---|---|
+| **Email Manager** | Inbox zero, triage, auto-reply | email, calendar, tasks | email-digest, morning-brief, auto-reply | Inbox check 15min, daily digest 8am |
+| **Stock Trading Assist** | Market monitoring, research, alerts | quote, web-search, tasks | market-scan, portfolio-alert, research-digest | Pre-market 6am, hourly during market |
+| **Meal Planner** | Nutrition, recipes, shopping | web-search, tasks, calendar | meal-plan, shopping-list, nutrition-track | Weekly meal plan Sun 6pm, daily prep |
+| **AI Blog Maintainer** | Research, write, publish | web-search, tasks | research-digest, draft-post, publish-review | Daily research, weekly draft, review queue |
+| **Replace Google Asst** | Full daily orchestration | email, calendar, tasks, web-search | morning-brief, email-digest, schedule-guard | Morning 7am, heartbeat 10min, evening summary |
+| **Replace ChatGPT Plus** | Research + writing partner | web-search, tasks | deep-research, writing-assist, construct | On-demand, daily construct |
+| **Family Hub** | Shared calendar, chores, meals | calendar, tasks, web-search | meal-plan, chore-assign, family-brief | Daily brief, weekly meal plan, chore rotation |
+| **Founder's Ops** | Inbox zero, investor updates, hiring | email, calendar, tasks, web-search | email-digest, investor-update, hiring-pipeline | Morning triage, weekly investor prep |
+
+### What Gets Generated
+
+Since everything in OpenClaw is a file or API call, ClawHQ generates all of it:
+
+```
+Template recipe + user preferences + credentials
+        ↓
+    generate(answers: WizardAnswers)
+        ↓
+┌─────────────────────────────────────────────────────────┐
+│ engine/                                                  │
+│   openclaw.json        ← runtime config, 14 landmines   │
+│                          auto-handled                    │
+│   docker-compose.yml   ← hardened container, correct     │
+│                          mounts, egress network          │
+│   Dockerfile           ← binary layer from integration   │
+│                          needs (himalaya, python3, etc.) │
+│   .env                 ← secrets (mode 0600)             │
+│   credentials.json     ← integration creds (mode 0600)   │
+│                                                          │
+│ workspace/                                               │
+│   identity/            ← SOUL.md, AGENTS.md, HEARTBEAT   │
+│                          populated from template          │
+│   tools/               ← CLI wrappers generated from     │
+│                          integrations (bash/python3)      │
+│   skills/              ← skill scripts from template      │
+│   memory/              ← hot/warm/cold skeleton           │
+│                                                          │
+│ cron/                                                    │
+│   jobs.json            ← scheduled jobs, OpenClaw-native  │
+│                          format, cron syntax validated    │
+│                                                          │
+│ security/                                                │
+│   posture.yaml         ← standard/hardened/paranoid       │
+│ ops/firewall/                                            │
+│   allowlist.yaml       ← per-integration domain allowlist │
+└─────────────────────────────────────────────────────────┘
+```
+
+### The 14 Landmine Rules
+
+Every generated config passes 14 validation rules that prevent silent failures:
+
+| # | What Goes Wrong Without It |
+|---|---|
+| LM-01 | Device signature loop — agent becomes inaccessible |
+| LM-02 | CORS errors — can't manage agent via web |
+| LM-03 | Gateway rejects requests through Docker NAT |
+| LM-04 | Tool execution silently unavailable |
+| LM-05 | Tool security restrictions silently applied |
+| LM-06 | Volume mount permission errors |
+| LM-07 | Container escape vulnerability |
+| LM-08 | Identity files silently truncated |
+| LM-09 | Cron jobs silently don't run |
+| LM-10 | Docker Compose deploy failure |
+| LM-11 | Integration APIs silently fail |
+| LM-12 | Agent modifies its own config |
+| LM-13 | Network egress unfiltered |
+| LM-14 | Filesystem access misconfigured |
+
+See `docs/OPENCLAW-REFERENCE.md` for full details on each rule.
 
 ---
 
-## Tier 1: OpenClaw (The Agent Runtime)
+## Layer 1: The Distro
 
-ClawHQ does not modify OpenClaw. It integrates through four documented surfaces:
+Table stakes. Same for every agent. Handles the lifecycle that OpenClaw doesn't.
+
+### Install Phases
+
+```
+Install → Configure → Harden → Tools → Skills → Ops → Launch → Cloud
+   ↓         ↓          ↓        ↓       ↓       ↓       ↓        ↓
+Engine    Recipes     Security  Agent's  Agent's  Prod    Running  Remote
+acquired  cooked    baseline   hands    brain    grade   agent    monitor
+```
+
+**Phase 1: Install** — Pre-reqs, engine acquisition (trusted cache or from source), distro directory.
+
+**Phase 2: Configure** — Template selection, preferences, integrations, credentials validated live, bundle generated.
+
+**Phase 3: Harden** — Container lockdown, sandbox, credentials secured, egress firewall, identity read-only, 14 landmines verified.
+
+**Phase 4: Tools** — CLI wrappers generated from integrations, binary deps added to Dockerfile, TOOLS.md auto-populated.
+
+**Phase 5: Skills** — Autonomous capabilities installed from template, cron entries created, dependencies validated.
+
+**Phase 6: Ops** — Monitor, alerting, backup (first snapshot), updater, audit logging, doctor (full pass).
+
+**Phase 7: Launch** — `docker compose up`, firewall applied, health polled, smoke test, channel connected.
+
+**Phase 8: Cloud** — Optional: health heartbeat, remote dashboard, security advisories, fleet view.
+
+Each phase produces a working state. The user gets value at every checkpoint.
+
+### Engine Acquisition
+
+Two paths — user chooses their trust level:
+
+| Path | Trust Model | What Happens |
+|---|---|---|
+| **Trusted cache** (default) | Signed releases from clawhq.com | Download, verify SHA256 + GPG signature |
+| **From source** (zero-trust) | User audits code before build | Clone repo, inspect, full Docker build |
+
+### Integration with OpenClaw
+
+ClawHQ integrates through four surfaces — all programmatic:
 
 | Surface | What | How ClawHQ Uses It |
-|---------|------|-------------------|
-| **Config file** | `~/.openclaw/openclaw.json` — controls all runtime behavior | Read/write via Gateway `config.patch` RPC (WebSocket). Direct file write when Gateway is down. |
-| **Workspace** | `~/.openclaw/workspace/` — identity files, memory, skills, tools | Read/write as plain files. Identity files are read-only at runtime (ClawHQ owns the lifecycle). |
-| **Cron system** | `~/.openclaw/cron/` — job definitions + execution history | Write `jobs.json`, read run logs. Gateway hot-reloads. |
-| **Gateway WebSocket** | `:18789` — config management, session RPCs, health, status | Primary runtime communication channel. Token-authenticated. Rate limited (3 req/60s for config writes). |
-
-### Communication Channels
-
-| Channel | When to Use |
-|---------|------------|
-| **WebSocket RPC** | Anything the Gateway manages at runtime (config, sessions, status, real-time events) |
-| **Filesystem** | Anything stored as files (workspace, memory, identity, cron, backups) |
-| **Subprocess** | Anything needing OS-level access (Docker, iptables, `openclaw` CLI commands) |
+|---|---|---|
+| **Config file** | `openclaw.json` | Write via Gateway `config.patch` RPC. Direct write when Gateway is down. |
+| **Workspace** | `workspace/` — identity, memory, skills, tools | Read/write as files. Identity read-only at runtime. |
+| **Cron** | `cron/` — jobs + execution history | Write `jobs.json`, read run logs. Gateway hot-reloads. |
+| **Gateway WebSocket** | `:18789` — config, sessions, health | Token-authenticated. Rate limited (3 req/60s for config writes). |
 
 ### What OpenClaw Already Handles (Don't Replicate)
 
@@ -70,213 +237,17 @@ ClawHQ does not modify OpenClaw. It integrates through four documented surfaces:
 - Tool execution (dispatch + sandboxing)
 - Session persistence
 - Channel protocol handling
-- Config schema validation (Gateway is the final authority — ClawHQ validates before writing, Gateway validates on load)
-
----
-
-## Tier 2: ClawHQ Local (The Control Panel)
-
-A local web application + CLI running on the same host as OpenClaw. This is the core product.
-
-### What It Does
-
-Manages the complete agent lifecycle through seven phases:
-
-| Phase | Commands | What It Covers |
-|-------|----------|---------------|
-| **Plan** | `init`, `init --smart`, `init --guided` | Templates, config inference, guided setup, config generation with landmine prevention |
-| **Build** | `build` | Two-stage Docker build from OpenClaw source |
-| **Secure** | `scan`, `creds` | Container hardening, egress firewall, secrets management, PII scanning |
-| **Deploy** | `up`, `down`, `restart`, `connect` | Pre-flight checks, deploy sequence, channel connection, smoke test |
-| **Operate** | `doctor`, `status`, `backup`, `update`, `logs` | Diagnostics, health monitoring, encrypted backup, safe updates |
-| **Evolve** | `evolve` | Identity governance, memory lifecycle, preference learning |
-| **Decommission** | `export`, `destroy` | Portable export, verified destruction |
-
-### Delivery
-
-ClawHQ Local ships as a single installable package:
-
-- **CLI** — `clawhq <command>` for terminal workflows and automation
-- **Local web UI** — browser-based dashboard served on localhost for visual management
-- Both share the same underlying engine — the web UI calls the same functions as the CLI
-
-### Tech Stack
-
-| Component | Choice | Rationale |
-|-----------|--------|-----------|
-| **Language** | TypeScript (strict, ESM) | Matches OpenClaw. Shares TypeBox schema types. |
-| **Runtime** | Node.js ≥20 | Same as OpenClaw. No language boundary. |
-| **CLI framework** | commander ^14 | Lightweight, well-maintained, subcommand trees. |
-| **Config parsing** | yaml ^2 | YAML templates, compose generation. |
-| **Testing** | vitest ^4 | Fast, TypeScript-native, v8 coverage. |
-| **Linting** | eslint + typescript-eslint | Strict rules, import ordering. |
-| **Local web server** | TBD (Hono, Fastify, or similar) | Serves local dashboard, API for web UI |
-| **Local web UI** | TBD | Lightweight — this is a control panel, not a SaaS app |
-| **Distribution** | npm global install | Target audience already has Node.js (they're running OpenClaw) |
-
-### Package Structure
-
-```
-clawhq/
-├── src/
-│   ├── cli/index.ts          # Commander.js CLI — all commands defined here
-│   ├── ui/                   # Local web UI (planned)
-│   ├── server/               # Local web server (planned)
-│   │
-│   ├── config/               # Config loading, validation, generation
-│   │   ├── schema.ts         # OpenClaw types (CronJobDefinition, AgentEntry, DeploymentBundle)
-│   │   ├── loader.ts         # Load and merge config from multiple sources
-│   │   ├── validator.ts      # 14 landmine rules + cross-file consistency
-│   │   └── generator.ts      # Template + answers → full deployment bundle
-│   │
-│   ├── init/                 # Guided setup wizard
-│   │   ├── wizard.ts         # Main orchestrator
-│   │   ├── steps.ts          # 4 wizard steps (basics, template, integrations, models)
-│   │   ├── templates.ts      # 6 built-in templates (code-defined)
-│   │   ├── generate.ts       # Full bundle generator (config + tools + identity + skills + cron + Dockerfile)
-│   │   ├── writer.ts         # Atomic file writer (phase 1: temp files, phase 2: rename)
-│   │   └── types.ts          # Wizard types (WizardAnswers, TemplateChoice, etc.)
-│   │
-│   ├── docker/               # Docker client + build
-│   │   ├── client.ts         # Docker Engine API / CLI subprocess
-│   │   ├── build.ts          # Two-stage build with change detection + manifests
-│   │   ├── compose.ts        # docker-compose operations
-│   │   ├── hardening.ts      # Security posture → compose overrides (standard/hardened/paranoid)
-│   │   └── dockerfile.ts     # Dockerfile generator (binary fragments from integration selections)
-│   │
-│   ├── workspace/            # Workspace generation
-│   │   ├── tools/            # 7 CLI tool generators + registry
-│   │   │   ├── registry.ts   # Integration → tool mapping, binary dependency tracking
-│   │   │   ├── email.ts      # himalaya wrapper
-│   │   │   ├── tasks.ts      # Local work queue (channels, autonomy, priorities)
-│   │   │   ├── todoist.ts    # Todoist API client (Python3)
-│   │   │   ├── ical.ts       # CalDAV calendar client
-│   │   │   ├── quote.ts      # Yahoo Finance market quotes
-│   │   │   ├── tavily.ts     # Web research API
-│   │   │   └── todoist-sync.ts # Task polling + due alerts
-│   │   ├── identity/         # Identity file generators
-│   │   │   ├── agents.ts     # AGENTS.md (operating instructions)
-│   │   │   ├── heartbeat.ts  # HEARTBEAT.md (recon phases from integrations)
-│   │   │   ├── tools-doc.ts  # TOOLS.md (auto-generated from installed tools)
-│   │   │   ├── identity.ts   # IDENTITY.md
-│   │   │   └── memory.ts     # MEMORY.md skeleton
-│   │   └── skills/           # Skill template generators
-│   │       ├── construct.ts  # Self-improvement framework (SKILL.md + SOUL.md + skill-spec)
-│   │       └── morning-brief.ts # Daily briefing skill
-│   │
-│   ├── gateway/              # OpenClaw Gateway communication
-│   │   ├── websocket.ts      # WebSocket RPC client
-│   │   ├── health.ts         # Health check polling
-│   │   └── config-rpc.ts     # config.patch / config.apply wrappers
-│   │
-│   ├── security/             # Security toolchain
-│   │   ├── firewall/         # iptables CLAWHQ_FWD chain management
-│   │   ├── credentials/      # Health probes per integration
-│   │   └── secrets/          # PII and secret pattern detection
-│   │
-│   ├── templates/            # YAML template loader + mapper
-│   │   ├── loader.ts         # YAML template parsing
-│   │   └── mapper.ts         # Template + answers → config values
-│   │
-│   ├── deploy/               # Deployment orchestration (up/down/restart)
-│   ├── doctor/               # Diagnostic engine (14+ checks + auto-fix)
-│   ├── status/               # Status dashboard (agent, integrations, workspace, egress)
-│   ├── backup/               # Encrypted backup/restore with GPG
-│   ├── update/               # Safe upstream update with rollback
-│   ├── skill/                # Skill lifecycle (install/update/remove with vetting)
-│   ├── export/               # Portable agent export
-│   └── cloud/                # Tier 3 connection (optional, graceful no-op)
-│
-├── configs/templates/        # 6 built-in template YAML files
-├── package.json
-└── tsconfig.json
-```
-
-### Cloud Connection Protocol (Tier 2 → Tier 3)
-
-When cloud is enabled, the local panel communicates with ClawHQ Cloud over HTTPS. The protocol is minimal and auditable — privacy-conscious users will inspect it.
-
-**What Tier 2 sends to Tier 3:**
-
-| Data | Purpose | Frequency |
-|------|---------|-----------|
-| Agent health status (up/down/degraded) | Remote monitoring | Heartbeat interval (configurable, default 5min) |
-| Software version | Update checks | On startup + daily |
-| Template ID (not content) | Usage analytics | On init |
-| Error codes (not messages) | Diagnostics | On failure |
-
-**What Tier 2 never sends:**
-
-- Agent conversations, memory, or identity content
-- Config file contents (only schema version)
-- Credential values
-- Workspace file contents
-- Anything from OpenClaw's runtime
-
-**What Tier 3 sends to Tier 2:**
-
-| Data | Purpose |
-|------|---------|
-| Available updates + changelogs | Update notification |
-| Security advisories | Vulnerability alerts |
-| Fleet status (for fleet operators) | Aggregated dashboard |
-
-**Paranoid mode** (`clawhq config set cloud.enabled false` or omit token): all cloud communication is disabled. The `cloud/` module becomes a no-op. Features lost: remote health monitoring, push update notifications, security advisories, fleet dashboard. Features retained: everything else.
-
----
-
-## Tier 3: ClawHQ Cloud (The Web Service)
-
-A separate web application. Handles account management, onboarding, and optional operational features.
-
-### Onboarding Flow
-
-```
-1. User visits clawhq.com → creates account
-2. Dashboard shows install command with auth token:
-   curl -fsSL https://clawhq.com/install | sh -s -- --token <TOKEN>
-3. One-liner installs ClawHQ Local on user's server, authenticates
-4. User runs: clawhq init
-5. Setup wizard runs → agent deployed
-```
-
-### Responsibilities
-
-| Capability | Description |
-|------------|-------------|
-| **Account management** | Sign up, auth, billing |
-| **Install orchestration** | Generate install scripts with embedded auth tokens |
-| **Update distribution** | Host releases, serve update metadata, push security advisories |
-| **Remote health dashboard** | Aggregated view of connected agents (health status only — no content) |
-| **Fleet management** | Multi-agent overview for fleet operators |
-| **Security advisories** | Push notifications for OpenClaw CVEs, config vulnerabilities, credential leaks |
-
-### What Cloud Never Sees
-
-The operational boundary is strict:
-
-| Cloud CAN see | Cloud CANNOT see |
-|---------------|------------------|
-| Agent health (up/down/restarts) | Agent conversations |
-| Integration status (healthy/degraded/failed) | Email, task, or calendar content |
-| Memory tier sizes (45KB hot, 120KB warm) | Memory contents |
-| Software versions | Config file contents |
-| Error codes | Error messages or stack traces |
-
-### Tech Stack
-
-TBD — separate from Tier 2. Likely a standard web app (TypeScript, database, auth). Will be defined when Tier 3 becomes implementation priority.
+- Config schema validation (Gateway is the final authority)
+- **The Gateway UI** — basic management panel. Let it be cPanel.
 
 ---
 
 ## Security Architecture
 
-### Container Hardening (Applied by Tier 2)
-
-Every deployed agent container gets security controls based on the template's security posture:
+### Container Hardening (Applied Automatically)
 
 | Control | Standard | Hardened | Paranoid |
-|---------|----------|----------|----------|
+|---|---|---|---|
 | Linux capabilities | `cap_drop: ALL` | `cap_drop: ALL` | `cap_drop: ALL` |
 | Filesystem | Read-only rootfs | Read-only rootfs | Read-only rootfs + encrypted workspace |
 | Privilege escalation | `no-new-privileges` | `no-new-privileges` | `no-new-privileges` |
@@ -287,27 +258,76 @@ Every deployed agent container gets security controls based on the template's se
 
 ### Egress Firewall
 
-Dedicated iptables chain (`CLAWHQ_FWD`) on the Docker bridge interface:
+Dedicated iptables chain (`CLAWHQ_FWD`):
 
-1. Allow ESTABLISHED/RELATED (return traffic)
+1. Allow ESTABLISHED/RELATED
 2. Allow DNS (UDP/TCP 53)
-3. Allow HTTPS (TCP 443) to allowlisted domains only
+3. Allow HTTPS (TCP 443) to allowlisted domains only (per-integration)
 4. LOG + DROP everything else
 
-Domain allowlist is derived from: template defaults + user's cloud API opt-in (only opted-in provider domains are allowed). Reapplied automatically after every `docker compose down` / network recreate.
+Reapplied automatically after every `docker compose down`.
 
-### Secrets
+### Credentials
 
-- All secrets live in `.env` with `600` permissions
-- Never written to `openclaw.json`, workspace files, or logs
-- Credential health probes validate each integration's auth on schedule
-- `clawhq creds` reports status; `clawhq doctor` checks for leaked secrets in config files
+- Secrets in `.env` (mode 0600)
+- Integration credentials in `credentials.json` (mode 0600)
+- Never in `openclaw.json`, workspace files, or logs
+- Health probes validate each integration on schedule
+
+### Three Audit Systems
+
+| System | Purpose | Integrity |
+|---|---|---|
+| Tool execution | What the agent did | Append-only JSONL |
+| Secret lifecycle | Secret added/rotated/revoked | HMAC-chained |
+| Egress | What data left the machine | Append-only JSONL |
+
+---
+
+## Deployment Options
+
+Same distro. Same templates. Same security. Different host.
+
+| Option | Who Manages Host | Cost |
+|---|---|---|
+| User's PC (Linux, macOS, WSL) | User | $0 + compute |
+| Mac Mini (home server) | User | $0 + hardware |
+| DigitalOcean / Hetzner / Vultr | ClawHQ managed | VPS + managed fee |
+| Any VPS | User | VPS cost |
+
+### Managed Mode
+
+The same distro with an `agentd` daemon:
+
+```
+┌────────────────────────────────┐
+│    ClawHQ Console (web)        │
+│  Dashboard · Fleet · Support   │
+└──────────┬─────────────────────┘
+           │ HTTPS
+    ┌──────┴──────┐
+    ▼             ▼
+┌────────┐  ┌────────┐
+│ agentd │  │ agentd │
+│ ClawHQ │  │ ClawHQ │
+│ distro │  │ distro │
+└────────┘  └────────┘
+```
+
+`agentd` receives config from the console, runs the same phases, streams health metadata back. The console never sees agent content — only operational status.
+
+### Operational Boundary (Managed)
+
+| We CAN see | We CANNOT see |
+|---|---|
+| Container health | Agent conversations |
+| Integration status | Email/task/calendar content |
+| Memory tier sizes | Memory contents |
+| Cost metrics | What the agent does |
 
 ---
 
 ## Data Flow
-
-### Normal Operation (Cloud Connected)
 
 ```
 User ──message──▶ Channel (Telegram/WhatsApp/etc.)
@@ -316,48 +336,267 @@ User ──message──▶ Channel (Telegram/WhatsApp/etc.)
               ┌─── OpenClaw Gateway ───┐
               │  Route → Agent → Tools │
               │  Memory ← → Workspace  │
+              │  Gateway UI (cPanel)   │
               └────────────────────────┘
                         │
             WebSocket RPC│  Filesystem
                         ▼
-              ┌─── ClawHQ Local ───────┐
+              ┌─── ClawHQ (WordPress) ─┐
+              │  Template Engine ·     │
               │  Monitor · Doctor ·    │
-              │  Config · Backup       │
-              │  Local web UI · CLI    │
+              │  Audit · Firewall      │
               └────────────────────────┘
-                        │
-              HTTPS (health│status only)
+                        │ (optional)
+              HTTPS (health│only)
                         ▼
               ┌─── ClawHQ Cloud ───────┐
-              │  Dashboard · Updates · │
-              │  Advisories            │
+              │  Managed hosting ·     │
+              │  Marketplace · Fleet   │
               └────────────────────────┘
 ```
 
-### Paranoid Mode (No Cloud)
+---
 
-Same as above, minus the bottom arrow. ClawHQ Local operates fully standalone.
+## The Distro Directory
+
+```
+~/.clawhq/
+├── clawhq.yaml                    # Meta-config (version, install method, cloud token)
+│
+├── engine/                        # OpenClaw runtime
+│   ├── openclaw.json              # Runtime config (generated from template)
+│   ├── .env                       # Secrets (mode 0600)
+│   ├── docker-compose.yml         # Hardened container config
+│   ├── Dockerfile                 # Stage 2 custom layer
+│   └── credentials.json           # Integration credentials (mode 0600)
+│
+├── workspace/                     # Agent's world (mounted into container)
+│   ├── identity/                  # Who the agent is (read-only mount)
+│   ├── tools/                     # What the agent can do (CLI wrappers)
+│   ├── skills/                    # What the agent does autonomously
+│   └── memory/                    # What the agent remembers (hot/warm/cold)
+│
+├── ops/                           # Operational tooling
+│   ├── doctor/                    # Diagnostics
+│   ├── monitor/                   # Health + alerts
+│   ├── backup/snapshots/          # Encrypted backups
+│   ├── updater/rollback/          # Pre-update images
+│   ├── audit/                     # Tool, secret, egress logs
+│   └── firewall/                  # Egress allowlist
+│
+├── security/                      # Posture + sandbox config
+├── cron/                          # Scheduled jobs
+└── cloud/                         # Cloud connection (optional)
+```
+
+---
+
+## Package Structure
+
+Organized by modules:
+
+```
+clawhq/
+├── src/
+│   ├── cli/                        # Commander.js CLI (thin layer over modules)
+│   │
+│   ├── smith/                      # ClawSmith — THE PRODUCT
+│   │   ├── templates/              # Template engine
+│   │   │   ├── registry.ts         # Template library (hundreds of recipes)
+│   │   │   ├── loader.ts           # YAML template parsing + validation
+│   │   │   ├── mapper.ts           # Template + preferences → config values
+│   │   │   ├── personalizer.ts     # User preferences → template customization
+│   │   │   └── builtin/            # Built-in template YAML files
+│   │   ├── configure/              # Setup wizard
+│   │   │   ├── wizard.ts           # Interactive questionnaire
+│   │   │   ├── steps.ts            # Wizard steps
+│   │   │   ├── generate.ts         # Answers → DeploymentBundle
+│   │   │   └── writer.ts           # Atomic file writer
+│   │   ├── tools/                  # CLI tool generators
+│   │   │   ├── registry.ts         # Integration → tool mapping
+│   │   │   └── *.ts                # Per-integration generators
+│   │   └── identity/               # Identity file generators
+│   │       ├── agents.ts           # AGENTS.md
+│   │       ├── heartbeat.ts        # HEARTBEAT.md
+│   │       ├── tools-doc.ts        # TOOLS.md
+│   │       └── identity.ts         # IDENTITY.md
+│   │
+│   ├── ops/                        # ClawOps — keep it alive
+│   │   ├── doctor/                 # Diagnostics + auto-fix
+│   │   ├── monitor/                # Health monitoring daemon
+│   │   ├── backup/                 # Encrypted backup/restore
+│   │   ├── updater/                # Safe updates + rollback
+│   │   ├── status/                 # Dashboard
+│   │   └── logs/                   # Log streaming
+│   │
+│   ├── admin/                      # ClawAdmin — lock it down
+│   │   ├── harden/                 # Container security overrides
+│   │   ├── credentials/            # Credential store + health probes
+│   │   ├── firewall/               # iptables CLAWHQ_FWD chain
+│   │   ├── audit/                  # Audit logging (tool, secret, egress, cloud)
+│   │   ├── scanner/                # PII + secret scanning
+│   │   ├── sandbox/                # Tool execution sandbox
+│   │   └── validate/               # 14 landmine rules
+│   │
+│   ├── construct/                  # ClawConstruct — grow it
+│   │   ├── skills/                 # Skill install/update/remove lifecycle
+│   │   │   ├── install.ts          # Lifecycle management
+│   │   │   ├── vetting.ts          # Security vetting
+│   │   │   └── builtin/            # Built-in skill implementations
+│   │   ├── evolve/                 # Capability evolution
+│   │   ├── rollback/               # Change rollback
+│   │   └── lifecycle/              # Export + destroy
+│   │       ├── export.ts           # Portable bundle
+│   │       └── destroy.ts          # Verified destruction
+│   │
+│   ├── forge/                      # ClawForge — build it
+│   │   ├── installer/              # Pre-reqs, engine acquisition, scaffold
+│   │   ├── docker/                 # Two-stage build, compose, Dockerfile gen
+│   │   └── launcher/               # Deploy orchestration (up/down/restart)
+│   │
+│   ├── cloud/                      # ClawHQ Cloud — the business
+│   │   ├── agentd/                 # Managed mode daemon
+│   │   ├── heartbeat/              # Health reporting
+│   │   ├── commands/               # Command queue (pull, verify, execute)
+│   │   └── fleet/                  # Multi-agent management
+│   │
+│   ├── gateway/                    # OpenClaw Gateway communication (cross-cutting)
+│   │   ├── websocket.ts            # WebSocket RPC client
+│   │   └── config-rpc.ts           # config.patch / config.apply
+│   │
+│   └── config/                     # Config types + schema (cross-cutting)
+│       ├── schema.ts               # OpenClaw/ClawHQ types
+│       └── loader.ts               # Load from distro directory
+│
+├── configs/templates/              # Built-in template YAML files
+├── package.json
+└── tsconfig.json
+```
+
+---
+
+## Modules
+
+ClawHQ is composed of six modules, each a distinct domain with clear boundaries:
+
+| Module | Domain | What It Owns |
+|---|---|---|
+| **ClawSmith** | Forge personalized agents | Template engine, configuration, personalization, setup wizard. Hundreds of recipes, cook ~10 for the user. THE PRODUCT. |
+| **ClawOps** | Keep it alive | Doctor, monitor, backup, update, status, logs, alerting. Day-2 through day-365. |
+| **ClawAdmin** | Lock it down | Security posture, credentials, firewall, audit trail, permissions, sandbox. |
+| **ClawConstruct** | Grow it | Skill install/update/remove, tool installation, self-improvement, evolution, rollback. Agent gets more capable over time. |
+| **ClawForge** | Build it | Installer, pre-reqs, engine acquisition, Docker build, distro directory scaffold. |
+| **ClawHQ (Cloud)** | The business | Managed hosting, remote monitoring, template marketplace, fleet management, agentd. |
+
+Each module maps to a user question:
+
+| Module | User Question |
+|---|---|
+| ClawSmith | "What should my agent do?" |
+| ClawForge | "How do I get it running?" |
+| ClawAdmin | "Is it secure?" |
+| ClawOps | "Is it healthy?" |
+| ClawConstruct | "Can it do more?" |
+| ClawHQ Cloud | "Can someone else handle this for me?" |
+
+**Composition:** ClawForge runs once → ClawSmith configures → ClawAdmin hardens → ClawOps monitors → ClawConstruct evolves → ClawHQ Cloud optionally wraps it all.
+
+---
+
+## Zero-Trust Remote Admin
+
+The cloud component (ClawHQ) is where trust can be destroyed. "Your data never leaves your machine... except we have a remote admin channel." This must be designed so paranoid users can inspect every byte.
+
+### Core Principle: The Agent Is Sovereign
+
+The cloud service is a *guest* on the user's machine. The agent decides what to share, what commands to accept, and can revoke access instantly.
+
+### Three Trust Modes
+
+| Mode | Default For | Cloud Connection | Inbound Commands | Outbound Data |
+|---|---|---|---|---|
+| **Paranoid** | Self-managed | DISABLED | NONE | NONE |
+| **Zero-Trust** | Managed | OUTBOUND ONLY (agent initiates) | SIGNED + USER-APPROVED | HEALTH STATUS ONLY |
+| **Managed** | Managed (explicit opt-in) | OUTBOUND + WEBSOCKET | SIGNED + AUTO-APPROVED (ops only) | HEALTH + OPERATIONAL METADATA |
+
+### Protocol Design
+
+**Agent-initiated only.** The cloud never reaches in. No open ports, no SSH, no reverse tunnels. Even in managed mode, the WebSocket is agent-initiated.
+
+**Command queue (pull, never push).** The cloud puts commands in a queue. The agent fetches on its schedule, verifies signature, inspects, then executes or rejects.
+
+```
+Cloud                          Agent
+  │  POST /commands              │
+  │  {restart, signed}           │
+  │  ──────▶ queue ◀─────────── │  GET /commands (every 5min)
+  │                              │  verify signature
+  │                              │  check ALLOWED_COMMANDS
+  │                              │  log to local audit
+  │                              │  execute or reject
+```
+
+**Cryptographic command signing.** Every command signed with ClawHQ signing key. Agent verifies against pinned public key. User can inspect, pin, rotate, or reject the key.
+
+### Command Classification
+
+| Command | Paranoid | Zero-Trust | Managed |
+|---|---|---|---|
+| Health check ping | BLOCKED | ALLOWED | ALLOWED |
+| Update available notify | BLOCKED | ALLOWED | ALLOWED |
+| Security advisory | BLOCKED | ALLOWED | ALLOWED |
+| Trigger update | BLOCKED | APPROVAL | AUTO |
+| Trigger backup | BLOCKED | APPROVAL | AUTO |
+| Restart agent | BLOCKED | APPROVAL | AUTO |
+| Apply config patch | BLOCKED | APPROVAL | APPROVAL |
+| Read health status | BLOCKED | ALLOWED | ALLOWED |
+| Read operational metrics | BLOCKED | BLOCKED | ALLOWED |
+| **Read memory contents** | **BLOCKED** | **BLOCKED** | **BLOCKED** |
+| **Read conversations** | **BLOCKED** | **BLOCKED** | **BLOCKED** |
+| **Read credential values** | **BLOCKED** | **BLOCKED** | **BLOCKED** |
+| **Read identity files** | **BLOCKED** | **BLOCKED** | **BLOCKED** |
+| **Shell access** | **BLOCKED** | **BLOCKED** | **BLOCKED** |
+
+The bottom five are **architecturally blocked** — not policy-blocked. The `agentd` daemon has no code path for these operations. You can't read conversations because there is no handler to read them, not because a permission flag says no.
+
+### Local Audit Trail
+
+Every cloud interaction logged locally in `ops/audit/cloud.jsonl`:
+
+```bash
+clawhq cloud audit              # Show all cloud interactions
+clawhq cloud audit --outbound   # What did we send?
+clawhq cloud audit --commands   # What did they ask us to do?
+clawhq cloud inspect <cmd-id>   # Full detail on any command
+```
+
+### Kill Switch
+
+```bash
+clawhq cloud disconnect         # Immediate. No confirmation prompt.
+```
+
+Connection severed. Agent keeps running with full functionality. Only remote dashboard and push notifications lost.
+
+---
+
+## Tech Stack
+
+| Component | Choice | Rationale |
+|---|---|---|
+| **Language** | TypeScript (strict, ESM) | Matches OpenClaw. Shares schema types. |
+| **Runtime** | Node.js ≥20 | Same as OpenClaw. |
+| **CLI** | commander ^14 | Lightweight, subcommand trees. |
+| **Testing** | vitest ^4 | Fast, TypeScript-native. |
+| **Distribution** | npm global | Target audience has Node.js. |
 
 ---
 
 ## Implementation Priority
 
-1. **Tier 2 Local — CLI + core engine** (operate an existing OpenClaw deployment)
-2. **Tier 2 Local — web UI** (visual dashboard for the same capabilities)
-3. **Tier 3 Cloud — onboarding + install** (website, accounts, one-liner install)
-4. **Tier 3 Cloud — operational features** (remote health, updates, fleet)
-
-Tier 2 must work completely without Tier 3 at every stage.
-
----
-
-## Open Decisions
-
-| Decision | Options | Status |
-|----------|---------|--------|
-| CLI framework | commander, oclif, yargs, citty | **Decided: commander** |
-| Local web server | Hono, Fastify, Express | Not decided |
-| Local web UI framework | Lit (match OpenClaw), React, Vue, Svelte | Not decided |
-| Distribution format | npm global, bun compile, pkg, docker | npm global (current) |
-| Tier 3 tech stack | Separate repo or monorepo workspace | Not decided |
-| Monorepo tooling | Turborepo, nx, pnpm workspaces | Not decided |
+1. **Template engine + configure + launch** — Recipes → running agent
+2. **Distro installer + harden** — One command end-to-end
+3. **Tools + skills** — Agent has hands and brain
+4. **Ops** — Doctor, backup, status, updates
+5. **Cloud service + managed hosting** — The business
+6. **Template marketplace** — The ecosystem
