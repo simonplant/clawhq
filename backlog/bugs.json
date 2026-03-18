@@ -1,4 +1,33 @@
 {
   "description": "Bugs and tech debt",
-  "items": []
+  "items": [
+    {
+      "id": "BUG-001",
+      "title": "Blueprint directory path mismatch: configs/templates/ vs configs/blueprints/",
+      "description": "The 6 blueprint YAMLs live in configs/templates/ but ARCHITECTURE.md and CLAUDE.md specify configs/blueprints/ as the target path. CQ-009 (blueprint loader) must know which path to use. Must resolve before CQ-009 implementation or the loader will target wrong directory.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-18",
+      "groomingNotes": "Blocking: resolve before CQ-009 sprint. Decision needed: rename configs/templates/ to configs/blueprints/ OR update loader to use templates/. Rename preferred — aligns with canonical terminology. Single-step fix."
+    },
+    {
+      "id": "BUG-006",
+      "title": "src/ scaffold has server/ and ui/ dirs not in target architecture",
+      "description": "Empty scaffold directories src/server/ and src/ui/ exist but are absent from the target package structure defined in CLAUDE.md and ARCHITECTURE.md. The web dashboard (CQ-040) uses Hono but no specific src path is defined for it. These directories will cause confusion during Track E (source reorganization). Should either add them to the target architecture spec or remove them from scaffold.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-18",
+      "groomingNotes": "Low-urgency. Options: (a) add src/server/ and src/ui/ to target architecture in CLAUDE.md/ARCHITECTURE.md for CQ-040 web dashboard, or (b) delete empty dirs and let CQ-040 create them. Recommend option (a) — update architecture docs to include web server path."
+    }
+  ]
 }
