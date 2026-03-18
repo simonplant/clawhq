@@ -8,47 +8,45 @@ OpenClaw is the most powerful open-source framework for personal AI agents. It h
 
 But it's a *generic* engine. Getting OpenClaw to actually do what you want — manage your email, assist with stock trading, plan meals, maintain a blog — means wrangling ~13,500 tokens of config across 11+ files, dodging 14 silent landmines, writing custom tools, composing identity files, setting up cron jobs, configuring integrations, tuning autonomy levels, and doing ongoing SRE work. Most deployments are abandoned within a month.
 
-**ClawHQ turns generic, unsecured open-source software into your personalized digital agent — without you knowing how any of it works.** You get a Signal, Telegram, or Discord UI. We do the rest. Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically — identity, tools, skills, cron, integrations, security, autonomy, memory — through use-case templates that configure a complete agent for a specific job.
-
-OpenClaw's Gateway UI is cPanel. ClawHQ is WordPress.
+**ClawHQ turns generic, unsecured open-source software into your personalized digital agent — without you knowing how any of it works.** You get a Signal, Telegram, or Discord UI. We do the rest. Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically — identity, tools, skills, cron, integrations, security, autonomy, memory — through blueprints that configure a complete agent for a specific job.
 
 ## How It Works
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  LAYER 3: Cloud Service (the business)                       │
-│  Managed hosting · Remote monitoring · Template marketplace  │
+│  LAYER 3: Cloud                                              │
+│  Managed hosting · Remote monitoring · Blueprint library     │
 │  ─── optional — the product works without this ───           │
 ├─────────────────────────────────────────────────────────────┤
-│  LAYER 2: Template Engine (the product)                      │
-│  Use-case templates that programmatically configure          │
+│  LAYER 2: Blueprints (the product)                           │
+│  Complete agent designs that programmatically configure       │
 │  EVERYTHING in OpenClaw for a specific job:                  │
 │                                                              │
 │  "Run my emails"        → email tools, triage skills,        │
 │                           morning digest, inbox zero cron    │
 │  "Assist stock trading" → market data tools, research        │
 │                           skills, alert cron, finance guard  │
-│  "Plan meals"           → nutrition tools, recipe skills,    │
-│                           shopping list cron, dietary prefs  │
+│  "Plan meals"           → nutrition tools, shopping skills,  │
+│                           weekly plan cron, dietary prefs    │
 │  "Maintain AI blog"     → research tools, writing skills,    │
 │                           publish cron, editorial voice      │
 │  "Replace Google Asst"  → email + calendar + tasks + brief   │
 │                           + full-day orchestration           │
 │                                                              │
-│  Each template configures: identity, personality, tools,     │
+│  Each blueprint configures: identity, personality, tools,    │
 │  skills, cron, integrations, security posture, autonomy      │
 │  model, memory policy, model routing, egress rules           │
 ├─────────────────────────────────────────────────────────────┤
-│  LAYER 1: Distro (table stakes)                              │
-│  Install · Configure · Harden · Launch · Ops                 │
+│  LAYER 1: Platform (table stakes)                            │
+│  Install · Harden · Launch · Ops                             │
 │  Same for every agent — acquire engine, secure it,           │
 │  keep it alive, back it up, update it safely                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Layer 1: The Distro
+### Layer 1: The Platform
 
-One command installs the whole stack. Each phase builds on the last.
+One command installs the whole stack.
 
 ```bash
 # From trusted cache (default — signed, hash-verified)
@@ -58,7 +56,7 @@ curl -fsSL https://clawhq.com/install | sh
 git clone https://github.com/clawhq/clawhq && cd clawhq && ./install --from-source --verify
 ```
 
-The installer handles pre-reqs (Docker, Node.js, Ollama), acquires OpenClaw (from trusted cache or source), creates the distro directory, and scaffolds everything. Security hardening is automatic — `cap_drop ALL`, read-only rootfs, non-root UID 1000, egress firewall, identity files read-only. No opt-in required.
+The installer handles pre-reqs (Docker, Node.js, Ollama), acquires OpenClaw (from trusted cache or source), and scaffolds everything. Security hardening is automatic — `cap_drop ALL`, read-only rootfs, non-root UID 1000, egress firewall, identity files read-only. No opt-in required.
 
 ```bash
 clawhq doctor [--fix]      # Every known failure mode, with auto-fix
@@ -71,16 +69,16 @@ clawhq audit               # Tool execution + egress audit trail
 
 This layer is the same for every agent. Table stakes. The real value is Layer 2.
 
-### Layer 2: The Template Engine
+### Layer 2: Blueprints
 
-This is the product. Templates are full operational profiles that programmatically configure every dimension of OpenClaw for a specific job. Not prompt skins — complete agent configurations.
+This is the product. Blueprints are complete agent designs that programmatically configure every dimension of OpenClaw for a specific job. Not prompt skins — full operational configurations.
 
 ```bash
 clawhq init --guided       # Interactive: pick a use case, connect services
 clawhq init --smart        # AI-powered: describe what you want in plain language
 ```
 
-A template controls:
+A blueprint configures:
 
 | Dimension | What It Configures | Example: "Run My Emails" |
 |---|---|---|
@@ -100,9 +98,9 @@ Since everything in OpenClaw is a file or API call, ClawHQ generates all of it:
 - `openclaw.json` — runtime config with all 14 landmines auto-handled
 - `docker-compose.yml` — hardened container with correct mounts
 - `Dockerfile` — custom binary layer composed from integration needs
-- `workspace/identity/*` — identity files populated from template
+- `workspace/identity/*` — identity files populated from blueprint
 - `workspace/tools/*` — CLI wrappers generated from integrations
-- `workspace/skills/*` — skill implementations from template
+- `workspace/skills/*` — skill implementations from blueprint
 - `cron/jobs.json` — scheduled jobs in OpenClaw-native format
 - `.env` + `credentials.json` — secrets secured (mode 0600)
 
@@ -116,7 +114,7 @@ clawhq export                   # Portable bundle — yours forever
 clawhq destroy                  # Verified wipe — cryptographic proof it's gone
 ```
 
-### Layer 3: The Cloud Service
+### Layer 3: Cloud
 
 Optional. The product works without it.
 
@@ -125,19 +123,19 @@ clawhq cloud connect       # Link to clawhq.com
 ```
 
 - **Remote monitoring** — See agent health from your phone (status only, never content)
-- **Managed hosting** — Same distro on DigitalOcean, Hetzner, Mac Mini. Web console. Zero terminal.
-- **Template marketplace** — Community templates for every use case
+- **Managed hosting** — Same platform on DigitalOcean, Hetzner, Mac Mini. Web console. Zero terminal.
+- **Blueprint library** — Community blueprints for every use case
 - **Security advisories** — Push notifications for OpenClaw CVEs
 - **Fleet management** — Multi-agent dashboard for operators
 
-## The Distro Directory
+## The Deployment Directory
 
 ```
 ~/.clawhq/
 ├── clawhq.yaml                    # Meta-config (version, install method, cloud token)
 │
 ├── engine/                        # OpenClaw runtime (acquired by installer)
-│   ├── openclaw.json              # Runtime config (generated from template)
+│   ├── openclaw.json              # Runtime config (forged from blueprint)
 │   ├── .env                       # Secrets (mode 0600)
 │   ├── docker-compose.yml         # Hardened container config
 │   ├── Dockerfile                 # Stage 2 custom layer
@@ -164,7 +162,7 @@ clawhq cloud connect       # Link to clawhq.com
 
 ## Deployment Options
 
-Same distro. Same templates. Same agent. Different host.
+Same platform. Same blueprints. Same agent. Different host.
 
 | Option | Who Manages | Cost |
 |---|---|---|
@@ -175,7 +173,7 @@ Same distro. Same templates. Same agent. Different host.
 
 **Self-managed:** You run `clawhq install`. Full control. CLI assists with updates, backups, monitoring.
 
-**Managed:** ClawHQ provisions the host, installs the distro, runs `agentd` daemon. Web console. Same engine, same templates, same security. We manage the host, never the contents.
+**Managed:** ClawHQ provisions the host, installs the platform, runs `agentd` daemon. Web console. Same engine, same blueprints, same security. We manage the host, never the contents.
 
 ## Data Sovereignty
 
@@ -189,12 +187,12 @@ Same distro. Same templates. Same agent. Different host.
 
 ## Why This Exists
 
-OpenClaw has a control panel. It's fine for basic management — like cPanel is fine for managing Apache. But nobody uses raw cPanel to build a blog, a store, or a membership site. You use WordPress. WordPress doesn't replace cPanel — it sits on top and makes the server do something specific and valuable.
+OpenClaw is a powerful engine — but a generic one. Getting it to do a specific job well requires deep expertise. ClawHQ bridges that gap with blueprints: complete agent designs for specific use cases, forged into running agents with one command.
 
-| Engine | Basic Management | Makes It Do Something |
-|---|---|---|
-| Linux + Apache | cPanel | WordPress |
-| **OpenClaw** | **Gateway UI** | **ClawHQ** |
+| Layer | What |
+|---|---|
+| **OpenClaw** | The engine — runtime, channels, tools, memory |
+| **ClawHQ** | The platform — blueprints, security, ops, lifecycle |
 
 ClawHQ is for people who want a personal AI agent that does a specific job — manages their email, assists with trading, plans meals, runs their schedule — on their own terms, on their own hardware, with their own data.
 

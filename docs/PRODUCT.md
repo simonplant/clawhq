@@ -18,16 +18,14 @@ Today you choose between **surveillance AI** (polished, easy, you own nothing) o
 
 ## The Solution
 
-ClawHQ turns generic, unsecured open-source software into your personalized digital agent — without you knowing how any of it works. You get a Signal, Telegram, or Discord UI. We do the rest.
-
-OpenClaw already has a control panel (the Gateway UI). That's cPanel. ClawHQ is WordPress. We build use-case recipes — complete operational profiles for every use case — and during setup we cook them personalized for you:
+ClawHQ is an agent platform for OpenClaw. It forges purpose-built agents from blueprints — complete operational designs that configure every dimension of the agent for a specific job. Choose a blueprint, customize it, and ClawHQ forges a hardened, running agent. One command.
 
 - "Run my emails" → email tools, triage skills, inbox-check cron, morning digest, auto-reply with approval gates
 - "Help with stock trading" → market data tools, research skills, pre-market alerts, portfolio monitoring, risk guardrails
-- "Plan meals for my family" → nutrition tools, recipe research, weekly meal plan, shopping list, dietary preferences
+- "Plan meals for my family" → nutrition tools, shopping skills, weekly meal plan, dietary preferences
 - "Maintain a blog about AI" → research tools, writing skills, editorial cron, publish with approval
 
-Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically. One command gives you a running, hardened, purpose-built agent.
+Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically. You get a Signal, Telegram, or Discord UI. We do the rest.
 
 **Core bet:** People will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
 
@@ -85,46 +83,46 @@ could (fast follow), future (later phase). Each story maps to one module.
 Impl notes reference OPENCLAW-REFERENCE.md.
 -->
 
-### ClawSmith — The Template Engine (THE PRODUCT)
+### ClawSmith — The Blueprint Engine (THE PRODUCT)
 
-This is the product. Everything else is infrastructure. Templates are recipes — complete operational profiles that programmatically configure every dimension of OpenClaw for a specific job.
+This is the product. Everything else is infrastructure. Blueprints are complete agent designs that programmatically configure every dimension of OpenClaw for a specific job.
 
-- [ ] **Use-case templates** `must`
-  Templates organized by what you're replacing, not abstract archetypes. Each template configures: identity, personality, tools, skills, cron, integrations, security posture, autonomy model, memory policy, model routing, egress rules.
+- [ ] **Use-case blueprints** `must`
+  Blueprints organized by what you're replacing, not abstract archetypes. Each blueprint configures: identity, personality, tools, skills, cron, integrations, security posture, autonomy model, memory policy, model routing, egress rules.
   - "Email Manager" — inbox zero, triage, auto-reply, morning digest
   - "Stock Trading Assistant" — market monitoring, research, alerts, risk guardrails
-  - "Meal Planner" — nutrition, recipes, shopping lists, dietary preferences
+  - "Meal Planner" — nutrition, shopping lists, weekly plans, dietary preferences
   - "AI Blog Maintainer" — research, writing, editorial workflow, publish approval
   - "Replace Google Assistant" — email + calendar + tasks + full-day orchestration
   - "Founder's Ops" — inbox zero, investor updates, hiring pipeline
   - "Family Hub" — shared calendar, chores, meals, coordination
-  - _Impl note: YAML files in configs/templates/. Use-case framing is presentation; operational dimensions are implementation. See OPENCLAW-REFERENCE.md → Template System Design._
+  - _Impl note: YAML files in configs/blueprints/. Use-case framing is presentation; operational dimensions are implementation. See OPENCLAW-REFERENCE.md → Blueprint System Design._
 
-- [ ] **Template personalizer** `must`
-  Ask template-specific preference questions during setup: dietary restrictions (meal planner), risk tolerance (trading), communication style (email), priority contacts (founder). 1-3 questions per template. Apply to customize the recipe before generating config.
+- [ ] **Blueprint customization** `must`
+  Ask blueprint-specific questions during setup: dietary restrictions (meal planner), risk tolerance (trading), communication style (email), priority contacts (founder). 1-3 questions per blueprint. Apply to customize the design before forging the agent.
 
 - [x] **AI-powered config inference** `should` ✅
-  `clawhq init --smart` — describe what you need in plain language, system selects template + configures integrations + sets boundaries. Uses local Ollama. Falls back to guided questionnaire.
+  `clawhq init --smart` — describe what you need in plain language, system selects blueprint + configures integrations + sets boundaries. Uses local Ollama. Falls back to guided setup.
 
-- [x] **Guided questionnaire** `must` ✅
-  `clawhq init --guided` — structured flow: basics (name, timezone, waking hours) → template selection → integration setup with live credential validation → model routing.
+- [x] **Guided setup** `must` ✅
+  `clawhq init --guided` — structured flow: basics (name, timezone, waking hours) → blueprint selection → integration setup with live credential validation → model routing.
 
 - [x] **Config generation with landmine prevention** `must` ✅
-  Every generated config passes all 14 landmine rules. Generation cannot produce a broken config. Output: `openclaw.json`, `.env`, `docker-compose.yml`, `Dockerfile`, identity files, tools, skills, cron jobs.
+  Every forged config passes all 14 landmine rules. Generation cannot produce a broken config. Output: `openclaw.json`, `.env`, `docker-compose.yml`, `Dockerfile`, identity files, tools, skills, cron jobs.
   - _Impl note: See OPENCLAW-REFERENCE.md → The 14 Configuration Landmines._
 
 - [x] **Integration auto-detection** `should` ✅
   Detect available services from what user connects. iCloud email → suggest iCloud calendar. Ollama running → discover models, recommend routing.
 
-- [ ] **Community templates** `future`
-  Contribute and install community templates. Safety checks enforce Layer 1 security baselines can't be loosened.
+- [ ] **Community blueprints** `future`
+  Contribute and install community blueprints. Safety checks enforce Layer 1 security baselines can't be loosened.
 
 ### ClawForge — Install and Deploy
 
 One command: working agent. Acquire engine, build container, deploy with pre-flight checks.
 
-- [ ] **Distro installer** `must`
-  `clawhq install` — pre-req detection (Docker, Node.js, Ollama), engine acquisition (from source or trusted cache), distro directory scaffold (`~/.clawhq/`), `clawhq.yaml` meta-config.
+- [ ] **Installer** `must`
+  `clawhq install` — pre-req detection (Docker, Node.js, Ollama), engine acquisition (from source or trusted cache), deployment directory scaffold (`~/.clawhq/`), `clawhq.yaml` meta-config.
 
 - [x] **Two-stage Docker build** `must` ✅
   Stage 1 (base OpenClaw) builds only if upstream changed. Stage 2 (custom tools + skills) completes in seconds. Build manifest for drift detection. Always from source, always auditable.
@@ -146,10 +144,10 @@ One command: working agent. Acquire engine, build container, deploy with pre-fli
 
 ### ClawAdmin — Security and Compliance
 
-Hardened by default. Every conversation auditable. Every byte that leaves the machine accounted for.
+Hardened by default. Every action auditable. Every byte that leaves the machine accounted for.
 
 - [x] **Container hardening** `must` ✅
-  Applied automatically based on template security posture. `cap_drop: ALL`, read-only rootfs, `no-new-privileges`, non-root UID 1000, tmpfs, ICC disabled, resource limits. Templates can tighten but never loosen.
+  Applied automatically based on blueprint security posture. `cap_drop: ALL`, read-only rootfs, `no-new-privileges`, non-root UID 1000, tmpfs, ICC disabled, resource limits. Blueprints can tighten but never loosen.
 
 - [x] **Egress firewall** `must` ✅
   iptables chain `CLAWHQ_FWD` — DNS + HTTPS to allowlisted domains only (per-integration). Reapplied after every network recreate.
@@ -237,13 +235,13 @@ Optional. The product works without it. Zero-trust by design.
   Managed mode wrapper. Starts heartbeat + command poller. Installable as systemd/launchd service. Foundation for managed hosting.
 
 - [ ] **Managed hosting** `future`
-  Same distro on DigitalOcean/Hetzner. Cloud-init provisioning, DNS + SSL, reverse proxy. We manage the host, never the contents.
+  Same platform on DigitalOcean/Hetzner. Cloud-init provisioning, DNS + SSL, reverse proxy. We manage the host, never the contents.
 
 - [ ] **Remote dashboard** `future`
   Web console at clawhq.com. Account management, fleet view, update notifications, security advisories. Never shows agent content.
 
-- [ ] **Template marketplace** `future`
-  Community templates. Submission, validation, safety checks. The WordPress theme ecosystem for agents.
+- [ ] **Blueprint library** `future`
+  Community blueprints. Submission, validation, safety checks.
 
 - [ ] **Migration tools** `future`
   ChatGPT conversation import. Google Assistant routine import. Contact/calendar bootstrapping. "Replace my X" wizard.
@@ -268,11 +266,11 @@ This pipeline — discover → vet → sandbox → approve → install → monit
 
 Parallel tracks, not sequential phases. See `backlog/GAP-ANALYSIS.md` for AS-IS/TO-BE analysis. See `backlog/backlog.json` for sprint-ready items.
 
-**Track A (Templates)** — The product. Use-case templates, personalizer, AI inference. Ship value immediately with existing code.
+**Track A (Blueprints)** — The product. Use-case blueprints, customization, AI inference. Ship value immediately with existing code.
 
-**Track B (Installer)** — One-command install. Pre-reqs, distro scaffold, engine acquisition, path migration.
+**Track B (Installer)** — One-command install. Pre-reqs, directory scaffold, engine acquisition, path migration.
 
-**Track C (Skills)** — Agent capabilities that templates need. Email-digest, auto-reply, market-scan, meal-plan.
+**Track C (Skills)** — Agent capabilities that blueprints need. Email-digest, auto-reply, market-scan, meal-plan.
 
 **Track D (Cloud)** — Trust modes, heartbeat, command queue, agentd. Starts after installer foundation.
 
@@ -285,25 +283,24 @@ Parallel tracks, not sequential phases. See `backlog/GAP-ANALYSIS.md` for AS-IS/
 ## What We're NOT Building
 
 - **A fork of OpenClaw** — We configure it. We don't modify it.
-- **A competing agent framework** — We're the operational layer, not the engine.
+- **A competing agent framework** — We're the platform layer, not the engine.
 - **A model routing engine** — OpenClaw handles model calls. We set policy via config.
 - **Multiple CLI tools** — One binary, flat commands. Modules are internal architecture. (AD-01)
 - **A skill marketplace** — ClawHQ's construct skill reads marketplace skills as inspiration, rebuilds from scratch inside the agent's security boundary. The marketplace is a curriculum, not a supply chain.
-- **A no-code agent builder** — We make OpenClaw accessible, not invisible. Power users can always drop to raw config.
 - **A cloud AI service** — We don't host models, don't train on data, don't see content. Self-operated is the product.
 
 ---
 
 ## Why Not the Alternatives
 
-10+ OpenClaw hosting providers exist — they all stop at deploy. Default config on shared infrastructure. Nobody goes past deploy. Nobody is the install. Nobody makes OpenClaw do something specific.
+10+ OpenClaw hosting providers exist — they all stop at deploy. Default config on shared infrastructure. Nobody goes past deploy. Nobody forges purpose-built agents from blueprints.
 
-ClawHQ's moat: it's the complete stack — install through decommission — with use-case templates that turn a generic agent into a purpose-built one, opinionated security that works out of the box, and a growth loop that makes the agent more capable over time.
+ClawHQ's moat: it's the complete platform — install through decommission — with blueprints that turn a generic agent into a purpose-built one, opinionated security that works out of the box, and a growth loop that makes the agent more capable over time.
 
 ```
 Raw framework ←────────────────────────────────→ Platform lock-in
 OpenClaw         Basic hosting      ClawHQ          Big-tech agents
-(powerful,       (default config,   (templates +    (polished,
+(powerful,       (default config,   (blueprints +   (polished,
  expert-only)    no lifecycle)      full lifecycle)  captive)
 ```
 
@@ -314,7 +311,7 @@ OpenClaw         Basic hosting      ClawHQ          Big-tech agents
 **Risks:**
 - Local model quality isn't good enough → mitigation: intelligent routing escalates to cloud; local models improving rapidly
 - OpenClaw breaking changes → mitigation: pin to known-good versions, compatibility shims
-- Template ecosystem doesn't attract contributors → mitigation: ship excellent built-in templates covering 80% of use cases
+- Blueprint ecosystem doesn't attract contributors → mitigation: ship excellent built-in blueprints covering 80% of use cases
 - Skill supply chain compromise → mitigation: sandboxed vetting, AI scanning, allowlists, rollback
 - Privacy Migrants don't care enough to self-host → mitigation: managed mode exists, but we lead with self-operated
 

@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClawHQ turns generic, unsecured open-source software (OpenClaw) into personalized digital agents — without the user knowing how any of it works. They get a Signal, Telegram, or Discord UI. We do the rest.
+ClawHQ is an agent platform for OpenClaw. It forges purpose-built agents from blueprints — complete operational designs that configure every dimension of OpenClaw for a specific job. Choose a blueprint ("Email Manager," "Stock Trading Assistant," "Meal Planner"), customize it, and ClawHQ forges a hardened, running agent. The user gets a Signal, Telegram, or Discord UI. We do the rest.
 
-OpenClaw has its own control panel (Gateway UI). That's cPanel. ClawHQ is WordPress — the intelligent configuration layer with use-case recipes that programmatically configure every dimension of OpenClaw for a specific job. Everything in OpenClaw is a file or API call. ClawHQ controls all of it.
+Everything in OpenClaw is a file or API call. ClawHQ controls all of it programmatically.
 
 **Current status: Active development.** Full CLI implementation with operational tooling. Key docs:
 - `README.md` — Executive summary and positioning
-- `docs/PRODUCT.md` — Product design: problem, personas, user stories, build order
-- `docs/ARCHITECTURE.md` — Solution architecture: three layers, template engine, distro, cloud
+- `docs/PRODUCT.md` — Product design: problem, personas, user stories by module, build order
+- `docs/ARCHITECTURE.md` — Solution architecture: three layers, six modules, zero-trust remote admin
 - `docs/OPENCLAW-REFERENCE.md` — Engineering reference: OpenClaw internals, 14 landmines, config surface
 
 ## Architecture
@@ -19,29 +19,44 @@ OpenClaw has its own control panel (Gateway UI). That's cPanel. ClawHQ is WordPr
 See `docs/ARCHITECTURE.md` for the full solution architecture.
 
 **Three layers:**
-- **Layer 1 (Distro — table stakes):** Install, harden, launch, ops. Acquire engine, secure it, keep it alive. Same for every agent.
-- **Layer 2 (Template Engine — THE PRODUCT):** Use-case recipes. During setup, ClawHQ cooks ~10 personalized for the user — configuring identity, tools, skills, cron, integrations, security, autonomy, memory, model routing, egress rules. The agent is purpose-built for a specific job.
-- **Layer 3 (Cloud Service — the business):** Managed hosting, remote monitoring, template marketplace. Optional.
+- **Layer 1 (Platform — table stakes):** Install, harden, launch, ops. Acquire engine, secure it, keep it alive. Same for every agent.
+- **Layer 2 (Blueprints — THE PRODUCT):** Complete agent designs for specific jobs. During setup, ClawHQ forges a personalized agent — configuring identity, tools, skills, cron, integrations, security, autonomy, memory, model routing, egress rules.
+- **Layer 3 (Cloud — the business):** Managed hosting, remote monitoring, blueprint library. Optional.
 
-**Six modules:**
-- **ClawSmith** — Template engine. THE PRODUCT. Use-case recipes → personalized agent.
+**Six modules (internal developer names — never user-facing per AD-01):**
+- **ClawSmith** — Blueprint engine. THE PRODUCT. Forges agents from blueprints.
 - **ClawOps** — Doctor, monitor, backup, update, status, logs. Keep it alive.
 - **ClawAdmin** — Security, credentials, firewall, audit, sandbox. Lock it down.
 - **ClawConstruct** — Skills, tools, evolution, rollback. Grow it.
 - **ClawForge** — Installer, Docker build, deploy orchestration. Build it.
-- **ClawHQ Cloud** — Managed hosting, remote monitoring, marketplace. The business.
+- **ClawHQ Cloud** — Managed hosting, remote monitoring, blueprint library. The business.
 
-**Deployment options:** Same stack runs everywhere — user's PC, Mac Mini, DigitalOcean, any VPS. Self-managed or fully managed.
+**Deployment options:** Same platform runs everywhere — user's PC, Mac Mini, DigitalOcean, any VPS. Self-managed or fully managed.
 
 **Remote admin:** Three trust modes — Paranoid (no cloud), Zero-Trust (agent-initiated, signed commands, user-approved), Managed (auto-approved ops, content architecturally blocked). See ARCHITECTURE.md.
 
 ## Architectural Decisions (locked — see ARCHITECTURE.md for full rationale)
 
-- **AD-01: One binary, flat CLI** — `clawhq` is a single install with flat commands (`clawhq doctor`, not `clawhq ops doctor`). Modules are internal source organization for developers, never user-facing. Multiple binaries = "you're the operator." One binary = "we handle everything."
-- **AD-02: Unix philosophy in agent tools, not in ClawHQ** — `email`, `calendar`, `tasks`, `quote` are small composable workspace tools. Templates compose them. ClawHQ is WordPress (the orchestrator), not sed+awk+grep.
+- **AD-01: One binary, flat CLI** — `clawhq` is a single install with flat commands (`clawhq doctor`, not `clawhq ops doctor`). Modules are internal source organization, never user-facing.
+- **AD-02: Unix philosophy in agent tools, not in ClawHQ** — `email`, `calendar`, `tasks`, `quote` are small composable workspace tools. Blueprints compose them. ClawHQ is the orchestrator.
 - **AD-03: Tight coupling to OpenClaw** — No abstraction layer. Direct use of TypeBox schema, WebSocket RPC, file paths.
 - **AD-04: TypeScript monorepo, single package** — One npm package. Module boundaries via barrel exports and directory structure.
 - **AD-05: Security is architecture, not policy** — Content access in managed mode is architecturally blocked (no handler exists), not policy-blocked.
+
+## Terminology
+
+Canonical terms — use these consistently:
+
+| Concept | Term | NOT |
+|---|---|---|
+| Configuration profiles (YAML) | **blueprint** | template, recipe, profile |
+| What ClawHQ does with them | **forge** / **configure** | cook, bake, assemble |
+| What gets produced | **agent** | claw, deployment |
+| The setup flow | **setup** / **init** | cooking, forging process |
+| Blueprint-specific questions | **customization** | personalization |
+| ClawHQ itself | **agent platform** | distro, configuration layer |
+| The product layers | **Platform / Blueprints / Cloud** | Distro / Template Engine / Cloud Service |
+| Module names (dev only) | ClawSmith, ClawOps, etc. | Never in user-facing text |
 
 ## Key Design Constraints
 
@@ -52,19 +67,20 @@ See `docs/ARCHITECTURE.md` for the full solution architecture.
 - **Identity files are read-only** — Agents cannot modify their own personality or guardrails
 - **Credentials secured** — `credentials.json` mode 0600, secrets in `.env` mode 0600, never in config files, never logged
 - **Data sovereignty** — Full portability (`export`), verified deletion (`destroy`), zero lock-in
-- **Same distro everywhere** — User's PC, Mac Mini, DigitalOcean, Hetzner — same software, same security, different host
+- **Same platform everywhere** — User's PC, Mac Mini, DigitalOcean, Hetzner — same software, same security, different host
 
 ## CLI Commands
 
 ```
 # Install
-clawhq install                — Full distro install (pre-reqs, engine, scaffold)
+clawhq install                — Full platform install (pre-reqs, engine, scaffold)
 clawhq install --from-source  — Zero-trust: clone, audit, build from source
 
 # Configure
-clawhq init --guided          — Interactive wizard → complete deployment bundle
+clawhq init --guided          — Interactive setup → choose blueprint, connect services
 clawhq init --smart           — AI-powered config inference (local Ollama)
-clawhq template list/preview  — Browse and preview templates
+clawhq blueprint list         — Browse available blueprints
+clawhq blueprint preview      — Preview a blueprint's operational design
 
 # Build
 clawhq build                  — Two-stage Docker build with change detection + manifests
@@ -106,7 +122,7 @@ clawhq cloud status           — Remote health dashboard
 
 ## Implementation Notes
 
-- `docs/PRODUCT.md` — Product bible: problem, solution, user stories organized by module (ClawSmith, ClawForge, ClawAdmin, ClawOps, ClawConstruct, ClawHQ Cloud)
+- `docs/PRODUCT.md` — Product bible: problem, solution, user stories by module (ClawSmith, ClawForge, ClawAdmin, ClawOps, ClawConstruct, ClawHQ Cloud)
 - `docs/ARCHITECTURE.md` — Architecture: three layers, six modules, ADs, zero-trust remote admin, package structure
 - `docs/OPENCLAW-REFERENCE.md` — Engineering reference: OpenClaw internals, 14 landmines, config surfaces, integration details
 - `backlog/GAP-ANALYSIS.md` — AS-IS/TO-BE comparison, 10 gaps identified
@@ -115,11 +131,11 @@ clawhq cloud status           — Remote health dashboard
 Key technical details:
 - TypeScript throughout — matches OpenClaw's Node.js/TypeBox stack, shares schema types directly
 - Tight coupling to OpenClaw — uses its config schema, WebSocket RPC, file paths, and container structure directly
-- Distro directory at `~/.clawhq/` — engine, workspace, ops, security, cron, cloud all organized under one root
+- Deployment directory at `~/.clawhq/` — engine, workspace, ops, security, cron, cloud all organized under one root
 - Two-stage Docker build: Stage 1 (base OpenClaw + apt packages), Stage 2 (custom tools + skills)
 - Egress firewall uses dedicated iptables chain (`CLAWHQ_FWD`) on Docker bridge — must reapply after every `docker compose down`
 - `doctor` is the hero feature — checks every known failure mode preventively
-- Templates are full operational profiles (personality, security, monitoring, memory, cron, autonomy, integrations, skills)
+- Blueprints are complete agent designs (identity, security, tools, skills, cron, autonomy, memory, integrations)
 
 ## Key Source Layout (Target Architecture)
 
@@ -129,8 +145,8 @@ Organized by modules. See `docs/ARCHITECTURE.md` for full package structure.
 src/
 ├── cli/                        — Commander.js CLI (thin layer over modules)
 │
-├── smith/                      — ClawSmith: THE PRODUCT (template engine)
-│   ├── templates/              — Recipe library, loader, mapper, personalizer
+├── smith/                      — ClawSmith: THE PRODUCT (blueprint engine)
+│   ├── blueprints/             — Blueprint library, loader, mapper, customizer
 │   ├── configure/              — Setup wizard, generate, writer
 │   ├── tools/                  — CLI tool generators (email, calendar, tasks, etc.)
 │   └── identity/               — Identity file generators (AGENTS.md, HEARTBEAT.md, etc.)
@@ -184,7 +200,7 @@ This project uses [aishore](https://github.com/simonweniger/aishore) for AI-assi
 ```bash
 # Sprints
 .aishore/aishore run [count]        # Run N sprints (default: 1)
-.aishore/aishore run FEAT-001       # Run specific 
+.aishore/aishore run FEAT-001       # Run specific feature
 
 # Grooming
 .aishore/aishore groom              # Tech lead: groom bugs

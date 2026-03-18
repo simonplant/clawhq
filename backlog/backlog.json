@@ -34,7 +34,7 @@
     {
       "id": "FEAT-062",
       "title": "clawhq quickstart command",
-      "description": "Add quickstart command to src/cli/index.ts. Orchestrates init \u2192 build \u2192 up \u2192 smoke with phase-labeled spinners. Flags: --template <id>, --smart, --skip-build, --skip-deploy. Calls existing functions: runWizard() \u2192 twoStageBuild() \u2192 deployUp() \u2192 smoke checks. No new business logic.",
+      "description": "Add quickstart command to src/cli/index.ts. Orchestrates init \u2192 build \u2192 up \u2192 smoke with phase-labeled spinners. Flags: --blueprint <id>, --smart, --skip-build, --skip-deploy. Calls existing functions: runWizard() \u2192 twoStageBuild() \u2192 deployUp() \u2192 smoke checks. No new business logic.",
       "priority": "must",
       "category": "Phase 1: CLI UX",
       "steps": [],
@@ -43,7 +43,7 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "HEADLINE FEATURE \u2014 orchestrates existing functions, no new business logic. Steps: (1) add 'quickstart' command to src/cli/index.ts; (2) flags: --template <id> (default: personal-assistant), --smart (use AI inference), --skip-build, --skip-deploy; (3) step 1: call runWizard() or non-interactive init with --template; show phase-labeled spinner 'Plan...' (cyan); (4) step 2 (skip if --skip-build): call twoStageBuild(); show spinner 'Build...' (blue); (5) step 3 (skip if --skip-deploy): call deployUp(); show spinner 'Deploy...' (green); (6) step 4: run smoke checks via gateway health endpoint; show spinner 'Verify...' (magenta); (7) on any step failure, show formatError() with actionable hint (not raw stack trace); (8) on success, print friendly summary with access instructions. Note: depends on FEAT-060 for spinner/formatError. Acceptance criteria: clawhq quickstart --template personal-assistant completes end-to-end with phase-labeled spinners; --skip-build and --skip-deploy flags skip those steps; failure at any step shows formatted error with fix hint; --help shows correct usage.",
+      "groomingNotes": "HEADLINE FEATURE \u2014 orchestrates existing functions, no new business logic. Steps: (1) add 'quickstart' command to src/cli/index.ts; (2) flags: --blueprint <id> (default: personal-assistant), --smart (use AI inference), --skip-build, --skip-deploy; (3) step 1: call runWizard() or non-interactive init with --blueprint; show phase-labeled spinner 'Plan...' (cyan); (4) step 2 (skip if --skip-build): call twoStageBuild(); show spinner 'Build...' (blue); (5) step 3 (skip if --skip-deploy): call deployUp(); show spinner 'Deploy...' (green); (6) step 4: run smoke checks via gateway health endpoint; show spinner 'Verify...' (magenta); (7) on any step failure, show formatError() with actionable hint (not raw stack trace); (8) on success, print friendly summary with access instructions. Note: depends on FEAT-060 for spinner/formatError. Acceptance criteria: clawhq quickstart --blueprint personal-assistant completes end-to-end with phase-labeled spinners; --skip-build and --skip-deploy flags skip those steps; failure at any step shows formatted error with fix hint; --help shows correct usage.",
       "completedAt": "2026-03-16T19:07:33-07:00"
     },
     {
@@ -97,7 +97,7 @@
     {
       "id": "FEAT-066",
       "title": "Non-interactive init for fleet provisioning",
-      "description": "Add --non-interactive flag to clawhq init. Uses template defaults for all values, skipping the wizard. Example: clawhq init --template research-copilot --name agent-2 --non-interactive. Enables scripted multi-agent provisioning.",
+      "description": "Add --non-interactive flag to clawhq init. Uses blueprint defaults for all values, skipping the wizard. Example: clawhq init --blueprint research-copilot --name agent-2 --non-interactive. Enables scripted multi-agent provisioning.",
       "priority": "should",
       "category": "Phase 1: CLI UX",
       "steps": [],
@@ -106,7 +106,7 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "Fleet provisioning feature \u2014 extends existing init command. Steps: (1) add --non-interactive flag to 'clawhq init' command in src/cli/index.ts; (2) add --name <name> flag to init command; (3) add --template <id> flag to init command (may already exist); (4) when --non-interactive is set, skip runWizard() and call generateBundle() directly with template defaults + provided overrides; (5) print single-line success/failure to stdout (no spinners or prompts in non-interactive mode); (6) exit 0 on success, non-zero on failure. Acceptance criteria: clawhq init --template personal-assistant --name agent-2 --non-interactive produces same output as guided wizard with template defaults without prompting; works correctly in a shell loop provisioning multiple agents; exits 0 on success; exits non-zero with error message (not stack trace) on failure; does not print interactive prompts.",
+      "groomingNotes": "Fleet provisioning feature \u2014 extends existing init command. Steps: (1) add --non-interactive flag to 'clawhq init' command in src/cli/index.ts; (2) add --name <name> flag to init command; (3) add --blueprint <id> flag to init command (may already exist); (4) when --non-interactive is set, skip runWizard() and call generateBundle() directly with blueprint defaults + provided overrides; (5) print single-line success/failure to stdout (no spinners or prompts in non-interactive mode); (6) exit 0 on success, non-zero on failure. Acceptance criteria: clawhq init --blueprint personal-assistant --name agent-2 --non-interactive produces same output as guided wizard with blueprint defaults without prompting; works correctly in a shell loop provisioning multiple agents; exits 0 on success; exits non-zero with error message (not stack trace) on failure; does not print interactive prompts.",
       "completedAt": "2026-03-16T19:34:09-07:00"
     },
     {
@@ -127,7 +127,7 @@
     {
       "id": "FEAT-071",
       "title": "Dashboard API endpoints (v1)",
-      "description": "JSON API returning {ok, data?, error?}. Endpoints: GET /api/v1/status, GET /api/v1/doctor, POST /api/v1/doctor/fix, POST /api/v1/deploy/{up,down,restart} (SSE), POST /api/v1/build (SSE), GET/POST /api/v1/approvals, POST /api/v1/approvals/:id/{approve,reject}, GET /api/v1/alerts, GET/POST /api/v1/backups, POST /api/v1/backups/:id/restore, GET/POST/DELETE /api/v1/skills, GET /api/v1/fleet, GET /api/v1/templates, WS /ws/logs, SSE /sse/status. Routes are thin adapters calling existing business logic.",
+      "description": "JSON API returning {ok, data?, error?}. Endpoints: GET /api/v1/status, GET /api/v1/doctor, POST /api/v1/doctor/fix, POST /api/v1/deploy/{up,down,restart} (SSE), POST /api/v1/build (SSE), GET/POST /api/v1/approvals, POST /api/v1/approvals/:id/{approve,reject}, GET /api/v1/alerts, GET/POST /api/v1/backups, POST /api/v1/backups/:id/restore, GET/POST/DELETE /api/v1/skills, GET /api/v1/fleet, GET /api/v1/blueprints, WS /ws/logs, SSE /sse/status. Routes are thin adapters calling existing business logic.",
       "priority": "must",
       "category": "Phase 2: Web Dashboard",
       "steps": [],
@@ -229,7 +229,7 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: Core dashboard (FEAT-067-076) is now solid and validated \u2014 the Tier C deferral condition is met. This feature targets the 'managed hosting' persona who needs browser-based setup. Sprint scope: (1) Create src/ui/pages/init-wizard.tsx \u2014 multi-step Hono JSX page; server-side session tracks wizard step using hono/session or cookie-based state; Steps: step 1 (basics: name/timezone), step 2 (template selection with cards), step 3 (integrations with credential inputs), step 4 (model routing/autonomy), step 5 (review + generate); (2) Each step uses htmx hx-post to advance/retreat, hx-target to replace step content; server-side validates each step before advancing; (3) Conditional fields: integration step shows provider-specific credential fields based on selected integrations; use htmx hx-get to dynamically load provider fields when integration is selected; (4) Async credential validation: on blur of credential fields, htmx fires validation request to new endpoint POST /api/v1/validate-credential \u2014 returns {ok, status} and updates field indicator; (5) Final step calls generateBundle() and writes files; success redirects to /dashboard home; (6) Register route as GET /init-wizard in src/ui/app.ts; add 'Setup Wizard' link to sidebar nav (shown only when no openclaw.json exists); (7) Client-side JS budget: ~200 lines max \u2014 htmx handles most interactivity without custom JS. Acceptance criteria: /init-wizard guides through all 4 setup steps; credential validation fires async on blur; conditional integration fields load dynamically; submitting final step generates complete deployment bundle; wizard link hidden from nav once agent is configured; uses established dashboard layout; tsc clean.",
+      "groomingNotes": "READY TO SPRINT: Core dashboard (FEAT-067-076) is now solid and validated \u2014 the Tier C deferral condition is met. This feature targets the 'managed hosting' persona who needs browser-based setup. Sprint scope: (1) Create src/ui/pages/init-wizard.tsx \u2014 multi-step Hono JSX page; server-side session tracks wizard step using hono/session or cookie-based state; Steps: step 1 (basics: name/timezone), step 2 (blueprint selection with cards), step 3 (integrations with credential inputs), step 4 (model routing/autonomy), step 5 (review + generate); (2) Each step uses htmx hx-post to advance/retreat, hx-target to replace step content; server-side validates each step before advancing; (3) Conditional fields: integration step shows provider-specific credential fields based on selected integrations; use htmx hx-get to dynamically load provider fields when integration is selected; (4) Async credential validation: on blur of credential fields, htmx fires validation request to new endpoint POST /api/v1/validate-credential \u2014 returns {ok, status} and updates field indicator; (5) Final step calls generateBundle() and writes files; success redirects to /dashboard home; (6) Register route as GET /init-wizard in src/ui/app.ts; add 'Setup Wizard' link to sidebar nav (shown only when no openclaw.json exists); (7) Client-side JS budget: ~200 lines max \u2014 htmx handles most interactivity without custom JS. Acceptance criteria: /init-wizard guides through all 4 setup steps; credential validation fires async on blur; conditional integration fields load dynamically; submitting final step generates complete deployment bundle; wizard link hidden from nav once agent is configured; uses established dashboard layout; tsc clean.",
       "completedAt": "2026-03-17T16:22:11-07:00"
     },
     {
@@ -354,8 +354,8 @@
     },
     {
       "id": "FEAT-086",
-      "title": "Template toolbelts \u2014 preconfigured capability bundles",
-      "description": "Expand template system beyond operational profiles. Each template is a complete toolbelt: tools (email/himalaya, calendar/CalDAV, tasks/Todoist, research/Tavily), skills (morning-brief, email-digest), personality/role definition, security posture, and integration wiring. Templates: Assistant (email+calendar+tasks), Researcher (web+notes+files), Coach (messaging+health+goals), Analyst (finance+data+reports), Guardian (security-focused minimal surface), Companion (messaging+memory-heavy). clawhq template use <name> applies the full bundle. clawhq template show <name> previews what gets installed.",
+      "title": "Blueprint toolbelts \u2014 preconfigured capability bundles",
+      "description": "Expand blueprint system beyond operational profiles. Each blueprint is a complete toolbelt: tools (email/himalaya, calendar/CalDAV, tasks/Todoist, research/Tavily), skills (morning-brief, email-digest), personality/role definition, security posture, and integration wiring. Blueprints: Assistant (email+calendar+tasks), Researcher (web+notes+files), Coach (messaging+health+goals), Analyst (finance+data+reports), Guardian (security-focused minimal surface), Companion (messaging+memory-heavy). clawhq blueprint use <name> applies the full bundle. clawhq blueprint show <name> previews what gets installed.",
       "priority": "must",
       "category": "Capability Layer",
       "steps": [],
@@ -364,13 +364,13 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "UNBLOCKED: FEAT-089 (tool installation framework) is now done \u2014 the missing prerequisite is complete. FEAT-086 is the core product promise: 'Replace my X' headline story. Without compelling preconfigured toolbelts, quickstart delivers a blank slate not a useful agent.\n\nThe 6 template archetypes map to real replacing decisions:\n- personal-assistant (email+calendar+tasks) \u2192 Replace Google Assistant / PA\n- researcher (web+notes+files) \u2192 Replace ChatGPT Plus / Perplexity\n- coach (messaging+health+goals) \u2192 Replace life coach apps\n- analyst (finance+data+reports) \u2192 Replace manual reporting workflows\n- guardian (security-focused minimal surface) \u2192 Privacy-first baseline\n- companion (messaging+memory-heavy) \u2192 Replace ChatGPT daily companion\n\nSprint scope: (1) Define TemplateToolbelt type (tools[], skills[], personality/role, securityPosture, integrations) in src/init/templates.ts; (2) Expand the 6 existing templates to include full toolbelt definitions (tools array with install instructions, skills to pre-install, security posture override); (3) Add 'clawhq template show <name>' subcommand that renders a preview: what gets installed, what the agent will handle, what data leaves the machine; (4) Wire toolbelt application into quickstart flow \u2014 when a template is selected, its tools and skills are applied; (5) Acceptance criteria: clawhq quickstart --template personal-assistant produces an agent immediately useful for email/calendar/tasks (correct tools wired, security posture applied, skills installed); clawhq template show <name> previews the full bundle before commitment; tsc clean.",
+      "groomingNotes": "UNBLOCKED: FEAT-089 (tool installation framework) is now done \u2014 the missing prerequisite is complete. FEAT-086 is the core product promise: 'Replace my X' headline story. Without compelling preconfigured toolbelts, quickstart delivers a blank slate not a useful agent.\n\nThe 6 blueprint archetypes map to real replacing decisions:\n- personal-assistant (email+calendar+tasks) \u2192 Replace Google Assistant / PA\n- researcher (web+notes+files) \u2192 Replace ChatGPT Plus / Perplexity\n- coach (messaging+health+goals) \u2192 Replace life coach apps\n- analyst (finance+data+reports) \u2192 Replace manual reporting workflows\n- guardian (security-focused minimal surface) \u2192 Privacy-first baseline\n- companion (messaging+memory-heavy) \u2192 Replace ChatGPT daily companion\n\nSprint scope: (1) Define BlueprintToolbelt type (tools[], skills[], personality/role, securityPosture, integrations) in src/init/blueprints.ts; (2) Expand the 6 existing blueprints to include full toolbelt definitions (tools array with install instructions, skills to pre-install, security posture override); (3) Add 'clawhq blueprint show <name>' subcommand that renders a preview: what gets installed, what the agent will handle, what data leaves the machine; (4) Wire toolbelt application into quickstart flow \u2014 when a blueprint is selected, its tools and skills are applied; (5) Acceptance criteria: clawhq quickstart --blueprint personal-assistant produces an agent immediately useful for email/calendar/tasks (correct tools wired, security posture applied, skills installed); clawhq blueprint show <name> previews the full bundle before commitment; tsc clean.",
       "completedAt": "2026-03-17T10:03:17-07:00"
     },
     {
       "id": "FEAT-087",
       "title": "Personality and role system",
-      "description": "Define agent identity beyond config: personality traits, communication style, role boundaries, guardrails. IDENTITY.md generation from template + user customization. Role presets (executive assistant, research analyst, life coach, etc.) that set tone, formality, proactivity level, and domain expertise framing. clawhq role set <preset> or clawhq role customize for interactive editing. Identity files remain read-only at runtime \u2014 agent cannot modify its own personality.",
+      "description": "Define agent identity beyond config: personality traits, communication style, role boundaries, guardrails. IDENTITY.md generation from blueprint + user customization. Role presets (executive assistant, research analyst, life coach, etc.) that set tone, formality, proactivity level, and domain expertise framing. clawhq role set <preset> or clawhq role customize for interactive editing. Identity files remain read-only at runtime \u2014 agent cannot modify its own personality.",
       "priority": "should",
       "category": "Capability Layer",
       "steps": [],
@@ -379,7 +379,7 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: FEAT-086 (Template toolbelts) completed \u2014 each template has baked-in personality. This item adds the Tinkerer power feature. Sprint scope: (1) Create src/cli/role.ts \u2014 createRoleCommand(): Command with two subcommands: 'role set <preset>' and 'role customize'; (2) Define RolePreset type in src/init/templates.ts or new src/role/presets.ts \u2014 6 presets mapping to template archetypes: executive-assistant, research-analyst, life-coach, data-analyst, security-guardian, companion \u2014 each preset defines: tone (formal/casual/professional), formality (high/medium/low), proactivity (high/medium/low), domainExpertise string, communicationStyle string; (3) role set <preset>: reads current ~/.openclaw/workspace/IDENTITY.md, patches the role section with the preset's tone/formality/proactivity/domain framing, writes back with diff shown before applying; (4) role customize: opens  with current IDENTITY.md, shows diff before applying, preserves manual customizations on subsequent template updates by tracking a 'manual_customizations' block; (5) Add read-only enforcement: verify IDENTITY.md mount in docker-compose has 'read_only: true' flag \u2014 warn if not set; (6) Register role command in src/cli/index.ts. Acceptance criteria: clawhq role set executive-assistant updates IDENTITY.md with formal/high-proactivity/PA-domain framing; clawhq role customize opens editor with diff shown before saving; manual customizations are preserved when template is re-applied; IDENTITY.md mount verified read-only; tsc clean.",
+      "groomingNotes": "READY TO SPRINT: FEAT-086 (Blueprint toolbelts) completed \u2014 each blueprint has baked-in personality. This item adds the Tinkerer power feature. Sprint scope: (1) Create src/cli/role.ts \u2014 createRoleCommand(): Command with two subcommands: 'role set <preset>' and 'role customize'; (2) Define RolePreset type in src/init/blueprints.ts or new src/role/presets.ts \u2014 6 presets mapping to blueprint archetypes: executive-assistant, research-analyst, life-coach, data-analyst, security-guardian, companion \u2014 each preset defines: tone (formal/casual/professional), formality (high/medium/low), proactivity (high/medium/low), domainExpertise string, communicationStyle string; (3) role set <preset>: reads current ~/.openclaw/workspace/IDENTITY.md, patches the role section with the preset's tone/formality/proactivity/domain framing, writes back with diff shown before applying; (4) role customize: opens  with current IDENTITY.md, shows diff before applying, preserves manual customizations on subsequent blueprint updates by tracking a 'manual_customizations' block; (5) Add read-only enforcement: verify IDENTITY.md mount in docker-compose has 'read_only: true' flag \u2014 warn if not set; (6) Register role command in src/cli/index.ts. Acceptance criteria: clawhq role set executive-assistant updates IDENTITY.md with formal/high-proactivity/PA-domain framing; clawhq role customize opens editor with diff shown before saving; manual customizations are preserved when blueprint is re-applied; IDENTITY.md mount verified read-only; tsc clean.",
       "completedAt": "2026-03-17T11:48:06-07:00"
     },
     {
@@ -394,13 +394,13 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: FEAT-086 (Template toolbelts) and FEAT-089 (Tool installation framework) both done. Sprint scope: (1) Create src/skill/registry.ts \u2014 define BuiltinSkillEntry type (id, name, description, tags, requiredIntegrations, cronSchedule, scriptTemplate); export BUILTIN_SKILLS array with 10+ skills: morning-brief (requires email+calendar), email-digest (requires email), meal-planning (standalone), meeting-prep (requires calendar+email), expense-tracking (requires finance), journaling (standalone), workout-planning (standalone), research-brief (requires research), task-review (requires tasks), focus-block (requires calendar); (2) Create src/cli/skill-registry.ts or extend src/cli/skill-commands/ \u2014 add 'clawhq skill search <query>' command that filters BUILTIN_SKILLS by name/description/tags and prints results table with required integrations; (3) Add 'clawhq skill info <name>' command that shows full details: description, required integrations, cron schedule, what data it accesses; (4) Wire clawhq skill install <name> to check BUILTIN_SKILLS first \u2014 if found, use the skill's scriptTemplate directly without requiring a URL; (5) Register updated skill commands in src/cli/index.ts. Acceptance criteria: clawhq skill search email returns at least email-digest and morning-brief; clawhq skill info morning-brief shows description, required integrations, cron schedule; clawhq skill install morning-brief works without a URL (built-in registry lookup); at least 10 skills in registry; tsc clean.",
+      "groomingNotes": "READY TO SPRINT: FEAT-086 (Blueprint toolbelts) and FEAT-089 (Tool installation framework) both done. Sprint scope: (1) Create src/skill/registry.ts \u2014 define BuiltinSkillEntry type (id, name, description, tags, requiredIntegrations, cronSchedule, scriptBlueprint); export BUILTIN_SKILLS array with 10+ skills: morning-brief (requires email+calendar), email-digest (requires email), meal-planning (standalone), meeting-prep (requires calendar+email), expense-tracking (requires finance), journaling (standalone), workout-planning (standalone), research-brief (requires research), task-review (requires tasks), focus-block (requires calendar); (2) Create src/cli/skill-registry.ts or extend src/cli/skill-commands/ \u2014 add 'clawhq skill search <query>' command that filters BUILTIN_SKILLS by name/description/tags and prints results table with required integrations; (3) Add 'clawhq skill info <name>' command that shows full details: description, required integrations, cron schedule, what data it accesses; (4) Wire clawhq skill install <name> to check BUILTIN_SKILLS first \u2014 if found, use the skill's scriptBlueprint directly without requiring a URL; (5) Register updated skill commands in src/cli/index.ts. Acceptance criteria: clawhq skill search email returns at least email-digest and morning-brief; clawhq skill info morning-brief shows description, required integrations, cron schedule; clawhq skill install morning-brief works without a URL (built-in registry lookup); at least 10 skills in registry; tsc clean.",
       "completedAt": "2026-03-17T11:56:26-07:00"
     },
     {
       "id": "FEAT-089",
       "title": "Tool installation framework \u2014 add-on capabilities",
-      "description": "Tools are executables the agent can invoke (not skills/behaviors). Categories: communication (email, messaging, voice), productivity (calendar, tasks, notes), data (finance, research, weather), operations (monitoring, secrets, backups, health-checks). clawhq tool install <name> handles: download/generate tool script, add to workspace/tools/, update TOOLS.md, add required env vars to .env template, add Dockerfile fragments for dependencies. clawhq tool list shows installed with health status. clawhq tool check runs credential probes for all installed tools.",
+      "description": "Tools are executables the agent can invoke (not skills/behaviors). Categories: communication (email, messaging, voice), productivity (calendar, tasks, notes), data (finance, research, weather), operations (monitoring, secrets, backups, health-checks). clawhq tool install <name> handles: download/generate tool script, add to workspace/tools/, update TOOLS.md, add required env vars to .env blueprint, add Dockerfile fragments for dependencies. clawhq tool list shows installed with health status. clawhq tool check runs credential probes for all installed tools.",
       "priority": "must",
       "category": "Capability Layer",
       "steps": [],
@@ -409,7 +409,7 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-16",
-      "groomingNotes": "PARTIAL IMPL EXISTS: tool.ts (148L) already committed with clawhq tool install/list/remove CLI skeleton. The full acceptance criteria \u2014 allowlist validation, Dockerfile patching, and Stage 2 rebuild triggering \u2014 needs completion. Sprint should complete these three missing pieces, not start from scratch. CAPABILITY EXPANSION BACKBONE: 'Gets more capable over time' is a core design principle. Without the Dockerfile patching + rebuild trigger, users are stuck with day-1 tools forever. dependsOn: build.ts/two-stage build infrastructure must be functional. Acceptance criteria unchanged: clawhq tool install pandoc patches Stage 2 Dockerfile and triggers rebuild; clawhq tool list shows installed tools with version+health; unlisted packages flagged not silently blocked; clawhq tool remove triggers rebuild and cleans up. READY TO SPRINT: partial impl de-risks this \u2014 it's a completion sprint, not a build sprint. Must ship before FEAT-086 (Template toolbelts).",
+      "groomingNotes": "PARTIAL IMPL EXISTS: tool.ts (148L) already committed with clawhq tool install/list/remove CLI skeleton. The full acceptance criteria \u2014 allowlist validation, Dockerfile patching, and Stage 2 rebuild triggering \u2014 needs completion. Sprint should complete these three missing pieces, not start from scratch. CAPABILITY EXPANSION BACKBONE: 'Gets more capable over time' is a core design principle. Without the Dockerfile patching + rebuild trigger, users are stuck with day-1 tools forever. dependsOn: build.ts/two-stage build infrastructure must be functional. Acceptance criteria unchanged: clawhq tool install pandoc patches Stage 2 Dockerfile and triggers rebuild; clawhq tool list shows installed tools with version+health; unlisted packages flagged not silently blocked; clawhq tool remove triggers rebuild and cleans up. READY TO SPRINT: partial impl de-risks this \u2014 it's a completion sprint, not a build sprint. Must ship before FEAT-086 (Blueprint toolbelts).",
       "completedAt": "2026-03-16T21:43:20-07:00"
     },
     {
@@ -424,7 +424,7 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: FEAT-086 (template toolbelts) and FEAT-089 (tool installation) are both done \u2014 prerequisites met. Start simple with postgres + redis + qdrant. Sprint scope: (1) Create src/services/types.ts \u2014 ServiceDefinition type: name, image, version, envVars[], volumes[], healthCheck, ports[], networkAliases[]; export BUILTIN_SERVICES with 3 definitions: postgres (postgres:16, POSTGRES_PASSWORD env, /var/lib/postgresql/data volume, health via pg_isready), redis (redis:7, /data volume, health via redis-cli ping), qdrant (qdrant/qdrant:latest, /qdrant/storage volume, health via HTTP :6333/health); (2) Create src/services/manager.ts \u2014 addService(name): reads docker-compose.yml from workspace, appends service definition with proper networking (same network as agent), volumes, health check, writes back; removeService(name, opts: {deleteData}): removes from compose, handles volume deletion; listServices(): reads compose, returns running status via Docker API; (3) Create src/cli/service.ts \u2014 createServiceCommand() with subcommands: service add <name>, service list, service remove <name> [--delete-data]; auto-inject env vars to .env on add; (4) Register in src/cli/index.ts. Acceptance criteria: clawhq service add qdrant adds service to docker-compose with networking/volumes/health; env vars auto-injected; clawhq service list shows running services; clawhq service remove preserves data by default, requires --delete-data to destroy; tsc clean.",
+      "groomingNotes": "READY TO SPRINT: FEAT-086 (blueprint toolbelts) and FEAT-089 (tool installation) are both done \u2014 prerequisites met. Start simple with postgres + redis + qdrant. Sprint scope: (1) Create src/services/types.ts \u2014 ServiceDefinition type: name, image, version, envVars[], volumes[], healthCheck, ports[], networkAliases[]; export BUILTIN_SERVICES with 3 definitions: postgres (postgres:16, POSTGRES_PASSWORD env, /var/lib/postgresql/data volume, health via pg_isready), redis (redis:7, /data volume, health via redis-cli ping), qdrant (qdrant/qdrant:latest, /qdrant/storage volume, health via HTTP :6333/health); (2) Create src/services/manager.ts \u2014 addService(name): reads docker-compose.yml from workspace, appends service definition with proper networking (same network as agent), volumes, health check, writes back; removeService(name, opts: {deleteData}): removes from compose, handles volume deletion; listServices(): reads compose, returns running status via Docker API; (3) Create src/cli/service.ts \u2014 createServiceCommand() with subcommands: service add <name>, service list, service remove <name> [--delete-data]; auto-inject env vars to .env on add; (4) Register in src/cli/index.ts. Acceptance criteria: clawhq service add qdrant adds service to docker-compose with networking/volumes/health; env vars auto-injected; clawhq service list shows running services; clawhq service remove preserves data by default, requires --delete-data to destroy; tsc clean.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-17T12:36:27-07:00",
       "failCount": 1,
@@ -463,7 +463,7 @@
     {
       "id": "FEAT-093",
       "title": "Dashboard: Fleet management page",
-      "description": "Multi-agent overview page. Table of all configured agents with: name, template, status (running/stopped/degraded), uptime, resource usage, active skills count, pending approvals. Bulk actions: restart all, update all, backup all. Agent drill-down links to per-agent dashboard. Only shown in sidebar if >1 agent configured. Calls collectFleetStatus().",
+      "description": "Multi-agent overview page. Table of all configured agents with: name, blueprint, status (running/stopped/degraded), uptime, resource usage, active skills count, pending approvals. Bulk actions: restart all, update all, backup all. Agent drill-down links to per-agent dashboard. Only shown in sidebar if >1 agent configured. Calls collectFleetStatus().",
       "priority": "should",
       "category": "Phase 2: Web Dashboard",
       "steps": [],
@@ -472,7 +472,7 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: FEAT-067 (dashboard) and FEAT-071 (API with GET /api/v1/fleet) are both done. Conditional display (only when >1 agent) avoids cluttering single-agent setups. Sprint scope: (1) Create src/ui/pages/fleet.tsx \u2014 Hono JSX page component; (2) Page calls GET /api/v1/fleet \u2192 renders agent table: name, template, status (running/stopped/degraded icon), uptime, resource usage (CPU/RAM), active skills count, pending approvals count; (3) Bulk action buttons: Restart All (hx-post to /api/v1/deploy/restart for each agent), Backup All (hx-post to /api/v1/backups for each), Update All; (4) Each agent row links to per-agent dashboard view (/dashboard?agent=<id>); (5) Conditional sidebar visibility: check agent count from GET /api/v1/fleet at layout render time \u2014 hide Fleet link when count \u2264 1; (6) Register route as GET /fleet in src/ui/app.ts; (7) Add 'Fleet' link to sidebar nav under Operate section (conditionally). Acceptance criteria: fleet table shows name/template/status/uptime/resource-usage/pending-approvals for all configured agents; bulk restart-all and backup-all actions work; page/link hidden from sidebar when only one agent exists; agent rows link to per-agent view; uses established dashboard layout; tsc clean.",
+      "groomingNotes": "READY TO SPRINT: FEAT-067 (dashboard) and FEAT-071 (API with GET /api/v1/fleet) are both done. Conditional display (only when >1 agent) avoids cluttering single-agent setups. Sprint scope: (1) Create src/ui/pages/fleet.tsx \u2014 Hono JSX page component; (2) Page calls GET /api/v1/fleet \u2192 renders agent table: name, blueprint, status (running/stopped/degraded icon), uptime, resource usage (CPU/RAM), active skills count, pending approvals count; (3) Bulk action buttons: Restart All (hx-post to /api/v1/deploy/restart for each agent), Backup All (hx-post to /api/v1/backups for each), Update All; (4) Each agent row links to per-agent dashboard view (/dashboard?agent=<id>); (5) Conditional sidebar visibility: check agent count from GET /api/v1/fleet at layout render time \u2014 hide Fleet link when count \u2264 1; (6) Register route as GET /fleet in src/ui/app.ts; (7) Add 'Fleet' link to sidebar nav under Operate section (conditionally). Acceptance criteria: fleet table shows name/blueprint/status/uptime/resource-usage/pending-approvals for all configured agents; bulk restart-all and backup-all actions work; page/link hidden from sidebar when only one agent exists; agent rows link to per-agent view; uses established dashboard layout; tsc clean.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-17T12:37:37-07:00",
       "failCount": 1,
@@ -580,7 +580,7 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-17",
-      "groomingNotes": "READY TO SPRINT: No blocking dependencies \u2014 FEAT-087 (personality/role system) is done, identity files exist. Sprint scope: (1) Create src/evolve/identity-governance.ts \u2014 checkIdentityHealth(): reads workspace identity files (IDENTITY.md, AGENTS.md, USER.md from ~/.openclaw/workspace/), counts chars, returns budget usage per file vs bootstrapMaxChars (20K default from OpenClaw config); (2) Add identity budget check to clawhq doctor in src/doctor/ \u2014 warn at 70%, critical at 90% threshold; (3) Add identity staleness check to doctor: file not modified in >30 days \u2192 warning with review prompt; (4) Create 'clawhq evolve --identity' subcommand in src/cli/evolve.ts (or src/cli/index.ts): shows token budget per file + last-modified date + staleness status; interactive file selection \u2192 opens  with current file \u2192 shows diff before saving; (5) CUSTOMIZATIONS block preservation: track manual edits in a comment block '<\\!-- CUSTOMIZATIONS -->' at end of each identity file \u2014 template re-apply preserves this block; (6) Register evolve --identity in CLI. Acceptance criteria: clawhq doctor shows identity budget warnings at 70%/90%; clawhq evolve --identity shows budget per file; edit flow shows diff before saving; manual customizations preserved on template re-apply; tsc clean.",
+      "groomingNotes": "READY TO SPRINT: No blocking dependencies \u2014 FEAT-087 (personality/role system) is done, identity files exist. Sprint scope: (1) Create src/evolve/identity-governance.ts \u2014 checkIdentityHealth(): reads workspace identity files (IDENTITY.md, AGENTS.md, USER.md from ~/.openclaw/workspace/), counts chars, returns budget usage per file vs bootstrapMaxChars (20K default from OpenClaw config); (2) Add identity budget check to clawhq doctor in src/doctor/ \u2014 warn at 70%, critical at 90% threshold; (3) Add identity staleness check to doctor: file not modified in >30 days \u2192 warning with review prompt; (4) Create 'clawhq evolve --identity' subcommand in src/cli/evolve.ts (or src/cli/index.ts): shows token budget per file + last-modified date + staleness status; interactive file selection \u2192 opens  with current file \u2192 shows diff before saving; (5) CUSTOMIZATIONS block preservation: track manual edits in a comment block '<\\!-- CUSTOMIZATIONS -->' at end of each identity file \u2014 blueprint re-apply preserves this block; (6) Register evolve --identity in CLI. Acceptance criteria: clawhq doctor shows identity budget warnings at 70%/90%; clawhq evolve --identity shows budget per file; edit flow shows diff before saving; manual customizations preserved on blueprint re-apply; tsc clean.",
       "completedAt": "2026-03-17T13:38:44-07:00"
     },
     {
@@ -657,10 +657,10 @@
     },
     {
       "id": "FEAT-106",
-      "title": "Email Manager template YAML + init integration",
-      "description": "Create configs/templates/email-manager.yaml with full operational profile for 'Run my emails' use case. Identity: professional, concise, protective of time. Tools: email + calendar + tasks. Skills: email-digest, morning-brief. Cron: inbox check 15min, digest 8am. Security: hardened, egress mail server only. Wire into template loader so `clawhq init --guided` offers it as a choice. This proves the use-case template model end-to-end with existing code.",
+      "title": "Email Manager blueprint YAML + init integration",
+      "description": "Create configs/blueprints/email-manager.yaml with full operational profile for 'Run my emails' use case. Identity: professional, concise, protective of time. Tools: email + calendar + tasks. Skills: email-digest, morning-brief. Cron: inbox check 15min, digest 8am. Security: hardened, egress mail server only. Wire into blueprint loader so `clawhq init --guided` offers it as a choice. This proves the use-case blueprint model end-to-end with existing code.",
       "priority": "must",
-      "category": "Track A: Templates",
+      "category": "Track A: Blueprints",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -669,10 +669,10 @@
     },
     {
       "id": "FEAT-107",
-      "title": "Stock Trading Assistant template YAML",
-      "description": "Create configs/templates/stock-trading.yaml. Identity: analytical, data-driven, conservative risk warnings. Tools: quote, web-search, tasks. Skills: market-scan, portfolio-alert. Cron: pre-market 6am, hourly during market. Security: hardened, egress finance APIs + email only. Autonomy: auto-monitor, flag before trade suggestions.",
+      "title": "Stock Trading Assistant blueprint YAML",
+      "description": "Create configs/blueprints/stock-trading.yaml. Identity: analytical, data-driven, conservative risk warnings. Tools: quote, web-search, tasks. Skills: market-scan, portfolio-alert. Cron: pre-market 6am, hourly during market. Security: hardened, egress finance APIs + email only. Autonomy: auto-monitor, flag before trade suggestions.",
       "priority": "should",
-      "category": "Track A: Templates",
+      "category": "Track A: Blueprints",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -681,10 +681,10 @@
     },
     {
       "id": "FEAT-108",
-      "title": "Meal Planner template YAML",
-      "description": "Create configs/templates/meal-planner.yaml. Identity: health-conscious, practical. Tools: web-search, tasks, calendar. Skills: meal-plan, shopping-list. Cron: weekly plan Sunday 6pm, daily prep. Autonomy: auto-plan within dietary prefs, approval for shopping list.",
+      "title": "Meal Planner blueprint YAML",
+      "description": "Create configs/blueprints/meal-planner.yaml. Identity: health-conscious, practical. Tools: web-search, tasks, calendar. Skills: meal-plan, shopping-list. Cron: weekly plan Sunday 6pm, daily prep. Autonomy: auto-plan within dietary prefs, approval for shopping list.",
       "priority": "should",
-      "category": "Track A: Templates",
+      "category": "Track A: Blueprints",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -693,10 +693,10 @@
     },
     {
       "id": "FEAT-109",
-      "title": "Founder's Ops template YAML",
-      "description": "Create configs/templates/founders-ops.yaml. Identity: professional, decisive, protective of time. Tools: email, calendar, tasks, web-search. Skills: email-digest, investor-update, hiring-pipeline. Cron: morning triage 7am, weekly investor prep. Autonomy: auto-triage, approval for external sends.",
+      "title": "Founder's Ops blueprint YAML",
+      "description": "Create configs/blueprints/founders-ops.yaml. Identity: professional, decisive, protective of time. Tools: email, calendar, tasks, web-search. Skills: email-digest, investor-update, hiring-pipeline. Cron: morning triage 7am, weekly investor prep. Autonomy: auto-triage, approval for external sends.",
       "priority": "should",
-      "category": "Track A: Templates",
+      "category": "Track A: Blueprints",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -705,10 +705,10 @@
     },
     {
       "id": "FEAT-110",
-      "title": "Family Hub template YAML",
-      "description": "Create configs/templates/family-hub.yaml. Identity: warm, organized, patient. Tools: calendar, tasks, web-search. Skills: meal-plan, chore-assign, family-brief. Cron: daily brief, weekly meal plan, chore rotation. Autonomy: auto-schedule, approval for external messages.",
+      "title": "Family Hub blueprint YAML",
+      "description": "Create configs/blueprints/family-hub.yaml. Identity: warm, organized, patient. Tools: calendar, tasks, web-search. Skills: meal-plan, chore-assign, family-brief. Cron: daily brief, weekly meal plan, chore rotation. Autonomy: auto-schedule, approval for external messages.",
       "priority": "should",
-      "category": "Track A: Templates",
+      "category": "Track A: Blueprints",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -717,10 +717,10 @@
     },
     {
       "id": "FEAT-111",
-      "title": "AI Blog Maintainer template YAML",
-      "description": "Create configs/templates/ai-blog.yaml. Identity: editorial voice, thoughtful, original perspectives. Tools: web-search, tasks. Skills: research-digest, draft-post. Cron: daily research, weekly draft. Autonomy: auto-research, approval before publishing.",
+      "title": "AI Blog Maintainer blueprint YAML",
+      "description": "Create configs/blueprints/ai-blog.yaml. Identity: editorial voice, thoughtful, original perspectives. Tools: web-search, tasks. Skills: research-digest, draft-post. Cron: daily research, weekly draft. Autonomy: auto-research, approval before publishing.",
       "priority": "should",
-      "category": "Track A: Templates",
+      "category": "Track A: Blueprints",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -729,10 +729,10 @@
     },
     {
       "id": "FEAT-112",
-      "title": "Template personalizer: preference questions per template",
-      "description": "Extend init wizard to ask template-specific preference questions. Email Manager: communication style, priority contacts, auto-reply policy. Trading: risk tolerance, markets, alert threshold. Meal: dietary restrictions, cuisine preferences, household size. Apply answers to customize template before generating config. 1-3 extra questions per template, not a long form.",
+      "title": "Blueprint personalizer: preference questions per blueprint",
+      "description": "Extend init wizard to ask blueprint-specific preference questions. Email Manager: communication style, priority contacts, auto-reply policy. Trading: risk tolerance, markets, alert threshold. Meal: dietary restrictions, cuisine preferences, household size. Apply answers to customize blueprint before generating config. 1-3 extra questions per blueprint, not a long form.",
       "priority": "must",
-      "category": "Track A: Templates",
+      "category": "Track A: Blueprints",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -741,7 +741,7 @@
     },
     {
       "id": "FEAT-113",
-      "title": "clawhq install: pre-req detection + distro scaffold",
+      "title": "clawhq install: pre-req detection + deployment scaffold",
       "description": "Single command: detect Docker (guide if missing), detect Node.js >=20 (guide if missing), detect Ollama (optional), check disk space. Create ~/.clawhq/ directory with clawhq.yaml meta-config. Scaffold engine/, workspace/, ops/, security/, cron/, cloud/ subdirs. This is the foundation \u2014 no engine acquisition yet, just the structure and checks.",
       "priority": "must",
       "category": "Track B: Installer",
@@ -769,7 +769,7 @@
     {
       "id": "FEAT-115",
       "title": "Migrate file paths from ~/.openclaw/ to ~/.clawhq/engine/",
-      "description": "Update all hardcoded ~/.openclaw/ references to use configurable distro root from clawhq.yaml. Default: ~/.clawhq/engine/ for new installs, ~/.openclaw/ for existing. Add migration command: clawhq migrate-layout that moves files from old to new structure. Non-breaking \u2014 existing deployments keep working.",
+      "description": "Update all hardcoded ~/.openclaw/ references to use configurable deployment root from clawhq.yaml. Default: ~/.clawhq/engine/ for new installs, ~/.openclaw/ for existing. Add migration command: clawhq migrate-layout that moves files from old to new structure. Non-breaking \u2014 existing deployments keep working.",
       "priority": "must",
       "category": "Track B: Installer",
       "steps": [],
@@ -784,7 +784,7 @@
     {
       "id": "FEAT-116",
       "title": "Skill: email-digest (triage and summarize inbox)",
-      "description": "Workspace skill that triages inbox: categorize emails (urgent/action/info/spam), summarize key messages, propose responses for approval. SKILL.md + supporting prompts. Used by Email Manager and Founder's Ops templates. Leverages existing email tool wrapper.",
+      "description": "Workspace skill that triages inbox: categorize emails (urgent/action/info/spam), summarize key messages, propose responses for approval. SKILL.md + supporting prompts. Used by Email Manager and Founder's Ops blueprints. Leverages existing email tool wrapper.",
       "priority": "must",
       "category": "Track C: Skills",
       "steps": [],
@@ -796,7 +796,7 @@
     {
       "id": "FEAT-117",
       "title": "Skill: auto-reply (draft + approval gate)",
-      "description": "Workspace skill that drafts email replies matching user's voice. Queues via existing approval system (src/approval/) before sending. Learns from corrections. SKILL.md + prompts. Used by Email Manager template.",
+      "description": "Workspace skill that drafts email replies matching user's voice. Queues via existing approval system (src/approval/) before sending. Learns from corrections. SKILL.md + prompts. Used by Email Manager blueprint.",
       "priority": "should",
       "category": "Track C: Skills",
       "steps": [],
@@ -808,7 +808,7 @@
     {
       "id": "FEAT-118",
       "title": "Skill: market-scan (pre-market research digest)",
-      "description": "Workspace skill for daily market scan. Uses quote tool for watchlist prices, web-search for overnight news, generates morning brief with key moves and alerts. SKILL.md + prompts. Used by Stock Trading template.",
+      "description": "Workspace skill for daily market scan. Uses quote tool for watchlist prices, web-search for overnight news, generates morning brief with key moves and alerts. SKILL.md + prompts. Used by Stock Trading blueprint.",
       "priority": "should",
       "category": "Track C: Skills",
       "steps": [],
@@ -820,7 +820,7 @@
     {
       "id": "FEAT-119",
       "title": "Skill: meal-plan (weekly planning + shopping list)",
-      "description": "Workspace skill that generates weekly meal plans based on dietary preferences, generates shopping lists, schedules prep reminders via calendar. SKILL.md + prompts. Used by Meal Planner and Family Hub templates.",
+      "description": "Workspace skill that generates weekly meal plans based on dietary preferences, generates shopping lists, schedules prep reminders via calendar. SKILL.md + prompts. Used by Meal Planner and Family Hub blueprints.",
       "priority": "should",
       "category": "Track C: Skills",
       "steps": [],
@@ -874,7 +874,7 @@
     {
       "id": "FEAT-123",
       "title": "agentd: managed mode daemon wrapper",
-      "description": "Wrapper that runs ClawHQ distro as a daemon. Starts heartbeat (FEAT-121), starts command poller (FEAT-122), manages lifecycle. Installable as systemd/launchd service. Same distro, automated lifecycle. Foundation for managed hosting.",
+      "description": "Wrapper that runs ClawHQ platform as a daemon. Starts heartbeat (FEAT-121), starts command poller (FEAT-122), manages lifecycle. Installable as systemd/launchd service. Same platform, automated lifecycle. Foundation for managed hosting.",
       "priority": "could",
       "category": "Track D: Cloud",
       "steps": [],
@@ -890,7 +890,7 @@
     {
       "id": "FEAT-124",
       "title": "Source reorg: create module barrel exports",
-      "description": "Create index.ts barrel exports for each target module boundary WITHOUT moving files yet. src/smith/index.ts re-exports from init/, templates/, workspace/tools/, workspace/identity/, inference/. Same for ops/, admin/, construct/, forge/, cloud/. This is the non-breaking first step \u2014 existing imports still work, new module imports also work.",
+      "description": "Create index.ts barrel exports for each target module boundary WITHOUT moving files yet. src/smith/index.ts re-exports from init/, blueprints/, workspace/tools/, workspace/identity/, inference/. Same for ops/, admin/, construct/, forge/, cloud/. This is the non-breaking first step \u2014 existing imports still work, new module imports also work.",
       "priority": "should",
       "category": "Track E: Source Reorg",
       "steps": [],
@@ -953,7 +953,7 @@
     {
       "id": "FEAT-129",
       "title": "Managed hosting: DigitalOcean provisioning",
-      "description": "clawhq cloud provision --provider digitalocean. Create droplet, install distro via cloud-init, configure agentd, setup DNS + SSL (Let's Encrypt). Requires agentd (FEAT-123) and cloud console to exist.",
+      "description": "clawhq cloud provision --provider digitalocean. Create droplet, install platform via cloud-init, configure agentd, setup DNS + SSL (Let's Encrypt). Requires agentd (FEAT-123) and cloud console to exist.",
       "priority": "future",
       "category": "Track D: Cloud",
       "steps": [],
@@ -982,10 +982,10 @@
     },
     {
       "id": "FEAT-131",
-      "title": "Template marketplace: submission + search",
-      "description": "Community template contributions. YAML submission format, validation (can't loosen Layer 1 security), clawhq template submit/search. Requires cloud console.",
+      "title": "Blueprint marketplace: submission + search",
+      "description": "Community blueprint contributions. YAML submission format, validation (can't loosen Layer 1 security), clawhq blueprint submit/search. Requires cloud console.",
       "priority": "future",
-      "category": "Track A: Templates",
+      "category": "Track A: Blueprints",
       "steps": [],
       "acceptanceCriteria": [],
       "status": "todo",
@@ -1055,7 +1055,7 @@
     ]
   },
   "phases": {
-    "track_a_templates": [
+    "track_a_blueprints": [
       "FEAT-106",
       "FEAT-107",
       "FEAT-108",

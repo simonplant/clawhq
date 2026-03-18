@@ -27,7 +27,7 @@
 | Status dashboard | COMPLETE | 1,624 | 4 | Agent, integrations, workspace, egress |
 | Audit (tool trail, egress) | COMPLETE | 7,859 | 2 | JSONL + OWASP compliance |
 | Gateway (WebSocket RPC) | COMPLETE | 1,248 | 3 | Full error handling |
-| Templates (YAML loader, mapper) | COMPLETE | 1,235 | 1 | 6 built-in templates |
+| Templates (YAML loader, mapper) | COMPLETE | 1,235 | 1 | 6 built-in blueprints |
 | Update (version check, rollback) | COMPLETE | 1,264 | 4 | GitHub releases |
 | Export (portable bundle) | COMPLETE | 1,446 | 1 | PII masking |
 | Destroy (verified wipe) | COMPLETE | 1,271 | 1 | Crypto manifest |
@@ -185,7 +185,7 @@ Missing components:
 - Engine acquisition from trusted cache (signed, hash-verified)
 - Engine acquisition from source (clone, audit, build)
 - GPG signature verification
-- Distro directory scaffolding (`~/.clawhq/` structure)
+- Deployment directory scaffolding (`~/.clawhq/` structure)
 - `clawhq.yaml` meta-config creation
 
 ### GAP 3: Distro Directory Structure (not implemented)
@@ -202,17 +202,17 @@ Missing:
 - `~/.clawhq/cloud/` for cloud connection
 - Migration path from `~/.openclaw/` to `~/.clawhq/`
 
-### GAP 4: Template Engine Expansion (ClawSmith — partially exists)
+### GAP 4: Blueprint Engine Expansion (ClawSmith — partially exists)
 
-**Current:** 6 built-in templates (Guardian, Assistant, Coach, Analyst, Companion, Custom). Template system works but limited.
-**Target:** "Hundreds of recipes." Use-case templates for specific jobs (email manager, stock trading, meal planning, blog maintenance, etc.).
-**Impact:** HIGH — this is THE PRODUCT. More templates = more value.
+**Current:** 6 built-in blueprints (Guardian, Assistant, Coach, Analyst, Companion, Custom). Blueprint system works but limited.
+**Target:** "Use-case blueprints for specific jobs (email manager, stock trading, meal planning, blog maintenance, etc.).
+**Impact:** HIGH — this is THE PRODUCT. More blueprints = more value.
 
 Missing:
-- Use-case template library (email manager, stock trading assist, meal planner, AI blog maintainer, family hub, founder's ops, etc.)
-- Template personalizer (ask preferences, customize recipe)
-- Template marketplace infrastructure
-- Template contribution/submission pipeline
+- Use-case blueprint library (email manager, stock trading assist, meal planner, AI blog maintainer, family hub, founder's ops, etc.)
+- Blueprint customizer (ask preferences, customize blueprint)
+- Blueprint library infrastructure
+- Blueprint contribution/submission pipeline
 
 ### GAP 5: credentials.json Store (not implemented)
 
@@ -270,16 +270,16 @@ Missing:
 
 ## REMEDIATION PRIORITY
 
-### Phase 1: Ship the Distro (self-managed launch)
+### Phase 1: Ship the Platform (self-managed launch)
 
 | Priority | Gap | Work |
 |---|---|---|
 | P0 | GAP 2: Installer | Build `clawhq install` end-to-end |
-| P0 | GAP 3: Distro directory | Implement `~/.clawhq/` structure + migration |
-| P0 | GAP 4: Template expansion | 8-10 use-case templates |
+| P0 | GAP 3: Deployment directory | Implement `~/.clawhq/` structure + migration |
+| P0 | GAP 4: Blueprint expansion | 8-10 use-case blueprints |
 | P1 | GAP 5: credentials.json | Separate credential store |
 | P1 | GAP 1: Source reorg | Move to module structure |
-| P1 | GAP 8: More tools | Template-driven tool generators |
+| P1 | GAP 8: More tools | Blueprint-driven tool generators |
 
 ### Phase 2: Ship the Cloud (managed service)
 
@@ -293,5 +293,5 @@ Missing:
 
 | Priority | Gap | Work |
 |---|---|---|
-| P1 | GAP 4: Template marketplace | Community contributions |
+| P1 | GAP 4: Blueprint library | Community contributions |
 | P2 | GAP 10: Agent runtime integration | Wire internal systems to agent |
