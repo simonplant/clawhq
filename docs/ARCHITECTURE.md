@@ -49,7 +49,7 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Tier 3: ClawHQ Cloud                                   │
+│  Tier 3: ClawHQ Cloud                              │
 │  Managed hosting · Remote health · Blueprint library    │
 │  ─── optional — product works without this ───          │
 └────────────────────────┬────────────────────────────────┘
@@ -144,7 +144,7 @@ Blueprint + user customization + credentials
 │                                                          │
 │ security/                                                │
 │   posture.yaml         ← standard/hardened/paranoid       │
-│ ops/firewall/                                            │
+│ ops/firewall/                                                │
 │   allowlist.yaml       ← per-integration domain allowlist │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -325,7 +325,7 @@ User ──message──▶ Channel (Telegram/WhatsApp/etc.)
 │   ├── skills/                    # What the agent does autonomously
 │   └── memory/                    # What the agent remembers (hot/warm/cold)
 │
-├── ops/                           # Operational tooling
+├── ops/                              # Operational tooling
 │   ├── doctor/                    # Diagnostics
 │   ├── monitor/                   # Health + alerts
 │   ├── backup/snapshots/          # Encrypted backups
@@ -344,16 +344,16 @@ User ──message──▶ Channel (Telegram/WhatsApp/etc.)
 
 Six internal modules, each a distinct domain. These are developer-facing source organization — never exposed to users. (AD-01)
 
-| Module | Domain | What It Owns |
+| Module | What You're Doing | What It Owns |
 |---|---|---|
-| **ClawSmith** | Forge agents from blueprints | Blueprint engine, customization, setup wizard. THE PRODUCT. |
-| **ClawOps** | Keep it alive | Doctor, monitor, backup, update, status, logs, alerting. |
-| **ClawAdmin** | Lock it down | Security posture, credentials, firewall, audit, sandbox. |
-| **ClawConstruct** | Grow it | Skill lifecycle, tool installation, evolution, rollback. |
-| **ClawForge** | Build it | Installer, pre-reqs, engine acquisition, Docker build. |
-| **ClawHQ Cloud** | The business | Managed hosting, remote monitoring, blueprint library, fleet. |
+| **design** | Choosing a blueprint, customizing, configuring | Blueprint engine, setup wizard, tool generators, identity files. THE PRODUCT. |
+| **build** | Installing, compiling, deploying | Installer, pre-reqs, engine acquisition, Docker build, deploy orchestration. |
+| **secure** | Hardening, credentials, auditing | Container hardening, firewall, credential store, audit trail, scanning, sandbox. |
+| **operate** | Monitoring, diagnosing, maintaining | Doctor, monitor daemon, backup/restore, updates, status dashboard, logs. |
+| **evolve** | Adding skills, growing capabilities | Skill lifecycle, tool installation, capability evolution, rollback, export, destroy. |
+| **cloud** | Remote monitoring, managed hosting | Health heartbeat, command queue, agentd daemon, fleet management, blueprint library. |
 
-**Composition:** ClawForge acquires → ClawSmith forges → ClawAdmin hardens → ClawOps monitors → ClawConstruct evolves → Cloud optionally wraps it all.
+**Composition:** build acquires → design forges → secure hardens → operate monitors → evolve grows → cloud optionally wraps it all.
 
 ---
 
@@ -364,32 +364,18 @@ clawhq/
 ├── src/
 │   ├── cli/                        # Commander.js CLI (thin layer over modules)
 │   │
-│   ├── smith/                      # ClawSmith — THE PRODUCT
-│   │   ├── blueprints/             # Blueprint engine
-│   │   │   ├── registry.ts         # Blueprint library
-│   │   │   ├── loader.ts           # YAML parsing + validation
-│   │   │   ├── mapper.ts           # Blueprint + customization → config values
-│   │   │   ├── customizer.ts       # Blueprint-specific questions
-│   │   │   └── builtin/            # Built-in blueprint YAML files
-│   │   ├── configure/              # Setup wizard
-│   │   │   ├── wizard.ts           # Interactive questionnaire
-│   │   │   ├── steps.ts            # Wizard steps
-│   │   │   ├── generate.ts         # Answers → DeploymentBundle
-│   │   │   └── writer.ts           # Atomic file writer
+│   ├── design/                     # Design: blueprint engine (THE PRODUCT)
+│   │   ├── blueprints/             # Blueprint library, loader, mapper, customizer
+│   │   ├── configure/              # Setup wizard, generate, writer
 │   │   ├── tools/                  # CLI tool generators
-│   │   │   ├── registry.ts         # Integration → tool mapping
-│   │   │   └── *.ts                # Per-integration generators
 │   │   └── identity/               # Identity file generators
 │   │
-│   ├── ops/                        # ClawOps — keep it alive
-│   │   ├── doctor/                 # Diagnostics + auto-fix
-│   │   ├── monitor/                # Health monitoring daemon
-│   │   ├── backup/                 # Encrypted backup/restore
-│   │   ├── updater/                # Safe updates + rollback
-│   │   ├── status/                 # Dashboard
-│   │   └── logs/                   # Log streaming
+│   ├── build/                      # Build: install and deploy
+│   │   ├── installer/              # Pre-reqs, engine acquisition, scaffold
+│   │   ├── docker/                 # Two-stage build, compose, Dockerfile gen
+│   │   └── launcher/               # Deploy orchestration (up/down/restart)
 │   │
-│   ├── admin/                      # ClawAdmin — lock it down
+│   ├── secure/                     # Secure: security and compliance
 │   │   ├── harden/                 # Container security overrides
 │   │   ├── credentials/            # Credential store + health probes
 │   │   ├── firewall/               # iptables CLAWHQ_FWD chain
@@ -398,18 +384,21 @@ clawhq/
 │   │   ├── sandbox/                # Tool execution sandbox
 │   │   └── validate/               # 14 landmine rules
 │   │
-│   ├── construct/                  # ClawConstruct — grow it
+│   ├── operate/                    # Operate: monitoring and maintenance
+│   │   ├── doctor/                 # Diagnostics + auto-fix
+│   │   ├── monitor/                # Health monitoring daemon
+│   │   ├── backup/                 # Encrypted backup/restore
+│   │   ├── updater/                # Safe updates + rollback
+│   │   ├── status/                 # Dashboard
+│   │   └── logs/                   # Log streaming
+│   │
+│   ├── evolve/                     # Evolve: grow the agent
 │   │   ├── skills/                 # Skill install/update/remove + vetting
-│   │   ├── evolve/                 # Capability evolution
+│   │   ├── capabilities/           # Capability evolution
 │   │   ├── rollback/               # Change rollback
 │   │   └── lifecycle/              # Export + destroy
 │   │
-│   ├── forge/                      # ClawForge — build it
-│   │   ├── installer/              # Pre-reqs, engine acquisition, scaffold
-│   │   ├── docker/                 # Two-stage build, compose, Dockerfile gen
-│   │   └── launcher/               # Deploy orchestration (up/down/restart)
-│   │
-│   ├── cloud/                      # ClawHQ Cloud
+│   ├── cloud/                      # Cloud: remote monitoring + managed hosting
 │   │   ├── agentd/                 # Managed mode daemon
 │   │   ├── heartbeat/              # Health reporting
 │   │   ├── commands/               # Command queue (pull, verify, execute)

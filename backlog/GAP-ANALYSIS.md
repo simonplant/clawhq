@@ -109,13 +109,13 @@ Six modules, three layers. See `docs/ARCHITECTURE.md`.
 src/
 ├── cli/                — Thin CLI layer (unchanged)
 │
-├── smith/              — ClawSmith: THE PRODUCT
+├── smith/              — design: THE PRODUCT
 │   ├── templates/      — Recipe library, loader, mapper, personalizer
 │   ├── configure/      — Wizard, generate, writer
 │   ├── tools/          — CLI tool generators
 │   └── identity/       — Identity file generators
 │
-├── ops/                — ClawOps: keep it alive
+├── ops/                — operate: keep it alive
 │   ├── doctor/         — Diagnostics + auto-fix
 │   ├── monitor/        — Health monitoring
 │   ├── backup/         — Encrypted backup/restore
@@ -123,7 +123,7 @@ src/
 │   ├── status/         — Dashboard
 │   └── logs/           — Log streaming
 │
-├── admin/              — ClawAdmin: lock it down
+├── admin/              — secure: lock it down
 │   ├── harden/         — Container security
 │   ├── credentials/    — Credential store + probes
 │   ├── firewall/       — iptables management
@@ -132,18 +132,18 @@ src/
 │   ├── sandbox/        — Tool execution sandbox
 │   └── validate/       — 14 landmine rules
 │
-├── construct/          — ClawConstruct: grow it
+├── construct/          — evolve: grow it
 │   ├── skills/         — Skill lifecycle + vetting
 │   ├── evolve/         — Capability evolution
 │   ├── rollback/       — Change rollback
 │   └── lifecycle/      — Export + destroy
 │
-├── forge/              — ClawForge: build it
+├── forge/              — build: build it
 │   ├── installer/      — Pre-reqs, engine acquisition, scaffold
 │   ├── docker/         — Two-stage build, compose, Dockerfile
 │   └── launcher/       — Deploy orchestration
 │
-├── cloud/              — ClawHQ Cloud: the business
+├── cloud/              — cloud: the business
 │   ├── agentd/         — Managed mode daemon
 │   ├── heartbeat/      — Health reporting
 │   ├── commands/       — Command queue (pull, verify, execute)
@@ -166,15 +166,15 @@ src/
 
 | Current Location | Target Module | Target Location |
 |---|---|---|
-| `init/`, `templates/`, `workspace/tools/`, `workspace/identity/`, `inference/` | ClawSmith | `smith/` |
-| `doctor/`, `status/`, `backup/`, `update/`, `logs/`, `alerts/`, `repair/`, `digest/` | ClawOps | `ops/` |
-| `security/`, `audit/` | ClawAdmin | `admin/` |
-| `skill/`, `tool/`, `export/`, `destroy/`, `internal/`, `role/` | ClawConstruct | `construct/` |
-| `docker/`, `deploy/`, `source/`, `smoke/` | ClawForge | `forge/` |
-| `cloud/`, `fleet/`, `notifications/` | ClawHQ Cloud | `cloud/` |
+| `init/`, `templates/`, `workspace/tools/`, `workspace/identity/`, `inference/` | design | `smith/` |
+| `doctor/`, `status/`, `backup/`, `update/`, `logs/`, `alerts/`, `repair/`, `digest/` | operate | `ops/` |
+| `security/`, `audit/` | secure | `admin/` |
+| `skill/`, `tool/`, `export/`, `destroy/`, `internal/`, `role/` | evolve | `construct/` |
+| `docker/`, `deploy/`, `source/`, `smoke/` | build | `forge/` |
+| `cloud/`, `fleet/`, `notifications/` | cloud | `cloud/` |
 | `connect/`, `integrate/`, `provider/`, `service/`, `approval/` | Cross-cutting or Smith | TBD |
 
-### GAP 2: Distro Installer (ClawForge — does not exist)
+### GAP 2: Distro Installer (build — does not exist)
 
 **Current:** No installer. User must manually install OpenClaw, Node.js, Docker.
 **Target:** `clawhq install` — one command that handles pre-reqs, acquires engine, scaffolds distro directory.
@@ -202,7 +202,7 @@ Missing:
 - `~/.clawhq/cloud/` for cloud connection
 - Migration path from `~/.openclaw/` to `~/.clawhq/`
 
-### GAP 4: Blueprint Engine Expansion (ClawSmith — partially exists)
+### GAP 4: Blueprint Engine Expansion (design — partially exists)
 
 **Current:** 6 built-in blueprints (Guardian, Assistant, Coach, Analyst, Companion, Custom). Blueprint system works but limited.
 **Target:** "Use-case blueprints for specific jobs (email manager, stock trading, meal planning, blog maintenance, etc.).

@@ -14,13 +14,13 @@ But it's a *generic* engine. Getting OpenClaw to actually do what you want — m
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  LAYER 3: Cloud                                              │
+│  Cloud                                                       │
 │  Managed hosting · Remote monitoring · Blueprint library     │
 │  ─── optional — the product works without this ───           │
 ├─────────────────────────────────────────────────────────────┤
-│  LAYER 2: Blueprints (the product)                           │
-│  Complete agent designs that programmatically configure       │
-│  EVERYTHING in OpenClaw for a specific job:                  │
+│  Blueprints (the product)                                    │
+│  Complete agent designs that configure EVERYTHING             │
+│  in OpenClaw for a specific job:                             │
 │                                                              │
 │  "Run my emails"        → email tools, triage skills,        │
 │                           morning digest, inbox zero cron    │
@@ -32,19 +32,15 @@ But it's a *generic* engine. Getting OpenClaw to actually do what you want — m
 │                           publish cron, editorial voice      │
 │  "Replace Google Asst"  → email + calendar + tasks + brief   │
 │                           + full-day orchestration           │
-│                                                              │
-│  Each blueprint configures: identity, personality, tools,    │
-│  skills, cron, integrations, security posture, autonomy      │
-│  model, memory policy, model routing, egress rules           │
 ├─────────────────────────────────────────────────────────────┤
-│  LAYER 1: Platform (table stakes)                            │
+│  Platform (table stakes)                                     │
 │  Install · Harden · Launch · Ops                             │
 │  Same for every agent — acquire engine, secure it,           │
 │  keep it alive, back it up, update it safely                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Layer 1: The Platform
+### The Platform
 
 One command installs the whole stack.
 
@@ -56,7 +52,7 @@ curl -fsSL https://clawhq.com/install | sh
 git clone https://github.com/clawhq/clawhq && cd clawhq && ./install --from-source --verify
 ```
 
-The installer handles pre-reqs (Docker, Node.js, Ollama), acquires OpenClaw (from trusted cache or source), and scaffolds everything. Security hardening is automatic — `cap_drop ALL`, read-only rootfs, non-root UID 1000, egress firewall, identity files read-only. No opt-in required.
+Security hardening is automatic — `cap_drop ALL`, read-only rootfs, non-root UID 1000, egress firewall, identity files read-only. No opt-in required.
 
 ```bash
 clawhq doctor [--fix]      # Every known failure mode, with auto-fix
@@ -67,11 +63,9 @@ clawhq creds               # Credential health probes
 clawhq audit               # Tool execution + egress audit trail
 ```
 
-This layer is the same for every agent. Table stakes. The real value is Layer 2.
+### Blueprints
 
-### Layer 2: Blueprints
-
-This is the product. Blueprints are complete agent designs that programmatically configure every dimension of OpenClaw for a specific job. Not prompt skins — full operational configurations.
+This is the product. Blueprints are complete agent designs that configure every dimension of OpenClaw for a specific job.
 
 ```bash
 clawhq init --guided       # Interactive: pick a use case, connect services
@@ -93,28 +87,16 @@ A blueprint configures:
 | **Models** | Local vs. cloud routing per task type | Local for triage, cloud for complex drafting |
 | **Egress** | What data can leave the machine | Only mail server + calendar server |
 
-Since everything in OpenClaw is a file or API call, ClawHQ generates all of it:
-
-- `openclaw.json` — runtime config with all 14 landmines auto-handled
-- `docker-compose.yml` — hardened container with correct mounts
-- `Dockerfile` — custom binary layer composed from integration needs
-- `workspace/identity/*` — identity files populated from blueprint
-- `workspace/tools/*` — CLI wrappers generated from integrations
-- `workspace/skills/*` — skill implementations from blueprint
-- `cron/jobs.json` — scheduled jobs in OpenClaw-native format
-- `.env` + `credentials.json` — secrets secured (mode 0600)
-
-**The agent grows over time:**
+**The agent evolves over time:**
 
 ```bash
 clawhq skill install <name>     # Add a capability (sandboxed, vetted, rollback-ready)
-clawhq skill list               # What can the agent do?
 clawhq evolve                   # Manage capabilities, identity, integrations
 clawhq export                   # Portable bundle — yours forever
 clawhq destroy                  # Verified wipe — cryptographic proof it's gone
 ```
 
-### Layer 3: Cloud
+### Cloud
 
 Optional. The product works without it.
 
@@ -125,40 +107,7 @@ clawhq cloud connect       # Link to clawhq.com
 - **Remote monitoring** — See agent health from your phone (status only, never content)
 - **Managed hosting** — Same platform on DigitalOcean, Hetzner, Mac Mini. Web console. Zero terminal.
 - **Blueprint library** — Community blueprints for every use case
-- **Security advisories** — Push notifications for OpenClaw CVEs
 - **Fleet management** — Multi-agent dashboard for operators
-
-## The Deployment Directory
-
-```
-~/.clawhq/
-├── clawhq.yaml                    # Meta-config (version, install method, cloud token)
-│
-├── engine/                        # OpenClaw runtime (acquired by installer)
-│   ├── openclaw.json              # Runtime config (forged from blueprint)
-│   ├── .env                       # Secrets (mode 0600)
-│   ├── docker-compose.yml         # Hardened container config
-│   ├── Dockerfile                 # Stage 2 custom layer
-│   └── credentials.json           # Integration credentials (mode 0600)
-│
-├── workspace/                     # Agent's world (mounted into container)
-│   ├── identity/                  # Who the agent is (read-only mount)
-│   ├── tools/                     # What the agent can do (CLI wrappers)
-│   ├── skills/                    # What the agent does autonomously
-│   └── memory/                    # What the agent remembers (hot/warm/cold)
-│
-├── ops/                           # Operational tooling
-│   ├── doctor/                    # Diagnostic checks
-│   ├── monitor/                   # Health monitoring + alerts
-│   ├── backup/snapshots/          # Encrypted backups
-│   ├── updater/rollback/          # Pre-update images
-│   ├── audit/                     # Tool, secret, and egress logs
-│   └── firewall/                  # Egress allowlist per integration
-│
-├── security/                      # Hardening config (posture, sandbox)
-├── cron/                          # Scheduled jobs (OpenClaw-native)
-└── cloud/                         # Cloud connection (optional)
-```
 
 ## Deployment Options
 
@@ -170,10 +119,6 @@ Same platform. Same blueprints. Same agent. Different host.
 | Mac Mini (home server) | You + ClawHQ CLI | $0 + hardware |
 | DigitalOcean / Hetzner / Vultr | ClawHQ managed | VPS + managed fee |
 | Any VPS | You + ClawHQ CLI | VPS cost |
-
-**Self-managed:** You run `clawhq install`. Full control. CLI assists with updates, backups, monitoring.
-
-**Managed:** ClawHQ provisions the host, installs the platform, runs `agentd` daemon. Web console. Same engine, same blueprints, same security. We manage the host, never the contents.
 
 ## Data Sovereignty
 
@@ -189,11 +134,6 @@ Same platform. Same blueprints. Same agent. Different host.
 
 OpenClaw is a powerful engine — but a generic one. Getting it to do a specific job well requires deep expertise. ClawHQ bridges that gap with blueprints: complete agent designs for specific use cases, forged into running agents with one command.
 
-| Layer | What |
-|---|---|
-| **OpenClaw** | The engine — runtime, channels, tools, memory |
-| **ClawHQ** | The platform — blueprints, security, ops, lifecycle |
-
 ClawHQ is for people who want a personal AI agent that does a specific job — manages their email, assists with trading, plans meals, runs their schedule — on their own terms, on their own hardware, with their own data.
 
 ## Status
@@ -201,5 +141,5 @@ ClawHQ is for people who want a personal AI agent that does a specific job — m
 Active development. TypeScript CLI, tight coupling to OpenClaw's Node.js/TypeBox stack.
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — Product design: problem, personas, user stories, build order
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Solution architecture: three layers, six modules, zero-trust remote admin
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Solution architecture: six modules, zero-trust remote admin
 - [docs/OPENCLAW-REFERENCE.md](docs/OPENCLAW-REFERENCE.md) — Engineering reference: OpenClaw internals, config landmines, integration surfaces
