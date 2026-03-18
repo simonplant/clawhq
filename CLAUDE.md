@@ -106,9 +106,11 @@ clawhq cloud status           — Remote health dashboard
 
 ## Implementation Notes
 
-- `docs/PRODUCT.md` — User stories and acceptance criteria for each install phase
-- `docs/ARCHITECTURE.md` — Distro model, install phases, package structure, security, data flow
-- `docs/OPENCLAW-REFERENCE.md` — OpenClaw internals, integration surfaces, landmine rules, config details
+- `docs/PRODUCT.md` — Product bible: problem, solution, user stories organized by module (ClawSmith, ClawForge, ClawAdmin, ClawOps, ClawConstruct, ClawHQ Cloud)
+- `docs/ARCHITECTURE.md` — Architecture: three layers, six modules, ADs, zero-trust remote admin, package structure
+- `docs/OPENCLAW-REFERENCE.md` — Engineering reference: OpenClaw internals, 14 landmines, config surfaces, integration details
+- `backlog/GAP-ANALYSIS.md` — AS-IS/TO-BE comparison, 10 gaps identified
+- `backlog/backlog.json` — Sprint-ready backlog, 6 parallel tracks
 
 Key technical details:
 - TypeScript throughout — matches OpenClaw's Node.js/TypeBox stack, shares schema types directly

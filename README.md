@@ -8,7 +8,7 @@ OpenClaw is the most powerful open-source framework for personal AI agents. It h
 
 But it's a *generic* engine. Getting OpenClaw to actually do what you want — manage your email, assist with stock trading, plan meals, maintain a blog — means wrangling ~13,500 tokens of config across 11+ files, dodging 14 silent landmines, writing custom tools, composing identity files, setting up cron jobs, configuring integrations, tuning autonomy levels, and doing ongoing SRE work. Most deployments are abandoned within a month.
 
-**ClawHQ is the intelligent configuration layer that turns a generic OpenClaw into a purpose-built agent for a specific job.** Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically — identity, tools, skills, cron, integrations, security, autonomy, memory — through use-case templates that make the agent do exactly what the user wants.
+**ClawHQ turns generic, unsecured open-source software into your personalized digital agent — without you knowing how any of it works.** You get a Signal, Telegram, or Discord UI. We do the rest. Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically — identity, tools, skills, cron, integrations, security, autonomy, memory — through use-case templates that configure a complete agent for a specific job.
 
 OpenClaw's Gateway UI is cPanel. ClawHQ is WordPress.
 
