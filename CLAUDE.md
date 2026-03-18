@@ -186,7 +186,7 @@ src/
 
 ## Sprint Orchestration (aishore)
 
-This project uses [aishore](https://github.com/simonweniger/aishore) for AI-assisted sprint management.
+This project uses [aishore](https://github.com/simonplant/aishore) for AI-assisted sprint management.
 
 ### Commands
 
@@ -196,7 +196,6 @@ This project uses [aishore](https://github.com/simonweniger/aishore) for AI-assi
 .aishore/aishore groom --backlog    # Product owner: groom features
 .aishore/aishore review             # Architecture review
 .aishore/aishore metrics            # Sprint metrics
-.aishore/aishore checksums          # Regenerate checksums after editing .aishore/ files
 ```
 
-**Important**: After modifying any files in `.aishore/`, run `.aishore/aishore checksums` before committing.
+**Note:** Do not modify aishore internals or `.aishore/` files directly. Report bugs and feature requests at [github.com/simonplant/aishore](https://github.com/simonplant/aishore/issues).
