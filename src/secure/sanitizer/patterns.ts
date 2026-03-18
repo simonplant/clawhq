@@ -8,20 +8,22 @@
 
 // ── Tier 1: High Detectability ──────────────────────────────────────────────
 
+/* eslint-disable no-misleading-character-class -- intentionally matching ZWNJ/ZWJ (U+200C/D) */
 /** Unicode ranges used to hide content from human review. */
 export const INVISIBLE_RANGES = new RegExp(
   "[" +
-    "\u200b-\u200f" +
-    "\u2028-\u202f" +
-    "\u2060-\u2064" +
-    "\u2066-\u2069" +
-    "\ufeff" +
-    "\ufff9-\ufffb" +
-    "\u{e0000}-\u{e007f}" +
-    "\u{fe00}-\u{fe0f}" +
+    "\\u200b-\\u200f" +
+    "\\u2028-\\u202f" +
+    "\\u2060-\\u2064" +
+    "\\u2066-\\u2069" +
+    "\\ufeff" +
+    "\\ufff9-\\ufffb" +
+    "\\u{e0000}-\\u{e007f}" +
+    "\\u{fe00}-\\u{fe0f}" +
     "]+",
   "gu",
 );
+/* eslint-enable no-misleading-character-class */
 
 /** Direct prompt override / role hijack attempts. */
 export const INJECTION_PATTERNS: RegExp[] = [
@@ -109,8 +111,8 @@ export const MORSE_PATTERN = /^[.\-\s/]{20,}$/;
 
 /** Fake conversation turns injected to steer few-shot behavior. */
 export const FEWSHOT_PATTERNS = {
-  user: /(^|\n)\s*(User|Human|Customer|Person|Q)\s*:/i,
-  assistant: /(^|\n)\s*(Assistant|AI|Agent|Bot|A)\s*:/i,
+  user: /(^|\n)\s*(User|Human|Customer|Person)\s*:/i,
+  assistant: /(^|\n)\s*(Assistant|AI|Agent|Bot)\s*:/i,
 } as const;
 
 /** Prompt injection in non-English languages (8 language families). */
