@@ -35,6 +35,8 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 
 ### Design Principles
 
+- **One install, one CLI, one binary.** ClawHQ is WordPress, not sed+awk+grep. Users install one thing (`clawhq`), run flat commands (`clawhq doctor`, `clawhq init`). Modules are internal architecture for developers — never user-facing. Multiple binaries communicate "you're the operator"; one binary communicates "we handle everything."
+- **Unix philosophy lives in the agent's tools, not in ClawHQ.** `email`, `calendar`, `tasks`, `quote` — small, composable, single-purpose workspace tools. Templates compose them into purpose-built agents. ClawHQ is the orchestrator that assembles the right tools for the job.
 - **ClawHQ is the install.** Users don't install OpenClaw separately. ClawHQ acquires, configures, and manages the engine.
 - **Templates are recipes, not config files.** ClawHQ has hundreds of recipes and cooks ~10 personalized for the user during setup — asking preferences, connecting services, generating everything.
 - **OpenClaw's Gateway UI is fine for basic management.** ClawHQ doesn't compete with it. It sits on top and makes the engine do something specific.
@@ -577,6 +579,54 @@ clawhq cloud disconnect         # Immediate. No confirmation prompt.
 ```
 
 Connection severed. Agent keeps running with full functionality. Only remote dashboard and push notifications lost.
+
+---
+
+## Architectural Decisions
+
+Decisions that are settled and should not be revisited without strong reason.
+
+### AD-01: One binary, flat CLI
+
+**Decision:** ClawHQ ships as a single `clawhq` binary with flat subcommands. Modules (ClawSmith, ClawOps, etc.) are internal source organization for developers — never user-facing.
+
+**Rationale:** The mission is "you get Signal/Telegram/Discord, we do the rest." Multiple binaries communicate "you're the operator, learn these tools." One binary communicates "we handle everything, you're the user." The Privacy Migrant wants ONE command. The Tinkerer wants `clawhq doctor`, not "which module handles health?" The managed service deploys one `agentd`, not six daemons.
+
+**What this means:**
+- CLI stays flat: `clawhq init`, `clawhq doctor`, `clawhq up` — not `clawhq smith init`, `clawhq ops doctor`
+- `--help` groups commands by lifecycle phase (already implemented) — that's the user's mental model
+- Source organized by modules (`src/smith/`, `src/ops/`, etc.) — developer concern only
+- One npm package, one install, one binary
+
+### AD-02: Unix philosophy applies to agent tools, not to ClawHQ
+
+**Decision:** Small, composable, single-purpose tools live in the agent's workspace (`email`, `calendar`, `tasks`, `quote`). ClawHQ itself is the orchestrator — WordPress, not sed+awk+grep.
+
+**Rationale:** Templates compose workspace tools into purpose-built agents. The tools are the Unix primitives. ClawHQ is the system that assembles the right tools for the job. This is the same pattern as WordPress: one install that manages themes, plugins, and content — not separate binaries for each.
+
+**What this means:**
+- Agent workspace tools: small bash/python3 scripts, each does one thing
+- Templates declare which tools → ClawHQ generates and installs them
+- New use cases = new templates + new tools, not new ClawHQ commands
+- The tool registry (`src/smith/tools/registry.ts`) maps integrations to tools
+
+### AD-03: Tight coupling to OpenClaw, no abstraction
+
+**Decision:** ClawHQ targets OpenClaw exclusively. No provider interface. No framework abstraction. If a competing agent framework appears, that's a rewrite, not an adapter swap.
+
+**Rationale:** There are no alternative frameworks to abstract over. Premature abstraction adds complexity for zero benefit. Tight coupling means we use OpenClaw's actual TypeBox config schema, WebSocket RPC, file paths, and container structure directly.
+
+### AD-04: TypeScript monorepo, single package
+
+**Decision:** One TypeScript package. Not a monorepo with multiple packages. Not separate repos per module.
+
+**Rationale:** Target audience already has Node.js (they're running OpenClaw). `npm install -g clawhq` is one command. Module boundaries are enforced by barrel exports and directory structure, not by package boundaries. AI sprint runner (aishore) works on one repo.
+
+### AD-05: Security is architecture, not policy
+
+**Decision:** Content access in managed mode is architecturally blocked — there is no code path to read conversations, memory contents, identity files, or credential values. This is not a permission flag that can be flipped.
+
+**Rationale:** Policy can be changed. Architecture can't. When we tell users "we can never see your conversations," it must be true by construction, not by promise. The `agentd` daemon literally does not have handlers for content access operations.
 
 ---
 

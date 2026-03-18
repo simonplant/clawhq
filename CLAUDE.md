@@ -35,11 +35,19 @@ See `docs/ARCHITECTURE.md` for the full solution architecture.
 
 **Remote admin:** Three trust modes — Paranoid (no cloud), Zero-Trust (agent-initiated, signed commands, user-approved), Managed (auto-approved ops, content architecturally blocked). See ARCHITECTURE.md.
 
+## Architectural Decisions (locked — see ARCHITECTURE.md for full rationale)
+
+- **AD-01: One binary, flat CLI** — `clawhq` is a single install with flat commands (`clawhq doctor`, not `clawhq ops doctor`). Modules are internal source organization for developers, never user-facing. Multiple binaries = "you're the operator." One binary = "we handle everything."
+- **AD-02: Unix philosophy in agent tools, not in ClawHQ** — `email`, `calendar`, `tasks`, `quote` are small composable workspace tools. Templates compose them. ClawHQ is WordPress (the orchestrator), not sed+awk+grep.
+- **AD-03: Tight coupling to OpenClaw** — No abstraction layer. Direct use of TypeBox schema, WebSocket RPC, file paths.
+- **AD-04: TypeScript monorepo, single package** — One npm package. Module boundaries via barrel exports and directory structure.
+- **AD-05: Security is architecture, not policy** — Content access in managed mode is architecturally blocked (no handler exists), not policy-blocked.
+
 ## Key Design Constraints
 
 - **ClawHQ is the install** — Users don't install OpenClaw separately. ClawHQ acquires, configures, and manages the engine end-to-end
 - **Two acquisition paths** — Trusted cache (signed, hash-verified) or from source (clone, audit, build). User chooses their trust level
-- **Security by default** — Container hardening (cap_drop ALL, read-only rootfs, non-root UID 1000, egress firewall) applied automatically during install, not opt-in
+- **Security by default** — Container hardening applied automatically during install, not opt-in
 - **Config generation must be correct** — All 14+ known silent landmines auto-handled; impossible to produce a broken config
 - **Identity files are read-only** — Agents cannot modify their own personality or guardrails
 - **Credentials secured** — `credentials.json` mode 0600, secrets in `.env` mode 0600, never in config files, never logged
