@@ -6,7 +6,7 @@
  * Probes never throw — they return a result object.
  */
 
-import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+import { OLLAMA_DEFAULT_URL, WHATSAPP_API_BASE, WHATSAPP_API_VERSION } from "../../config/defaults.js";
 
 import { getIntegrationDef } from "./registry.js";
 
@@ -114,7 +114,7 @@ const validators: Record<string, Validator> = {
     if (!phoneId || !token) return { ok: false, message: "WhatsApp credentials incomplete" };
 
     const result = await probeFetch(
-      `https://graph.facebook.com/v17.0/${phoneId}`,
+      `${WHATSAPP_API_BASE}/${WHATSAPP_API_VERSION}/${phoneId}`,
       { method: "GET", headers: { Authorization: `Bearer ${token}` } },
     );
     if ("error" in result) return { ok: false, message: `API unreachable: ${result.error}` };
