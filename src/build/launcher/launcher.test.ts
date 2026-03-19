@@ -191,6 +191,19 @@ describe("health", () => {
     expect(result.healthy).toBe(false);
     expect(result.attempts).toBe(1);
     expect(result.error).toContain("Smoke test failed");
+    expect(result.messageSent).toBe(false);
+    expect(result.responseReceived).toBe(false);
+  });
+
+  it("smokeTest returns actionable fix guidance on failure", async () => {
+    const result = await smokeTest({
+      gatewayToken: "test-token",
+      gatewayPort: 19999,
+    });
+    expect(result.healthy).toBe(false);
+    expect(result.error).toContain("Troubleshooting");
+    expect(result.error).toContain("clawhq logs");
+    expect(result.error).toContain("clawhq doctor");
   });
 });
 

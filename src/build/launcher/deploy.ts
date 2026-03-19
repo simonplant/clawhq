@@ -151,7 +151,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     return aborted();
   }
 
-  report("smoke-test", "running", "Running smoke test…");
+  report("smoke-test", "running", "Sending real message to agent…");
 
   const smokeResult = await smokeTest({
     gatewayToken: options.gatewayToken,
@@ -160,16 +160,22 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
   });
 
   if (!smokeResult.healthy) {
-    report("smoke-test", "failed", "Smoke test failed");
+    report("smoke-test", "failed", "Smoke test failed — agent is NOT responding to messages");
     return {
       success: false,
       preflight: null,
       healthy: false,
-      error: smokeResult.error ?? "Smoke test failed — Gateway responded to health but not to status RPC",
+      error: smokeResult.error ?? "Smoke test failed — agent container is running but not responding to messages.\n\nRun 'clawhq logs -f' and 'clawhq doctor --fix' to diagnose.",
     };
   }
 
-  report("smoke-test", "done", "Smoke test passed — agent is live");
+  if (smokeResult.fallback) {
+    report("smoke-test", "done", "Smoke test passed (status only — upgrade OpenClaw for full message verification)");
+  } else if (smokeResult.messageSent && smokeResult.responseReceived) {
+    report("smoke-test", "done", "Smoke test passed — agent responded to real message");
+  } else {
+    report("smoke-test", "done", "Smoke test passed — agent is live");
+  }
 
   return {
     success: true,
