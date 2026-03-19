@@ -1,28 +1,28 @@
 {
-  "sprintId": "sprint-1773918618",
-  "startedAt": "2026-03-19T04:10:18-07:00",
+  "sprintId": "sprint-1773919474",
+  "startedAt": "2026-03-19T04:24:34-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-042",
-    "title": "Smoke test + backing services",
-    "intent": "Post-deploy smoke test must send a real message and get a response — 'container started' is not 'agent works'. Users must not discover a dead agent by noticing silence.",
-    "description": "MUST: The first-deploy user experience is broken without this. 'clawhq up succeeded' when the agent doesn't actually respond is worse than a clear failure — the user wastes time debugging a silently dead agent. Upgrade to must: smoke test (real message + response) is non-negotiable for deploy confidence. Scope split: smoke test (real message exchange) is must; backing services (postgres/redis/qdrant) can be a separate should item if needed. Acceptance: 'clawhq up' ends with a real message sent to agent and response received; failure is loud with actionable fix; 'clawhq service add postgres' configures backing service.",
+    "id": "FEAT-001",
+    "title": "clawhq blueprint list + preview commands",
+    "intent": "clawhq blueprint list and preview must let users evaluate every available blueprint before committing to init. Users must never choose a blueprint blind.",
+    "description": "HIGH VALUE: Gate for informed blueprint selection. Without clawhq blueprint list/preview, users run init blind — they can't evaluate options before committing. Pairs tightly with CQ-009 (loader already does the heavy lifting). Build immediately after CQ-009. Acceptance: 'clawhq blueprint list' shows all available blueprints with one-line descriptions; 'clawhq blueprint preview email-manager' renders full design (identity, tools, skills, cron, integrations, security posture, egress domains). No net-new logic — thin CLI surface over CQ-009.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement post-deploy smoke test: send real message, verify response",
-      "Implement 'clawhq service add' for postgres, redis, qdrant backing services",
-      "Make deploy fail loudly if smoke test fails"
+      "Implement 'clawhq blueprint list' showing available blueprints with one-line descriptions",
+      "Implement 'clawhq blueprint preview <name>' showing full blueprint design",
+      "Display: identity, tools, skills, cron, integrations, security posture, egress domains in preview"
     ],
     "acceptanceCriteria": [
-      "'clawhq up' ends with real message sent to agent and response received",
-      "Smoke test failure is loud with actionable fix guidance",
-      "'clawhq service add postgres' configures backing service correctly"
+      "'clawhq blueprint list' shows all available blueprints with one-line descriptions",
+      "'clawhq blueprint preview email-manager' renders full design",
+      "Preview shows identity, tools, skills, cron, integrations, security posture, egress domains"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T04:10:18-07:00",
+    "startedAt": "2026-03-19T04:24:34-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T04:24:32-07:00"
+    "completedAt": "2026-03-19T04:34:10-07:00"
   },
-  "completedAt": "2026-03-19T04:24:32-07:00",
+  "completedAt": "2026-03-19T04:34:10-07:00",
   "attempts": 2
 }

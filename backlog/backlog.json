@@ -1027,8 +1027,8 @@
       "description": "HIGH VALUE: Gate for informed blueprint selection. Without clawhq blueprint list/preview, users run init blind — they can't evaluate options before committing. Pairs tightly with CQ-009 (loader already does the heavy lifting). Build immediately after CQ-009. Acceptance: 'clawhq blueprint list' shows all available blueprints with one-line descriptions; 'clawhq blueprint preview email-manager' renders full design (identity, tools, skills, cron, integrations, security posture, egress domains). No net-new logic — thin CLI surface over CQ-009.",
       "category": "design",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-009"
       ],
@@ -1041,7 +1041,9 @@
         "'clawhq blueprint list' shows all available blueprints with one-line descriptions",
         "'clawhq blueprint preview email-manager' renders full design",
         "Preview shows identity, tools, skills, cron, integrations, security posture, egress domains"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T04:34:10-07:00"
     }
   ]
 }
