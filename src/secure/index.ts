@@ -81,3 +81,26 @@ export type {
   ThreatCategory,
   ThreatSeverity,
 } from "./sanitizer/index.js";
+
+// Scanner (PII + secret scanning)
+export {
+  formatScanJson,
+  formatScanTable,
+  isFalsePositive,
+  redact,
+  runScan,
+  scanContent,
+  scanGitHistory,
+  shouldSkipFile,
+  walkAndScan,
+} from "./scanner/index.js";
+export type {
+  Finding,
+  FindingCategory,
+  FindingSeverity,
+  GitScanResult,
+  ScanOptions,
+  ScanReport,
+  SecretPattern,
+  WalkResult,
+} from "./scanner/index.js";
