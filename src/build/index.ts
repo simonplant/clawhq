@@ -2,9 +2,11 @@
  * Build module — install and deploy.
  *
  * Handles engine acquisition, Docker build, and deploy orchestration.
- * Currently implements the Docker two-stage build with container hardening.
+ * Docker: two-stage build with container hardening.
+ * Launcher: deploy orchestration with preflight, firewall, health verify.
  */
 
+// Docker build
 export {
   build,
   checkCache,
@@ -37,3 +39,34 @@ export type {
   Stage2Config,
   TmpfsConfig,
 } from "./docker/index.js";
+
+// Deploy orchestration (launcher)
+export {
+  applyFirewall,
+  deploy,
+  removeFirewall,
+  restart,
+  runPreflight,
+  shutdown,
+  smokeTest,
+  verifyHealth,
+} from "./launcher/index.js";
+
+export type {
+  DeployOptions,
+  DeployProgress,
+  DeployResult,
+  DeployStepName,
+  DeployStepStatus,
+  FirewallAllowEntry,
+  FirewallOptions,
+  FirewallResult,
+  HealthVerifyOptions,
+  HealthVerifyResult,
+  PreflightCheckName,
+  PreflightCheckResult,
+  PreflightReport,
+  ProgressCallback,
+  ShutdownOptions,
+  ShutdownResult,
+} from "./launcher/index.js";
