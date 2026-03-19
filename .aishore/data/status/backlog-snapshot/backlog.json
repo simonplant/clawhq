@@ -709,8 +709,8 @@
       "description": "BLUEPRINT LIBRARY: 6 additional blueprint YAMLs — Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot. Validate against current blueprint schema (CQ-009), adapt naming/paths, add missing fields (email-manager-adjacent skills, cron). Email Manager (CQ-017) is separate and higher priority — do not include it here. Acceptance: 'clawhq blueprint list' shows 7+ blueprints; 'clawhq blueprint preview <each>' renders valid design.",
       "category": "design",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-009"
       ],
@@ -728,7 +728,9 @@
         "'clawhq blueprint preview <name>' renders valid design for each",
         "All blueprints pass schema validation",
         "Every blueprint is forgeable via init wizard"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T05:18:01-07:00"
     },
     {
       "id": "CQ-030",

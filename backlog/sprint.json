@@ -1,33 +1,31 @@
 {
-  "sprintId": "sprint-1773922428",
-  "startedAt": "2026-03-19T05:13:48-07:00",
+  "sprintId": "sprint-1773922683",
+  "startedAt": "2026-03-19T05:18:03-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-029",
-    "title": "Additional blueprint YAMLs (6)",
-    "intent": "Ship 6 additional blueprint YAMLs that validate against the schema and render correctly in blueprint list/preview. Every blueprint must be forgeable.",
-    "description": "BLUEPRINT LIBRARY: 6 additional blueprint YAMLs — Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot. Validate against current blueprint schema (CQ-009), adapt naming/paths, add missing fields (email-manager-adjacent skills, cron). Email Manager (CQ-017) is separate and higher priority — do not include it here. Acceptance: 'clawhq blueprint list' shows 7+ blueprints; 'clawhq blueprint preview <each>' renders valid design.",
+    "id": "CQ-030",
+    "title": "Additional skills (5)",
+    "intent": "Ship 5 skills that install cleanly, run on cron, and make their respective blueprints actually useful. A blueprint without skills is an empty promise.",
+    "description": "BLUEPRINT COMPLETENESS: Skills are the value-add that make each blueprint useful. morning-brief is what makes 'Replace Google Assistant' actually replace Google Assistant. market-scan is why Stock Trading blueprint earns its name. Each skill is a standalone SKILL.md + prompts — thin to implement, high user impact. Acceptance: each skill installs via 'clawhq skill install'; SKILL.md + prompts present; skill runs on configured cron schedule.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create Family Hub blueprint YAML",
-      "Create Founder's Ops blueprint YAML",
-      "Create Replace Google Assistant blueprint YAML",
-      "Create Replace ChatGPT Plus blueprint YAML",
-      "Create Replace my PA blueprint YAML",
-      "Create Research Co-pilot blueprint YAML",
-      "Validate all against blueprint schema from CQ-009"
+      "Create morning-brief skill (SKILL.md + prompts)",
+      "Create market-scan skill (SKILL.md + prompts)",
+      "Create meal-plan skill (SKILL.md + prompts)",
+      "Create investor-update skill (SKILL.md + prompts)",
+      "Create schedule-guard skill (SKILL.md + prompts)",
+      "Verify each installs via skill lifecycle pipeline"
     ],
     "acceptanceCriteria": [
-      "'clawhq blueprint list' shows 7+ blueprints",
-      "'clawhq blueprint preview <name>' renders valid design for each",
-      "All blueprints pass schema validation",
-      "Every blueprint is forgeable via init wizard"
+      "Each skill installs via 'clawhq skill install'",
+      "SKILL.md + prompts present for each skill",
+      "Each skill runs on its configured cron schedule"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T05:13:48-07:00",
+    "startedAt": "2026-03-19T05:18:03-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T05:18:01-07:00"
+    "completedAt": "2026-03-19T05:28:01-07:00"
   },
-  "completedAt": "2026-03-19T05:18:01-07:00",
+  "completedAt": "2026-03-19T05:28:01-07:00",
   "attempts": 1
 }
