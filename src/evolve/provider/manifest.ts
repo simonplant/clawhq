@@ -22,8 +22,13 @@ export function loadProviderManifest(deployDir: string): ProviderManifest {
   if (!existsSync(path)) {
     return { version: 1, providers: [] };
   }
-  const raw = readFileSync(path, "utf-8");
-  return JSON.parse(raw) as ProviderManifest;
+  try {
+    const raw = readFileSync(path, "utf-8");
+    return JSON.parse(raw) as ProviderManifest;
+  } catch (err) {
+    console.warn("[evolve] Failed to read provider manifest:", err);
+    return { version: 1, providers: [] };
+  }
 }
 
 /** Save the provider manifest. */

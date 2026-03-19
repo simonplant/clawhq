@@ -22,8 +22,13 @@ export function loadIntegrationManifest(deployDir: string): IntegrationManifest 
   if (!existsSync(path)) {
     return { version: 1, integrations: [] };
   }
-  const raw = readFileSync(path, "utf-8");
-  return JSON.parse(raw) as IntegrationManifest;
+  try {
+    const raw = readFileSync(path, "utf-8");
+    return JSON.parse(raw) as IntegrationManifest;
+  } catch (err) {
+    console.warn("[evolve] Failed to read integration manifest:", err);
+    return { version: 1, integrations: [] };
+  }
 }
 
 /** Save the integration manifest atomically. */
