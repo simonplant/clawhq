@@ -1,31 +1,32 @@
 {
-  "sprintId": "sprint-1773902097",
-  "startedAt": "2026-03-18T23:34:57-07:00",
+  "sprintId": "sprint-1773902687",
+  "startedAt": "2026-03-18T23:44:47-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-002",
-    "title": "Gateway WebSocket RPC client",
-    "intent": "Give ClawHQ the ability to talk to a running OpenClaw agent. Every live operation depends on this RPC client — without it, ClawHQ can only write files, never observe or control a deployed agent.",
-    "description": "FOUNDATION: Every live operation — deploy health checks, config patches, session queries — goes through this client. Without it, ClawHQ can only write files; it cannot talk to a running agent. Acceptance: RPC round-trip works with real Gateway; timeout + abort signal paths exercised; typed error classes surface correct user messages.",
+    "id": "CQ-003",
+    "title": "Docker two-stage build + container hardening",
+    "intent": "Deliver a two-stage Docker build that caches the base image and hardens every container to at least standard security posture by default. Users must never run an unhardened agent.",
+    "description": "BUILD GATE: No Docker build = no running agent. The two-stage architecture matters for user experience: Stage 1 rebuilds rarely (base image), Stage 2 rebuilds fast (custom tools/skills). Hash-based change detection means 'clawhq build' doesn't waste the user's time. Four security postures mean users get hardened-by-default without knowing what cap_drop means. Acceptance: build produces a runnable image; Stage 1 cache hit on no-change; security posture applied without user configuration.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement token-authenticated WebSocket client for OpenClaw Gateway",
-      "Add request/response RPC with typed errors and timeout handling",
-      "Implement AbortSignal support for cancellation",
-      "Create custom error classes: GatewayError, ConnectionError, AuthError, RateLimitError, RpcTimeoutError",
-      "Add health polling with configurable interval and timeout"
+      "Implement Stage 1 Dockerfile: base OpenClaw + apt packages (cached layer)",
+      "Implement Stage 2 Dockerfile: custom tools + skills (fast rebuild layer)",
+      "Add hash-based change detection for Stage 1 cache invalidation",
+      "Generate build manifest with image hash, layers, size",
+      "Implement four security postures: minimal, standard, hardened, paranoid",
+      "Apply cap_drop ALL, read-only rootfs, non-root UID 1000, ICC disabled, resource limits per posture"
     ],
     "acceptanceCriteria": [
-      "RPC round-trip works with real Gateway",
-      "Timeout and abort signal paths exercised in tests",
-      "Typed error classes surface correct user messages",
-      "Health polling detects Gateway up/down state"
+      "Build produces a runnable container image",
+      "Stage 1 cache hit when base image unchanged",
+      "Standard security posture applied by default without user configuration",
+      "Build manifest written with image hash and layer info"
     ],
     "scope": [],
-    "startedAt": "2026-03-18T23:34:57-07:00",
+    "startedAt": "2026-03-18T23:44:47-07:00",
     "status": "passed",
-    "completedAt": "2026-03-18T23:44:46-07:00"
+    "completedAt": "2026-03-18T23:54:44-07:00"
   },
-  "completedAt": "2026-03-18T23:44:46-07:00",
+  "completedAt": "2026-03-18T23:54:44-07:00",
   "attempts": 2
 }
