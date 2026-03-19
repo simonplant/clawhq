@@ -29,7 +29,7 @@ export interface SmartOptions {
   /** Override the deployment directory. */
   readonly deployDir?: string;
 
-  /** Ollama base URL (default: http://127.0.0.1:11434). */
+  /** Ollama base URL. */
   readonly ollamaUrl?: string;
 
   /** Ollama model to use for inference (default: auto-detect or llama3:8b). */

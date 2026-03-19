@@ -15,6 +15,7 @@ import {
   isOllamaAvailable,
   OllamaError,
 } from "../../design/configure/ollama.js";
+import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 
 import type {
   ExtractedPreference,
@@ -72,7 +73,7 @@ export async function extractPreferences(
     readonly ollamaModel?: string;
   } = {},
 ): Promise<ExtractionResult> {
-  const ollamaUrl = options.ollamaUrl ?? "http://127.0.0.1:11434";
+  const ollamaUrl = options.ollamaUrl ?? OLLAMA_DEFAULT_URL;
   const model = options.ollamaModel ?? "llama3:8b";
 
   if (messages.length === 0) {

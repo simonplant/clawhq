@@ -6,6 +6,7 @@
  */
 
 import type { IntegrationDefinition } from "./types.js";
+import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 
 /** All known integrations. */
 export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
@@ -75,7 +76,7 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
     description: "Local Ollama instance for air-gapped AI model access",
     category: "ai",
     envKeys: [
-      { key: "OLLAMA_HOST", label: "Ollama host", secret: false, defaultValue: "http://localhost:11434" },
+      { key: "OLLAMA_HOST", label: "Ollama host", secret: false, defaultValue: OLLAMA_DEFAULT_URL },
     ],
     egressDomains: [],
   },

@@ -11,6 +11,7 @@ import {
   isOllamaAvailable,
   OllamaError,
 } from "../../design/configure/ollama.js";
+import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 
 import type { SummarizeOptions, SummarizeResult } from "./types.js";
 
@@ -51,7 +52,7 @@ export async function summarizeMemory(
   options: SummarizeOptions,
 ): Promise<SummarizeResult> {
   const { text, strategy } = options;
-  const ollamaUrl = options.ollamaUrl ?? "http://127.0.0.1:11434";
+  const ollamaUrl = options.ollamaUrl ?? OLLAMA_DEFAULT_URL;
   const model = options.model ?? "llama3:8b";
 
   const originalSize = Buffer.byteLength(text, "utf-8");
