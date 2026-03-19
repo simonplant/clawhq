@@ -62,3 +62,29 @@ export {
   formatDisconnectResult,
   formatSwitchResult,
 } from "./formatters.js";
+
+// Fleet management
+export type {
+  DiscoveredAgent,
+  FleetAgent,
+  FleetAgentDoctorResult,
+  FleetDiscoveryResult,
+  FleetDoctorReport,
+  FleetHealthStatus,
+  FleetRegistry,
+} from "./fleet/index.js";
+export {
+  discoverFleet,
+  fleetRegistryPath,
+  formatFleetDoctor,
+  formatFleetDoctorJson,
+  formatFleetHealth,
+  formatFleetHealthJson,
+  formatFleetList,
+  formatFleetListJson,
+  getFleetHealth,
+  readFleetRegistry,
+  registerAgent,
+  runFleetDoctor,
+  unregisterAgent,
+} from "./fleet/index.js";

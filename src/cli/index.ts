@@ -25,15 +25,27 @@ import type { DeployProgress } from "../build/launcher/index.js";
 import {
   connectCloud,
   disconnectCloud,
+  discoverFleet,
   formatCloudStatus,
   formatCloudStatusJson,
   formatDisconnectResult,
+  formatFleetDoctor,
+  formatFleetDoctorJson,
+  formatFleetHealth,
+  formatFleetHealthJson,
+  formatFleetList,
+  formatFleetListJson,
   formatSwitchResult,
+  getFleetHealth,
+  readFleetRegistry,
   readHeartbeatState,
   readQueueState,
   readTrustModeState,
+  registerAgent,
+  runFleetDoctor,
   sendHeartbeat,
   switchTrustMode,
+  unregisterAgent,
 } from "../cloud/index.js";
 import type { TrustMode } from "../config/types.js";
 import { validateBundle } from "../config/validate.js";
@@ -2421,6 +2433,90 @@ cloud
       console.log(chalk.green("Heartbeat sent."));
     } else {
       console.error(chalk.red(`Heartbeat failed: ${result.error}`));
+      process.exit(1);
+    }
+  });
+
+// ── Fleet Management ───────────────────────────────────────────────────────
+
+const fleet = cloud.command("fleet").description("Multi-agent fleet management");
+
+fleet
+  .command("list")
+  .description("List all registered agents")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    const registry = readFleetRegistry(opts.deployDir);
+
+    if (opts.json) {
+      console.log(formatFleetListJson(registry));
+    } else {
+      console.log(formatFleetList(registry));
+    }
+  });
+
+fleet
+  .command("add")
+  .description("Register an agent in the fleet")
+  .argument("<name>", "Human-readable label for the agent")
+  .argument("<path>", "Absolute path to the agent's deployment directory")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (name: string, agentPath: string, opts: { deployDir: string }) => {
+    const agent = registerAgent(opts.deployDir, name, agentPath);
+    console.log(chalk.green(`Agent registered: ${agent.name} → ${agent.deployDir}`));
+  });
+
+fleet
+  .command("remove")
+  .description("Remove an agent from the fleet")
+  .argument("<name-or-path>", "Agent name or deployment path to remove")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (nameOrPath: string, opts: { deployDir: string }) => {
+    const removed = unregisterAgent(opts.deployDir, nameOrPath);
+    if (removed) {
+      console.log(chalk.green(`Agent removed: ${nameOrPath}`));
+    } else {
+      console.error(chalk.red(`Agent not found: ${nameOrPath}`));
+      process.exit(1);
+    }
+  });
+
+fleet
+  .command("status")
+  .description("Fleet health — aggregate status across all agents")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    const health = getFleetHealth(opts.deployDir);
+
+    if (opts.json) {
+      console.log(formatFleetHealthJson(health));
+    } else {
+      console.log(formatFleetHealth(health));
+    }
+  });
+
+fleet
+  .command("doctor")
+  .description("Fleet-wide doctor — surface issues across all agents")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    const spinner = ora("Running fleet-wide doctor checks…");
+    if (!opts.json) spinner.start();
+
+    const report = await runFleetDoctor(opts.deployDir);
+
+    if (!opts.json) spinner.stop();
+
+    if (opts.json) {
+      console.log(formatFleetDoctorJson(report));
+    } else {
+      console.log(formatFleetDoctor(report));
+    }
+
+    if (!report.allHealthy) {
       process.exit(1);
     }
   });
