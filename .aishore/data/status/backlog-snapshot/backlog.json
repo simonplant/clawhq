@@ -136,8 +136,8 @@
       "description": "USER VALUE: Security hardening, not blocking adoption. Scanning existing workspace for PII is important but the agent runs without it. Promote back to must when install flow is complete and security pass begins.",
       "category": "secure",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement pattern-based scanner for API keys, passwords, tokens, PII",
         "Add false-positive filtering for comments, placeholders, example.com",
@@ -150,7 +150,9 @@
         "False positives filtered for comments and placeholder values",
         "Output shows redacted matches, not raw secret values",
         "Git history scanning catches previously committed secrets"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T04:50:10-07:00"
     },
     {
       "id": "CQ-007",
