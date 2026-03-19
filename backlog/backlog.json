@@ -124,7 +124,10 @@
         "DNS and HTTPS to allowlisted domains work correctly",
         "Firewall reapplied automatically after compose down",
         "'clawhq doctor' verifies firewall rules are active"
-      ]
+      ],
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-19T00:19:10-07:00",
+      "failCount": 1
     },
     {
       "id": "CQ-006",
@@ -156,8 +159,8 @@
       "description": "SECURITY BASELINE: If .env is misconfigured or readable by other processes, the user's API keys are exposed. Atomic writes (temp + rename) and 0600 permissions are non-negotiable. This is the lowest layer of the credentials stack — everything CQ-008 (health probes) does depends on reliable .env reads. Acceptance: written files are always 0600; atomic write survives process kill mid-write; get/set/remove preserve format and comments.",
       "category": "secure",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement .env file parser/reader/writer with format preservation",
         "Add atomic writes via temp file + rename with 0600 permissions",
@@ -167,7 +170,9 @@
         "Written .env files are always 0600 permissions",
         "Atomic write survives process kill mid-write (no partial files)",
         "Get/set/remove preserve existing format and comments"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T00:27:48-07:00"
     },
     {
       "id": "CQ-008",

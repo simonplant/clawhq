@@ -1,31 +1,28 @@
 {
-  "sprintId": "sprint-1773903286",
-  "startedAt": "2026-03-18T23:54:46-07:00",
+  "sprintId": "sprint-1773904750",
+  "startedAt": "2026-03-19T00:19:10-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-004",
-    "title": "Deploy orchestration + preflight checks",
-    "intent": "Make 'clawhq up' produce a running, reachable agent or a clear, actionable error — never silent failure. Every preflight check must block deploy if it fails.",
-    "description": "USER MOMENT: This is what 'clawhq up' does — the user's first deploy experience. The full sequence (preflight -> compose -> firewall -> health -> smoke test) ensures the user gets a working agent or a clear error, never silent failure. Step-by-step progress reporting means the user isn't staring at a frozen terminal. Acceptance: 'clawhq up' produces a running agent; all 6 preflight checks surface actionable errors; health verify confirms agent is reachable before returning.",
+    "id": "CQ-007",
+    "title": "Secrets management (.env store)",
+    "intent": "Ensure every credential written to disk is atomic, 0600-permissioned, and survives process interruption. No partial writes, no world-readable secrets.",
+    "description": "SECURITY BASELINE: If .env is misconfigured or readable by other processes, the user's API keys are exposed. Atomic writes (temp + rename) and 0600 permissions are non-negotiable. This is the lowest layer of the credentials stack — everything CQ-008 (health probes) does depends on reliable .env reads. Acceptance: written files are always 0600; atomic write survives process kill mid-write; get/set/remove preserve format and comments.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement full deploy sequence: preflight -> compose up -> firewall apply -> health verify -> smoke test",
-      "Implement 6 preflight checks: Docker, images, config, secrets, ports, Ollama",
-      "Add graceful shutdown and restart with firewall reapply",
-      "Add AbortSignal support throughout the deploy pipeline",
-      "Implement step-by-step progress reporting via callback"
+      "Implement .env file parser/reader/writer with format preservation",
+      "Add atomic writes via temp file + rename with 0600 permissions",
+      "Implement get/set/remove value operations"
     ],
     "acceptanceCriteria": [
-      "'clawhq up' produces a running agent or a clear, actionable error",
-      "All 6 preflight checks surface actionable errors on failure",
-      "Health verify confirms agent is reachable before returning success",
-      "Step-by-step progress visible in terminal during deploy"
+      "Written .env files are always 0600 permissions",
+      "Atomic write survives process kill mid-write (no partial files)",
+      "Get/set/remove preserve existing format and comments"
     ],
     "scope": [],
-    "startedAt": "2026-03-18T23:54:46-07:00",
+    "startedAt": "2026-03-19T00:19:10-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T00:06:37-07:00"
+    "completedAt": "2026-03-19T00:27:48-07:00"
   },
-  "completedAt": "2026-03-19T00:06:37-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T00:27:48-07:00",
+  "attempts": 3
 }
