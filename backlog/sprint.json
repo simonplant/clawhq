@@ -1,32 +1,31 @@
 {
-  "sprintId": "sprint-1773902687",
-  "startedAt": "2026-03-18T23:44:47-07:00",
+  "sprintId": "sprint-1773903286",
+  "startedAt": "2026-03-18T23:54:46-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-003",
-    "title": "Docker two-stage build + container hardening",
-    "intent": "Deliver a two-stage Docker build that caches the base image and hardens every container to at least standard security posture by default. Users must never run an unhardened agent.",
-    "description": "BUILD GATE: No Docker build = no running agent. The two-stage architecture matters for user experience: Stage 1 rebuilds rarely (base image), Stage 2 rebuilds fast (custom tools/skills). Hash-based change detection means 'clawhq build' doesn't waste the user's time. Four security postures mean users get hardened-by-default without knowing what cap_drop means. Acceptance: build produces a runnable image; Stage 1 cache hit on no-change; security posture applied without user configuration.",
+    "id": "CQ-004",
+    "title": "Deploy orchestration + preflight checks",
+    "intent": "Make 'clawhq up' produce a running, reachable agent or a clear, actionable error — never silent failure. Every preflight check must block deploy if it fails.",
+    "description": "USER MOMENT: This is what 'clawhq up' does — the user's first deploy experience. The full sequence (preflight -> compose -> firewall -> health -> smoke test) ensures the user gets a working agent or a clear error, never silent failure. Step-by-step progress reporting means the user isn't staring at a frozen terminal. Acceptance: 'clawhq up' produces a running agent; all 6 preflight checks surface actionable errors; health verify confirms agent is reachable before returning.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement Stage 1 Dockerfile: base OpenClaw + apt packages (cached layer)",
-      "Implement Stage 2 Dockerfile: custom tools + skills (fast rebuild layer)",
-      "Add hash-based change detection for Stage 1 cache invalidation",
-      "Generate build manifest with image hash, layers, size",
-      "Implement four security postures: minimal, standard, hardened, paranoid",
-      "Apply cap_drop ALL, read-only rootfs, non-root UID 1000, ICC disabled, resource limits per posture"
+      "Implement full deploy sequence: preflight -> compose up -> firewall apply -> health verify -> smoke test",
+      "Implement 6 preflight checks: Docker, images, config, secrets, ports, Ollama",
+      "Add graceful shutdown and restart with firewall reapply",
+      "Add AbortSignal support throughout the deploy pipeline",
+      "Implement step-by-step progress reporting via callback"
     ],
     "acceptanceCriteria": [
-      "Build produces a runnable container image",
-      "Stage 1 cache hit when base image unchanged",
-      "Standard security posture applied by default without user configuration",
-      "Build manifest written with image hash and layer info"
+      "'clawhq up' produces a running agent or a clear, actionable error",
+      "All 6 preflight checks surface actionable errors on failure",
+      "Health verify confirms agent is reachable before returning success",
+      "Step-by-step progress visible in terminal during deploy"
     ],
     "scope": [],
-    "startedAt": "2026-03-18T23:44:47-07:00",
+    "startedAt": "2026-03-18T23:54:46-07:00",
     "status": "passed",
-    "completedAt": "2026-03-18T23:54:44-07:00"
+    "completedAt": "2026-03-19T00:06:37-07:00"
   },
-  "completedAt": "2026-03-18T23:54:44-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T00:06:37-07:00",
+  "attempts": 1
 }
