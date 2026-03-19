@@ -6,6 +6,11 @@
  * AbortSignal for clean shutdown.
  */
 
+import {
+  GATEWAY_HEALTH_INTERVAL_MS,
+  GATEWAY_HEALTH_TIMEOUT_MS,
+} from "../config/defaults.js";
+
 import { GatewayClient } from "./client.js";
 import type {
   GatewayClientOptions,
@@ -13,11 +18,6 @@ import type {
   HealthPollOptions,
   HealthState,
 } from "./types.js";
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const DEFAULT_INTERVAL_MS = 30_000;
-const DEFAULT_HEALTH_TIMEOUT_MS = 5_000;
 
 // ── Health Poller ────────────────────────────────────────────────────────────
 
@@ -44,8 +44,8 @@ export class HealthPoller {
   ) {
     this.clientOptions = clientOptions;
     this.onChange = onChange;
-    this.intervalMs = options?.intervalMs ?? DEFAULT_INTERVAL_MS;
-    this.healthTimeoutMs = options?.timeoutMs ?? DEFAULT_HEALTH_TIMEOUT_MS;
+    this.intervalMs = options?.intervalMs ?? GATEWAY_HEALTH_INTERVAL_MS;
+    this.healthTimeoutMs = options?.timeoutMs ?? GATEWAY_HEALTH_TIMEOUT_MS;
 
     if (options?.signal) {
       options.signal.addEventListener("abort", () => this.stop(), { once: true });

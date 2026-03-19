@@ -47,3 +47,23 @@ export const FILE_MODE_CONFIG = 0o644;
 
 /** Owner rwx, group+other rx — executable scripts (tool wrappers, skills). */
 export const FILE_MODE_EXEC = 0o755;
+
+// ── Timeout & interval defaults ─────────────────────────────────────────────
+
+/** Default RPC request timeout for Gateway WebSocket calls (ms). */
+export const GATEWAY_RPC_TIMEOUT_MS = 10_000;
+
+/** Timeout for establishing a WebSocket connection to the Gateway (ms). */
+export const GATEWAY_CONNECT_TIMEOUT_MS = 5_000;
+
+/** Interval between Gateway health poll checks (ms). */
+export const GATEWAY_HEALTH_INTERVAL_MS = 30_000;
+
+/** Timeout for a single Gateway health check RPC (ms). */
+export const GATEWAY_HEALTH_TIMEOUT_MS = 5_000;
+
+/** Timeout for shell commands executed by doctor checks (ms). */
+export const DOCTOR_EXEC_TIMEOUT_MS = 15_000;
+
+/** Timeout for credential probe HTTP requests (ms). */
+export const CREDENTIALS_PROBE_TIMEOUT_MS = 10_000;

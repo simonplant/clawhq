@@ -8,6 +8,8 @@
  * an actionable fix message on failure.
  */
 
+import { CREDENTIALS_PROBE_TIMEOUT_MS } from "../../config/defaults.js";
+
 import type { CredentialProbe, ProbeResult } from "./probe-types.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -34,7 +36,7 @@ function fail(integration: string, envKey: string, message: string, fix: string)
 async function probeFetch(
   url: string,
   init: RequestInit,
-  timeoutMs = 10_000,
+  timeoutMs = CREDENTIALS_PROBE_TIMEOUT_MS,
 ): Promise<{ response: Response } | { error: string }> {
   try {
     const controller = new AbortController();

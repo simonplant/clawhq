@@ -17,13 +17,11 @@ import { access, constants, readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
 
 const execFileAsync = promisify(execFile);
-
-const EXEC_TIMEOUT_MS = 15_000;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -206,7 +204,7 @@ async function checkDockerRunning(signal?: AbortSignal): Promise<DoctorCheckResu
   const name: DoctorCheckName = "docker-running";
   try {
     await execFileAsync("docker", ["info", "--format", "{{.ServerVersion}}"], {
-      timeout: EXEC_TIMEOUT_MS,
+      timeout: DOCTOR_EXEC_TIMEOUT_MS,
       signal,
     });
     return ok(name, "Docker daemon is running");
@@ -234,7 +232,7 @@ async function checkContainerRunning(
     const { stdout } = await execFileAsync(
       "docker",
       ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "--format", "json"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
 
     if (!stdout.trim()) {
@@ -273,7 +271,7 @@ async function checkCapDrop(
     const { stdout } = await execFileAsync(
       "docker",
       ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
     if (!containerId) {
@@ -283,7 +281,7 @@ async function checkCapDrop(
     const { stdout: inspectOut } = await execFileAsync(
       "docker",
       ["inspect", "--format", "{{json .HostConfig.CapDrop}}", containerId],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
 
     const caps = JSON.parse(inspectOut.trim()) as string[] | null;
@@ -314,7 +312,7 @@ async function checkNoNewPrivileges(
     const { stdout } = await execFileAsync(
       "docker",
       ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
     if (!containerId) {
@@ -324,7 +322,7 @@ async function checkNoNewPrivileges(
     const { stdout: inspectOut } = await execFileAsync(
       "docker",
       ["inspect", "--format", "{{json .HostConfig.SecurityOpt}}", containerId],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
 
     const opts = JSON.parse(inspectOut.trim()) as string[] | null;
@@ -357,7 +355,7 @@ async function checkUserUid(
     const { stdout } = await execFileAsync(
       "docker",
       ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
     if (!containerId) {
@@ -367,7 +365,7 @@ async function checkUserUid(
     const { stdout: inspectOut } = await execFileAsync(
       "docker",
       ["inspect", "--format", "{{.Config.User}}", containerId],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
 
     const user = inspectOut.trim();
@@ -534,7 +532,7 @@ async function checkFirewallActive(signal?: AbortSignal): Promise<DoctorCheckRes
   const name: DoctorCheckName = "firewall-active";
   try {
     await execFileAsync("sudo", ["iptables", "-L", "CLAWHQ_FWD", "-n"], {
-      timeout: EXEC_TIMEOUT_MS,
+      timeout: DOCTOR_EXEC_TIMEOUT_MS,
       signal,
     });
     return ok(name, "Egress firewall chain CLAWHQ_FWD is active");
@@ -600,7 +598,7 @@ async function checkGatewayReachable(signal?: AbortSignal): Promise<DoctorCheckR
     await execFileAsync(
       "curl",
       ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", `http://localhost:${GATEWAY_DEFAULT_PORT}`],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     return ok(name, `Gateway is reachable on localhost:${GATEWAY_DEFAULT_PORT}`);
   } catch (e) {
@@ -626,7 +624,7 @@ async function checkDiskSpace(
     const { stdout } = await execFileAsync(
       "df",
       ["--output=avail", "-BM", deployDir],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
 
     const lines = stdout.trim().split("\n");
