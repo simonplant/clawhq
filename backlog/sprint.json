@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1773922428",
   "startedAt": "2026-03-19T05:13:48-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "CQ-029",
     "title": "Additional blueprint YAMLs (6)",
@@ -24,6 +24,10 @@
       "Every blueprint is forgeable via init wizard"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T05:13:48-07:00"
-  }
+    "startedAt": "2026-03-19T05:13:48-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-19T05:18:01-07:00"
+  },
+  "completedAt": "2026-03-19T05:18:01-07:00",
+  "attempts": 1
 }
