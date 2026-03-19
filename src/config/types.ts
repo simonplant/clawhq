@@ -211,6 +211,14 @@ export interface IdentityFileInfo {
   readonly sizeBytes: number;
 }
 
+/** Metadata about a generated workspace tool wrapper. */
+export interface ToolFileInfo {
+  readonly name: string;
+  readonly path: string;
+  readonly sizeBytes: number;
+  readonly mode: number;
+}
+
 // ── ClawHQ Config (clawhq.yaml) ─────────────────────────────────────────────
 
 /** Security posture level. */
@@ -261,6 +269,7 @@ export interface DeploymentBundle {
   readonly envVars: Record<string, string>;
   readonly cronJobs: readonly CronJobDefinition[];
   readonly identityFiles: readonly IdentityFileInfo[];
+  readonly toolFiles: readonly ToolFileInfo[];
   readonly clawhqConfig: ClawHQConfig;
 }
 
