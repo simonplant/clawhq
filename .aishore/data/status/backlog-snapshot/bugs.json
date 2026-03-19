@@ -25,17 +25,18 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [
-        "CLAUDE.md target architecture lists src/server/ and src/ui/ with ownership",
+        "CLAUDE.md target architecture lists src/web/ with ownership (Hono + htmx, CQ-040)",
         "docs/ARCHITECTURE.md package structure matches CLAUDE.md",
         "No scaffold directory in src/ contradicts the spec",
         "CQ-040 has an unambiguous target path in the architecture docs"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
       "groomingNotes": "UPDATED: CQ-040 (web dashboard) is DONE and uses src/web/ — not src/server/ + src/ui/ as the spec assumed. The actual canonical path is src/web/. Fix: update CLAUDE.md Key Source Layout and docs/ARCHITECTURE.md to replace src/server/ + src/ui/ entries with src/web/ (Hono server, htmx assets, 7 pages). Doc-only change, no code moves. Single PR touching two docs files.",
-      "intent": "The target architecture spec must be the single source of truth for src/ layout. No scaffold directories that contradict it."
+      "intent": "The target architecture spec must be the single source of truth for src/ layout. No scaffold directories that contradict it.",
+      "completedAt": "2026-03-19T09:29:27-07:00"
     },
     {
       "id": "BUG-007",

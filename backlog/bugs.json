@@ -47,11 +47,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Extraneous packages confirmed by codebase exploration: @emnapi/core, @emnapi/runtime, @emnapi/wasi-threads, @tybys/wasm-util, tslib. Verify none are imported before removing — grep for each package name. Run full test suite after removal. Zero risk if grep confirms they're unused."
+      "groomingNotes": "Extraneous packages confirmed by codebase exploration: @emnapi/core, @emnapi/runtime, @emnapi/wasi-threads, @tybys/wasm-util, tslib. Verify none are imported before removing — grep for each package name. Run full test suite after removal. Zero risk if grep confirms they're unused.",
+      "completedAt": "2026-03-19T09:38:00-07:00"
     },
     {
       "id": "BUG-008",
