@@ -10,6 +10,8 @@
 
 import WebSocket from "ws";
 
+import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+
 import {
   AuthError,
   ConnectionError,
@@ -17,7 +19,6 @@ import {
   RateLimitError,
   RpcTimeoutError,
 } from "./errors.js";
-import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import type {
   GatewayClientOptions,
   RpcRequest,

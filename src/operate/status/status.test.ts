@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import { formatStatusJson, formatStatusTable } from "./format.js";
 import { getStatus, watchStatus } from "./status.js";
 import type { StatusSnapshot } from "./types.js";

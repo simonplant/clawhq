@@ -9,7 +9,6 @@ import { join } from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
-
 import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
 
 import { runChecks } from "./checks.js";

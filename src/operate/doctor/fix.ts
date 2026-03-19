@@ -9,6 +9,7 @@ import { chmod, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import type { DoctorCheckResult, DoctorCheckName, FixReport, FixResult } from "./types.js";
 
 // ── Public API ──────────────────────────────────────────────────────────────

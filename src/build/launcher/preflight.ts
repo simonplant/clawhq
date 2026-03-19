@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import type { PreflightCheckName, PreflightCheckResult, PreflightReport } from "./types.js";
 
 const execFileAsync = promisify(execFile);

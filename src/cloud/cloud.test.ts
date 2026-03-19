@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+
 import {
   enqueueCommand,
   processNextCommand,

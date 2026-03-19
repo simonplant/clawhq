@@ -12,8 +12,8 @@ import { homedir } from "node:os";
 import { Hono } from "hono";
 import { stringify as yamlStringify } from "yaml";
 
-import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
+import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import {
   loadAllBuiltinBlueprints,
   loadBlueprint,

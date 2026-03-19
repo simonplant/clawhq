@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import { deploy, restart, shutdown } from "./deploy.js";
 import { applyFirewall, removeFirewall } from "./firewall.js";
 import { smokeTest, verifyHealth } from "./health.js";

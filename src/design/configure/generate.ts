@@ -8,6 +8,7 @@
  * The generator never produces a config that fails validation.
  */
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import type {
   ClawHQConfig,
   ComposeConfig,
@@ -23,7 +24,6 @@ import type { IdentityFileContent } from "../identity/index.js";
 import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../tools/index.js";
 import type { ToolFileContent } from "../tools/index.js";
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import type { WizardAnswers } from "./types.js";
 
