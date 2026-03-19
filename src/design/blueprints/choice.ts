@@ -5,8 +5,8 @@
  * (CQ-010) and `clawhq blueprint list/preview` commands.
  */
 
-import type { Blueprint, BlueprintChoice } from "./types.js";
 import type { LoadedBlueprint } from "./loader.js";
+import type { Blueprint, BlueprintChoice } from "./types.js";
 
 /**
  * Convert a Blueprint into a BlueprintChoice for wizard display.

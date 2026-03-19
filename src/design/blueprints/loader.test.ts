@@ -1,10 +1,11 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { join } from "node:path";
 
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { parse as parseYaml } from "yaml";
 
+import { templateToChoice, allTemplatesToChoices } from "./choice.js";
 import {
   BlueprintLoadError,
   BlueprintParseError,
@@ -15,7 +16,6 @@ import {
   loadBlueprint,
   loadBlueprintFile,
 } from "./loader.js";
-import { templateToChoice, allTemplatesToChoices } from "./choice.js";
 import { validateBlueprint } from "./validate.js";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
