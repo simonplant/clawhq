@@ -376,13 +376,10 @@ clawhq/
 │   │   └── launcher/               # Deploy orchestration (up/down/restart)
 │   │
 │   ├── secure/                     # Secure: security and compliance
-│   │   ├── harden/                 # Container security overrides
+│   │   ├── sanitizer/              # Input injection detection + sanitization
 │   │   ├── credentials/            # Credential store + health probes
-│   │   ├── firewall/               # iptables CLAWHQ_FWD chain
 │   │   ├── audit/                  # Audit logging (tool, secret, egress, cloud)
-│   │   ├── scanner/                # PII + secret scanning
-│   │   ├── sandbox/                # Tool execution sandbox
-│   │   └── validate/               # 14 landmine rules
+│   │   └── scanner/                # PII + secret scanning
 │   │
 │   ├── operate/                    # Operate: monitoring and maintenance
 │   │   ├── doctor/                 # Diagnostics + auto-fix
@@ -415,6 +412,11 @@ clawhq/
 ├── package.json
 └── tsconfig.json
 ```
+
+**Cross-module security code:** Some security concerns live outside `src/secure/`, co-located with their operational context:
+- Container hardening (posture) → `src/build/docker/posture.ts`
+- Egress firewall (iptables CLAWHQ_FWD) → `src/build/launcher/firewall.ts`
+- Landmine validation (14 rules) → `src/config/validate.ts`
 
 ---
 

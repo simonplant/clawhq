@@ -6,7 +6,7 @@ Input sanitizer for ClawHQ agent infrastructure. Detects, neutralizes, and quara
 
 External content flows into agent context from messaging channels (Signal, Telegram, Discord), email, RSS, web search, and API responses. Any of these can carry adversarial payloads designed to override agent instructions, exfiltrate data, or hijack agent behavior.
 
-The sanitizer sits between external content ingestion and LLM context assembly. It complements the egress firewall (`src/secure/firewall/`) — the firewall restricts what goes out, the sanitizer restricts what comes in.
+The sanitizer sits between external content ingestion and LLM context assembly. It complements the egress firewall (`src/build/launcher/firewall.ts`) — the firewall restricts what goes out, the sanitizer restricts what comes in.
 
 ## Pipeline
 

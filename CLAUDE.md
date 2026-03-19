@@ -145,7 +145,7 @@ Key technical details:
 - `doctor` is the hero feature — checks every known failure mode preventively
 - Blueprints are complete agent designs (identity, security, tools, skills, cron, autonomy, memory, integrations)
 
-## Key Source Layout (Target Architecture)
+## Key Source Layout
 
 ```
 src/
@@ -163,13 +163,10 @@ src/
 │   └── launcher/               — Deploy orchestration (up/down/restart)
 │
 ├── secure/                     — Security and compliance
-│   ├── harden/                 — Container security overrides
+│   ├── sanitizer/              — Input injection detection + sanitization
 │   ├── credentials/            — Credential store + health probes
-│   ├── firewall/               — iptables CLAWHQ_FWD chain
 │   ├── audit/                  — Audit logging (tool, secret, egress, cloud)
-│   ├── scanner/                — PII + secret scanning
-│   ├── sandbox/                — Tool execution sandbox
-│   └── validate/               — 14 landmine rules
+│   └── scanner/                — PII + secret scanning
 │
 ├── operate/                    — Monitoring and maintenance
 │   ├── doctor/                 — Diagnostics + auto-fix
@@ -199,7 +196,12 @@ src/
 └── config/                     — Config types + schema (cross-cutting)
 ```
 
-**Note:** Current source layout differs from target. The module reorganization is planned work (Track E).
+**Cross-module security code:** Some security concerns live outside `src/secure/`, co-located with their operational context:
+- Container hardening (posture) → `src/build/docker/posture.ts`
+- Egress firewall (iptables CLAWHQ_FWD) → `src/build/launcher/firewall.ts`
+- Landmine validation (14 rules) → `src/config/validate.ts`
+
+**Note:** Current source layout differs from target in other modules. The module reorganization is planned work (Track E).
 
 ## Sprint Orchestration (aishore)
 
