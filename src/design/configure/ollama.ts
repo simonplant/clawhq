@@ -38,7 +38,8 @@ export async function isOllamaAvailable(
       signal: AbortSignal.timeout(5_000),
     });
     return res.ok;
-  } catch {
+  } catch (err) {
+    console.warn(`[ollama] Availability check failed for ${baseUrl}:`, err instanceof Error ? err.message : err);
     return false;
   }
 }
@@ -59,7 +60,8 @@ export async function listOllamaModels(
     if (!res.ok) return [];
     const data = (await res.json()) as { models?: { name: string }[] };
     return (data.models ?? []).map((m) => m.name);
-  } catch {
+  } catch (err) {
+    console.warn(`[ollama] Failed to list models from ${baseUrl}:`, err instanceof Error ? err.message : err);
     return [];
   }
 }
