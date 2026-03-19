@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773942169",
-  "startedAt": "2026-03-19T10:42:49-07:00",
+  "sprintId": "sprint-1773942810",
+  "startedAt": "2026-03-19T10:53:30-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-021",
-    "title": "Silent catch block in cli/index.ts swallows notification channel config error",
-    "intent": "No error in cli/index.ts is silently discarded. The notification channel config catch must log when it fails so operators know monitoring won't send alerts.",
-    "description": "src/cli/index.ts line 3167 has a catch block with a comment 'No channels configured — monitor still runs, just no notifications' but no logging. If the notification channel config throws due to misconfiguration, the operator has no trace. The monitor continues silently degraded. This is the only silent catch in the cli/ module — the sweep that covered evolve/, operate/, build/, secure/, design/, cloud/, and gateway/ (BUG-012 through BUG-019) did not cover cli/. Steps: (1) open src/cli/index.ts; (2) find catch block at line 3167; (3) add console.warn() logging the error and context before continuing; (4) do NOT change the fallback behavior — monitor should still run without notifications; (5) run cli tests to confirm no regression. Scope: 1 one-line addition in one file.",
+    "id": "BUG-022",
+    "title": "Silent catch block audit for src/config/ module",
+    "intent": "No error in src/config/ is silently discarded. Config parse, schema validation, and file read failures must be observable without enabling debug mode.",
+    "description": "The systematic silent-catch sweep (BUG-012 through BUG-019, BUG-021) covered evolve/, operate/, build/, secure/, design/, cloud/, gateway/, and cli/. The src/config/ module was not included. BUG-016 fixed a specific process.env.HOME issue in config/paths.ts but was not a general silent-catch sweep. Config module files to audit: defaults.ts, paths.ts, validate.ts, loader.ts, types.ts — any silent catches here would hide config parse failures, schema validation errors, or file read problems that are critical to every command. Steps: (1) search src/config/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() with error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour; (4) run config/ tests to confirm no regression. Scope: likely 2-5 additions, low risk.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:42:49-07:00",
+    "startedAt": "2026-03-19T10:53:30-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:44:26-07:00"
+    "completedAt": "2026-03-19T10:56:33-07:00"
   },
-  "completedAt": "2026-03-19T10:44:26-07:00",
+  "completedAt": "2026-03-19T10:56:33-07:00",
   "attempts": 1
 }

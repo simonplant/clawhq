@@ -286,11 +286,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "No hard dependencies — all modules it references (config/) are fully implemented. Pattern is identical to BUG-012 through BUG-019: search 'catch {' and 'catch (_', add console.warn(err, context) to each non-fatal catch, keep fallback return values unchanged, run tests. Config module is small (defaults.ts, paths.ts, validate.ts, loader.ts, types.ts) so scope is minimal. BUG-016 fixed a specific HOME env issue in paths.ts but was not a silent-catch sweep. This completes the module coverage gap. Zero risk."
+      "groomingNotes": "No hard dependencies — all modules it references (config/) are fully implemented. Pattern is identical to BUG-012 through BUG-019: search 'catch {' and 'catch (_', add console.warn(err, context) to each non-fatal catch, keep fallback return values unchanged, run tests. Config module is small (defaults.ts, paths.ts, validate.ts, loader.ts, types.ts) so scope is minimal. BUG-016 fixed a specific HOME env issue in paths.ts but was not a silent-catch sweep. This completes the module coverage gap. Zero risk.",
+      "completedAt": "2026-03-19T10:56:33-07:00"
     },
     {
       "id": "BUG-023",
@@ -306,6 +307,51 @@
       "readyForSprint": false,
       "groomedAt": "2026-03-19",
       "groomingNotes": "BLOCKED BY CQ-005. Do not sprint until CQ-005 is complete and src/secure/firewall/firewall.ts exists. After CQ-005: single CLAUDE.md edit in the 'Cross-module security code' section — change 'src/build/launcher/firewall.ts' to 'src/secure/firewall/firewall.ts'. Check for any other references to the old path. Doc-only, zero risk, pairs with BUG-020 and CQ-041 in the post-CQ-005 batch. Mark readyForSprint after CQ-005 sprint completes."
+    },
+    {
+      "id": "BUG-024",
+      "title": "Web dashboard port 3737 hardcoded in 2 locations",
+      "intent": "Dashboard default port has a single source of truth. No literal 3737 appears outside src/config/defaults.ts. Changing the default requires editing one line.",
+      "description": "The dashboard default port 3737 is hardcoded in two locations: src/web/start.ts:10 (const DEFAULT_PORT = 3737) and src/cli/index.ts:3180 (string default \"3737\" in .option()). This is the same BUG-011 pattern as the Gateway port 18789. If the port is changed in start.ts, the CLI help text stays stale. Steps: (1) add DASHBOARD_DEFAULT_PORT = 3737 to src/config/defaults.ts; (2) import and use it in src/web/start.ts replacing DEFAULT_PORT; (3) import and use it in src/cli/index.ts replacing \"3737\" string; (4) run tests to confirm no regression. Scope: two files, ~4 lines changed.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Two-location fix in two files. src/web/start.ts:10 (DEFAULT_PORT = 3737) and src/cli/index.ts:3180 (string '3737' in .option()). Add DASHBOARD_DEFAULT_PORT = 3737 to src/config/defaults.ts. Import and replace in both files. Run tests after — zero logic change, pure constant extraction. Pattern identical to BUG-011. No dependencies."
+    },
+    {
+      "id": "BUG-025",
+      "title": "Ollama default URL hardcoded and inconsistent across 8+ files",
+      "intent": "Ollama default URL has a single source of truth. No literal Ollama URL appears outside src/config/defaults.ts. All runtime references use the same host string.",
+      "description": "The Ollama default URL is hardcoded across 8+ files with inconsistent values — some use http://127.0.0.1:11434 and others use http://localhost:11434, which are technically equivalent but create noise and risk drift. Locations: src/design/configure/ollama.ts:8 (127.0.0.1, named local const DEFAULT_OLLAMA_URL), src/evolve/memory/summarize.ts:54 (127.0.0.1), src/evolve/migrate/extract.ts:75 (127.0.0.1), src/evolve/provider/registry.ts:35 (localhost), src/evolve/integrate/validate.ts:94 (localhost), src/evolve/integrate/registry.ts:78 (localhost, string default). Same pattern as BUG-011 (Gateway port scattered across 12 files). Steps: (1) add OLLAMA_DEFAULT_URL = 'http://127.0.0.1:11434' to src/config/defaults.ts (use 127.0.0.1 to match the design/ module which is the primary Ollama caller); (2) replace all runtime string literals with the constant import; (3) update doc comments to match; (4) run tests. Scope: ~6 file edits, no logic change.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "8+ files with hardcoded Ollama URL. Runtime instances to replace (not doc comments): src/design/configure/ollama.ts:8 (DEFAULT_OLLAMA_URL), src/evolve/memory/summarize.ts:54, src/evolve/migrate/extract.ts:75, src/evolve/provider/registry.ts:35, src/evolve/integrate/validate.ts:94, src/evolve/integrate/registry.ts:78 (defaultValue field). Use 127.0.0.1 (not localhost) as canonical value — matches the design/ module which is the primary Ollama caller; 127.0.0.1 is also safer in containerized environments. Add OLLAMA_DEFAULT_URL = 'http://127.0.0.1:11434' to defaults.ts. Doc comments (types.ts, migrate/types.ts, design/configure/smart.ts) update to match. Run tests — no logic change. No dependencies."
+    },
+    {
+      "id": "BUG-026",
+      "title": "WhatsApp Graph API version mismatch: v17.0 in validate vs v21.0 in connect",
+      "intent": "WhatsApp integration uses a single, consistent Graph API version throughout. No version mismatch between the validation probe and the connect flow.",
+      "description": "Two files reference different versions of the WhatsApp/Facebook Graph API: src/build/launcher/connect.ts:23 uses v21.0 (const WHATSAPP_API = 'https://graph.facebook.com/v21.0'), while src/evolve/integrate/validate.ts:115 uses v17.0. The credential validation probe and the actual connection flow must use the same API version. A probe that passes on v17.0 endpoints may not guarantee v21.0 compatibility and vice versa. Steps: (1) decide canonical version (v21.0 is newer — prefer that); (2) add WHATSAPP_API_VERSION = 'v21.0' and WHATSAPP_API_BASE = 'https://graph.facebook.com' to src/config/defaults.ts; (3) update connect.ts to use the constant; (4) update integrate/validate.ts to use the same version; (5) run tests. Scope: 3 files, ~5 line change.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Version mismatch: connect.ts uses v21.0, integrate/validate.ts uses v17.0. Canonical version: v21.0 (newer). Add WHATSAPP_GRAPH_API_VERSION = 'v21.0' to src/config/defaults.ts (do NOT add full URL — just the version segment to keep it composable). Update connect.ts WHATSAPP_API const to template with the version constant. Update integrate/validate.ts:115 to use the same version. Check evolve/integrate/registry.ts for any hardcoded version in egressDomains or config (just 'graph.facebook.com' — no version there, fine). Run tests. No dependencies — standalone fix."
     }
   ]
 }
