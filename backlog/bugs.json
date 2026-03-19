@@ -127,11 +127,72 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Sweep evolve/ for 'catch {' and 'catch (_'. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Key files: destroy.ts, preferences.ts, stage.ts, google-parser.ts, manifest.ts. Run evolve/ tests after. No dependencies.",
+      "completedAt": "2026-03-19T10:10:02-07:00"
+    },
+    {
+      "id": "BUG-013",
+      "title": "Silent catch blocks in operate/ swallow errors with no logging",
+      "intent": "No error in the operate/ module is silently discarded. Every catch block either logs the error or re-throws it. Diagnostic failures are always observable.",
+      "description": "20+ catch blocks across the operate/ module swallow errors silently. Key locations: src/operate/doctor/checks.ts (14 instances at lines 84,145,248,257,297,339,378,407,480,496,560,568,595,640), src/operate/monitor/alerts.ts (lines 64,213,224,282,319), src/operate/status/status.ts (lines 131,164,216). Critically, silent catches in doctor/checks.ts mean diagnostic failures are invisible — a check that fails to run is indistinguishable from a check that passes. Steps: (1) search operate/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour, just add logging. Scope: ~22 one-line additions across operate/.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Sweep evolve/ for 'catch {' and 'catch (_'. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Key files: destroy.ts, preferences.ts, stage.ts, google-parser.ts, manifest.ts. Run evolve/ tests after. No dependencies."
+      "groomingNotes": "PRIORITY NOTE: doctor/checks.ts has 14 silent catches — a check that fails to run is indistinguishable from a check that passes. Doctor is the hero feature. Silent failures here directly undermine the product's core value. Sprint this before BUG-012 and BUG-014. Sweep operate/ for 'catch {' and 'catch (_'. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Priority files: doctor/checks.ts (14 instances — MOST IMPORTANT), monitor/alerts.ts (5 instances), status/status.ts (3 instances). Run operate/ tests after. No dependencies."
+    },
+    {
+      "id": "BUG-014",
+      "title": "Silent catch blocks in build/ swallow errors with no logging",
+      "intent": "No error in the build/ module is silently discarded. Every catch block either logs the error or re-throws it. Preflight, firewall, and service failures must be observable.",
+      "description": "14+ catch blocks across the build/ module swallow errors silently. Key locations: src/build/launcher/firewall.ts (lines 98,106,127,137,165 — firewall rule failures), src/build/launcher/preflight.ts (lines 93,112,205,219 — pre-flight check failures), src/build/services/add.ts (lines 42,53,114,159,165 — service addition failures), src/build/docker/build.ts (line 166 — Docker build failure). Firewall and preflight silent catches are especially dangerous — a failed preflight that swallows its error allows a broken deploy to proceed silently. Steps: (1) search build/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour, just add logging. Scope: ~14 one-line additions across build/.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "SEQUENCING: CQ-005 moves src/build/launcher/firewall.ts to src/secure/firewall/firewall.ts. The 5 firewall.ts instances in this bug will be at the wrong path if fixed before CQ-005. DO NOT touch launcher/firewall.ts. FIX NOW (10 instances, safe): launcher/preflight.ts (4 instances — lines 93,112,205,219), services/add.ts (5 instances — lines 42,53,114,159,165), docker/build.ts (1 instance — line 166). AFTER CQ-005: follow-up fix for the 5 firewall instances at src/secure/firewall/firewall.ts. Sprint this item for the 10 safe instances only. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Run build/ tests after."
+    },
+    {
+      "id": "BUG-015",
+      "title": "Silent catch blocks in secure/ swallow errors with no logging",
+      "intent": "No error in the secure/ module is silently discarded. Scanner and audit failures must be logged. A scanner that silently fails is indistinguishable from a clean scan.",
+      "description": "12+ catch blocks across the secure/ module swallow errors silently. Key locations: src/secure/scanner/git.ts (lines 37,50,69 — git history scan errors), src/secure/scanner/walk.ts (lines 41,62,70 — file walk errors), src/secure/audit/logger.ts (lines 59,88,118,148,184,216 — audit log write failures), src/secure/credentials/probes.ts (line 185 — credential probe failures). The audit/logger.ts instances are particularly critical — if audit log writes fail silently, the tamper-evident audit trail has invisible gaps. Steps: (1) search secure/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour, just add logging. Scope: ~12 one-line additions across secure/.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "PRIORITY NOTE: audit/logger.ts has 6 silent catches — if audit log writes fail silently, the tamper-evident audit trail has invisible gaps. This directly undermines the transparency promise ('you know what your agent did'). Sprint this before BUG-012. Sweep secure/ for 'catch {' and 'catch (_'. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Priority files: audit/logger.ts (6 instances — MOST IMPORTANT, tamper-evident trail gaps), scanner/git.ts (3 instances), scanner/walk.ts (3 instances), credentials/probes.ts (1 instance). Run secure/ tests after. No dependencies."
+    },
+    {
+      "id": "BUG-016",
+      "title": "config/paths.ts still uses process.env.HOME instead of os.homedir()",
+      "intent": "os.homedir() is the single API for user home directory throughout the codebase. No process.env.HOME usage remains after BUG-010.",
+      "description": "src/config/paths.ts lines 42 and 51 use process.env.HOME ?? homedir() — they correctly import and fall back to homedir(), but still unnecessarily check process.env.HOME first. BUG-010 established that os.homedir() is the correct cross-platform API and fixed sanitizer.ts, but paths.ts was not updated. While the current code is safe (homedir() is the fallback), the inconsistency violates the intent of BUG-010. Steps: (1) open src/config/paths.ts; (2) find lines using process.env.HOME ?? homedir(); (3) replace each with homedir() directly; (4) verify homedir import from 'os' is present; (5) run existing config/paths tests to confirm no regression. Scope: two-line change in one file.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Two-line fix in one file. src/config/paths.ts lines 42 and 51 — replace process.env.HOME ?? homedir() with homedir() directly. homedir import from 'os' should already be present (it's the fallback). Pattern already fixed in sanitizer.ts (BUG-010). No dependencies. Run existing config tests after change. Zero-risk."
     }
   ]
 }
