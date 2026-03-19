@@ -1,31 +1,31 @@
 {
-  "sprintId": "sprint-1773913314",
-  "startedAt": "2026-03-19T02:41:54-07:00",
+  "sprintId": "sprint-1773914295",
+  "startedAt": "2026-03-19T02:58:15-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-022",
-    "title": "Skill: email-digest",
-    "intent": "Deliver the email-digest skill so the Email Manager agent triages inbox, categorizes, and proposes responses with approval gates. No auto-send, no data leaves the machine.",
-    "description": "HIGH VALUE: First autonomous capability the user sees. Pairs with CQ-017 (Email Manager blueprint). This skill is why the user chose ClawHQ over Gmail. SEQUENCING: Requires CQ-021 (skill lifecycle + vetting — email-digest must go through stage->vet->approve->activate pipeline), CQ-025 (approval queue — 'propose responses with approval gates' is the core safety feature), and CQ-017 (Email Manager blueprint to define context). Acceptance: SKILL.md + prompts installed via skill lifecycle pipeline; agent triages inbox, categorizes emails, proposes responses with approval gates; runs on 15min cron; no data leaves machine (local Ollama).",
+    "id": "CQ-023",
+    "title": "Audit trail (tool + egress + secrets)",
+    "intent": "Log every tool execution, secret access, and egress event to tamper-evident JSONL. The user must be able to answer 'what did my agent do?' at any time.",
+    "description": "TRANSPARENCY PROMISE: 'You know what your agent did, what data it touched, and what left your machine' — this is a design principle. Without audit trail, it's just a claim. The user should be able to ask 'what did my agent do today?' and get an answer. HMAC-chaining on secret lifecycle means the audit is tamper-evident, not just logged. OWASP compliance export matters for the Tinkerer persona running in an org context. Acceptance: every tool execution logged to JSONL; secret lifecycle events HMAC-chained; 'clawhq audit' shows recent activity; export produces OWASP-compatible format.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create SKILL.md defining email triage behavior and boundaries",
-      "Write prompts for inbox categorization, summarization, and response proposal",
-      "Configure 15min cron schedule for inbox checks",
-      "Integrate with approval queue — proposed responses require user approval"
+      "Implement tool execution audit logging to append-only JSONL",
+      "Add egress event logging",
+      "Implement HMAC-chained secret lifecycle events",
+      "Build OWASP compliance export format",
+      "Add 'clawhq audit' command for recent activity view"
     ],
     "acceptanceCriteria": [
-      "SKILL.md + prompts installed via skill lifecycle pipeline",
-      "Agent triages inbox and categorizes emails correctly",
-      "Proposed responses queue for approval (no auto-send)",
-      "Runs on 15min cron schedule",
-      "No data leaves machine (local Ollama only)"
+      "Every tool execution logged to append-only JSONL",
+      "Secret lifecycle events HMAC-chained (tamper-evident)",
+      "'clawhq audit' shows recent activity",
+      "Export produces OWASP-compatible format"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T02:41:54-07:00",
+    "startedAt": "2026-03-19T02:58:15-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T02:58:13-07:00"
+    "completedAt": "2026-03-19T03:12:56-07:00"
   },
-  "completedAt": "2026-03-19T02:58:13-07:00",
-  "attempts": 3
+  "completedAt": "2026-03-19T03:12:56-07:00",
+  "attempts": 2
 }
