@@ -445,11 +445,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Single local constant in one file. source.ts:23 defines DEFAULT_REPO_URL = 'https://github.com/nicepkg/openclaw.git'. Add OPENCLAW_REPO_URL to defaults.ts, import and replace. Also grep for 'nicepkg/openclaw' across the whole codebase to catch any other occurrences (installer docs, README mentions are fine — only fix runtime string literals in src/). Run build/ tests after. Zero-risk constant extraction. No blocking dependencies."
+      "groomingNotes": "Single local constant in one file. source.ts:23 defines DEFAULT_REPO_URL = 'https://github.com/nicepkg/openclaw.git'. Add OPENCLAW_REPO_URL to defaults.ts, import and replace. Also grep for 'nicepkg/openclaw' across the whole codebase to catch any other occurrences (installer docs, README mentions are fine — only fix runtime string literals in src/). Run build/ tests after. Zero-risk constant extraction. No blocking dependencies.",
+      "completedAt": "2026-03-19T11:54:25-07:00"
     },
     {
       "id": "BUG-033",

@@ -13,14 +13,11 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { OPENCLAW_REPO_URL } from "../../config/defaults.js";
+
 import type { SourceBuildOptions, SourceBuildResult } from "./types.js";
 
 const execFileAsync = promisify(execFile);
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-/** Default OpenClaw repository URL. */
-const DEFAULT_REPO_URL = "https://github.com/nicepkg/openclaw.git";
 
 /** Docker image tag for the from-source build. */
 const SOURCE_IMAGE_TAG = "openclaw:local";
@@ -48,7 +45,7 @@ export async function buildFromSource(
 ): Promise<SourceBuildResult> {
   const deployDir = resolve(options.deployDir);
   const sourceDir = join(deployDir, "engine", "source");
-  const repoUrl = options.repoUrl ?? DEFAULT_REPO_URL;
+  const repoUrl = options.repoUrl ?? OPENCLAW_REPO_URL;
   const progress = options.onProgress ?? (() => {});
 
   // Step 1: Clone repository
