@@ -119,7 +119,7 @@ function truncateUtf8(str: string, maxBytes: number): string {
 
   // Walk backwards to find a safe cut point (don't split multi-byte chars)
   let end = maxBytes;
-  while (end > 0 && (buf[end]! & 0xc0) === 0x80) {
+  while (end > 0 && (buf[end] & 0xc0) === 0x80) {
     end--;
   }
 

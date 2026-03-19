@@ -4,8 +4,9 @@ import { loadBlueprint } from "../blueprints/loader.js";
 import type { Blueprint } from "../blueprints/types.js";
 
 import { generateAgents } from "./agents.js";
-import { generateIdentityFiles } from "./index.js";
 import { generateSoul } from "./soul.js";
+
+import { generateIdentityFiles } from "./index.js";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -192,20 +193,24 @@ describe("generateIdentityFiles", () => {
   it("SOUL.md contains personality from blueprint", () => {
     const bp = loadFamilyHub();
     const files = generateIdentityFiles(bp);
-    const soul = files.find((f) => f.name === "SOUL.md")!;
-    expect(soul.content).toContain(bp.personality.tone);
-    expect(soul.content).toContain(bp.personality.boundaries);
+    const soul = files.find((f) => f.name === "SOUL.md");
+    expect(soul).toBeDefined();
+    const soulContent = soul?.content ?? "";
+    expect(soulContent).toContain(bp.personality.tone);
+    expect(soulContent).toContain(bp.personality.boundaries);
   });
 
   it("AGENTS.md contains tool/skill inventory", () => {
     const bp = loadFamilyHub();
     const files = generateIdentityFiles(bp);
-    const agents = files.find((f) => f.name === "AGENTS.md")!;
+    const agents = files.find((f) => f.name === "AGENTS.md");
+    expect(agents).toBeDefined();
+    const agentsContent = agents?.content ?? "";
     for (const tool of bp.toolbelt.tools) {
-      expect(agents.content).toContain(tool.name);
+      expect(agentsContent).toContain(tool.name);
     }
     for (const skill of bp.toolbelt.skills) {
-      expect(agents.content).toContain(skill.name);
+      expect(agentsContent).toContain(skill.name);
     }
   });
 });
