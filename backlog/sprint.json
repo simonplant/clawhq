@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1773915833",
   "startedAt": "2026-03-19T03:23:53-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "CQ-025",
     "title": "Approval queue",
@@ -21,6 +21,10 @@
       "Resolution recorded in audit trail"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T03:23:53-07:00"
-  }
+    "startedAt": "2026-03-19T03:23:53-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-19T04:01:26-07:00"
+  },
+  "completedAt": "2026-03-19T04:01:26-07:00",
+  "attempts": 3
 }

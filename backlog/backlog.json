@@ -604,8 +604,8 @@
       "description": "SAFE AUTOMATION: Without approval queue, the agent can't safely propose actions that have real-world consequences. The email-digest skill must propose draft replies for approval — not auto-send. Telegram integration means the user gets notified on their phone, not just in a terminal. Resolution tracking means the agent knows what was approved vs. rejected, and can learn from the pattern. Acceptance: high-stakes actions queue for approval; Telegram notification sent; user can approve/reject from Telegram; resolution recorded in audit trail.",
       "category": "operate",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement runtime approval queue for high-stakes actions",
         "Add Telegram integration for approval notifications",
@@ -617,7 +617,9 @@
         "Telegram notification sent for each pending approval",
         "User can approve/reject directly from Telegram",
         "Resolution recorded in audit trail"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T04:01:26-07:00"
     },
     {
       "id": "CQ-026",
