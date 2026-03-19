@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773944355",
-  "startedAt": "2026-03-19T11:19:15-07:00",
+  "sprintId": "sprint-1773944843",
+  "startedAt": "2026-03-19T11:27:23-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-028",
-    "title": "JSON parse missing try-catch in evolve/ manifest loaders",
-    "intent": "No corrupted manifest file in evolve/ causes an unhandled exception. All manifest loaders recover gracefully with logged warnings and safe defaults.",
-    "description": "Six evolve module manifest loaders use bare JSON.parse without try-catch: src/evolve/role/manifest.ts:54 (loadRoleManifest), src/evolve/provider/manifest.ts:26 (loadProviderManifest), src/evolve/integrate/manifest.ts:26 (loadIntegrationManifest), src/evolve/memory/lifecycle.ts:61, src/evolve/rollback/capability-snapshot.ts:67, src/evolve/skills/rollback.ts:39. These files exist and can be corrupted (disk error, partial write, manual edit). The same pattern was correctly handled in evolve/tools/manifest.ts and evolve/skills/lifecycle.ts (both have try-catch + console.warn). Steps: (1) apply the same try-catch pattern to the 6 missing loaders; (2) fallback: role manifest seeds built-in roles only, others return empty version-1 state; (3) add console.warn(err, context) in each catch; (4) run evolve/ tests to confirm no regression. Scope: 6 try-catch wrappers across 6 files. Pattern is identical to BUG-012/BUG-015 sweep.",
+    "id": "BUG-029",
+    "title": "Dockerfile Stage 2 binary URL and path not validated before template injection",
+    "intent": "Generated Dockerfiles never contain malformed or shell-unsafe content from binary tool config. URL scheme must be https:// and destPath must be a safe absolute path.",
+    "description": "src/build/docker/dockerfile.ts:81-82 interpolates binary.url and binary.destPath directly into Dockerfile content via template strings: 'RUN curl -fsSL \"${binary.url}\" -o \"${binary.destPath}\"'. There is no validation that: (1) binary.url is a valid https:// URL before insertion, (2) binary.destPath is a safe absolute path with no newlines, quotes, or shell metacharacters. A malformed URL causes a confusing Docker build failure. A path with embedded newlines could inject additional Dockerfile instructions. The Stage2Config type accepts any string values. Steps: (1) add validateBinaryUrl(url: string): void helper that throws if url is not a valid https:// URL (use new URL(url) + check protocol); (2) add validateBinaryDestPath(path: string): void that throws if path contains newlines, quotes, or backslashes; (3) call both before inserting into Dockerfile lines; (4) call validation in the Stage 2 generator and/or in the tool manifest layer where binaries are added; (5) run docker/ tests to confirm no regression. Scope: ~15 lines in one file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T11:19:15-07:00",
+    "startedAt": "2026-03-19T11:27:23-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T11:21:53-07:00"
+    "completedAt": "2026-03-19T11:31:14-07:00"
   },
-  "completedAt": "2026-03-19T11:21:53-07:00",
+  "completedAt": "2026-03-19T11:31:14-07:00",
   "attempts": 1
 }

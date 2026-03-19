@@ -17,6 +17,33 @@ import {
 
 import type { Stage1Config, Stage2Config } from "./types.js";
 
+// ── Binary Validation ───────────────────────────────────────────────────────
+
+const UNSAFE_PATH_CHARS = /[\n\r"'\\`$]/;
+
+/** Throws if url is not a valid https:// URL. */
+export function validateBinaryUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid binary URL: ${url}`);
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error(`Binary URL must use https:// scheme, got: ${parsed.protocol}`);
+  }
+}
+
+/** Throws if destPath contains newlines, quotes, backslashes, or is not absolute. */
+export function validateBinaryDestPath(destPath: string): void {
+  if (!destPath.startsWith("/")) {
+    throw new Error(`Binary destPath must be an absolute path, got: ${destPath}`);
+  }
+  if (UNSAFE_PATH_CHARS.test(destPath)) {
+    throw new Error(`Binary destPath contains unsafe characters: ${destPath}`);
+  }
+}
+
 // ── Stage 1: Base Image ─────────────────────────────────────────────────────
 
 /**
@@ -76,6 +103,8 @@ export function generateStage2Dockerfile(
 
   // Install binary tools from URLs
   for (const binary of config.binaries) {
+    validateBinaryUrl(binary.url);
+    validateBinaryDestPath(binary.destPath);
     lines.push(
       `# Install ${binary.name}`,
       `RUN curl -fsSL "${binary.url}" -o "${binary.destPath}" && \\`,

@@ -13,7 +13,12 @@
 export { build } from "./build.js";
 
 // Dockerfile generation
-export { generateStage1Dockerfile, generateStage2Dockerfile } from "./dockerfile.js";
+export {
+  generateStage1Dockerfile,
+  generateStage2Dockerfile,
+  validateBinaryDestPath,
+  validateBinaryUrl,
+} from "./dockerfile.js";
 
 // Compose generation
 export { generateCompose } from "./compose.js";
