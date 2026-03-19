@@ -40,6 +40,9 @@ personality:
 security_posture:
   posture: hardened
   egress: restricted
+  egress_domains:
+    - imap.gmail.com
+    - smtp.gmail.com
   identity_mount: read-only
 
 monitoring:

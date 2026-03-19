@@ -25,6 +25,8 @@ personality:
 security_posture:
   posture: paranoid
   egress: allowlist-only
+  egress_domains:
+    - api.tavily.com
   identity_mount: read-only
 
 monitoring:

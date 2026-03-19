@@ -164,6 +164,7 @@ function checkSecurityPosture(raw: RawBlueprint): BlueprintValidationResult[] {
   return [
     checkEnum(section, "posture", "security_posture", ["standard", "hardened", "paranoid"]),
     checkEnum(section, "egress", "security_posture", ["default", "restricted", "allowlist-only"]),
+    checkStringArray(section, "egress_domains", "security_posture"),
     checkEnum(section, "identity_mount", "security_posture", ["read-only"]),
   ];
 }

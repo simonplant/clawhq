@@ -24,6 +24,9 @@ personality:
 security_posture:
   posture: hardened
   egress: restricted
+  egress_domains:
+    - caldav.icloud.com
+    - api.todoist.com
   identity_mount: read-only
 
 monitoring:

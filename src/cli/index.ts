@@ -340,6 +340,16 @@ function printBlueprintPreview(bp: Blueprint): void {
   console.log(`  Egress:         ${bp.security_posture.egress}`);
   console.log(`  Identity mount: ${bp.security_posture.identity_mount}`);
 
+  // Egress Domains
+  console.log(bold("\nEgress Domains"));
+  if (bp.security_posture.egress_domains.length > 0) {
+    for (const domain of bp.security_posture.egress_domains) {
+      console.log(`  ${chalk.cyan(domain)}`);
+    }
+  } else {
+    console.log(`  ${dim("none")}`);
+  }
+
   // Tools
   console.log(bold("\nTools"));
   for (const tool of bp.toolbelt.tools) {
