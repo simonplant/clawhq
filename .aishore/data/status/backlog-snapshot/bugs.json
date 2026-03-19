@@ -397,11 +397,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "SECURITY UPGRADE — elevated from 'should' to 'must'. This is an active Dockerfile injection vulnerability: destPath with embedded newlines can inject arbitrary Dockerfile instructions into the Stage 2 build. CQ-031 (tool install) is already shipped so the attack surface is live. For a platform whose core promise is 'security by default', shipping a Dockerfile injection vector is directly contradictory. The fix is ~15 lines and low-risk — no reason to defer. Grooming notes unchanged: validateBinaryUrl() + validateBinaryDestPath() in dockerfile.ts:81-82, called before template insertion. No dependencies. Run docker/ tests after."
+      "groomingNotes": "SECURITY UPGRADE — elevated from 'should' to 'must'. This is an active Dockerfile injection vulnerability: destPath with embedded newlines can inject arbitrary Dockerfile instructions into the Stage 2 build. CQ-031 (tool install) is already shipped so the attack surface is live. For a platform whose core promise is 'security by default', shipping a Dockerfile injection vector is directly contradictory. The fix is ~15 lines and low-risk — no reason to defer. Grooming notes unchanged: validateBinaryUrl() + validateBinaryDestPath() in dockerfile.ts:81-82, called before template insertion. No dependencies. Run docker/ tests after.",
+      "completedAt": "2026-03-19T11:31:14-07:00"
     },
     {
       "id": "BUG-030",
