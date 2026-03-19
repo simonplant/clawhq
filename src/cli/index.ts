@@ -36,6 +36,17 @@ import {
   WizardAbortError,
   writeBundle,
 } from "../design/configure/index.js";
+import {
+  destroyAgent,
+  exportBundle,
+  formatDestroyJson,
+  formatDestroyTable,
+  formatExportJson,
+  formatExportTable,
+  formatVerifyResult,
+  verifyDestructionProof,
+} from "../evolve/lifecycle/index.js";
+import type { DestructionProof, LifecycleProgress } from "../evolve/lifecycle/index.js";
 import type { SkillProgress } from "../evolve/skills/index.js";
 import {
   formatSkillList,
@@ -844,10 +855,29 @@ program
   .description("Export portable agent bundle")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("-o, --output <path>", "Output file path")
-  .action(async (opts: { deployDir: string; output?: string }) => {
+  .option("--json", "Output as JSON for scripting")
+  .action(async (opts: { deployDir: string; output?: string; json?: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+    const spinner = ora();
+    const onProgress = (event: LifecycleProgress): void => {
+      const label = `[${event.step}]`;
+      switch (event.status) {
+        case "running": spinner.start(`${label} ${event.message}`); break;
+        case "done": spinner.succeed(`${label} ${event.message}`); break;
+        case "failed": spinner.fail(`${label} ${event.message}`); break;
+        case "skipped": spinner.warn(`${label} ${event.message}`); break;
+      }
+    };
+    try {
+      const result = await exportBundle({ deployDir: opts.deployDir, output: opts.output, onProgress });
+      console.log();
+      console.log(opts.json ? formatExportJson(result) : formatExportTable(result));
+      process.exit(result.success ? 0 : 1);
+    } catch (err) {
+      spinner.stop();
+      console.error(renderError(err));
+      process.exit(1);
+    }
   });
 
 program
@@ -855,10 +885,54 @@ program
   .description("Verified agent destruction")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("--confirm", "Skip confirmation prompt")
-  .action(async (opts: { deployDir: string; confirm?: boolean }) => {
+  .option("--json", "Output as JSON for scripting")
+  .action(async (opts: { deployDir: string; confirm?: boolean; json?: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+    if (!opts.confirm) {
+      console.log(chalk.red.bold("⚠  WARNING: This will permanently destroy ALL agent data."));
+      console.log(chalk.red("   This action cannot be undone.\n"));
+      console.log(`   Deploy dir: ${opts.deployDir}\n`);
+      console.log(chalk.yellow("   Run with --confirm to proceed."));
+      process.exit(1);
+    }
+    const spinner = ora();
+    const onProgress = (event: LifecycleProgress): void => {
+      const label = `[${event.step}]`;
+      switch (event.status) {
+        case "running": spinner.start(`${label} ${event.message}`); break;
+        case "done": spinner.succeed(`${label} ${event.message}`); break;
+        case "failed": spinner.fail(`${label} ${event.message}`); break;
+        case "skipped": spinner.warn(`${label} ${event.message}`); break;
+      }
+    };
+    try {
+      const result = await destroyAgent({ deployDir: opts.deployDir, confirm: true, onProgress });
+      console.log();
+      console.log(opts.json ? formatDestroyJson(result) : formatDestroyTable(result));
+      process.exit(result.success ? 0 : 1);
+    } catch (err) {
+      spinner.stop();
+      console.error(renderError(err));
+      process.exit(1);
+    }
+  });
+
+program
+  .command("verify-proof")
+  .description("Verify a destruction proof file")
+  .argument("<file>", "Path to the destruction proof JSON file")
+  .action(async (file: string) => {
+    try {
+      const { readFile } = await import("node:fs/promises");
+      const raw = await readFile(file, "utf-8");
+      const proof = JSON.parse(raw) as DestructionProof;
+      const valid = verifyDestructionProof(proof);
+      console.log(formatVerifyResult(proof, valid));
+      process.exit(valid ? 0 : 1);
+    } catch (err) {
+      console.error(renderError(err));
+      process.exit(1);
+    }
   });
 
 // ── Cloud Commands ──────────────────────────────────────────────────────────
