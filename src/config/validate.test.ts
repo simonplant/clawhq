@@ -99,6 +99,7 @@ function validBundle(): DeploymentBundle {
     envVars: {},
     cronJobs: validCronJobs(),
     identityFiles: validIdentityFiles(),
+    toolFiles: [],
     clawhqConfig: { version: "1" },
   };
 }

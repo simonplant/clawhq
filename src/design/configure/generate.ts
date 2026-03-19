@@ -15,10 +15,13 @@ import type {
   DeploymentBundle,
   IdentityFileInfo,
   OpenClawConfig,
+  ToolFileInfo,
 } from "../../config/types.js";
 import type { Blueprint } from "../blueprints/types.js";
 import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../identity/index.js";
 import type { IdentityFileContent } from "../identity/index.js";
+import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../tools/index.js";
+import type { ToolFileContent } from "../tools/index.js";
 
 import type { WizardAnswers } from "./types.js";
 
@@ -59,6 +62,7 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     envVars: buildEnvVars(answers),
     cronJobs: buildCronJobs(answers.blueprint),
     identityFiles: buildIdentityFiles(answers.blueprint),
+    toolFiles: buildToolFiles(answers.blueprint),
     clawhqConfig: buildClawHQConfig(answers),
   };
 }
@@ -338,6 +342,35 @@ function buildIdentityFiles(blueprint: Blueprint): IdentityFileInfo[] {
     name: f.name,
     path: f.relativePath,
     sizeBytes: Buffer.byteLength(f.content, "utf-8"),
+  }));
+}
+
+// ── Tool Files ──────────────────────────────────────────────────────────
+
+// Re-export for consumers that import from configure/index.
+export type { ToolFileContent } from "../tools/index.js";
+
+/**
+ * Generate tool wrapper content from a blueprint.
+ *
+ * Delegates to the tools module for CLI wrapper generation.
+ * Returns the actual file content for writing to disk.
+ */
+export function generateToolFiles(blueprint: Blueprint): ToolFileContent[] {
+  return generateToolWrappersFromBlueprint(blueprint);
+}
+
+/**
+ * Build tool file metadata from blueprint toolbelt.
+ *
+ * Returns ToolFileInfo entries for inclusion in the deployment bundle.
+ */
+function buildToolFiles(blueprint: Blueprint): ToolFileInfo[] {
+  return generateToolFiles(blueprint).map((f) => ({
+    name: f.name,
+    path: f.relativePath,
+    sizeBytes: Buffer.byteLength(f.content, "utf-8"),
+    mode: f.mode,
   }));
 }
 

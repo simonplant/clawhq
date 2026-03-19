@@ -459,8 +459,8 @@
       "description": "IDENTITY IS THE PRODUCT: SOUL.md defines who the agent IS — its personality, communication style, boundaries. Without it, the user gets a generic OpenClaw instance, not a purpose-built agent. Read-only mount means the agent cannot modify its own personality at runtime (LM-12 prevention). SOUL.md (not IDENTITY.md) per current docs. Acceptance: SOUL.md generated from blueprint + wizard answers; AGENTS.md reflects correct tool/skill inventory; identity files mounted read-only in container; token budget respected.",
       "category": "design",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Generate SOUL.md from blueprint definition + wizard answers",
         "Generate AGENTS.md reflecting correct tool/skill inventory",
@@ -472,7 +472,9 @@
         "AGENTS.md reflects correct tool/skill inventory",
         "Identity files mounted read-only in container (LM-12 prevention)",
         "Token budget respected — identity content fits within limits"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T02:09:04-07:00"
     },
     {
       "id": "CQ-020",

@@ -483,8 +483,8 @@
       "description": "AGENT'S HANDS: Tools are what the agent can DO. An email agent without an email tool can't triage inbox. Blueprint-driven generation means tools are consistent with what the identity and skills expect. CLI wrappers (bash/python3) are thin — they call himalaya, caldav, etc. — so adding a new integration means writing a wrapper, not modifying the agent. Acceptance: all 7 tool wrappers generate correctly from blueprint config; generated tools executable in container; tool names match blueprint's tool references in AGENTS.md.",
       "category": "design",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Generate CLI tool wrappers for: email, tasks, todoist, ical, quote, tavily, todoist-sync",
         "Derive tool configuration from blueprint YAML",
@@ -495,7 +495,9 @@
         "All 7 tool wrappers generate correctly from blueprint config",
         "Generated tools are executable in container",
         "Tool names match blueprint's tool references in AGENTS.md"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T02:28:17-07:00"
     },
     {
       "id": "CQ-021",
