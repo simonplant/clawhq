@@ -31,16 +31,16 @@ USAGE
 }
 
 case "\${1:-}" in
-  list)    shift; exec "\$HIMALAYA" list "\$@" ;;
-  read)    shift; exec "\$HIMALAYA" read "\$@" ;;
-  reply)   shift; exec "\$HIMALAYA" reply "\$@" ;;
-  send)    shift; exec "\$HIMALAYA" send "\$@" ;;
-  search)  shift; exec "\$HIMALAYA" search "\$@" ;;
-  move)    shift; exec "\$HIMALAYA" move "\$@" ;;
-  delete)  shift; exec "\$HIMALAYA" delete "\$@" ;;
-  folders) shift; exec "\$HIMALAYA" folders "\$@" ;;
+  list)    shift; exec "$HIMALAYA" list "$@" ;;
+  read)    shift; exec "$HIMALAYA" read "$@" ;;
+  reply)   shift; exec "$HIMALAYA" reply "$@" ;;
+  send)    shift; exec "$HIMALAYA" send "$@" ;;
+  search)  shift; exec "$HIMALAYA" search "$@" ;;
+  move)    shift; exec "$HIMALAYA" move "$@" ;;
+  delete)  shift; exec "$HIMALAYA" delete "$@" ;;
+  folders) shift; exec "$HIMALAYA" folders "$@" ;;
   -h|--help|help|"") usage ;;
-  *) echo "email: unknown command '\$1'" >&2; usage >&2; exit 1 ;;
+  *) echo "email: unknown command '$1'" >&2; usage >&2; exit 1 ;;
 esac
 `;
 }

@@ -27,27 +27,27 @@ USAGE
 }
 
 cmd_get() {
-  local symbol="\$1"
-  curl -sS "\$API/quote?symbols=\$(echo "\$symbol" | tr '[:lower:]' '[:upper:]')" \\
+  local symbol="$1"
+  curl -sS "$API/quote?symbols=$(echo "$symbol" | tr '[:lower:]' '[:upper:]')" \\
     -H "User-Agent: ClawHQ/1.0"
 }
 
 cmd_batch() {
-  local symbols="\$1"
-  curl -sS "\$API/quote?symbols=\$(echo "\$symbols" | tr '[:lower:]' '[:upper:]')" \\
+  local symbols="$1"
+  curl -sS "$API/quote?symbols=$(echo "$symbols" | tr '[:lower:]' '[:upper:]')" \\
     -H "User-Agent: ClawHQ/1.0"
 }
 
 cmd_history() {
-  local symbol="\$1"
+  local symbol="$1"
   local range="\${2:-1mo}"
-  curl -sS "https://query1.finance.yahoo.com/v8/finance/chart/\$(echo "\$symbol" | tr '[:lower:]' '[:upper:]')?range=\$range&interval=1d" \\
+  curl -sS "https://query1.finance.yahoo.com/v8/finance/chart/$(echo "$symbol" | tr '[:lower:]' '[:upper:]')?range=$range&interval=1d" \\
     -H "User-Agent: ClawHQ/1.0"
 }
 
 cmd_summary() {
-  local symbol="\$1"
-  curl -sS "\$API/quote?symbols=\$(echo "\$symbol" | tr '[:lower:]' '[:upper:]')&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,marketCap,fiftyTwoWeekHigh,fiftyTwoWeekLow,regularMarketVolume" \\
+  local symbol="$1"
+  curl -sS "$API/quote?symbols=$(echo "$symbol" | tr '[:lower:]' '[:upper:]')&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,marketCap,fiftyTwoWeekHigh,fiftyTwoWeekLow,regularMarketVolume" \\
     -H "User-Agent: ClawHQ/1.0"
 }
 
@@ -57,7 +57,7 @@ case "\${1:-}" in
   history) shift; cmd_history "\${1:?symbol required}" "\${2:-1mo}" ;;
   summary) shift; cmd_summary "\${1:?symbol required}" ;;
   -h|--help|help|"") usage ;;
-  *) echo "quote: unknown command '\$1'" >&2; usage >&2; exit 1 ;;
+  *) echo "quote: unknown command '$1'" >&2; usage >&2; exit 1 ;;
 esac
 `;
 }

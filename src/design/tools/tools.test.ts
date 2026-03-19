@@ -150,16 +150,16 @@ describe("email tool", () => {
     const bp = loadEmailManager();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "email");
     expect(wrapper).toBeDefined();
-    expect(wrapper!.content).toContain("himalaya");
+    expect(wrapper?.content).toContain("himalaya");
   });
 
   it("includes usage help", () => {
     const bp = loadEmailManager();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "email");
-    expect(wrapper!.content).toContain("usage()");
-    expect(wrapper!.content).toContain("list");
-    expect(wrapper!.content).toContain("read");
-    expect(wrapper!.content).toContain("send");
+    expect(wrapper?.content).toContain("usage()");
+    expect(wrapper?.content).toContain("list");
+    expect(wrapper?.content).toContain("read");
+    expect(wrapper?.content).toContain("send");
   });
 });
 
@@ -168,13 +168,13 @@ describe("ical tool", () => {
     const bp = loadFamilyHub();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "ical");
     expect(wrapper).toBeDefined();
-    expect(wrapper!.content).toMatch(/^#!\/usr\/bin\/env python3/);
+    expect(wrapper?.content).toMatch(/^#!\/usr\/bin\/env python3/);
   });
 
   it("references caldav", () => {
     const bp = loadFamilyHub();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "ical");
-    expect(wrapper!.content).toContain("caldav");
+    expect(wrapper?.content).toContain("caldav");
   });
 });
 
@@ -183,9 +183,9 @@ describe("tasks tool", () => {
     const bp = loadEmailManager();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "tasks");
     expect(wrapper).toBeDefined();
-    expect(wrapper!.content).toContain("tasks.json");
-    expect(wrapper!.content).toContain("add");
-    expect(wrapper!.content).toContain("done");
+    expect(wrapper?.content).toContain("tasks.json");
+    expect(wrapper?.content).toContain("add");
+    expect(wrapper?.content).toContain("done");
   });
 });
 
@@ -194,8 +194,8 @@ describe("todoist tool", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "todoist");
     expect(wrapper).toBeDefined();
-    expect(wrapper!.content).toContain("api.todoist.com/rest/v2");
-    expect(wrapper!.content).toContain("TODOIST_API_TOKEN");
+    expect(wrapper?.content).toContain("api.todoist.com/rest/v2");
+    expect(wrapper?.content).toContain("TODOIST_API_TOKEN");
   });
 });
 
@@ -204,8 +204,8 @@ describe("todoist-sync tool", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "todoist-sync");
     expect(wrapper).toBeDefined();
-    expect(wrapper!.content).toContain("overdue");
-    expect(wrapper!.content).toContain("due-today");
+    expect(wrapper?.content).toContain("overdue");
+    expect(wrapper?.content).toContain("due-today");
   });
 });
 
@@ -214,8 +214,8 @@ describe("tavily tool", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "tavily");
     expect(wrapper).toBeDefined();
-    expect(wrapper!.content).toContain("api.tavily.com");
-    expect(wrapper!.content).toContain("TAVILY_API_KEY");
+    expect(wrapper?.content).toContain("api.tavily.com");
+    expect(wrapper?.content).toContain("TAVILY_API_KEY");
   });
 });
 
@@ -224,12 +224,12 @@ describe("quote tool", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "quote");
     expect(wrapper).toBeDefined();
-    expect(wrapper!.content).toContain("finance.yahoo.com");
+    expect(wrapper?.content).toContain("finance.yahoo.com");
   });
 
   it("supports batch quotes", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "quote");
-    expect(wrapper!.content).toContain("batch");
+    expect(wrapper?.content).toContain("batch");
   });
 });

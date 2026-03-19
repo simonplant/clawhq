@@ -17,8 +17,8 @@ import { generateIcalTool } from "./ical.js";
 import { generateQuoteTool } from "./quote.js";
 import { generateTasksTool } from "./tasks.js";
 import { generateTavilyTool } from "./tavily.js";
-import { generateTodoistTool } from "./todoist.js";
 import { generateTodoistSyncTool } from "./todoist-sync.js";
+import { generateTodoistTool } from "./todoist.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

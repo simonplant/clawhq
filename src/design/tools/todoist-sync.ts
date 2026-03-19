@@ -29,11 +29,11 @@ USAGE
 }
 
 sync_request() {
-  local resource_types="\$1"
-  curl -sS -X POST "\$API/sync" \\
-    -H "Authorization: Bearer \$TOKEN" \\
+  local resource_types="$1"
+  curl -sS -X POST "$API/sync" \\
+    -H "Authorization: Bearer $TOKEN" \\
     -H "Content-Type: application/x-www-form-urlencoded" \\
-    -d "sync_token=*&resource_types=[\\"\\"\$resource_types\\"\\"\\"]"
+    -d "sync_token=*&resource_types=[\\"$resource_types\\"]"
 }
 
 cmd_overdue() {
@@ -56,7 +56,7 @@ for t in tasks:
             if isinstance(due_date, datetime):
                 due_date = due_date.replace(tzinfo=timezone.utc)
         if due_date.date() < now.date() if hasattr(due_date, 'date') else True:
-            print(f\"OVERDUE: {t['content']} (due: {due['date']})\")
+            print(f"OVERDUE: {t['content']} (due: {due['date']})")
 "
 }
 
@@ -74,7 +74,7 @@ today = date.today().isoformat()
 for t in tasks:
     due = t.get('due')
     if due and due.get('date', '').startswith(today):
-        print(f\"{t['content']} (due: {due['date']})\")
+        print(f"{t['content']} (due: {due['date']})")
 "
 }
 
@@ -96,14 +96,14 @@ for t in tasks:
     if due and due.get('date'):
         d = due['date'][:10]
         if today <= d <= cutoff:
-            print(f\"{t['content']} (due: {due['date']})\")
+            print(f"{t['content']} (due: {due['date']})")
 "
 }
 
 cmd_activity() {
   local count="\${1:-20}"
-  curl -sS -H "Authorization: Bearer \$TOKEN" \\
-    "\$API/activity/get?limit=\$count"
+  curl -sS -H "Authorization: Bearer $TOKEN" \\
+    "$API/activity/get?limit=$count"
 }
 
 cmd_sync() {
@@ -117,7 +117,7 @@ case "\${1:-}" in
   activity)  shift; cmd_activity "\${1:-20}" ;;
   sync)      cmd_sync ;;
   -h|--help|help|"") usage ;;
-  *) echo "todoist-sync: unknown command '\$1'" >&2; usage >&2; exit 1 ;;
+  *) echo "todoist-sync: unknown command '$1'" >&2; usage >&2; exit 1 ;;
 esac
 `;
 }

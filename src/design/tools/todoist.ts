@@ -14,7 +14,7 @@ set -euo pipefail
 API="https://api.todoist.com/rest/v2"
 TOKEN="\${TODOIST_API_TOKEN:?TODOIST_API_TOKEN not set}"
 
-auth_header="Authorization: Bearer \$TOKEN"
+auth_header="Authorization: Bearer $TOKEN"
 
 usage() {
   cat <<'USAGE'
@@ -32,44 +32,44 @@ USAGE
 
 cmd_list() {
   local project="\${1:-}"
-  local url="\$API/tasks"
-  if [ -n "\$project" ]; then
-    url="\$url?project_id=\$project"
+  local url="$API/tasks"
+  if [ -n "$project" ]; then
+    url="$url?project_id=$project"
   fi
-  curl -sS -H "\$auth_header" "\$url"
+  curl -sS -H "$auth_header" "$url"
 }
 
 cmd_add() {
-  local content="\$1"
+  local content="$1"
   local project="\${2:-}"
   local body
-  if [ -n "\$project" ]; then
-    body=\$(printf '{"content":"%s","project_id":"%s"}' "\$content" "\$project")
+  if [ -n "$project" ]; then
+    body=$(printf '{"content":"%s","project_id":"%s"}' "$content" "$project")
   else
-    body=\$(printf '{"content":"%s"}' "\$content")
+    body=$(printf '{"content":"%s"}' "$content")
   fi
-  curl -sS -X POST -H "\$auth_header" -H "Content-Type: application/json" -d "\$body" "\$API/tasks"
+  curl -sS -X POST -H "$auth_header" -H "Content-Type: application/json" -d "$body" "$API/tasks"
 }
 
 cmd_close() {
-  local id="\$1"
-  curl -sS -X POST -H "\$auth_header" "\$API/tasks/\$id/close"
-  echo "Closed task: \$id"
+  local id="$1"
+  curl -sS -X POST -H "$auth_header" "$API/tasks/$id/close"
+  echo "Closed task: $id"
 }
 
 cmd_delete() {
-  local id="\$1"
-  curl -sS -X DELETE -H "\$auth_header" "\$API/tasks/\$id"
-  echo "Deleted task: \$id"
+  local id="$1"
+  curl -sS -X DELETE -H "$auth_header" "$API/tasks/$id"
+  echo "Deleted task: $id"
 }
 
 cmd_projects() {
-  curl -sS -H "\$auth_header" "\$API/projects"
+  curl -sS -H "$auth_header" "$API/projects"
 }
 
 cmd_get() {
-  local id="\$1"
-  curl -sS -H "\$auth_header" "\$API/tasks/\$id"
+  local id="$1"
+  curl -sS -H "$auth_header" "$API/tasks/$id"
 }
 
 case "\${1:-}" in
@@ -80,7 +80,7 @@ case "\${1:-}" in
   projects) cmd_projects ;;
   get)      shift; cmd_get "\${1:?id required}" ;;
   -h|--help|help|"") usage ;;
-  *) echo "todoist: unknown command '\$1'" >&2; usage >&2; exit 1 ;;
+  *) echo "todoist: unknown command '$1'" >&2; usage >&2; exit 1 ;;
 esac
 `;
 }
