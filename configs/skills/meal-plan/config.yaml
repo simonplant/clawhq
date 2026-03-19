@@ -1,0 +1,39 @@
+# meal-plan skill configuration
+name: meal-plan
+version: "1.0.0"
+description: "Weekly meal planning — diet-aware plans, shopping lists, prep reminders"
+
+# Schedule: weekly on Sunday at 6pm
+# Aligned with Meal Planner / Family Hub blueprint cron_config
+schedule:
+  cron: "0 18 * * 0"
+  active_hours:
+    start: 6
+    end: 22
+
+# Model requirements — local preferred, cloud escalation configurable
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: true
+
+# Tools this skill depends on
+dependencies:
+  tools:
+    - web-search
+    - tasks
+    - calendar
+  skills: []
+
+# Approval: meal plan requires user review before finalizing
+approval:
+  required: true
+  category: meal_plan
+  auto_approve: false
+
+# Boundaries
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false

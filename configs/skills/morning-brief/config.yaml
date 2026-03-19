@@ -1,0 +1,39 @@
+# morning-brief skill configuration
+name: morning-brief
+version: "1.0.0"
+description: "Daily morning briefing — email summary, calendar preview, task priorities"
+
+# Schedule: once daily at blueprint-configured morning time
+# Aligned with blueprint cron_config.morning_brief (e.g., 08:00, 06:30, 07:00)
+schedule:
+  cron: "0 8 * * *"
+  active_hours:
+    start: 5
+    end: 10
+
+# Model requirements — local only, no cloud
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+# Tools this skill depends on
+dependencies:
+  tools:
+    - email
+    - calendar
+    - tasks
+  skills: []
+
+# No approval needed — this skill is read-only and informational
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+# Boundaries
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false

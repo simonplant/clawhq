@@ -85,7 +85,7 @@ skill_bundle:
     - morning-brief
   recommended:
     - chore-tracker
-    - meal-planner
+    - meal-plan
 
 toolbelt:
   role: "Family coordinator"

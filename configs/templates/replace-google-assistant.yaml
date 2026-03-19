@@ -93,6 +93,7 @@ channels:
 skill_bundle:
   included:
     - morning-brief
+    - schedule-guard
     - construct
   recommended:
     - email-triage
@@ -126,6 +127,9 @@ toolbelt:
     - name: morning-brief
       required: true
       description: "Daily morning briefing with agenda, email summary, and priorities"
+    - name: schedule-guard
+      required: true
+      description: "Schedule protection — conflict detection, focus block guarding, overload alerts"
     - name: construct
       required: false
       description: "Self-improvement framework for capability growth"
