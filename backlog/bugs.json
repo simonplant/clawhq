@@ -333,11 +333,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "8+ files with hardcoded Ollama URL. Runtime instances to replace (not doc comments): src/design/configure/ollama.ts:8 (DEFAULT_OLLAMA_URL), src/evolve/memory/summarize.ts:54, src/evolve/migrate/extract.ts:75, src/evolve/provider/registry.ts:35, src/evolve/integrate/validate.ts:94, src/evolve/integrate/registry.ts:78 (defaultValue field). Use 127.0.0.1 (not localhost) as canonical value — matches the design/ module which is the primary Ollama caller; 127.0.0.1 is also safer in containerized environments. Add OLLAMA_DEFAULT_URL = 'http://127.0.0.1:11434' to defaults.ts. Doc comments (types.ts, migrate/types.ts, design/configure/smart.ts) update to match. Run tests — no logic change. No dependencies."
+      "groomingNotes": "8+ files with hardcoded Ollama URL. Runtime instances to replace (not doc comments): src/design/configure/ollama.ts:8 (DEFAULT_OLLAMA_URL), src/evolve/memory/summarize.ts:54, src/evolve/migrate/extract.ts:75, src/evolve/provider/registry.ts:35, src/evolve/integrate/validate.ts:94, src/evolve/integrate/registry.ts:78 (defaultValue field). Use 127.0.0.1 (not localhost) as canonical value — matches the design/ module which is the primary Ollama caller; 127.0.0.1 is also safer in containerized environments. Add OLLAMA_DEFAULT_URL = 'http://127.0.0.1:11434' to defaults.ts. Doc comments (types.ts, migrate/types.ts, design/configure/smart.ts) update to match. Run tests — no logic change. No dependencies.",
+      "completedAt": "2026-03-19T11:06:17-07:00"
     },
     {
       "id": "BUG-026",
