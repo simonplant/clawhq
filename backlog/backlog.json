@@ -81,8 +81,8 @@
       "description": "USER MOMENT: This is what 'clawhq up' does — the user's first deploy experience. The full sequence (preflight -> compose -> firewall -> health -> smoke test) ensures the user gets a working agent or a clear error, never silent failure. Step-by-step progress reporting means the user isn't staring at a frozen terminal. Acceptance: 'clawhq up' produces a running agent; all 6 preflight checks surface actionable errors; health verify confirms agent is reachable before returning.",
       "category": "build",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-003"
       ],
@@ -98,7 +98,9 @@
         "All 6 preflight checks surface actionable errors on failure",
         "Health verify confirms agent is reachable before returning success",
         "Step-by-step progress visible in terminal during deploy"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T00:06:37-07:00"
     },
     {
       "id": "CQ-005",

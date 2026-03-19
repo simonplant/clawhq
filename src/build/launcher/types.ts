@@ -1,0 +1,151 @@
+/**
+ * Types for deploy orchestration and preflight checks.
+ *
+ * Covers the full deploy lifecycle: preflight → compose up → firewall →
+ * health verify → smoke test. Includes progress reporting and AbortSignal
+ * support for the `clawhq up / down / restart` commands.
+ */
+
+// ── Preflight Checks ────────────────────────────────────────────────────────
+
+/** Names of the 6 preflight checks that block deploy on failure. */
+export type PreflightCheckName =
+  | "docker"
+  | "images"
+  | "config"
+  | "secrets"
+  | "ports"
+  | "ollama";
+
+/** Result of a single preflight check. */
+export interface PreflightCheckResult {
+  readonly name: PreflightCheckName;
+  readonly passed: boolean;
+  /** Human-readable actionable error when check fails. */
+  readonly message: string;
+  /** Suggested fix command or action. */
+  readonly fix?: string;
+}
+
+/** Aggregate result of all preflight checks. */
+export interface PreflightReport {
+  readonly passed: boolean;
+  readonly checks: readonly PreflightCheckResult[];
+  readonly failed: readonly PreflightCheckResult[];
+}
+
+// ── Deploy Steps ────────────────────────────────────────────────────────────
+
+/** Named steps in the deploy sequence, reported via progress callback. */
+export type DeployStepName =
+  | "preflight"
+  | "compose-up"
+  | "firewall"
+  | "health-verify"
+  | "smoke-test";
+
+/** Status of a deploy step. */
+export type DeployStepStatus = "running" | "done" | "failed" | "skipped";
+
+/** Progress event emitted during deploy. */
+export interface DeployProgress {
+  readonly step: DeployStepName;
+  readonly status: DeployStepStatus;
+  readonly message: string;
+}
+
+/** Callback for step-by-step progress reporting. */
+export type ProgressCallback = (progress: DeployProgress) => void;
+
+// ── Deploy Options ──────────────────────────────────────────────────────────
+
+/** Options for the deploy (up) command. */
+export interface DeployOptions {
+  /** Path to the deployment directory (default: ~/.clawhq). */
+  readonly deployDir: string;
+  /** Gateway auth token for health checks. */
+  readonly gatewayToken: string;
+  /** Gateway port (default: 18789). */
+  readonly gatewayPort?: number;
+  /** Skip preflight checks (not recommended). */
+  readonly skipPreflight?: boolean;
+  /** Skip firewall setup. */
+  readonly skipFirewall?: boolean;
+  /** Progress callback for step-by-step reporting. */
+  readonly onProgress?: ProgressCallback;
+  /** AbortSignal for cancellation. */
+  readonly signal?: AbortSignal;
+}
+
+/** Result of a deploy operation. */
+export interface DeployResult {
+  readonly success: boolean;
+  readonly preflight: PreflightReport | null;
+  /** Whether the agent is confirmed reachable. */
+  readonly healthy: boolean;
+  readonly error?: string;
+}
+
+// ── Shutdown / Restart ──────────────────────────────────────────────────────
+
+/** Options for shutdown (down) and restart. */
+export interface ShutdownOptions {
+  readonly deployDir: string;
+  /** Remove volumes on shutdown. */
+  readonly removeVolumes?: boolean;
+  /** Progress callback. */
+  readonly onProgress?: ProgressCallback;
+  /** AbortSignal for cancellation. */
+  readonly signal?: AbortSignal;
+}
+
+/** Result of a shutdown operation. */
+export interface ShutdownResult {
+  readonly success: boolean;
+  readonly error?: string;
+}
+
+// ── Firewall ────────────────────────────────────────────────────────────────
+
+/** A domain allowlist entry for egress firewall. */
+export interface FirewallAllowEntry {
+  readonly domain: string;
+  readonly port: number;
+  readonly comment?: string;
+}
+
+/** Options for firewall apply/remove. */
+export interface FirewallOptions {
+  readonly deployDir: string;
+  readonly allowlist?: readonly FirewallAllowEntry[];
+  readonly signal?: AbortSignal;
+}
+
+/** Result of a firewall operation. */
+export interface FirewallResult {
+  readonly success: boolean;
+  readonly rulesApplied: number;
+  readonly error?: string;
+}
+
+// ── Health Verify ───────────────────────────────────────────────────────────
+
+/** Options for post-deploy health verification. */
+export interface HealthVerifyOptions {
+  readonly gatewayToken: string;
+  readonly gatewayPort?: number;
+  readonly gatewayHost?: string;
+  /** Max time to wait for healthy state (ms). Default: 60000. */
+  readonly timeoutMs?: number;
+  /** Interval between health checks (ms). Default: 2000. */
+  readonly intervalMs?: number;
+  readonly signal?: AbortSignal;
+}
+
+/** Result of health verification. */
+export interface HealthVerifyResult {
+  readonly healthy: boolean;
+  readonly attempts: number;
+  readonly elapsedMs: number;
+  readonly error?: string;
+}
