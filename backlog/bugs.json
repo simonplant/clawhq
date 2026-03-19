@@ -25,17 +25,63 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [
-        "CLAUDE.md target architecture lists src/server/ and src/ui/ with ownership",
+        "CLAUDE.md target architecture lists src/web/ with ownership (Hono + htmx, CQ-040)",
         "docs/ARCHITECTURE.md package structure matches CLAUDE.md",
         "No scaffold directory in src/ contradicts the spec",
         "CQ-040 has an unambiguous target path in the architecture docs"
       ],
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "UPDATED: CQ-040 (web dashboard) is DONE and uses src/web/ — not src/server/ + src/ui/ as the spec assumed. The actual canonical path is src/web/. Fix: update CLAUDE.md Key Source Layout and docs/ARCHITECTURE.md to replace src/server/ + src/ui/ entries with src/web/ (Hono server, htmx assets, 7 pages). Doc-only change, no code moves. Single PR touching two docs files.",
+      "intent": "The target architecture spec must be the single source of truth for src/ layout. No scaffold directories that contradict it.",
+      "completedAt": "2026-03-19T09:29:27-07:00"
+    },
+    {
+      "id": "BUG-007",
+      "title": "Remove extraneous npm dependencies",
+      "intent": "No unused packages in package.json. npm install size is minimal.",
+      "description": "package.json includes several unused packages: @emnapi/core, @emnapi/runtime, @emnapi/wasi-threads, @tybys/wasm-util, tslib. These are not imported anywhere in the codebase and add unnecessary install weight. Steps: (1) verify each package is unused via grep; (2) npm uninstall each confirmed-unused package; (3) run tests to confirm nothing breaks. Low-risk cleanup.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Doc-only fix. Update CLAUDE.md and docs/ARCHITECTURE.md to include src/server/ and src/ui/ for CQ-040 web dashboard. Option (a) preferred — avoids deleting dirs CQ-040 will need. Do this sprint slot before or alongside CQ-040 to clear ambiguity. Single PR touching two docs files. No code changes.",
-      "intent": "The target architecture spec must be the single source of truth for src/ layout. No scaffold directories that contradict it."
+      "groomingNotes": "Extraneous packages confirmed by codebase exploration: @emnapi/core, @emnapi/runtime, @emnapi/wasi-threads, @tybys/wasm-util, tslib. Verify none are imported before removing — grep for each package name. Run full test suite after removal. Zero risk if grep confirms they're unused."
+    },
+    {
+      "id": "BUG-008",
+      "title": "src/secure/ layout doesn't match target architecture",
+      "intent": "CLAUDE.md Key Source Layout accurately describes src/secure/ — no phantom directories, no missing directories. New contributors find security code on first look.",
+      "description": "CLAUDE.md specifies src/secure/harden/, src/secure/firewall/, src/secure/validate/, src/secure/sandbox/ — none of these directories exist. Actual layout: src/secure/sanitizer/ (input injection firewall, not general sandbox), credentials/, audit/, scanner/. The misalignment creates confusion about where to find security logic. Hardening code lives in src/build/docker/posture.ts, landmine validation in src/config/validate.ts. Fix: update CLAUDE.md Key Source Layout to reflect actual directory structure: replace sandbox->sanitizer, add note about validate living in config/, add note that harden is in build/docker/. Clarifies architecture for contributors without requiring code moves.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Doc-only fix. Target CLAUDE.md Key Source Layout: change secure/sandbox/ -> secure/sanitizer/ (input injection firewall). Add note that hardening/posture logic is in build/docker/. Add note that validate (14 landmines) is in config/validate.ts. Also update docs/ARCHITECTURE.md package structure to match. No code moves — just accurate docs. Note: secure/firewall/ WILL exist after CQ-005 completes, so that entry can stay as-is in the docs."
+    },
+    {
+      "id": "BUG-009",
+      "title": "Firewall allowlist uses hand-rolled YAML parser",
+      "intent": "Firewall allowlist is parsed reliably. No hand-rolled YAML in the codebase.",
+      "description": "src/build/launcher/firewall.ts loadAllowlist() implements a custom line-by-line YAML parser instead of using the 'yaml' package already in package.json. The hand-rolled parser is brittle — it won't handle quoted values, inline lists, comments, or multi-document YAML correctly. Steps: (1) replace loadAllowlist() to use yaml.parse() from the 'yaml' package; (2) update allowlist.yaml type to match parsed structure; (3) add tests covering edge cases (quoted domains, comments, empty file). Scope: small — one function in one file.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "SPRINT WITH CQ-005 — this is co-work for the CQ-005 sprint, not a standalone item. The loadAllowlist() function in src/build/launcher/firewall.ts (moving to src/secure/firewall/firewall.ts as part of CQ-005) hand-parses YAML line by line. The yaml package (v2.8.2) is already a project dependency. Fix: import { parse } from 'yaml'; use parse() to load allowlist.yaml; type the result as { domain: string; port?: number; comment?: string }[]. One function change, zero risk. Must be in the same commit as CQ-005 firewall work — do not ship the moved firewall.ts with the hand-rolled parser still in place."
     }
   ]
 }

@@ -191,6 +191,10 @@ src/
 │   ├── commands/               — Command queue (pull, verify, execute)
 │   └── fleet/                  — Multi-agent management
 │
+├── web/                        — Web dashboard (Hono + htmx, CQ-040)
+│   ├── pages/                  — 7 dashboard pages (doctor, logs, approvals, init, etc.)
+│   └── server.tsx              — Hono server + layout
+│
 ├── gateway/                    — OpenClaw Gateway communication (cross-cutting)
 └── config/                     — Config types + schema (cross-cutting)
 ```

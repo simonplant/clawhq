@@ -129,7 +129,7 @@
       "lastFailAt": "2026-03-19T00:19:10-07:00",
       "failCount": 1,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Ground-up implementation — src/secure/firewall/ does not exist yet. CQ-028 (quickstart) chains through CQ-004 (deploy) which includes a 'firewall apply' step — CQ-005 must succeed for quickstart to work end-to-end. CQ-041 (air-gapped mode) directly extends this work. IMPLEMENTATION RISKS: (1) iptables requires elevated privileges — implement a dry-run/mock mode so tests can exercise logic without root; (2) Docker bridge interface name varies (docker0 vs br-XXXX) — detect dynamically from 'docker network inspect'; (3) idempotency is critical — apply must not duplicate rules on re-run. SUGGESTED APPROACH: create src/secure/firewall/firewall.ts with apply/remove/verify operations; derive bridge interface at runtime; run iptables via child_process.exec with sudo; use execDry flag for testing. Doctor integration: CQ-011 is done — add one firewall check to the existing doctor check array."
+      "groomingNotes": "SECOND GROOMING — failed once (reason: implementation failed, no further detail). Approach is sound but execution requires care. MUST-DO CO-WORK: BUG-009 (replace hand-rolled YAML parser with yaml.parse()) is a required part of this sprint — the loadAllowlist() function in the same file must use the yaml package. DO NOT split them. IMPLEMENTATION CHECKLIST: (1) Create src/secure/firewall/firewall.ts — move applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts, add verifyFirewall() that diffs expected vs actual iptables rules. (2) Replace hand-rolled loadAllowlist() with yaml.parse() (BUG-009). (3) Add air-gap mode flag: skip allowlist, drop all outbound except ESTABLISHED/RELATED. (4) Detect Docker bridge interface dynamically via 'docker network inspect' — never hardcode. (5) Compose-down watcher for auto-reapply. (6) EXEC_DRY env var for test dry-run mode — iptables calls must be mockable. (7) Doctor integration: add verifyFirewall() check to existing src/operate/doctor/ check array. (8) sudo/privilege handling: detect non-root and surface actionable error. SUDO NOTE: iptables requires root — document requirement in error messages. TESTING: All tests must use EXEC_DRY=1 or a mock exec to avoid requiring root in CI. ACCEPTANCE CHECK: applyFirewall() idempotent (run twice = same rules); verifyFirewall() returns diff when rules are missing; air-gap mode drops all outbound; doctor check reports fail with fix message when rules absent; BUG-009 done (no hand-rolled parser in codebase)."
     },
     {
       "id": "CQ-006",
@@ -449,8 +449,8 @@
       "description": "USER VALUE: Phase 2 personalization. Adds customization_questions to blueprint schema so wizard asks 1-3 tailored questions. Valuable but not blocking: Email Manager (CQ-017) must work end-to-end first. Build after CQ-010 + CQ-017 prove the forge pipeline.",
       "category": "design",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-010",
         "CQ-017"
@@ -466,7 +466,9 @@
         "Answers reflected in generated config output"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "All dependencies done (CQ-010 init wizard, CQ-017 email-manager blueprint). Phase 2 personalization: add customization_questions field to blueprint YAML schema, have wizard ask 1-3 tailored questions per blueprint, apply answers to config output. Additive change to existing wizard flow — no rework required."
+      "groomingNotes": "All dependencies done (CQ-010 init wizard, CQ-017 email-manager blueprint). Phase 2 personalization: add customization_questions field to blueprint YAML schema, have wizard ask 1-3 tailored questions per blueprint, apply answers to config output. Additive change to existing wizard flow — no rework required.",
+      "passes": true,
+      "completedAt": "2026-03-19T09:02:35-07:00"
     },
     {
       "id": "CQ-019",
@@ -993,8 +995,8 @@
       "description": "WEB UI OPTION: Hono + htmx + Pico CSS keeps the stack minimal. Web dashboard is for users who prefer a browser to a terminal for day-to-day ops. Not blocking CLI users. Depends on CQ-011 (doctor), CQ-026 (status), CQ-025 (approvals) being solid first — web is just a UI layer over CLI-complete features. Acceptance: all 7 pages render; doctor page shows same output as CLI; approvals queue shows pending items; init wizard works via browser.",
       "category": "operate",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-011",
         "CQ-026",
@@ -1017,7 +1019,9 @@
         "Init wizard completes full setup via browser"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "All dependencies done (CQ-011 doctor, CQ-026 status/logs, CQ-025 approvals). Hono + htmx + Pico CSS stack. Web is a UI layer over CLI-complete features — no new business logic. BUG-006 (src/server/ path) should be done first but is not a hard blocker. 7 pages are well-scoped."
+      "groomingNotes": "All dependencies done (CQ-011 doctor, CQ-026 status/logs, CQ-025 approvals). Hono + htmx + Pico CSS stack. Web is a UI layer over CLI-complete features — no new business logic. BUG-006 (src/server/ path) should be done first but is not a hard blocker. 7 pages are well-scoped.",
+      "passes": true,
+      "completedAt": "2026-03-19T09:17:01-07:00"
     },
     {
       "id": "CQ-041",
@@ -1044,7 +1048,7 @@
         "Agent remains fully functional without any network access"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Hard-blocked by CQ-005 (egress firewall). Once CQ-005 lands, air-gap mode is a thin extension: step 2 (CLAWHQ_FWD block-all) reuses the same chain — just omit the allowlist and drop everything except ESTABLISHED/RELATED. Step 1 (zero egress in openclaw.json) touches the config schema already established in CQ-001. Step 3 (doctor check) appends to the existing check array in CQ-011. Estimated scope: small — CQ-005 does the heavy lifting. Mark readyForSprint after CQ-005 is done."
+      "groomingNotes": "Hard-blocked by CQ-005 (egress firewall). DO NOT SPRINT until CQ-005 is complete and passing. Once CQ-005 lands: (1) air-gap mode = CQ-005 CLAWHQ_FWD chain with empty allowlist, drop all outbound except ESTABLISHED/RELATED — reuse same chain, skip allowlist loop; (2) set zero egress domains in openclaw.json config (touches CQ-001 schema, field already exists); (3) doctor check: verify both layers active (config zero-egress flag + verifyFirewall() confirms drop-all rule present). Estimated scope: small extension on top of CQ-005. Mark readyForSprint after CQ-005 sprint completes successfully."
     },
     {
       "id": "CQ-042",
