@@ -181,8 +181,8 @@
       "description": "SILENT FAILURE PREVENTION: Credential expiry is one of the top reasons agents stop working without explanation. A user who set up their Anthropic key three months ago has no idea it expired. Probes run on schedule and surface the problem before the next tool call silently fails. Built-in probes for Anthropic, OpenAI, Telegram cover the most common integrations. Acceptance: probe reports correct pass/fail for each integration; failed credential surfaces actionable message; 'clawhq creds' outputs clean table.",
       "category": "secure",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-007"
       ],
@@ -197,7 +197,9 @@
         "Failed credentials surface actionable fix message",
         "'clawhq creds' outputs clean status table",
         "Probe interface extensible for new integrations"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T00:36:33-07:00"
     },
     {
       "id": "CQ-009",
