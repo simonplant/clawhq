@@ -25,7 +25,7 @@ export type { Prompter } from "./wizard.js";
 
 // Generator
 export { generateBundle, generateIdentityFiles } from "./generate.js";
-export type { IdentityFileContent } from "./generate.js";
+export type { IdentityFileContent } from "../identity/index.js";
 
 // Writer
 export { writeBundle, writeFileAtomic, WriteError } from "./writer.js";
