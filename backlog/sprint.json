@@ -1,30 +1,31 @@
 {
-  "sprintId": "sprint-1773912499",
-  "startedAt": "2026-03-19T02:28:19-07:00",
+  "sprintId": "sprint-1773913314",
+  "startedAt": "2026-03-19T02:41:54-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-021",
-    "title": "Skill lifecycle + vetting",
-    "intent": "Every skill installation must pass security vetting before activation. Rollback must restore the previous state if a skill breaks the agent.",
-    "description": "CAPABILITY GATE: Skill lifecycle is what makes skills safe. Without it, installing a skill means manually copying files with no vetting, no rollback, no audit. The email-digest skill (CQ-022) must go through this pipeline. The URL trap fix is critical — malicious skills should not be able to call out to arbitrary hosts. Rollback snapshots mean 'clawhq skill install' is reversible. Acceptance: install flow runs stage->vet->approve->activate; vet catches URL patterns; rollback restores previous state; 'clawhq skill list' shows installed skills with status.",
+    "id": "CQ-022",
+    "title": "Skill: email-digest",
+    "intent": "Deliver the email-digest skill so the Email Manager agent triages inbox, categorizes, and proposes responses with approval gates. No auto-send, no data leaves the machine.",
+    "description": "HIGH VALUE: First autonomous capability the user sees. Pairs with CQ-017 (Email Manager blueprint). This skill is why the user chose ClawHQ over Gmail. SEQUENCING: Requires CQ-021 (skill lifecycle + vetting — email-digest must go through stage->vet->approve->activate pipeline), CQ-025 (approval queue — 'propose responses with approval gates' is the core safety feature), and CQ-017 (Email Manager blueprint to define context). Acceptance: SKILL.md + prompts installed via skill lifecycle pipeline; agent triages inbox, categorizes emails, proposes responses with approval gates; runs on 15min cron; no data leaves machine (local Ollama).",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement stage -> vet -> approve -> activate pipeline",
-      "Add rollback snapshots before each installation",
-      "Implement security vetting with URL trap detection",
-      "Build 'clawhq skill list' showing installed skills with status"
+      "Create SKILL.md defining email triage behavior and boundaries",
+      "Write prompts for inbox categorization, summarization, and response proposal",
+      "Configure 15min cron schedule for inbox checks",
+      "Integrate with approval queue — proposed responses require user approval"
     ],
     "acceptanceCriteria": [
-      "Install flow runs full stage -> vet -> approve -> activate pipeline",
-      "Vetting catches malicious URL patterns in skill code",
-      "Rollback restores previous state on failure or rejection",
-      "'clawhq skill list' shows installed skills with status"
+      "SKILL.md + prompts installed via skill lifecycle pipeline",
+      "Agent triages inbox and categorizes emails correctly",
+      "Proposed responses queue for approval (no auto-send)",
+      "Runs on 15min cron schedule",
+      "No data leaves machine (local Ollama only)"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T02:28:19-07:00",
+    "startedAt": "2026-03-19T02:41:54-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T02:41:52-07:00"
+    "completedAt": "2026-03-19T02:58:13-07:00"
   },
-  "completedAt": "2026-03-19T02:41:52-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T02:58:13-07:00",
+  "attempts": 3
 }

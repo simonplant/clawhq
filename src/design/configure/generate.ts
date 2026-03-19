@@ -314,6 +314,24 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
     });
   }
 
+  // Skill-specific cron jobs — included skills run on the work-session schedule
+  if (cron.work_session && blueprint.skill_bundle?.included) {
+    const skillExpr = normalizeCronExpr(cron.work_session);
+    if (skillExpr) {
+      for (const skillName of blueprint.skill_bundle.included) {
+        jobs.push({
+          id: `skill-${skillName}`,
+          kind: "cron",
+          expr: skillExpr,
+          task: `Run skill: ${skillName}`,
+          enabled: true,
+          delivery: "none",
+          session: "main",
+        });
+      }
+    }
+  }
+
   return jobs;
 }
 

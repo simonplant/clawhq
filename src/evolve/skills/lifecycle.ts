@@ -172,7 +172,7 @@ export async function installSkill(
   // Auto-approve if flag set and vetting passed
   if (!autoApprove) {
     // In non-auto mode, we still approve since vetting passed.
-    // Future: integrate with approval queue (CQ-025)
+    // Runtime approval of skill actions uses the approval queue (src/evolve/approval/).
   }
 
   const approvedEntry: SkillManifestEntry = {
