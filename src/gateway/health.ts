@@ -101,7 +101,8 @@ export class HealthPoller {
       await client.connect();
       await client.rpc("status", undefined, { timeoutMs: this.healthTimeoutMs });
       return "up";
-    } catch {
+    } catch (error) {
+      console.warn("Gateway health check failed:", error);
       return "down";
     } finally {
       client.close();
