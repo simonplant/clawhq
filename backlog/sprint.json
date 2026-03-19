@@ -1,28 +1,30 @@
 {
-  "sprintId": "sprint-1773928904",
-  "startedAt": "2026-03-19T07:01:44-07:00",
+  "sprintId": "sprint-1773930294",
+  "startedAt": "2026-03-19T07:24:54-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-037",
-    "title": "Evolve rollback + credentials.json + posture.yaml",
-    "intent": "Separate credentials into credentials.json (mode 0600), expose security posture in posture.yaml, and ensure every capability change has a rollback snapshot.",
-    "description": "SECURITY MATURITY: credentials.json separation from .env is the difference between 'works' and 'production-grade'. Integration credentials in a dedicated store (mode 0600) means rotate one integration without touching others. Security posture YAML makes the container hardening visible and reviewable — the Tinkerer persona wants to see what posture they're running. Rollback snapshots for all capability changes complete the safety story started in CQ-021. Acceptance: credentials.json separate from .env; posture.yaml reflects active security settings; rollback restores previous capability state.",
+    "id": "CQ-038",
+    "title": "Trust modes + heartbeat + command queue",
+    "intent": "Implement three trust modes so users choose their privacy level. Kill switch must disconnect immediately. Signed command queue must reject tampered commands.",
+    "description": "MANAGED MODE FOUNDATION: Trust modes are what makes the cloud layer safe by design. Paranoid users run fully offline. Zero-Trust users get optional remote monitoring without any inbound access. Managed users get operational automation with content architecturally blocked. Kill switch ('clawhq cloud disconnect') with no confirmation prompt is the user's emergency brake. Signed command queue prevents malicious commands even if cloud is compromised. Acceptance: all three trust modes switch cleanly; kill switch disconnects immediately; command signature verified before execution; unsupported commands rejected in all modes.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Separate credentials into credentials.json with mode 0600",
-      "Create posture.yaml reflecting active security settings",
-      "Implement rollback snapshots for all capability changes"
+      "Implement paranoid, zero-trust, and managed trust modes",
+      "Add kill switch ('clawhq cloud disconnect') with no confirmation prompt",
+      "Build outbound health reporter (heartbeat)",
+      "Implement signed command queue with signature verification"
     ],
     "acceptanceCriteria": [
-      "credentials.json separate from .env with 0600 permissions",
-      "posture.yaml reflects active security settings and is human-reviewable",
-      "Rollback restores previous capability state cleanly"
+      "All three trust modes switch cleanly",
+      "Kill switch disconnects immediately with no prompt",
+      "Command signatures verified before execution",
+      "Unsupported commands rejected in all modes"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T07:01:44-07:00",
+    "startedAt": "2026-03-19T07:24:54-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T07:24:52-07:00"
+    "completedAt": "2026-03-19T07:46:52-07:00"
   },
-  "completedAt": "2026-03-19T07:24:52-07:00",
+  "completedAt": "2026-03-19T07:46:52-07:00",
   "attempts": 1
 }
