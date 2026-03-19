@@ -7,3 +7,6 @@
 
 /** Default port for the OpenClaw Gateway WebSocket server. */
 export const GATEWAY_DEFAULT_PORT = 18789;
+
+/** Default port for the ClawHQ web dashboard. */
+export const DASHBOARD_DEFAULT_PORT = 3737;

@@ -6,8 +6,8 @@ import { serve } from "@hono/node-server";
 
 import { createApp } from "./server.js";
 import type { DashboardOptions } from "./server.js";
+import { DASHBOARD_DEFAULT_PORT } from "../config/defaults.js";
 
-const DEFAULT_PORT = 3737;
 const DEFAULT_HOSTNAME = "localhost";
 
 /**
@@ -18,7 +18,7 @@ const DEFAULT_HOSTNAME = "localhost";
 export async function startDashboard(
   options: DashboardOptions,
 ): Promise<{ port: number; hostname: string; close: () => void }> {
-  const port = options.port ?? DEFAULT_PORT;
+  const port = options.port ?? DASHBOARD_DEFAULT_PORT;
   const hostname = options.hostname ?? DEFAULT_HOSTNAME;
   const app = createApp(options);
 
