@@ -260,7 +260,7 @@ export async function restoreBackup(options: BackupRestoreOptions): Promise<Back
   } finally {
     // ── Step 6: Cleanup ─────────────────────────────────────────────
     progress(onProgress, "cleanup", "running", "Cleaning up temp directory...");
-    await rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    await rm(tempDir, { recursive: true, force: true }).catch((e) => console.warn(`[restore] Failed to clean up temp directory:`, e));
     progress(onProgress, "cleanup", "done", "Temp directory removed");
   }
 }

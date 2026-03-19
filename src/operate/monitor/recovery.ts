@@ -137,8 +137,8 @@ async function restartContainer(
       "docker",
       ["compose", "-f", composePath, "down", "--timeout", "10"],
       { timeout: EXEC_TIMEOUT_MS, signal },
-    ).catch(() => {
-      // Ignore stop errors — container might already be stopped
+    ).catch((e) => {
+      console.warn(`[recovery] Docker compose down failed (container may already be stopped):`, e);
     });
 
     // Start

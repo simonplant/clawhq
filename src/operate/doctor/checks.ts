@@ -81,7 +81,8 @@ async function checkConfigExists(deployDir: string): Promise<DoctorCheckResult> 
   try {
     await access(configPath, constants.R_OK);
     return ok(name, "Config file exists");
-  } catch {
+  } catch (e) {
+    console.warn(`[doctor:config-exists] Failed to access config file:`, e);
     return fail(name, "error", "Config file not found at engine/openclaw.json", "Run: clawhq init --guided");
   }
 }
@@ -142,7 +143,8 @@ async function checkComposeExists(deployDir: string): Promise<DoctorCheckResult>
   try {
     await access(composePath, constants.R_OK);
     return ok(name, "Compose file exists");
-  } catch {
+  } catch (e) {
+    console.warn(`[doctor:compose-exists] Failed to access compose file:`, e);
     return fail(name, "error", "docker-compose.yml not found at engine/docker-compose.yml", "Run: clawhq init --guided");
   }
 }
@@ -245,7 +247,8 @@ async function checkContainerRunning(
       try {
         const svc = JSON.parse(line) as { State?: string };
         return svc.State === "running";
-      } catch {
+      } catch (e) {
+        console.warn(`[doctor:container-running] Failed to parse container JSON:`, e);
         return false;
       }
     });
@@ -254,7 +257,8 @@ async function checkContainerRunning(
       return fail(name, "warning", "Agent container is not running", "Run: clawhq up");
     }
     return ok(name, `Agent container is running (${running.length} service(s))`, "warning");
-  } catch {
+  } catch (e) {
+    console.warn(`[doctor:container-running] Failed to check container status:`, e);
     return fail(name, "warning", "Cannot check container status — Docker may not be running", "Run: clawhq up");
   }
 }
@@ -294,7 +298,8 @@ async function checkCapDrop(
       );
     }
     return ok(name, "Container has cap_drop: ALL");
-  } catch {
+  } catch (e) {
+    console.warn(`[doctor:cap-drop] Failed to inspect container caps:`, e);
     return fail(name, "info", "Cannot inspect container caps — container may not be running");
   }
 }
@@ -336,7 +341,8 @@ async function checkNoNewPrivileges(
       );
     }
     return ok(name, "Container has no-new-privileges");
-  } catch {
+  } catch (e) {
+    console.warn(`[doctor:no-new-privileges] Failed to inspect container security opts:`, e);
     return fail(name, "info", "Cannot inspect container security opts — container may not be running");
   }
 }
@@ -375,7 +381,8 @@ async function checkUserUid(
       );
     }
     return ok(name, "Container runs as UID 1000");
-  } catch {
+  } catch (e) {
+    console.warn(`[doctor:user-uid] Failed to inspect container user:`, e);
     return fail(name, "info", "Cannot inspect container user — container may not be running");
   }
 }
@@ -404,8 +411,8 @@ async function checkIdentitySize(deployDir: string): Promise<DoctorCheckResult> 
       if (config.identity?.bootstrapMaxChars) {
         maxChars = config.identity.bootstrapMaxChars;
       }
-    } catch {
-      // Use default
+    } catch (e) {
+      console.warn(`[doctor:identity-size] Failed to read bootstrapMaxChars from config, using default:`, e);
     }
 
     if (totalSize > maxChars) {
@@ -477,7 +484,8 @@ async function checkEnvVars(deployDir: string): Promise<DoctorCheckResult> {
     let envContent: string;
     try {
       envContent = await readFile(envPath, "utf-8");
-    } catch {
+    } catch (e) {
+      console.warn(`[doctor:env-vars] Failed to read .env file:`, e);
       return fail(name, "error", ".env file not found", "Run: clawhq init --guided");
     }
 
@@ -493,7 +501,8 @@ async function checkEnvVars(deployDir: string): Promise<DoctorCheckResult> {
     let composeContent: string;
     try {
       composeContent = await readFile(composePath, "utf-8");
-    } catch {
+    } catch (e) {
+      console.warn(`[doctor:env-vars] Failed to read docker-compose.yml:`, e);
       return fail(name, "warning", "docker-compose.yml not found — cannot check env var references");
     }
 
@@ -557,7 +566,8 @@ async function checkWorkspaceExists(deployDir: string): Promise<DoctorCheckResul
 
   try {
     await access(workspaceDir, constants.R_OK);
-  } catch {
+  } catch (e) {
+    console.warn(`[doctor:workspace-exists] Failed to access workspace directory:`, e);
     return fail(name, "error", "Workspace directory not found", "Run: clawhq init --guided");
   }
 
@@ -565,7 +575,8 @@ async function checkWorkspaceExists(deployDir: string): Promise<DoctorCheckResul
   for (const dir of requiredDirs) {
     try {
       await access(join(workspaceDir, dir), constants.R_OK);
-    } catch {
+    } catch (e) {
+      console.warn(`[doctor:workspace-exists] Failed to access workspace/${dir}:`, e);
       missing.push(dir);
     }
   }
@@ -592,7 +603,8 @@ async function checkGatewayReachable(signal?: AbortSignal): Promise<DoctorCheckR
       { timeout: EXEC_TIMEOUT_MS, signal },
     );
     return ok(name, `Gateway is reachable on localhost:${GATEWAY_DEFAULT_PORT}`);
-  } catch {
+  } catch (e) {
+    console.warn(`[doctor:gateway-reachable] Failed to reach gateway:`, e);
     return fail(
       name,
       "info",
@@ -637,8 +649,8 @@ async function checkDiskSpace(
       );
     }
     return ok(name, `${availMb}MB free disk space`);
-  } catch {
-    // df not available (unlikely) or other issue — not critical
+  } catch (e) {
+    console.warn(`[doctor:disk-space] Failed to check disk space:`, e);
     return ok(name, "Disk space check skipped (df unavailable)", "info");
   }
 }

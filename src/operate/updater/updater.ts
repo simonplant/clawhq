@@ -54,8 +54,8 @@ export async function checkForUpdates(options: UpdateOptions): Promise<UpdateChe
         { timeout: EXEC_TIMEOUT_MS, signal },
       );
       localDigest = stdout.trim();
-    } catch {
-      // Image not present locally
+    } catch (e) {
+      console.warn(`[updater] Failed to inspect local image digest:`, e);
     }
 
     // Pull to check for updates (dry-run style: pull and compare)
@@ -273,7 +273,8 @@ async function getImageName(deployDir: string): Promise<string | null> {
     // Simple extraction: find first "image:" line in the compose file
     const match = raw.match(/^\s*image:\s*["']?([^\s"']+)/m);
     return match ? match[1] : null;
-  } catch {
+  } catch (e) {
+    console.warn(`[updater] Failed to read image name from compose:`, e);
     return null;
   }
 }
