@@ -12,13 +12,12 @@
  * Runs until AbortSignal fires. Never throws.
  */
 
+import { MONITOR_HEALTH_INTERVAL_MS, MONITOR_MEMORY_LIFECYCLE_INTERVAL_MS } from "../../config/defaults.js";
 import { runLifecycle } from "../../evolve/memory/lifecycle.js";
 
 import { analyzeHealth, checkContainerHealth, collectSample } from "./alerts.js";
 import { buildDigest, sendDigest } from "./digest.js";
 import { sendNotification } from "./notify.js";
-import { MONITOR_HEALTH_INTERVAL_MS, MONITOR_MEMORY_LIFECYCLE_INTERVAL_MS } from "../../config/defaults.js";
-
 import { attemptRecovery, RecoveryTracker } from "./recovery.js";
 import type {
   HealthAlert,

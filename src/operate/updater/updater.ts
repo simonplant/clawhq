@@ -12,6 +12,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { UPDATER_EXEC_TIMEOUT_MS, UPDATER_PULL_TIMEOUT_MS } from "../../config/defaults.js";
+
 import type {
   UpdateCheckResult,
   UpdateOptions,
@@ -21,8 +23,6 @@ import type {
   UpdateStep,
   UpdateStepStatus,
 } from "./types.js";
-
-import { UPDATER_EXEC_TIMEOUT_MS, UPDATER_PULL_TIMEOUT_MS } from "../../config/defaults.js";
 
 const execFileAsync = promisify(execFile);
 

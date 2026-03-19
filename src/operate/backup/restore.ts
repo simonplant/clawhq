@@ -19,7 +19,6 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { BACKUP_RESTORE_GPG_TIMEOUT_MS, BACKUP_RESTORE_TAR_TIMEOUT_MS } from "../../config/defaults.js";
-
 import { runDoctor } from "../doctor/doctor.js";
 import type { DoctorReport } from "../doctor/types.js";
 
