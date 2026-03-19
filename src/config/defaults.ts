@@ -29,6 +29,11 @@ export const OPENAI_API_BASE = "https://api.openai.com";
 /** Base URL for the Telegram Bot API (no trailing slash). */
 export const TELEGRAM_API_BASE = "https://api.telegram.org";
 
+// ── Repository URLs ─────────────────────────────────────────────────────────
+
+/** Canonical OpenClaw repository URL (used by from-source installer). */
+export const OPENCLAW_REPO_URL = "https://github.com/nicepkg/openclaw.git";
+
 // ── File permission modes ────────────────────────────────────────────────────
 
 /** Owner read/write only — secrets (.env, credentials.json). */
