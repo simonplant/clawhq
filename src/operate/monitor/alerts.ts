@@ -13,6 +13,8 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import type {
   AlertSeverity,
   AlertThresholds,
@@ -216,11 +218,11 @@ export async function checkContainerHealth(
   try {
     await execFileAsync(
       "curl",
-      ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", "http://localhost:18789"],
+      ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", `http://localhost:${GATEWAY_DEFAULT_PORT}`],
       { timeout: EXEC_TIMEOUT_MS, signal },
     );
   } catch {
-    alerts.push(createAlert("warning", "gateway-unreachable", "Gateway not responding on port 18789"));
+    alerts.push(createAlert("warning", "gateway-unreachable", `Gateway not responding on port ${GATEWAY_DEFAULT_PORT}`));
   }
 
   return alerts;

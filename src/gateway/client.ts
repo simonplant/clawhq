@@ -1,7 +1,7 @@
 /**
  * Token-authenticated WebSocket RPC client for the OpenClaw Gateway.
  *
- * Communicates with the Gateway process at :18789 using a JSON-RPC-style
+ * Communicates with the Gateway process at the default Gateway port using a JSON-RPC-style
  * protocol over WebSocket. Supports request/response RPC with typed errors,
  * configurable timeouts, and AbortSignal cancellation.
  *
@@ -9,6 +9,8 @@
  */
 
 import WebSocket from "ws";
+
+import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 
 import {
   AuthError,
@@ -26,7 +28,6 @@ import type {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_HOST = "127.0.0.1";
-const DEFAULT_PORT = 18789;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const CONNECT_TIMEOUT_MS = 5_000;
 
@@ -68,7 +69,7 @@ export class GatewayClient {
 
   constructor(options: GatewayClientOptions) {
     this.host = options.host ?? DEFAULT_HOST;
-    this.port = options.port ?? DEFAULT_PORT;
+    this.port = options.port ?? GATEWAY_DEFAULT_PORT;
     this.token = options.token;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }

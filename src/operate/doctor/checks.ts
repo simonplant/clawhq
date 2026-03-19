@@ -17,6 +17,8 @@ import { access, constants, readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -586,15 +588,15 @@ async function checkGatewayReachable(signal?: AbortSignal): Promise<DoctorCheckR
     // Use curl to check if gateway port responds
     await execFileAsync(
       "curl",
-      ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", "http://localhost:18789"],
+      ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", `http://localhost:${GATEWAY_DEFAULT_PORT}`],
       { timeout: EXEC_TIMEOUT_MS, signal },
     );
-    return ok(name, "Gateway is reachable on localhost:18789");
+    return ok(name, `Gateway is reachable on localhost:${GATEWAY_DEFAULT_PORT}`);
   } catch {
     return fail(
       name,
       "info",
-      "Gateway not reachable on localhost:18789 — agent may not be running",
+      `Gateway not reachable on localhost:${GATEWAY_DEFAULT_PORT} — agent may not be running`,
       "Run: clawhq up",
     );
   }

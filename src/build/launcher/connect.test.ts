@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import {
   connectChannel,
   pingGateway,
@@ -30,7 +32,7 @@ describe("updateChannelConfig", () => {
   it("enables telegram channel in openclaw.json", async () => {
     const configPath = join(testDir, "engine", "openclaw.json");
     await writeFile(configPath, JSON.stringify({
-      gateway: { port: 18789 },
+      gateway: { port: GATEWAY_DEFAULT_PORT },
       channels: { telegram: { enabled: false } },
     }, null, 2));
 
@@ -40,12 +42,12 @@ describe("updateChannelConfig", () => {
     expect(updated.channels.telegram.enabled).toBe(true);
     expect(updated.channels.telegram.dmPolicy).toBe("pairing");
     // Preserves existing config
-    expect(updated.gateway.port).toBe(18789);
+    expect(updated.gateway.port).toBe(GATEWAY_DEFAULT_PORT);
   });
 
   it("creates channels object when missing", async () => {
     const configPath = join(testDir, "engine", "openclaw.json");
-    await writeFile(configPath, JSON.stringify({ gateway: { port: 18789 } }, null, 2));
+    await writeFile(configPath, JSON.stringify({ gateway: { port: GATEWAY_DEFAULT_PORT } }, null, 2));
 
     updateChannelConfig(testDir, "whatsapp");
 
@@ -91,7 +93,7 @@ describe("connectChannel", () => {
     // Setup: create openclaw.json and .env
     const configPath = join(testDir, "engine", "openclaw.json");
     const envPath = join(testDir, "engine", ".env");
-    await writeFile(configPath, JSON.stringify({ gateway: { port: 18789 } }, null, 2));
+    await writeFile(configPath, JSON.stringify({ gateway: { port: GATEWAY_DEFAULT_PORT } }, null, 2));
     await writeFile(envPath, "GATEWAY_TOKEN=test-token\n", { mode: 0o600 });
 
     const events: ConnectProgress[] = [];

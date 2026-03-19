@@ -1,7 +1,7 @@
 /**
  * Types for the OpenClaw Gateway WebSocket RPC client.
  *
- * The Gateway exposes a JSON-RPC-style protocol over WebSocket at :18789.
+ * The Gateway exposes a JSON-RPC-style protocol over WebSocket at the default Gateway port.
  * All requests are authenticated via token. Config writes are rate-limited
  * to 3 req/60s.
  */
@@ -35,7 +35,7 @@ export interface RpcErrorPayload {
 export interface GatewayClientOptions {
   /** Gateway host (default: "127.0.0.1"). */
   readonly host?: string;
-  /** Gateway port (default: 18789). */
+  /** Gateway port (default: GATEWAY_DEFAULT_PORT). */
   readonly port?: number;
   /** Authentication token. */
   readonly token: string;

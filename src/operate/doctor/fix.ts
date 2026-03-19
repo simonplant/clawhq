@@ -8,6 +8,8 @@
 import { chmod, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import type { DoctorCheckResult, DoctorCheckName, FixReport, FixResult } from "./types.js";
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -101,8 +103,8 @@ async function fixConfigLandmines(deployDir: string): Promise<FixResult> {
     // LM-02: allowedOrigins
     const origins = config["allowedOrigins"];
     if (!Array.isArray(origins) || origins.length === 0) {
-      config["allowedOrigins"] = ["http://localhost:18789"];
-      fixes.push("LM-02: set allowedOrigins to [http://localhost:18789]");
+      config["allowedOrigins"] = [`http://localhost:${GATEWAY_DEFAULT_PORT}`];
+      fixes.push(`LM-02: set allowedOrigins to [http://localhost:${GATEWAY_DEFAULT_PORT}]`);
     }
 
     // LM-03: trustedProxies

@@ -5,6 +5,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+
 import {
   enqueueCommand,
   processNextCommand,
@@ -229,7 +231,7 @@ describe("heartbeat", () => {
       // Write a fake openclaw.json so container check finds it
       writeFileSync(
         join(deployDir, "engine", "openclaw.json"),
-        JSON.stringify({ gateway: { port: 18789 } }),
+        JSON.stringify({ gateway: { port: GATEWAY_DEFAULT_PORT } }),
       );
       writeFileSync(
         join(deployDir, "engine", "docker-compose.yml"),

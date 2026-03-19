@@ -8,6 +8,7 @@
  * The generator never produces a config that fails validation.
  */
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import type {
   ClawHQConfig,
   ComposeConfig,
@@ -23,11 +24,12 @@ import type { IdentityFileContent } from "../identity/index.js";
 import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../tools/index.js";
 import type { ToolFileContent } from "../tools/index.js";
 
+
 import type { WizardAnswers } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const DEFAULT_GATEWAY_PORT = 18789;
+const DEFAULT_GATEWAY_PORT = GATEWAY_DEFAULT_PORT;
 const DOCKER_BRIDGE_GATEWAY = "172.17.0.1";
 const CONTAINER_USER = "1000:1000";
 const AGENT_NETWORK = "clawhq_net";

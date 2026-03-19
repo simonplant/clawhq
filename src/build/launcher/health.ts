@@ -8,6 +8,7 @@
  * Retries with exponential backoff until timeout. Supports AbortSignal.
  */
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { GatewayClient } from "../../gateway/index.js";
 
 import type { HealthVerifyOptions, HealthVerifyResult, SmokeTestOptions, SmokeTestResult } from "./types.js";
@@ -34,7 +35,7 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const baseInterval = options.intervalMs ?? DEFAULT_INTERVAL_MS;
   const host = options.gatewayHost ?? "127.0.0.1";
-  const port = options.gatewayPort ?? 18789;
+  const port = options.gatewayPort ?? GATEWAY_DEFAULT_PORT;
   const start = Date.now();
   let attempts = 0;
   let interval = baseInterval;
@@ -96,7 +97,7 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
  */
 export async function smokeTest(options: SmokeTestOptions): Promise<SmokeTestResult> {
   const host = options.gatewayHost ?? "127.0.0.1";
-  const port = options.gatewayPort ?? 18789;
+  const port = options.gatewayPort ?? GATEWAY_DEFAULT_PORT;
   const start = Date.now();
   const timeoutMs = options.smokeTimeoutMs ?? SMOKE_MESSAGE_TIMEOUT_MS;
   const message = options.smokeMessage ?? SMOKE_TEST_MESSAGE;
@@ -189,7 +190,7 @@ export async function smokeTest(options: SmokeTestOptions): Promise<SmokeTestRes
  * Build actionable fix guidance for smoke test failures.
  */
 function smokeFailureGuide(rawError: string, options: SmokeTestOptions): string {
-  const port = options.gatewayPort ?? 18789;
+  const port = options.gatewayPort ?? GATEWAY_DEFAULT_PORT;
   const lines = [`Smoke test failed: ${rawError}`];
 
   lines.push("");

@@ -12,6 +12,8 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+
 import { createApp } from "./server.js";
 
 // ── Test Fixtures ───────────────────────────────────────────────────────────
@@ -32,7 +34,7 @@ beforeEach(async () => {
     join(testDir, "engine", "openclaw.json"),
     JSON.stringify({
       dangerouslyDisableDeviceAuth: true,
-      allowedOrigins: ["http://localhost:18789"],
+      allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`],
       trustedProxies: ["172.17.0.1"],
       tools: { exec: { host: "gateway", security: "full" } },
       fs: { workspaceOnly: true },

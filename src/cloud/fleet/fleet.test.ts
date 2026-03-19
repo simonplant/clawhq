@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import {
   discoverFleet,
   readFleetRegistry,
@@ -40,7 +42,7 @@ function tmpAgentDir(options?: { configured?: boolean }): string {
   if (options?.configured !== false) {
     writeFileSync(
       join(dir, "engine", "openclaw.json"),
-      JSON.stringify({ gateway: { port: 18789 } }),
+      JSON.stringify({ gateway: { port: GATEWAY_DEFAULT_PORT } }),
     );
     writeFileSync(
       join(dir, "engine", "docker-compose.yml"),

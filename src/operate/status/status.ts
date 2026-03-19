@@ -10,6 +10,8 @@ import { access, constants, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import type {
   ContainerStatus,
   DiskUsage,
@@ -136,7 +138,7 @@ async function getGatewayStatus(signal?: AbortSignal): Promise<GatewayStatus> {
   try {
     await execFileAsync(
       "curl",
-      ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", "http://localhost:18789"],
+      ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", `http://localhost:${GATEWAY_DEFAULT_PORT}`],
       { timeout: EXEC_TIMEOUT_MS, signal },
     );
     return {

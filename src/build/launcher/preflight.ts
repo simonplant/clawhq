@@ -11,13 +11,15 @@ import { access, constants, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import type { PreflightCheckName, PreflightCheckResult, PreflightReport } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const GATEWAY_PORT = 18789;
+const GATEWAY_PORT = GATEWAY_DEFAULT_PORT;
 const EXEC_TIMEOUT_MS = 15_000;
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -178,7 +180,7 @@ async function checkSecrets(deployDir: string): Promise<PreflightCheckResult> {
   }
 }
 
-/** 5. Gateway port (18789) is not already in use. */
+/** 5. Gateway port is not already in use. */
 async function checkPorts(signal?: AbortSignal): Promise<PreflightCheckResult> {
   const name: PreflightCheckName = "ports";
   try {

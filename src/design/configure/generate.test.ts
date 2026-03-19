@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
 import { loadBlueprint } from "../blueprints/loader.js";
 
@@ -16,7 +17,7 @@ function makeAnswers(overrides: Partial<WizardAnswers> = {}): WizardAnswers {
     channel: "telegram",
     modelProvider: "local",
     localModel: "llama3:8b",
-    gatewayPort: 18789,
+    gatewayPort: GATEWAY_DEFAULT_PORT,
     deployDir: "/tmp/clawhq-test",
     airGapped: false,
     integrations: {},

@@ -63,6 +63,9 @@ export {
 export { deepMerge, defaultConfig, loadConfig } from "./loader.js";
 export type { LoadConfigOptions } from "./loader.js";
 
+// Defaults
+export { GATEWAY_DEFAULT_PORT } from "./defaults.js";
+
 // Paths
 export {
   DEFAULT_DEPLOY_DIR,

@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import { deploy, restart, shutdown } from "./deploy.js";
 import { applyFirewall, removeFirewall } from "./firewall.js";
 import { smokeTest, verifyHealth } from "./health.js";
@@ -93,7 +95,7 @@ describe("preflight", () => {
   it("config check passes with valid JSON", async () => {
     await writeFile(
       join(testDir, "engine", "openclaw.json"),
-      JSON.stringify({ gateway: { port: 18789 } }),
+      JSON.stringify({ gateway: { port: GATEWAY_DEFAULT_PORT } }),
       "utf-8",
     );
     const report = await runPreflight(testDir);
