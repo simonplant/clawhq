@@ -65,6 +65,12 @@ import {
 } from "../evolve/skills/index.js";
 import type { SkillProgress } from "../evolve/skills/index.js";
 import {
+  createBackup,
+  listSnapshots,
+  restoreBackup,
+} from "../operate/backup/index.js";
+import type { BackupProgress } from "../operate/backup/index.js";
+import {
   formatDoctorJson,
   formatDoctorTable,
   formatFixTable,
@@ -983,31 +989,115 @@ backup
   .command("create")
   .description("Create encrypted backup snapshot")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (opts: { deployDir: string }) => {
+  .option("-p, --passphrase <passphrase>", "GPG passphrase for encryption")
+  .action(async (opts: { deployDir: string; passphrase?: string }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+
+    if (!opts.passphrase) {
+      console.error(chalk.red("Error: --passphrase is required for encrypted backup."));
+      process.exit(1);
+    }
+
+    const spinner = ora("Creating encrypted backup…");
+    spinner.start();
+
+    const result = await createBackup({
+      deployDir: opts.deployDir,
+      passphrase: opts.passphrase,
+      onProgress: (p: BackupProgress) => {
+        spinner.text = p.message;
+      },
+    });
+
+    spinner.stop();
+
+    if (!result.success) {
+      console.error(chalk.red(`Backup failed: ${result.error}`));
+      process.exit(1);
+    }
+
+    console.log(chalk.green(`\n✔ Snapshot created: ${result.snapshotId}`));
+    console.log(`  Path: ${result.snapshotPath}`);
+    if (result.manifest) {
+      console.log(`  Files: ${result.manifest.fileCount}`);
+      console.log(`  SHA-256: ${result.manifest.sha256.slice(0, 16)}…`);
+    }
   });
 
 backup
   .command("list")
   .description("List available backup snapshots")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (opts: { deployDir: string }) => {
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+
+    const snapshots = await listSnapshots(opts.deployDir);
+
+    if (opts.json) {
+      console.log(JSON.stringify(snapshots, null, 2));
+      return;
+    }
+
+    if (snapshots.length === 0) {
+      console.log(chalk.yellow("No backup snapshots found."));
+      return;
+    }
+
+    console.log(chalk.bold(`\n${snapshots.length} snapshot(s):\n`));
+    for (const snap of snapshots) {
+      const size = snap.archiveSize < 1024 * 1024
+        ? `${(snap.archiveSize / 1024).toFixed(1)} KB`
+        : `${(snap.archiveSize / (1024 * 1024)).toFixed(1)} MB`;
+      console.log(`  ${chalk.cyan(snap.snapshotId)}`);
+      console.log(`    Created: ${snap.createdAt}`);
+      console.log(`    Size: ${size}  Files: ${snap.fileCount}`);
+      console.log(`    SHA-256: ${snap.sha256.slice(0, 16)}…`);
+      console.log("");
+    }
   });
 
 backup
   .command("restore")
   .description("Restore from a backup snapshot")
-  .argument("<snapshot>", "Snapshot ID or path")
+  .argument("<snapshot>", "Snapshot ID or path to .gpg file")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (_snapshot: string, opts: { deployDir: string }) => {
-    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+  .option("-p, --passphrase <passphrase>", "GPG passphrase for decryption")
+  .action(async (snapshot: string, opts: { deployDir: string; passphrase?: string }) => {
+    if (!opts.passphrase) {
+      console.error(chalk.red("Error: --passphrase is required for restore."));
+      process.exit(1);
+    }
+
+    const spinner = ora("Restoring from backup…");
+    spinner.start();
+
+    const result = await restoreBackup({
+      deployDir: opts.deployDir,
+      snapshot,
+      passphrase: opts.passphrase,
+      onProgress: (p: BackupProgress) => {
+        spinner.text = p.message;
+      },
+    });
+
+    spinner.stop();
+
+    if (!result.success) {
+      console.error(chalk.red(`Restore failed: ${result.error}`));
+      process.exit(1);
+    }
+
+    console.log(chalk.green(`\n✔ Restore complete`));
+    if (result.fileCount != null) {
+      console.log(`  Entries restored: ${result.fileCount}`);
+    }
+
+    if (result.doctorHealthy) {
+      console.log(chalk.green("  Doctor check: HEALTHY"));
+    } else {
+      console.log(chalk.yellow("  Doctor check: issues detected — run `clawhq doctor` for details"));
+    }
   });
 
 program
