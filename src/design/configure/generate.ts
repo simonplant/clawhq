@@ -17,6 +17,8 @@ import type {
   OpenClawConfig,
 } from "../../config/types.js";
 import type { Blueprint } from "../blueprints/types.js";
+import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../identity/index.js";
+import type { IdentityFileContent } from "../identity/index.js";
 
 import type { WizardAnswers } from "./types.js";
 
@@ -313,56 +315,17 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
 
 // ── Identity Files ───────────────────────────────────────────────────────────
 
-/** Identity file with content for writing and metadata for validation. */
-export interface IdentityFileContent {
-  readonly name: string;
-  readonly relativePath: string;
-  readonly content: string;
-}
+// Re-export for backward compatibility — consumers import from configure/index.
+export type { IdentityFileContent } from "../identity/index.js";
 
 /**
  * Generate identity file content from a blueprint.
  *
- * Returns the actual file content for writing to disk. Also used internally
- * to calculate sizes for LM-08 validation.
+ * Delegates to the identity module for SOUL.md and AGENTS.md generation.
+ * Returns the actual file content for writing to disk.
  */
 export function generateIdentityFiles(blueprint: Blueprint): IdentityFileContent[] {
-  const personality = blueprint.personality;
-  const useCase = blueprint.use_case_mapping;
-
-  const soulContent = [
-    `# ${blueprint.name}`,
-    "",
-    `## Role`,
-    useCase.description,
-    "",
-    `## Personality`,
-    `- **Tone:** ${personality.tone}`,
-    `- **Style:** ${personality.style}`,
-    `- **Relationship:** ${personality.relationship}`,
-    "",
-    `## Boundaries`,
-    personality.boundaries,
-    "",
-    `## A Day in the Life`,
-    useCase.day_in_the_life,
-  ].join("\n");
-
-  const agentsContent = [
-    `# Agent: ${blueprint.name}`,
-    "",
-    `**Replaces:** ${useCase.replaces}`,
-    `**Tagline:** ${useCase.tagline}`,
-    "",
-    `## Autonomy`,
-    `Default level: ${blueprint.autonomy_model.default}`,
-    `Requires approval: ${blueprint.autonomy_model.requires_approval.join(", ") || "none"}`,
-  ].join("\n");
-
-  return [
-    { name: "SOUL.md", relativePath: "workspace/identity/SOUL.md", content: soulContent },
-    { name: "AGENTS.md", relativePath: "workspace/identity/AGENTS.md", content: agentsContent },
-  ];
+  return generateIdentityFilesFromBlueprint(blueprint);
 }
 
 /**

@@ -6,3 +6,5 @@
 
 export * from "./blueprints/index.js";
 export * from "./configure/index.js";
+// Identity module — export only what isn't already re-exported by configure.
+export { generateSoul, generateAgents } from "./identity/index.js";

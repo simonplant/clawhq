@@ -1,30 +1,30 @@
 {
-  "sprintId": "sprint-1773909807",
-  "startedAt": "2026-03-19T01:43:27-07:00",
+  "sprintId": "sprint-1773910558",
+  "startedAt": "2026-03-19T01:55:58-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-017",
-    "title": "Email Manager blueprint YAML",
-    "intent": "Deliver the Email Manager blueprint as the reference implementation — email triage, calendar, tasks, cron, hardened security. This is the demo-ready first use case.",
-    "description": "HIGH VALUE: THE first use case — this is what we show in demos. Defines Email Manager end-to-end: email + calendar + tasks tools, email-digest + morning-brief skills, 15min inbox cron, 8am daily digest. Acceptance: clawhq blueprint preview email-manager shows complete design; forge from CQ-010 produces valid openclaw.json. Must pair with CQ-022 (email-digest skill).",
+    "id": "CQ-019",
+    "title": "Identity file generators (SOUL.md, AGENTS.md, etc.)",
+    "intent": "Generate SOUL.md and AGENTS.md from the blueprint so every forged agent has a distinct identity. Identity files must be read-only at runtime — agents cannot rewrite who they are.",
+    "description": "IDENTITY IS THE PRODUCT: SOUL.md defines who the agent IS — its personality, communication style, boundaries. Without it, the user gets a generic OpenClaw instance, not a purpose-built agent. Read-only mount means the agent cannot modify its own personality at runtime (LM-12 prevention). SOUL.md (not IDENTITY.md) per current docs. Acceptance: SOUL.md generated from blueprint + wizard answers; AGENTS.md reflects correct tool/skill inventory; identity files mounted read-only in container; token budget respected.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Define Email Manager blueprint YAML with email + calendar + tasks tools",
-      "Configure email-digest and morning-brief skills in blueprint",
-      "Set up 15min inbox cron and 8am daily digest schedule",
-      "Apply hardened security posture with minimal egress allowlist"
+      "Generate SOUL.md from blueprint definition + wizard answers",
+      "Generate AGENTS.md reflecting correct tool/skill inventory",
+      "Mount identity files read-only in container",
+      "Enforce token budget for identity content"
     ],
     "acceptanceCriteria": [
-      "'clawhq blueprint preview email-manager' shows complete design",
-      "Forge via init wizard produces valid openclaw.json",
-      "Blueprint defines all tools, skills, cron schedules, and security settings",
-      "Blueprint pairs correctly with email-digest skill (CQ-022)"
+      "SOUL.md generated with personality, communication style, boundaries from blueprint",
+      "AGENTS.md reflects correct tool/skill inventory",
+      "Identity files mounted read-only in container (LM-12 prevention)",
+      "Token budget respected — identity content fits within limits"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T01:43:27-07:00",
+    "startedAt": "2026-03-19T01:55:58-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T01:55:56-07:00"
+    "completedAt": "2026-03-19T02:09:04-07:00"
   },
-  "completedAt": "2026-03-19T01:55:56-07:00",
+  "completedAt": "2026-03-19T02:09:04-07:00",
   "attempts": 2
 }
