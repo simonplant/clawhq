@@ -1005,8 +1005,8 @@
       "description": "MUST: The first-deploy user experience is broken without this. 'clawhq up succeeded' when the agent doesn't actually respond is worse than a clear failure — the user wastes time debugging a silently dead agent. Upgrade to must: smoke test (real message + response) is non-negotiable for deploy confidence. Scope split: smoke test (real message exchange) is must; backing services (postgres/redis/qdrant) can be a separate should item if needed. Acceptance: 'clawhq up' ends with a real message sent to agent and response received; failure is loud with actionable fix; 'clawhq service add postgres' configures backing service.",
       "category": "build",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement post-deploy smoke test: send real message, verify response",
         "Implement 'clawhq service add' for postgres, redis, qdrant backing services",
@@ -1016,7 +1016,9 @@
         "'clawhq up' ends with real message sent to agent and response received",
         "Smoke test failure is loud with actionable fix guidance",
         "'clawhq service add postgres' configures backing service correctly"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T04:24:32-07:00"
     },
     {
       "id": "FEAT-001",

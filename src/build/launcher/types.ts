@@ -198,3 +198,25 @@ export interface HealthVerifyResult {
   readonly elapsedMs: number;
   readonly error?: string;
 }
+
+// ── Smoke Test ─────────────────────────────────────────────────────────────
+
+/** Options for the post-deploy smoke test (real message exchange). */
+export interface SmokeTestOptions extends HealthVerifyOptions {
+  /** Timeout for the smoke test message round-trip (ms). Default: 30000. */
+  readonly smokeTimeoutMs?: number;
+  /** Custom smoke test message. Default: built-in ping. */
+  readonly smokeMessage?: string;
+}
+
+/** Result of the smoke test — proves the agent actually works. */
+export interface SmokeTestResult extends HealthVerifyResult {
+  /** Whether a real message was sent to the agent. */
+  readonly messageSent: boolean;
+  /** Whether the agent responded to the message. */
+  readonly responseReceived: boolean;
+  /** Truncated agent reply (first 200 chars). */
+  readonly agentReply?: string;
+  /** True if fell back to status-only check (older OpenClaw). */
+  readonly fallback?: boolean;
+}

@@ -51,4 +51,6 @@ export type {
   ProgressCallback,
   ShutdownOptions,
   ShutdownResult,
+  SmokeTestOptions,
+  SmokeTestResult,
 } from "./types.js";

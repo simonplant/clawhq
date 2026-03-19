@@ -2,13 +2,15 @@
  * Post-deploy health verification and smoke test.
  *
  * Waits for the Gateway to become reachable after compose up,
- * then runs a smoke test RPC call. Retries with exponential
- * backoff until timeout. Supports AbortSignal for cancellation.
+ * then runs a smoke test that sends a real message to the agent
+ * and verifies a response. "Container started" is not "agent works."
+ *
+ * Retries with exponential backoff until timeout. Supports AbortSignal.
  */
 
 import { GatewayClient } from "../../gateway/index.js";
 
-import type { HealthVerifyOptions, HealthVerifyResult } from "./types.js";
+import type { HealthVerifyOptions, HealthVerifyResult, SmokeTestOptions, SmokeTestResult } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -16,6 +18,8 @@ const DEFAULT_TIMEOUT_MS = 60_000;
 const DEFAULT_INTERVAL_MS = 2_000;
 const MAX_INTERVAL_MS = 10_000;
 const RPC_TIMEOUT_MS = 5_000;
+const SMOKE_MESSAGE_TIMEOUT_MS = 30_000;
+const SMOKE_TEST_MESSAGE = "clawhq smoke test — please respond with any message to confirm you are operational.";
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -83,41 +87,123 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
 /**
  * Run a smoke test against a running Gateway.
  *
- * Verifies the Gateway responds to a basic RPC call. This is the
- * final check in the deploy sequence — confirms the agent is reachable.
+ * Sends a real message to the agent via Gateway RPC and verifies the
+ * agent responds. "Container started" is not "agent works" — this test
+ * proves the full pipeline: Gateway → session → agent → response.
+ *
+ * Falls back to status-only verification if the Gateway does not support
+ * `sessions.send` (older OpenClaw versions).
  */
-export async function smokeTest(options: HealthVerifyOptions): Promise<HealthVerifyResult> {
+export async function smokeTest(options: SmokeTestOptions): Promise<SmokeTestResult> {
   const host = options.gatewayHost ?? "127.0.0.1";
   const port = options.gatewayPort ?? 18789;
   const start = Date.now();
+  const timeoutMs = options.smokeTimeoutMs ?? SMOKE_MESSAGE_TIMEOUT_MS;
+  const message = options.smokeMessage ?? SMOKE_TEST_MESSAGE;
 
   const client = new GatewayClient({
     token: options.gatewayToken,
     host,
     port,
-    timeoutMs: RPC_TIMEOUT_MS,
+    timeoutMs,
   });
 
   try {
     await client.connect(options.signal);
-    await client.rpc("status", undefined, { timeoutMs: RPC_TIMEOUT_MS });
-    client.close();
 
-    return {
-      healthy: true,
-      attempts: 1,
-      elapsedMs: Date.now() - start,
-    };
+    // Step 1: Verify Gateway is responsive
+    await client.rpc("status", undefined, { timeoutMs: RPC_TIMEOUT_MS });
+
+    // Step 2: Send a real message and wait for the agent's response
+    try {
+      const response = await client.rpc(
+        "sessions.send",
+        { message, session: "smoke-test" },
+        { timeoutMs, signal: options.signal },
+      ) as { reply?: string } | undefined;
+
+      client.close();
+
+      const reply = response?.reply;
+      if (reply) {
+        return {
+          healthy: true,
+          attempts: 1,
+          elapsedMs: Date.now() - start,
+          messageSent: true,
+          responseReceived: true,
+          agentReply: typeof reply === "string" ? reply.slice(0, 200) : String(reply).slice(0, 200),
+        };
+      }
+
+      // Gateway accepted the RPC but agent didn't reply
+      return {
+        healthy: false,
+        attempts: 1,
+        elapsedMs: Date.now() - start,
+        messageSent: true,
+        responseReceived: false,
+        error: smokeFailureGuide("Agent received the message but did not respond", options),
+      };
+    } catch (sessionErr) {
+      client.close();
+
+      // If sessions.send is not supported, fall back to status-only
+      const errMsg = sessionErr instanceof Error ? sessionErr.message : String(sessionErr);
+      if (errMsg.includes("unknown method") || errMsg.includes("not found") || errMsg.includes("not supported")) {
+        return {
+          healthy: true,
+          attempts: 1,
+          elapsedMs: Date.now() - start,
+          messageSent: false,
+          responseReceived: false,
+          fallback: true,
+        };
+      }
+
+      // Real failure — agent pipeline is broken
+      return {
+        healthy: false,
+        attempts: 1,
+        elapsedMs: Date.now() - start,
+        messageSent: false,
+        responseReceived: false,
+        error: smokeFailureGuide(errMsg, options),
+      };
+    }
   } catch (err) {
     client.close();
-    const message = err instanceof Error ? err.message : String(err);
+    const errMsg = err instanceof Error ? err.message : String(err);
     return {
       healthy: false,
       attempts: 1,
       elapsedMs: Date.now() - start,
-      error: `Smoke test failed: ${message}`,
+      messageSent: false,
+      responseReceived: false,
+      error: smokeFailureGuide(errMsg, options),
     };
   }
+}
+
+/**
+ * Build actionable fix guidance for smoke test failures.
+ */
+function smokeFailureGuide(rawError: string, options: SmokeTestOptions): string {
+  const port = options.gatewayPort ?? 18789;
+  const lines = [`Smoke test failed: ${rawError}`];
+
+  lines.push("");
+  lines.push("The agent container is running but not responding to messages.");
+  lines.push("This means 'clawhq up' did NOT produce a working agent.");
+  lines.push("");
+  lines.push("Troubleshooting:");
+  lines.push(`  1. Check agent logs:  clawhq logs -f`);
+  lines.push(`  2. Run diagnostics:   clawhq doctor --fix`);
+  lines.push(`  3. Verify model:      Is Ollama running? Is the configured model pulled?`);
+  lines.push(`  4. Check Gateway:     curl -s http://127.0.0.1:${port}/health`);
+  lines.push(`  5. Restart agent:     clawhq restart`);
+
+  return lines.join("\n");
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

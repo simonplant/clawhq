@@ -459,9 +459,9 @@ program
     spinner.stop();
 
     if (result.success) {
-      console.log(chalk.green("\n✔ Agent is live and reachable"));
+      console.log(chalk.green("\n✔ Agent is live and responding to messages"));
     } else {
-      console.error(chalk.red(`\n✘ Deploy failed: ${result.error}`));
+      console.error(chalk.red(`\n✘ Deploy failed:\n${result.error}`));
       process.exit(1);
     }
   });
@@ -703,6 +703,84 @@ program
       console.error(renderError(error));
       process.exit(1);
     }
+  });
+
+// ── Service Commands ────────────────────────────────────────────────────────
+
+const service = program.command("service").description("Manage backing services (postgres, redis, qdrant)");
+
+service
+  .command("add")
+  .description("Add a backing service — configures container, network, credentials")
+  .argument("<name>", "Service name (postgres, redis, qdrant)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("-p, --port <port>", "Custom host port")
+  .action(async (name: string, opts: { deployDir: string; port?: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
+    const { addService, SUPPORTED_SERVICES } = await import("../build/services/index.js");
+    type ServiceName = import("../build/services/index.js").ServiceName;
+
+    if (!SUPPORTED_SERVICES.includes(name as ServiceName)) {
+      console.error(chalk.red(`Unknown service: ${name}`));
+      console.error(chalk.dim(`Supported: ${SUPPORTED_SERVICES.join(", ")}`));
+      process.exit(1);
+    }
+
+    const spinner = ora(`Adding ${name}…`);
+    spinner.start();
+
+    const result = await addService({
+      deployDir: opts.deployDir,
+      service: name as ServiceName,
+      port: opts.port ? parseInt(opts.port, 10) : undefined,
+    });
+
+    spinner.stop();
+
+    if (result.success) {
+      console.log(chalk.green(`\n✔ Service "${name}" configured`));
+      if (result.composePath) {
+        console.log(chalk.dim(`  Compose: ${result.composePath}`));
+      }
+      if (result.envVarsAdded && result.envVarsAdded.length > 0) {
+        console.log(chalk.dim(`  Env vars: ${result.envVarsAdded.join(", ")}`));
+      }
+      console.log(chalk.dim(`\n  Restart to activate: clawhq restart`));
+    } else {
+      console.error(chalk.red(`\n✘ Failed to add ${name}: ${result.error}`));
+      process.exit(1);
+    }
+  });
+
+service
+  .command("list")
+  .description("List configured backing services")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
+    const { listServices, SUPPORTED_SERVICES } = await import("../build/services/index.js");
+
+    const result = listServices({ deployDir: opts.deployDir });
+
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
+    if (result.services.length === 0) {
+      console.log(chalk.dim("No backing services configured."));
+      console.log(chalk.dim(`  Add one: clawhq service add ${SUPPORTED_SERVICES[0]}`));
+      return;
+    }
+
+    console.log(chalk.bold("\nBacking Services\n"));
+    for (const svc of result.services) {
+      console.log(`  ${chalk.cyan(svc.name)}  ${chalk.dim(svc.image)}  ${chalk.green(svc.status)}`);
+    }
+    console.log("");
   });
 
 // ── Secure Commands ────────────────────────────────────────────────────────
