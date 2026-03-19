@@ -63,11 +63,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Doc-only fix. Target CLAUDE.md Key Source Layout: change secure/sandbox/ -> secure/sanitizer/ (input injection firewall). Add note that hardening/posture logic is in build/docker/. Add note that validate (14 landmines) is in config/validate.ts. Also update docs/ARCHITECTURE.md package structure to match. No code moves — just accurate docs. Note: secure/firewall/ WILL exist after CQ-005 completes, so that entry can stay as-is in the docs."
+      "groomingNotes": "Doc-only fix. Target CLAUDE.md Key Source Layout: change secure/sandbox/ -> secure/sanitizer/ (input injection firewall). Add note that hardening/posture logic is in build/docker/. Add note that validate (14 landmines) is in config/validate.ts. Also update docs/ARCHITECTURE.md package structure to match. No code moves — just accurate docs. Note: secure/firewall/ WILL exist after CQ-005 completes, so that entry can stay as-is in the docs.",
+      "completedAt": "2026-03-19T09:41:15-07:00"
     },
     {
       "id": "BUG-009",
