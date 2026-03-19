@@ -381,11 +381,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "6 evolve/ manifest loaders missing try-catch: evolve/role/manifest.ts:54, evolve/provider/manifest.ts:26, evolve/integrate/manifest.ts:26, evolve/memory/lifecycle.ts:61, evolve/rollback/capability-snapshot.ts:67, evolve/skills/rollback.ts:39. Correct pattern already in evolve/tools/manifest.ts:28-34 and evolve/skills/lifecycle.ts:38-45 — copy this pattern to the 6 missing files. Fallbacks: role={version:1,roles:[...BUILTIN_ROLES],assignments:{}}, provider={version:1,providers:[]}, integrate={version:1,integrations:[]}, memory lifecycle=return null or empty, rollback snapshots=[]. Add console.warn('[evolve] Failed to read <manifest>:', err) in each catch. No dependencies. Run evolve/ tests after. Scope: 6 files, each ~5 lines added."
+      "groomingNotes": "6 evolve/ manifest loaders missing try-catch: evolve/role/manifest.ts:54, evolve/provider/manifest.ts:26, evolve/integrate/manifest.ts:26, evolve/memory/lifecycle.ts:61, evolve/rollback/capability-snapshot.ts:67, evolve/skills/rollback.ts:39. Correct pattern already in evolve/tools/manifest.ts:28-34 and evolve/skills/lifecycle.ts:38-45 — copy this pattern to the 6 missing files. Fallbacks: role={version:1,roles:[...BUILTIN_ROLES],assignments:{}}, provider={version:1,providers:[]}, integrate={version:1,integrations:[]}, memory lifecycle=return null or empty, rollback snapshots=[]. Add console.warn('[evolve] Failed to read <manifest>:', err) in each catch. No dependencies. Run evolve/ tests after. Scope: 6 files, each ~5 lines added.",
+      "completedAt": "2026-03-19T11:21:53-07:00"
     },
     {
       "id": "BUG-029",

@@ -50,8 +50,14 @@ export function loadRoleManifest(deployDir: string): RoleManifest {
   if (!existsSync(path)) {
     return { version: 1, roles: [...BUILTIN_ROLES], assignments: {} };
   }
-  const raw = readFileSync(path, "utf-8");
-  const manifest = JSON.parse(raw) as RoleManifest;
+  let manifest: RoleManifest;
+  try {
+    const raw = readFileSync(path, "utf-8");
+    manifest = JSON.parse(raw) as RoleManifest;
+  } catch (err) {
+    console.warn("[evolve] Failed to read role manifest:", err);
+    return { version: 1, roles: [...BUILTIN_ROLES], assignments: {} };
+  }
 
   // Ensure built-in roles are always present
   const existingNames = new Set(manifest.roles.map((r) => r.name));
