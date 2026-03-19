@@ -77,6 +77,18 @@ import {
   runDoctor,
   runDoctorWithFix,
 } from "../operate/doctor/index.js";
+import { streamLogs } from "../operate/logs/index.js";
+import {
+  formatStatusJson,
+  formatStatusTable,
+  getStatus,
+  watchStatus,
+} from "../operate/status/index.js";
+import {
+  applyUpdate,
+  checkForUpdates,
+} from "../operate/updater/index.js";
+import type { UpdateProgress } from "../operate/updater/index.js";
 import {
   buildOwaspExport,
   createAuditConfig,
@@ -977,10 +989,56 @@ program
   .description("Single-pane status dashboard")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("-w, --watch", "Continuous monitoring mode")
-  .action(async (opts: { deployDir: string; watch?: boolean }) => {
+  .option("--json", "Output as JSON for scripting")
+  .option("-i, --interval <seconds>", "Watch refresh interval in seconds", "5")
+  .action(async (opts: { deployDir: string; watch?: boolean; json?: boolean; interval: string }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+
+    try {
+      if (opts.watch) {
+        const ac = new AbortController();
+        process.on("SIGINT", () => ac.abort());
+        process.on("SIGTERM", () => ac.abort());
+
+        const intervalMs = Math.max(1, parseInt(opts.interval, 10)) * 1000;
+
+        await watchStatus({
+          deployDir: opts.deployDir,
+          signal: ac.signal,
+          intervalMs,
+          onUpdate: (snapshot) => {
+            // Clear screen for dashboard refresh
+            process.stdout.write("\x1B[2J\x1B[H");
+            if (opts.json) {
+              console.log(formatStatusJson(snapshot));
+            } else {
+              console.log(formatStatusTable(snapshot));
+              console.log(chalk.dim(`\n  Refreshing every ${opts.interval}s — Ctrl+C to stop`));
+            }
+          },
+        });
+      } else {
+        const spinner = ora("Gathering status…");
+        if (!opts.json) spinner.start();
+
+        const snapshot = await getStatus({
+          deployDir: opts.deployDir,
+        });
+
+        if (!opts.json) spinner.stop();
+
+        if (opts.json) {
+          console.log(formatStatusJson(snapshot));
+        } else {
+          console.log(formatStatusTable(snapshot));
+        }
+
+        if (!snapshot.healthy) process.exit(1);
+      }
+    } catch (error) {
+      console.error(renderError(error));
+      process.exit(1);
+    }
   });
 
 const backup = program.command("backup").description("Encrypted backup and restore");
@@ -1105,10 +1163,90 @@ program
   .description("Safe upstream upgrade with rollback")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("--check", "Check for updates without applying")
-  .action(async (opts: { deployDir: string; check?: boolean }) => {
+  .option("-p, --passphrase <passphrase>", "Passphrase for pre-update backup encryption")
+  .option("-t, --token <token>", "Gateway auth token for post-update verification")
+  .option("--port <port>", "Gateway port", "18789")
+  .action(async (opts: {
+    deployDir: string;
+    check?: boolean;
+    passphrase?: string;
+    token?: string;
+    port: string;
+  }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+
+    const ac = new AbortController();
+    process.on("SIGINT", () => ac.abort());
+    process.on("SIGTERM", () => ac.abort());
+
+    const spinner = ora();
+    const onProgress = (event: UpdateProgress): void => {
+      const label = chalk.dim(`[${event.step}]`);
+      switch (event.status) {
+        case "running": spinner.start(`${label} ${event.message}`); break;
+        case "done": spinner.succeed(`${label} ${event.message}`); break;
+        case "failed": spinner.fail(`${label} ${event.message}`); break;
+        case "skipped": spinner.warn(`${label} ${event.message}`); break;
+      }
+    };
+
+    try {
+      if (opts.check) {
+        const result = await checkForUpdates({
+          deployDir: opts.deployDir,
+          checkOnly: true,
+          onProgress,
+          signal: ac.signal,
+        });
+
+        spinner.stop();
+
+        if (result.error) {
+          console.error(chalk.red(`\n✘ ${result.error}`));
+          process.exit(1);
+        }
+
+        if (result.available) {
+          console.log(chalk.green("\n✔ Update available"));
+          console.log(chalk.dim(`  Image: ${result.currentImage}`));
+          console.log(chalk.dim("  Run: clawhq update --passphrase <passphrase> to apply"));
+        } else {
+          console.log(chalk.green("\n✔ Already up to date"));
+          console.log(chalk.dim(`  Image: ${result.currentImage}`));
+        }
+      } else {
+        const token = opts.token ?? process.env["CLAWHQ_GATEWAY_TOKEN"] ?? "";
+
+        const result = await applyUpdate({
+          deployDir: opts.deployDir,
+          passphrase: opts.passphrase,
+          gatewayToken: token,
+          gatewayPort: parseInt(opts.port, 10),
+          onProgress,
+          signal: ac.signal,
+        });
+
+        spinner.stop();
+
+        if (result.success) {
+          console.log(chalk.green("\n✔ Update applied successfully"));
+          if (result.backupId) {
+            console.log(chalk.dim(`  Pre-update backup: ${result.backupId}`));
+          }
+        } else {
+          if (result.rolledBack) {
+            console.log(chalk.yellow("\n⚠ Update failed — rolled back to previous state"));
+            console.log(chalk.dim(`  Backup restored: ${result.backupId}`));
+          }
+          console.error(chalk.red(`\n✘ ${result.error}`));
+          process.exit(1);
+        }
+      }
+    } catch (error) {
+      spinner.stop();
+      console.error(renderError(error));
+      process.exit(1);
+    }
   });
 
 program
@@ -1119,8 +1257,51 @@ program
   .option("-n, --lines <count>", "Number of lines to show", "50")
   .action(async (opts: { deployDir: string; follow?: boolean; lines: string }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+
+    const ac = new AbortController();
+    process.on("SIGINT", () => ac.abort());
+    process.on("SIGTERM", () => ac.abort());
+
+    const lineCount = parseInt(opts.lines, 10);
+
+    try {
+      if (opts.follow) {
+        // Follow mode: stream to stdout until Ctrl+C
+        const result = await streamLogs({
+          deployDir: opts.deployDir,
+          follow: true,
+          lines: lineCount,
+          signal: ac.signal,
+        });
+
+        if (!result.success && !ac.signal.aborted) {
+          console.error(chalk.red(`\n✘ ${result.error}`));
+          process.exit(1);
+        }
+      } else {
+        // Non-follow mode: read and print
+        const result = await streamLogs({
+          deployDir: opts.deployDir,
+          follow: false,
+          lines: lineCount,
+          signal: ac.signal,
+        });
+
+        if (!result.success) {
+          console.error(chalk.red(`✘ ${result.error}`));
+          process.exit(1);
+        }
+
+        if (result.output) {
+          console.log(result.output);
+        } else {
+          console.log(chalk.dim("No logs available."));
+        }
+      }
+    } catch (error) {
+      console.error(renderError(error));
+      process.exit(1);
+    }
   });
 
 // ── Evolve Commands ─────────────────────────────────────────────────────────
