@@ -8,8 +8,8 @@
  * Each service gets a healthcheck, named volume, and secure defaults.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
