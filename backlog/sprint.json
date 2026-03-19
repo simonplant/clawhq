@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773938942",
-  "startedAt": "2026-03-19T09:49:02-07:00",
+  "sprintId": "sprint-1773939062",
+  "startedAt": "2026-03-19T09:51:02-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-010",
-    "title": "sanitizer uses process.env.HOME instead of os.homedir()",
-    "intent": "Audit log and quarantine paths are always computed correctly — never fallback to /root. os.homedir() is the single correct API for user home directory.",
-    "description": "src/secure/sanitizer/sanitizer.ts:24-26 computes DEFAULT_OPS_DIR using process.env.HOME ?? '/root' instead of os.homedir() from the 'os' module. The os module is the correct cross-platform API — process.env.HOME is undefined in some container and test environments. If HOME is unset, audit logs and quarantined files are written to /root, which is an incorrect path and may be unwritable. Fix: import { homedir } from 'os'; replace the HOME env var reference with homedir(). The correct pattern is already used in src/config/paths.ts. Steps: (1) open src/secure/sanitizer/sanitizer.ts; (2) add homedir import from 'os'; (3) replace process.env.HOME ?? '/root' with homedir(); (4) run existing sanitizer tests to confirm no regression. Scope: one-line change in one file.",
+    "id": "BUG-011",
+    "title": "Gateway port 18789 hardcoded in 23+ locations across 12 files",
+    "intent": "Gateway port has a single source of truth. No literal 18789 appears outside src/config/defaults.ts. Changing the default port requires editing one line.",
+    "description": "The Gateway port 18789 is hardcoded as a literal in at least 23 places across 12 files including src/build/launcher/preflight.ts:20, src/operate/doctor/checks.ts:589, and others. There is no single source of truth for this value. Steps: (1) grep codebase for 18789 to enumerate all instances; (2) define GATEWAY_DEFAULT_PORT = 18789 constant in src/config/defaults.ts (create file if absent) and export it; (3) replace all literal 18789 references with the constant import; (4) run full test suite to confirm no regression. Note: the port is configurable in openclaw.json — this change normalizes the fallback value, not the config surface. Scope: grep + search-replace across ~12 files, no logic change.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T09:49:02-07:00",
+    "startedAt": "2026-03-19T09:51:02-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T09:51:00-07:00"
+    "completedAt": "2026-03-19T10:01:03-07:00"
   },
-  "completedAt": "2026-03-19T09:51:00-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T10:01:03-07:00",
+  "attempts": 2
 }

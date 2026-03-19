@@ -111,11 +111,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "grep for 18789 gives all instances. Define GATEWAY_DEFAULT_PORT in src/config/defaults.ts and import everywhere. No logic change — search-replace across ~12 files. Full test suite must pass after. No dependencies on any in-progress work."
+      "groomingNotes": "grep for 18789 gives all instances. Define GATEWAY_DEFAULT_PORT in src/config/defaults.ts and import everywhere. No logic change — search-replace across ~12 files. Full test suite must pass after. No dependencies on any in-progress work.",
+      "completedAt": "2026-03-19T10:01:03-07:00"
     },
     {
       "id": "BUG-012",
