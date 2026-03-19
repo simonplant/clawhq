@@ -4,7 +4,12 @@ import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
 
 import { computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
-import { generateStage1Dockerfile, generateStage2Dockerfile } from "./dockerfile.js";
+import {
+  generateStage1Dockerfile,
+  generateStage2Dockerfile,
+  validateBinaryDestPath,
+  validateBinaryUrl,
+} from "./dockerfile.js";
 import { createManifest } from "./manifest.js";
 import { DEFAULT_POSTURE, getPostureConfig, POSTURE_LEVELS } from "./posture.js";
 import type { Stage1Config, Stage2Config } from "./types.js";
@@ -163,6 +168,84 @@ describe("generateStage2Dockerfile", () => {
   it("sets USER to 1000:1000", () => {
     const df = generateStage2Dockerfile("openclaw:local", stage2Config());
     expect(df).toContain("USER 1000:1000");
+  });
+});
+
+// ── Binary Validation Tests ─────────────────────────────────────────────
+
+describe("validateBinaryUrl", () => {
+  it("accepts valid https URLs", () => {
+    expect(() => validateBinaryUrl("https://github.com/pimalaya/himalaya/releases/download/v1.0.0/himalaya")).not.toThrow();
+  });
+
+  it("rejects http URLs", () => {
+    expect(() => validateBinaryUrl("http://example.com/binary")).toThrow("must use https://");
+  });
+
+  it("rejects ftp URLs", () => {
+    expect(() => validateBinaryUrl("ftp://example.com/binary")).toThrow("must use https://");
+  });
+
+  it("rejects invalid URLs", () => {
+    expect(() => validateBinaryUrl("not-a-url")).toThrow("Invalid binary URL");
+  });
+
+  it("rejects empty string", () => {
+    expect(() => validateBinaryUrl("")).toThrow("Invalid binary URL");
+  });
+});
+
+describe("validateBinaryDestPath", () => {
+  it("accepts safe absolute paths", () => {
+    expect(() => validateBinaryDestPath("/usr/local/bin/himalaya")).not.toThrow();
+  });
+
+  it("rejects relative paths", () => {
+    expect(() => validateBinaryDestPath("usr/local/bin/himalaya")).toThrow("absolute path");
+  });
+
+  it("rejects paths with newlines", () => {
+    expect(() => validateBinaryDestPath("/usr/local/bin/bad\nRUN malicious")).toThrow("unsafe characters");
+  });
+
+  it("rejects paths with double quotes", () => {
+    expect(() => validateBinaryDestPath('/usr/local/bin/"bad')).toThrow("unsafe characters");
+  });
+
+  it("rejects paths with single quotes", () => {
+    expect(() => validateBinaryDestPath("/usr/local/bin/'bad")).toThrow("unsafe characters");
+  });
+
+  it("rejects paths with backslashes", () => {
+    expect(() => validateBinaryDestPath("/usr/local/bin\\bad")).toThrow("unsafe characters");
+  });
+
+  it("rejects paths with backticks", () => {
+    expect(() => validateBinaryDestPath("/usr/local/bin/`whoami`")).toThrow("unsafe characters");
+  });
+
+  it("rejects paths with dollar signs", () => {
+    expect(() => validateBinaryDestPath("/usr/local/bin/$HOME")).toThrow("unsafe characters");
+  });
+});
+
+describe("generateStage2Dockerfile binary validation", () => {
+  it("rejects binaries with http URLs", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "bad", url: "http://evil.com/bin", destPath: "/usr/local/bin/bad" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config)).toThrow("must use https://");
+  });
+
+  it("rejects binaries with unsafe destPath", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "bad", url: "https://example.com/bin", destPath: "/bin/bad\nRUN evil" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config)).toThrow("unsafe characters");
   });
 });
 
