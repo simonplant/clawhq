@@ -1,30 +1,28 @@
 {
-  "sprintId": "sprint-1773930294",
-  "startedAt": "2026-03-19T07:24:54-07:00",
+  "sprintId": "sprint-1773931614",
+  "startedAt": "2026-03-19T07:46:54-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-038",
-    "title": "Trust modes + heartbeat + command queue",
-    "intent": "Implement three trust modes so users choose their privacy level. Kill switch must disconnect immediately. Signed command queue must reject tampered commands.",
-    "description": "MANAGED MODE FOUNDATION: Trust modes are what makes the cloud layer safe by design. Paranoid users run fully offline. Zero-Trust users get optional remote monitoring without any inbound access. Managed users get operational automation with content architecturally blocked. Kill switch ('clawhq cloud disconnect') with no confirmation prompt is the user's emergency brake. Signed command queue prevents malicious commands even if cloud is compromised. Acceptance: all three trust modes switch cleanly; kill switch disconnects immediately; command signature verified before execution; unsupported commands rejected in all modes.",
+    "id": "CQ-039",
+    "title": "Fleet management",
+    "intent": "Fleet management must discover all running agents and aggregate health into a single view. Fleet-wide doctor must surface issues across all agents in one check.",
+    "description": "FLEET OPERATOR: Multi-agent discovery + fleet-wide doctor is for the Fleet Operator persona managing agents for multiple people. Single pane of glass: see which agents are healthy, which need attention. Fleet-wide doctor means one check to confirm all agents are configured correctly. Not blocking single-user adoption. Acceptance: 'clawhq cloud fleet' discovers running agents; fleet health shows aggregate status; fleet doctor surfaces issues across all agents.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement paranoid, zero-trust, and managed trust modes",
-      "Add kill switch ('clawhq cloud disconnect') with no confirmation prompt",
-      "Build outbound health reporter (heartbeat)",
-      "Implement signed command queue with signature verification"
+      "Implement multi-agent discovery across running instances",
+      "Build health aggregation into single fleet view",
+      "Add fleet-wide doctor command"
     ],
     "acceptanceCriteria": [
-      "All three trust modes switch cleanly",
-      "Kill switch disconnects immediately with no prompt",
-      "Command signatures verified before execution",
-      "Unsupported commands rejected in all modes"
+      "'clawhq cloud fleet' discovers all running agents",
+      "Fleet health shows aggregate status in single view",
+      "Fleet doctor surfaces issues across all agents in one check"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T07:24:54-07:00",
+    "startedAt": "2026-03-19T07:46:54-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T07:46:52-07:00"
+    "completedAt": "2026-03-19T08:02:00-07:00"
   },
-  "completedAt": "2026-03-19T07:46:52-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T08:02:00-07:00",
+  "attempts": 2
 }
