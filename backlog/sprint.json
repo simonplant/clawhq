@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773946467",
-  "startedAt": "2026-03-19T11:54:27-07:00",
+  "sprintId": "sprint-1773947025",
+  "startedAt": "2026-03-19T12:03:45-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-033",
-    "title": "Ollama default model name 'llama3:8b' hardcoded across 7 locations",
-    "intent": "Ollama default model has a single source of truth in config/defaults.ts. No literal model name string appears in runtime code outside that file.",
-    "description": "The Ollama default model 'llama3:8b' is hardcoded in 7 locations across 5 files: src/design/configure/ollama.ts:10 (const DEFAULT_MODEL = 'llama3:8b'), src/design/configure/smart.ts:51 (const DEFAULT_LOCAL_MODEL = 'llama3:8b'), src/design/configure/wizard.ts:61 (const DEFAULT_LOCAL_MODEL = 'llama3:8b'), src/web/server.tsx:238 (fallback string literal), src/evolve/migrate/extract.ts:77 (?? fallback), src/evolve/memory/summarize.ts:56 (?? fallback). Same pattern as BUG-025 (Ollama URL) and BUG-026 (WhatsApp API version). Steps: (1) add OLLAMA_DEFAULT_MODEL = 'llama3:8b' to src/config/defaults.ts; (2) import and replace runtime literals in ollama.ts:10, smart.ts:51, wizard.ts:61, server.tsx:238, extract.ts:77, summarize.ts:56; (3) web/pages/init.tsx:59 HTML placeholder text can stay as-is (presentational); (4) run design/, evolve/, and web/ tests to confirm no regression. Scope: 6 files, ~8 lines changed. Zero logic change — pure constant extraction.",
+    "id": "BUG-034",
+    "title": "Cloud state writers missing try-catch on atomic file writes",
+    "intent": "Trust mode and command queue writes must never fail silently. A trust mode switch to paranoid that fails silently leaves the agent in a less-restrictive security posture with no indication — this is a security failure, not a reliability failure.",
+    "description": "Four cloud module state writers perform atomic writes (writeFileSync + renameSync) without try-catch: src/cloud/heartbeat/reporter.ts:56-61 (heartbeat state), src/cloud/trust-modes/switch.ts:70-75 (trust mode state), src/cloud/commands/queue.ts:63-68 (command queue), src/cloud/fleet/discovery.ts:60-65 (fleet registry). BUG-027 fixed the read side (JSON.parse) but missed the write side. A disk write failure silently discards the update — a trust mode switch to 'paranoid' could fail with no warning, leaving the agent in an unexpected state. Steps: (1) src/cloud/trust-modes/switch.ts:70-75 — wrap in try-catch and THROW on error (critical path — caller must know if trust mode change failed); (2) src/cloud/commands/queue.ts:63-68 — wrap in try-catch and throw (enqueue failure must propagate); (3) src/cloud/heartbeat/reporter.ts:56-61 — wrap in try-catch and console.warn (best-effort, non-critical); (4) src/cloud/fleet/discovery.ts:60-65 — wrap in try-catch and console.warn (best-effort); (5) run cloud/ tests after each change. Scope: 4 files, ~8 additions. Note: trust-modes/switch.ts and commands/queue.ts must throw; reporter.ts and discovery.ts log-only.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T11:54:27-07:00",
+    "startedAt": "2026-03-19T12:03:45-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T11:57:20-07:00"
+    "completedAt": "2026-03-19T12:07:33-07:00"
   },
-  "completedAt": "2026-03-19T11:57:20-07:00",
+  "completedAt": "2026-03-19T12:07:33-07:00",
   "attempts": 1
 }
