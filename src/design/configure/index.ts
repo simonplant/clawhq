@@ -28,5 +28,15 @@ export { generateBundle, generateIdentityFiles, generateToolFiles } from "./gene
 export type { IdentityFileContent } from "../identity/index.js";
 export type { ToolFileContent } from "../tools/index.js";
 
+// Smart inference
+export {
+  runSmartInference,
+  SmartInferenceAbortError,
+  SmartInferenceError,
+} from "./smart.js";
+
+// Ollama client
+export { isOllamaAvailable, OllamaError } from "./ollama.js";
+
 // Writer
 export { writeBundle, writeFileAtomic, WriteError } from "./writer.js";

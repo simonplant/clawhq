@@ -32,7 +32,9 @@ import {
   createInquirerPrompter,
   generateBundle,
   generateIdentityFiles,
+  runSmartInference,
   runWizard,
+  SmartInferenceAbortError,
   WizardAbortError,
   writeBundle,
 } from "../design/configure/index.js";
@@ -193,23 +195,33 @@ program
   .command("init")
   .description("Interactive setup — choose blueprint, configure, forge agent")
   .option("--guided", "Run the guided setup wizard (default)")
+  .option("--smart", "AI-powered config inference via local Ollama")
   .option("-b, --blueprint <name>", "Pre-select a blueprint by name")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("--air-gapped", "Run in air-gapped mode (no internet)")
+  .option("--ollama-model <model>", "Ollama model for --smart inference")
   .action(async (opts: {
     guided?: boolean;
+    smart?: boolean;
     blueprint?: string;
     deployDir: string;
     airGapped?: boolean;
+    ollamaModel?: string;
   }) => {
     try {
-      // Step 1: Run the interactive wizard
       const prompter = await createInquirerPrompter();
-      const answers = await runWizard(prompter, {
-        blueprintName: opts.blueprint,
-        deployDir: opts.deployDir,
-        airGapped: opts.airGapped,
-      });
+
+      // Step 1: Collect answers via smart inference or guided wizard
+      const answers = opts.smart
+        ? await runSmartInference(prompter, {
+            deployDir: opts.deployDir,
+            ollamaModel: opts.ollamaModel,
+          })
+        : await runWizard(prompter, {
+            blueprintName: opts.blueprint,
+            deployDir: opts.deployDir,
+            airGapped: opts.airGapped,
+          });
 
       // Step 2: Generate deployment bundle
       const spinner = ora("Generating config…");
@@ -243,7 +255,7 @@ program
       console.log(chalk.dim(`  All 14 landmine rules passed`));
       console.log(chalk.dim(`\n  Next: clawhq up`));
     } catch (error) {
-      if (error instanceof WizardAbortError) {
+      if (error instanceof WizardAbortError || error instanceof SmartInferenceAbortError) {
         console.log(chalk.yellow("\nSetup cancelled."));
         process.exit(0);
       }
