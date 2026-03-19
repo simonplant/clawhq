@@ -35,8 +35,13 @@ export function readHeartbeatState(deployDir: string): HeartbeatState {
   if (!existsSync(path)) {
     return { version: 1, consecutiveFailures: 0 };
   }
-  const raw = readFileSync(path, "utf-8");
-  return JSON.parse(raw) as HeartbeatState;
+  try {
+    const raw = readFileSync(path, "utf-8");
+    return JSON.parse(raw) as HeartbeatState;
+  } catch (err) {
+    console.warn("[cloud] Failed to read heartbeat state:", err);
+    return { version: 1, consecutiveFailures: 0 };
+  }
 }
 
 /** Write heartbeat state atomically. */

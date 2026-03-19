@@ -40,8 +40,18 @@ export function readTrustModeState(deployDir: string): TrustModeState {
       changedAt: new Date().toISOString(),
     };
   }
-  const raw = readFileSync(path, "utf-8");
-  return JSON.parse(raw) as TrustModeState;
+  try {
+    const raw = readFileSync(path, "utf-8");
+    return JSON.parse(raw) as TrustModeState;
+  } catch (err) {
+    console.warn("[cloud] Failed to read trust mode state:", err);
+    return {
+      version: 1,
+      mode: "paranoid",
+      connected: false,
+      changedAt: new Date().toISOString(),
+    };
+  }
 }
 
 // ── Write ────────────────────────────────────────────────────────────────────

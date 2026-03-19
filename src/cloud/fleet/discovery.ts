@@ -39,8 +39,13 @@ export function readFleetRegistry(deployDir: string): FleetRegistry {
   if (!existsSync(path)) {
     return { version: 1, agents: [] };
   }
-  const raw = readFileSync(path, "utf-8");
-  return JSON.parse(raw) as FleetRegistry;
+  try {
+    const raw = readFileSync(path, "utf-8");
+    return JSON.parse(raw) as FleetRegistry;
+  } catch (err) {
+    console.warn("[cloud] Failed to read fleet registry:", err);
+    return { version: 1, agents: [] };
+  }
 }
 
 /** Write fleet registry atomically. */
