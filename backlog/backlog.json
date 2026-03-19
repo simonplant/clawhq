@@ -261,8 +261,8 @@
       "description": "HERO FEATURE: 'doctor' is the safety net that turns OpenClaw from 'it silently broke' to 'I know exactly what's wrong and how to fix it'. The 14+ checks cover every known failure mode preventively. Auto-fix means the user doesn't need to know what cap_drop is — they just run 'clawhq doctor --fix' and it works. Table output is the key UX: all checks visible at a glance, pass/fail clear, fix suggestions actionable. Acceptance: all 14+ checks run; auto-fix resolves common issues; table alignment clean; JSON output available for scripting.",
       "category": "operate",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-001",
         "CQ-003",
@@ -279,7 +279,9 @@
         "Auto-fix resolves common issues (e.g., cap_drop, permissions)",
         "Table output aligned and readable at a glance",
         "JSON output available for scripting and automation"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T01:25:15-07:00"
     },
     {
       "id": "CQ-012",
