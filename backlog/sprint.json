@@ -1,29 +1,29 @@
 {
-  "sprintId": "sprint-1773923283",
-  "startedAt": "2026-03-19T05:28:03-07:00",
+  "sprintId": "sprint-1773924031",
+  "startedAt": "2026-03-19T05:40:31-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-031",
-    "title": "Tool installation framework",
-    "intent": "clawhq tool install must add tools and trigger a Stage 2 rebuild automatically. Users must never hand-edit Dockerfiles to extend agent capabilities.",
-    "description": "EXTENSIBILITY: Tool install framework is how users extend their agent's capabilities after initial setup. Without it, adding a new tool requires manual Dockerfile edits. Dockerfile patching + Stage 2 rebuild trigger means 'clawhq tool install' just works. Depends on CQ-003 (two-stage build) being complete. Acceptance: 'clawhq tool install <name>' adds tool to Dockerfile, triggers Stage 2 rebuild; 'clawhq tool list' shows installed tools; 'clawhq tool remove' cleanly uninstalls.",
+    "id": "CQ-032",
+    "title": "Notifications + alerts + self-repair + digest",
+    "intent": "Proactively alert users to agent health issues and auto-recover from common failures. Users should not discover their agent died by noticing silence.",
+    "description": "DAY-2 OPS: Users who've had an agent for 30+ days need to know it's healthy without checking manually. Predictive health alerts catch problems before they become failures. Auto-recovery handles the common cases (container stopped, OOM) without user intervention. Daily digest gives the 'what did my agent do today?' answer proactively. Acceptance: health alerts fire before service goes down; auto-recovery handles restart + OOM cases; daily digest delivered via configured channel.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement 'clawhq tool install <name>' with Dockerfile patching",
-      "Implement 'clawhq tool list' showing installed tools",
-      "Implement 'clawhq tool remove' for clean uninstall",
-      "Trigger Stage 2 rebuild automatically on tool changes"
+      "Implement multi-channel notification system",
+      "Add predictive health alerts based on resource trends",
+      "Implement auto-recovery for container stopped and OOM cases",
+      "Build daily digest delivery via configured channel"
     ],
     "acceptanceCriteria": [
-      "'clawhq tool install <name>' adds tool to Dockerfile and triggers Stage 2 rebuild",
-      "'clawhq tool list' shows installed tools",
-      "'clawhq tool remove' cleanly uninstalls and triggers rebuild"
+      "Health alerts fire before service goes down",
+      "Auto-recovery handles container restart and OOM cases",
+      "Daily digest delivered via configured notification channel"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T05:28:03-07:00",
+    "startedAt": "2026-03-19T05:40:31-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T05:40:29-07:00"
+    "completedAt": "2026-03-19T05:53:29-07:00"
   },
-  "completedAt": "2026-03-19T05:40:29-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T05:53:29-07:00",
+  "attempts": 1
 }

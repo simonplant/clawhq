@@ -764,8 +764,8 @@
       "description": "EXTENSIBILITY: Tool install framework is how users extend their agent's capabilities after initial setup. Without it, adding a new tool requires manual Dockerfile edits. Dockerfile patching + Stage 2 rebuild trigger means 'clawhq tool install' just works. Depends on CQ-003 (two-stage build) being complete. Acceptance: 'clawhq tool install <name>' adds tool to Dockerfile, triggers Stage 2 rebuild; 'clawhq tool list' shows installed tools; 'clawhq tool remove' cleanly uninstalls.",
       "category": "evolve",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-003"
       ],
@@ -779,7 +779,9 @@
         "'clawhq tool install <name>' adds tool to Dockerfile and triggers Stage 2 rebuild",
         "'clawhq tool list' shows installed tools",
         "'clawhq tool remove' cleanly uninstalls and triggers rebuild"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T05:40:29-07:00"
     },
     {
       "id": "CQ-032",

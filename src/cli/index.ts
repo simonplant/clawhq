@@ -93,6 +93,13 @@ import {
   watchStatus,
 } from "../operate/status/index.js";
 import {
+  formatMonitorEvent,
+  formatMonitorStateJson,
+  formatMonitorStateTable,
+  startMonitor,
+} from "../operate/monitor/index.js";
+import type { MonitorEvent, NotificationChannel, TelegramNotificationChannel } from "../operate/monitor/index.js";
+import {
   applyUpdate,
   checkForUpdates,
 } from "../operate/updater/index.js";
@@ -1312,6 +1319,92 @@ program
     }
   });
 
+program
+  .command("monitor")
+  .description("Background health monitor with alerts, auto-recovery, and daily digest")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("-i, --interval <seconds>", "Check interval in seconds", "30")
+  .option("--no-recovery", "Disable auto-recovery")
+  .option("--no-alerts", "Disable alert notifications")
+  .option("--no-digest", "Disable daily digest")
+  .option("--digest-hour <hour>", "Hour (0-23) to send daily digest", "8")
+  .option("--json", "Output events as JSON")
+  .action(async (opts: {
+    deployDir: string;
+    interval: string;
+    recovery: boolean;
+    alerts: boolean;
+    digest: boolean;
+    digestHour: string;
+    json?: boolean;
+  }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
+    const ac = new AbortController();
+    process.on("SIGINT", () => ac.abort());
+    process.on("SIGTERM", () => ac.abort());
+
+    // Build notification channels from .env
+    const channels = await loadNotificationChannels(opts.deployDir);
+
+    const intervalMs = Math.max(10, parseInt(opts.interval, 10)) * 1000;
+    const digestHour = Math.max(0, Math.min(23, parseInt(opts.digestHour, 10)));
+
+    if (!opts.json) {
+      console.log(chalk.green("Monitor daemon started."));
+      console.log(chalk.dim(`  Interval: ${opts.interval}s`));
+      console.log(chalk.dim(`  Recovery: ${opts.recovery ? "enabled" : "disabled"}`));
+      console.log(chalk.dim(`  Alerts: ${opts.alerts ? "enabled" : "disabled"}`));
+      console.log(chalk.dim(`  Digest: ${opts.digest ? `enabled (${digestHour}:00)` : "disabled"}`));
+      console.log(chalk.dim(`  Channels: ${channels.length > 0 ? channels.map((c) => c.type).join(", ") : "none configured"}`));
+      console.log(chalk.dim("  Press Ctrl+C to stop.\n"));
+    }
+
+    const onEvent = (event: MonitorEvent): void => {
+      if (opts.json) {
+        console.log(JSON.stringify(event));
+      } else {
+        const line = formatMonitorEvent(event);
+        switch (event.type) {
+          case "alert":
+          case "error":
+            console.log(chalk.red(line));
+            break;
+          case "recovery":
+            console.log(chalk.yellow(line));
+            break;
+          case "digest":
+            console.log(chalk.green(line));
+            break;
+          default:
+            console.log(chalk.dim(line));
+        }
+      }
+    };
+
+    const state = await startMonitor({
+      deployDir: opts.deployDir,
+      intervalMs,
+      recovery: {
+        enabled: opts.recovery,
+      },
+      notify: {
+        channels,
+        alertsEnabled: opts.alerts,
+        digestEnabled: opts.digest,
+        digestHour,
+      },
+      signal: ac.signal,
+      onEvent,
+    });
+
+    if (opts.json) {
+      console.log(formatMonitorStateJson(state));
+    } else {
+      console.log(formatMonitorStateTable(state));
+    }
+  });
+
 // ── Evolve Commands ─────────────────────────────────────────────────────────
 
 const skill = program.command("skill").description("Manage agent skills");
@@ -1838,6 +1931,43 @@ function createSkillProgressHandler(spinner: ReturnType<typeof ora>) {
         break;
     }
   };
+}
+
+// ── Notification Channel Loader ──────────────────────────────────────────────
+
+async function loadNotificationChannels(deployDir: string): Promise<NotificationChannel[]> {
+  const channels: NotificationChannel[] = [];
+
+  try {
+    const { readEnvValue } = await import("../secure/credentials/env-store.js");
+    const envPath = join(deployDir, "engine", ".env");
+
+    // Telegram channel
+    const botToken = readEnvValue(envPath, "TELEGRAM_BOT_TOKEN");
+    const chatId = readEnvValue(envPath, "TELEGRAM_CHAT_ID");
+    if (botToken && chatId) {
+      channels.push({
+        type: "telegram",
+        enabled: true,
+        botToken,
+        chatId,
+      } satisfies TelegramNotificationChannel);
+    }
+
+    // Webhook channel
+    const webhookUrl = readEnvValue(envPath, "CLAWHQ_WEBHOOK_URL");
+    if (webhookUrl) {
+      channels.push({
+        type: "webhook",
+        enabled: true,
+        url: webhookUrl,
+      });
+    }
+  } catch {
+    // No channels configured — monitor still runs, just no notifications
+  }
+
+  return channels;
 }
 
 // ── Parse ───────────────────────────────────────────────────────────────────

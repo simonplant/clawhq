@@ -230,6 +230,38 @@ export type TrustMode = "paranoid" | "zero-trust" | "managed";
 /** Engine acquisition method. */
 export type InstallMethod = "cache" | "source";
 
+/** Notification channel type for monitor config. */
+export type NotificationChannelType = "telegram" | "email" | "webhook";
+
+/** Monitor configuration within clawhq.yaml. */
+export interface MonitorConfig {
+  readonly enabled?: boolean;
+  /** Check interval in seconds (default: 30). */
+  readonly intervalSeconds?: number;
+  readonly notifications?: {
+    readonly channels?: readonly {
+      readonly type: NotificationChannelType;
+      readonly enabled: boolean;
+      readonly [key: string]: unknown;
+    }[];
+    readonly alertsEnabled?: boolean;
+    readonly digestEnabled?: boolean;
+    /** Hour (0-23) to send daily digest (default: 8). */
+    readonly digestHour?: number;
+  };
+  readonly recovery?: {
+    readonly enabled?: boolean;
+    readonly maxAttemptsPerHour?: number;
+    readonly cooldownSeconds?: number;
+  };
+  readonly thresholds?: {
+    readonly diskWarningPercent?: number;
+    readonly diskCriticalPercent?: number;
+    readonly memoryWarningPercent?: number;
+    readonly cpuSustainedPercent?: number;
+  };
+}
+
 /**
  * ClawHQ's own configuration (clawhq.yaml).
  *
@@ -247,6 +279,7 @@ export interface ClawHQConfig {
     readonly trustMode?: TrustMode;
     readonly token?: string;
   };
+  readonly monitor?: MonitorConfig;
   readonly paths?: {
     readonly deployDir?: string;
     readonly engineDir?: string;
