@@ -836,8 +836,8 @@
       "description": "LONG-TERM RETENTION: Memory lifecycle is what makes the agent smarter over time. Hot/warm/cold tiers prevent the 360KB memory bloat problem described in PRODUCT.md. Preference learning is the '6 months' story: 'It knows your top clients are always priority.' Not blocking initial adoption but critical for the 30-day churn metric. Acceptance: hot/warm/cold tiers active; LLM-powered summarization runs on schedule; PII masked before cold tier; agent preference patterns visible to user.",
       "category": "evolve",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement hot/warm/cold memory tiers with lifecycle transitions",
         "Add LLM-powered summarization on configurable schedule",
@@ -850,7 +850,9 @@
         "LLM-powered summarization runs on schedule",
         "PII masked before cold tier storage",
         "Agent preference patterns visible to user"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T06:32:38-07:00"
     },
     {
       "id": "CQ-035",

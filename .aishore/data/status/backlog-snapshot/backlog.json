@@ -813,8 +813,8 @@
       "description": "DELIGHT PATH: 'clawhq init --smart' is the < 5 minute path. Users describe what they need, Ollama infers blueprint + integrations. Local Ollama means zero data leaves. This is the product's wow moment. Correctly positioned as should — guided wizard (CQ-010) must work first as the fallback path. Acceptance: natural language description maps to correct blueprint; integration suggestions accurate; result produces same output as guided wizard; works fully locally with Ollama.",
       "category": "design",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement natural language to blueprint inference via local Ollama",
         "Map user description to blueprint selection + integration suggestions",
@@ -825,7 +825,9 @@
         "Integration suggestions are accurate for described use case",
         "Result produces same output format as guided wizard",
         "Works fully locally with Ollama — no data leaves machine"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T06:06:00-07:00"
     },
     {
       "id": "CQ-034",
