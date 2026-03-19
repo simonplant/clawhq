@@ -477,11 +477,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "PRIORITY UPGRADED: should → must. Same classification as BUG-029 (Dockerfile injection) and BUG-035 (approval queue silent drop) — all three are cases where a silent failure directly violates a core security promise. For this item: trust-modes/switch.ts:70-75 and commands/queue.ts:63-68 MUST THROW (security-critical path — caller must know the state change failed); heartbeat/reporter.ts:56-61 and fleet/discovery.ts:60-65 log-only (best-effort, non-critical). BUG-027 fixed the read side (JSON.parse); this is the write-side counterpart. Run cloud/ tests after each file. No blocking dependencies."
+      "groomingNotes": "PRIORITY UPGRADED: should → must. Same classification as BUG-029 (Dockerfile injection) and BUG-035 (approval queue silent drop) — all three are cases where a silent failure directly violates a core security promise. For this item: trust-modes/switch.ts:70-75 and commands/queue.ts:63-68 MUST THROW (security-critical path — caller must know the state change failed); heartbeat/reporter.ts:56-61 and fleet/discovery.ts:60-65 log-only (best-effort, non-critical). BUG-027 fixed the read side (JSON.parse); this is the write-side counterpart. Run cloud/ tests after each file. No blocking dependencies.",
+      "completedAt": "2026-03-19T12:07:33-07:00"
     },
     {
       "id": "BUG-035",
