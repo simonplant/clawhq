@@ -128,6 +128,55 @@ export interface FirewallResult {
   readonly error?: string;
 }
 
+// ── Connect (Channel Setup) ─────────────────────────────────────────────────
+
+/** Named steps in the connect sequence, reported via progress callback. */
+export type ConnectStepName =
+  | "write-credentials"
+  | "update-config"
+  | "health-ping"
+  | "test-message";
+
+/** Progress event emitted during channel connection. */
+export interface ConnectProgress {
+  readonly step: ConnectStepName;
+  readonly status: DeployStepStatus;
+  readonly message: string;
+}
+
+/** Callback for connect progress reporting. */
+export type ConnectProgressCallback = (progress: ConnectProgress) => void;
+
+/** Options for the connect command. */
+export interface ConnectOptions {
+  /** Path to the deployment directory. */
+  readonly deployDir: string;
+  /** Channel to connect. */
+  readonly channel: "telegram" | "whatsapp";
+  /** Channel credentials to store. */
+  readonly credentials: {
+    readonly channel: "telegram" | "whatsapp";
+    readonly vars: Record<string, string>;
+  };
+  /** Gateway auth token for health ping. */
+  readonly gatewayToken: string;
+  /** Gateway port (default: 18789). */
+  readonly gatewayPort?: number;
+  /** Agent name for the test message. */
+  readonly agentName?: string;
+  /** Progress callback. */
+  readonly onProgress?: ConnectProgressCallback;
+}
+
+/** Result of the connect operation. */
+export interface ConnectResult {
+  readonly success: boolean;
+  readonly channel: "telegram" | "whatsapp";
+  /** Whether the test message was successfully sent. */
+  readonly testMessageSent?: boolean;
+  readonly error?: string;
+}
+
 // ── Health Verify ───────────────────────────────────────────────────────────
 
 /** Options for post-deploy health verification. */

@@ -17,8 +17,24 @@ export { applyFirewall, removeFirewall } from "./firewall.js";
 // Health
 export { smokeTest, verifyHealth } from "./health.js";
 
+// Connect (channel setup)
+export {
+  connectChannel,
+  pingGateway,
+  sendTelegramTestMessage,
+  sendWhatsAppTestMessage,
+  validateTelegramToken,
+  validateWhatsAppToken,
+} from "./connect.js";
+export type { ChannelCredentials, ChannelName } from "./connect.js";
+
 // Types
 export type {
+  ConnectOptions,
+  ConnectProgress,
+  ConnectProgressCallback,
+  ConnectResult,
+  ConnectStepName,
   DeployOptions,
   DeployProgress,
   DeployResult,
