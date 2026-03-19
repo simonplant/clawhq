@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773941443",
-  "startedAt": "2026-03-19T10:30:43-07:00",
+  "sprintId": "sprint-1773941536",
+  "startedAt": "2026-03-19T10:32:16-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-016",
-    "title": "config/paths.ts still uses process.env.HOME instead of os.homedir()",
-    "intent": "os.homedir() is the single API for user home directory throughout the codebase. No process.env.HOME usage remains after BUG-010.",
-    "description": "src/config/paths.ts lines 42 and 51 use process.env.HOME ?? homedir() — they correctly import and fall back to homedir(), but still unnecessarily check process.env.HOME first. BUG-010 established that os.homedir() is the correct cross-platform API and fixed sanitizer.ts, but paths.ts was not updated. While the current code is safe (homedir() is the fallback), the inconsistency violates the intent of BUG-010. Steps: (1) open src/config/paths.ts; (2) find lines using process.env.HOME ?? homedir(); (3) replace each with homedir() directly; (4) verify homedir import from 'os' is present; (5) run existing config/paths tests to confirm no regression. Scope: two-line change in one file.",
+    "id": "BUG-017",
+    "title": "Silent catch blocks in design/ swallow errors with no logging",
+    "intent": "No error in the design/ module is silently discarded. Blueprint load failures and Ollama inference errors must be logged. A blueprint that fails to load silently is indistinguishable from one that doesn't exist.",
+    "description": "8 catch blocks across design/ swallow errors silently. Key locations: src/design/configure/smart.ts (lines 122,273 — blueprint lookup and JSON parse failures), src/design/configure/ollama.ts (lines 41,62 — Ollama availability check and model listing failures), src/design/blueprints/loader.ts (line 224 — silently skips a blueprint that fails to load, indistinguishable from missing blueprint), src/design/tools/approve-action.ts (lines 50,89,139 — queue JSON parse, Telegram config read, and Telegram API call failures). The loader.ts instance is especially problematic — a blueprint that fails validation or load is silently skipped, the user sees an incomplete blueprint list with no explanation. Steps: (1) search design/ for 'catch {' and 'catch (_' patterns, excluding writer.ts cleanup catches (intentional best-effort); (2) for each non-fatal catch, add console.warn() with the error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour; (4) run design/ tests to confirm no regression. Scope: ~8 one-line additions across 4 files.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:30:43-07:00",
+    "startedAt": "2026-03-19T10:32:16-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:32:14-07:00"
+    "completedAt": "2026-03-19T10:34:34-07:00"
   },
-  "completedAt": "2026-03-19T10:32:14-07:00",
+  "completedAt": "2026-03-19T10:34:34-07:00",
   "attempts": 1
 }

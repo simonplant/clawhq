@@ -207,11 +207,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "8 silent catches in 4 files. Most critical: loader.ts:224 silently skips failed blueprint loads — the user sees an incomplete list with no explanation. approve-action.ts:50,89,139 swallows queue and Telegram errors. smart.ts:122,273 swallows inference fallback errors. ollama.ts:41,62 swallows availability and model list errors. Exclude writer.ts cleanup catches (intentional try/catch in error path — best-effort cleanup is correct). Add console.warn(err, context) to each non-fatal catch. Do NOT change fallback return values. Run design/ tests after. No dependencies on in-progress work. Pattern identical to BUG-012 through BUG-015."
+      "groomingNotes": "8 silent catches in 4 files. Most critical: loader.ts:224 silently skips failed blueprint loads — the user sees an incomplete list with no explanation. approve-action.ts:50,89,139 swallows queue and Telegram errors. smart.ts:122,273 swallows inference fallback errors. ollama.ts:41,62 swallows availability and model list errors. Exclude writer.ts cleanup catches (intentional try/catch in error path — best-effort cleanup is correct). Add console.warn(err, context) to each non-fatal catch. Do NOT change fallback return values. Run design/ tests after. No dependencies on in-progress work. Pattern identical to BUG-012 through BUG-015.",
+      "completedAt": "2026-03-19T10:34:34-07:00"
     },
     {
       "id": "BUG-018",

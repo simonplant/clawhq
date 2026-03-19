@@ -191,11 +191,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Two-line fix in one file. src/config/paths.ts lines 42 and 51 — replace process.env.HOME ?? homedir() with homedir() directly. homedir import from 'os' should already be present (it's the fallback). Pattern already fixed in sanitizer.ts (BUG-010). No dependencies. Run existing config tests after change. Zero-risk."
+      "groomingNotes": "Two-line fix in one file. src/config/paths.ts lines 42 and 51 — replace process.env.HOME ?? homedir() with homedir() directly. homedir import from 'os' should already be present (it's the fallback). Pattern already fixed in sanitizer.ts (BUG-010). No dependencies. Run existing config tests after change. Zero-risk.",
+      "completedAt": "2026-03-19T10:32:14-07:00"
     },
     {
       "id": "BUG-017",
