@@ -82,8 +82,8 @@ function dirSizeBytes(dirPath: string): number {
         total += dirSizeBytes(fullPath);
       }
     }
-  } catch {
-    // Permission errors, etc. — return what we have
+  } catch (err) {
+    console.warn(`[heartbeat] dirSizeBytes failed for ${dirPath}:`, err);
   }
   return total;
 }
@@ -98,7 +98,8 @@ function countIntegrations(deployDir: string): number {
     const raw = readFileSync(credPath, "utf-8");
     const store = JSON.parse(raw) as { credentials?: readonly unknown[] };
     return store.credentials?.length ?? 0;
-  } catch {
+  } catch (err) {
+    console.warn(`[heartbeat] countIntegrations failed for ${credPath}:`, err);
     return 0;
   }
 }
