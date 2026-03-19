@@ -541,11 +541,57 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "6 local timeout constants to centralize. Files: gateway/client.ts (DEFAULT_TIMEOUT_MS, CONNECT_TIMEOUT_MS), gateway/health.ts (DEFAULT_INTERVAL_MS, DEFAULT_HEALTH_TIMEOUT_MS), operate/doctor/checks.ts (EXEC_TIMEOUT_MS), secure/credentials/probes.ts (timeoutMs default). Add 6 named constants to defaults.ts, import and replace each. Keep the same variable names locally if needed for backwards compat, or replace inline. Also check operate/monitor/recovery.ts:21, operate/monitor/alerts.ts:27, operate/status/status.ts:26-27, operate/logs/logs.ts:17, operate/updater/updater.ts:27 — all define local EXEC_TIMEOUT_MS = 30_000; each can import the same DOCTOR_EXEC_TIMEOUT_MS or a new OPERATE_EXEC_TIMEOUT_MS depending on value. SCOPE LIMIT: Only the 6 gateway/ and operate/doctor/ + secure/credentials/ instances — do not sweep all operate/ in one PR. Defer the remaining operate/ monitor/recovery/alerts/status/logs/updater to a follow-up. Run gateway/ and operate/ tests after. No blocking dependencies.",
+      "completedAt": "2026-03-19T12:24:28-07:00"
+    },
+    {
+      "id": "BUG-039",
+      "title": "Remaining operate/ timeout constants not in config/defaults.ts",
+      "intent": "All operate/ timeout and interval constants have a single source of truth in config/defaults.ts. No local timeout literals remain in any operate/ submodule.",
+      "description": "BUG-038 explicitly scoped to gateway/ and operate/doctor/ + secure/credentials/ only. The remaining operate/ modules all define local EXEC_TIMEOUT_MS or DEFAULT_INTERVAL_MS constants: src/operate/monitor/recovery.ts:21 (EXEC_TIMEOUT_MS = 30_000), src/operate/monitor/alerts.ts:27 (EXEC_TIMEOUT_MS = 10_000), src/operate/status/status.ts:26 (EXEC_TIMEOUT_MS = 10_000), src/operate/status/status.ts:27 (DEFAULT_WATCH_INTERVAL_MS = 5_000), src/operate/logs/logs.ts:17 (EXEC_TIMEOUT_MS = 30_000), src/operate/updater/updater.ts:27 (EXEC_TIMEOUT_MS = 30_000), src/operate/monitor/monitor.ts:32 (DEFAULT_INTERVAL_MS = 30_000), src/operate/backup/backup.ts:35 (GPG_TIMEOUT_MS = 60_000). Steps: (1) add MONITOR_EXEC_TIMEOUT_MS=10_000, RECOVERY_EXEC_TIMEOUT_MS=30_000, STATUS_EXEC_TIMEOUT_MS=10_000, STATUS_WATCH_INTERVAL_MS=5_000, LOGS_EXEC_TIMEOUT_MS=30_000, UPDATER_EXEC_TIMEOUT_MS=30_000, MONITOR_HEALTH_INTERVAL_MS=30_000, BACKUP_GPG_TIMEOUT_MS=60_000 to src/config/defaults.ts; (2) import and replace local constants in each file; (3) run operate/ tests. Scope: 8 files, no logic change. Direct follow-up to BUG-038.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "6 local timeout constants to centralize. Files: gateway/client.ts (DEFAULT_TIMEOUT_MS, CONNECT_TIMEOUT_MS), gateway/health.ts (DEFAULT_INTERVAL_MS, DEFAULT_HEALTH_TIMEOUT_MS), operate/doctor/checks.ts (EXEC_TIMEOUT_MS), secure/credentials/probes.ts (timeoutMs default). Add 6 named constants to defaults.ts, import and replace each. Keep the same variable names locally if needed for backwards compat, or replace inline. Also check operate/monitor/recovery.ts:21, operate/monitor/alerts.ts:27, operate/status/status.ts:26-27, operate/logs/logs.ts:17, operate/updater/updater.ts:27 — all define local EXEC_TIMEOUT_MS = 30_000; each can import the same DOCTOR_EXEC_TIMEOUT_MS or a new OPERATE_EXEC_TIMEOUT_MS depending on value. SCOPE LIMIT: Only the 6 gateway/ and operate/doctor/ + secure/credentials/ instances — do not sweep all operate/ in one PR. Defer the remaining operate/ monitor/recovery/alerts/status/logs/updater to a follow-up. Run gateway/ and operate/ tests after. No blocking dependencies."
+      "groomingNotes": "Direct follow-up to BUG-038 which explicitly deferred these. 8 local timeout/interval constants across 8 operate/ files. Add named constants to defaults.ts, import and replace. Files: monitor/recovery.ts:21 (EXEC_TIMEOUT_MS=30_000), monitor/alerts.ts:27 (EXEC_TIMEOUT_MS=10_000), status/status.ts:26-27 (EXEC_TIMEOUT_MS=10_000, DEFAULT_WATCH_INTERVAL_MS=5_000), logs/logs.ts:17 (EXEC_TIMEOUT_MS=30_000), updater/updater.ts:27 (EXEC_TIMEOUT_MS=30_000), monitor/monitor.ts:32 (DEFAULT_INTERVAL_MS=30_000), backup/backup.ts:35 (GPG_TIMEOUT_MS=60_000). Note: recovery/logs/updater all use 30_000 — consider OPERATE_LONG_EXEC_TIMEOUT_MS as a shared constant. alerts/status use 10_000 — OPERATE_SHORT_EXEC_TIMEOUT_MS. Name clearly to avoid confusion with DOCTOR_EXEC_TIMEOUT_MS from BUG-038. Run operate/ tests after each file. No blocking dependencies."
+    },
+    {
+      "id": "BUG-040",
+      "title": "Timeout constants in build/launcher/ not in config/defaults.ts",
+      "intent": "All build/launcher/ timeout and interval constants have a single source of truth in config/defaults.ts. No local timeout literals remain except in firewall.ts (deferred to BUG-020/post-CQ-005).",
+      "description": "src/build/launcher/ has 5 local timeout constants not centralized in config/defaults.ts, following the same pattern as BUG-038 (gateway/) and BUG-039 (operate/). Locations: src/build/launcher/health.ts:18 (DEFAULT_TIMEOUT_MS=60_000), src/build/launcher/health.ts:19 (DEFAULT_INTERVAL_MS=2_000), src/build/launcher/health.ts:20 (MAX_INTERVAL_MS=10_000), src/build/launcher/health.ts:21 (RPC_TIMEOUT_MS=5_000), src/build/launcher/health.ts:22 (SMOKE_MESSAGE_TIMEOUT_MS=30_000), src/build/launcher/preflight.ts:23 (EXEC_TIMEOUT_MS=15_000). Note: src/build/launcher/firewall.ts:25 (EXEC_TIMEOUT_MS=15_000) will move to src/secure/firewall/firewall.ts when CQ-005 completes — do NOT touch firewall.ts here, that's covered by BUG-020. Steps: (1) add DEPLOY_HEALTH_TIMEOUT_MS=60_000, DEPLOY_HEALTH_INTERVAL_MS=2_000, DEPLOY_HEALTH_MAX_INTERVAL_MS=10_000, DEPLOY_RPC_TIMEOUT_MS=5_000, DEPLOY_SMOKE_TIMEOUT_MS=30_000, PREFLIGHT_EXEC_TIMEOUT_MS=15_000 to src/config/defaults.ts; (2) import and replace in health.ts and preflight.ts; (3) run build/ tests. Scope: 3 files, no logic change. Do NOT touch firewall.ts.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Pattern identical to BUG-038/BUG-039. 6 local constants in 2 files (health.ts, preflight.ts). IMPORTANT: Do NOT touch src/build/launcher/firewall.ts:25 — that file moves to src/secure/firewall/firewall.ts as part of CQ-005. The firewall.ts EXEC_TIMEOUT_MS is deferred to BUG-020 post-CQ-005. health.ts has 5 constants (DEFAULT_TIMEOUT_MS, DEFAULT_INTERVAL_MS, MAX_INTERVAL_MS, RPC_TIMEOUT_MS, SMOKE_MESSAGE_TIMEOUT_MS). preflight.ts has 1 (EXEC_TIMEOUT_MS=15_000 — same value as PREFLIGHT_EXEC_TIMEOUT_MS from BUG-038). Check if BUG-038 already exported DOCTOR_EXEC_TIMEOUT_MS=15_000 — if so, reuse it for preflight.ts instead of adding a new constant. Run build/ tests after. No blocking dependencies — CQ-005 only affects firewall.ts which is explicitly excluded."
+    },
+    {
+      "id": "BUG-041",
+      "title": "Scattered timeout constants in build/installer, build/launcher/deploy+connect, and design/configure/ollama",
+      "intent": "All timeout constants in build/installer, build/launcher/deploy+connect, and design/configure/ollama have a single source of truth in config/defaults.ts. No local timeout literals remain in these files.",
+      "description": "Four more local timeout constants not yet in config/defaults.ts, continuing the BUG-038/BUG-039/BUG-040 sweep: src/build/installer/source.ts:26 (CLONE_TIMEOUT_MS=300_000), src/build/installer/source.ts:29 (BUILD_TIMEOUT_MS=600_000), src/build/launcher/deploy.ts:34 (COMPOSE_TIMEOUT_MS=120_000), src/build/launcher/connect.ts:24 (GATEWAY_RPC_TIMEOUT_MS=10_000 — note: BUG-038 adds this to defaults.ts as part of gateway/ sweep; verify it's exported and reuse it in connect.ts rather than adding a duplicate), src/design/configure/ollama.ts:11 (GENERATE_TIMEOUT_MS=120_000). Steps: (1) verify BUG-038 has already exported GATEWAY_RPC_TIMEOUT_MS=10_000 to defaults.ts — if yes, import it in connect.ts and remove local; (2) add INSTALL_CLONE_TIMEOUT_MS=300_000, INSTALL_BUILD_TIMEOUT_MS=600_000, DEPLOY_COMPOSE_TIMEOUT_MS=120_000, OLLAMA_GENERATE_TIMEOUT_MS=120_000 to src/config/defaults.ts; (3) import and replace in each file; (4) run build/ and design/ tests. Scope: 5 files, no logic change. Do NOT touch firewall.ts.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Part of the constants-centralization sweep (BUG-011, BUG-024 through BUG-033, BUG-038, BUG-039, BUG-040). Files and constants: (1) build/installer/source.ts:26,29 — CLONE_TIMEOUT_MS=300_000, BUILD_TIMEOUT_MS=600_000 (from-source install path, source clone and Docker build timeouts); (2) build/launcher/deploy.ts:34 — COMPOSE_TIMEOUT_MS=120_000 (docker compose up timeout); (3) build/launcher/connect.ts:24 — GATEWAY_RPC_TIMEOUT_MS=10_000 (IMPORTANT: BUG-038 adds this to defaults.ts already — reuse rather than duplicate, just update the import); (4) design/configure/ollama.ts:11 — GENERATE_TIMEOUT_MS=120_000 (local Ollama inference timeout, comment says '2 minutes — local inference can be slow' — preserve this comment in defaults.ts). Key dependency check: run BUG-038 sprint first if GATEWAY_RPC_TIMEOUT_MS is not yet in defaults.ts. Otherwise no blocking dependencies. Run build/ and design/ tests after. Scope: 5 files, ~10 lines changed."
     }
   ]
 }
