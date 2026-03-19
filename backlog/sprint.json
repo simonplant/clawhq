@@ -1,17 +1,26 @@
 {
-  "sprintId": "sprint-1773791246",
-  "startedAt": "2026-03-17T16:47:26-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773901860",
+  "startedAt": "2026-03-18T23:31:00-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-105",
-    "title": "Air-gapped mode — clawhq init --air-gapped",
+    "id": "CQ-001",
+    "title": "Config schema + 14 landmine validator",
+    "intent": "Establish the config contract that every config-generating command validates against. All 14 OpenClaw landmine rules must be enforced at the schema level so no silent misconfiguration ships to users.",
+    "description": "FOUNDATION: Every config-generating command in ClawHQ tests against this schema. Without it, config generation has no contract and silent landmines ship to users. The 14 landmine validator is the difference between 'it works' and 'it works correctly'. Acceptance: all 14 rules validate correctly against OPENCLAW-REFERENCE.md; config loader handles precedence merging (project > user > defaults).",
     "sourceBacklog": "backlog.json",
-    "steps": [],
-    "acceptanceCriteria": [],
-    "startedAt": "2026-03-17T16:47:26-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-17T16:55:29-07:00"
-  },
-  "completedAt": "2026-03-17T16:55:29-07:00",
-  "attempts": 1
+    "steps": [
+      "Define TypeScript types: OpenClawConfig, ClawHQConfig, DeploymentBundle, CronJobDefinition",
+      "Implement all 14 landmine validation rules from OPENCLAW-REFERENCE.md",
+      "Build YAML config loader with precedence merging (project > user > defaults)",
+      "Add clear, actionable error messages for each validation failure"
+    ],
+    "acceptanceCriteria": [
+      "All 14 landmine rules validate correctly against OPENCLAW-REFERENCE.md",
+      "Config loader merges project > user > defaults precedence correctly",
+      "TypeScript types exported for all config shapes",
+      "Invalid configs rejected with actionable error messages"
+    ],
+    "scope": [],
+    "startedAt": "2026-03-18T23:31:00-07:00"
+  }
 }

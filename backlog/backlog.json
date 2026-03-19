@@ -8,8 +8,8 @@
       "description": "FOUNDATION: Every config-generating command in ClawHQ tests against this schema. Without it, config generation has no contract and silent landmines ship to users. The 14 landmine validator is the difference between 'it works' and 'it works correctly'. Acceptance: all 14 rules validate correctly against OPENCLAW-REFERENCE.md; config loader handles precedence merging (project > user > defaults).",
       "category": "Foundation",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Define TypeScript types: OpenClawConfig, ClawHQConfig, DeploymentBundle, CronJobDefinition",
         "Implement all 14 landmine validation rules from OPENCLAW-REFERENCE.md",
