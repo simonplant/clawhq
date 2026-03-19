@@ -1,9 +1,10 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { formatAuditJson, formatAuditTable } from "./format.js";
 import {
   createAuditConfig,
   initHmacChain,
@@ -12,9 +13,8 @@ import {
   logSecretEvent,
   logToolExecution,
 } from "./logger.js";
-import { readAuditReport, verifyHmacChain } from "./reader.js";
 import { buildOwaspExport } from "./owasp.js";
-import { formatAuditJson, formatAuditTable } from "./format.js";
+import { readAuditReport, verifyHmacChain } from "./reader.js";
 import type { AuditTrailConfig, SecretLifecycleEvent } from "./types.js";
 
 // ── Test Fixtures ──────────────────────────────────────────────────────────

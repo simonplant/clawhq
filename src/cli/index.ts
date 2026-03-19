@@ -51,7 +51,6 @@ import {
   runDoctor,
   runDoctorWithFix,
 } from "../operate/doctor/index.js";
-import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
 import {
   buildOwaspExport,
   createAuditConfig,
@@ -59,6 +58,7 @@ import {
   formatAuditTable,
   readAuditReport,
 } from "../secure/audit/index.js";
+import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
 
 import { renderError, warnIfNotInstalled } from "./ux.js";
 

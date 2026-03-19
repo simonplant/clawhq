@@ -6,7 +6,7 @@
  *   - JSON: structured output for scripting
  */
 
-import type { AuditReport, EgressEvent, SecretLifecycleEvent, ToolExecutionEvent } from "./types.js";
+import type { AuditReport, ToolExecutionEvent } from "./types.js";
 
 // ── Table Formatter ────────────────────────────────────────────────────────
 
