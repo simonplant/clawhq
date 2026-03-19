@@ -739,8 +739,8 @@
       "description": "BLUEPRINT COMPLETENESS: Skills are the value-add that make each blueprint useful. morning-brief is what makes 'Replace Google Assistant' actually replace Google Assistant. market-scan is why Stock Trading blueprint earns its name. Each skill is a standalone SKILL.md + prompts — thin to implement, high user impact. Acceptance: each skill installs via 'clawhq skill install'; SKILL.md + prompts present; skill runs on configured cron schedule.",
       "category": "evolve",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Create morning-brief skill (SKILL.md + prompts)",
         "Create market-scan skill (SKILL.md + prompts)",
@@ -753,7 +753,9 @@
         "Each skill installs via 'clawhq skill install'",
         "SKILL.md + prompts present for each skill",
         "Each skill runs on its configured cron schedule"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T05:28:01-07:00"
     },
     {
       "id": "CQ-031",
