@@ -15,6 +15,7 @@ import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type {
+  ApprovalResolutionEvent,
   AuditTrailConfig,
   EgressEvent,
   SecretAction,
@@ -185,6 +186,38 @@ export async function logSecretEvent(
   }
 }
 
+// ── Approval Resolution Logging ───────────────────────────────────────────
+
+/** Log an approval resolution event. Never throws. */
+export async function logApprovalResolution(
+  config: AuditTrailConfig,
+  opts: {
+    itemId: string;
+    category: string;
+    summary: string;
+    resolution: "approved" | "rejected";
+    resolvedVia: string;
+    source: string;
+  },
+): Promise<void> {
+  try {
+    const event: ApprovalResolutionEvent = {
+      type: "approval_resolution",
+      ts: new Date().toISOString(),
+      seq: nextSeq(config.approvalLogPath),
+      itemId: opts.itemId,
+      category: opts.category,
+      summary: opts.summary.slice(0, 200),
+      resolution: opts.resolution,
+      resolvedVia: opts.resolvedVia,
+      source: opts.source,
+    };
+    await appendJsonl(config.approvalLogPath, event);
+  } catch {
+    // Audit logging must never disrupt the pipeline
+  }
+}
+
 // ── Config Factory ─────────────────────────────────────────────────────────
 
 /** Create an AuditTrailConfig from a deployment directory. */
@@ -194,6 +227,7 @@ export function createAuditConfig(deployDir: string, hmacKey: string): AuditTrai
     toolLogPath: join(auditDir, "tool-execution.jsonl"),
     egressLogPath: join(auditDir, "egress.jsonl"),
     secretLogPath: join(auditDir, "secret-lifecycle.jsonl"),
+    approvalLogPath: join(auditDir, "approval-resolution.jsonl"),
     hmacKey,
   };
 }

@@ -10,6 +10,7 @@ import { createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 import type {
+  ApprovalResolutionEvent,
   AuditReport,
   AuditSummary,
   AuditTrailConfig,
@@ -64,15 +65,17 @@ export async function readAuditReport(
   config: AuditTrailConfig,
   opts: ReadAuditOptions = {},
 ): Promise<AuditReport> {
-  const [rawTool, rawEgress, rawSecret] = await Promise.all([
+  const [rawTool, rawEgress, rawSecret, rawApproval] = await Promise.all([
     readJsonl<ToolExecutionEvent>(config.toolLogPath),
     readJsonl<EgressEvent>(config.egressLogPath),
     readJsonl<SecretLifecycleEvent>(config.secretLogPath),
+    readJsonl<ApprovalResolutionEvent>(config.approvalLogPath),
   ]);
 
   const toolExecutions = limitEvents(filterByTime(rawTool, opts.since), opts.limit);
   const egressEvents = limitEvents(filterByTime(rawEgress, opts.since), opts.limit);
   const secretEvents = limitEvents(filterByTime(rawSecret, opts.since), opts.limit);
+  const approvalEvents = limitEvents(filterByTime(rawApproval, opts.since), opts.limit);
 
   const chainValid = verifyHmacChain(rawSecret, config.hmacKey);
 
@@ -85,6 +88,9 @@ export async function readAuditReport(
     blockedEgress: egressEvents.filter((e) => !e.allowed).length,
     totalSecretEvents: secretEvents.length,
     chainValid,
+    totalApprovalEvents: approvalEvents.length,
+    approvedCount: approvalEvents.filter((e) => e.resolution === "approved").length,
+    rejectedCount: approvalEvents.filter((e) => e.resolution === "rejected").length,
   };
 
   return {
@@ -92,6 +98,7 @@ export async function readAuditReport(
     toolExecutions,
     egressEvents,
     secretEvents,
+    approvalEvents,
     summary,
   };
 }

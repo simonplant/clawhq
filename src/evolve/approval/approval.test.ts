@@ -1,9 +1,12 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { createAuditConfig, initSeqCounter } from "../../secure/audit/logger.js";
+import type { AuditTrailConfig } from "../../secure/audit/types.js";
 
 import {
   approve,
@@ -52,7 +55,7 @@ describe("enqueue", () => {
     // Verify persisted
     const queue = await loadQueue(deployDir);
     expect(queue.items).toHaveLength(1);
-    expect(queue.items[0]!.id).toBe(item.id);
+    expect(queue.items[0]?.id).toBe(item.id);
   });
 
   it("appends multiple items", async () => {
@@ -153,7 +156,7 @@ describe("listPending", () => {
 
     const pending = await listPending(deployDir);
     expect(pending).toHaveLength(1);
-    expect(pending[0]!.summary).toBe("Reply 2");
+    expect(pending[0]?.summary).toBe("Reply 2");
   });
 
   it("returns empty array when no pending items", async () => {
@@ -249,5 +252,67 @@ describe("loadQueue", () => {
     writeFileSync(queueFile, "not valid json");
     const queue = await loadQueue(deployDir);
     expect(queue.items).toHaveLength(0);
+  });
+});
+
+// ── Audit Trail Integration ────────────────────────────────────────────────
+
+describe("audit trail integration", () => {
+  let auditConfig: AuditTrailConfig;
+
+  beforeEach(async () => {
+    mkdirSync(join(deployDir, "ops", "audit"), { recursive: true });
+    auditConfig = createAuditConfig(deployDir, "");
+    await initSeqCounter(auditConfig.approvalLogPath);
+  });
+
+  it("logs approval resolution to audit trail", async () => {
+    const item = await enqueue(deployDir, {
+      category: "send_email",
+      summary: "Reply to alice",
+      detail: "body",
+      source: "email-digest",
+    });
+
+    await approve(deployDir, item.id, { resolvedVia: "cli", auditConfig });
+
+    const content = readFileSync(auditConfig.approvalLogPath, "utf-8");
+    const event = JSON.parse(content.trim());
+    expect(event.type).toBe("approval_resolution");
+    expect(event.itemId).toBe(item.id);
+    expect(event.resolution).toBe("approved");
+    expect(event.resolvedVia).toBe("cli");
+    expect(event.source).toBe("email-digest");
+    expect(event.category).toBe("send_email");
+  });
+
+  it("logs rejection to audit trail", async () => {
+    const item = await enqueue(deployDir, {
+      category: "purchase",
+      summary: "Buy 10 shares AAPL",
+      detail: "market order",
+      source: "trading-bot",
+    });
+
+    await reject(deployDir, item.id, { resolvedVia: "telegram", auditConfig });
+
+    const content = readFileSync(auditConfig.approvalLogPath, "utf-8");
+    const event = JSON.parse(content.trim());
+    expect(event.type).toBe("approval_resolution");
+    expect(event.resolution).toBe("rejected");
+    expect(event.resolvedVia).toBe("telegram");
+  });
+
+  it("does not log audit when no auditConfig provided", async () => {
+    const item = await enqueue(deployDir, {
+      category: "send_email",
+      summary: "Reply",
+      detail: "body",
+      source: "test",
+    });
+
+    await approve(deployDir, item.id);
+
+    expect(existsSync(auditConfig.approvalLogPath)).toBe(false);
   });
 });

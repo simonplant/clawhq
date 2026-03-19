@@ -1,30 +1,30 @@
 {
-  "sprintId": "sprint-1773915178",
-  "startedAt": "2026-03-19T03:12:58-07:00",
+  "sprintId": "sprint-1773915833",
+  "startedAt": "2026-03-19T03:23:53-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-024",
-    "title": "Export + destroy (data sovereignty)",
-    "intent": "Users must be able to export a portable agent bundle and cryptographically prove destruction. Zero lock-in — data sovereignty is the exit guarantee.",
-    "description": "EXIT GUARANTEE: Privacy Migrant won't commit to a sovereign agent without knowing they can leave. 'clawhq export gives you everything portable. clawhq destroy proves it's gone. Zero lock-in.' — this is the product promise. PII masking on export means they can share the export without leaking data. Cryptographic proof of destruction is what makes 'destroy' trustworthy vs. just deleting files. Acceptance: export produces self-contained portable bundle; PII masked in export; destroy wipes all local data; crypto proof can be independently verified.",
+    "id": "CQ-025",
+    "title": "Approval queue",
+    "intent": "High-stakes agent actions must queue for user approval before execution. No auto-send, no auto-buy, no auto-delete without explicit user consent.",
+    "description": "SAFE AUTOMATION: Without approval queue, the agent can't safely propose actions that have real-world consequences. The email-digest skill must propose draft replies for approval — not auto-send. Telegram integration means the user gets notified on their phone, not just in a terminal. Resolution tracking means the agent knows what was approved vs. rejected, and can learn from the pattern. Acceptance: high-stakes actions queue for approval; Telegram notification sent; user can approve/reject from Telegram; resolution recorded in audit trail.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement portable export bundling all agent data",
-      "Add PII masking to export output",
-      "Implement verified destruction with cryptographic proof",
-      "Ensure export bundle is self-contained and portable"
+      "Implement runtime approval queue for high-stakes actions",
+      "Add Telegram integration for approval notifications",
+      "Build approve/reject flow accessible from Telegram",
+      "Record resolution (approved/rejected) in audit trail"
     ],
     "acceptanceCriteria": [
-      "Export produces self-contained portable bundle",
-      "PII masked in exported data",
-      "Destroy wipes all local data completely",
-      "Crypto proof of destruction independently verifiable"
+      "High-stakes actions queue for approval before execution",
+      "Telegram notification sent for each pending approval",
+      "User can approve/reject directly from Telegram",
+      "Resolution recorded in audit trail"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T03:12:58-07:00",
+    "startedAt": "2026-03-19T03:23:53-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T03:23:51-07:00"
+    "completedAt": "2026-03-19T04:01:26-07:00"
   },
-  "completedAt": "2026-03-19T03:23:51-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T04:01:26-07:00",
+  "attempts": 3
 }

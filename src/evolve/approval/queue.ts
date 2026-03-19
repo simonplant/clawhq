@@ -8,15 +8,19 @@
  * No action executes without explicit user consent.
  */
 
+import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
 import { join } from "node:path";
+
+import { logApprovalResolution } from "../../secure/audit/logger.js";
+import type { AuditTrailConfig } from "../../secure/audit/types.js";
 
 import type {
   ApprovalItem,
   ApprovalQueue,
   EnqueueOptions,
+  ResolveOptions,
 } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -107,8 +111,9 @@ export async function enqueue(
 export async function approve(
   deployDir: string,
   itemId: string,
+  opts?: ResolveOptions & { auditConfig?: AuditTrailConfig },
 ): Promise<{ success: boolean; error?: string }> {
-  return resolveItem(deployDir, itemId, "approved");
+  return resolveItem(deployDir, itemId, "approved", opts);
 }
 
 /**
@@ -117,14 +122,16 @@ export async function approve(
 export async function reject(
   deployDir: string,
   itemId: string,
+  opts?: ResolveOptions & { auditConfig?: AuditTrailConfig },
 ): Promise<{ success: boolean; error?: string }> {
-  return resolveItem(deployDir, itemId, "rejected");
+  return resolveItem(deployDir, itemId, "rejected", opts);
 }
 
 async function resolveItem(
   deployDir: string,
   itemId: string,
   status: "approved" | "rejected",
+  opts?: ResolveOptions & { auditConfig?: AuditTrailConfig },
 ): Promise<{ success: boolean; error?: string }> {
   const queue = await loadQueue(deployDir);
   const idx = queue.items.findIndex((i) => i.id === itemId);
@@ -133,7 +140,7 @@ async function resolveItem(
     return { success: false, error: `Approval item "${itemId}" not found.` };
   }
 
-  const item = queue.items[idx]!;
+  const item = queue.items[idx];
   if (item.status !== "pending") {
     return {
       success: false,
@@ -151,6 +158,19 @@ async function resolveItem(
   items[idx] = updated;
 
   await saveQueue(deployDir, { version: 1, items });
+
+  // Log resolution to audit trail (never throws — errors caught internally)
+  if (opts?.auditConfig) {
+    await logApprovalResolution(opts.auditConfig, {
+      itemId: item.id,
+      category: item.category,
+      summary: item.summary,
+      resolution: status,
+      resolvedVia: opts.resolvedVia ?? "cli",
+      source: item.source,
+    });
+  }
+
   return { success: true };
 }
 
