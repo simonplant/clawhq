@@ -147,6 +147,25 @@ describe("tool names match AGENTS.md references", () => {
   });
 });
 
+// ── approve-action Tool ─────────────────────────────────────────────────────
+
+describe("approve-action tool", () => {
+  it("wraps saveQueue writeFileSync in try-catch with process.exit(1)", () => {
+    const bp = loadEmailManager();
+    const wrapper = generateToolWrappers(bp).find(
+      (w) => w.name === "approve-action",
+    );
+    expect(wrapper).toBeDefined();
+
+    // saveQueue must have error handling — a failed write must be loud
+    expect(wrapper?.content).toContain("function saveQueue");
+    expect(wrapper?.content).toMatch(/saveQueue[\s\S]*?try\s*\{[\s\S]*?writeFileSync/);
+    expect(wrapper?.content).toMatch(
+      /saveQueue[\s\S]*?catch[\s\S]*?console\.error[\s\S]*?process\.exit\(1\)/,
+    );
+  });
+});
+
 // ── Individual Tool Generators ──────────────────────────────────────────────
 
 describe("email tool", () => {

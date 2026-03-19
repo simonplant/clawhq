@@ -450,6 +450,52 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
       "groomingNotes": "Single local constant in one file. source.ts:23 defines DEFAULT_REPO_URL = 'https://github.com/nicepkg/openclaw.git'. Add OPENCLAW_REPO_URL to defaults.ts, import and replace. Also grep for 'nicepkg/openclaw' across the whole codebase to catch any other occurrences (installer docs, README mentions are fine — only fix runtime string literals in src/). Run build/ tests after. Zero-risk constant extraction. No blocking dependencies."
+    },
+    {
+      "id": "BUG-033",
+      "title": "Ollama default model name 'llama3:8b' hardcoded across 7 locations",
+      "intent": "Ollama default model has a single source of truth in config/defaults.ts. No literal model name string appears in runtime code outside that file.",
+      "description": "The Ollama default model 'llama3:8b' is hardcoded in 7 locations across 5 files: src/design/configure/ollama.ts:10 (const DEFAULT_MODEL = 'llama3:8b'), src/design/configure/smart.ts:51 (const DEFAULT_LOCAL_MODEL = 'llama3:8b'), src/design/configure/wizard.ts:61 (const DEFAULT_LOCAL_MODEL = 'llama3:8b'), src/web/server.tsx:238 (fallback string literal), src/evolve/migrate/extract.ts:77 (?? fallback), src/evolve/memory/summarize.ts:56 (?? fallback). Same pattern as BUG-025 (Ollama URL) and BUG-026 (WhatsApp API version). Steps: (1) add OLLAMA_DEFAULT_MODEL = 'llama3:8b' to src/config/defaults.ts; (2) import and replace runtime literals in ollama.ts:10, smart.ts:51, wizard.ts:61, server.tsx:238, extract.ts:77, summarize.ts:56; (3) web/pages/init.tsx:59 HTML placeholder text can stay as-is (presentational); (4) run design/, evolve/, and web/ tests to confirm no regression. Scope: 6 files, ~8 lines changed. Zero logic change — pure constant extraction.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Pattern identical to BUG-025 (Ollama URL) and BUG-031 (file mode constants). 7 hardcoded 'llama3:8b' literals across 5 runtime files: design/configure/ollama.ts:10, design/configure/smart.ts:51, design/configure/wizard.ts:61, web/server.tsx:238, evolve/migrate/extract.ts:77, evolve/memory/summarize.ts:56. Add OLLAMA_DEFAULT_MODEL = 'llama3:8b' to defaults.ts. Import and replace in all 6 runtime files. web/pages/init.tsx HTML placeholder text (presentational) does not need updating. Run tests for design/, evolve/, web/ after. No blocking dependencies — standalone constant extraction."
+    },
+    {
+      "id": "BUG-034",
+      "title": "Cloud state writers missing try-catch on atomic file writes",
+      "intent": "No cloud state write fails silently. Trust mode switches and command enqueues that fail must surface errors to the caller — silent failures here are security and reliability failures.",
+      "description": "Four cloud module state writers perform atomic writes (writeFileSync + renameSync) without try-catch: src/cloud/heartbeat/reporter.ts:56-61 (heartbeat state), src/cloud/trust-modes/switch.ts:70-75 (trust mode state), src/cloud/commands/queue.ts:63-68 (command queue), src/cloud/fleet/discovery.ts:60-65 (fleet registry). BUG-027 fixed the read side (JSON.parse) but missed the write side. A disk write failure silently discards the update — a trust mode switch to 'paranoid' could fail with no warning, leaving the agent in an unexpected state. Steps: (1) src/cloud/trust-modes/switch.ts:70-75 — wrap in try-catch and THROW on error (critical path — caller must know if trust mode change failed); (2) src/cloud/commands/queue.ts:63-68 — wrap in try-catch and throw (enqueue failure must propagate); (3) src/cloud/heartbeat/reporter.ts:56-61 — wrap in try-catch and console.warn (best-effort, non-critical); (4) src/cloud/fleet/discovery.ts:60-65 — wrap in try-catch and console.warn (best-effort); (5) run cloud/ tests after each change. Scope: 4 files, ~8 additions. Note: trust-modes/switch.ts and commands/queue.ts must throw; reporter.ts and discovery.ts log-only.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Write-side counterpart to BUG-027 (read-side JSON.parse). 4 atomic write blocks in cloud/ lack try-catch: cloud/trust-modes/switch.ts:70-75 (THROW — trust mode change failure must propagate to caller), cloud/commands/queue.ts:63-68 (THROW — enqueue failure must propagate), cloud/heartbeat/reporter.ts:56-61 (console.warn only — best-effort), cloud/fleet/discovery.ts:60-65 (console.warn only — best-effort). SECURITY NOTE: trust-modes/switch.ts is on the security-critical path — if a trust mode switch to 'paranoid' silently fails, the agent stays in a less-restrictive mode with no indication. Must throw so the caller can surface the error to the user. Run cloud/ tests after each file. No blocking dependencies."
+    },
+    {
+      "id": "BUG-035",
+      "title": "approve-action tool saveQueue() writes approval queue without error handling",
+      "intent": "Approval queue writes never fail silently. A disk write error in saveQueue() must be caught and logged — a silently dropped write means an approval is lost, directly violating the no-auto-send guarantee.",
+      "description": "src/design/tools/approve-action.ts:59 defines a saveQueue() function that calls writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2)) without try-catch. This is an agent-side script installed into the deployed agent's tools directory. If the file write fails (disk full, permission error), the approval is silently dropped — the user receives a Telegram approval notification but their approve/reject action is never persisted. The no-auto-send guarantee depends on this write succeeding. Note: this is a GENERATED file. The fix must be applied in the template/generator that produces it, not in the output file directly. Steps: (1) locate the generator for approve-action.ts in src/design/tools/ (likely tools.ts or approve-action generator); (2) update the saveQueue() template to wrap writeFileSync in try-catch with console.error(err) and process.exit(1) on failure (the tool is a CLI script — failure must be loud); (3) verify the fix propagates to newly generated tools by running design/tools/ tests; (4) if existing deployed approve-action.ts files are not regenerated automatically, note in the fix that re-running 'clawhq init' or 'clawhq build' regenerates the tool. Scope: 1 generator file, ~5 lines added to template.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "PRIORITY UPGRADED: 'should' → 'must'. The no-auto-send guarantee is a core product promise — it appears in marketing, README, and product docs. A silently dropped saveQueue() write means the user receives a Telegram approval notification but their approve/reject action is lost and never persisted. The agent then proceeds (or doesn't) with no record of what the user chose. This is a direct violation of the safety contract, not a quality-of-life fix. The fix is in the generator that produces approve-action.ts — wrap writeFileSync in try-catch with console.error + process.exit(1) (loud failure is correct for a CLI tool). Existing deployed agents get the fix on next 'clawhq build' Stage 2 rebuild. No blocking dependencies — run design/tools/ tests to verify generated output. Sprint alongside CQ-005 or immediately after.",
+      "completedAt": "2026-03-19T11:50:41-07:00"
     }
   ]
 }
