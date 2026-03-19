@@ -1,6 +1,6 @@
-# aishore — AI Sprint Runner
+# aishore — Intent-Driven AI Sprint Runner
 
-Drop-in sprint orchestration for Claude Code. Picks items from your backlog, has an AI developer implement them, validates the work, and archives completed sprints.
+Drop-in sprint orchestration for Claude Code. Reliably develops software aligned to commander's intent and quality standards. Each item carries a non-negotiable directive, and every implementation goes through a maturity protocol (implement → critique → harden) before validation.
 
 ## Getting Started
 
@@ -35,7 +35,9 @@ All backlog operations use the `backlog` subcommand. Items live in `backlog/back
 
 **With flags** (non-interactive):
 ```bash
-.aishore/aishore backlog add --title "Add user login" --desc "OAuth2 flow" --priority must
+.aishore/aishore backlog add --title "Add user login" \
+  --intent "Users must authenticate securely or be told exactly why they can't." \
+  --desc "OAuth2 flow with Google provider" --priority must
 .aishore/aishore backlog add --title "Fix timeout" --type bug --priority must --ready
 .aishore/aishore backlog add --title "Nice to have" --priority could --category "UX"
 ```
@@ -43,13 +45,18 @@ All backlog operations use the `backlog` subcommand. Items live in `backlog/back
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--title "..."` | Item title (required) | — |
+| `--intent "..."` | Commander's intent — what must be true when done (**required for sprint**) | — |
 | `--type feat\|bug` | Feature or bug | `feat` |
 | `--desc "..."` | Description | *(none)* |
 | `--priority must\|should\|could\|future` | Priority level | `should` |
 | `--category "..."` | Category tag | *(none)* |
 | `--ready` | Mark as sprint-ready immediately | `false` |
+| `--ac "text"` | Add acceptance criterion (repeatable) | *(none)* |
+| `--ac-verify "cmd"` | Attach verification command to preceding `--ac` | *(none)* |
 
 IDs are auto-generated: `FEAT-001`, `FEAT-002`, ... or `BUG-001`, `BUG-002`, ...
+
+> **Note:** Items without a commander's intent (or with intent shorter than 20 characters) will not be picked for sprints. You can add items without intent for tracking, but they must have intent before they can execute.
 
 ### Show item detail
 
@@ -73,6 +80,7 @@ Displays all fields: title, status, priority, description, steps, acceptance cri
 | Flag | Description |
 |------|-------------|
 | `--title "..."` | Change title |
+| `--intent "..."` | Set commander's intent |
 | `--desc "..."` | Change description |
 | `--priority must\|should\|could\|future` | Change priority |
 | `--status todo\|in-progress\|done` | Change status |
@@ -100,9 +108,13 @@ Multiple flags can be combined in a single edit command.
 .aishore/aishore run --dry-run      # Preview what would run without executing
 .aishore/aishore run --no-merge 3   # Keep feature branches for PR review
 .aishore/aishore run --retries 2    # Allow 2 retries on validation failure
+.aishore/aishore run --refine       # Refine spec on exhausted retries
+.aishore/aishore run --quick        # Skip maturity protocol (fast iteration)
 ```
 
-**Flow:** Pick Item → Create Branch (`aishore/<ID>`) → Developer Agent (commits) → Validation Command → Validator Agent → Merge → Push → Archive
+**Flow:** Pick Item → Create Branch (`aishore/<ID>`) → Developer Agent (with maturity protocol) → Validation Command → Validator Agent → Merge → Push → Archive
+
+**Maturity protocol:** By default, the developer agent runs a 3-phase cycle within a single session: Implement → Critique → Harden. This keeps quality iteration inside the session where context is hot. Use `--quick` to skip for fast iteration.
 
 Each sprint item runs on its own feature branch. The developer agent commits directly. On success, the branch is merged back with `--no-ff`, pushed, and latest is pulled before the next item. Use `--no-merge` to keep branches for PR review instead.
 
@@ -144,7 +156,8 @@ Each backlog item has these fields:
 |-------|------|-------------|
 | `id` | string | Auto-generated (`FEAT-001`, `BUG-001`) |
 | `title` | string | Short descriptive title |
-| `description` | string | Detailed description |
+| `intent` | string | Commander's intent — the non-negotiable directive that defines what must be true when done |
+| `description` | string | Full description — what to build, context, scope boundaries |
 | `priority` | string | `must`, `should`, `could`, or `future` |
 | `category` | string | Organizational tag |
 | `steps` | array | Implementation steps (added by grooming) |
@@ -152,10 +165,14 @@ Each backlog item has these fields:
 | `status` | string | `todo`, `in-progress`, or `done` |
 | `readyForSprint` | boolean | Whether item is ready for sprint execution |
 | `passes` | boolean | Set automatically after successful sprint |
+| `scope` | array | Glob patterns for scope checking (e.g., `["src/**", "tests/**"]`) |
 | `dependsOn` | array | IDs of items this depends on |
 | `groomedAt` | string | Date of last grooming (YYYY-MM-DD) |
 | `groomingNotes` | string | Notes from grooming |
 | `completedAt` | string | Completion timestamp (set automatically) |
+| `failCount` | number | Number of failed sprint attempts (auto-set) |
+| `lastFailAt` | string | Timestamp of last failure (auto-set) |
+| `lastFailReason` | string | Reason for last failure (auto-set) |
 
 ## Project Structure
 
@@ -191,6 +208,7 @@ Edit `.aishore/config.yaml` to override defaults, or use environment variables:
 | Fast model | `models.fast` | `AISHORE_MODEL_FAST` | `claude-sonnet-4-6` |
 | Agent timeout | `agent.timeout` | `AISHORE_AGENT_TIMEOUT` | `3600` |
 | Notify command | `notifications.on_complete` | `AISHORE_NOTIFY_CMD` | *(none)* |
+| Maturity protocol | `maturity.enabled` | `AISHORE_MATURITY` | `true` |
 
 **Precedence:** env vars > config.yaml > built-in defaults.
 

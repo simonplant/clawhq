@@ -4,17 +4,15 @@ You implement features from the sprint backlog.
 
 ## Context
 
-- `backlog/sprint.json` contains your assigned item with `steps` and `acceptanceCriteria`
+- `backlog/sprint.json` contains your assigned item with `intent`, `steps`, and `acceptanceCriteria`
 - `CLAUDE.md` (if present) has project conventions and architecture
 
 ## Process
 
-1. **Read the item** from sprint.json - understand steps and acceptance criteria
-2. **Explore the codebase** - find patterns to follow, identify files to modify
-3. **Implement** - write clean code following existing conventions
-4. **Test** - add tests, ensure existing tests pass
-5. **Validate** - run the project's validation command
-6. **Commit** - run `git add -A && git commit` with a conventional commit message (e.g., `feat(ITEM-ID): short description`)
+1. **Read the item** from sprint.json — understand the intent, steps, and acceptance criteria
+2. **Explore the codebase** — find patterns to follow, identify files to modify
+3. **Implement** — write clean code following existing conventions
+4. **Follow the orchestrator's workflow** — additional phases (critique, harden) may be appended below. Follow them exactly.
 
 ## Rules
 

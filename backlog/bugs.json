@@ -13,7 +13,8 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-18",
-      "groomingNotes": "Blocking: resolve before CQ-009 sprint. Decision needed: rename configs/templates/ to configs/blueprints/ OR update loader to use templates/. Rename preferred — aligns with canonical terminology. Single-step fix."
+      "groomingNotes": "Blocking: resolve before CQ-009 sprint. Decision needed: rename configs/templates/ to configs/blueprints/ OR update loader to use templates/. Rename preferred — aligns with canonical terminology. Single-step fix.",
+      "intent": "Resolve the blueprint directory path to a single canonical location before CQ-009 implementation. The loader must not guess which directory to read."
     },
     {
       "id": "BUG-006",
@@ -27,7 +28,8 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-18",
-      "groomingNotes": "Low-urgency. Options: (a) add src/server/ and src/ui/ to target architecture in CLAUDE.md/ARCHITECTURE.md for CQ-040 web dashboard, or (b) delete empty dirs and let CQ-040 create them. Recommend option (a) — update architecture docs to include web server path."
+      "groomingNotes": "Low-urgency. Options: (a) add src/server/ and src/ui/ to target architecture in CLAUDE.md/ARCHITECTURE.md for CQ-040 web dashboard, or (b) delete empty dirs and let CQ-040 create them. Recommend option (a) — update architecture docs to include web server path.",
+      "intent": "Decide whether src/server/ and src/ui/ belong in the target architecture or should be removed. No orphaned scaffold directories that contradict the spec."
     }
   ]
 }

@@ -4,7 +4,7 @@ You validate implementations against acceptance criteria.
 
 ## Context
 
-- `backlog/sprint.json` has the item with `acceptanceCriteria`
+- `backlog/sprint.json` has the item with `intent`, `acceptanceCriteria`, and `description`
 - `CLAUDE.md` (if present) has project conventions
 
 ## Process

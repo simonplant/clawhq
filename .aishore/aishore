@@ -81,6 +81,8 @@ VALIDATE_TIMEOUT="120"
 NOTIFY_CMD=""
 AUTO_GROOM_THRESHOLD="3"
 AUTO_MAX_FAILURES="5"
+SCOPE_MODE="warn"
+MATURITY_ENABLED="true"
 
 # Default permission sets per agent role
 PERMS_DEVELOPER="Bash,Edit,Write,Read,Glob,Grep"
@@ -95,7 +97,7 @@ CFG_PERMS_REVIEWER=""
 
 # Shared constants
 BACKLOG_FILES=("backlog.json" "bugs.json")
-ITEM_PROJECTION='{id, title, description, steps, acceptanceCriteria, priority, status: (.status // "todo"), passes: (.passes // false)}'
+ITEM_PROJECTION='{id, title, intent, description, steps, acceptanceCriteria, priority, scope, status: (.status // "todo"), passes: (.passes // false)}'
 
 # ============================================================================
 # COLORS & LOGGING (inlined from common.sh)
@@ -227,7 +229,7 @@ get_claudemd_snippet() {
 
 ## Sprint Orchestration (aishore)
 
-This project uses [aishore](https://github.com/simonweniger/aishore) for AI-assisted sprint management.
+This project uses [aishore](https://github.com/simonplant/aishore) for AI-assisted sprint management.
 
 ### Commands
 
@@ -279,6 +281,8 @@ load_config() {
             ".notifications.on_complete NOTIFY_CMD"
             ".auto.groom_threshold  AUTO_GROOM_THRESHOLD"
             ".auto.max_failures     AUTO_MAX_FAILURES"
+            ".scope.mode            SCOPE_MODE"
+            ".maturity.enabled      MATURITY_ENABLED"
             ".permissions.developer CFG_PERMS_DEVELOPER"
             ".permissions.validator CFG_PERMS_VALIDATOR"
             ".permissions.reviewer  CFG_PERMS_REVIEWER"
@@ -315,6 +319,8 @@ _apply_env_overrides() {
         "AISHORE_NOTIFY_CMD         NOTIFY_CMD"
         "AISHORE_AUTO_GROOM_THRESHOLD AUTO_GROOM_THRESHOLD"
         "AISHORE_AUTO_MAX_FAILURES  AUTO_MAX_FAILURES"
+        "AISHORE_SCOPE_MODE        SCOPE_MODE"
+        "AISHORE_MATURITY          MATURITY_ENABLED"
     )
     local _env_name _target_var
     for _entry in "${_env_map[@]}"; do
@@ -361,6 +367,19 @@ pick_item() {
 
         # Project to sprint fields
         item_json=$(echo "$full_item" | jq "$ITEM_PROJECTION")
+
+        # Enforce commander's intent — no intent, no sprint
+        local item_intent
+        item_intent=$(echo "$full_item" | jq -r '.intent // ""')
+        if [[ -z "$item_intent" ]]; then
+            log_error "Item $specific_id has no intent — set one with: .aishore/aishore backlog edit $specific_id --intent \"...\""
+            log_error "Commander's intent defines what must be true when done. No intent, no sprint."
+            return 1
+        elif [[ ${#item_intent} -lt 20 ]]; then
+            log_error "Item $specific_id intent is too short — must be a clear directive, not a label"
+            log_error "Current: \"$item_intent\""
+            return 1
+        fi
 
         local item_status
         item_status=$(echo "$item_json" | jq -r '.status')
@@ -411,6 +430,7 @@ pick_item() {
         item_json=$(jq -r --argjson skip "$skip_json" --argjson done_ids "$done_ids_json" '
             [.items[] |
             select(.readyForSprint == true and (.passes == false or .passes == null) and (.status == "todo" or .status == null)) |
+            select(.intent != null and .intent != "" and (.intent | length) >= 20) |
             select(.id as $id | $skip | index($id) | not) |
             select(.dependsOn == null or (.dependsOn | length == 0) or (.id as $self | .dependsOn | all(. != $self) and all(. as $dep | $done_ids | index($dep) != null))) |
             . + {_priorityOrder: (if .priority == "must" then 0 elif .priority == "should" then 1 elif .priority == "could" then 2 else 3 end)}] |
@@ -466,6 +486,65 @@ find_item() {
         return 1
     }
     echo "$item"
+}
+
+CHECK_GATES_WARNINGS=""
+check_readiness_gates() {
+    local item_id="$1"
+    CHECK_GATES_WARNINGS=""
+    local item
+    item=$(find_item "$item_id") || return 1
+    local warnings=""
+    local has_warning=false
+
+    # Check title non-empty
+    local title
+    title=$(echo "$item" | jq -r '.title // ""')
+    if [[ -z "$title" ]]; then
+        warnings="${warnings}  - Title is empty\n"
+        has_warning=true
+    fi
+
+    # Check intent is present and substantive
+    local item_intent
+    item_intent=$(echo "$item" | jq -r '.intent // ""')
+    if [[ -z "$item_intent" ]]; then
+        warnings="${warnings}  - No intent defined (the commander's intent — what must be true when this is done)\n"
+        has_warning=true
+    elif [[ ${#item_intent} -lt 20 ]]; then
+        warnings="${warnings}  - Intent is too short (<20 chars) — must be a clear directive, not a label\n"
+        has_warning=true
+    fi
+
+    # Check at least 1 step
+    local step_count
+    step_count=$(echo "$item" | jq '[.steps // [] | .[]] | length')
+    if [[ "$step_count" -lt 1 ]]; then
+        warnings="${warnings}  - No implementation steps defined\n"
+        has_warning=true
+    fi
+
+    # Check at least 1 acceptance criterion
+    local ac_count
+    ac_count=$(echo "$item" | jq '[.acceptanceCriteria // [] | .[]] | length')
+    if [[ "$ac_count" -lt 1 ]]; then
+        warnings="${warnings}  - No acceptance criteria defined\n"
+        has_warning=true
+    fi
+
+    # Check no steps <= 10 chars
+    local short_steps
+    short_steps=$(echo "$item" | jq -r '[.steps // [] | .[] | select(length <= 10)] | length')
+    if [[ "$short_steps" -gt 0 ]]; then
+        warnings="${warnings}  - $short_steps step(s) are too short (<=10 chars)\n"
+        has_warning=true
+    fi
+
+    CHECK_GATES_WARNINGS="$warnings"
+    if [[ "$has_warning" == "true" ]]; then
+        return 1
+    fi
+    return 0
 }
 
 next_id() {
@@ -600,8 +679,11 @@ create_sprint() {
         --arg itemId "$item_id" \
         --arg title "$title" \
         --arg source "$source" \
+        --argjson intent "$(echo "$item_json" | jq '.intent // null')" \
+        --argjson desc "$(echo "$item_json" | jq '.description // null')" \
         --argjson steps "$(echo "$item_json" | jq '.steps // []')" \
         --argjson ac "$(echo "$item_json" | jq '.acceptanceCriteria // []')" \
+        --argjson scope "$(echo "$item_json" | jq '.scope // []')" \
         '{
             sprintId: $sprintId,
             startedAt: $startedAt,
@@ -609,9 +691,12 @@ create_sprint() {
             item: {
                 id: $itemId,
                 title: $title,
+                intent: $intent,
+                description: $desc,
                 sourceBacklog: $source,
                 steps: $steps,
                 acceptanceCriteria: $ac,
+                scope: $scope,
                 startedAt: $startedAt
             }
         }' > "$tmp_sprint"
@@ -649,11 +734,52 @@ mark_complete() {
         log_warning "Failed to update sprint.json status (item already marked complete in $source)"
     fi
 
-    # Append to archive (non-fatal — primary state is already consistent)
+    # Append enriched record to archive (non-fatal — primary state is already consistent)
     local sprint_id
     sprint_id=$(jq -r '.sprintId' "$BACKLOG_DIR/sprint.json" 2>/dev/null || echo "unknown")
-    if ! jq -cn --arg date "$(date +%Y-%m-%d)" --arg sid "$sprint_id" --arg iid "$item_id" \
-        '{date: $date, sprintId: $sid, itemId: $iid, status: "complete"}' \
+
+    # Git diff stats
+    local files_changed=0 lines_added=0 lines_removed=0
+    local diffstat
+    diffstat=$(git diff --shortstat HEAD~1 HEAD 2>/dev/null || true)
+    if [[ -n "$diffstat" ]]; then
+        files_changed=$(echo "$diffstat" | sed -n 's/.*\([0-9][0-9]*\) file.*/\1/p')
+        lines_added=$(echo "$diffstat" | sed -n 's/.*\([0-9][0-9]*\) insertion.*/\1/p')
+        lines_removed=$(echo "$diffstat" | sed -n 's/.*\([0-9][0-9]*\) deletion.*/\1/p')
+    fi
+    files_changed="${files_changed:-0}"
+    lines_added="${lines_added:-0}"
+    lines_removed="${lines_removed:-0}"
+
+    # Duration from sprint start
+    local duration=0
+    local started_at
+    started_at=$(jq -r '.startedAt // ""' "$BACKLOG_DIR/sprint.json" 2>/dev/null || true)
+    if [[ -n "$started_at" ]]; then
+        local start_epoch
+        start_epoch=$(date -d "$started_at" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${started_at%%+*}" +%s 2>/dev/null || echo 0)
+        [[ "$start_epoch" -gt 0 ]] && duration=$(( $(date +%s) - start_epoch ))
+    fi
+
+    # Priority and category from source backlog item
+    local item_priority="" item_category=""
+    if [[ -n "$source" && -f "$BACKLOG_DIR/$source" ]]; then
+        item_priority=$(jq -r --arg id "$item_id" '.items[] | select(.id == $id) | .priority // ""' "$BACKLOG_DIR/$source" 2>/dev/null || true)
+        item_category=$(jq -r --arg id "$item_id" '.items[] | select(.id == $id) | .category // ""' "$BACKLOG_DIR/$source" 2>/dev/null || true)
+    fi
+
+    if ! jq -cn \
+        --arg date "$(date +%Y-%m-%d)" \
+        --arg sid "$sprint_id" \
+        --arg iid "$item_id" \
+        --argjson attempts "$attempts" \
+        --argjson filesChanged "${files_changed}" \
+        --argjson linesAdded "${lines_added}" \
+        --argjson linesRemoved "${lines_removed}" \
+        --argjson duration "$duration" \
+        --arg priority "$item_priority" \
+        --arg category "$item_category" \
+        '{date: $date, sprintId: $sid, itemId: $iid, status: "complete", attempts: $attempts, filesChanged: $filesChanged, linesAdded: $linesAdded, linesRemoved: $linesRemoved, duration: $duration, priority: (if $priority == "" then null else $priority end), category: (if $category == "" then null else $category end)}' \
         >> "$ARCHIVE_DIR/sprints.jsonl" 2>/dev/null; then
         log_warning "Failed to append to archive — sprint data is still consistent"
     fi
@@ -822,12 +948,71 @@ run_agent_process() {
 build_agent_prompt() {
     local agent_name="$1"
     local mode="$2"
+    local extra_prompt="${3:-}"
 
     local prompt_file="$AGENTS_DIR/${agent_name}.md"
     [[ ! -f "$prompt_file" ]] && { log_error "Agent not found: $agent_name"; return 1; }
 
+    # Build orchestrator injections (same logic as run_agent)
+    local validate_hint=""
+    if [[ "$agent_name" == "developer" ]]; then
+        validate_hint="
+## Commander's Intent
+The sprint item may include an \`intent\` field in sprint.json. This is the commander's intent — a non-negotiable directive that defines what must be true when you're done. It overrides ambiguity: when the spec is unclear, the steps seem wrong, or you have to make a judgment call, intent is the order you follow."
+
+        if [[ "$MATURITY_ENABLED" == "true" ]]; then
+            validate_hint="$validate_hint
+
+## Maturity Protocol (MANDATORY)
+You MUST complete all phases before signaling done. Do NOT skip phases.
+
+### Phase 1 — Implement
+Write the code. Follow the spec, match existing patterns, keep it clean.${VALIDATE_CMD:+
+Run the validation command after implementation: \`$VALIDATE_CMD\`
+Fix any failures before proceeding to Phase 2.}
+
+### Phase 2 — Critique
+STOP writing code. Shift to reviewer mindset. Re-read every file you changed from top to bottom.
+- Check the item's intent — would the commander look at this and say the hill is taken? Every decision should trace back to the directive.
+- Walk through each acceptance criterion and verify it is actually met (not just \"probably\").
+- Look for: bugs, off-by-one errors, missing edge cases, error handling gaps, broken integrations with existing code.
+- Check: did you leave dead code, debug prints, TODOs, or incomplete implementations?
+- Ask yourself: what would break in production that works in a happy-path test?
+Fix everything you find. This is not optional.
+
+### Phase 3 — Harden
+Run the full validation suite${VALIDATE_CMD:+ (\`$VALIDATE_CMD\`)} again. Fix any regressions from Phase 2 fixes.
+Re-verify every acceptance criterion one final time — confirm each is provably met, not assumed.
+Only when everything is clean: commit and signal completion.
+
+Output a one-line phase marker as you transition:
+\`═══ PHASE 2: CRITIQUE ═══\`
+\`═══ PHASE 3: HARDEN ═══\`"
+        elif [[ -n "$VALIDATE_CMD" ]]; then
+            validate_hint="$validate_hint
+
+## Validation Command
+After implementing, run this command to verify your work passes: \`$VALIDATE_CMD\`
+Fix any failures before writing result.json."
+        fi
+    elif [[ "$agent_name" == "validator" ]]; then
+        validate_hint="
+## Commander's Intent
+The sprint item may include an \`intent\` field in sprint.json. If present, this is the non-negotiable directive. Verify the implementation fulfills it — AC can pass mechanically while the intent is missed entirely."
+    elif [[ "$agent_name" == "tech-lead" || "$agent_name" == "product-owner" ]]; then
+        validate_hint="
+## Commander's Intent
+Every backlog item should have an \`intent\` field — the commander's intent. A clear, non-negotiable directive that defines what must be true when the work is done. The developer will follow this when the spec is ambiguous or steps seem wrong.
+Use \`--intent \"...\" \` when adding or editing items. Example:
+  .aishore/aishore backlog edit <ID> --intent \"Webhooks must deliver or tell the user why not. Silent failure is not acceptable.\"
+Write it like an order, not a description. Not \"improve webhook reliability\" but \"webhooks never silently fail.\""
+    fi
+
     local prompt
     prompt="$(cat "$prompt_file")
+${extra_prompt:+
+$extra_prompt}${validate_hint:+
+$validate_hint}
 
 ## Mode
 $mode
@@ -875,23 +1060,8 @@ run_agent() {
             agent_perms="${CFG_PERMS_DEVELOPER:-$PERMS_DEVELOPER}" ;;
     esac
 
-    local validate_hint=""
-    if [[ "$agent_name" == "developer" && -n "$VALIDATE_CMD" ]]; then
-        validate_hint="
-## Validation Command
-After implementing, run this command to verify your work passes: \`$VALIDATE_CMD\`
-Fix any failures before writing result.json."
-    fi
-
     local prompt
-    prompt="$(cat "$prompt_file")
-${extra_prompt:+
-$extra_prompt}${validate_hint:+
-$validate_hint}
-
-## Mode
-$mode
-$(build_completion_contract)"
+    prompt=$(build_agent_prompt "$agent_name" "$mode" "$extra_prompt")
 
     if [[ -n "$output_file" ]]; then
         AGENT_OUTPUT_FILE="$output_file" AGENT_MODE="$mode" run_agent_process "$agent_name" "$model" \
@@ -936,6 +1106,122 @@ check_result() {
         fi
         return 1
     fi
+}
+
+SCOPE_VIOLATION_REPORT=""
+check_scope_violations() {
+    SCOPE_VIOLATION_REPORT=""
+    local sprint_file="$BACKLOG_DIR/sprint.json"
+    [[ ! -f "$sprint_file" ]] && return 0
+
+    local scope_json
+    scope_json=$(jq -r '.item.scope // empty' "$sprint_file" 2>/dev/null)
+    [[ -z "$scope_json" || "$scope_json" == "null" || "$scope_json" == "[]" ]] && return 0
+
+    local scope_count
+    scope_count=$(echo "$scope_json" | jq 'length' 2>/dev/null || echo 0)
+    [[ "$scope_count" -eq 0 ]] && return 0
+
+    # Get changed files against base branch (developer may have multiple commits)
+    local base_branch="$AISHORE_BASE_BRANCH"
+    [[ -z "$base_branch" ]] && return 0
+
+    local changed_files
+    changed_files=$(git diff --name-only "$base_branch"...HEAD 2>/dev/null || true)
+    [[ -z "$changed_files" ]] && return 0
+
+    # Read scope globs into array
+    local -a globs=()
+    while IFS= read -r glob; do
+        globs+=("$glob")
+    done < <(echo "$scope_json" | jq -r '.[]' 2>/dev/null)
+
+    local violations=""
+    local violation_count=0
+    while IFS= read -r file; do
+        local in_scope=false
+        for glob in "${globs[@]}"; do
+            # Convert ** to * for bash pattern matching (simplistic but functional)
+            local pattern="${glob//\*\*/*}"
+            # shellcheck disable=SC2254
+            if [[ "$file" == $pattern ]]; then
+                in_scope=true
+                break
+            fi
+        done
+        if [[ "$in_scope" != "true" ]]; then
+            violations="${violations}  - $file\n"
+            violation_count=$((violation_count + 1))
+        fi
+    done <<< "$changed_files"
+
+    if [[ "$violation_count" -gt 0 ]]; then
+        SCOPE_VIOLATION_REPORT="$violation_count file(s) outside declared scope:\n$violations"
+        if [[ "$SCOPE_MODE" == "strict" ]]; then
+            log_error "Scope violation (strict mode): $violation_count file(s) outside scope"
+            echo -e "$violations"
+            return 1
+        else
+            log_warning "Scope violation: $violation_count file(s) outside scope"
+            echo -e "$violations"
+            return 0
+        fi
+    fi
+    return 0
+}
+
+AC_VERIFY_REPORT=""
+run_ac_verification() {
+    AC_VERIFY_REPORT=""
+    local sprint_file="$BACKLOG_DIR/sprint.json"
+    [[ ! -f "$sprint_file" ]] && return 0
+
+    local ac_json
+    ac_json=$(jq -r '.item.acceptanceCriteria // []' "$sprint_file" 2>/dev/null)
+    [[ -z "$ac_json" || "$ac_json" == "null" || "$ac_json" == "[]" ]] && return 0
+
+    # Filter to objects with .verify field
+    local verifiable
+    verifiable=$(echo "$ac_json" | jq '[.[] | select(type == "object" and .verify != null)]' 2>/dev/null)
+    local verify_count
+    verify_count=$(echo "$verifiable" | jq 'length' 2>/dev/null || echo 0)
+    [[ "$verify_count" -eq 0 ]] && return 0
+
+    log_info "Running $verify_count AC verification command(s)"
+    local all_passed=true
+    local report=""
+    local idx=0
+
+    while IFS= read -r entry; do
+        local ac_text ac_cmd
+        ac_text=$(echo "$entry" | jq -r '.text // "unnamed"')
+        ac_cmd=$(echo "$entry" | jq -r '.verify')
+        idx=$((idx + 1))
+
+        local ac_ok=true
+        local ac_tmpfile
+        ac_tmpfile="$(ensure_tmpdir)/ac_verify_${idx}.txt"
+        if command -v timeout &>/dev/null; then
+            timeout "$VALIDATE_TIMEOUT" bash -c "$ac_cmd" >"$ac_tmpfile" 2>&1 || ac_ok=false
+        else
+            bash -c "$ac_cmd" >"$ac_tmpfile" 2>&1 || ac_ok=false
+        fi
+        local ac_output
+        ac_output=$(head -c 1000 "$ac_tmpfile" 2>/dev/null || true)
+        rm -f "$ac_tmpfile"
+
+        if [[ "$ac_ok" == "true" ]]; then
+            report="${report}  PASS: $ac_text\n"
+            log_success "AC: $ac_text"
+        else
+            report="${report}  FAIL: $ac_text (cmd: $ac_cmd)\n    Output: $ac_output\n"
+            log_error "AC: $ac_text"
+            all_passed=false
+        fi
+    done < <(echo "$verifiable" | jq -c '.[]')
+
+    AC_VERIFY_REPORT="$report"
+    [[ "$all_passed" == "true" ]] && return 0 || return 1
 }
 
 # ============================================================================
@@ -1079,10 +1365,11 @@ cmd_auto() {
 }
 
 # Dry-run handler for cmd_run.
-# Uses outer-scope locals: auto_mode, auto_scope, specific_id
+# Uses outer-scope locals: auto_mode, auto_scope, specific_id, quick_mode
 _run_dry_run() {
     load_config
     cd "$PROJECT_ROOT"
+    [[ "$quick_mode" == "true" ]] && MATURITY_ENABLED="false"
 
     if [[ "$auto_mode" == "true" ]]; then
         log_header "aishore auto $auto_scope - Dry Run"
@@ -1100,7 +1387,7 @@ _run_dry_run() {
         if [[ -n "$specific_id" ]]; then
             log_error "Item not found: $specific_id — check backlog/backlog.json and backlog/bugs.json for valid item IDs"
         else
-            log_warning "No ready items in backlog. Run '.aishore/aishore groom' to prepare items, or set readyForSprint: true in backlog/backlog.json"
+            log_warning "No ready items in backlog. Items need readyForSprint: true AND a commander's intent (>=20 chars). Run '.aishore/aishore groom' to prepare items."
         fi
         return 1
     fi
@@ -1132,6 +1419,92 @@ _run_dry_run() {
     return 0
 }
 
+refine_item_spec() {
+    local item_id="$1"
+    local failure_context="$2"
+
+    log_info "Refining spec for $item_id based on failure context"
+
+    local sprint_file="$BACKLOG_DIR/sprint.json"
+    [[ ! -f "$sprint_file" ]] && { log_error "No sprint.json for refinement"; return 1; }
+
+    local current_spec
+    current_spec=$(jq '.item' "$sprint_file" 2>/dev/null)
+    [[ -z "$current_spec" || "$current_spec" == "null" ]] && return 1
+
+    local refinement_prompt
+    refinement_prompt="You are refining a sprint item spec that failed implementation.
+
+## Current Spec
+\`\`\`json
+$current_spec
+\`\`\`
+
+## Failure Context
+$failure_context
+
+## Task
+Analyze the failures and output an improved spec as a JSON object with exactly these fields:
+- \"steps\": array of strings (improved implementation steps)
+- \"acceptanceCriteria\": array (strings or {\"text\": \"...\", \"verify\": \"...\"} objects)
+
+Output ONLY the JSON object, no markdown fences, no explanation."
+
+    local refine_output_file
+    refine_output_file="$(ensure_tmpdir)/refine_output.txt"
+
+    local has_setsid=false
+    command -v setsid &>/dev/null && has_setsid=true
+
+    local claude_args=(
+        --model "$MODEL_FAST"
+        --permission-mode acceptEdits
+        --allowedTools "Read,Glob,Grep"
+        --print
+    )
+
+    if [[ "$has_setsid" == true ]]; then
+        setsid env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT \
+            claude "${claude_args[@]}" \
+            -p "$refinement_prompt" > "$refine_output_file" 2>&1
+    else
+        env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT \
+            claude "${claude_args[@]}" \
+            -p "$refinement_prompt" > "$refine_output_file" 2>&1
+    fi
+
+    local raw_output
+    raw_output=$(cat "$refine_output_file" 2>/dev/null || true)
+    rm -f "$refine_output_file"
+
+    # Extract JSON from output (handle potential markdown fences)
+    local json_output
+    json_output=$(echo "$raw_output" | sed -n '/^{/,/^}/p' | head -100)
+    [[ -z "$json_output" ]] && json_output=$(echo "$raw_output" | sed -n '/```json/,/```/p' | sed '1d;$d')
+    [[ -z "$json_output" ]] && { log_error "Refinement produced no valid JSON"; return 1; }
+
+    # Validate JSON structure
+    if ! echo "$json_output" | jq -e '.steps and .acceptanceCriteria' &>/dev/null; then
+        log_error "Refinement output missing required fields"
+        return 1
+    fi
+
+    # Update sprint.json with refined spec
+    local tmp_sprint
+    tmp_sprint="$(ensure_tmpdir)/sprint_refine.json"
+    if jq --argjson refined "$json_output" \
+        '.item.steps = $refined.steps | .item.acceptanceCriteria = $refined.acceptanceCriteria' \
+        "$sprint_file" > "$tmp_sprint" 2>/dev/null; then
+        mv "$tmp_sprint" "$sprint_file"
+        log_success "Spec refined for $item_id"
+        return 0
+    else
+        rm -f "$tmp_sprint"
+        log_error "Failed to update sprint.json with refined spec"
+        return 1
+    fi
+}
+
 # Developer → validation cmd → validator agent retry loop.
 # Uses outer-scope locals: retries, auto_mode, session_failures, sprint_passed,
 #   retry_extra_prompt, item_source, sprint_start, ITEM_ID
@@ -1139,6 +1512,30 @@ _run_retry_loop() {
     local attempt=0
     sprint_passed=false
     retry_extra_prompt=""
+
+    # Pre-flight: run validation command on the baseline (before developer touches anything)
+    if [[ -n "$VALIDATE_CMD" ]]; then
+        log_info "Pre-flight: running validation on baseline"
+        local preflight_ok=true
+        local preflight_tmpfile
+        preflight_tmpfile="$(ensure_tmpdir)/preflight_output.txt"
+        if command -v timeout &>/dev/null; then
+            timeout "$VALIDATE_TIMEOUT" bash -c "$VALIDATE_CMD" >"$preflight_tmpfile" 2>&1 || preflight_ok=false
+        else
+            bash -c "$VALIDATE_CMD" >"$preflight_tmpfile" 2>&1 || preflight_ok=false
+        fi
+        if [[ "$preflight_ok" != "true" ]]; then
+            local preflight_output
+            preflight_output=$(head -c 2000 "$preflight_tmpfile" 2>/dev/null || true)
+            rm -f "$preflight_tmpfile"
+            log_error "Pre-flight validation failed — baseline is broken"
+            log_error "Output (truncated): $preflight_output"
+            _record_sprint_failure "Pre-flight failed" "Baseline validation failed before developer ran"
+            return
+        fi
+        rm -f "$preflight_tmpfile"
+        log_success "Pre-flight passed"
+    fi
 
     for ((attempt=0; attempt<=retries; attempt++)); do
         if [[ $attempt -gt 0 ]]; then
@@ -1168,6 +1565,20 @@ _run_retry_loop() {
                 continue
             fi
             _record_sprint_failure "Implementation failed" "Implementation failed"
+            break
+        fi
+
+        # Check scope violations (after developer, before validation)
+        if ! check_scope_violations; then
+            # strict mode failure
+            if [[ $attempt -lt $retries ]]; then
+                retry_extra_prompt="Previous attempt modified files outside the declared scope. Scope violations:
+${SCOPE_VIOLATION_REPORT}
+Only modify files matching the declared scope globs. Fix the issues."
+                log_info "Will retry with scope violation context"
+                continue
+            fi
+            _record_sprint_failure "Scope violation" "Files modified outside declared scope"
             break
         fi
 
@@ -1206,8 +1617,25 @@ Fix the issues and ensure all acceptance criteria pass."
             break
         fi
 
-        # Run validator agent
-        run_agent "validator" "validate" "$MODEL_FAST"
+        # Run AC verification commands (if any AC have .verify)
+        if ! run_ac_verification; then
+            if [[ $attempt -lt $retries ]]; then
+                retry_extra_prompt="Previous attempt failed acceptance criteria verification:
+${AC_VERIFY_REPORT}
+Fix the issues and ensure all acceptance criteria pass."
+                log_info "Will retry with AC failure context"
+                continue
+            fi
+            _record_sprint_failure "AC verification failed" "Acceptance criteria verification commands failed"
+            break
+        fi
+
+        # Run validator agent (pass AC report as extra context if available)
+        local validator_extra=""
+        [[ -n "$AC_VERIFY_REPORT" ]] && validator_extra="
+## AC Verification Results
+${AC_VERIFY_REPORT}"
+        run_agent "validator" "validate" "$MODEL_FAST" "" "" "$validator_extra"
         if ! check_result; then
             log_error "Validation failed"
             if [[ $attempt -lt $retries ]]; then
@@ -1310,6 +1738,8 @@ cmd_run() {
     local specific_id=""
     local retries=0
     local no_merge=false
+    local refine_on_exhaust=false
+    local quick_mode=false
     local auto_mode=false
     local auto_scope=""
     local auto_priorities=""
@@ -1319,6 +1749,8 @@ cmd_run() {
         case "$1" in
             --dry-run) dry_run=true; shift ;;
             --no-merge) no_merge=true; shift ;;
+            --refine) refine_on_exhaust=true; shift ;;
+            --quick) quick_mode=true; shift ;;
             --_auto)
                 auto_mode=true
                 auto_scope="$2"
@@ -1358,6 +1790,9 @@ cmd_run() {
     acquire_lock
     load_config
     cd "$PROJECT_ROOT"
+
+    # --quick disables maturity protocol for fast iteration
+    [[ "$quick_mode" == "true" ]] && MATURITY_ENABLED="false"
 
     # Stash pre-existing uncommitted changes so sprints don't destroy them
     local did_stash=false
@@ -1484,7 +1919,7 @@ cmd_run() {
             elif [[ "$auto_mode" == "true" ]]; then
                 log_success "No more ready items — backlog drained"
             else
-                log_warning "No ready items in backlog. Run '.aishore/aishore groom' to prepare items, or set readyForSprint: true in backlog/backlog.json"
+                log_warning "No ready items in backlog. Items need readyForSprint: true AND a commander's intent (>=20 chars). Run '.aishore/aishore groom' to prepare items."
             fi
             break
         fi
@@ -1528,8 +1963,37 @@ cmd_run() {
         _run_retry_loop
 
         if [[ "$sprint_passed" != "true" ]]; then
-            [[ "$auto_mode" == "true" ]] && log_info "Progress: $passed passed, $failed failed, $(_count_total_ready) remaining ready"
-            continue
+            # Failure-to-refinement: if --refine is set, refine spec and try once more
+            if [[ "$refine_on_exhaust" == "true" ]]; then
+                log_info "Attempting spec refinement after exhausting retries"
+                local failure_ctx=""
+                for sf in "${session_failures[@]}"; do
+                    failure_ctx="${failure_ctx}${sf}"$'\n'
+                done
+                [[ -n "$retry_extra_prompt" ]] && failure_ctx="${failure_ctx}Last failure context: ${retry_extra_prompt}"
+
+                if refine_item_spec "$ITEM_ID" "$failure_ctx"; then
+                    log_info "Running one more developer → validate → validator cycle with refined spec"
+                    # Reset failure tracking for this single refinement attempt
+                    local saved_retries=$retries
+                    retries=0
+                    retry_extra_prompt="This is a REFINED spec after previous failures. Pay close attention to the updated steps and acceptance criteria."
+                    sprint_passed=false
+                    _run_retry_loop
+                    retries=$saved_retries
+
+                    if [[ "$sprint_passed" == "true" ]]; then
+                        total_attempts=$((total_attempts + 1))
+                    fi
+                else
+                    log_warning "Spec refinement failed — cannot retry"
+                fi
+            fi
+
+            if [[ "$sprint_passed" != "true" ]]; then
+                [[ "$auto_mode" == "true" ]] && log_info "Progress: $passed passed, $failed failed, $(_count_total_ready) remaining ready"
+                continue
+            fi
         fi
 
         # Success: mark complete, commit, merge/push
@@ -1798,12 +2262,36 @@ cmd_metrics() {
         local completed
         completed=$([[ -f "$sprints_file" ]] && jq -s 'length' "$sprints_file" 2>/dev/null || echo 0)
 
+        # Build trends object if archive exists
+        local trends="{}"
+        if [[ -f "$sprints_file" && -s "$sprints_file" ]]; then
+            trends=$(jq -s '
+                def safe_div(a; b): if b == 0 then 0 else (a / b * 100 | round) / 100 end;
+                . as $all |
+                {
+                    avgAttempts: safe_div([$all[] | .attempts // 1] | add; $all | length),
+                    itemsPerDay: safe_div($all | length; [$all[] | .date] | unique | length),
+                    byPriority: ([$all[] | {priority: (.priority // "unknown")}] | group_by(.priority) | map({key: .[0].priority, value: length}) | from_entries),
+                    byCategory: ([$all[] | {category: (.category // "uncategorized")}] | group_by(.category) | map({key: .[0].category, value: length}) | from_entries)
+                } + (
+                    if ($all | length) > 10 then
+                        ($all | [.[length-10:][]] ) as $recent |
+                        {
+                            recentAvgAttempts: safe_div([$recent[] | .attempts // 1] | add; $recent | length),
+                            recentAvgDuration: safe_div([$recent[] | .duration // 0] | add; $recent | length)
+                        }
+                    else {} end
+                )
+            ' "$sprints_file" 2>/dev/null || echo "{}")
+        fi
+
         cat <<EOF
 {
   "timestamp": "$(date -Iseconds)",
   "sprints": {"completed": $completed},
   "backlog": {"total": $backlog_total, "ready": $ready_backlog},
-  "bugs": {"total": $bugs_total, "ready": $ready_bugs}
+  "bugs": {"total": $bugs_total, "ready": $ready_bugs},
+  "trends": $trends
 }
 EOF
     else
@@ -1818,6 +2306,43 @@ EOF
         echo "Bugs/Tech Debt:"
         echo "  Total items: $bugs_total"
         echo "  Ready for sprint: $ready_bugs"
+
+        # Trends section
+        if [[ -f "$sprints_file" && -s "$sprints_file" ]]; then
+            echo ""
+            log_subheader "Trends"
+            local trend_count
+            trend_count=$(jq -s 'length' "$sprints_file" 2>/dev/null || echo 0)
+
+            local avg_attempts items_per_day
+            avg_attempts=$(jq -s 'if length == 0 then 0 else ([.[] | .attempts // 1] | add / length * 100 | round) / 100 end' "$sprints_file" 2>/dev/null || echo 0)
+            items_per_day=$(jq -s 'if length == 0 then 0 else (length / ([.[] | .date] | unique | length) * 100 | round) / 100 end' "$sprints_file" 2>/dev/null || echo 0)
+            echo "  Avg attempts/item: $avg_attempts"
+            echo "  Items/day: $items_per_day"
+
+            # By priority
+            local by_priority
+            by_priority=$(jq -sr '[.[] | .priority // "unknown"] | group_by(.) | map("\(.[0]): \(length)") | join(", ")' "$sprints_file" 2>/dev/null || true)
+            [[ -n "$by_priority" ]] && echo "  By priority: $by_priority"
+
+            # By category
+            local by_category
+            by_category=$(jq -sr '[.[] | .category // "uncategorized"] | group_by(.) | map("\(.[0]): \(length)") | join(", ")' "$sprints_file" 2>/dev/null || true)
+            [[ -n "$by_category" ]] && echo "  By category: $by_category"
+
+            # Recent trend (last 10 vs overall)
+            if [[ "$trend_count" -gt 10 ]]; then
+                local recent_avg_attempts overall_avg_attempts
+                recent_avg_attempts=$(jq -s '([.[length-10:][]] | [.[] | .attempts // 1] | add / length * 100 | round) / 100' "$sprints_file" 2>/dev/null || echo 0)
+                overall_avg_attempts="$avg_attempts"
+                echo "  Recent trend (last 10): avg attempts $recent_avg_attempts (overall: $overall_avg_attempts)"
+
+                local recent_avg_duration overall_avg_duration
+                recent_avg_duration=$(jq -s '([.[length-10:][]] | [.[] | .duration // 0] | add / length | round)' "$sprints_file" 2>/dev/null || echo 0)
+                overall_avg_duration=$(jq -s '([.[] | .duration // 0] | add / length | round)' "$sprints_file" 2>/dev/null || echo 0)
+                echo "  Recent trend (last 10): avg duration ${recent_avg_duration}s (overall: ${overall_avg_duration}s)"
+            fi
+        fi
     fi
 }
 
@@ -2049,6 +2574,11 @@ validation:
 # agent:
 #   timeout: 3600
 
+# Maturity protocol: developer runs implement → critique → harden phases.
+# Disable with --quick flag or set to false here.
+# maturity:
+#   enabled: true
+
 # notifications:
 #   on_complete: "notify-send 'aishore' \"Sprint \$1: \$2\""
 #   # Examples:
@@ -2104,7 +2634,7 @@ An item is ready for sprint when:
 
 | # | Criteria              | Description                                        |
 |---|-----------------------|----------------------------------------------------|
-| 1 | **Clear Value**       | The "why" is understood - ties to a user outcome   |
+| 1 | **Commander's Intent** | The `intent` field states what must be true when done |
 | 2 | **Actionable Steps**  | Steps are clear enough for implementation          |
 | 3 | **Testable AC**       | Acceptance criteria can be verified                |
 | 4 | **No Blockers**       | Dependencies are resolved                          |
@@ -2148,11 +2678,13 @@ An item is done when:
 {
   "id": "FEAT-001",
   "title": "Short title",
-  "description": "User-focused description",
+  "intent": "Users must get X or know exactly why not. Silent failure is not acceptable.",
+  "description": "Full description — what to build, context, scope boundaries",
   "priority": "should",
   "category": "core",
   "steps": ["Step 1", "Step 2"],
   "acceptanceCriteria": ["AC 1", "AC 2"],
+  "scope": ["src/**", "tests/**"],
   "status": "todo",
   "passes": false,
   "readyForSprint": false
@@ -2584,12 +3116,28 @@ cmd_backlog() {
         show)       cmd_backlog_show "$@" ;;
         edit)       cmd_backlog_edit "$@" ;;
         rm|remove)  cmd_backlog_rm "$@" ;;
+        check)      cmd_backlog_check "$@" ;;
         *)
             log_error "Unknown backlog command: $subcmd"
-            echo "Usage: backlog {list|add|show|edit|rm}"
+            echo "Usage: backlog {list|add|show|edit|check|rm}"
             return 1
             ;;
     esac
+}
+
+cmd_backlog_check() {
+    local id="${1:-}"
+    [[ -z "$id" ]] && { log_error "Usage: backlog check <ID>"; return 1; }
+
+    # Verify item exists
+    find_item "$id" >/dev/null || return 1
+
+    if check_readiness_gates "$id"; then
+        log_success "$id passes all readiness gates"
+    else
+        log_warning "$id has readiness warnings:"
+        echo -e "$CHECK_GATES_WARNINGS"
+    fi
 }
 
 cmd_backlog_list() {
@@ -2645,19 +3193,42 @@ cmd_backlog_list() {
 }
 
 cmd_backlog_add() {
-    local item_type="feat" title="" desc="" priority="should" category="" ready=false
+    local item_type="feat" title="" intent="" desc="" priority="should" category="" ready=false
+    local -a ac_entries=()
+    local pending_ac=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --type)      item_type="$2"; shift 2 ;;
             --title)     title="$2"; shift 2 ;;
+            --intent)    intent="$2"; shift 2 ;;
             --desc)      desc="$2"; shift 2 ;;
             --priority)  priority="$2"; shift 2 ;;
             --category)  category="$2"; shift 2 ;;
             --ready)     ready=true; shift ;;
+            --ac)
+                # Flush any pending AC entry as plain string
+                if [[ -n "$pending_ac" ]]; then
+                    ac_entries+=("$(printf '%s' "$pending_ac" | jq -Rs .)")
+                fi
+                pending_ac="$2"
+                shift 2 ;;
+            --ac-verify)
+                if [[ -z "$pending_ac" ]]; then
+                    log_error "--ac-verify must follow --ac"
+                    return 1
+                fi
+                ac_entries+=("{\"text\":$(printf '%s' "$pending_ac" | jq -Rs .),\"verify\":$(printf '%s' "$2" | jq -Rs .)}")
+                pending_ac=""
+                shift 2 ;;
             *) log_error "Unknown option: $1"; return 1 ;;
         esac
     done
+
+    # Flush last pending AC
+    if [[ -n "$pending_ac" ]]; then
+        ac_entries+=("$(printf '%s' "$pending_ac" | jq -Rs .)")
+    fi
 
     # Interactive mode if no title
     if [[ -z "$title" ]]; then
@@ -2673,6 +3244,8 @@ cmd_backlog_add() {
 
         read -r -p "Title: " title
         [[ -z "$title" ]] && { log_error "Title is required"; return 1; }
+
+        read -r -p "Intent (commander's intent — what must be true when done): " intent
 
         read -r -p "Description: " desc
 
@@ -2704,22 +3277,37 @@ cmd_backlog_add() {
     local new_id
     new_id=$(next_id "$prefix")
 
+    # Build AC array
+    local ac_json="[]"
+    if [[ ${#ac_entries[@]} -gt 0 ]]; then
+        ac_json="["
+        local first=true
+        for entry in "${ac_entries[@]}"; do
+            [[ "$first" == "true" ]] && first=false || ac_json="$ac_json,"
+            ac_json="$ac_json$entry"
+        done
+        ac_json="$ac_json]"
+    fi
+
     # Create item and append
     if ! add_item "$target_file" \
         --arg id "$new_id" \
         --arg title "$title" \
+        --arg intent "$intent" \
         --arg desc "$desc" \
         --arg priority "$priority" \
         --arg category "$category" \
         --argjson ready "$ready" \
+        --argjson ac_arr "$ac_json" \
         '.items += [{
             id: $id,
             title: $title,
+            intent: (if $intent == "" then null else $intent end),
             description: $desc,
             priority: $priority,
             category: (if $category == "" then null else $category end),
             steps: [],
-            acceptanceCriteria: [],
+            acceptanceCriteria: $ac_arr,
             status: "todo",
             passes: false,
             readyForSprint: $ready
@@ -2748,6 +3336,7 @@ cmd_backlog_show() {
         "Ready:       \(if .readyForSprint then "yes" else "no" end)",
         "Passes:      \(if .passes then "yes" else "no" end)",
         "",
+        if .intent then "Intent:      \(.intent)\n" else empty end,
         "Description: \(.description // "-")",
         "",
         if (.steps // [] | length) > 0 then "Steps:" else empty end,
@@ -2764,7 +3353,7 @@ cmd_backlog_show() {
 
 cmd_backlog_edit() {
     local id="${1:-}"
-    [[ -z "$id" ]] && { log_error "Usage: backlog edit <ID> [--title ...] [--priority ...] [--status ...] [--desc ...] [--category ...] [--ready] [--no-ready]"; return 1; }
+    [[ -z "$id" ]] && { log_error "Usage: backlog edit <ID> [--title ...] [--intent ...] [--priority ...] [--status ...] [--desc ...] [--category ...] [--ready] [--no-ready]"; return 1; }
     shift
 
     # Verify item exists
@@ -2776,6 +3365,10 @@ cmd_backlog_edit() {
     # Parse update flags
     local updates=() update_desc=""
     local jq_updates=""
+    local setting_ready=false
+    local -a ac_entries=()
+    local pending_ac=""
+    local -a scope_vals=()
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -2784,6 +3377,12 @@ cmd_backlog_edit() {
                 jq_updates="$jq_updates | .title = \$title"
                 updates+=("--arg" "title" "$2")
                 update_desc="$update_desc title"
+                shift 2 ;;
+            --intent)
+                validate_arg "$1" "${2:-}" || return 1
+                jq_updates="$jq_updates | .intent = \$intent"
+                updates+=("--arg" "intent" "$2")
+                update_desc="$update_desc intent"
                 shift 2 ;;
             --desc)
                 validate_arg "$1" "${2:-}" || return 1
@@ -2814,11 +3413,40 @@ cmd_backlog_edit() {
             --ready)
                 jq_updates="$jq_updates | .readyForSprint = true"
                 update_desc="$update_desc ready"
+                setting_ready=true
                 shift ;;
             --no-ready)
                 jq_updates="$jq_updates | .readyForSprint = false"
                 update_desc="$update_desc ready"
                 shift ;;
+            --scope)
+                validate_arg "$1" "${2:-}" || return 1
+                scope_vals+=("$2")
+                update_desc="$update_desc scope"
+                shift 2 ;;
+            --clear-scope)
+                jq_updates="$jq_updates | .scope = []"
+                update_desc="$update_desc scope"
+                shift ;;
+            --ac)
+                validate_arg "$1" "${2:-}" || return 1
+                # Flush any pending AC entry
+                if [[ -n "$pending_ac" ]]; then
+                    ac_entries+=("$pending_ac")
+                fi
+                pending_ac="$2"
+                update_desc="$update_desc ac"
+                shift 2 ;;
+            --ac-verify)
+                validate_arg "$1" "${2:-}" || return 1
+                if [[ -z "$pending_ac" ]]; then
+                    log_error "--ac-verify must follow --ac"
+                    return 1
+                fi
+                # Convert pending AC to object with verify
+                ac_entries+=("{\"text\":$(printf '%s' "$pending_ac" | jq -Rs .),\"verify\":$(printf '%s' "$2" | jq -Rs .)}")
+                pending_ac=""
+                shift 2 ;;
             --groomed-notes)
                 validate_arg "$1" "${2:-}" || return 1
                 jq_updates="$jq_updates | .groomingNotes = \$gnotes"
@@ -2842,8 +3470,39 @@ cmd_backlog_edit() {
         esac
     done
 
+    # Flush last pending AC entry (plain string)
+    if [[ -n "$pending_ac" ]]; then
+        ac_entries+=("$(printf '%s' "$pending_ac" | jq -Rs .)")
+    fi
+
+    # Build scope jq update if any --scope flags were used
+    if [[ ${#scope_vals[@]} -gt 0 ]]; then
+        local scope_json
+        scope_json=$(printf '%s\n' "${scope_vals[@]}" | jq -R . | jq -s .)
+        jq_updates="$jq_updates | .scope = ((.scope // []) + \$newscope)"
+        updates+=("--argjson" "newscope" "$scope_json")
+    fi
+
+    # Build AC jq update if any --ac flags were used
+    if [[ ${#ac_entries[@]} -gt 0 ]]; then
+        local ac_json="["
+        local first=true
+        for entry in "${ac_entries[@]}"; do
+            [[ "$first" == "true" ]] && first=false || ac_json="$ac_json,"
+            # If entry starts with { it's already JSON, otherwise it's a jq-encoded string
+            if [[ "$entry" == "{"* ]]; then
+                ac_json="$ac_json$entry"
+            else
+                ac_json="$ac_json$entry"
+            fi
+        done
+        ac_json="$ac_json]"
+        jq_updates="$jq_updates | .acceptanceCriteria = ((.acceptanceCriteria // []) + \$newac)"
+        updates+=("--argjson" "newac" "$ac_json")
+    fi
+
     if [[ -z "$jq_updates" ]]; then
-        log_error "No updates specified. Use --title, --priority, --status, --desc, --category, --ready, --no-ready"
+        log_error "No updates specified. Use --title, --priority, --status, --desc, --category, --ready, --no-ready, --scope, --ac, --ac-verify"
         return 1
     fi
 
@@ -2853,6 +3512,14 @@ cmd_backlog_edit() {
     fi
 
     log_success "Updated $id:$update_desc"
+
+    # Run readiness gates when setting --ready (warn but don't block)
+    if [[ "$setting_ready" == "true" ]]; then
+        if ! check_readiness_gates "$id"; then
+            log_warning "Readiness warnings for $id:"
+            echo -e "$CHECK_GATES_WARNINGS"
+        fi
+    fi
 }
 
 validate_arg() {
@@ -2981,14 +3648,20 @@ Commands:
   backlog add       Add a new item (interactive or with flags)
     --type <t>      Type: feat (default) or bug
     --title "..."   Item title (required)
+    --intent "..."  Commander's intent — the non-negotiable directive
     --desc "..."    Description
     --priority <p>  must, should, could, or future (default: should)
     --category "."  Category
     --ready         Mark as ready for sprint
+    --ac "text"     Add acceptance criterion (repeatable)
+    --ac-verify "cmd"  Attach verify command to preceding --ac
   backlog show <ID> Show full detail of one item
   backlog edit <ID> Update fields on an item
-    --title, --desc, --priority, --status, --category, --ready, --no-ready,
-    --groomed-at [date], --groomed-notes "..."
+    --title, --intent, --desc, --priority, --status, --category, --ready, --no-ready,
+    --groomed-at [date], --groomed-notes "...",
+    --scope "glob"  Add scope glob (repeatable), --clear-scope to reset,
+    --ac "text", --ac-verify "cmd"  Append testable acceptance criteria
+  backlog check <ID> Check readiness gates (title, intent, steps, AC, step length)
   backlog rm <ID>   Remove an item (with confirmation)
     --force         Skip confirmation
 
@@ -3000,6 +3673,7 @@ Commands:
     --max-failures N  Consecutive failures before stopping (default: 5)
     --retries N     Per-item retry attempts on failure
     --no-merge      Keep feature branches for PR review
+    --refine        Refine spec on exhausted retries and try once more
     --dry-run       Preview first item without running
 
   run [count]       Run N sprints (default: 1, feature branches, push/pull)
@@ -3007,6 +3681,8 @@ Commands:
     --dry-run       Preview what would happen without running agents
     --no-merge      Keep feature branches for PR review (push, don't merge)
     --retries N     Allow up to N retry attempts on validation failure
+    --refine        Refine spec on exhausted retries and try once more
+    --quick         Skip maturity protocol (fast iteration)
 
   groom             Groom bugs/tech debt (Tech Lead mode)
     --backlog       Groom features instead (Product Owner mode)
@@ -3062,6 +3738,8 @@ Environment Variables:
   AISHORE_NOTIFY_CMD        Command to run on sprint completion (receives \$1=status, \$2=item_id)
   AISHORE_AUTO_GROOM_THRESHOLD  Ready items below this triggers auto-groom (default: 3)
   AISHORE_AUTO_MAX_FAILURES     Max consecutive failures before stopping (default: 5)
+  AISHORE_SCOPE_MODE            Scope checking mode: warn (default) or strict
+  AISHORE_MATURITY              Maturity protocol: true (default) or false
 
 Agent Permissions:
   Each agent role has a default permission set:
