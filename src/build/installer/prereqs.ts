@@ -1,7 +1,7 @@
 /**
  * Prerequisite detection for `clawhq install`.
  *
- * Checks that Docker, Node.js >=20, and Ollama are available on the host.
+ * Checks that Docker, Node.js >=22, and Ollama are available on the host.
  * Each check is independent and never throws — a failed check returns
  * `ok: false` with a human-readable detail message.
  */
@@ -67,14 +67,14 @@ export async function checkDocker(): Promise<PrereqCheckResult> {
   };
 }
 
-/** Check that Node.js >= 20 is available. */
+/** Check that Node.js >= 22 is available. */
 export async function checkNode(): Promise<PrereqCheckResult> {
   const output = await run("node", ["--version"]);
   if (output === null) {
     return {
       name: "node",
       ok: false,
-      detail: "Node.js not found. Install Node.js >=20: https://nodejs.org/",
+      detail: "Node.js not found. Install Node.js >=22: https://nodejs.org/",
     };
   }
 
@@ -88,11 +88,11 @@ export async function checkNode(): Promise<PrereqCheckResult> {
   }
 
   const major = parseMajor(version);
-  if (major < 20) {
+  if (major < 22) {
     return {
       name: "node",
       ok: false,
-      detail: `Node.js ${version} found but >=20 required. Upgrade: https://nodejs.org/`,
+      detail: `Node.js ${version} found but >=22 required. Upgrade: https://nodejs.org/`,
     };
   }
 

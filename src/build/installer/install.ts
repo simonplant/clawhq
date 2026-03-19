@@ -16,12 +16,12 @@ import { verifyArtifact } from "./verify.js";
  * Run the full install sequence.
  *
  * Standard path:
- * 1. Detect prerequisites (Docker, Node >=20, Ollama)
+ * 1. Detect prerequisites (Docker, Node >=22, Ollama)
  * 2. Create ~/.clawhq/ directory structure
  * 3. Write clawhq.yaml with sensible defaults
  *
  * From-source path (--from-source):
- * 1. Detect prerequisites (Docker, Node >=20, Ollama, Git)
+ * 1. Detect prerequisites (Docker, Node >=22, Ollama, Git)
  * 2. Create ~/.clawhq/ directory structure
  * 3. Write clawhq.yaml
  * 4. Clone OpenClaw repository

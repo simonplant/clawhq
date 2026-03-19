@@ -41,7 +41,7 @@
     "url": "https://github.com/clawhq/clawhq/issues"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",

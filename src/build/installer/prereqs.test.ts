@@ -80,7 +80,7 @@ describe("checkDocker", () => {
 // ── checkNode ───────────────────────────────────────────────────────────────
 
 describe("checkNode", () => {
-  it("passes when node >= 20", async () => {
+  it("passes when node >= 22", async () => {
     mockExecFile.mockImplementation(succeedsWith("v22.5.0") as never);
 
     const result = await checkNode();
@@ -89,13 +89,13 @@ describe("checkNode", () => {
     expect(result.detail).toContain("22.5.0");
   });
 
-  it("fails when node < 20", async () => {
-    mockExecFile.mockImplementation(succeedsWith("v18.17.0") as never);
+  it("fails when node < 22", async () => {
+    mockExecFile.mockImplementation(succeedsWith("v20.18.0") as never);
 
     const result = await checkNode();
 
     expect(result.ok).toBe(false);
-    expect(result.detail).toContain(">=20 required");
+    expect(result.detail).toContain(">=22 required");
   });
 
   it("fails when node is not installed", async () => {

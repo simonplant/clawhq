@@ -491,7 +491,7 @@ Content access in managed mode is architecturally blocked — no code path exist
 | Component | Choice | Rationale |
 |---|---|---|
 | **Language** | TypeScript (strict, ESM) | Matches OpenClaw. Shares schema types. |
-| **Runtime** | Node.js ≥20 | Same as OpenClaw. |
+| **Runtime** | Node.js ≥22 | Same as OpenClaw. |
 | **CLI** | commander ^14 | Lightweight, subcommand trees. |
 | **Testing** | vitest ^4 | Fast, TypeScript-native. |
 | **Distribution** | npm global | Target audience has Node.js. |
