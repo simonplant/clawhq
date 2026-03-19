@@ -70,3 +70,22 @@ export type {
   ShutdownOptions,
   ShutdownResult,
 } from "./launcher/index.js";
+
+// Installer
+export {
+  checkDocker,
+  checkNode,
+  checkOllama,
+  detectPrereqs,
+  install,
+  scaffoldDirs,
+  writeInitialConfig,
+} from "./installer/index.js";
+
+export type {
+  InstallOptions,
+  InstallResult,
+  PrereqCheckResult,
+  PrereqReport,
+  ScaffoldResult,
+} from "./installer/index.js";
