@@ -159,11 +159,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "SEQUENCING: CQ-005 moves src/build/launcher/firewall.ts to src/secure/firewall/firewall.ts. The 5 firewall.ts instances in this bug will be at the wrong path if fixed before CQ-005. DO NOT touch launcher/firewall.ts. FIX NOW (10 instances, safe): launcher/preflight.ts (4 instances — lines 93,112,205,219), services/add.ts (5 instances — lines 42,53,114,159,165), docker/build.ts (1 instance — line 166). AFTER CQ-005: follow-up fix for the 5 firewall instances at src/secure/firewall/firewall.ts. Sprint this item for the 10 safe instances only. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Run build/ tests after."
+      "groomingNotes": "SEQUENCING: CQ-005 moves src/build/launcher/firewall.ts to src/secure/firewall/firewall.ts. The 5 firewall.ts instances in this bug will be at the wrong path if fixed before CQ-005. DO NOT touch launcher/firewall.ts. FIX NOW (10 instances, safe): launcher/preflight.ts (4 instances — lines 93,112,205,219), services/add.ts (5 instances — lines 42,53,114,159,165), docker/build.ts (1 instance — line 166). AFTER CQ-005: follow-up fix for the 5 firewall instances at src/secure/firewall/firewall.ts. Sprint this item for the 10 safe instances only. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Run build/ tests after.",
+      "completedAt": "2026-03-19T10:19:33-07:00"
     },
     {
       "id": "BUG-015",

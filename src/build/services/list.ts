@@ -22,14 +22,16 @@ export function listServices(options: ServiceListOptions): ServiceListResult {
   let composeRaw: string;
   try {
     composeRaw = readFileSync(composePath, "utf-8");
-  } catch {
+  } catch (e) {
+    console.warn(`[services:list] Failed to read docker-compose.yml:`, e);
     return { services: [] };
   }
 
   let compose: Record<string, unknown>;
   try {
     compose = yamlParse(composeRaw) as Record<string, unknown>;
-  } catch {
+  } catch (e) {
+    console.warn(`[services:list] Failed to parse docker-compose.yml:`, e);
     return { services: [] };
   }
 

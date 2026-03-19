@@ -39,7 +39,8 @@ export async function addService(options: ServiceAddOptions): Promise<ServiceAdd
   let composeRaw: string;
   try {
     composeRaw = readFileSync(composePath, "utf-8");
-  } catch {
+  } catch (e) {
+    console.warn(`[services:add] Failed to read docker-compose.yml:`, e);
     return {
       success: false,
       service,
@@ -50,7 +51,8 @@ export async function addService(options: ServiceAddOptions): Promise<ServiceAdd
   let compose: Record<string, unknown>;
   try {
     compose = yamlParse(composeRaw) as Record<string, unknown>;
-  } catch {
+  } catch (e) {
+    console.warn(`[services:add] Failed to parse docker-compose.yml:`, e);
     return {
       success: false,
       service,
@@ -111,7 +113,8 @@ export async function addService(options: ServiceAddOptions): Promise<ServiceAdd
         let envFile = readEnv(envPath);
         envFile = setEnvValue(envFile, envKey, value);
         writeEnvAtomic(envPath, envFile);
-      } catch {
+      } catch (e) {
+        console.warn(`[services:add] Failed to read .env, creating new:`, e);
         // .env might not exist yet; create it
         const envFile = setEnvValue(parseEnv(""), envKey, value);
         writeEnvAtomic(envPath, envFile);
@@ -156,13 +159,15 @@ export async function addService(options: ServiceAddOptions): Promise<ServiceAdd
       let envFile: ReturnType<typeof readEnv>;
       try {
         envFile = readEnv(envPath);
-      } catch {
+      } catch (e) {
+        console.warn(`[services:add] Failed to read .env for connection URL, creating new:`, e);
         envFile = parseEnv("");
       }
       envFile = setEnvValue(envFile, connectionUrl.key, connectionUrl.value);
       writeEnvAtomic(envPath, envFile);
       envVarsAdded.push(connectionUrl.key);
-    } catch {
+    } catch (e) {
+      console.warn(`[services:add] Failed to write connection URL to .env:`, e);
       // Non-fatal: connection URL is a convenience
     }
   }

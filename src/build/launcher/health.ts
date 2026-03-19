@@ -68,7 +68,8 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
         attempts,
         elapsedMs: Date.now() - start,
       };
-    } catch {
+    } catch (e) {
+      console.warn(`[health:wait] Gateway health check attempt ${attempts} failed:`, e);
       client.close();
     }
 

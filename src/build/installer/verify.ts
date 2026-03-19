@@ -100,7 +100,8 @@ async function getLocalDigest(): Promise<string | null> {
     ]);
     const digest = stdout.trim();
     return digest || null;
-  } catch {
+  } catch (e) {
+    console.warn(`[installer:verify] Failed to get local image digest:`, e);
     return null;
   }
 }
@@ -111,7 +112,8 @@ async function readReleaseDigest(deployDir: string): Promise<string | null> {
     const path = join(deployDir, "engine", RELEASE_DIGEST_FILE);
     const content = await readFile(path, "utf-8");
     return content.trim() || null;
-  } catch {
+  } catch (e) {
+    console.warn(`[installer:verify] Failed to read release digest file:`, e);
     return null;
   }
 }
