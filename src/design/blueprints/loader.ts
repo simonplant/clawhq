@@ -6,7 +6,7 @@
  *
  * Load paths (checked in order):
  * 1. Explicit file path (if provided)
- * 2. Built-in blueprints: configs/templates/ (shipped with ClawHQ)
+ * 2. Built-in blueprints: configs/blueprints/ (shipped with ClawHQ)
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -78,9 +78,9 @@ export class BlueprintValidationError extends BlueprintLoadError {
 
 /** Resolve the built-in blueprints directory relative to package root. */
 function builtinBlueprintsDir(): string {
-  // Navigate from src/design/blueprints/ up to project root, then to configs/templates/
+  // Navigate from src/design/blueprints/ up to project root, then to configs/blueprints/
   const thisDir = dirname(fileURLToPath(import.meta.url));
-  return resolve(thisDir, "..", "..", "..", "configs", "templates");
+  return resolve(thisDir, "..", "..", "..", "configs", "blueprints");
 }
 
 // ── Single Blueprint Loading ────────────────────────────────────────────────
