@@ -653,8 +653,8 @@
       "description": "HIGH VALUE: The last step before the user has a working agent. Without messaging channel, the agent exists but the user can't talk to it. SEQUENCING: Must run after CQ-002 (gateway client — health ping requires WebSocket RPC) and CQ-004 (agent must be deployed before channel can be connected). Acceptance: 'clawhq connect' guides Telegram/WhatsApp bot token setup + verifies with live health ping via Gateway WebSocket; user receives a test message from their new agent.",
       "category": "design",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement 'clawhq connect' guided setup for Telegram bot token",
         "Add WhatsApp channel setup support",
@@ -665,7 +665,9 @@
         "'clawhq connect' guides Telegram/WhatsApp bot token setup",
         "Health ping verifies connection via Gateway WebSocket",
         "User receives a test message from their agent on completion"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T04:10:16-07:00"
     },
     {
       "id": "CQ-028",

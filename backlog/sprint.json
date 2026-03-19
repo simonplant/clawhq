@@ -1,29 +1,28 @@
 {
-  "sprintId": "sprint-1773918088",
-  "startedAt": "2026-03-19T04:01:28-07:00",
+  "sprintId": "sprint-1773918618",
+  "startedAt": "2026-03-19T04:10:18-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-027",
-    "title": "Messaging channel connection",
-    "intent": "clawhq connect must configure and verify a messaging channel so the user can talk to their agent. Without this, the agent exists but is unreachable.",
-    "description": "HIGH VALUE: The last step before the user has a working agent. Without messaging channel, the agent exists but the user can't talk to it. SEQUENCING: Must run after CQ-002 (gateway client — health ping requires WebSocket RPC) and CQ-004 (agent must be deployed before channel can be connected). Acceptance: 'clawhq connect' guides Telegram/WhatsApp bot token setup + verifies with live health ping via Gateway WebSocket; user receives a test message from their new agent.",
+    "id": "CQ-042",
+    "title": "Smoke test + backing services",
+    "intent": "Post-deploy smoke test must send a real message and get a response — 'container started' is not 'agent works'. Users must not discover a dead agent by noticing silence.",
+    "description": "MUST: The first-deploy user experience is broken without this. 'clawhq up succeeded' when the agent doesn't actually respond is worse than a clear failure — the user wastes time debugging a silently dead agent. Upgrade to must: smoke test (real message + response) is non-negotiable for deploy confidence. Scope split: smoke test (real message exchange) is must; backing services (postgres/redis/qdrant) can be a separate should item if needed. Acceptance: 'clawhq up' ends with a real message sent to agent and response received; failure is loud with actionable fix; 'clawhq service add postgres' configures backing service.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement 'clawhq connect' guided setup for Telegram bot token",
-      "Add WhatsApp channel setup support",
-      "Verify connection with live health ping via Gateway WebSocket",
-      "Send test message to confirm agent is reachable"
+      "Implement post-deploy smoke test: send real message, verify response",
+      "Implement 'clawhq service add' for postgres, redis, qdrant backing services",
+      "Make deploy fail loudly if smoke test fails"
     ],
     "acceptanceCriteria": [
-      "'clawhq connect' guides Telegram/WhatsApp bot token setup",
-      "Health ping verifies connection via Gateway WebSocket",
-      "User receives a test message from their agent on completion"
+      "'clawhq up' ends with real message sent to agent and response received",
+      "Smoke test failure is loud with actionable fix guidance",
+      "'clawhq service add postgres' configures backing service correctly"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T04:01:28-07:00",
+    "startedAt": "2026-03-19T04:10:18-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T04:10:16-07:00"
+    "completedAt": "2026-03-19T04:24:32-07:00"
   },
-  "completedAt": "2026-03-19T04:10:16-07:00",
+  "completedAt": "2026-03-19T04:24:32-07:00",
   "attempts": 2
 }
