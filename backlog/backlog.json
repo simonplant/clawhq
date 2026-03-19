@@ -312,8 +312,8 @@
       "description": "HIGH VALUE: Gate item — nothing runs without this. Commander.js flat CLI (AD-01), first-run detection, spinner/error UX helpers. Acceptance: clawhq --help lists all commands; error handler formats cleanly; first-run detects missing install.",
       "category": "Foundation",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Set up Commander.js flat CLI with all command registrations",
         "Implement error handler with formatted terminal output",
@@ -324,7 +324,9 @@
         "'clawhq --help' lists all registered commands",
         "Error handler formats errors cleanly for terminal display",
         "First-run detects missing install and guides user to 'clawhq install'"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T01:34:10-07:00"
     },
     {
       "id": "CQ-014",
