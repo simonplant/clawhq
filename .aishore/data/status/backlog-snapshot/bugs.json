@@ -349,11 +349,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Version mismatch: connect.ts uses v21.0, integrate/validate.ts uses v17.0. Canonical version: v21.0 (newer). Add WHATSAPP_GRAPH_API_VERSION = 'v21.0' to src/config/defaults.ts (do NOT add full URL — just the version segment to keep it composable). Update connect.ts WHATSAPP_API const to template with the version constant. Update integrate/validate.ts:115 to use the same version. Check evolve/integrate/registry.ts for any hardcoded version in egressDomains or config (just 'graph.facebook.com' — no version there, fine). Run tests. No dependencies — standalone fix."
+      "groomingNotes": "Version mismatch: connect.ts uses v21.0, integrate/validate.ts uses v17.0. Canonical version: v21.0 (newer). Add WHATSAPP_GRAPH_API_VERSION = 'v21.0' to src/config/defaults.ts (do NOT add full URL — just the version segment to keep it composable). Update connect.ts WHATSAPP_API const to template with the version constant. Update integrate/validate.ts:115 to use the same version. Check evolve/integrate/registry.ts for any hardcoded version in egressDomains or config (just 'graph.facebook.com' — no version there, fine). Run tests. No dependencies — standalone fix.",
+      "completedAt": "2026-03-19T11:16:50-07:00"
     },
     {
       "id": "BUG-027",
