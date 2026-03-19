@@ -1,30 +1,30 @@
 {
-  "sprintId": "sprint-1773906633",
-  "startedAt": "2026-03-19T00:50:33-07:00",
+  "sprintId": "sprint-1773907643",
+  "startedAt": "2026-03-19T01:07:23-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-010",
-    "title": "Init wizard + config generation + writer",
-    "intent": "Guide a non-technical user from blueprint selection to a valid, landmine-free config in one interactive session. Generated config must pass all 14 validation rules.",
-    "description": "CORE USER FLOW: This is the forging ceremony — the moment where a blueprint becomes a personalized agent. The guided wizard is the primary path for the Privacy Migrant persona who chose ClawHQ specifically because they don't want to hand-write 13,500 tokens of config. Air-gapped mode support ensures the wizard works without calling home. Acceptance: wizard completes without errors on happy path; generated config passes all 14 landmine rules; atomic writer never produces partial files; air-gap mode skips cloud-dependent steps gracefully.",
+    "id": "CQ-011",
+    "title": "Doctor diagnostics + auto-fix",
+    "intent": "Make 'clawhq doctor' the single command that catches every known failure mode before it hits the user. Auto-fix must resolve common issues without requiring knowledge of internals.",
+    "description": "HERO FEATURE: 'doctor' is the safety net that turns OpenClaw from 'it silently broke' to 'I know exactly what's wrong and how to fix it'. The 14+ checks cover every known failure mode preventively. Auto-fix means the user doesn't need to know what cap_drop is — they just run 'clawhq doctor --fix' and it works. Table output is the key UX: all checks visible at a glance, pass/fail clear, fix suggestions actionable. Acceptance: all 14+ checks run; auto-fix resolves common issues; table alignment clean; JSON output available for scripting.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Build interactive setup wizard with guided prompts",
-      "Implement config generation enforcing all 14 landmine rules",
-      "Add atomic file writer (temp + rename)",
-      "Support air-gapped mode (skip cloud-dependent steps gracefully)"
+      "Implement 14+ preventive diagnostic checks covering all known failure modes",
+      "Add auto-fix capability for common issues",
+      "Build table output with pass/fail status per check",
+      "Add JSON output mode for scripting"
     ],
     "acceptanceCriteria": [
-      "Wizard completes without errors on happy path",
-      "Generated config passes all 14 landmine validation rules",
-      "Atomic writer never produces partial config files",
-      "Air-gap mode skips cloud-dependent steps gracefully"
+      "All 14+ diagnostic checks run and report status",
+      "Auto-fix resolves common issues (e.g., cap_drop, permissions)",
+      "Table output aligned and readable at a glance",
+      "JSON output available for scripting and automation"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T00:50:33-07:00",
+    "startedAt": "2026-03-19T01:07:23-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T01:07:21-07:00"
+    "completedAt": "2026-03-19T01:25:15-07:00"
   },
-  "completedAt": "2026-03-19T01:07:21-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T01:25:15-07:00",
+  "attempts": 2
 }
