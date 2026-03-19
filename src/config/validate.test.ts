@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  OPENCLAW_CONTAINER_CONFIG,
+  OPENCLAW_CONTAINER_CREDENTIALS,
+  OPENCLAW_CONTAINER_WORKSPACE,
+} from "./paths.js";
 import type {
   ComposeConfig,
   CronJobDefinition,
@@ -47,9 +52,9 @@ function validComposeConfig(): ComposeConfig {
         cap_drop: ["ALL"],
         security_opt: ["no-new-privileges"],
         volumes: [
-          "./engine/openclaw.json:/home/node/.openclaw/openclaw.json:ro",
-          "./engine/credentials.json:/home/node/.openclaw/credentials.json:ro",
-          "./workspace:/home/node/.openclaw/workspace",
+          `./engine/openclaw.json:${OPENCLAW_CONTAINER_CONFIG}:ro`,
+          `./engine/credentials.json:${OPENCLAW_CONTAINER_CREDENTIALS}:ro`,
+          `./workspace:${OPENCLAW_CONTAINER_WORKSPACE}`,
         ],
         networks: ["clawhq"],
       },

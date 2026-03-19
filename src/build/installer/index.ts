@@ -6,6 +6,7 @@
  */
 
 export { install } from "./install.js";
+export { detectLegacyInstallation, migrateDeployDir } from "./migrate.js";
 export { checkDocker, checkGit, checkNode, checkOllama, detectPrereqs } from "./prereqs.js";
 export { scaffoldDirs, writeInitialConfig } from "./scaffold.js";
 export { buildFromSource } from "./source.js";
@@ -20,3 +21,8 @@ export type {
   SourceBuildResult,
   VerifyResult,
 } from "./types.js";
+export type {
+  MigrateOptions,
+  MigrateProgressCallback,
+  MigrateResult,
+} from "./migrate.js";

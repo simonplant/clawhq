@@ -8,6 +8,8 @@ import { join } from "node:path";
 
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 
+import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
+
 import { runChecks } from "./checks.js";
 import { runDoctor, runDoctorWithFix } from "./doctor.js";
 import { runFixes } from "./fix.js";
@@ -65,7 +67,7 @@ services:
     security_opt:
       - no-new-privileges
     volumes:
-      - ./workspace:/home/node/.openclaw/workspace
+      - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
 `;
   await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
 }

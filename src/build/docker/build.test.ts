@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
+
 import { computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
 import { generateStage1Dockerfile, generateStage2Dockerfile } from "./dockerfile.js";
@@ -127,7 +129,7 @@ describe("generateStage1Dockerfile", () => {
 
   it("creates workspace directory with UID 1000 ownership", () => {
     const df = generateStage1Dockerfile(stage1Config());
-    expect(df).toContain("mkdir -p /home/node/.openclaw/workspace");
+    expect(df).toContain(`mkdir -p ${OPENCLAW_CONTAINER_WORKSPACE}`);
     expect(df).toContain("chown -R 1000:1000");
   });
 });

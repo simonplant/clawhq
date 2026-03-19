@@ -20,7 +20,7 @@ import { stringify as yamlStringify } from "yaml";
 
 import { build } from "../build/docker/index.js";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../build/docker/index.js";
-import { install } from "../build/installer/index.js";
+import { detectLegacyInstallation, install, migrateDeployDir } from "../build/installer/index.js";
 import type { PrereqCheckResult } from "../build/installer/index.js";
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
@@ -671,6 +671,67 @@ program
         console.log(chalk.dim(`  Source directory: ${result.sourceBuild.sourceDir}`));
         console.log(chalk.dim("  You can audit the source code before proceeding."));
       }
+      console.log("");
+    } catch (error) {
+      console.error(renderError(error));
+      process.exit(1);
+    }
+  });
+
+program
+  .command("migrate")
+  .description("Migrate legacy ~/.openclaw/ installation to ~/.clawhq/")
+  .option("-d, --deploy-dir <path>", "Target deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--source <path>", "Legacy source directory to migrate from")
+  .option("--remove-source", "Remove the legacy directory after successful migration")
+  .action(async (opts: { deployDir: string; source?: string; removeSource?: boolean }) => {
+    try {
+      console.log(chalk.bold("\nclawhq migrate\n"));
+
+      // Check for legacy installation
+      const legacy = detectLegacyInstallation(opts.source);
+      if (!legacy) {
+        const searchDir = opts.source ?? "~/.openclaw";
+        console.log(chalk.green(`✔ No legacy installation found at ${searchDir} — nothing to migrate.`));
+        console.log("");
+        return;
+      }
+
+      console.log(chalk.yellow(`Found legacy installation at ${legacy}`));
+      console.log(`Target: ${opts.deployDir}\n`);
+
+      const spinner = ora("Migrating deployment directory…");
+      spinner.start();
+
+      const result = migrateDeployDir({
+        sourceDir: opts.source,
+        targetDir: opts.deployDir,
+        removeSource: opts.removeSource ?? false,
+        onProgress: (_step, detail) => {
+          spinner.text = detail;
+        },
+      });
+
+      spinner.stop();
+
+      if (!result.success) {
+        console.log(chalk.red(`✘ Migration failed: ${result.error}`));
+        process.exit(1);
+      }
+
+      console.log(chalk.green(`✔ Migrated ${result.itemsMigrated} items to ${result.targetDir}`));
+      if (result.targetExisted) {
+        console.log(chalk.dim("  Merged into existing deployment directory"));
+      }
+      if (result.sourceRemoved) {
+        console.log(chalk.dim(`  Removed legacy directory: ${result.sourceDir}`));
+      } else if (result.sourceDir !== result.targetDir) {
+        console.log(chalk.dim(`  Legacy directory preserved at: ${result.sourceDir}`));
+        console.log(chalk.dim("  Use --remove-source to delete it after verifying the migration"));
+      }
+
+      console.log(chalk.bold("\nWhat's next?\n"));
+      console.log(`  ${chalk.bold("clawhq doctor")}    Verify the migrated installation`);
       console.log("");
     } catch (error) {
       console.error(renderError(error));
