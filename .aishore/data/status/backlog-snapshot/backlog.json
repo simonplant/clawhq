@@ -790,8 +790,8 @@
       "description": "DAY-2 OPS: Users who've had an agent for 30+ days need to know it's healthy without checking manually. Predictive health alerts catch problems before they become failures. Auto-recovery handles the common cases (container stopped, OOM) without user intervention. Daily digest gives the 'what did my agent do today?' answer proactively. Acceptance: health alerts fire before service goes down; auto-recovery handles restart + OOM cases; daily digest delivered via configured channel.",
       "category": "operate",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement multi-channel notification system",
         "Add predictive health alerts based on resource trends",
@@ -802,7 +802,9 @@
         "Health alerts fire before service goes down",
         "Auto-recovery handles container restart and OOM cases",
         "Daily digest delivered via configured notification channel"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T05:53:29-07:00"
     },
     {
       "id": "CQ-033",
