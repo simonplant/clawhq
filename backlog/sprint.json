@@ -1,30 +1,29 @@
 {
-  "sprintId": "sprint-1773921012",
-  "startedAt": "2026-03-19T04:50:12-07:00",
+  "sprintId": "sprint-1773921827",
+  "startedAt": "2026-03-19T05:03:47-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-012",
-    "title": "Encrypted backup + restore",
-    "intent": "Deliver encrypted, integrity-verified snapshots that restore a working agent state. Post-restore doctor check must confirm the restored agent is healthy.",
-    "description": "USER VALUE: Day-2 operational maturity. Encrypted backup is essential for production use but does not block first working agent. Users need a running agent before they need to snapshot it. Promote to must before first public release.",
+    "id": "CQ-026",
+    "title": "Status dashboard + logs + updates",
+    "intent": "Deliver status, logs, and update commands so operators can observe agent state, diagnose failures, and safely update without data loss.",
+    "description": "USER VALUE: Important day-2 ops visibility but not blocking first agent. Users need a working agent before they need to watch its status. Depends on CQ-003+CQ-012 anyway. Promote to must when ops track begins.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement GPG-encrypted snapshot creation",
-      "Add SHA-256 integrity verification on restore",
-      "Use temp directory isolation during restore operations",
-      "Run post-restore doctor check automatically"
+      "Implement 'clawhq status [--watch]' showing current agent state",
+      "Implement 'clawhq logs' for viewing agent logs",
+      "Implement 'clawhq update [--check]' with automatic rollback on failure"
     ],
     "acceptanceCriteria": [
-      "Snapshots are GPG-encrypted at rest",
-      "SHA-256 integrity verified before any restore",
-      "Post-restore doctor check confirms healthy agent state",
-      "Restore from backup produces a fully working agent"
+      "'clawhq status' shows current agent state clearly",
+      "'clawhq status --watch' updates in real-time",
+      "'clawhq logs' displays agent logs",
+      "'clawhq update' applies updates with rollback on failure"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T04:50:12-07:00",
+    "startedAt": "2026-03-19T05:03:47-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T05:03:46-07:00"
+    "completedAt": "2026-03-19T05:13:46-07:00"
   },
-  "completedAt": "2026-03-19T05:03:46-07:00",
+  "completedAt": "2026-03-19T05:13:46-07:00",
   "attempts": 1
 }

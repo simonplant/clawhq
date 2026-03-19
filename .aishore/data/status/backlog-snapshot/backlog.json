@@ -292,8 +292,8 @@
       "description": "USER VALUE: Day-2 operational maturity. Encrypted backup is essential for production use but does not block first working agent. Users need a running agent before they need to snapshot it. Promote to must before first public release.",
       "category": "operate",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement GPG-encrypted snapshot creation",
         "Add SHA-256 integrity verification on restore",
@@ -305,7 +305,9 @@
         "SHA-256 integrity verified before any restore",
         "Post-restore doctor check confirms healthy agent state",
         "Restore from backup produces a fully working agent"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T05:03:46-07:00"
     },
     {
       "id": "CQ-013",
