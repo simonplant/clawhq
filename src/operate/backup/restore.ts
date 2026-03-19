@@ -18,6 +18,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { BACKUP_RESTORE_GPG_TIMEOUT_MS, BACKUP_RESTORE_TAR_TIMEOUT_MS } from "../../config/defaults.js";
+
 import { runDoctor } from "../doctor/doctor.js";
 import type { DoctorReport } from "../doctor/types.js";
 
@@ -32,8 +34,6 @@ import type {
 
 const execFileAsync = promisify(execFile);
 
-const GPG_TIMEOUT_MS = 120_000;
-const TAR_TIMEOUT_MS = 120_000;
 
 /** Snapshot storage directory relative to deployment directory. */
 const SNAPSHOTS_DIR = "ops/backup/snapshots";
@@ -185,7 +185,7 @@ export async function restoreBackup(options: BackupRestoreOptions): Promise<Back
         gpgPath,
       ],
       passphrase,
-      GPG_TIMEOUT_MS,
+      BACKUP_RESTORE_GPG_TIMEOUT_MS,
     );
 
     progress(onProgress, "decrypt", "done", "Decryption complete");
@@ -199,7 +199,7 @@ export async function restoreBackup(options: BackupRestoreOptions): Promise<Back
     await execFileAsync(
       "tar",
       ["xzf", decryptedPath, "-C", extractDir],
-      { timeout: TAR_TIMEOUT_MS },
+      { timeout: BACKUP_RESTORE_TAR_TIMEOUT_MS },
     );
 
     // Verify extraction produced files

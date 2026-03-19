@@ -22,10 +22,9 @@ import type {
   UpdateStepStatus,
 } from "./types.js";
 
-const execFileAsync = promisify(execFile);
+import { UPDATER_EXEC_TIMEOUT_MS, UPDATER_PULL_TIMEOUT_MS } from "../../config/defaults.js";
 
-const EXEC_TIMEOUT_MS = 30_000;
-const PULL_TIMEOUT_MS = 300_000; // 5 min for image pull
+const execFileAsync = promisify(execFile);
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -51,7 +50,7 @@ export async function checkForUpdates(options: UpdateOptions): Promise<UpdateChe
       const { stdout } = await execFileAsync(
         "docker",
         ["image", "inspect", image, "--format", "{{.Id}}"],
-        { timeout: EXEC_TIMEOUT_MS, signal },
+        { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
       );
       localDigest = stdout.trim();
     } catch (e) {
@@ -62,14 +61,14 @@ export async function checkForUpdates(options: UpdateOptions): Promise<UpdateChe
     await execFileAsync(
       "docker",
       ["pull", "--quiet", image],
-      { timeout: PULL_TIMEOUT_MS, signal },
+      { timeout: UPDATER_PULL_TIMEOUT_MS, signal },
     );
 
     // Get new digest after pull
     const { stdout: newDigestOut } = await execFileAsync(
       "docker",
       ["image", "inspect", image, "--format", "{{.Id}}"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
     );
     const newDigest = newDigestOut.trim();
 
@@ -142,7 +141,7 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
   report("pull", "running", `Pulling ${image}…`);
   try {
     await execFileAsync("docker", ["pull", image], {
-      timeout: PULL_TIMEOUT_MS,
+      timeout: UPDATER_PULL_TIMEOUT_MS,
       signal,
     });
     report("pull", "done", "Image pulled");
@@ -163,7 +162,7 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     await execFileAsync(
       "docker",
       ["compose", "-f", composePath, "down"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
     );
     await execFileAsync(
       "docker",

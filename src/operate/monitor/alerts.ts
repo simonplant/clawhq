@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { GATEWAY_DEFAULT_PORT, MONITOR_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
 
 import type {
   AlertSeverity,
@@ -24,7 +24,6 @@ import type {
 } from "./types.js";
 
 const execFileAsync = promisify(execFile);
-const EXEC_TIMEOUT_MS = 10_000;
 
 // ── Defaults ────────────────────────────────────────────────────────────────
 
@@ -176,7 +175,7 @@ export async function checkContainerHealth(
     const { stdout } = await execFileAsync(
       "docker",
       ["compose", "-f", composePath, "ps", "--format", "json"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: MONITOR_EXEC_TIMEOUT_MS, signal },
     );
 
     if (!stdout.trim()) {
@@ -221,7 +220,7 @@ export async function checkContainerHealth(
     await execFileAsync(
       "curl",
       ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", `http://localhost:${GATEWAY_DEFAULT_PORT}`],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: MONITOR_EXEC_TIMEOUT_MS, signal },
     );
   } catch (e) {
     console.warn(`[monitor:alerts] Failed to reach gateway:`, e);
@@ -260,7 +259,7 @@ async function getContainerStats(
     const { stdout: psOut } = await execFileAsync(
       "docker",
       ["compose", "-f", composePath, "ps", "-q"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: MONITOR_EXEC_TIMEOUT_MS, signal },
     );
 
     const containerId = psOut.trim().split("\n")[0];
@@ -270,7 +269,7 @@ async function getContainerStats(
     const { stdout: statsOut } = await execFileAsync(
       "docker",
       ["stats", "--no-stream", "--format", "{{.CPUPerc}}|{{.MemUsage}}", containerId],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: MONITOR_EXEC_TIMEOUT_MS, signal },
     );
 
     const parts = statsOut.trim().split("|");
@@ -306,7 +305,7 @@ async function getDiskStats(
     const { stdout } = await execFileAsync(
       "df",
       ["--output=avail,pcent", "-BM", deployDir],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: MONITOR_EXEC_TIMEOUT_MS, signal },
     );
 
     const lines = stdout.trim().split("\n");

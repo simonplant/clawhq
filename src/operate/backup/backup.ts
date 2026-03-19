@@ -22,6 +22,8 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 
+import { BACKUP_GPG_TIMEOUT_MS } from "../../config/defaults.js";
+
 import type {
   BackupCreateOptions,
   BackupCreateResult,
@@ -32,7 +34,6 @@ import type {
   StepStatus,
 } from "./types.js";
 
-const GPG_TIMEOUT_MS = 60_000;
 
 /** Snapshot storage directory relative to deployment directory. */
 const SNAPSHOTS_DIR = "ops/backup/snapshots";
@@ -226,7 +227,7 @@ export async function createBackup(options: BackupCreateOptions): Promise<Backup
         archivePath,
       ],
       passphrase,
-      GPG_TIMEOUT_MS,
+      BACKUP_GPG_TIMEOUT_MS,
     );
 
     progress(onProgress, "encrypt", "done", "GPG encryption complete");

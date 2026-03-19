@@ -10,11 +10,11 @@ import { execFile, spawn } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { LOGS_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
+
 import type { LogsOptions, LogsResult } from "./types.js";
 
 const execFileAsync = promisify(execFile);
-
-const EXEC_TIMEOUT_MS = 30_000;
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -134,7 +134,7 @@ async function readLogs(
     ];
 
     const { stdout, stderr } = await execFileAsync("docker", args, {
-      timeout: EXEC_TIMEOUT_MS,
+      timeout: LOGS_EXEC_TIMEOUT_MS,
       signal,
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large log reads
     });

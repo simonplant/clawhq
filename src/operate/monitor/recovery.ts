@@ -15,10 +15,11 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { RECOVERY_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
+
 import type { HealthAlert, RecoveryPolicy, RecoveryResult } from "./types.js";
 
 const execFileAsync = promisify(execFile);
-const EXEC_TIMEOUT_MS = 30_000;
 
 // ── Defaults ────────────────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ async function restartContainer(
     await execFileAsync(
       "docker",
       ["compose", "-f", composePath, "down", "--timeout", "10"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: RECOVERY_EXEC_TIMEOUT_MS, signal },
     ).catch((e) => {
       console.warn(`[recovery] Docker compose down failed (container may already be stopped):`, e);
     });
@@ -145,7 +146,7 @@ async function restartContainer(
     await execFileAsync(
       "docker",
       ["compose", "-f", composePath, "up", "-d"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: RECOVERY_EXEC_TIMEOUT_MS, signal },
     );
 
     // Quick health check — wait a few seconds for container to be running
@@ -154,7 +155,7 @@ async function restartContainer(
     const { stdout } = await execFileAsync(
       "docker",
       ["compose", "-f", composePath, "ps", "--format", "json"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: RECOVERY_EXEC_TIMEOUT_MS, signal },
     );
 
     const running = stdout.includes('"running"');
