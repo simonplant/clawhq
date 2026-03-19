@@ -365,11 +365,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "4 cloud/ state loaders missing try-catch: cloud/fleet/discovery.ts:43 (readFleetRegistry), cloud/trust-modes/switch.ts:44 (readTrustModeState), cloud/commands/queue.ts:46 (readQueueState), cloud/heartbeat/reporter.ts:39. Fallback values: fleet={version:1,agents:[]}, trust-mode={version:1,mode:'paranoid',connected:false,changedAt:new Date().toISOString()}, queue={version:1,pending:[],history:[]}, heartbeat=return null or log only. Pattern to follow: evolve/tools/manifest.ts:28-34 (try { return JSON.parse(raw); } catch (err) { console.warn('[cloud] ...', err); return fallback; }). Run cloud/ tests after each change. All 4 files are standalone — no blocking dependencies. Same pattern as BUG-012 through BUG-019 sweep but for cloud/ module."
+      "groomingNotes": "4 cloud/ state loaders missing try-catch: cloud/fleet/discovery.ts:43 (readFleetRegistry), cloud/trust-modes/switch.ts:44 (readTrustModeState), cloud/commands/queue.ts:46 (readQueueState), cloud/heartbeat/reporter.ts:39. Fallback values: fleet={version:1,agents:[]}, trust-mode={version:1,mode:'paranoid',connected:false,changedAt:new Date().toISOString()}, queue={version:1,pending:[],history:[]}, heartbeat=return null or log only. Pattern to follow: evolve/tools/manifest.ts:28-34 (try { return JSON.parse(raw); } catch (err) { console.warn('[cloud] ...', err); return fallback; }). Run cloud/ tests after each change. All 4 files are standalone — no blocking dependencies. Same pattern as BUG-012 through BUG-019 sweep but for cloud/ module.",
+      "completedAt": "2026-03-19T11:19:13-07:00"
     },
     {
       "id": "BUG-028",

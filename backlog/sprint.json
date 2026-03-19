@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773944212",
-  "startedAt": "2026-03-19T11:16:52-07:00",
+  "sprintId": "sprint-1773944355",
+  "startedAt": "2026-03-19T11:19:15-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-027",
-    "title": "JSON parse missing try-catch in cloud/ state loaders",
-    "intent": "No corrupted cloud state file causes an unhandled exception. All cloud state loaders recover gracefully with logged warnings and safe fallbacks.",
-    "description": "Four cloud module state loaders use bare JSON.parse without try-catch: src/cloud/fleet/discovery.ts:43 (readFleetRegistry), src/cloud/trust-modes/switch.ts:44 (readTrustModeState), src/cloud/commands/queue.ts:46 (readQueueState), src/cloud/heartbeat/reporter.ts:39 (loadHeartbeatState). If any of these JSON files is corrupted (partial write, disk error, manual edit), the function throws an unhandled exception that propagates through the entire command, crashing with no useful error message. The same pattern was fixed in evolve/tools/manifest.ts and evolve/approval/queue.ts (BUG-012 sweep) but cloud/ was missed. Steps: (1) wrap JSON.parse in try-catch with console.warn + fallback return in each of the 4 functions; (2) fallback values: fleet={version:1,agents:[]}, trust-mode={version:1,mode:'paranoid',connected:false,changedAt:...}, queue={version:1,pending:[],history:[]}, heartbeat=null-or-default-state; (3) run cloud/ tests to confirm no regression. Scope: 4 one-liner additions across 4 files.",
+    "id": "BUG-028",
+    "title": "JSON parse missing try-catch in evolve/ manifest loaders",
+    "intent": "No corrupted manifest file in evolve/ causes an unhandled exception. All manifest loaders recover gracefully with logged warnings and safe defaults.",
+    "description": "Six evolve module manifest loaders use bare JSON.parse without try-catch: src/evolve/role/manifest.ts:54 (loadRoleManifest), src/evolve/provider/manifest.ts:26 (loadProviderManifest), src/evolve/integrate/manifest.ts:26 (loadIntegrationManifest), src/evolve/memory/lifecycle.ts:61, src/evolve/rollback/capability-snapshot.ts:67, src/evolve/skills/rollback.ts:39. These files exist and can be corrupted (disk error, partial write, manual edit). The same pattern was correctly handled in evolve/tools/manifest.ts and evolve/skills/lifecycle.ts (both have try-catch + console.warn). Steps: (1) apply the same try-catch pattern to the 6 missing loaders; (2) fallback: role manifest seeds built-in roles only, others return empty version-1 state; (3) add console.warn(err, context) in each catch; (4) run evolve/ tests to confirm no regression. Scope: 6 try-catch wrappers across 6 files. Pattern is identical to BUG-012/BUG-015 sweep.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T11:16:52-07:00",
+    "startedAt": "2026-03-19T11:19:15-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T11:19:13-07:00"
+    "completedAt": "2026-03-19T11:21:53-07:00"
   },
-  "completedAt": "2026-03-19T11:19:13-07:00",
+  "completedAt": "2026-03-19T11:21:53-07:00",
   "attempts": 1
 }
