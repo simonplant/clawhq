@@ -1,28 +1,31 @@
 {
-  "sprintId": "sprint-1773919474",
-  "startedAt": "2026-03-19T04:24:34-07:00",
+  "sprintId": "sprint-1773920052",
+  "startedAt": "2026-03-19T04:34:12-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-001",
-    "title": "clawhq blueprint list + preview commands",
-    "intent": "clawhq blueprint list and preview must let users evaluate every available blueprint before committing to init. Users must never choose a blueprint blind.",
-    "description": "HIGH VALUE: Gate for informed blueprint selection. Without clawhq blueprint list/preview, users run init blind — they can't evaluate options before committing. Pairs tightly with CQ-009 (loader already does the heavy lifting). Build immediately after CQ-009. Acceptance: 'clawhq blueprint list' shows all available blueprints with one-line descriptions; 'clawhq blueprint preview email-manager' renders full design (identity, tools, skills, cron, integrations, security posture, egress domains). No net-new logic — thin CLI surface over CQ-009.",
+    "id": "CQ-006",
+    "title": "PII + secrets scanner",
+    "intent": "Surface any API keys, passwords, or PII in workspace files before deploy. False positives must not train users to ignore scan results.",
+    "description": "USER VALUE: Security hardening, not blocking adoption. Scanning existing workspace for PII is important but the agent runs without it. Promote back to must when install flow is complete and security pass begins.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement 'clawhq blueprint list' showing available blueprints with one-line descriptions",
-      "Implement 'clawhq blueprint preview <name>' showing full blueprint design",
-      "Display: identity, tools, skills, cron, integrations, security posture, egress domains in preview"
+      "Implement pattern-based scanner for API keys, passwords, tokens, PII",
+      "Add false-positive filtering for comments, placeholders, example.com",
+      "Implement redacted output display",
+      "Add recursive directory walk",
+      "Add git history scanning for committed secrets"
     ],
     "acceptanceCriteria": [
-      "'clawhq blueprint list' shows all available blueprints with one-line descriptions",
-      "'clawhq blueprint preview email-manager' renders full design",
-      "Preview shows identity, tools, skills, cron, integrations, security posture, egress domains"
+      "Scanner detects common API key, password, and token patterns",
+      "False positives filtered for comments and placeholder values",
+      "Output shows redacted matches, not raw secret values",
+      "Git history scanning catches previously committed secrets"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T04:24:34-07:00",
+    "startedAt": "2026-03-19T04:34:12-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T04:34:10-07:00"
+    "completedAt": "2026-03-19T04:50:10-07:00"
   },
-  "completedAt": "2026-03-19T04:34:10-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T04:50:10-07:00",
+  "attempts": 1
 }
