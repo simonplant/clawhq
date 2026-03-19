@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773938767",
-  "startedAt": "2026-03-19T09:46:07-07:00",
+  "sprintId": "sprint-1773938942",
+  "startedAt": "2026-03-19T09:49:02-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-009",
-    "title": "Firewall allowlist uses hand-rolled YAML parser",
-    "intent": "Firewall allowlist is parsed reliably. No hand-rolled YAML in the codebase.",
-    "description": "src/build/launcher/firewall.ts loadAllowlist() implements a custom line-by-line YAML parser instead of using the 'yaml' package already in package.json. The hand-rolled parser is brittle — it won't handle quoted values, inline lists, comments, or multi-document YAML correctly. Steps: (1) replace loadAllowlist() to use yaml.parse() from the 'yaml' package; (2) update allowlist.yaml type to match parsed structure; (3) add tests covering edge cases (quoted domains, comments, empty file). Scope: small — one function in one file.",
+    "id": "BUG-010",
+    "title": "sanitizer uses process.env.HOME instead of os.homedir()",
+    "intent": "Audit log and quarantine paths are always computed correctly — never fallback to /root. os.homedir() is the single correct API for user home directory.",
+    "description": "src/secure/sanitizer/sanitizer.ts:24-26 computes DEFAULT_OPS_DIR using process.env.HOME ?? '/root' instead of os.homedir() from the 'os' module. The os module is the correct cross-platform API — process.env.HOME is undefined in some container and test environments. If HOME is unset, audit logs and quarantined files are written to /root, which is an incorrect path and may be unwritable. Fix: import { homedir } from 'os'; replace the HOME env var reference with homedir(). The correct pattern is already used in src/config/paths.ts. Steps: (1) open src/secure/sanitizer/sanitizer.ts; (2) add homedir import from 'os'; (3) replace process.env.HOME ?? '/root' with homedir(); (4) run existing sanitizer tests to confirm no regression. Scope: one-line change in one file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T09:46:07-07:00",
+    "startedAt": "2026-03-19T09:49:02-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T09:49:00-07:00"
+    "completedAt": "2026-03-19T09:51:00-07:00"
   },
-  "completedAt": "2026-03-19T09:49:00-07:00",
+  "completedAt": "2026-03-19T09:51:00-07:00",
   "attempts": 1
 }

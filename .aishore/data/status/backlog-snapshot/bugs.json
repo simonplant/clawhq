@@ -79,11 +79,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "SPRINT WITH CQ-005 — this is co-work for the CQ-005 sprint, not a standalone item. The loadAllowlist() function in src/build/launcher/firewall.ts (moving to src/secure/firewall/firewall.ts as part of CQ-005) hand-parses YAML line by line. The yaml package (v2.8.2) is already a project dependency. Fix: import { parse } from 'yaml'; use parse() to load allowlist.yaml; type the result as { domain: string; port?: number; comment?: string }[]. One function change, zero risk. Must be in the same commit as CQ-005 firewall work — do not ship the moved firewall.ts with the hand-rolled parser still in place."
+      "groomingNotes": "SPRINT WITH CQ-005 — this is co-work for the CQ-005 sprint, not a standalone item. The loadAllowlist() function in src/build/launcher/firewall.ts (moving to src/secure/firewall/firewall.ts as part of CQ-005) hand-parses YAML line by line. The yaml package (v2.8.2) is already a project dependency. Fix: import { parse } from 'yaml'; use parse() to load allowlist.yaml; type the result as { domain: string; port?: number; comment?: string }[]. One function change, zero risk. Must be in the same commit as CQ-005 firewall work — do not ship the moved firewall.ts with the hand-rolled parser still in place.",
+      "completedAt": "2026-03-19T09:49:00-07:00"
     },
     {
       "id": "BUG-010",
