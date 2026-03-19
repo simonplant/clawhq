@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773943128",
-  "startedAt": "2026-03-19T10:58:48-07:00",
+  "sprintId": "sprint-1773944087",
+  "startedAt": "2026-03-19T11:14:47-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-025",
-    "title": "Ollama default URL hardcoded and inconsistent across 8+ files",
-    "intent": "Ollama default URL has a single source of truth. No literal Ollama URL appears outside src/config/defaults.ts. All runtime references use the same host string.",
-    "description": "The Ollama default URL is hardcoded across 8+ files with inconsistent values — some use http://127.0.0.1:11434 and others use http://localhost:11434, which are technically equivalent but create noise and risk drift. Locations: src/design/configure/ollama.ts:8 (127.0.0.1, named local const DEFAULT_OLLAMA_URL), src/evolve/memory/summarize.ts:54 (127.0.0.1), src/evolve/migrate/extract.ts:75 (127.0.0.1), src/evolve/provider/registry.ts:35 (localhost), src/evolve/integrate/validate.ts:94 (localhost), src/evolve/integrate/registry.ts:78 (localhost, string default). Same pattern as BUG-011 (Gateway port scattered across 12 files). Steps: (1) add OLLAMA_DEFAULT_URL = 'http://127.0.0.1:11434' to src/config/defaults.ts (use 127.0.0.1 to match the design/ module which is the primary Ollama caller); (2) replace all runtime string literals with the constant import; (3) update doc comments to match; (4) run tests. Scope: ~6 file edits, no logic change.",
+    "id": "BUG-026",
+    "title": "WhatsApp Graph API version mismatch: v17.0 in validate vs v21.0 in connect",
+    "intent": "WhatsApp integration uses a single, consistent Graph API version throughout. No version mismatch between the validation probe and the connect flow.",
+    "description": "Two files reference different versions of the WhatsApp/Facebook Graph API: src/build/launcher/connect.ts:23 uses v21.0 (const WHATSAPP_API = 'https://graph.facebook.com/v21.0'), while src/evolve/integrate/validate.ts:115 uses v17.0. The credential validation probe and the actual connection flow must use the same API version. A probe that passes on v17.0 endpoints may not guarantee v21.0 compatibility and vice versa. Steps: (1) decide canonical version (v21.0 is newer — prefer that); (2) add WHATSAPP_API_VERSION = 'v21.0' and WHATSAPP_API_BASE = 'https://graph.facebook.com' to src/config/defaults.ts; (3) update connect.ts to use the constant; (4) update integrate/validate.ts to use the same version; (5) run tests. Scope: 3 files, ~5 line change.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:58:48-07:00",
+    "startedAt": "2026-03-19T11:14:47-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T11:06:17-07:00"
+    "completedAt": "2026-03-19T11:16:50-07:00"
   },
-  "completedAt": "2026-03-19T11:06:17-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T11:16:50-07:00",
+  "attempts": 1
 }
