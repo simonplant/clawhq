@@ -1,28 +1,30 @@
 {
-  "sprintId": "sprint-1773904750",
-  "startedAt": "2026-03-19T00:19:10-07:00",
+  "sprintId": "sprint-1773905270",
+  "startedAt": "2026-03-19T00:27:50-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-007",
-    "title": "Secrets management (.env store)",
-    "intent": "Ensure every credential written to disk is atomic, 0600-permissioned, and survives process interruption. No partial writes, no world-readable secrets.",
-    "description": "SECURITY BASELINE: If .env is misconfigured or readable by other processes, the user's API keys are exposed. Atomic writes (temp + rename) and 0600 permissions are non-negotiable. This is the lowest layer of the credentials stack — everything CQ-008 (health probes) does depends on reliable .env reads. Acceptance: written files are always 0600; atomic write survives process kill mid-write; get/set/remove preserve format and comments.",
+    "id": "CQ-008",
+    "title": "Credential health probes",
+    "intent": "Detect expired or invalid credentials before they cause silent agent failures. Every configured integration must report pass/fail with an actionable fix message.",
+    "description": "SILENT FAILURE PREVENTION: Credential expiry is one of the top reasons agents stop working without explanation. A user who set up their Anthropic key three months ago has no idea it expired. Probes run on schedule and surface the problem before the next tool call silently fails. Built-in probes for Anthropic, OpenAI, Telegram cover the most common integrations. Acceptance: probe reports correct pass/fail for each integration; failed credential surfaces actionable message; 'clawhq creds' outputs clean table.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement .env file parser/reader/writer with format preservation",
-      "Add atomic writes via temp file + rename with 0600 permissions",
-      "Implement get/set/remove value operations"
+      "Implement probe-based credential validation framework",
+      "Build probes for Anthropic, OpenAI, Telegram integrations",
+      "Define extensible probe interface for adding new integrations",
+      "Implement report aggregation for 'clawhq creds' output"
     ],
     "acceptanceCriteria": [
-      "Written .env files are always 0600 permissions",
-      "Atomic write survives process kill mid-write (no partial files)",
-      "Get/set/remove preserve existing format and comments"
+      "Probes report correct pass/fail for each configured integration",
+      "Failed credentials surface actionable fix message",
+      "'clawhq creds' outputs clean status table",
+      "Probe interface extensible for new integrations"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T00:19:10-07:00",
+    "startedAt": "2026-03-19T00:27:50-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T00:27:48-07:00"
+    "completedAt": "2026-03-19T00:36:33-07:00"
   },
-  "completedAt": "2026-03-19T00:27:48-07:00",
-  "attempts": 3
+  "completedAt": "2026-03-19T00:36:33-07:00",
+  "attempts": 1
 }
