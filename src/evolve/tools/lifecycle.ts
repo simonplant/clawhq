@@ -12,6 +12,7 @@ import { join } from "node:path";
 
 import { build } from "../../build/docker/build.js";
 import type { Stage1Config, Stage2Config } from "../../build/docker/types.js";
+import { FILE_MODE_EXEC } from "../../config/defaults.js";
 
 import {
   loadToolManifest,
@@ -77,7 +78,7 @@ export async function installTool(
 
   const toolPath = join(toolsDir, name);
   await writeFile(toolPath, content, "utf-8");
-  await chmod(toolPath, 0o755);
+  await chmod(toolPath, FILE_MODE_EXEC);
 
   // Update manifest
   const entry: ToolManifestEntry = {

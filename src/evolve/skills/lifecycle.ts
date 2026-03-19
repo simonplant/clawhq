@@ -9,6 +9,8 @@ import { existsSync, mkdirSync } from "node:fs";
 import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { FILE_MODE_EXEC } from "../../config/defaults.js";
+
 import { createSnapshot, restoreSnapshot } from "./rollback.js";
 import { createStagedEntry, readStagedFiles, stageSkill } from "./stage.js";
 import type {
@@ -192,7 +194,7 @@ export async function installSkill(
   for (const file of stageResult.files) {
     if (file.endsWith(".sh") || file.endsWith(".bash") || file.endsWith(".py")) {
       try {
-        await chmod(join(stageResult.stagingDir, file), 0o755);
+        await chmod(join(stageResult.stagingDir, file), FILE_MODE_EXEC);
       } catch (err) {
         console.warn("[evolve] Failed to set executable permission on", file, err);
       }

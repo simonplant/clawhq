@@ -13,7 +13,7 @@ import { Hono } from "hono";
 import { stringify as yamlStringify } from "yaml";
 
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
-import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import {
   loadAllBuiltinBlueprints,
   loadBlueprint,
@@ -275,12 +275,12 @@ export function createApp(options: DashboardOptions): Hono {
           content: Object.entries(bundle.envVars)
             .map(([k, v]) => `${k}=${v}`)
             .join("\n") + "\n",
-          mode: 0o600,
+          mode: FILE_MODE_SECRET,
         },
         {
           relativePath: "engine/credentials.json",
           content: JSON.stringify({}, null, 2) + "\n",
-          mode: 0o600,
+          mode: FILE_MODE_SECRET,
         },
         {
           relativePath: "cron/jobs.json",

@@ -11,7 +11,7 @@ import { access, constants, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import type { PreflightCheckName, PreflightCheckResult, PreflightReport } from "./types.js";
 
@@ -158,7 +158,7 @@ async function checkSecrets(deployDir: string): Promise<PreflightCheckResult> {
     const info = await stat(envFile);
     const mode = info.mode & 0o777;
 
-    if (mode !== 0o600) {
+    if (mode !== FILE_MODE_SECRET) {
       return {
         name,
         passed: false,

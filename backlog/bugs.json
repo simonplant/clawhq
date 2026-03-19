@@ -429,11 +429,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Pattern identical to BUG-011 (Gateway port) and BUG-024 (Dashboard port). Octal literals 0o600, 0o644 scattered across writer.ts, preflight.ts, doctor/checks.ts. Consolidation target: src/config/defaults.ts. Export FILE_MODE_SECRET=0o600, FILE_MODE_CONFIG=0o644. Remove duplicate local MODE_0600 from credential-store.ts and env-store.ts — import from defaults.ts instead. No logic change — pure constant extraction. Run full test suite after (these mode values affect file creation so tests cover the behaviour). No blocking dependencies."
+      "groomingNotes": "Pattern identical to BUG-011 (Gateway port) and BUG-024 (Dashboard port). Octal literals 0o600, 0o644 scattered across writer.ts, preflight.ts, doctor/checks.ts. Consolidation target: src/config/defaults.ts. Export FILE_MODE_SECRET=0o600, FILE_MODE_CONFIG=0o644. Remove duplicate local MODE_0600 from credential-store.ts and env-store.ts — import from defaults.ts instead. No logic change — pure constant extraction. Run full test suite after (these mode values affect file creation so tests cover the behaviour). No blocking dependencies.",
+      "completedAt": "2026-03-19T11:41:13-07:00"
     },
     {
       "id": "BUG-032",

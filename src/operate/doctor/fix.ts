@@ -8,7 +8,7 @@
 import { chmod, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import type { DoctorCheckResult, DoctorCheckName, FixReport, FixResult } from "./types.js";
 
@@ -63,7 +63,7 @@ async function fixSecretsPerms(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "secrets-perms";
   const envPath = join(deployDir, "engine", ".env");
   try {
-    await chmod(envPath, 0o600);
+    await chmod(envPath, FILE_MODE_SECRET);
     return { name, success: true, message: "Set .env permissions to 600" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -76,7 +76,7 @@ async function fixCredsPerms(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "creds-perms";
   const credsPath = join(deployDir, "engine", "credentials.json");
   try {
-    await chmod(credsPath, 0o600);
+    await chmod(credsPath, FILE_MODE_SECRET);
     return { name, success: true, message: "Set credentials.json permissions to 600" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -17,7 +17,7 @@ import { access, constants, readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
 
@@ -156,7 +156,7 @@ async function checkSecretsPerms(deployDir: string): Promise<DoctorCheckResult> 
   try {
     const info = await stat(envPath);
     const mode = info.mode & 0o777;
-    if (mode !== 0o600) {
+    if (mode !== FILE_MODE_SECRET) {
       return fail(
         name,
         "error",
@@ -182,7 +182,7 @@ async function checkCredsPerms(deployDir: string): Promise<DoctorCheckResult> {
   try {
     const info = await stat(credsPath);
     const mode = info.mode & 0o777;
-    if (mode !== 0o600) {
+    if (mode !== FILE_MODE_SECRET) {
       return fail(
         name,
         "warning",

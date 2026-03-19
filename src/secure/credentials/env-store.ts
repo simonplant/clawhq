@@ -12,12 +12,9 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { FILE_MODE_SECRET } from "../../config/defaults.js";
+
 import type { EnvFile, EnvLine } from "./types.js";
-
-// ── Constants ───────────────────────────────────────────────────────────────
-
-/** File permission: owner read/write only. */
-const MODE_0600 = 0o600;
 
 // ── Parser ──────────────────────────────────────────────────────────────────
 
@@ -125,10 +122,10 @@ export function writeEnvAtomic(filePath: string, envFile: EnvFile): void {
   const tmpPath = join(dir, tmpName);
 
   // Write to temp file with restricted permissions
-  writeFileSync(tmpPath, content, { mode: MODE_0600 });
+  writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
 
   // Ensure permissions are set (writeFileSync mode can be affected by umask)
-  chmodSync(tmpPath, MODE_0600);
+  chmodSync(tmpPath, FILE_MODE_SECRET);
 
   // Atomic rename
   renameSync(tmpPath, filePath);
@@ -243,7 +240,7 @@ export function verifyEnvPermissions(filePath: string): boolean {
   if (!existsSync(filePath)) return false;
   const stat = statSync(filePath);
   // Mask to get the permission bits only (ignore file type bits)
-  return (stat.mode & 0o777) === MODE_0600;
+  return (stat.mode & 0o777) === FILE_MODE_SECRET;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
