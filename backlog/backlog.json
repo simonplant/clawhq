@@ -335,8 +335,8 @@
       "description": "HIGH VALUE: This is the literal first command a user runs. Gate: Docker detected, Node >=20, Ollama running. Creates ~/.clawhq/ scaffold. Without this, nothing else works. Acceptance: 'clawhq install' exits 0, ~/.clawhq/ structure exists, clawhq.yaml written, user sees next-step guidance.",
       "category": "build",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Detect Docker, Node.js >=20, Ollama prerequisites",
         "Create ~/.clawhq/ directory with correct structure",
@@ -349,7 +349,9 @@
         "~/.clawhq/ structure exists with correct layout",
         "clawhq.yaml written with defaults",
         "User sees clear next-step guidance after install"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T01:43:25-07:00"
     },
     {
       "id": "CQ-015",
