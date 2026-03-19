@@ -65,7 +65,8 @@ async function loadSnapshots(
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as CapabilitySnapshot[];
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read capability snapshots:", err);
     return [];
   }
 }

@@ -50,7 +50,8 @@ export function loadTelegramConfig(deployDir: string): TelegramConfig | undefine
     const chatId = parseEnvVar(content, "TELEGRAM_CHAT_ID");
     if (!botToken || !chatId) return undefined;
     return { botToken, chatId };
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read Telegram config from .env:", err);
     return undefined;
   }
 }

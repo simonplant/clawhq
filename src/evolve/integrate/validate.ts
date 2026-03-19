@@ -83,7 +83,7 @@ const validators: Record<string, Validator> = {
         if (body.ok && body.result?.username) {
           return { ok: true, message: `Connected as @${body.result.username}` };
         }
-      } catch { /* fall through */ }
+      } catch (err) { console.warn("[evolve] Failed to parse Telegram API response:", err); }
       return { ok: true, message: "Connected to Telegram" };
     }
     if (result.response.status === 401) return { ok: false, message: "Bot token rejected (401)" };

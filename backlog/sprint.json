@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773939062",
-  "startedAt": "2026-03-19T09:51:02-07:00",
+  "sprintId": "sprint-1773939954",
+  "startedAt": "2026-03-19T10:05:54-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-011",
-    "title": "Gateway port 18789 hardcoded in 23+ locations across 12 files",
-    "intent": "Gateway port has a single source of truth. No literal 18789 appears outside src/config/defaults.ts. Changing the default port requires editing one line.",
-    "description": "The Gateway port 18789 is hardcoded as a literal in at least 23 places across 12 files including src/build/launcher/preflight.ts:20, src/operate/doctor/checks.ts:589, and others. There is no single source of truth for this value. Steps: (1) grep codebase for 18789 to enumerate all instances; (2) define GATEWAY_DEFAULT_PORT = 18789 constant in src/config/defaults.ts (create file if absent) and export it; (3) replace all literal 18789 references with the constant import; (4) run full test suite to confirm no regression. Note: the port is configurable in openclaw.json — this change normalizes the fallback value, not the config surface. Scope: grep + search-replace across ~12 files, no logic change.",
+    "id": "BUG-012",
+    "title": "Silent catch blocks in evolve/ swallow errors with no logging",
+    "intent": "No error in the evolve/ module is silently discarded. Every catch block either logs the error or re-throws it. Failures are observable without enabling debug mode.",
+    "description": "20+ catch blocks across the evolve/ module swallow errors silently, making failures invisible in production and in tests. Key locations: src/evolve/lifecycle/destroy.ts:75,126 (catch { return []; }), src/evolve/memory/preferences.ts:167 (catch swallows preference load failure), src/evolve/skills/stage.ts:174 (catch swallows stage setup failure), src/evolve/migrate/google-parser.ts:172 (catch swallows parse failure), src/evolve/tools/manifest.ts:31 (catch returns empty manifest). Pattern: these are non-fatal paths that return defaults on failure — acceptable, but the error should be logged for observability. Steps: (1) search evolve/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) for catch blocks in test paths, ensure test expectations still pass; (4) do NOT convert non-fatal catches to throws — keep the fallback behaviour, just add logging. Scope: ~20 one-line additions across evolve/.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T09:51:02-07:00",
+    "startedAt": "2026-03-19T10:05:54-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:01:03-07:00"
+    "completedAt": "2026-03-19T10:10:02-07:00"
   },
-  "completedAt": "2026-03-19T10:01:03-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T10:10:02-07:00",
+  "attempts": 1
 }

@@ -133,8 +133,8 @@ export async function sendResolutionConfirmation(
         parse_mode: "MarkdownV2",
       }),
     });
-  } catch {
-    // Fire-and-forget — confirmation edit failure is not critical
+  } catch (err) {
+    console.warn("[evolve] Failed to edit Telegram confirmation message:", err);
   }
 }
 

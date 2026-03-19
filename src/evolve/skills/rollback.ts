@@ -37,7 +37,8 @@ async function loadSnapshots(deployDir: string): Promise<RollbackSnapshot[]> {
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as RollbackSnapshot[];
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read rollback snapshots:", err);
     return [];
   }
 }

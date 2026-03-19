@@ -171,8 +171,8 @@ export async function readStagedFiles(
     try {
       const content = await readFile(join(stagingDir, file), "utf-8");
       results.push({ file, content });
-    } catch {
-      // Skip unreadable files (binary, etc.)
+    } catch (err) {
+      console.warn("[evolve] Skipping unreadable staged file:", file, err);
     }
   }
 

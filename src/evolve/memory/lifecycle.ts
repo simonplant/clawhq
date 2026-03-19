@@ -59,7 +59,8 @@ export async function loadManifest(
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as MemoryManifest;
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read memory manifest:", err);
     return { version: 1, entries: [] };
   }
 }

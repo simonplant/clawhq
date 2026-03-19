@@ -44,7 +44,8 @@ export async function loadQueue(deployDir: string): Promise<ApprovalQueue> {
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as ApprovalQueue;
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read approval queue:", err);
     return { version: 1, items: [] };
   }
 }
