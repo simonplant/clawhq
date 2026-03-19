@@ -16,9 +16,19 @@ import { join } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
+import { stringify as yamlStringify } from "yaml";
 
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
+import { validateBundle } from "../config/validate.js";
+import {
+  createInquirerPrompter,
+  generateBundle,
+  generateIdentityFiles,
+  runWizard,
+  WizardAbortError,
+  writeBundle,
+} from "../design/configure/index.js";
 import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
 
 const require = createRequire(import.meta.url);
@@ -37,6 +47,116 @@ program
   .action(() => {
     console.log(`clawhq v${pkg.version}`);
   });
+
+// ── Design Commands ─────────────────────────────────────────────────────────
+
+program
+  .command("init")
+  .description("Interactive setup — choose blueprint, configure, forge agent")
+  .option("--guided", "Run the guided setup wizard (default)")
+  .option("-b, --blueprint <name>", "Pre-select a blueprint by name")
+  .option("-d, --deploy-dir <path>", "Deployment directory", join(homedir(), ".clawhq"))
+  .option("--air-gapped", "Run in air-gapped mode (no internet)")
+  .action(async (opts: {
+    guided?: boolean;
+    blueprint?: string;
+    deployDir: string;
+    airGapped?: boolean;
+  }) => {
+    try {
+      // Step 1: Run the interactive wizard
+      const prompter = await createInquirerPrompter();
+      const answers = await runWizard(prompter, {
+        blueprintName: opts.blueprint,
+        deployDir: opts.deployDir,
+        airGapped: opts.airGapped,
+      });
+
+      // Step 2: Generate deployment bundle
+      const spinner = ora("Generating config…");
+      spinner.start();
+
+      const bundle = generateBundle(answers);
+
+      // Step 3: Validate against all 14 landmine rules
+      const report = validateBundle(bundle);
+      if (!report.valid) {
+        spinner.fail("Config validation failed");
+        for (const err of report.errors) {
+          console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
+        }
+        process.exit(1);
+      }
+
+      // Step 4: Write files atomically
+      const files = bundleToFiles(bundle, answers.blueprint);
+      const result = writeBundle(answers.deployDir, files);
+
+      spinner.succeed(`Config written to ${result.deployDir}`);
+
+      // Show warnings if any
+      for (const warn of report.warnings) {
+        console.log(chalk.yellow(`  ⚠ ${warn.rule}: ${warn.message}`));
+      }
+
+      console.log(chalk.green(`\n✔ Agent forged successfully`));
+      console.log(chalk.dim(`  ${result.written.length} files written`));
+      console.log(chalk.dim(`  All 14 landmine rules passed`));
+      console.log(chalk.dim(`\n  Next: clawhq up`));
+    } catch (error) {
+      if (error instanceof WizardAbortError) {
+        console.log(chalk.yellow("\nSetup cancelled."));
+        process.exit(0);
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(chalk.red(`\nSetup failed: ${message}`));
+      process.exit(1);
+    }
+  });
+
+/** Convert a DeploymentBundle into FileEntry array for the atomic writer. */
+function bundleToFiles(
+  bundle: ReturnType<typeof generateBundle>,
+  blueprint: import("../design/blueprints/types.js").Blueprint,
+) {
+  const identityFiles = generateIdentityFiles(blueprint);
+
+  return [
+    {
+      relativePath: "engine/openclaw.json",
+      content: JSON.stringify(bundle.openclawConfig, null, 2) + "\n",
+    },
+    {
+      relativePath: "engine/docker-compose.yml",
+      content: yamlStringify(bundle.composeConfig),
+    },
+    {
+      relativePath: "engine/.env",
+      content: Object.entries(bundle.envVars)
+        .map(([k, v]) => `${k}=${v}`)
+        .join("\n") + "\n",
+      mode: 0o600,
+    },
+    {
+      relativePath: "engine/credentials.json",
+      content: JSON.stringify({}, null, 2) + "\n",
+      mode: 0o600,
+    },
+    {
+      relativePath: "cron/jobs.json",
+      content: JSON.stringify(bundle.cronJobs, null, 2) + "\n",
+    },
+    {
+      relativePath: "clawhq.yaml",
+      content: yamlStringify(bundle.clawhqConfig),
+    },
+    // Identity files (SOUL.md, AGENTS.md)
+    ...identityFiles.map((f) => ({
+      relativePath: f.relativePath,
+      content: f.content,
+    })),
+  ];
+}
 
 // ── Deploy Commands ─────────────────────────────────────────────────────────
 
