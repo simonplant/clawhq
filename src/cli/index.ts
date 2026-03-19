@@ -25,7 +25,6 @@ import type { DeployProgress } from "../build/launcher/index.js";
 import {
   connectCloud,
   disconnectCloud,
-  discoverFleet,
   formatCloudStatus,
   formatCloudStatusJson,
   formatDisconnectResult,

@@ -6,12 +6,13 @@
  * without reading content.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { collectHealthReport } from "../heartbeat/reporter.js";
 import { readTrustModeState } from "../trust-modes/index.js";
+
 import type {
   DiscoveredAgent,
   FleetAgent,

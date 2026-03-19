@@ -8,6 +8,7 @@
 import { existsSync } from "node:fs";
 
 import { runDoctor } from "../../operate/doctor/doctor.js";
+
 import { readFleetRegistry } from "./discovery.js";
 import type { FleetAgentDoctorResult, FleetDoctorReport } from "./types.js";
 
