@@ -156,12 +156,11 @@ describe("approve-action tool", () => {
       (w) => w.name === "approve-action",
     );
     expect(wrapper).toBeDefined();
-    const content = wrapper!.content;
 
     // saveQueue must have error handling — a failed write must be loud
-    expect(content).toContain("function saveQueue");
-    expect(content).toMatch(/saveQueue[\s\S]*?try\s*\{[\s\S]*?writeFileSync/);
-    expect(content).toMatch(
+    expect(wrapper?.content).toContain("function saveQueue");
+    expect(wrapper?.content).toMatch(/saveQueue[\s\S]*?try\s*\{[\s\S]*?writeFileSync/);
+    expect(wrapper?.content).toMatch(
       /saveQueue[\s\S]*?catch[\s\S]*?console\.error[\s\S]*?process\.exit\(1\)/,
     );
   });
