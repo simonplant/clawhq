@@ -59,6 +59,18 @@ import {
 } from "../evolve/lifecycle/index.js";
 import type { DestructionProof, LifecycleProgress } from "../evolve/lifecycle/index.js";
 import {
+  analyzePreferences,
+  formatLifecycleResult,
+  formatLifecycleResultJson,
+  formatMemoryStatus,
+  formatMemoryStatusJson,
+  formatPreferenceReport,
+  formatPreferenceReportJson,
+  getMemoryStatus,
+  runLifecycle,
+} from "../evolve/memory/index.js";
+import type { MemoryProgress } from "../evolve/memory/index.js";
+import {
   formatSkillList,
   formatSkillListJson,
   installSkill,
@@ -89,18 +101,18 @@ import {
 } from "../operate/doctor/index.js";
 import { streamLogs } from "../operate/logs/index.js";
 import {
-  formatStatusJson,
-  formatStatusTable,
-  getStatus,
-  watchStatus,
-} from "../operate/status/index.js";
-import {
   formatMonitorEvent,
   formatMonitorStateJson,
   formatMonitorStateTable,
   startMonitor,
 } from "../operate/monitor/index.js";
 import type { MonitorEvent, NotificationChannel, TelegramNotificationChannel } from "../operate/monitor/index.js";
+import {
+  formatStatusJson,
+  formatStatusTable,
+  getStatus,
+  watchStatus,
+} from "../operate/status/index.js";
 import {
   applyUpdate,
   checkForUpdates,
@@ -1340,6 +1352,8 @@ program
   .option("--no-alerts", "Disable alert notifications")
   .option("--no-digest", "Disable daily digest")
   .option("--digest-hour <hour>", "Hour (0-23) to send daily digest", "8")
+  .option("--memory-lifecycle", "Enable scheduled memory lifecycle runs")
+  .option("--memory-lifecycle-interval <hours>", "Memory lifecycle interval in hours", "6")
   .option("--json", "Output events as JSON")
   .action(async (opts: {
     deployDir: string;
@@ -1348,6 +1362,8 @@ program
     alerts: boolean;
     digest: boolean;
     digestHour: string;
+    memoryLifecycle?: boolean;
+    memoryLifecycleInterval: string;
     json?: boolean;
   }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
@@ -1369,6 +1385,7 @@ program
       console.log(chalk.dim(`  Alerts: ${opts.alerts ? "enabled" : "disabled"}`));
       console.log(chalk.dim(`  Digest: ${opts.digest ? `enabled (${digestHour}:00)` : "disabled"}`));
       console.log(chalk.dim(`  Channels: ${channels.length > 0 ? channels.map((c) => c.type).join(", ") : "none configured"}`));
+      console.log(chalk.dim(`  Memory lifecycle: ${opts.memoryLifecycle ? `enabled (every ${opts.memoryLifecycleInterval}h)` : "disabled"}`));
       console.log(chalk.dim("  Press Ctrl+C to stop.\n"));
     }
 
@@ -1388,11 +1405,17 @@ program
           case "digest":
             console.log(chalk.green(line));
             break;
+          case "memory-lifecycle":
+            console.log(chalk.cyan(line));
+            break;
           default:
             console.log(chalk.dim(line));
         }
       }
     };
+
+    const memoryLifecycleIntervalMs =
+      Math.max(1, parseFloat(opts.memoryLifecycleInterval)) * 3600_000;
 
     const state = await startMonitor({
       deployDir: opts.deployDir,
@@ -1406,6 +1429,9 @@ program
         digestEnabled: opts.digest,
         digestHour,
       },
+      memoryLifecycle: opts.memoryLifecycle
+        ? { enabled: true, intervalMs: memoryLifecycleIntervalMs }
+        : undefined,
       signal: ac.signal,
       onEvent,
     });
@@ -1501,6 +1527,63 @@ program
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
     console.log(chalk.yellow("Not yet implemented. Coming soon."));
     process.exit(1);
+  });
+
+// ── Memory Commands ────────────────────────────────────────────────────────
+
+const memory = program.command("memory").description("Manage agent memory tiers");
+
+memory
+  .command("status")
+  .description("Show memory tier status")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const status = await getMemoryStatus({ deployDir: opts.deployDir });
+    if (opts.json) {
+      console.log(formatMemoryStatusJson(status));
+    } else {
+      console.log(formatMemoryStatus(status));
+    }
+  });
+
+memory
+  .command("run")
+  .description("Run memory lifecycle (transition entries between tiers)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const spinner = ora("Running memory lifecycle...").start();
+    const result = await runLifecycle({
+      deployDir: opts.deployDir,
+      onProgress: (p: MemoryProgress) => {
+        if (p.status === "running") spinner.text = p.message;
+      },
+    });
+    spinner.stop();
+    if (opts.json) {
+      console.log(formatLifecycleResultJson(result));
+    } else {
+      console.log(formatLifecycleResult(result));
+    }
+    if (!result.success) process.exit(1);
+  });
+
+memory
+  .command("preferences")
+  .description("Show learned preference patterns")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const report = await analyzePreferences({ deployDir: opts.deployDir });
+    if (opts.json) {
+      console.log(formatPreferenceReportJson(report));
+    } else {
+      console.log(formatPreferenceReport(report));
+    }
   });
 
 // ── Tool Commands ──────────────────────────────────────────────────────────

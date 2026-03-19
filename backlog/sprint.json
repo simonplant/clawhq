@@ -1,29 +1,31 @@
 {
-  "sprintId": "sprint-1773924811",
-  "startedAt": "2026-03-19T05:53:31-07:00",
+  "sprintId": "sprint-1773925562",
+  "startedAt": "2026-03-19T06:06:02-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-033",
-    "title": "AI config inference (--smart)",
-    "intent": "clawhq init --smart must infer the right blueprint and integrations from natural language, fully local via Ollama. No data leaves the machine.",
-    "description": "DELIGHT PATH: 'clawhq init --smart' is the < 5 minute path. Users describe what they need, Ollama infers blueprint + integrations. Local Ollama means zero data leaves. This is the product's wow moment. Correctly positioned as should — guided wizard (CQ-010) must work first as the fallback path. Acceptance: natural language description maps to correct blueprint; integration suggestions accurate; result produces same output as guided wizard; works fully locally with Ollama.",
+    "id": "CQ-034",
+    "title": "Memory lifecycle + autonomy + trace + learning",
+    "intent": "Manage agent memory across hot/warm/cold tiers so the agent gets smarter over time without bloating context. PII must be masked before cold storage.",
+    "description": "LONG-TERM RETENTION: Memory lifecycle is what makes the agent smarter over time. Hot/warm/cold tiers prevent the 360KB memory bloat problem described in PRODUCT.md. Preference learning is the '6 months' story: 'It knows your top clients are always priority.' Not blocking initial adoption but critical for the 30-day churn metric. Acceptance: hot/warm/cold tiers active; LLM-powered summarization runs on schedule; PII masked before cold tier; agent preference patterns visible to user.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement natural language to blueprint inference via local Ollama",
-      "Map user description to blueprint selection + integration suggestions",
-      "Ensure inference result matches guided wizard output format"
+      "Implement hot/warm/cold memory tiers with lifecycle transitions",
+      "Add LLM-powered summarization on configurable schedule",
+      "Apply PII masking before cold tier storage",
+      "Build autonomy recommendations from preference patterns",
+      "Implement decision trace logging"
     ],
     "acceptanceCriteria": [
-      "Natural language description maps to correct blueprint",
-      "Integration suggestions are accurate for described use case",
-      "Result produces same output format as guided wizard",
-      "Works fully locally with Ollama — no data leaves machine"
+      "Hot/warm/cold tiers active with automatic lifecycle transitions",
+      "LLM-powered summarization runs on schedule",
+      "PII masked before cold tier storage",
+      "Agent preference patterns visible to user"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T05:53:31-07:00",
+    "startedAt": "2026-03-19T06:06:02-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T06:06:00-07:00"
+    "completedAt": "2026-03-19T06:32:38-07:00"
   },
-  "completedAt": "2026-03-19T06:06:00-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T06:32:38-07:00",
+  "attempts": 3
 }

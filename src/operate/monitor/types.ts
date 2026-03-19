@@ -176,6 +176,14 @@ export interface MonitorNotifyConfig {
   readonly digestHour?: number;
 }
 
+/** Memory lifecycle scheduling configuration for the monitor. */
+export interface MonitorMemoryLifecycleConfig {
+  /** Enable scheduled memory lifecycle runs (default: false). */
+  readonly enabled: boolean;
+  /** Interval between lifecycle runs in ms (default: 21600000 = 6 hours). */
+  readonly intervalMs?: number;
+}
+
 /** Options for the monitor daemon. */
 export interface MonitorOptions {
   readonly deployDir: string;
@@ -184,6 +192,8 @@ export interface MonitorOptions {
   readonly thresholds?: AlertThresholds;
   readonly recovery?: RecoveryPolicy;
   readonly notify?: MonitorNotifyConfig;
+  /** Memory lifecycle scheduling config. */
+  readonly memoryLifecycle?: MonitorMemoryLifecycleConfig;
   readonly signal?: AbortSignal;
   /** Callback for monitor events. */
   readonly onEvent?: (event: MonitorEvent) => void;
@@ -198,6 +208,7 @@ export type MonitorEventType =
   | "alert"
   | "recovery"
   | "digest"
+  | "memory-lifecycle"
   | "notify"
   | "stopped"
   | "error";

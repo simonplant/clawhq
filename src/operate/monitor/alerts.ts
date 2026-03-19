@@ -9,9 +9,9 @@
  */
 
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { randomUUID } from "node:crypto";
 
 import type {
   AlertSeverity,

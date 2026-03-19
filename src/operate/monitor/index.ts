@@ -41,6 +41,7 @@ export type {
   MonitorEvent,
   MonitorEventType,
   MonitorNotifyConfig,
+  MonitorMemoryLifecycleConfig,
   MonitorOptions,
   MonitorState,
   NotificationChannel,

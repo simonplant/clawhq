@@ -12,6 +12,8 @@
  * Runs until AbortSignal fires. Never throws.
  */
 
+import { runLifecycle } from "../../evolve/memory/lifecycle.js";
+
 import { analyzeHealth, checkContainerHealth, collectSample } from "./alerts.js";
 import { buildDigest, sendDigest } from "./digest.js";
 import { sendNotification } from "./notify.js";
@@ -29,6 +31,7 @@ import type {
 
 const DEFAULT_INTERVAL_MS = 30_000;
 const DEFAULT_DIGEST_HOUR = 8;
+const DEFAULT_MEMORY_LIFECYCLE_INTERVAL_MS = 6 * 3600_000; // 6 hours
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -50,6 +53,9 @@ export async function startMonitor(options: MonitorOptions): Promise<MonitorStat
   const tracker = new RecoveryTracker();
   let digestSentToday = false;
   let lastDigestDate = "";
+  let lastMemoryLifecycleAt = 0;
+  const memoryLifecycleIntervalMs =
+    options.memoryLifecycle?.intervalMs ?? DEFAULT_MEMORY_LIFECYCLE_INTERVAL_MS;
 
   const emit = (type: MonitorEvent["type"], message: string, data?: unknown): void => {
     options.onEvent?.({
@@ -143,7 +149,35 @@ export async function startMonitor(options: MonitorOptions): Promise<MonitorStat
         }
       }
 
-      // 6. Daily digest
+      // 6. Scheduled memory lifecycle
+      if (options.memoryLifecycle?.enabled) {
+        const elapsed = Date.now() - lastMemoryLifecycleAt;
+        if (elapsed >= memoryLifecycleIntervalMs) {
+          try {
+            emit("memory-lifecycle", "Running scheduled memory lifecycle...");
+            const lifecycleResult = await runLifecycle({
+              deployDir: options.deployDir,
+            });
+            lastMemoryLifecycleAt = Date.now();
+            emit(
+              "memory-lifecycle",
+              `Memory lifecycle complete: ${lifecycleResult.transitions.length} transitions, ${lifecycleResult.purged.length} purged`,
+              {
+                transitions: lifecycleResult.transitions.length,
+                purged: lifecycleResult.purged.length,
+                totalEntries: lifecycleResult.totalEntries,
+              },
+            );
+          } catch (err) {
+            emit(
+              "error",
+              `Memory lifecycle error: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
+        }
+      }
+
+      // 7. Daily digest
       if (options.notify?.digestEnabled !== false && options.notify?.channels) {
         const now = new Date();
         const todayDate = now.toISOString().slice(0, 10);
