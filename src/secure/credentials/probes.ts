@@ -9,6 +9,7 @@
  */
 
 import { CREDENTIALS_PROBE_TIMEOUT_MS } from "../../config/defaults.js";
+
 import type { CredentialProbe, ProbeResult } from "./probe-types.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

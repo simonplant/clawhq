@@ -10,6 +10,7 @@ import {
   GATEWAY_HEALTH_INTERVAL_MS,
   GATEWAY_HEALTH_TIMEOUT_MS,
 } from "../config/defaults.js";
+
 import { GatewayClient } from "./client.js";
 import type {
   GatewayClientOptions,
