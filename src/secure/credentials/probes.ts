@@ -182,8 +182,8 @@ export const probeTelegram: CredentialProbe = async (env) => {
       if (body.ok && body.result?.username) {
         return pass(integration, envKey, `Valid (@${body.result.username})`);
       }
-    } catch {
-      // Fall through to generic pass
+    } catch (err) {
+      console.warn("[secure/credentials] Failed to parse Telegram getMe response", err);
     }
     return pass(integration, envKey, "Valid");
   }

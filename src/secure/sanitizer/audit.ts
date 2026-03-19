@@ -76,8 +76,8 @@ export async function writeAuditLog(
       preview: textPreview.slice(0, 120),
     };
     await appendJsonl(config.auditPath, entry);
-  } catch {
-    // Audit logging must never disrupt the pipeline
+  } catch (err) {
+    console.warn("[secure/sanitizer] Failed to write audit log", err);
   }
 }
 
@@ -102,7 +102,7 @@ export async function writeQuarantine(
       content: text.slice(0, 2000),
     };
     await appendJsonl(config.quarantinePath, entry);
-  } catch {
-    // Quarantine logging must never disrupt the pipeline
+  } catch (err) {
+    console.warn("[secure/sanitizer] Failed to write quarantine log", err);
   }
 }

@@ -56,7 +56,8 @@ export async function initSeqCounter(logPath: string): Promise<void> {
     const content = await readFile(logPath, "utf-8");
     const lines = content.trim().split("\n").filter((l) => l.length > 0);
     seqCounters.set(logPath, lines.length);
-  } catch {
+  } catch (err) {
+    console.warn(`[secure/audit] Failed to init sequence counter from ${logPath}`, err);
     seqCounters.set(logPath, 0);
   }
 }
@@ -85,7 +86,8 @@ export async function initHmacChain(logPath: string): Promise<void> {
       const last = JSON.parse(lines[lines.length - 1]) as SecretLifecycleEvent;
       lastSecretHmac = last.hmac;
     }
-  } catch {
+  } catch (err) {
+    console.warn(`[secure/audit] Failed to init HMAC chain from ${logPath}`, err);
     lastSecretHmac = "";
   }
 }
@@ -115,8 +117,8 @@ export async function logToolExecution(
       ...(opts.error ? { error: opts.error.slice(0, 500) } : {}),
     };
     await appendJsonl(config.toolLogPath, event);
-  } catch {
-    // Audit logging must never disrupt the pipeline
+  } catch (err) {
+    console.warn("[secure/audit] Failed to write tool execution log", err);
   }
 }
 
@@ -145,8 +147,8 @@ export async function logEgressEvent(
       allowed: opts.allowed,
     };
     await appendJsonl(config.egressLogPath, event);
-  } catch {
-    // Audit logging must never disrupt the pipeline
+  } catch (err) {
+    console.warn("[secure/audit] Failed to write egress log", err);
   }
 }
 
@@ -181,8 +183,8 @@ export async function logSecretEvent(
       prevHmac,
     };
     await appendJsonl(config.secretLogPath, event);
-  } catch {
-    // Audit logging must never disrupt the pipeline
+  } catch (err) {
+    console.warn("[secure/audit] Failed to write secret lifecycle log", err);
   }
 }
 
@@ -213,8 +215,8 @@ export async function logApprovalResolution(
       source: opts.source,
     };
     await appendJsonl(config.approvalLogPath, event);
-  } catch {
-    // Audit logging must never disrupt the pipeline
+  } catch (err) {
+    console.warn("[secure/audit] Failed to write approval resolution log", err);
   }
 }
 
