@@ -302,7 +302,7 @@ program
         process.exit(1);
       }
 
-      const files = bundleToFiles(bundle, answers.blueprint);
+      const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers);
       writeBundle(answers.deployDir, files);
 
       spinner.succeed(`${phase("init")} Agent forged — all 14 landmine rules passed`);
@@ -333,7 +333,7 @@ program
           : "standard") as BuildSecurityPosture;
 
       const stage1: Stage1Config = {
-        baseImage: "node:20-slim",
+        baseImage: "node:24-slim",
         aptPackages: [],
       };
       const stage2: Stage2Config = {
@@ -790,7 +790,7 @@ program
       }
 
       // Step 4: Write files atomically
-      const files = bundleToFiles(bundle, answers.blueprint);
+      const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers);
       const result = writeBundle(answers.deployDir, files);
 
       spinner.succeed(`Config written to ${result.deployDir}`);
@@ -818,8 +818,9 @@ program
 function bundleToFiles(
   bundle: ReturnType<typeof generateBundle>,
   blueprint: import("../design/blueprints/types.js").Blueprint,
+  customizationAnswers: Readonly<Record<string, string>> = {},
 ) {
-  const identityFiles = generateIdentityFiles(blueprint);
+  const identityFiles = generateIdentityFiles(blueprint, customizationAnswers);
 
   return [
     {

@@ -38,6 +38,9 @@ export interface WizardAnswers {
 
   /** Integration credentials keyed by integration name. */
   readonly integrations: Readonly<Record<string, Readonly<Record<string, string>>>>;
+
+  /** Answers to blueprint customization questions, keyed by question ID. */
+  readonly customizationAnswers: Readonly<Record<string, string>>;
 }
 
 /** Options for the interactive wizard. */

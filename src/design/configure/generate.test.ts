@@ -20,6 +20,7 @@ function makeAnswers(overrides: Partial<WizardAnswers> = {}): WizardAnswers {
     deployDir: "/tmp/clawhq-test",
     airGapped: false,
     integrations: {},
+    customizationAnswers: {},
     ...overrides,
   };
 }

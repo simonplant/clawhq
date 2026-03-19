@@ -16,6 +16,19 @@ use_case_mapping:
     section, asking clarifying questions only when genuinely stuck. Your research
     history builds over months, creating a personal knowledge base only you control.
 
+customization_questions:
+  - id: research_domain
+    prompt: "What's your primary research or writing domain?"
+    type: input
+    default: "General knowledge"
+  - id: response_depth
+    prompt: "How detailed should responses be by default?"
+    type: select
+    options:
+      - "Concise — key points only, I'll ask for more if needed"
+      - "Balanced — thorough but not exhaustive"
+      - "Deep — comprehensive analysis with sources and context"
+
 personality:
   tone: thoughtful
   style: "precise, thorough, focuses on depth over breadth"

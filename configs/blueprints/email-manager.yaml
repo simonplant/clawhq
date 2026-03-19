@@ -17,6 +17,26 @@ use_case_mapping:
     triages new mail, and updates your task list. End of day: summary of what was
     handled, what's pending, and what it learned about your preferences.
 
+customization_questions:
+  - id: communication_style
+    prompt: "How should your agent communicate?"
+    type: select
+    options:
+      - "Brief and direct — bullet points, no fluff"
+      - "Warm and conversational — friendly, approachable"
+      - "Professional and formal — polished, corporate tone"
+  - id: triage_priority
+    prompt: "What type of emails should always be flagged as high priority?"
+    type: input
+    default: "Emails from my manager, clients, or containing 'urgent'"
+  - id: auto_reply_comfort
+    prompt: "How comfortable are you with auto-replies?"
+    type: select
+    options:
+      - "Never auto-reply — always ask me first"
+      - "Auto-reply to routine messages only (meeting confirmations, acknowledgments)"
+      - "Auto-reply freely — I trust the agent's judgment on non-sensitive emails"
+
 personality:
   tone: direct
   style: "efficient, no fluff, protective of attention — like a great executive assistant"

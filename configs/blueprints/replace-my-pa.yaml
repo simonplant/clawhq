@@ -16,6 +16,26 @@ use_case_mapping:
     end of each day you get a brief: tasks completed, emails handled, tomorrow's
     prep list.
 
+customization_questions:
+  - id: work_style
+    prompt: "How should your assistant communicate?"
+    type: select
+    options:
+      - "Formal — polished, corporate tone"
+      - "Professional but casual — friendly yet competent"
+      - "Relaxed — informal, conversational"
+  - id: scheduling_preference
+    prompt: "How should the agent handle scheduling conflicts?"
+    type: select
+    options:
+      - "Always ask — never reschedule without approval"
+      - "Suggest options — propose solutions, I confirm"
+      - "Handle it — reschedule routine meetings autonomously"
+  - id: priority_contacts
+    prompt: "Who are your VIP contacts? (names or roles, comma-separated)"
+    type: input
+    default: ""
+
 personality:
   tone: professional
   style: "efficient, anticipatory, handles routine, flags exceptions"

@@ -16,6 +16,23 @@ use_case_mapping:
     You reply "yes" and get on with your morning. At end of day, the agent sends
     a summary of what it handled, what it flagged, and what it learned.
 
+customization_questions:
+  - id: morning_brief_time
+    prompt: "What time should your morning briefing arrive?"
+    type: select
+    options:
+      - "6:00am — early riser"
+      - "7:00am — standard"
+      - "8:00am — relaxed start"
+      - "9:00am — late morning"
+  - id: proactivity_level
+    prompt: "How proactive should your agent be?"
+    type: select
+    options:
+      - "Minimal — only act when I ask"
+      - "Moderate — handle routine tasks, flag everything else"
+      - "High — take initiative on anything within boundaries"
+
 personality:
   tone: direct
   style: "proactive, no sugarcoating, protective of user's time and attention"

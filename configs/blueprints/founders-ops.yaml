@@ -17,6 +17,27 @@ use_case_mapping:
     each meeting. Weekly investor update is drafted from your metrics dashboard
     and last quarter's format.
 
+customization_questions:
+  - id: company_stage
+    prompt: "What stage is your company?"
+    type: select
+    options:
+      - "Pre-seed — idea stage, building MVP"
+      - "Seed — early traction, raising or just raised"
+      - "Series A+ — scaling, established processes"
+  - id: investor_update_frequency
+    prompt: "How often do you send investor updates?"
+    type: select
+    options:
+      - "Weekly"
+      - "Bi-weekly"
+      - "Monthly"
+      - "Quarterly"
+  - id: deep_work_hours
+    prompt: "When are your deep work hours? (e.g., 9am-12pm)"
+    type: input
+    default: "9:00-12:00"
+
 personality:
   tone: direct
   style: "high-energy, protective of focus time, outcome-oriented"

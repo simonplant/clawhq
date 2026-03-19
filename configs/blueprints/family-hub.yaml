@@ -15,6 +15,26 @@ use_case_mapping:
     changes across family members. Weekly summary shows who did what and
     upcoming commitments.
 
+customization_questions:
+  - id: family_size
+    prompt: "How many family members will use this agent?"
+    type: select
+    options:
+      - "2 (couple)"
+      - "3-4 (small family)"
+      - "5+ (large family)"
+  - id: meal_preferences
+    prompt: "Any dietary restrictions or meal preferences?"
+    type: input
+    default: "No restrictions"
+  - id: reminder_style
+    prompt: "How firm should reminders be?"
+    type: select
+    options:
+      - "Gentle nudges — encouraging, no pressure"
+      - "Friendly but firm — clear expectations with warmth"
+      - "Direct — no-nonsense, get it done"
+
 personality:
   tone: warm
   style: "encouraging but firm, organized, family-friendly"

@@ -61,7 +61,7 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     composeConfig: buildComposeConfig(answers, port),
     envVars: buildEnvVars(answers),
     cronJobs: buildCronJobs(answers.blueprint),
-    identityFiles: buildIdentityFiles(answers.blueprint),
+    identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers),
     toolFiles: buildToolFiles(answers.blueprint),
     clawhqConfig: buildClawHQConfig(answers),
   };
@@ -346,8 +346,11 @@ export type { IdentityFileContent } from "../identity/index.js";
  * Delegates to the identity module for SOUL.md and AGENTS.md generation.
  * Returns the actual file content for writing to disk.
  */
-export function generateIdentityFiles(blueprint: Blueprint): IdentityFileContent[] {
-  return generateIdentityFilesFromBlueprint(blueprint);
+export function generateIdentityFiles(
+  blueprint: Blueprint,
+  customizationAnswers: Readonly<Record<string, string>> = {},
+): IdentityFileContent[] {
+  return generateIdentityFilesFromBlueprint(blueprint, undefined, customizationAnswers);
 }
 
 /**
@@ -355,8 +358,11 @@ export function generateIdentityFiles(blueprint: Blueprint): IdentityFileContent
  *
  * LM-08: Total size stays within bootstrapMaxChars (20,000 default).
  */
-function buildIdentityFiles(blueprint: Blueprint): IdentityFileInfo[] {
-  return generateIdentityFiles(blueprint).map((f) => ({
+function buildIdentityFiles(
+  blueprint: Blueprint,
+  customizationAnswers: Readonly<Record<string, string>> = {},
+): IdentityFileInfo[] {
+  return generateIdentityFiles(blueprint, customizationAnswers).map((f) => ({
     name: f.name,
     path: f.relativePath,
     sizeBytes: Buffer.byteLength(f.content, "utf-8"),

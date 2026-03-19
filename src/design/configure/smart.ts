@@ -164,6 +164,7 @@ export async function runSmartInference(
     deployDir,
     airGapped: false,
     integrations,
+    customizationAnswers: {},
   };
 }
 
