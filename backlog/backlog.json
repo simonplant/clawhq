@@ -632,8 +632,8 @@
       "description": "USER VALUE: Important day-2 ops visibility but not blocking first agent. Users need a working agent before they need to watch its status. Depends on CQ-003+CQ-012 anyway. Promote to must when ops track begins.",
       "category": "operate",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-003",
         "CQ-012"
@@ -648,7 +648,9 @@
         "'clawhq status --watch' updates in real-time",
         "'clawhq logs' displays agent logs",
         "'clawhq update' applies updates with rollback on failure"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T05:13:46-07:00"
     },
     {
       "id": "CQ-027",
