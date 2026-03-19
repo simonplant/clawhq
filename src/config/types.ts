@@ -214,7 +214,7 @@ export interface IdentityFileInfo {
 // ── ClawHQ Config (clawhq.yaml) ─────────────────────────────────────────────
 
 /** Security posture level. */
-export type SecurityPosture = "standard" | "hardened" | "paranoid";
+export type SecurityPosture = "minimal" | "standard" | "hardened" | "paranoid";
 
 /** Cloud trust mode. */
 export type TrustMode = "paranoid" | "zero-trust" | "managed";
