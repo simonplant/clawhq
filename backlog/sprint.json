@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773947255",
-  "startedAt": "2026-03-19T12:07:35-07:00",
+  "sprintId": "sprint-1773947415",
+  "startedAt": "2026-03-19T12:10:15-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-036",
-    "title": "Path traversal risk in web dashboard /api/init deployDir input",
-    "intent": "deployDir submitted via web form must be sanitized and resolved to prevent writing files outside the user's home directory. No path traversal from web init.",
-    "description": "src/web/server.tsx:240-245 accepts a user-supplied deployDir via POST /api/init and resolves ~ with a simple string replace, but does not validate the resulting path with path.resolve() or check it stays within the user's home directory. A crafted deployDir value like '../../sensitive' could cause agent config files to be written outside ~/.clawhq/. The web dashboard runs on localhost:3737 so this is local-only, but it is still a path traversal vulnerability. Steps: (1) import { resolve } from 'path' in server.tsx; (2) after resolving ~, apply path.resolve() to canonicalize; (3) validate the resolved path starts with homedir() — if not, reject with 400 error; (4) run web/ tests to confirm no regression. Scope: ~5 lines in one file.",
+    "id": "BUG-037",
+    "title": "parseInt/parseFloat NaN propagation in CLI commands",
+    "intent": "All numeric CLI options must reject non-numeric input with a clear error message. NaN must never propagate silently into cron schedules, interval timers, or config fields.",
+    "description": "Multiple CLI option parsers use parseInt/parseFloat without guarding against NaN. Key cases: (1) src/cli/index.ts:1920 — digestHour: Math.max(0, Math.min(23, parseInt(opts.digestHour, 10))) — Math.max(0, NaN) = NaN, so a non-numeric --digest-hour writes NaN into the cron schedule; (2) src/cli/index.ts:1959 — memoryLifecycleInterval: Math.max(1, parseFloat(opts.memoryLifecycleInterval)) * 3600_000 — same issue; (3) src/cli/index.ts:2705 — maxEgressDomains: parseInt(opts.maxEgress, 10) — no NaN check, written directly to config; (4) src/cli/index.ts:1845 — lineCount: parseInt(opts.lines, 10) — no NaN guard before use. Pattern: the dashboard port on line 3183-3184 already validates correctly (isNaN check + clear error). Extend that pattern to the 4 affected options. Steps: (1) digestHour — validate isNaN before clamping, exit with error if NaN; (2) memoryLifecycleInterval — same; (3) maxEgressDomains — add isNaN guard; (4) lineCount — add isNaN guard. Scope: ~8 additions across one file. Pattern to follow: lines 3183-3184 in same file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T12:07:35-07:00",
+    "startedAt": "2026-03-19T12:10:15-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T12:10:13-07:00"
+    "completedAt": "2026-03-19T12:12:28-07:00"
   },
-  "completedAt": "2026-03-19T12:10:13-07:00",
+  "completedAt": "2026-03-19T12:12:28-07:00",
   "attempts": 1
 }

@@ -525,11 +525,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "4 specific locations in src/cli/index.ts. Pattern to follow: lines 3183-3184 (isNaN check + process.exit). Fix each: (1) line 1920: after parseInt, add if (isNaN(digestHour)) { console.error('--digest-hour must be a number 0-23'); process.exit(1); } — move parseInt to its own line first; (2) line 1959: after parseFloat, add NaN guard; (3) line 2705: after parseInt, add NaN guard before assigning to maxEgressDomains; (4) line 1845: add NaN guard on lineCount before passing to logs command. Also note: lines 1583, 1919 already use Math.max() guards that coerce NaN to the minimum (Math.max(1, NaN) = NaN actually — check these too). Run cli/ tests after. No blocking dependencies. Scope: one file, ~12 lines."
+      "groomingNotes": "4 specific locations in src/cli/index.ts. Pattern to follow: lines 3183-3184 (isNaN check + process.exit). Fix each: (1) line 1920: after parseInt, add if (isNaN(digestHour)) { console.error('--digest-hour must be a number 0-23'); process.exit(1); } — move parseInt to its own line first; (2) line 1959: after parseFloat, add NaN guard; (3) line 2705: after parseInt, add NaN guard before assigning to maxEgressDomains; (4) line 1845: add NaN guard on lineCount before passing to logs command. Also note: lines 1583, 1919 already use Math.max() guards that coerce NaN to the minimum (Math.max(1, NaN) = NaN actually — check these too). Run cli/ tests after. No blocking dependencies. Scope: one file, ~12 lines.",
+      "completedAt": "2026-03-19T12:12:28-07:00"
     },
     {
       "id": "BUG-038",
