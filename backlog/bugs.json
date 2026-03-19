@@ -175,11 +175,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "PRIORITY NOTE: audit/logger.ts has 6 silent catches — if audit log writes fail silently, the tamper-evident audit trail has invisible gaps. This directly undermines the transparency promise ('you know what your agent did'). Sprint this before BUG-012. Sweep secure/ for 'catch {' and 'catch (_'. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Priority files: audit/logger.ts (6 instances — MOST IMPORTANT, tamper-evident trail gaps), scanner/git.ts (3 instances), scanner/walk.ts (3 instances), credentials/probes.ts (1 instance). Run secure/ tests after. No dependencies."
+      "groomingNotes": "PRIORITY NOTE: audit/logger.ts has 6 silent catches — if audit log writes fail silently, the tamper-evident audit trail has invisible gaps. This directly undermines the transparency promise ('you know what your agent did'). Sprint this before BUG-012. Sweep secure/ for 'catch {' and 'catch (_'. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Priority files: audit/logger.ts (6 instances — MOST IMPORTANT, tamper-evident trail gaps), scanner/git.ts (3 instances), scanner/walk.ts (3 instances), credentials/probes.ts (1 instance). Run secure/ tests after. No dependencies.",
+      "completedAt": "2026-03-19T10:23:48-07:00"
     },
     {
       "id": "BUG-016",

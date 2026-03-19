@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773940495",
-  "startedAt": "2026-03-19T10:14:55-07:00",
+  "sprintId": "sprint-1773940775",
+  "startedAt": "2026-03-19T10:19:35-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-014",
-    "title": "Silent catch blocks in build/ swallow errors with no logging",
-    "intent": "No error in the build/ module is silently discarded. Every catch block either logs the error or re-throws it. Preflight, firewall, and service failures must be observable.",
-    "description": "14+ catch blocks across the build/ module swallow errors silently. Key locations: src/build/launcher/firewall.ts (lines 98,106,127,137,165 — firewall rule failures), src/build/launcher/preflight.ts (lines 93,112,205,219 — pre-flight check failures), src/build/services/add.ts (lines 42,53,114,159,165 — service addition failures), src/build/docker/build.ts (line 166 — Docker build failure). Firewall and preflight silent catches are especially dangerous — a failed preflight that swallows its error allows a broken deploy to proceed silently. Steps: (1) search build/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour, just add logging. Scope: ~14 one-line additions across build/.",
+    "id": "BUG-015",
+    "title": "Silent catch blocks in secure/ swallow errors with no logging",
+    "intent": "No error in the secure/ module is silently discarded. Scanner and audit failures must be logged. A scanner that silently fails is indistinguishable from a clean scan.",
+    "description": "12+ catch blocks across the secure/ module swallow errors silently. Key locations: src/secure/scanner/git.ts (lines 37,50,69 — git history scan errors), src/secure/scanner/walk.ts (lines 41,62,70 — file walk errors), src/secure/audit/logger.ts (lines 59,88,118,148,184,216 — audit log write failures), src/secure/credentials/probes.ts (line 185 — credential probe failures). The audit/logger.ts instances are particularly critical — if audit log writes fail silently, the tamper-evident audit trail has invisible gaps. Steps: (1) search secure/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour, just add logging. Scope: ~12 one-line additions across secure/.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:14:55-07:00",
+    "startedAt": "2026-03-19T10:19:35-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:19:33-07:00"
+    "completedAt": "2026-03-19T10:23:48-07:00"
   },
-  "completedAt": "2026-03-19T10:19:33-07:00",
+  "completedAt": "2026-03-19T10:23:48-07:00",
   "attempts": 1
 }
