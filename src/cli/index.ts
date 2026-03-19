@@ -52,6 +52,13 @@ import {
   runDoctorWithFix,
 } from "../operate/doctor/index.js";
 import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
+import {
+  buildOwaspExport,
+  createAuditConfig,
+  formatAuditJson,
+  formatAuditTable,
+  readAuditReport,
+} from "../secure/audit/index.js";
 
 import { renderError, warnIfNotInstalled } from "./ux.js";
 
@@ -570,12 +577,48 @@ program
 
 program
   .command("audit")
-  .description("Tool execution and egress audit trail")
+  .description("Tool execution + egress + secret audit trail")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (opts: { deployDir: string }) => {
+  .option("--json", "Output as JSON for scripting")
+  .option("--export", "Export in OWASP-compatible format")
+  .option("--since <datetime>", "Only show events after this ISO timestamp")
+  .option("-n, --limit <count>", "Max events per stream")
+  .action(async (opts: {
+    deployDir: string;
+    json?: boolean;
+    export?: boolean;
+    since?: string;
+    limit?: string;
+  }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+
+    try {
+      // Use a placeholder HMAC key for reading — verification uses the key from the log
+      const config = createAuditConfig(opts.deployDir, "");
+      const limit = opts.limit ? parseInt(opts.limit, 10) : undefined;
+
+      const spinner = ora("Reading audit logs…");
+      if (!opts.json && !opts.export) spinner.start();
+
+      const report = await readAuditReport(config, {
+        since: opts.since,
+        limit,
+      });
+
+      if (!opts.json && !opts.export) spinner.stop();
+
+      if (opts.export) {
+        const owaspExport = buildOwaspExport(report, opts.deployDir);
+        console.log(JSON.stringify(owaspExport, null, 2));
+      } else if (opts.json) {
+        console.log(formatAuditJson(report));
+      } else {
+        console.log(formatAuditTable(report));
+      }
+    } catch (error) {
+      console.error(renderError(error));
+      process.exit(1);
+    }
   });
 
 // ── Operate Commands ──────────────────────────────────────────────────────
