@@ -5,6 +5,8 @@
  * and how to validate the connection. New integrations are added here.
  */
 
+import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+
 import type { IntegrationDefinition } from "./types.js";
 
 /** All known integrations. */
@@ -75,7 +77,7 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
     description: "Local Ollama instance for air-gapped AI model access",
     category: "ai",
     envKeys: [
-      { key: "OLLAMA_HOST", label: "Ollama host", secret: false, defaultValue: "http://localhost:11434" },
+      { key: "OLLAMA_HOST", label: "Ollama host", secret: false, defaultValue: OLLAMA_DEFAULT_URL },
     ],
     egressDomains: [],
   },

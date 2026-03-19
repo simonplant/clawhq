@@ -164,7 +164,7 @@ export interface MigrationOptions {
   readonly source: MigrationSource;
   /** Path to the deployment directory (default: ~/.clawhq). */
   readonly deployDir: string;
-  /** Ollama base URL (default: http://127.0.0.1:11434). */
+  /** Ollama base URL. */
   readonly ollamaUrl?: string;
   /** Ollama model for preference extraction. */
   readonly ollamaModel?: string;

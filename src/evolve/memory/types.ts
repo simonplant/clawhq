@@ -118,7 +118,7 @@ export interface SummarizeOptions {
   readonly text: string;
   /** Summarization strategy. */
   readonly strategy: "aggressive" | "balanced" | "conservative";
-  /** Ollama API base URL (default: http://localhost:11434). */
+  /** Ollama API base URL. */
   readonly ollamaUrl?: string;
   /** Model to use for summarization. */
   readonly model?: string;

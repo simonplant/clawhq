@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773942995",
-  "startedAt": "2026-03-19T10:56:35-07:00",
+  "sprintId": "sprint-1773943128",
+  "startedAt": "2026-03-19T10:58:48-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-024",
-    "title": "Web dashboard port 3737 hardcoded in 2 locations",
-    "intent": "Dashboard default port has a single source of truth. No literal 3737 appears outside src/config/defaults.ts. Changing the default requires editing one line.",
-    "description": "The dashboard default port 3737 is hardcoded in two locations: src/web/start.ts:10 (const DEFAULT_PORT = 3737) and src/cli/index.ts:3180 (string default \"3737\" in .option()). This is the same BUG-011 pattern as the Gateway port 18789. If the port is changed in start.ts, the CLI help text stays stale. Steps: (1) add DASHBOARD_DEFAULT_PORT = 3737 to src/config/defaults.ts; (2) import and use it in src/web/start.ts replacing DEFAULT_PORT; (3) import and use it in src/cli/index.ts replacing \"3737\" string; (4) run tests to confirm no regression. Scope: two files, ~4 lines changed.",
+    "id": "BUG-025",
+    "title": "Ollama default URL hardcoded and inconsistent across 8+ files",
+    "intent": "Ollama default URL has a single source of truth. No literal Ollama URL appears outside src/config/defaults.ts. All runtime references use the same host string.",
+    "description": "The Ollama default URL is hardcoded across 8+ files with inconsistent values — some use http://127.0.0.1:11434 and others use http://localhost:11434, which are technically equivalent but create noise and risk drift. Locations: src/design/configure/ollama.ts:8 (127.0.0.1, named local const DEFAULT_OLLAMA_URL), src/evolve/memory/summarize.ts:54 (127.0.0.1), src/evolve/migrate/extract.ts:75 (127.0.0.1), src/evolve/provider/registry.ts:35 (localhost), src/evolve/integrate/validate.ts:94 (localhost), src/evolve/integrate/registry.ts:78 (localhost, string default). Same pattern as BUG-011 (Gateway port scattered across 12 files). Steps: (1) add OLLAMA_DEFAULT_URL = 'http://127.0.0.1:11434' to src/config/defaults.ts (use 127.0.0.1 to match the design/ module which is the primary Ollama caller); (2) replace all runtime string literals with the constant import; (3) update doc comments to match; (4) run tests. Scope: ~6 file edits, no logic change.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:56:35-07:00",
+    "startedAt": "2026-03-19T10:58:48-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:58:46-07:00"
+    "completedAt": "2026-03-19T11:06:17-07:00"
   },
-  "completedAt": "2026-03-19T10:58:46-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T11:06:17-07:00",
+  "attempts": 2
 }

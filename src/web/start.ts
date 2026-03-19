@@ -4,9 +4,10 @@
 
 import { serve } from "@hono/node-server";
 
+import { DASHBOARD_DEFAULT_PORT } from "../config/defaults.js";
+
 import { createApp } from "./server.js";
 import type { DashboardOptions } from "./server.js";
-import { DASHBOARD_DEFAULT_PORT } from "../config/defaults.js";
 
 const DEFAULT_HOSTNAME = "localhost";
 

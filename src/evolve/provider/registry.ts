@@ -5,6 +5,8 @@
  * validation endpoint, and default model configuration.
  */
 
+import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+
 import type { ProviderDefinition } from "./types.js";
 
 /** All known providers. */
@@ -32,7 +34,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderDefinition> = {
     label: "Ollama (Local)",
     description: "Local models via Ollama — air-gapped, zero egress",
     requiresApiKey: false,
-    baseUrl: "http://localhost:11434",
+    baseUrl: OLLAMA_DEFAULT_URL,
     defaultModel: "llama3.2",
   },
 };

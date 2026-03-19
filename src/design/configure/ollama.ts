@@ -5,13 +5,14 @@
  * Uses the Ollama REST API: POST /api/generate for text completion.
  */
 
-const DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434";
+import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+
 const DEFAULT_MODEL = "llama3:8b";
 const GENERATE_TIMEOUT_MS = 120_000; // 2 minutes — local inference can be slow
 
 /** Options for the Ollama client. */
 export interface OllamaOptions {
-  /** Base URL for the Ollama API (default: http://127.0.0.1:11434). */
+  /** Base URL for the Ollama API. */
   readonly baseUrl?: string;
 
   /** Model to use for inference (default: llama3:8b). */
@@ -30,7 +31,7 @@ interface OllamaGenerateResponse {
  * @returns true if Ollama responds, false otherwise
  */
 export async function isOllamaAvailable(
-  baseUrl: string = DEFAULT_OLLAMA_URL,
+  baseUrl: string = OLLAMA_DEFAULT_URL,
 ): Promise<boolean> {
   try {
     const res = await fetch(`${baseUrl}/api/tags`, {
@@ -50,7 +51,7 @@ export async function isOllamaAvailable(
  * @returns Array of model names, or empty if Ollama is unreachable
  */
 export async function listOllamaModels(
-  baseUrl: string = DEFAULT_OLLAMA_URL,
+  baseUrl: string = OLLAMA_DEFAULT_URL,
 ): Promise<string[]> {
   try {
     const res = await fetch(`${baseUrl}/api/tags`, {
@@ -78,7 +79,7 @@ export async function generate(
   prompt: string,
   options: OllamaOptions = {},
 ): Promise<string> {
-  const baseUrl = options.baseUrl ?? DEFAULT_OLLAMA_URL;
+  const baseUrl = options.baseUrl ?? OLLAMA_DEFAULT_URL;
   const model = options.model ?? DEFAULT_MODEL;
 
   let res: Response;

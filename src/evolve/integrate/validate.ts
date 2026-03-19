@@ -6,6 +6,8 @@
  * Probes never throw — they return a result object.
  */
 
+import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+
 import { getIntegrationDef } from "./registry.js";
 
 /** Result of a validation probe. */
@@ -91,7 +93,7 @@ const validators: Record<string, Validator> = {
   },
 
   ollama: async (env) => {
-    const host = env["OLLAMA_HOST"] ?? "http://localhost:11434";
+    const host = env["OLLAMA_HOST"] ?? OLLAMA_DEFAULT_URL;
     const result = await probeFetch(`${host}/api/tags`, { method: "GET" }, 5_000);
     if ("error" in result) return { ok: false, message: `Ollama unreachable at ${host}: ${result.error}` };
     if (result.response.status === 200) return { ok: true, message: `Connected to Ollama at ${host}` };

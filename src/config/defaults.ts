@@ -10,3 +10,6 @@ export const GATEWAY_DEFAULT_PORT = 18789;
 
 /** Default port for the ClawHQ web dashboard. */
 export const DASHBOARD_DEFAULT_PORT = 3737;
+
+/** Default base URL for the local Ollama API. */
+export const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
