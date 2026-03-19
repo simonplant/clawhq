@@ -61,7 +61,8 @@ export async function collectSample(
       diskUsedPercent: diskStats?.usedPercent ?? 0,
       diskFreeMb: diskStats?.freeMb ?? 0,
     };
-  } catch {
+  } catch (e) {
+    console.warn(`[monitor:alerts] Failed to collect resource sample:`, e);
     return null;
   }
 }
@@ -210,7 +211,8 @@ export async function checkContainerHealth(
         ));
       }
     }
-  } catch {
+  } catch (e) {
+    console.warn(`[monitor:alerts] Failed to check container health:`, e);
     alerts.push(createAlert("critical", "container-down", "Cannot reach Docker — agent container status unknown"));
   }
 
@@ -221,7 +223,8 @@ export async function checkContainerHealth(
       ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", `http://localhost:${GATEWAY_DEFAULT_PORT}`],
       { timeout: EXEC_TIMEOUT_MS, signal },
     );
-  } catch {
+  } catch (e) {
+    console.warn(`[monitor:alerts] Failed to reach gateway:`, e);
     alerts.push(createAlert("warning", "gateway-unreachable", `Gateway not responding on port ${GATEWAY_DEFAULT_PORT}`));
   }
 
@@ -279,7 +282,8 @@ async function getContainerStats(
     const memoryLimitMb = parseMem(memParts[1]);
 
     return { cpuPercent, memoryMb, memoryLimitMb };
-  } catch {
+  } catch (e) {
+    console.warn(`[monitor:alerts] Failed to get container stats:`, e);
     return null;
   }
 }
@@ -316,7 +320,8 @@ async function getDiskStats(
 
     if (isNaN(freeMb) || isNaN(usedPercent)) return null;
     return { usedPercent, freeMb };
-  } catch {
+  } catch (e) {
+    console.warn(`[monitor:alerts] Failed to get disk stats:`, e);
     return null;
   }
 }

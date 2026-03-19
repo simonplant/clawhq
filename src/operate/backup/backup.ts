@@ -260,9 +260,9 @@ export async function createBackup(options: BackupCreateOptions): Promise<Backup
     return { success: true, snapshotId, snapshotPath: encryptedPath, manifest };
   } catch (error) {
     // Clean up partial artifacts on failure
-    await rm(archivePath, { force: true }).catch(() => {});
-    await rm(encryptedPath, { force: true }).catch(() => {});
-    await rm(manifestPath, { force: true }).catch(() => {});
+    await rm(archivePath, { force: true }).catch((e) => console.warn(`[backup] Failed to clean up archive:`, e));
+    await rm(encryptedPath, { force: true }).catch((e) => console.warn(`[backup] Failed to clean up encrypted file:`, e));
+    await rm(manifestPath, { force: true }).catch((e) => console.warn(`[backup] Failed to clean up manifest:`, e));
 
     const message = error instanceof Error ? error.message : String(error);
     return { success: false, error: `Backup failed: ${message}` };
@@ -302,8 +302,8 @@ export async function listSnapshots(deployDir: string): Promise<SnapshotSummary[
         sha256: manifest.sha256,
         fileCount: manifest.fileCount,
       });
-    } catch {
-      // Corrupt manifest — skip
+    } catch (e) {
+      console.warn(`[backup] Failed to read manifest ${manifestFile}:`, e);
     }
   }
 
