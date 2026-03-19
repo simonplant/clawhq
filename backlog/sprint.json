@@ -1,30 +1,29 @@
 {
-  "sprintId": "sprint-1773915833",
-  "startedAt": "2026-03-19T03:23:53-07:00",
+  "sprintId": "sprint-1773918088",
+  "startedAt": "2026-03-19T04:01:28-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-025",
-    "title": "Approval queue",
-    "intent": "High-stakes agent actions must queue for user approval before execution. No auto-send, no auto-buy, no auto-delete without explicit user consent.",
-    "description": "SAFE AUTOMATION: Without approval queue, the agent can't safely propose actions that have real-world consequences. The email-digest skill must propose draft replies for approval — not auto-send. Telegram integration means the user gets notified on their phone, not just in a terminal. Resolution tracking means the agent knows what was approved vs. rejected, and can learn from the pattern. Acceptance: high-stakes actions queue for approval; Telegram notification sent; user can approve/reject from Telegram; resolution recorded in audit trail.",
+    "id": "CQ-027",
+    "title": "Messaging channel connection",
+    "intent": "clawhq connect must configure and verify a messaging channel so the user can talk to their agent. Without this, the agent exists but is unreachable.",
+    "description": "HIGH VALUE: The last step before the user has a working agent. Without messaging channel, the agent exists but the user can't talk to it. SEQUENCING: Must run after CQ-002 (gateway client — health ping requires WebSocket RPC) and CQ-004 (agent must be deployed before channel can be connected). Acceptance: 'clawhq connect' guides Telegram/WhatsApp bot token setup + verifies with live health ping via Gateway WebSocket; user receives a test message from their new agent.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement runtime approval queue for high-stakes actions",
-      "Add Telegram integration for approval notifications",
-      "Build approve/reject flow accessible from Telegram",
-      "Record resolution (approved/rejected) in audit trail"
+      "Implement 'clawhq connect' guided setup for Telegram bot token",
+      "Add WhatsApp channel setup support",
+      "Verify connection with live health ping via Gateway WebSocket",
+      "Send test message to confirm agent is reachable"
     ],
     "acceptanceCriteria": [
-      "High-stakes actions queue for approval before execution",
-      "Telegram notification sent for each pending approval",
-      "User can approve/reject directly from Telegram",
-      "Resolution recorded in audit trail"
+      "'clawhq connect' guides Telegram/WhatsApp bot token setup",
+      "Health ping verifies connection via Gateway WebSocket",
+      "User receives a test message from their agent on completion"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T03:23:53-07:00",
+    "startedAt": "2026-03-19T04:01:28-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T04:01:26-07:00"
+    "completedAt": "2026-03-19T04:10:16-07:00"
   },
-  "completedAt": "2026-03-19T04:01:26-07:00",
-  "attempts": 3
+  "completedAt": "2026-03-19T04:10:16-07:00",
+  "attempts": 2
 }

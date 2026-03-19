@@ -91,3 +91,4 @@
 {"date":"2026-03-19","sprintId":"sprint-1773914295","itemId":"CQ-023","status":"complete","attempts":2,"filesChanged":3,"linesAdded":5,"linesRemoved":5,"duration":881,"priority":"must","category":"secure"}
 {"date":"2026-03-19","sprintId":"sprint-1773915178","itemId":"CQ-024","status":"complete","attempts":1,"filesChanged":8,"linesAdded":4,"linesRemoved":6,"duration":653,"priority":"must","category":"evolve"}
 {"date":"2026-03-19","sprintId":"sprint-1773915833","itemId":"CQ-025","status":"complete","attempts":3,"filesChanged":8,"linesAdded":3,"linesRemoved":1,"duration":2253,"priority":"must","category":"operate"}
+{"date":"2026-03-19","sprintId":"sprint-1773918088","itemId":"CQ-027","status":"complete","attempts":2,"filesChanged":5,"linesAdded":4,"linesRemoved":4,"duration":528,"priority":"must","category":"design"}
