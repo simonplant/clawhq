@@ -65,6 +65,14 @@ import {
 } from "../evolve/skills/index.js";
 import type { SkillProgress } from "../evolve/skills/index.js";
 import {
+  availableToolNames,
+  formatToolList,
+  formatToolListJson,
+  installTool,
+  listTools,
+  removeTool,
+} from "../evolve/tools/index.js";
+import {
   createBackup,
   listSnapshots,
   restoreBackup,
@@ -1388,6 +1396,85 @@ program
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
     console.log(chalk.yellow("Not yet implemented. Coming soon."));
     process.exit(1);
+  });
+
+// ── Tool Commands ──────────────────────────────────────────────────────────
+
+const tool = program.command("tool").description("Manage agent tools");
+
+tool
+  .command("install")
+  .description("Install a tool from the registry")
+  .argument("<name>", `Tool name (${availableToolNames().join(", ")})`)
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--skip-rebuild", "Skip Stage 2 Docker rebuild")
+  .action(async (name: string, opts: { deployDir: string; skipRebuild?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const spinner = ora(`Installing tool "${name}"...`).start();
+    const result = await installTool({
+      deployDir: opts.deployDir,
+      name,
+      skipRebuild: opts.skipRebuild,
+    });
+    spinner.stop();
+    if (result.success) {
+      console.log(chalk.green(`Tool "${result.toolName}" installed.`));
+      if (result.rebuilt) {
+        console.log(chalk.dim("Stage 2 rebuild complete."));
+      } else if (result.error) {
+        console.log(chalk.yellow(result.error));
+      } else if (opts.skipRebuild) {
+        console.log(chalk.dim("Rebuild skipped. Run 'clawhq build' to apply changes."));
+      }
+    } else {
+      console.log(chalk.red(`Tool install failed: ${result.error}`));
+      process.exit(1);
+    }
+  });
+
+tool
+  .command("remove")
+  .description("Remove an installed tool")
+  .argument("<name>", "Tool name")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--skip-rebuild", "Skip Stage 2 Docker rebuild")
+  .action(async (name: string, opts: { deployDir: string; skipRebuild?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const spinner = ora(`Removing tool "${name}"...`).start();
+    const result = await removeTool({
+      deployDir: opts.deployDir,
+      name,
+      skipRebuild: opts.skipRebuild,
+    });
+    spinner.stop();
+    if (result.success) {
+      console.log(chalk.green(`Tool "${result.toolName}" removed.`));
+      if (result.rebuilt) {
+        console.log(chalk.dim("Stage 2 rebuild complete."));
+      } else if (result.error) {
+        console.log(chalk.yellow(result.error));
+      } else if (opts.skipRebuild) {
+        console.log(chalk.dim("Rebuild skipped. Run 'clawhq build' to apply changes."));
+      }
+    } else {
+      console.log(chalk.red(`Tool remove failed: ${result.error}`));
+      process.exit(1);
+    }
+  });
+
+tool
+  .command("list")
+  .description("List installed tools")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const result = await listTools({ deployDir: opts.deployDir });
+    if (opts.json) {
+      console.log(formatToolListJson(result));
+    } else {
+      console.log(formatToolList(result));
+    }
   });
 
 // ── Approval Commands ──────────────────────────────────────────────────────
