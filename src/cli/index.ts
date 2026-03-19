@@ -48,7 +48,7 @@ import {
   switchTrustMode,
   unregisterAgent,
 } from "../cloud/index.js";
-import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+import { DASHBOARD_DEFAULT_PORT, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import type { TrustMode } from "../config/types.js";
 import { validateBundle } from "../config/validate.js";
 import {
@@ -3177,7 +3177,7 @@ program
   .command("dashboard")
   .description("Start the web dashboard (Hono + htmx + Pico CSS)")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .option("-p, --port <port>", "Dashboard port", "3737")
+  .option("-p, --port <port>", "Dashboard port", String(DASHBOARD_DEFAULT_PORT))
   .option("--host <host>", "Hostname to bind to", "localhost")
   .action(async (opts: { deployDir: string; port: string; host: string }) => {
     const port = parseInt(opts.port, 10);
