@@ -47,7 +47,8 @@ function loadQueue() {
   if (!existsSync(QUEUE_FILE)) return { version: 1, items: [] };
   try {
     return JSON.parse(readFileSync(QUEUE_FILE, "utf-8"));
-  } catch {
+  } catch (err) {
+    console.warn("[approve-action] Failed to parse approval queue, resetting:", err instanceof Error ? err.message : err);
     return { version: 1, items: [] };
   }
 }
@@ -86,7 +87,8 @@ function loadTelegramConfig() {
     const botToken = get("TELEGRAM_BOT_TOKEN");
     const chatId = get("TELEGRAM_CHAT_ID");
     return botToken && chatId ? { botToken, chatId } : null;
-  } catch {
+  } catch (err) {
+    console.warn("[approve-action] Failed to read Telegram config from .env:", err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -136,7 +138,8 @@ async function sendTelegramNotification(config, item) {
       }),
     });
     return res.ok;
-  } catch {
+  } catch (err) {
+    console.warn("[approve-action] Telegram notification failed:", err instanceof Error ? err.message : err);
     return false;
   }
 }

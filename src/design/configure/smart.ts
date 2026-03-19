@@ -119,8 +119,8 @@ export async function runSmartInference(
   let loaded: ReturnType<typeof loadBlueprint>;
   try {
     loaded = loadBlueprint(slug);
-  } catch {
-    // If exact match fails, try fuzzy matching
+  } catch (err) {
+    console.warn(`[smart] Blueprint lookup failed for "${slug}", falling back to fuzzy match:`, err instanceof Error ? err.message : err);
     loaded = fuzzyMatchBlueprint(result.blueprint, blueprints);
   }
 
@@ -270,7 +270,8 @@ function parseInferenceResponse(
         : [],
       reasoning: typeof parsed["reasoning"] === "string" ? parsed["reasoning"] : "",
     };
-  } catch {
+  } catch (err) {
+    console.warn("[smart] Failed to parse Ollama inference response as JSON, using fallback blueprint:", err instanceof Error ? err.message : err);
     return fallbackResult(blueprints);
   }
 }

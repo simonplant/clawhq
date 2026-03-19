@@ -221,8 +221,8 @@ export function loadAllBuiltinBlueprints(): LoadedBlueprint[] {
   for (const name of names) {
     try {
       results.push(loadBlueprint(name));
-    } catch {
-      // Skip blueprints that fail to load — caller can load individually for errors
+    } catch (err) {
+      console.warn(`[blueprints] Failed to load blueprint "${name}", skipping:`, err instanceof Error ? err.message : err);
     }
   }
 
