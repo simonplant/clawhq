@@ -1,29 +1,31 @@
 {
-  "sprintId": "sprint-1773908717",
-  "startedAt": "2026-03-19T01:25:16-07:00",
+  "sprintId": "sprint-1773909252",
+  "startedAt": "2026-03-19T01:34:12-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-013",
-    "title": "CLI entry point + UX helpers",
-    "intent": "Ship the CLI entry point so every command is reachable, errors are human-readable, and first-run detects missing prerequisites. Nothing runs without this.",
-    "description": "HIGH VALUE: Gate item — nothing runs without this. Commander.js flat CLI (AD-01), first-run detection, spinner/error UX helpers. Acceptance: clawhq --help lists all commands; error handler formats cleanly; first-run detects missing install.",
+    "id": "CQ-014",
+    "title": "clawhq install — pre-req detection + scaffold",
+    "intent": "Make 'clawhq install' the first command that works — detect prerequisites, scaffold ~/.clawhq/, and leave the user with clear next-step guidance.",
+    "description": "HIGH VALUE: This is the literal first command a user runs. Gate: Docker detected, Node >=20, Ollama running. Creates ~/.clawhq/ scaffold. Without this, nothing else works. Acceptance: 'clawhq install' exits 0, ~/.clawhq/ structure exists, clawhq.yaml written, user sees next-step guidance.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Set up Commander.js flat CLI with all command registrations",
-      "Implement error handler with formatted terminal output",
-      "Add first-run detection for missing prerequisites",
-      "Build spinner and formatError UX helpers"
+      "Detect Docker, Node.js >=20, Ollama prerequisites",
+      "Create ~/.clawhq/ directory with correct structure",
+      "Write initial clawhq.yaml with sensible defaults",
+      "Scaffold all required subdirectories",
+      "Display clear next-step guidance on success"
     ],
     "acceptanceCriteria": [
-      "'clawhq --help' lists all registered commands",
-      "Error handler formats errors cleanly for terminal display",
-      "First-run detects missing install and guides user to 'clawhq install'"
+      "'clawhq install' exits 0 on success",
+      "~/.clawhq/ structure exists with correct layout",
+      "clawhq.yaml written with defaults",
+      "User sees clear next-step guidance after install"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T01:25:16-07:00",
+    "startedAt": "2026-03-19T01:34:12-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T01:34:10-07:00"
+    "completedAt": "2026-03-19T01:43:25-07:00"
   },
-  "completedAt": "2026-03-19T01:34:10-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T01:43:25-07:00",
+  "attempts": 2
 }

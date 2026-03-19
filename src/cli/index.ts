@@ -18,6 +18,8 @@ import { Command } from "commander";
 import ora from "ora";
 import { stringify as yamlStringify } from "yaml";
 
+import { install } from "../build/installer/index.js";
+import type { PrereqCheckResult } from "../build/installer/index.js";
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
 import { validateBundle } from "../config/validate.js";
@@ -66,9 +68,50 @@ program
   .description("Full platform install — prerequisites, engine, scaffold")
   .option("--from-source", "Zero-trust: clone, audit, build from source")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async () => {
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+  .action(async (opts: { fromSource?: boolean; deployDir: string }) => {
+    try {
+      console.log(chalk.bold("\nclawhq install\n"));
+
+      // Step 1: Check prerequisites
+      const spinner = ora("Checking prerequisites…");
+      spinner.start();
+
+      const result = await install({
+        deployDir: opts.deployDir,
+        fromSource: opts.fromSource,
+      });
+
+      spinner.stop();
+
+      // Display prereq results
+      console.log(chalk.bold("Prerequisites"));
+      for (const check of result.prereqs.checks) {
+        formatPrereqCheck(check);
+      }
+      console.log("");
+
+      if (!result.prereqs.passed) {
+        console.log(chalk.red("✘ Prerequisites not met. Fix the issues above and run again."));
+        process.exit(1);
+      }
+
+      // Step 2–3: Scaffold + config (already done by install())
+      console.log(chalk.green(`✔ Directory scaffolded at ${opts.deployDir}`));
+      console.log(chalk.green(`✔ Config written to ${result.configPath}`));
+
+      // Next-step guidance
+      console.log(chalk.bold("\nWhat's next?\n"));
+      console.log(`  1. ${chalk.bold("clawhq init --guided")}    Choose a blueprint and configure your agent`);
+      console.log(`  2. ${chalk.bold("clawhq build")}             Build the Docker image`);
+      console.log(`  3. ${chalk.bold("clawhq up")}                Deploy and start your agent`);
+      console.log("");
+      console.log(chalk.dim(`  Deployment directory: ${opts.deployDir}`));
+      console.log(chalk.dim(`  Install method: ${opts.fromSource ? "from-source (zero-trust)" : "cache (default)"}`));
+      console.log("");
+    } catch (error) {
+      console.error(renderError(error));
+      process.exit(1);
+    }
   });
 
 // ── Design Commands ─────────────────────────────────────────────────────────
@@ -646,6 +689,16 @@ cloud
     console.log(chalk.yellow("Not yet implemented. Coming soon."));
     process.exit(1);
   });
+
+// ── Prereq Formatting ──────────────────────────────────────────────────────
+
+function formatPrereqCheck(check: PrereqCheckResult): void {
+  if (check.ok) {
+    console.log(chalk.green(`  ✔ ${check.name}`), chalk.dim(check.detail));
+  } else {
+    console.log(chalk.red(`  ✘ ${check.name}`), check.detail);
+  }
+}
 
 // ── Progress Handler ────────────────────────────────────────────────────────
 
