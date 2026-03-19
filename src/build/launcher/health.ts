@@ -8,18 +8,17 @@
  * Retries with exponential backoff until timeout. Supports AbortSignal.
  */
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import {
+  DEPLOY_HEALTH_INTERVAL_MS,
+  DEPLOY_HEALTH_MAX_INTERVAL_MS,
+  DEPLOY_HEALTH_TIMEOUT_MS,
+  DEPLOY_RPC_TIMEOUT_MS,
+  DEPLOY_SMOKE_TIMEOUT_MS,
+  GATEWAY_DEFAULT_PORT,
+} from "../../config/defaults.js";
 import { GatewayClient } from "../../gateway/index.js";
 
 import type { HealthVerifyOptions, HealthVerifyResult, SmokeTestOptions, SmokeTestResult } from "./types.js";
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const DEFAULT_TIMEOUT_MS = 60_000;
-const DEFAULT_INTERVAL_MS = 2_000;
-const MAX_INTERVAL_MS = 10_000;
-const RPC_TIMEOUT_MS = 5_000;
-const SMOKE_MESSAGE_TIMEOUT_MS = 30_000;
 const SMOKE_TEST_MESSAGE = "clawhq smoke test — please respond with any message to confirm you are operational.";
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -32,8 +31,8 @@ const SMOKE_TEST_MESSAGE = "clawhq smoke test — please respond with any messag
  * backoff until timeout or AbortSignal fires.
  */
 export async function verifyHealth(options: HealthVerifyOptions): Promise<HealthVerifyResult> {
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const baseInterval = options.intervalMs ?? DEFAULT_INTERVAL_MS;
+  const timeoutMs = options.timeoutMs ?? DEPLOY_HEALTH_TIMEOUT_MS;
+  const baseInterval = options.intervalMs ?? DEPLOY_HEALTH_INTERVAL_MS;
   const host = options.gatewayHost ?? "127.0.0.1";
   const port = options.gatewayPort ?? GATEWAY_DEFAULT_PORT;
   const start = Date.now();
@@ -55,12 +54,12 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
       token: options.gatewayToken,
       host,
       port,
-      timeoutMs: RPC_TIMEOUT_MS,
+      timeoutMs: DEPLOY_RPC_TIMEOUT_MS,
     });
 
     try {
       await client.connect(options.signal);
-      await client.rpc("status", undefined, { timeoutMs: RPC_TIMEOUT_MS });
+      await client.rpc("status", undefined, { timeoutMs: DEPLOY_RPC_TIMEOUT_MS });
       client.close();
 
       return {
@@ -74,8 +73,8 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
     }
 
     // Wait before retrying (exponential backoff capped at MAX_INTERVAL_MS)
-    await sleep(Math.min(interval, MAX_INTERVAL_MS), options.signal);
-    interval = Math.min(interval * 1.5, MAX_INTERVAL_MS);
+    await sleep(Math.min(interval, DEPLOY_HEALTH_MAX_INTERVAL_MS), options.signal);
+    interval = Math.min(interval * 1.5, DEPLOY_HEALTH_MAX_INTERVAL_MS);
   }
 
   return {
@@ -100,7 +99,7 @@ export async function smokeTest(options: SmokeTestOptions): Promise<SmokeTestRes
   const host = options.gatewayHost ?? "127.0.0.1";
   const port = options.gatewayPort ?? GATEWAY_DEFAULT_PORT;
   const start = Date.now();
-  const timeoutMs = options.smokeTimeoutMs ?? SMOKE_MESSAGE_TIMEOUT_MS;
+  const timeoutMs = options.smokeTimeoutMs ?? DEPLOY_SMOKE_TIMEOUT_MS;
   const message = options.smokeMessage ?? SMOKE_TEST_MESSAGE;
 
   const client = new GatewayClient({
@@ -114,7 +113,7 @@ export async function smokeTest(options: SmokeTestOptions): Promise<SmokeTestRes
     await client.connect(options.signal);
 
     // Step 1: Verify Gateway is responsive
-    await client.rpc("status", undefined, { timeoutMs: RPC_TIMEOUT_MS });
+    await client.rpc("status", undefined, { timeoutMs: DEPLOY_RPC_TIMEOUT_MS });
 
     // Step 2: Send a real message and wait for the agent's response
     try {

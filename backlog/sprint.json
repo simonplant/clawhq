@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773948270",
-  "startedAt": "2026-03-19T12:24:30-07:00",
+  "sprintId": "sprint-1773948710",
+  "startedAt": "2026-03-19T12:31:50-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-039",
-    "title": "Remaining operate/ timeout constants not in config/defaults.ts",
-    "intent": "All operate/ timeout and interval constants have a single source of truth in config/defaults.ts. No local timeout literals remain in any operate/ submodule.",
-    "description": "BUG-038 explicitly scoped to gateway/ and operate/doctor/ + secure/credentials/ only. The remaining operate/ modules all define local EXEC_TIMEOUT_MS or DEFAULT_INTERVAL_MS constants: src/operate/monitor/recovery.ts:21 (EXEC_TIMEOUT_MS = 30_000), src/operate/monitor/alerts.ts:27 (EXEC_TIMEOUT_MS = 10_000), src/operate/status/status.ts:26 (EXEC_TIMEOUT_MS = 10_000), src/operate/status/status.ts:27 (DEFAULT_WATCH_INTERVAL_MS = 5_000), src/operate/logs/logs.ts:17 (EXEC_TIMEOUT_MS = 30_000), src/operate/updater/updater.ts:27 (EXEC_TIMEOUT_MS = 30_000), src/operate/monitor/monitor.ts:32 (DEFAULT_INTERVAL_MS = 30_000), src/operate/backup/backup.ts:35 (GPG_TIMEOUT_MS = 60_000). Steps: (1) add MONITOR_EXEC_TIMEOUT_MS=10_000, RECOVERY_EXEC_TIMEOUT_MS=30_000, STATUS_EXEC_TIMEOUT_MS=10_000, STATUS_WATCH_INTERVAL_MS=5_000, LOGS_EXEC_TIMEOUT_MS=30_000, UPDATER_EXEC_TIMEOUT_MS=30_000, MONITOR_HEALTH_INTERVAL_MS=30_000, BACKUP_GPG_TIMEOUT_MS=60_000 to src/config/defaults.ts; (2) import and replace local constants in each file; (3) run operate/ tests. Scope: 8 files, no logic change. Direct follow-up to BUG-038.",
+    "id": "BUG-040",
+    "title": "Timeout constants in build/launcher/ not in config/defaults.ts",
+    "intent": "All build/launcher/ timeout and interval constants have a single source of truth in config/defaults.ts. No local timeout literals remain except in firewall.ts (deferred to BUG-020/post-CQ-005).",
+    "description": "src/build/launcher/ has 5 local timeout constants not centralized in config/defaults.ts, following the same pattern as BUG-038 (gateway/) and BUG-039 (operate/). Locations: src/build/launcher/health.ts:18 (DEFAULT_TIMEOUT_MS=60_000), src/build/launcher/health.ts:19 (DEFAULT_INTERVAL_MS=2_000), src/build/launcher/health.ts:20 (MAX_INTERVAL_MS=10_000), src/build/launcher/health.ts:21 (RPC_TIMEOUT_MS=5_000), src/build/launcher/health.ts:22 (SMOKE_MESSAGE_TIMEOUT_MS=30_000), src/build/launcher/preflight.ts:23 (EXEC_TIMEOUT_MS=15_000). Note: src/build/launcher/firewall.ts:25 (EXEC_TIMEOUT_MS=15_000) will move to src/secure/firewall/firewall.ts when CQ-005 completes — do NOT touch firewall.ts here, that's covered by BUG-020. Steps: (1) add DEPLOY_HEALTH_TIMEOUT_MS=60_000, DEPLOY_HEALTH_INTERVAL_MS=2_000, DEPLOY_HEALTH_MAX_INTERVAL_MS=10_000, DEPLOY_RPC_TIMEOUT_MS=5_000, DEPLOY_SMOKE_TIMEOUT_MS=30_000, PREFLIGHT_EXEC_TIMEOUT_MS=15_000 to src/config/defaults.ts; (2) import and replace in health.ts and preflight.ts; (3) run build/ tests. Scope: 3 files, no logic change. Do NOT touch firewall.ts.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T12:24:30-07:00",
+    "startedAt": "2026-03-19T12:31:50-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T12:31:48-07:00"
+    "completedAt": "2026-03-19T12:35:13-07:00"
   },
-  "completedAt": "2026-03-19T12:31:48-07:00",
+  "completedAt": "2026-03-19T12:35:13-07:00",
   "attempts": 1
 }

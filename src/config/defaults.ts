@@ -103,3 +103,23 @@ export const UPDATER_PULL_TIMEOUT_MS = 300_000;
 
 /** Default interval for scheduled memory lifecycle runs (ms). */
 export const MONITOR_MEMORY_LIFECYCLE_INTERVAL_MS = 6 * 3_600_000;
+
+// ── Deploy / launcher defaults ──────────────────────────────────────────────
+
+/** Overall timeout for post-deploy health verification (ms). */
+export const DEPLOY_HEALTH_TIMEOUT_MS = 60_000;
+
+/** Base interval between health check retries during deploy (ms). */
+export const DEPLOY_HEALTH_INTERVAL_MS = 2_000;
+
+/** Maximum back-off interval for deploy health retries (ms). */
+export const DEPLOY_HEALTH_MAX_INTERVAL_MS = 10_000;
+
+/** Timeout for individual RPC calls during deploy health checks (ms). */
+export const DEPLOY_RPC_TIMEOUT_MS = 5_000;
+
+/** Timeout for the post-deploy smoke test message round-trip (ms). */
+export const DEPLOY_SMOKE_TIMEOUT_MS = 30_000;
+
+/** Timeout for shell commands in preflight checks (ms). */
+export const PREFLIGHT_EXEC_TIMEOUT_MS = 15_000;
