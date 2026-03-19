@@ -59,6 +59,18 @@ import {
 } from "../evolve/lifecycle/index.js";
 import type { DestructionProof, LifecycleProgress } from "../evolve/lifecycle/index.js";
 import {
+  analyzePreferences,
+  formatLifecycleResult,
+  formatLifecycleResultJson,
+  formatMemoryStatus,
+  formatMemoryStatusJson,
+  formatPreferenceReport,
+  formatPreferenceReportJson,
+  getMemoryStatus,
+  runLifecycle,
+} from "../evolve/memory/index.js";
+import type { MemoryProgress } from "../evolve/memory/index.js";
+import {
   formatSkillList,
   formatSkillListJson,
   installSkill,
@@ -1501,6 +1513,63 @@ program
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
     console.log(chalk.yellow("Not yet implemented. Coming soon."));
     process.exit(1);
+  });
+
+// ── Memory Commands ────────────────────────────────────────────────────────
+
+const memory = program.command("memory").description("Manage agent memory tiers");
+
+memory
+  .command("status")
+  .description("Show memory tier status")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const status = await getMemoryStatus({ deployDir: opts.deployDir });
+    if (opts.json) {
+      console.log(formatMemoryStatusJson(status));
+    } else {
+      console.log(formatMemoryStatus(status));
+    }
+  });
+
+memory
+  .command("run")
+  .description("Run memory lifecycle (transition entries between tiers)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const spinner = ora("Running memory lifecycle...").start();
+    const result = await runLifecycle({
+      deployDir: opts.deployDir,
+      onProgress: (p: MemoryProgress) => {
+        if (p.status === "running") spinner.text = p.message;
+      },
+    });
+    spinner.stop();
+    if (opts.json) {
+      console.log(formatLifecycleResultJson(result));
+    } else {
+      console.log(formatLifecycleResult(result));
+    }
+    if (!result.success) process.exit(1);
+  });
+
+memory
+  .command("preferences")
+  .description("Show learned preference patterns")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const report = await analyzePreferences({ deployDir: opts.deployDir });
+    if (opts.json) {
+      console.log(formatPreferenceReportJson(report));
+    } else {
+      console.log(formatPreferenceReport(report));
+    }
   });
 
 // ── Tool Commands ──────────────────────────────────────────────────────────
