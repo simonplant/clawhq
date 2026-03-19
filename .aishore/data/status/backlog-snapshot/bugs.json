@@ -541,11 +541,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "6 local timeout constants to centralize. Files: gateway/client.ts (DEFAULT_TIMEOUT_MS, CONNECT_TIMEOUT_MS), gateway/health.ts (DEFAULT_INTERVAL_MS, DEFAULT_HEALTH_TIMEOUT_MS), operate/doctor/checks.ts (EXEC_TIMEOUT_MS), secure/credentials/probes.ts (timeoutMs default). Add 6 named constants to defaults.ts, import and replace each. Keep the same variable names locally if needed for backwards compat, or replace inline. Also check operate/monitor/recovery.ts:21, operate/monitor/alerts.ts:27, operate/status/status.ts:26-27, operate/logs/logs.ts:17, operate/updater/updater.ts:27 — all define local EXEC_TIMEOUT_MS = 30_000; each can import the same DOCTOR_EXEC_TIMEOUT_MS or a new OPERATE_EXEC_TIMEOUT_MS depending on value. SCOPE LIMIT: Only the 6 gateway/ and operate/doctor/ + secure/credentials/ instances — do not sweep all operate/ in one PR. Defer the remaining operate/ monitor/recovery/alerts/status/logs/updater to a follow-up. Run gateway/ and operate/ tests after. No blocking dependencies."
+      "groomingNotes": "6 local timeout constants to centralize. Files: gateway/client.ts (DEFAULT_TIMEOUT_MS, CONNECT_TIMEOUT_MS), gateway/health.ts (DEFAULT_INTERVAL_MS, DEFAULT_HEALTH_TIMEOUT_MS), operate/doctor/checks.ts (EXEC_TIMEOUT_MS), secure/credentials/probes.ts (timeoutMs default). Add 6 named constants to defaults.ts, import and replace each. Keep the same variable names locally if needed for backwards compat, or replace inline. Also check operate/monitor/recovery.ts:21, operate/monitor/alerts.ts:27, operate/status/status.ts:26-27, operate/logs/logs.ts:17, operate/updater/updater.ts:27 — all define local EXEC_TIMEOUT_MS = 30_000; each can import the same DOCTOR_EXEC_TIMEOUT_MS or a new OPERATE_EXEC_TIMEOUT_MS depending on value. SCOPE LIMIT: Only the 6 gateway/ and operate/doctor/ + secure/credentials/ instances — do not sweep all operate/ in one PR. Defer the remaining operate/ monitor/recovery/alerts/status/logs/updater to a follow-up. Run gateway/ and operate/ tests after. No blocking dependencies.",
+      "completedAt": "2026-03-19T12:24:28-07:00"
     },
     {
       "id": "BUG-039",

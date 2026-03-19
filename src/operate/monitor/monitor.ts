@@ -12,6 +12,7 @@
  * Runs until AbortSignal fires. Never throws.
  */
 
+import { MONITOR_HEALTH_INTERVAL_MS, MONITOR_MEMORY_LIFECYCLE_INTERVAL_MS } from "../../config/defaults.js";
 import { runLifecycle } from "../../evolve/memory/lifecycle.js";
 
 import { analyzeHealth, checkContainerHealth, collectSample } from "./alerts.js";
@@ -29,9 +30,7 @@ import type {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const DEFAULT_INTERVAL_MS = 30_000;
 const DEFAULT_DIGEST_HOUR = 8;
-const DEFAULT_MEMORY_LIFECYCLE_INTERVAL_MS = 6 * 3600_000; // 6 hours
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -42,7 +41,7 @@ const DEFAULT_MEMORY_LIFECYCLE_INTERVAL_MS = 6 * 3600_000; // 6 hours
  * and delivers daily digests. Stops when signal is aborted.
  */
 export async function startMonitor(options: MonitorOptions): Promise<MonitorState> {
-  const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS;
+  const intervalMs = options.intervalMs ?? MONITOR_HEALTH_INTERVAL_MS;
   const digestHour = options.notify?.digestHour ?? DEFAULT_DIGEST_HOUR;
   const startedAt = new Date().toISOString();
 
@@ -55,7 +54,7 @@ export async function startMonitor(options: MonitorOptions): Promise<MonitorStat
   let lastDigestDate = "";
   let lastMemoryLifecycleAt = 0;
   const memoryLifecycleIntervalMs =
-    options.memoryLifecycle?.intervalMs ?? DEFAULT_MEMORY_LIFECYCLE_INTERVAL_MS;
+    options.memoryLifecycle?.intervalMs ?? MONITOR_MEMORY_LIFECYCLE_INTERVAL_MS;
 
   const emit = (type: MonitorEvent["type"], message: string, data?: unknown): void => {
     options.onEvent?.({

@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773947873",
-  "startedAt": "2026-03-19T12:17:53-07:00",
+  "sprintId": "sprint-1773948270",
+  "startedAt": "2026-03-19T12:24:30-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-038",
-    "title": "Gateway and operate/ timeout constants scattered — not in config/defaults.ts",
-    "intent": "All timeout and interval constants in gateway/ and operate/ must have a single source of truth in config/defaults.ts. Changing timeouts must require editing one file.",
-    "description": "The same BUG-011/BUG-025 constant-scattering pattern applies to timeout and interval values. Key locations: src/gateway/client.ts:31 (DEFAULT_TIMEOUT_MS = 10_000), src/gateway/client.ts:32 (CONNECT_TIMEOUT_MS = 5_000), src/gateway/health.ts:19 (DEFAULT_INTERVAL_MS = 30_000), src/gateway/health.ts:20 (DEFAULT_HEALTH_TIMEOUT_MS = 5_000), src/operate/doctor/checks.ts:26 (EXEC_TIMEOUT_MS = 15_000), src/secure/credentials/probes.ts:37 (timeoutMs = 10_000). These are local-only constants — if you need to tune the gateway timeout for a slow network, you must find all the right files. The credentials probe timeout is especially important as it affects CI/CD pipelines. Steps: (1) add GATEWAY_RPC_TIMEOUT_MS = 10_000, GATEWAY_CONNECT_TIMEOUT_MS = 5_000, GATEWAY_HEALTH_INTERVAL_MS = 30_000, GATEWAY_HEALTH_TIMEOUT_MS = 5_000, DOCTOR_EXEC_TIMEOUT_MS = 15_000, CREDENTIALS_PROBE_TIMEOUT_MS = 10_000 to src/config/defaults.ts; (2) import and replace local constants in each file; (3) run gateway/ and operate/ tests. Scope: 6 files, no logic change. Pattern identical to BUG-011.",
+    "id": "BUG-039",
+    "title": "Remaining operate/ timeout constants not in config/defaults.ts",
+    "intent": "All operate/ timeout and interval constants have a single source of truth in config/defaults.ts. No local timeout literals remain in any operate/ submodule.",
+    "description": "BUG-038 explicitly scoped to gateway/ and operate/doctor/ + secure/credentials/ only. The remaining operate/ modules all define local EXEC_TIMEOUT_MS or DEFAULT_INTERVAL_MS constants: src/operate/monitor/recovery.ts:21 (EXEC_TIMEOUT_MS = 30_000), src/operate/monitor/alerts.ts:27 (EXEC_TIMEOUT_MS = 10_000), src/operate/status/status.ts:26 (EXEC_TIMEOUT_MS = 10_000), src/operate/status/status.ts:27 (DEFAULT_WATCH_INTERVAL_MS = 5_000), src/operate/logs/logs.ts:17 (EXEC_TIMEOUT_MS = 30_000), src/operate/updater/updater.ts:27 (EXEC_TIMEOUT_MS = 30_000), src/operate/monitor/monitor.ts:32 (DEFAULT_INTERVAL_MS = 30_000), src/operate/backup/backup.ts:35 (GPG_TIMEOUT_MS = 60_000). Steps: (1) add MONITOR_EXEC_TIMEOUT_MS=10_000, RECOVERY_EXEC_TIMEOUT_MS=30_000, STATUS_EXEC_TIMEOUT_MS=10_000, STATUS_WATCH_INTERVAL_MS=5_000, LOGS_EXEC_TIMEOUT_MS=30_000, UPDATER_EXEC_TIMEOUT_MS=30_000, MONITOR_HEALTH_INTERVAL_MS=30_000, BACKUP_GPG_TIMEOUT_MS=60_000 to src/config/defaults.ts; (2) import and replace local constants in each file; (3) run operate/ tests. Scope: 8 files, no logic change. Direct follow-up to BUG-038.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T12:17:53-07:00",
+    "startedAt": "2026-03-19T12:24:30-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T12:24:28-07:00"
+    "completedAt": "2026-03-19T12:31:48-07:00"
   },
-  "completedAt": "2026-03-19T12:24:28-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T12:31:48-07:00",
+  "attempts": 1
 }

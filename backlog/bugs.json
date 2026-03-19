@@ -557,11 +557,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Direct follow-up to BUG-038 which explicitly deferred these. 8 local timeout/interval constants across 8 operate/ files. Add named constants to defaults.ts, import and replace. Files: monitor/recovery.ts:21 (EXEC_TIMEOUT_MS=30_000), monitor/alerts.ts:27 (EXEC_TIMEOUT_MS=10_000), status/status.ts:26-27 (EXEC_TIMEOUT_MS=10_000, DEFAULT_WATCH_INTERVAL_MS=5_000), logs/logs.ts:17 (EXEC_TIMEOUT_MS=30_000), updater/updater.ts:27 (EXEC_TIMEOUT_MS=30_000), monitor/monitor.ts:32 (DEFAULT_INTERVAL_MS=30_000), backup/backup.ts:35 (GPG_TIMEOUT_MS=60_000). Note: recovery/logs/updater all use 30_000 — consider OPERATE_LONG_EXEC_TIMEOUT_MS as a shared constant. alerts/status use 10_000 — OPERATE_SHORT_EXEC_TIMEOUT_MS. Name clearly to avoid confusion with DOCTOR_EXEC_TIMEOUT_MS from BUG-038. Run operate/ tests after each file. No blocking dependencies."
+      "groomingNotes": "Direct follow-up to BUG-038 which explicitly deferred these. 8 local timeout/interval constants across 8 operate/ files. Add named constants to defaults.ts, import and replace. Files: monitor/recovery.ts:21 (EXEC_TIMEOUT_MS=30_000), monitor/alerts.ts:27 (EXEC_TIMEOUT_MS=10_000), status/status.ts:26-27 (EXEC_TIMEOUT_MS=10_000, DEFAULT_WATCH_INTERVAL_MS=5_000), logs/logs.ts:17 (EXEC_TIMEOUT_MS=30_000), updater/updater.ts:27 (EXEC_TIMEOUT_MS=30_000), monitor/monitor.ts:32 (DEFAULT_INTERVAL_MS=30_000), backup/backup.ts:35 (GPG_TIMEOUT_MS=60_000). Note: recovery/logs/updater all use 30_000 — consider OPERATE_LONG_EXEC_TIMEOUT_MS as a shared constant. alerts/status use 10_000 — OPERATE_SHORT_EXEC_TIMEOUT_MS. Name clearly to avoid confusion with DOCTOR_EXEC_TIMEOUT_MS from BUG-038. Run operate/ tests after each file. No blocking dependencies.",
+      "completedAt": "2026-03-19T12:31:48-07:00"
     },
     {
       "id": "BUG-040",

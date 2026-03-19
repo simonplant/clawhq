@@ -67,3 +67,39 @@ export const DOCTOR_EXEC_TIMEOUT_MS = 15_000;
 
 /** Timeout for credential probe HTTP requests (ms). */
 export const CREDENTIALS_PROBE_TIMEOUT_MS = 10_000;
+
+/** Timeout for shell commands in monitor alerts (ms). */
+export const MONITOR_EXEC_TIMEOUT_MS = 10_000;
+
+/** Timeout for shell commands in monitor recovery (ms). */
+export const RECOVERY_EXEC_TIMEOUT_MS = 30_000;
+
+/** Timeout for shell commands in status dashboard (ms). */
+export const STATUS_EXEC_TIMEOUT_MS = 10_000;
+
+/** Default interval for status --watch mode (ms). */
+export const STATUS_WATCH_INTERVAL_MS = 5_000;
+
+/** Timeout for shell commands in log streaming (ms). */
+export const LOGS_EXEC_TIMEOUT_MS = 30_000;
+
+/** Timeout for shell commands in updater (ms). */
+export const UPDATER_EXEC_TIMEOUT_MS = 30_000;
+
+/** Default interval for the monitor health polling loop (ms). */
+export const MONITOR_HEALTH_INTERVAL_MS = 30_000;
+
+/** Timeout for GPG encryption/decryption in backup operations (ms). */
+export const BACKUP_GPG_TIMEOUT_MS = 60_000;
+
+/** Timeout for GPG decryption during backup restore (ms). */
+export const BACKUP_RESTORE_GPG_TIMEOUT_MS = 120_000;
+
+/** Timeout for tar extraction during backup restore (ms). */
+export const BACKUP_RESTORE_TAR_TIMEOUT_MS = 120_000;
+
+/** Timeout for Docker image pull during updates (ms). */
+export const UPDATER_PULL_TIMEOUT_MS = 300_000;
+
+/** Default interval for scheduled memory lifecycle runs (ms). */
+export const MONITOR_MEMORY_LIFECYCLE_INTERVAL_MS = 6 * 3_600_000;

@@ -10,7 +10,11 @@ import { access, constants, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import {
+  GATEWAY_DEFAULT_PORT,
+  STATUS_EXEC_TIMEOUT_MS,
+  STATUS_WATCH_INTERVAL_MS,
+} from "../../config/defaults.js";
 
 import type {
   ContainerStatus,
@@ -22,9 +26,6 @@ import type {
 } from "./types.js";
 
 const execFileAsync = promisify(execFile);
-
-const EXEC_TIMEOUT_MS = 10_000;
-const DEFAULT_WATCH_INTERVAL_MS = 5_000;
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -65,7 +66,7 @@ export async function getStatus(options: StatusOptions): Promise<StatusSnapshot>
  * Does an immediate update, then repeats on interval.
  */
 export async function watchStatus(options: StatusWatchOptions): Promise<void> {
-  const intervalMs = options.intervalMs ?? DEFAULT_WATCH_INTERVAL_MS;
+  const intervalMs = options.intervalMs ?? STATUS_WATCH_INTERVAL_MS;
 
   const tick = async (): Promise<void> => {
     const snapshot = await getStatus(options);
@@ -103,7 +104,7 @@ async function getContainerStatus(
     const { stdout } = await execFileAsync(
       "docker",
       ["compose", "-f", composePath, "ps", "--format", "json"],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: STATUS_EXEC_TIMEOUT_MS, signal },
     );
 
     if (!stdout.trim()) return null;
@@ -140,7 +141,7 @@ async function getGatewayStatus(signal?: AbortSignal): Promise<GatewayStatus> {
     await execFileAsync(
       "curl",
       ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", `http://localhost:${GATEWAY_DEFAULT_PORT}`],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: STATUS_EXEC_TIMEOUT_MS, signal },
     );
     return {
       reachable: true,
@@ -199,7 +200,7 @@ async function getDiskUsage(
     const { stdout } = await execFileAsync(
       "df",
       ["--output=size,avail,pcent", "-BM", deployDir],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: STATUS_EXEC_TIMEOUT_MS, signal },
     );
 
     const lines = stdout.trim().split("\n");
