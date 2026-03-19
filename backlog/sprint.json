@@ -1,31 +1,32 @@
 {
-  "sprintId": "sprint-1773925562",
-  "startedAt": "2026-03-19T06:06:02-07:00",
+  "sprintId": "sprint-1773927160",
+  "startedAt": "2026-03-19T06:32:40-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-034",
-    "title": "Memory lifecycle + autonomy + trace + learning",
-    "intent": "Manage agent memory across hot/warm/cold tiers so the agent gets smarter over time without bloating context. PII must be masked before cold storage.",
-    "description": "LONG-TERM RETENTION: Memory lifecycle is what makes the agent smarter over time. Hot/warm/cold tiers prevent the 360KB memory bloat problem described in PRODUCT.md. Preference learning is the '6 months' story: 'It knows your top clients are always priority.' Not blocking initial adoption but critical for the 30-day churn metric. Acceptance: hot/warm/cold tiers active; LLM-powered summarization runs on schedule; PII masked before cold tier; agent preference patterns visible to user.",
+    "id": "CQ-035",
+    "title": "Migration import (ChatGPT + Google Assistant)",
+    "intent": "Import ChatGPT and Google Assistant exports so migrating users start with preferences intact on day 1. All processing local, PII masked.",
+    "description": "MIGRATION STORY: Lowers the barrier for Privacy Migrants coming from ChatGPT or Google Assistant. Extracting preferences from export data means the forged agent already knows the user's patterns on day 1. PII masking during import keeps sensitive data local. Cron mapping from routines is the key value-add — not just importing preferences but translating them to scheduled jobs. Acceptance: ChatGPT export parsed; preferences extracted via Ollama; routine → cron mapping produced; PII masked; import completes without network calls.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement hot/warm/cold memory tiers with lifecycle transitions",
-      "Add LLM-powered summarization on configurable schedule",
-      "Apply PII masking before cold tier storage",
-      "Build autonomy recommendations from preference patterns",
-      "Implement decision trace logging"
+      "Parse ChatGPT data export format",
+      "Parse Google Assistant data export format",
+      "Extract user preferences via local Ollama",
+      "Map exported routines to cron job definitions",
+      "Apply PII masking during import processing"
     ],
     "acceptanceCriteria": [
-      "Hot/warm/cold tiers active with automatic lifecycle transitions",
-      "LLM-powered summarization runs on schedule",
-      "PII masked before cold tier storage",
-      "Agent preference patterns visible to user"
+      "ChatGPT export parsed successfully",
+      "Preferences extracted via local Ollama",
+      "Routine-to-cron mapping produced correctly",
+      "PII masked during import",
+      "Import completes without any network calls"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T06:06:02-07:00",
+    "startedAt": "2026-03-19T06:32:40-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T06:32:38-07:00"
+    "completedAt": "2026-03-19T06:46:13-07:00"
   },
-  "completedAt": "2026-03-19T06:32:38-07:00",
-  "attempts": 3
+  "completedAt": "2026-03-19T06:46:13-07:00",
+  "attempts": 2
 }

@@ -861,8 +861,8 @@
       "description": "MIGRATION STORY: Lowers the barrier for Privacy Migrants coming from ChatGPT or Google Assistant. Extracting preferences from export data means the forged agent already knows the user's patterns on day 1. PII masking during import keeps sensitive data local. Cron mapping from routines is the key value-add — not just importing preferences but translating them to scheduled jobs. Acceptance: ChatGPT export parsed; preferences extracted via Ollama; routine → cron mapping produced; PII masked; import completes without network calls.",
       "category": "evolve",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Parse ChatGPT data export format",
         "Parse Google Assistant data export format",
@@ -876,7 +876,9 @@
         "Routine-to-cron mapping produced correctly",
         "PII masked during import",
         "Import completes without any network calls"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T06:46:13-07:00"
     },
     {
       "id": "CQ-036",
