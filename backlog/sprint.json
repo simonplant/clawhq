@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773940775",
-  "startedAt": "2026-03-19T10:19:35-07:00",
+  "sprintId": "sprint-1773941443",
+  "startedAt": "2026-03-19T10:30:43-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-015",
-    "title": "Silent catch blocks in secure/ swallow errors with no logging",
-    "intent": "No error in the secure/ module is silently discarded. Scanner and audit failures must be logged. A scanner that silently fails is indistinguishable from a clean scan.",
-    "description": "12+ catch blocks across the secure/ module swallow errors silently. Key locations: src/secure/scanner/git.ts (lines 37,50,69 — git history scan errors), src/secure/scanner/walk.ts (lines 41,62,70 — file walk errors), src/secure/audit/logger.ts (lines 59,88,118,148,184,216 — audit log write failures), src/secure/credentials/probes.ts (line 185 — credential probe failures). The audit/logger.ts instances are particularly critical — if audit log writes fail silently, the tamper-evident audit trail has invisible gaps. Steps: (1) search secure/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour, just add logging. Scope: ~12 one-line additions across secure/.",
+    "id": "BUG-016",
+    "title": "config/paths.ts still uses process.env.HOME instead of os.homedir()",
+    "intent": "os.homedir() is the single API for user home directory throughout the codebase. No process.env.HOME usage remains after BUG-010.",
+    "description": "src/config/paths.ts lines 42 and 51 use process.env.HOME ?? homedir() — they correctly import and fall back to homedir(), but still unnecessarily check process.env.HOME first. BUG-010 established that os.homedir() is the correct cross-platform API and fixed sanitizer.ts, but paths.ts was not updated. While the current code is safe (homedir() is the fallback), the inconsistency violates the intent of BUG-010. Steps: (1) open src/config/paths.ts; (2) find lines using process.env.HOME ?? homedir(); (3) replace each with homedir() directly; (4) verify homedir import from 'os' is present; (5) run existing config/paths tests to confirm no regression. Scope: two-line change in one file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:19:35-07:00",
+    "startedAt": "2026-03-19T10:30:43-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:23:48-07:00"
+    "completedAt": "2026-03-19T10:32:14-07:00"
   },
-  "completedAt": "2026-03-19T10:23:48-07:00",
+  "completedAt": "2026-03-19T10:32:14-07:00",
   "attempts": 1
 }

@@ -39,7 +39,7 @@ export const OPENCLAW_CONTAINER_CRON = `${OPENCLAW_CONTAINER_ROOT}/cron`;
 
 /** Default deployment directory on the host. */
 export const DEFAULT_DEPLOY_DIR = join(
-  process.env.HOME ?? homedir(),
+  homedir(),
   ".clawhq",
 );
 
@@ -48,6 +48,6 @@ export const DEFAULT_DEPLOY_DIR = join(
  * Migration command detects this and moves to DEFAULT_DEPLOY_DIR.
  */
 export const LEGACY_DEPLOY_DIR = join(
-  process.env.HOME ?? homedir(),
+  homedir(),
   ".openclaw",
 );
