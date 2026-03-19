@@ -154,8 +154,31 @@ describe("generateBundle", () => {
     expect(bundle.envVars["EMAIL_IMAP_USER"]).toBe("user@example.com");
   });
 
+  it("generates skill-specific cron jobs for included skills", () => {
+    const loaded = loadBlueprint("email-manager");
+    const answers = makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+    });
+    const bundle = generateBundle(answers);
+    const ids = bundle.cronJobs.map((j) => j.id);
+    expect(ids).toContain("skill-email-digest");
+    expect(ids).toContain("skill-morning-brief");
+
+    // Verify the skill cron job uses valid expressions (LM-09)
+    const skillJob = bundle.cronJobs.find((j) => j.id === "skill-email-digest");
+    expect(skillJob).toBeDefined();
+    expect(skillJob!.enabled).toBe(true);
+    expect(skillJob!.expr).toBeDefined();
+    // Must not have bare N/step
+    for (const field of skillJob!.expr!.split(/\s+/)) {
+      expect(field).not.toMatch(/^\d+\/\d+$/);
+    }
+  });
+
   it("passes full validation for every built-in blueprint", () => {
     const blueprintNames = [
+      "email-manager",
       "family-hub",
       "founders-ops",
       "replace-chatgpt-plus",

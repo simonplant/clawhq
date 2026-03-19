@@ -1,0 +1,37 @@
+# email-digest skill configuration
+name: email-digest
+version: "1.0.0"
+description: "Periodic inbox triage — categorize, summarize, propose responses with approval gates"
+
+# Schedule: runs every 15 minutes during waking hours
+# Aligned with Email Manager blueprint cron_config.work_session
+schedule:
+  cron: "*/15 * * * *"
+  active_hours:
+    start: 6
+    end: 23
+
+# Model requirements — local only, no cloud
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+# Tools this skill depends on
+dependencies:
+  tools:
+    - email
+  skills: []
+
+# Approval: all proposed responses require user consent
+approval:
+  required: true
+  category: send_email
+  auto_approve: false
+
+# Boundaries
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false

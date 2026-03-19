@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -298,6 +299,37 @@ describe("installSkill", () => {
 
     expect(result.success).toBe(false);
     expect(result.status).toBe("rejected");
+  });
+
+  it("installs the bundled email-digest skill package through full pipeline", async () => {
+    // Locate the actual email-digest skill package
+    const thisFile = fileURLToPath(import.meta.url);
+    const repoRoot = resolve(dirname(thisFile), "../../..");
+    const source = join(repoRoot, "configs", "skills", "email-digest");
+
+    const result = await installSkill({
+      deployDir,
+      source,
+      autoApprove: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.skillName).toBe("email-digest");
+    expect(result.status).toBe("active");
+
+    // Verify vetting passed with no critical/high findings
+    expect(result.vetReport).toBeDefined();
+    expect(result.vetReport!.passed).toBe(true);
+    expect(result.vetReport!.summary.criticalCount).toBe(0);
+    expect(result.vetReport!.summary.highCount).toBe(0);
+
+    // Verify skill files are installed
+    const skillDir = join(deployDir, "workspace", "skills", "email-digest");
+    expect(existsSync(join(skillDir, "SKILL.md"))).toBe(true);
+    expect(existsSync(join(skillDir, "config.yaml"))).toBe(true);
+    expect(existsSync(join(skillDir, "prompts", "categorize.md"))).toBe(true);
+    expect(existsSync(join(skillDir, "prompts", "summarize.md"))).toBe(true);
+    expect(existsSync(join(skillDir, "prompts", "propose-response.md"))).toBe(true);
   });
 });
 
