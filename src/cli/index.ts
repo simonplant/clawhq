@@ -1843,6 +1843,10 @@ program
     process.on("SIGTERM", () => ac.abort());
 
     const lineCount = parseInt(opts.lines, 10);
+    if (isNaN(lineCount)) {
+      console.error(chalk.red("Invalid --lines value: must be a number"));
+      process.exit(1);
+    }
 
     try {
       if (opts.follow) {
@@ -1916,8 +1920,18 @@ program
     // Build notification channels from .env
     const channels = await loadNotificationChannels(opts.deployDir);
 
-    const intervalMs = Math.max(10, parseInt(opts.interval, 10)) * 1000;
-    const digestHour = Math.max(0, Math.min(23, parseInt(opts.digestHour, 10)));
+    const parsedInterval = parseInt(opts.interval, 10);
+    if (isNaN(parsedInterval)) {
+      console.error(chalk.red("Invalid --interval value: must be a number"));
+      process.exit(1);
+    }
+    const intervalMs = Math.max(10, parsedInterval) * 1000;
+    const parsedDigestHour = parseInt(opts.digestHour, 10);
+    if (isNaN(parsedDigestHour)) {
+      console.error(chalk.red("Invalid --digest-hour value: must be a number"));
+      process.exit(1);
+    }
+    const digestHour = Math.max(0, Math.min(23, parsedDigestHour));
 
     if (!opts.json) {
       console.log(chalk.green("Monitor daemon started."));
@@ -1955,8 +1969,13 @@ program
       }
     };
 
+    const parsedMemoryLifecycleInterval = parseFloat(opts.memoryLifecycleInterval);
+    if (isNaN(parsedMemoryLifecycleInterval)) {
+      console.error(chalk.red("Invalid --memory-lifecycle-interval value: must be a number"));
+      process.exit(1);
+    }
     const memoryLifecycleIntervalMs =
-      Math.max(1, parseFloat(opts.memoryLifecycleInterval)) * 3600_000;
+      Math.max(1, parsedMemoryLifecycleInterval) * 3600_000;
 
     const state = await startMonitor({
       deployDir: opts.deployDir,
@@ -2696,13 +2715,19 @@ role
     const permissions = opts.permissions.split(",").map((s) => s.trim()) as Permission[];
     const categories = opts.categories ? opts.categories.split(",").map((s) => s.trim()) : undefined;
 
+    const maxEgressDomains = parseInt(opts.maxEgress, 10);
+    if (isNaN(maxEgressDomains)) {
+      console.error(chalk.red("Invalid --max-egress value: must be a number"));
+      process.exit(1);
+    }
+
     const result = await addRole({
       deployDir: opts.deployDir,
       name,
       description: opts.description,
       permissions,
       categories,
-      maxEgressDomains: parseInt(opts.maxEgress, 10),
+      maxEgressDomains,
     });
 
     if (result.success) {
