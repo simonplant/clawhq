@@ -20,7 +20,7 @@ import { join } from "node:path";
 
 import chalk from "chalk";
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
 import { allTemplatesToChoices } from "../blueprints/choice.js";
 import {
   loadAllBuiltinBlueprints,
@@ -58,7 +58,7 @@ export async function createInquirerPrompter(): Promise<Prompter> {
 
 const DEFAULT_DEPLOY_DIR = join(homedir(), ".clawhq");
 const DEFAULT_GATEWAY_PORT = GATEWAY_DEFAULT_PORT;
-const DEFAULT_LOCAL_MODEL = "llama3:8b";
+const DEFAULT_LOCAL_MODEL = OLLAMA_DEFAULT_MODEL;
 
 /**
  * Run the interactive setup wizard.

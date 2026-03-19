@@ -6,7 +6,7 @@
  * Falls back to truncation if Ollama is unavailable.
  */
 
-import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+import { OLLAMA_DEFAULT_MODEL, OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 import {
   generate,
   isOllamaAvailable,
@@ -53,7 +53,7 @@ export async function summarizeMemory(
 ): Promise<SummarizeResult> {
   const { text, strategy } = options;
   const ollamaUrl = options.ollamaUrl ?? OLLAMA_DEFAULT_URL;
-  const model = options.model ?? "llama3:8b";
+  const model = options.model ?? OLLAMA_DEFAULT_MODEL;
 
   const originalSize = Buffer.byteLength(text, "utf-8");
 

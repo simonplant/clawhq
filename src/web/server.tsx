@@ -13,7 +13,7 @@ import { Hono } from "hono";
 import { stringify as yamlStringify } from "yaml";
 
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
-import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../config/defaults.js";
 import {
   loadAllBuiltinBlueprints,
   loadBlueprint,
@@ -235,7 +235,7 @@ export function createApp(options: DashboardOptions): Hono {
 
       const channel = typeof body["channel"] === "string" ? body["channel"] : "telegram";
       const modelProvider = body["modelProvider"] === "cloud" ? "cloud" as const : "local" as const;
-      const localModel = typeof body["localModel"] === "string" ? body["localModel"] : "llama3:8b";
+      const localModel = typeof body["localModel"] === "string" ? body["localModel"] : OLLAMA_DEFAULT_MODEL;
       const gatewayPort = parseInt(typeof body["gatewayPort"] === "string" ? body["gatewayPort"] : String(GATEWAY_DEFAULT_PORT), 10);
       const rawDeployDir = typeof body["deployDir"] === "string" && body["deployDir"]
         ? body["deployDir"]
