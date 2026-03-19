@@ -47,11 +47,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Extraneous packages confirmed by codebase exploration: @emnapi/core, @emnapi/runtime, @emnapi/wasi-threads, @tybys/wasm-util, tslib. Verify none are imported before removing — grep for each package name. Run full test suite after removal. Zero risk if grep confirms they're unused."
+      "groomingNotes": "Extraneous packages confirmed by codebase exploration: @emnapi/core, @emnapi/runtime, @emnapi/wasi-threads, @tybys/wasm-util, tslib. Verify none are imported before removing — grep for each package name. Run full test suite after removal. Zero risk if grep confirms they're unused.",
+      "completedAt": "2026-03-19T09:38:00-07:00"
     },
     {
       "id": "BUG-008",
@@ -62,11 +63,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Doc-only fix. Target CLAUDE.md Key Source Layout: change secure/sandbox/ -> secure/sanitizer/ (input injection firewall). Add note that hardening/posture logic is in build/docker/. Add note that validate (14 landmines) is in config/validate.ts. Also update docs/ARCHITECTURE.md package structure to match. No code moves — just accurate docs. Note: secure/firewall/ WILL exist after CQ-005 completes, so that entry can stay as-is in the docs."
+      "groomingNotes": "Doc-only fix. Target CLAUDE.md Key Source Layout: change secure/sandbox/ -> secure/sanitizer/ (input injection firewall). Add note that hardening/posture logic is in build/docker/. Add note that validate (14 landmines) is in config/validate.ts. Also update docs/ARCHITECTURE.md package structure to match. No code moves — just accurate docs. Note: secure/firewall/ WILL exist after CQ-005 completes, so that entry can stay as-is in the docs.",
+      "completedAt": "2026-03-19T09:41:15-07:00"
     },
     {
       "id": "BUG-009",
@@ -82,6 +84,51 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
       "groomingNotes": "SPRINT WITH CQ-005 — this is co-work for the CQ-005 sprint, not a standalone item. The loadAllowlist() function in src/build/launcher/firewall.ts (moving to src/secure/firewall/firewall.ts as part of CQ-005) hand-parses YAML line by line. The yaml package (v2.8.2) is already a project dependency. Fix: import { parse } from 'yaml'; use parse() to load allowlist.yaml; type the result as { domain: string; port?: number; comment?: string }[]. One function change, zero risk. Must be in the same commit as CQ-005 firewall work — do not ship the moved firewall.ts with the hand-rolled parser still in place."
+    },
+    {
+      "id": "BUG-010",
+      "title": "sanitizer uses process.env.HOME instead of os.homedir()",
+      "intent": "Audit log and quarantine paths are always computed correctly — never fallback to /root. os.homedir() is the single correct API for user home directory.",
+      "description": "src/secure/sanitizer/sanitizer.ts:24-26 computes DEFAULT_OPS_DIR using process.env.HOME ?? '/root' instead of os.homedir() from the 'os' module. The os module is the correct cross-platform API — process.env.HOME is undefined in some container and test environments. If HOME is unset, audit logs and quarantined files are written to /root, which is an incorrect path and may be unwritable. Fix: import { homedir } from 'os'; replace the HOME env var reference with homedir(). The correct pattern is already used in src/config/paths.ts. Steps: (1) open src/secure/sanitizer/sanitizer.ts; (2) add homedir import from 'os'; (3) replace process.env.HOME ?? '/root' with homedir(); (4) run existing sanitizer tests to confirm no regression. Scope: one-line change in one file.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "One-line fix in one file. src/secure/sanitizer/sanitizer.ts:25 — replace process.env.HOME ?? '/root' with homedir() from 'os' module. Pattern already used in src/config/paths.ts. No dependencies. Run existing sanitizer tests after change. Zero-risk."
+    },
+    {
+      "id": "BUG-011",
+      "title": "Gateway port 18789 hardcoded in 23+ locations across 12 files",
+      "intent": "Gateway port has a single source of truth. No literal 18789 appears outside src/config/defaults.ts. Changing the default port requires editing one line.",
+      "description": "The Gateway port 18789 is hardcoded as a literal in at least 23 places across 12 files including src/build/launcher/preflight.ts:20, src/operate/doctor/checks.ts:589, and others. There is no single source of truth for this value. Steps: (1) grep codebase for 18789 to enumerate all instances; (2) define GATEWAY_DEFAULT_PORT = 18789 constant in src/config/defaults.ts (create file if absent) and export it; (3) replace all literal 18789 references with the constant import; (4) run full test suite to confirm no regression. Note: the port is configurable in openclaw.json — this change normalizes the fallback value, not the config surface. Scope: grep + search-replace across ~12 files, no logic change.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "grep for 18789 gives all instances. Define GATEWAY_DEFAULT_PORT in src/config/defaults.ts and import everywhere. No logic change — search-replace across ~12 files. Full test suite must pass after. No dependencies on any in-progress work."
+    },
+    {
+      "id": "BUG-012",
+      "title": "Silent catch blocks in evolve/ swallow errors with no logging",
+      "intent": "No error in the evolve/ module is silently discarded. Every catch block either logs the error or re-throws it. Failures are observable without enabling debug mode.",
+      "description": "20+ catch blocks across the evolve/ module swallow errors silently, making failures invisible in production and in tests. Key locations: src/evolve/lifecycle/destroy.ts:75,126 (catch { return []; }), src/evolve/memory/preferences.ts:167 (catch swallows preference load failure), src/evolve/skills/stage.ts:174 (catch swallows stage setup failure), src/evolve/migrate/google-parser.ts:172 (catch swallows parse failure), src/evolve/tools/manifest.ts:31 (catch returns empty manifest). Pattern: these are non-fatal paths that return defaults on failure — acceptable, but the error should be logged for observability. Steps: (1) search evolve/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) for catch blocks in test paths, ensure test expectations still pass; (4) do NOT convert non-fatal catches to throws — keep the fallback behaviour, just add logging. Scope: ~20 one-line additions across evolve/.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Sweep evolve/ for 'catch {' and 'catch (_'. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Key files: destroy.ts, preferences.ts, stage.ts, google-parser.ts, manifest.ts. Run evolve/ tests after. No dependencies."
     }
   ]
 }
