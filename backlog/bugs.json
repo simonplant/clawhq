@@ -413,11 +413,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Pattern identical to BUG-025 (Ollama URL) and BUG-026 (WhatsApp API). Three API base URLs in evolve/integrate/validate.ts:51,66,80. Add ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE to src/config/defaults.ts (base URLs only, not paths). Import in validate.ts. Verify no other files also hardcode these bases (check evolve/credentials/probes.ts — those probe endpoints may already derive from these). Run evolve/ tests after. No dependencies — standalone fix."
+      "groomingNotes": "Pattern identical to BUG-025 (Ollama URL) and BUG-026 (WhatsApp API). Three API base URLs in evolve/integrate/validate.ts:51,66,80. Add ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE to src/config/defaults.ts (base URLs only, not paths). Import in validate.ts. Verify no other files also hardcode these bases (check evolve/credentials/probes.ts — those probe endpoints may already derive from these). Run evolve/ tests after. No dependencies — standalone fix.",
+      "completedAt": "2026-03-19T11:33:15-07:00"
     },
     {
       "id": "BUG-031",

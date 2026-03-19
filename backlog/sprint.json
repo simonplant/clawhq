@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773944843",
-  "startedAt": "2026-03-19T11:27:23-07:00",
+  "sprintId": "sprint-1773945077",
+  "startedAt": "2026-03-19T11:31:17-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-029",
-    "title": "Dockerfile Stage 2 binary URL and path not validated before template injection",
-    "intent": "Generated Dockerfiles never contain malformed or shell-unsafe content from binary tool config. URL scheme must be https:// and destPath must be a safe absolute path.",
-    "description": "src/build/docker/dockerfile.ts:81-82 interpolates binary.url and binary.destPath directly into Dockerfile content via template strings: 'RUN curl -fsSL \"${binary.url}\" -o \"${binary.destPath}\"'. There is no validation that: (1) binary.url is a valid https:// URL before insertion, (2) binary.destPath is a safe absolute path with no newlines, quotes, or shell metacharacters. A malformed URL causes a confusing Docker build failure. A path with embedded newlines could inject additional Dockerfile instructions. The Stage2Config type accepts any string values. Steps: (1) add validateBinaryUrl(url: string): void helper that throws if url is not a valid https:// URL (use new URL(url) + check protocol); (2) add validateBinaryDestPath(path: string): void that throws if path contains newlines, quotes, or backslashes; (3) call both before inserting into Dockerfile lines; (4) call validation in the Stage 2 generator and/or in the tool manifest layer where binaries are added; (5) run docker/ tests to confirm no regression. Scope: ~15 lines in one file.",
+    "id": "BUG-030",
+    "title": "Hardcoded API probe URLs in evolve/integrate/validate.ts",
+    "intent": "Credential probe URLs have a single source of truth in config/defaults.ts. No literal API base URLs appear in validate.ts.",
+    "description": "src/evolve/integrate/validate.ts hardcodes three API probe endpoints as string literals: line 51 'https://api.anthropic.com/v1/models', line 66 'https://api.openai.com/v1/models', line 80 'https://api.telegram.org/bot{token}/getMe' (template). These are the same pattern as BUG-025 (Ollama URL) and BUG-026 (WhatsApp Graph API) — probe endpoints hardcoded in one module with no single source of truth. Steps: (1) add ANTHROPIC_API_BASE='https://api.anthropic.com', OPENAI_API_BASE='https://api.openai.com', TELEGRAM_API_BASE='https://api.telegram.org' to src/config/defaults.ts; (2) import and replace the three string literals in validate.ts; (3) run evolve/ tests to confirm no regression. Scope: 4 files, ~6 lines changed. Same pattern as BUG-025/BUG-026.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T11:27:23-07:00",
+    "startedAt": "2026-03-19T11:31:17-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T11:31:14-07:00"
+    "completedAt": "2026-03-19T11:33:15-07:00"
   },
-  "completedAt": "2026-03-19T11:31:14-07:00",
+  "completedAt": "2026-03-19T11:33:15-07:00",
   "attempts": 1
 }
