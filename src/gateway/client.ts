@@ -10,7 +10,11 @@
 
 import WebSocket from "ws";
 
-import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+import {
+  GATEWAY_CONNECT_TIMEOUT_MS,
+  GATEWAY_DEFAULT_PORT,
+  GATEWAY_RPC_TIMEOUT_MS,
+} from "../config/defaults.js";
 
 import {
   AuthError,
@@ -28,8 +32,6 @@ import type {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_HOST = "127.0.0.1";
-const DEFAULT_TIMEOUT_MS = 10_000;
-const CONNECT_TIMEOUT_MS = 5_000;
 
 // ── RPC Error Codes ──────────────────────────────────────────────────────────
 
@@ -71,7 +73,7 @@ export class GatewayClient {
     this.host = options.host ?? DEFAULT_HOST;
     this.port = options.port ?? GATEWAY_DEFAULT_PORT;
     this.token = options.token;
-    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.timeoutMs = options.timeoutMs ?? GATEWAY_RPC_TIMEOUT_MS;
   }
 
   /** Whether the client has an open WebSocket connection. */
@@ -97,8 +99,8 @@ export class GatewayClient {
 
       const connectTimer = setTimeout(() => {
         ws.close();
-        reject(new ConnectionError(`Connection to Gateway timed out after ${CONNECT_TIMEOUT_MS}ms`));
-      }, CONNECT_TIMEOUT_MS);
+        reject(new ConnectionError(`Connection to Gateway timed out after ${GATEWAY_CONNECT_TIMEOUT_MS}ms`));
+      }, GATEWAY_CONNECT_TIMEOUT_MS);
 
       const onAbort = () => {
         clearTimeout(connectTimer);
