@@ -223,11 +223,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "2 silent catches in one file. heartbeat/reporter.ts:85 (directory size calc error → wrong size reported to remote), heartbeat/reporter.ts:101 (credentials file read error → 0 reported instead of actual count). Both produce incorrect health telemetry silently. Add console.warn(err, context) to each. Keep fallback return values unchanged. Run cloud/ tests after. No dependencies."
+      "groomingNotes": "2 silent catches in one file. heartbeat/reporter.ts:85 (directory size calc error → wrong size reported to remote), heartbeat/reporter.ts:101 (credentials file read error → 0 reported instead of actual count). Both produce incorrect health telemetry silently. Add console.warn(err, context) to each. Keep fallback return values unchanged. Run cloud/ tests after. No dependencies.",
+      "completedAt": "2026-03-19T10:36:34-07:00"
     },
     {
       "id": "BUG-019",

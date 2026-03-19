@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773941676",
-  "startedAt": "2026-03-19T10:34:36-07:00",
+  "sprintId": "sprint-1773941796",
+  "startedAt": "2026-03-19T10:36:36-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-018",
-    "title": "Silent catch blocks in cloud/ swallow errors with no logging",
-    "intent": "No error in the cloud/ module is silently discarded. Heartbeat reporter failures must be logged — a silent heartbeat calculation error produces incorrect health metrics with no trace.",
-    "description": "2 catch blocks in src/cloud/heartbeat/reporter.ts swallow errors silently. Line 85: directory size calculation error swallowed, returns partial result (wrong size metrics). Line 101: credentials file read error swallowed, returns 0 count (wrong credential count). Both produce incorrect health data sent to the remote monitoring layer with no indication they failed. Steps: (1) open src/cloud/heartbeat/reporter.ts; (2) find catch blocks at lines 85 and 101; (3) add console.warn() with the error and context for each; (4) do NOT change fallback return values — keep returning partial/0 values on failure; (5) run cloud/ tests to confirm no regression. Scope: 2 one-line additions in one file.",
+    "id": "BUG-019",
+    "title": "Silent catch block in gateway/health.ts hides connection errors",
+    "intent": "Gateway health check failures must log the underlying error. When the agent goes down, the operator needs the actual error (connection refused, timeout, auth failure) — not just 'down'.",
+    "description": "src/gateway/health.ts line 104 has a catch block that swallows the error and returns status 'down' with no logging. While the 'down' fallback is correct, the actual error (connection refused vs. TLS error vs. auth failure) is completely invisible to the operator. This makes diagnosing gateway connectivity failures much harder. Note: gateway/client.ts:215 has an intentional 'Ignore non-JSON messages' catch — do NOT touch that one. Steps: (1) open src/gateway/health.ts; (2) find catch block at line 104; (3) add console.warn() logging the error before returning the 'down' status; (4) do NOT change the 'down' return value; (5) run gateway/ tests to confirm no regression. Scope: 1 one-line addition in one file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:34:36-07:00",
+    "startedAt": "2026-03-19T10:36:36-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:36:34-07:00"
+    "completedAt": "2026-03-19T10:37:54-07:00"
   },
-  "completedAt": "2026-03-19T10:36:34-07:00",
+  "completedAt": "2026-03-19T10:37:54-07:00",
   "attempts": 1
 }

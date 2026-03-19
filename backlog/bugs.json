@@ -239,11 +239,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "1 silent catch in health.ts:104. Returns 'down' correctly but swallows the actual error (connection refused? timeout? auth?). Operator can't diagnose why health check failed. Add console.warn(err) before the 'down' return. Do NOT touch client.ts:215 ('Ignore non-JSON messages' — intentional). Do NOT change return value. Run gateway/ tests after. No dependencies."
+      "groomingNotes": "1 silent catch in health.ts:104. Returns 'down' correctly but swallows the actual error (connection refused? timeout? auth?). Operator can't diagnose why health check failed. Add console.warn(err) before the 'down' return. Do NOT touch client.ts:215 ('Ignore non-JSON messages' — intentional). Do NOT change return value. Run gateway/ tests after. No dependencies.",
+      "completedAt": "2026-03-19T10:37:54-07:00"
     },
     {
       "id": "BUG-020",
