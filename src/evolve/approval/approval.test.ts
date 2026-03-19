@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createAuditConfig, initSeqCounter } from "../../secure/audit/logger.js";
 import type { AuditTrailConfig } from "../../secure/audit/types.js";
+
 import {
   approve,
   countPending,
@@ -54,7 +55,7 @@ describe("enqueue", () => {
     // Verify persisted
     const queue = await loadQueue(deployDir);
     expect(queue.items).toHaveLength(1);
-    expect(queue.items[0]!.id).toBe(item.id);
+    expect(queue.items[0]?.id).toBe(item.id);
   });
 
   it("appends multiple items", async () => {
@@ -155,7 +156,7 @@ describe("listPending", () => {
 
     const pending = await listPending(deployDir);
     expect(pending).toHaveLength(1);
-    expect(pending[0]!.summary).toBe("Reply 2");
+    expect(pending[0]?.summary).toBe("Reply 2");
   });
 
   it("returns empty array when no pending items", async () => {

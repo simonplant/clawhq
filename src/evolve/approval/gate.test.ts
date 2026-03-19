@@ -73,7 +73,7 @@ describe("submitForApproval", () => {
 
     // Verify Telegram API was called
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    const [url, opts] = mockFetch.mock.calls[0]!;
+    const [url, opts] = mockFetch.mock.calls[0] as [string, { body: string }];
     expect(url).toBe("https://api.telegram.org/bottest-token/sendMessage");
     const body = JSON.parse(opts.body);
     expect(body.chat_id).toBe("test-chat");
@@ -102,7 +102,7 @@ describe("submitForApproval", () => {
 
     expect(result.notified).toBe(true);
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    const [url] = mockFetch.mock.calls[0]!;
+    const [url] = mockFetch.mock.calls[0] as [string];
     expect(url).toBe("https://api.telegram.org/botenv-token/sendMessage");
   });
 

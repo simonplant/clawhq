@@ -168,10 +168,10 @@ describe("generateBundle", () => {
     // Verify the skill cron job uses valid expressions (LM-09)
     const skillJob = bundle.cronJobs.find((j) => j.id === "skill-email-digest");
     expect(skillJob).toBeDefined();
-    expect(skillJob!.enabled).toBe(true);
-    expect(skillJob!.expr).toBeDefined();
+    expect(skillJob?.enabled).toBe(true);
+    expect(skillJob?.expr).toBeDefined();
     // Must not have bare N/step
-    for (const field of skillJob!.expr!.split(/\s+/)) {
+    for (const field of (skillJob?.expr ?? "").split(/\s+/)) {
       expect(field).not.toMatch(/^\d+\/\d+$/);
     }
   });

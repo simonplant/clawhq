@@ -16,9 +16,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { enqueue } from "./queue.js";
-import { sendApprovalNotification } from "./notify.js";
 import type { TelegramConfig } from "./notify.js";
+import { sendApprovalNotification } from "./notify.js";
+import { enqueue } from "./queue.js";
 import type { ApprovalItem, EnqueueOptions } from "./types.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────

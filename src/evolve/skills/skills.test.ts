@@ -319,9 +319,9 @@ describe("installSkill", () => {
 
     // Verify vetting passed with no critical/high findings
     expect(result.vetReport).toBeDefined();
-    expect(result.vetReport!.passed).toBe(true);
-    expect(result.vetReport!.summary.criticalCount).toBe(0);
-    expect(result.vetReport!.summary.highCount).toBe(0);
+    expect(result.vetReport?.passed).toBe(true);
+    expect(result.vetReport?.summary.criticalCount).toBe(0);
+    expect(result.vetReport?.summary.highCount).toBe(0);
 
     // Verify skill files are installed
     const skillDir = join(deployDir, "workspace", "skills", "email-digest");

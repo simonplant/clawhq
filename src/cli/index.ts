@@ -37,6 +37,15 @@ import {
   writeBundle,
 } from "../design/configure/index.js";
 import {
+  approve as approveItem,
+  countPending,
+  listPending,
+  reject as rejectItem,
+  sendApprovalNotification,
+  startApprovalBot,
+} from "../evolve/approval/index.js";
+import type { TelegramConfig } from "../evolve/approval/index.js";
+import {
   destroyAgent,
   exportBundle,
   formatDestroyJson,
@@ -47,16 +56,6 @@ import {
   verifyDestructionProof,
 } from "../evolve/lifecycle/index.js";
 import type { DestructionProof, LifecycleProgress } from "../evolve/lifecycle/index.js";
-import type { SkillProgress } from "../evolve/skills/index.js";
-import {
-  approve as approveItem,
-  countPending,
-  listPending,
-  reject as rejectItem,
-  sendApprovalNotification,
-  startApprovalBot,
-} from "../evolve/approval/index.js";
-import type { TelegramConfig } from "../evolve/approval/index.js";
 import {
   formatSkillList,
   formatSkillListJson,
@@ -64,6 +63,7 @@ import {
   listSkills,
   removeSkill,
 } from "../evolve/skills/index.js";
+import type { SkillProgress } from "../evolve/skills/index.js";
 import {
   formatDoctorJson,
   formatDoctorTable,

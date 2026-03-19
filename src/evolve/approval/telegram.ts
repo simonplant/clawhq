@@ -9,9 +9,10 @@
  */
 
 import type { AuditTrailConfig } from "../../secure/audit/types.js";
-import { approve, reject, getItem } from "./queue.js";
-import { sendResolutionConfirmation } from "./notify.js";
+
 import type { TelegramConfig } from "./notify.js";
+import { sendResolutionConfirmation } from "./notify.js";
+import { approve, reject, getItem } from "./queue.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ export async function startApprovalBot(opts: ApprovalBotOptions): Promise<void> 
           );
         }
       }
-    } catch (err) {
+    } catch {
       if (signal?.aborted) break;
       // Wait before retrying on error
       await sleep(5000, signal);
@@ -157,7 +158,7 @@ async function answerCallback(
 function parseCallbackData(data: string): { action: "approve" | "reject"; itemId: string } | null {
   const match = /^apv:(approve|reject):(.+)$/.exec(data);
   if (!match) return null;
-  return { action: match[1] as "approve" | "reject", itemId: match[2]! };
+  return { action: match[1] as "approve" | "reject", itemId: match[2] as string };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

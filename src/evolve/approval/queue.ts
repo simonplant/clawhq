@@ -8,10 +8,13 @@
  * No action executes without explicit user consent.
  */
 
+import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
 import { join } from "node:path";
+
+import { logApprovalResolution } from "../../secure/audit/logger.js";
+import type { AuditTrailConfig } from "../../secure/audit/types.js";
 
 import type {
   ApprovalItem,
@@ -19,9 +22,6 @@ import type {
   EnqueueOptions,
   ResolveOptions,
 } from "./types.js";
-
-import type { AuditTrailConfig } from "../../secure/audit/types.js";
-import { logApprovalResolution } from "../../secure/audit/logger.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -140,7 +140,7 @@ async function resolveItem(
     return { success: false, error: `Approval item "${itemId}" not found.` };
   }
 
-  const item = queue.items[idx]!;
+  const item = queue.items[idx];
   if (item.status !== "pending") {
     return {
       success: false,
