@@ -19,6 +19,7 @@ import {
 import { GatewayClient } from "../../gateway/index.js";
 
 import type { HealthVerifyOptions, HealthVerifyResult, SmokeTestOptions, SmokeTestResult } from "./types.js";
+
 const SMOKE_TEST_MESSAGE = "clawhq smoke test — please respond with any message to confirm you are operational.";
 
 // ── Public API ──────────────────────────────────────────────────────────────
