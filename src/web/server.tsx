@@ -8,6 +8,7 @@
  */
 
 import { homedir } from "node:os";
+import { resolve } from "node:path";
 
 import { Hono } from "hono";
 import { stringify as yamlStringify } from "yaml";
@@ -240,9 +241,14 @@ export function createApp(options: DashboardOptions): Hono {
       const rawDeployDir = typeof body["deployDir"] === "string" && body["deployDir"]
         ? body["deployDir"]
         : deployDir;
-      const resolvedDeployDir = rawDeployDir.startsWith("~")
+      const tildeExpanded = rawDeployDir.startsWith("~")
         ? rawDeployDir.replace("~", homedir())
         : rawDeployDir;
+      const resolvedDeployDir = resolve(tildeExpanded);
+      const home = homedir();
+      if (!resolvedDeployDir.startsWith(home + "/") && resolvedDeployDir !== home) {
+        return c.html(`<div class="error">Deploy directory must be within your home directory</div>`, 400);
+      }
       const airGapped = body["airGapped"] === "true";
 
       const answers = {
