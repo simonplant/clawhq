@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1773911346",
   "startedAt": "2026-03-19T02:09:06-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "CQ-020",
     "title": "Workspace tool generators",
@@ -20,6 +20,10 @@
       "Tool names match blueprint's tool references in AGENTS.md"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T02:09:06-07:00"
-  }
+    "startedAt": "2026-03-19T02:09:06-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-19T02:28:17-07:00"
+  },
+  "completedAt": "2026-03-19T02:28:17-07:00",
+  "attempts": 2
 }
