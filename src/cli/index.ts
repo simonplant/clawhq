@@ -29,6 +29,13 @@ import {
   WizardAbortError,
   writeBundle,
 } from "../design/configure/index.js";
+import {
+  formatDoctorJson,
+  formatDoctorTable,
+  formatFixTable,
+  runDoctor,
+  runDoctorWithFix,
+} from "../operate/doctor/index.js";
 import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
 
 const require = createRequire(import.meta.url);
@@ -320,6 +327,69 @@ function stepLabel(step: string): string {
   };
   return chalk.dim(labels[step] ?? `[${step}]`);
 }
+
+// ── Operate Commands ──────────────────────────────────────────────────────
+
+program
+  .command("doctor")
+  .description("Preventive diagnostics — 17 checks with auto-fix")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--fix", "Auto-fix common issues")
+  .option("--json", "Output as JSON for scripting")
+  .action(async (opts: {
+    deployDir: string;
+    fix?: boolean;
+    json?: boolean;
+  }) => {
+    const ac = new AbortController();
+    process.on("SIGINT", () => ac.abort());
+    process.on("SIGTERM", () => ac.abort());
+
+    const format = opts.json ? "json" : "table";
+
+    if (opts.fix) {
+      const spinner = ora("Running diagnostics and auto-fix…");
+      if (!opts.json) spinner.start();
+
+      const { report, fixReport } = await runDoctorWithFix({
+        deployDir: opts.deployDir,
+        fix: true,
+        format,
+        signal: ac.signal,
+      });
+
+      if (!opts.json) spinner.stop();
+
+      if (opts.json) {
+        console.log(formatDoctorJson(report, fixReport));
+      } else {
+        console.log(formatFixTable(fixReport));
+        console.log("");
+        console.log(formatDoctorTable(report));
+      }
+
+      if (!report.healthy) process.exit(1);
+    } else {
+      const spinner = ora("Running diagnostics…");
+      if (!opts.json) spinner.start();
+
+      const report = await runDoctor({
+        deployDir: opts.deployDir,
+        format,
+        signal: ac.signal,
+      });
+
+      if (!opts.json) spinner.stop();
+
+      if (opts.json) {
+        console.log(formatDoctorJson(report));
+      } else {
+        console.log(formatDoctorTable(report));
+      }
+
+      if (!report.healthy) process.exit(1);
+    }
+  });
 
 // ── Secure Commands ────────────────────────────────────────────────────────
 
