@@ -208,8 +208,8 @@
       "description": "BLUEPRINT ENGINE FOUNDATION: The loader is the reading end of the blueprint system. Without it, 'clawhq blueprint list/preview' (FEAT-001) and the init wizard (CQ-010) have nothing to work with. 70+ validation checks mean a malformed community blueprint can't corrupt the user's setup. Acceptance: all built-in blueprints load cleanly; invalid YAML surfaces readable error; size limit prevents DoS on large files; templateToChoice() works correctly for wizard display.",
       "category": "design",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement YAML blueprint loader from configs/templates/",
         "Add 70+ validation checks for blueprint correctness",
@@ -222,7 +222,9 @@
         "Invalid YAML surfaces readable error message",
         "Size limit prevents DoS on oversized blueprint files",
         "templateToChoice() produces correct wizard display data"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T00:50:31-07:00"
     },
     {
       "id": "CQ-010",

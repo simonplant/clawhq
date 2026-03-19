@@ -1,0 +1,176 @@
+/**
+ * Blueprint type definitions.
+ *
+ * These types define the schema for blueprint YAML files — complete agent
+ * designs that configure every dimension of OpenClaw for a specific job.
+ * Both built-in and community blueprints must conform to this schema.
+ */
+
+// ── Blueprint Sections ──────────────────────────────────────────────────────
+
+/** What the blueprint replaces and how it positions itself. */
+export interface UseCaseMapping {
+  readonly replaces: string;
+  readonly tagline: string;
+  readonly description: string;
+  readonly day_in_the_life: string;
+}
+
+/** Agent personality configuration. */
+export interface Personality {
+  readonly tone: string;
+  readonly style: string;
+  readonly relationship: string;
+  readonly boundaries: string;
+}
+
+/** Security posture for the agent. */
+export interface BlueprintSecurityPosture {
+  readonly posture: "standard" | "hardened" | "paranoid";
+  readonly egress: "default" | "restricted" | "allowlist-only";
+  readonly identity_mount: "read-only";
+}
+
+/** Health monitoring configuration. */
+export interface Monitoring {
+  readonly heartbeat_frequency: string;
+  readonly checks: readonly string[];
+  readonly quiet_hours: string;
+  readonly alert_on: readonly string[];
+}
+
+/** Memory tier and retention policy. */
+export interface MemoryPolicy {
+  readonly hot_max: string;
+  readonly hot_retention: string;
+  readonly warm_retention: string;
+  readonly cold_retention: string;
+  readonly summarization: "aggressive" | "balanced" | "conservative";
+}
+
+/** Cron schedule configuration. */
+export interface CronConfig {
+  readonly heartbeat: string;
+  readonly work_session: string;
+  readonly morning_brief: string;
+}
+
+/** Autonomy model — what the agent does alone vs. asks permission. */
+export interface AutonomyModel {
+  readonly default: "low" | "medium" | "high";
+  readonly requires_approval: readonly string[];
+}
+
+/** Model routing strategy for local vs. cloud. */
+export interface ModelRoutingStrategy {
+  readonly default_provider: "local" | "cloud";
+  readonly local_model_preference: string;
+  readonly cloud_escalation_categories: readonly string[];
+  readonly quality_threshold: "low" | "medium" | "high";
+}
+
+/** Integration requirements by priority. */
+export interface IntegrationRequirements {
+  readonly required: readonly string[];
+  readonly recommended: readonly string[];
+  readonly optional: readonly string[];
+}
+
+/** Messaging channel configuration. */
+export interface Channels {
+  readonly supported: readonly string[];
+  readonly default: string;
+}
+
+/** Skill bundle — included and recommended skills. */
+export interface SkillBundle {
+  readonly included: readonly string[];
+  readonly recommended: readonly string[];
+}
+
+/** Individual tool in the toolbelt. */
+export interface ToolEntry {
+  readonly name: string;
+  readonly category: string;
+  readonly required: boolean;
+  readonly description: string;
+}
+
+/** Individual skill in the toolbelt. */
+export interface SkillEntry {
+  readonly name: string;
+  readonly required: boolean;
+  readonly description: string;
+}
+
+/** Agent's toolbelt — tools and skills. */
+export interface Toolbelt {
+  readonly role: string;
+  readonly description: string;
+  readonly tools: readonly ToolEntry[];
+  readonly skills: readonly SkillEntry[];
+}
+
+// ── Complete Blueprint ──────────────────────────────────────────────────────
+
+/**
+ * Complete blueprint schema.
+ *
+ * Every field maps to a section of the blueprint YAML. The loader validates
+ * that all required sections are present and structurally correct.
+ */
+export interface Blueprint {
+  readonly name: string;
+  readonly version: string;
+  readonly use_case_mapping: UseCaseMapping;
+  readonly personality: Personality;
+  readonly security_posture: BlueprintSecurityPosture;
+  readonly monitoring: Monitoring;
+  readonly memory_policy: MemoryPolicy;
+  readonly cron_config: CronConfig;
+  readonly autonomy_model: AutonomyModel;
+  readonly model_routing_strategy: ModelRoutingStrategy;
+  readonly integration_requirements: IntegrationRequirements;
+  readonly channels: Channels;
+  readonly skill_bundle: SkillBundle;
+  readonly toolbelt: Toolbelt;
+}
+
+// ── Validation Types ────────────────────────────────────────────────────────
+
+/** Severity of a blueprint validation finding. */
+export type BlueprintValidationSeverity = "error" | "warning";
+
+/** Single validation result from a blueprint check. */
+export interface BlueprintValidationResult {
+  readonly check: string;
+  readonly passed: boolean;
+  readonly severity: BlueprintValidationSeverity;
+  readonly message: string;
+}
+
+/** Aggregate result from running all blueprint validation checks. */
+export interface BlueprintValidationReport {
+  readonly valid: boolean;
+  readonly blueprintName: string;
+  readonly results: readonly BlueprintValidationResult[];
+  readonly errors: readonly BlueprintValidationResult[];
+  readonly warnings: readonly BlueprintValidationResult[];
+}
+
+// ── Choice Types (for wizard display) ───────────────────────────────────────
+
+/** Blueprint choice for the init wizard / blueprint list display. */
+export interface BlueprintChoice {
+  readonly name: string;
+  readonly value: string;
+  readonly description: string;
+  readonly tagline: string;
+  readonly replaces: string;
+  readonly requiredIntegrations: readonly string[];
+  readonly recommendedIntegrations: readonly string[];
+  readonly includedSkills: readonly string[];
+  readonly channels: readonly string[];
+  readonly securityPosture: string;
+  readonly autonomyLevel: string;
+}
