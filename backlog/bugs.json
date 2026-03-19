@@ -95,11 +95,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "One-line fix in one file. src/secure/sanitizer/sanitizer.ts:25 — replace process.env.HOME ?? '/root' with homedir() from 'os' module. Pattern already used in src/config/paths.ts. No dependencies. Run existing sanitizer tests after change. Zero-risk."
+      "groomingNotes": "One-line fix in one file. src/secure/sanitizer/sanitizer.ts:25 — replace process.env.HOME ?? '/root' with homedir() from 'os' module. Pattern already used in src/config/paths.ts. No dependencies. Run existing sanitizer tests after change. Zero-risk.",
+      "completedAt": "2026-03-19T09:51:00-07:00"
     },
     {
       "id": "BUG-011",
