@@ -1,0 +1,39 @@
+# market-scan skill configuration
+name: market-scan
+version: "1.0.0"
+description: "Periodic market monitoring — watchlist tracking, price alerts, news scan"
+
+# Schedule: pre-market at 6am, then hourly during market hours
+# Aligned with Stock Trading Assistant blueprint cron_config
+schedule:
+  cron: "0 6-16 * * 1-5"
+  active_hours:
+    start: 6
+    end: 17
+
+# Model requirements — local only, no cloud
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+# Tools this skill depends on
+dependencies:
+  tools:
+    - quote
+    - web-search
+    - tasks
+  skills: []
+
+# No approval needed — this skill is read-only and informational
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+# Boundaries
+boundaries:
+  network_access: true
+  file_write: false
+  account_changes: false
+  auto_send: false

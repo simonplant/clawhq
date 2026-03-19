@@ -1,0 +1,39 @@
+# investor-update skill configuration
+name: investor-update
+version: "1.0.0"
+description: "Weekly investor update — metrics gathering, structured draft, approval gate"
+
+# Schedule: weekly on Friday at 9am
+# Aligned with Founder's Ops blueprint cron_config
+schedule:
+  cron: "0 9 * * 5"
+  active_hours:
+    start: 6
+    end: 18
+
+# Model requirements — local preferred, cloud escalation for quality writing
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: true
+
+# Tools this skill depends on
+dependencies:
+  tools:
+    - email
+    - tasks
+    - web-search
+  skills: []
+
+# Approval: investor update requires explicit user review before sending
+approval:
+  required: true
+  category: send_email
+  auto_approve: false
+
+# Boundaries
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false

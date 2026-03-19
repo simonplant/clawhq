@@ -100,6 +100,7 @@ channels:
 skill_bundle:
   included:
     - morning-brief
+    - investor-update
     - construct
   recommended:
     - email-triage
@@ -142,6 +143,9 @@ toolbelt:
     - name: morning-brief
       required: true
       description: "Executive daily brief with inbox status, meetings, and pipeline updates"
+    - name: investor-update
+      required: true
+      description: "Weekly investor update — metrics gathering, structured draft, approval gate"
     - name: construct
       required: false
       description: "Self-improvement framework for capability growth"
