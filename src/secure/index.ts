@@ -26,6 +26,34 @@ export type { CredentialProbe, ProbeReport, ProbeResult } from "./credentials/in
 export { builtinProbes, formatProbeReport, probeAnthropic, probeOpenAI, probeTelegram, runProbes } from "./credentials/index.js";
 export type { RunProbesOptions } from "./credentials/index.js";
 
+// Audit trail (tool execution, egress, secret lifecycle)
+export type {
+  AuditEvent,
+  AuditReport,
+  AuditSummary,
+  AuditTrailConfig,
+  EgressEvent,
+  OwaspEvent,
+  OwaspExport,
+  SecretAction,
+  SecretLifecycleEvent,
+  ToolExecutionEvent,
+} from "./audit/index.js";
+export type { ReadAuditOptions } from "./audit/index.js";
+export {
+  buildOwaspExport,
+  createAuditConfig,
+  formatAuditJson,
+  formatAuditTable,
+  initHmacChain,
+  initSeqCounter,
+  logEgressEvent,
+  logSecretEvent,
+  logToolExecution,
+  readAuditReport,
+  verifyHmacChain,
+} from "./audit/index.js";
+
 // Sanitizer (input injection firewall)
 export {
   detectThreats,
