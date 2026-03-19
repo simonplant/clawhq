@@ -127,11 +127,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Sweep evolve/ for 'catch {' and 'catch (_'. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Key files: destroy.ts, preferences.ts, stage.ts, google-parser.ts, manifest.ts. Run evolve/ tests after. No dependencies."
+      "groomingNotes": "Sweep evolve/ for 'catch {' and 'catch (_'. Add console.warn(err, context) in each non-fatal catch. Do NOT change fallback return values — keep existing error-handling behaviour, only add observability. Key files: destroy.ts, preferences.ts, stage.ts, google-parser.ts, manifest.ts. Run evolve/ tests after. No dependencies.",
+      "completedAt": "2026-03-19T10:10:02-07:00"
     },
     {
       "id": "BUG-013",

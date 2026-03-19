@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773939954",
-  "startedAt": "2026-03-19T10:05:54-07:00",
+  "sprintId": "sprint-1773940204",
+  "startedAt": "2026-03-19T10:10:04-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-012",
-    "title": "Silent catch blocks in evolve/ swallow errors with no logging",
-    "intent": "No error in the evolve/ module is silently discarded. Every catch block either logs the error or re-throws it. Failures are observable without enabling debug mode.",
-    "description": "20+ catch blocks across the evolve/ module swallow errors silently, making failures invisible in production and in tests. Key locations: src/evolve/lifecycle/destroy.ts:75,126 (catch { return []; }), src/evolve/memory/preferences.ts:167 (catch swallows preference load failure), src/evolve/skills/stage.ts:174 (catch swallows stage setup failure), src/evolve/migrate/google-parser.ts:172 (catch swallows parse failure), src/evolve/tools/manifest.ts:31 (catch returns empty manifest). Pattern: these are non-fatal paths that return defaults on failure — acceptable, but the error should be logged for observability. Steps: (1) search evolve/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) for catch blocks in test paths, ensure test expectations still pass; (4) do NOT convert non-fatal catches to throws — keep the fallback behaviour, just add logging. Scope: ~20 one-line additions across evolve/.",
+    "id": "BUG-013",
+    "title": "Silent catch blocks in operate/ swallow errors with no logging",
+    "intent": "No error in the operate/ module is silently discarded. Every catch block either logs the error or re-throws it. Diagnostic failures are always observable.",
+    "description": "20+ catch blocks across the operate/ module swallow errors silently. Key locations: src/operate/doctor/checks.ts (14 instances at lines 84,145,248,257,297,339,378,407,480,496,560,568,595,640), src/operate/monitor/alerts.ts (lines 64,213,224,282,319), src/operate/status/status.ts (lines 131,164,216). Critically, silent catches in doctor/checks.ts mean diagnostic failures are invisible — a check that fails to run is indistinguishable from a check that passes. Steps: (1) search operate/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() or structured log call with the error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour, just add logging. Scope: ~22 one-line additions across operate/.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:05:54-07:00",
+    "startedAt": "2026-03-19T10:10:04-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:10:02-07:00"
+    "completedAt": "2026-03-19T10:14:53-07:00"
   },
-  "completedAt": "2026-03-19T10:10:02-07:00",
+  "completedAt": "2026-03-19T10:14:53-07:00",
   "attempts": 1
 }
