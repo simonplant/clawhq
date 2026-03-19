@@ -13,7 +13,7 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { applyFirewall, removeFirewall } from "./firewall.js";
+import { applyFirewall, removeFirewall, watchAndReapply } from "./firewall.js";
 import { smokeTest, verifyHealth } from "./health.js";
 import { runPreflight } from "./preflight.js";
 import type {
@@ -103,9 +103,10 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
   }
 
   if (!options.skipFirewall) {
-    report("firewall", "running", "Applying egress firewall…");
+    const firewallOpts = { deployDir, airGap: options.airGap, signal };
+    report("firewall", "running", options.airGap ? "Applying air-gap firewall (all egress blocked)…" : "Applying egress firewall…");
 
-    const fwResult = await applyFirewall({ deployDir, signal });
+    const fwResult = await applyFirewall(firewallOpts);
 
     if (!fwResult.success) {
       report("firewall", "failed", "Firewall setup failed");
@@ -113,7 +114,19 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
       // Log warning but continue
       report("firewall", "skipped", `Firewall skipped: ${fwResult.error}`);
     } else {
-      report("firewall", "done", `Firewall applied (${fwResult.rulesApplied} rules)`);
+      report("firewall", "done", `Firewall applied (${fwResult.rulesApplied} rules${options.airGap ? ", air-gap mode" : ""})`);
+
+      // Start watching for container restarts to auto-reapply firewall
+      watchAndReapply(
+        { deployDir, airGap: options.airGap },
+        (reapplyResult) => {
+          if (reapplyResult.success) {
+            report("firewall", "done", `Firewall auto-reapplied (${reapplyResult.rulesApplied} rules)`);
+          } else {
+            report("firewall", "failed", `Firewall auto-reapply failed: ${reapplyResult.error}`);
+          }
+        },
+      );
     }
   } else {
     report("firewall", "skipped", "Firewall skipped (--skip-firewall)");

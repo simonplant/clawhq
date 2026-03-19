@@ -12,7 +12,17 @@ export { deploy, restart, shutdown } from "./deploy.js";
 export { runPreflight } from "./preflight.js";
 
 // Firewall
-export { applyFirewall, loadAllowlist, removeFirewall } from "./firewall.js";
+export {
+  applyFirewall,
+  buildAllowlistFromBlueprint,
+  CHAIN_NAME,
+  loadAllowlist,
+  removeFirewall,
+  serializeAllowlist,
+  verifyFirewall,
+  watchAndReapply,
+} from "./firewall.js";
+export type { FirewallRuleDescriptor } from "./firewall.js";
 
 // Health
 export { smokeTest, verifyHealth } from "./health.js";
@@ -43,6 +53,7 @@ export type {
   FirewallAllowEntry,
   FirewallOptions,
   FirewallResult,
+  FirewallVerifyResult,
   HealthVerifyOptions,
   HealthVerifyResult,
   PreflightCheckName,

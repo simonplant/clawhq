@@ -43,13 +43,19 @@ export type {
 // Deploy orchestration (launcher)
 export {
   applyFirewall,
+  buildAllowlistFromBlueprint,
+  CHAIN_NAME,
   deploy,
+  loadAllowlist,
   removeFirewall,
   restart,
   runPreflight,
+  serializeAllowlist,
   shutdown,
   smokeTest,
+  verifyFirewall,
   verifyHealth,
+  watchAndReapply,
 } from "./launcher/index.js";
 
 export type {
@@ -61,6 +67,8 @@ export type {
   FirewallAllowEntry,
   FirewallOptions,
   FirewallResult,
+  FirewallRuleDescriptor,
+  FirewallVerifyResult,
   HealthVerifyOptions,
   HealthVerifyResult,
   PreflightCheckName,

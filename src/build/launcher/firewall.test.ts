@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { loadAllowlist } from "./firewall.js";
+import { buildAllowlistFromBlueprint, loadAllowlist, serializeAllowlist } from "./firewall.js";
 
 // ── Test Fixtures ───────────────────────────────────────────────────────────
 
@@ -145,5 +145,87 @@ describe("loadAllowlist", () => {
     expect(entries).toHaveLength(2);
     expect(entries[0]).toEqual({ domain: "api.example.com", port: 443, comment: undefined });
     expect(entries[1]).toEqual({ domain: "smtp.example.com", port: 587, comment: undefined });
+  });
+});
+
+// ── buildAllowlistFromBlueprint Tests ──────────────────────────────────────
+
+describe("buildAllowlistFromBlueprint", () => {
+  it("converts blueprint egress_domains to allowlist entries", () => {
+    const entries = buildAllowlistFromBlueprint([
+      "imap.gmail.com",
+      "smtp.gmail.com",
+      "api.todoist.com",
+    ]);
+
+    expect(entries).toHaveLength(3);
+    expect(entries[0]).toEqual({ domain: "imap.gmail.com", port: 443 });
+    expect(entries[1]).toEqual({ domain: "smtp.gmail.com", port: 443 });
+    expect(entries[2]).toEqual({ domain: "api.todoist.com", port: 443 });
+  });
+
+  it("merges blueprint and integration domains without duplicates", () => {
+    const entries = buildAllowlistFromBlueprint(
+      ["api.example.com", "smtp.gmail.com"],
+      ["api.telegram.org", "api.example.com"], // api.example.com is a duplicate
+    );
+
+    expect(entries).toHaveLength(3);
+    expect(entries.map((e) => e.domain)).toEqual([
+      "api.example.com",
+      "smtp.gmail.com",
+      "api.telegram.org",
+    ]);
+  });
+
+  it("returns empty array for empty domains", () => {
+    const entries = buildAllowlistFromBlueprint([]);
+    expect(entries).toEqual([]);
+  });
+
+  it("handles integration-only domains", () => {
+    const entries = buildAllowlistFromBlueprint([], ["api.anthropic.com"]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].domain).toBe("api.anthropic.com");
+  });
+});
+
+// ── serializeAllowlist Tests ───────────────────────────────────────────────
+
+describe("serializeAllowlist", () => {
+  it("serializes entries to YAML", () => {
+    const yaml = serializeAllowlist([
+      { domain: "api.example.com", port: 443 },
+      { domain: "smtp.gmail.com", port: 587, comment: "Email" },
+    ]);
+
+    expect(yaml).toContain("domain: api.example.com");
+    expect(yaml).toContain("port: 443");
+    expect(yaml).toContain("domain: smtp.gmail.com");
+    expect(yaml).toContain("port: 587");
+    expect(yaml).toContain("comment: Email");
+  });
+
+  it("produces air-gap comment for empty allowlist", () => {
+    const yaml = serializeAllowlist([]);
+    expect(yaml).toContain("air-gap");
+    expect(yaml).toContain("[]");
+  });
+
+  it("round-trips through loadAllowlist", async () => {
+    const original = [
+      { domain: "api.example.com", port: 443 },
+      { domain: "smtp.gmail.com", port: 587 },
+    ];
+
+    const yaml = serializeAllowlist(original);
+    await writeFile(join(testDir, "ops", "firewall", "allowlist.yaml"), yaml, "utf-8");
+
+    const loaded = await loadAllowlist(testDir);
+    expect(loaded).toHaveLength(2);
+    expect(loaded[0].domain).toBe("api.example.com");
+    expect(loaded[0].port).toBe(443);
+    expect(loaded[1].domain).toBe("smtp.gmail.com");
+    expect(loaded[1].port).toBe(587);
   });
 });
