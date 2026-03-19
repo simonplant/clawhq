@@ -590,10 +590,13 @@ program
   .command("install")
   .description("Full platform install — prerequisites, engine, scaffold")
   .option("--from-source", "Zero-trust: clone, audit, build from source")
+  .option("--repo <url>", "OpenClaw repository URL (for --from-source)")
+  .option("--ref <ref>", "Git ref to check out (for --from-source)")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (opts: { fromSource?: boolean; deployDir: string }) => {
+  .action(async (opts: { fromSource?: boolean; repo?: string; ref?: string; deployDir: string }) => {
     try {
-      console.log(chalk.bold("\nclawhq install\n"));
+      const isFromSource = opts.fromSource ?? false;
+      console.log(chalk.bold(`\nclawhq install${isFromSource ? " --from-source" : ""}\n`));
 
       // Step 1: Check prerequisites
       const spinner = ora("Checking prerequisites…");
@@ -601,7 +604,12 @@ program
 
       const result = await install({
         deployDir: opts.deployDir,
-        fromSource: opts.fromSource,
+        fromSource: isFromSource,
+        repoUrl: opts.repo,
+        ref: opts.ref,
+        onProgress: (phase, detail) => {
+          spinner.text = detail;
+        },
       });
 
       spinner.stop();
@@ -622,6 +630,35 @@ program
       console.log(chalk.green(`✔ Directory scaffolded at ${opts.deployDir}`));
       console.log(chalk.green(`✔ Config written to ${result.configPath}`));
 
+      // From-source specific output
+      if (isFromSource && result.sourceBuild) {
+        if (result.sourceBuild.success) {
+          console.log(chalk.green(`✔ Engine built from source at ${result.sourceBuild.sourceDir}`));
+          if (result.sourceBuild.imageDigest) {
+            console.log(chalk.dim(`  Image digest: ${result.sourceBuild.imageDigest}`));
+          }
+        } else {
+          console.log(chalk.red(`✘ From-source build failed: ${result.sourceBuild.error}`));
+          process.exit(1);
+        }
+
+        // Verification result
+        if (result.verify) {
+          if (result.verify.match) {
+            console.log(chalk.green(`✔ ${result.verify.detail}`));
+          } else if (result.verify.releaseDigest) {
+            console.log(chalk.yellow(`⚠ ${result.verify.detail}`));
+          } else {
+            console.log(chalk.dim(`  ${result.verify.detail}`));
+          }
+        }
+      }
+
+      if (!result.success) {
+        console.log(chalk.red(`\n✘ Install failed: ${result.error}`));
+        process.exit(1);
+      }
+
       // Next-step guidance
       console.log(chalk.bold("\nWhat's next?\n"));
       console.log(`  1. ${chalk.bold("clawhq init --guided")}    Choose a blueprint and configure your agent`);
@@ -629,7 +666,11 @@ program
       console.log(`  3. ${chalk.bold("clawhq up")}                Deploy and start your agent`);
       console.log("");
       console.log(chalk.dim(`  Deployment directory: ${opts.deployDir}`));
-      console.log(chalk.dim(`  Install method: ${opts.fromSource ? "from-source (zero-trust)" : "cache (default)"}`));
+      console.log(chalk.dim(`  Install method: ${isFromSource ? "from-source (zero-trust)" : "cache (default)"}`));
+      if (isFromSource && result.sourceBuild?.sourceDir) {
+        console.log(chalk.dim(`  Source directory: ${result.sourceBuild.sourceDir}`));
+        console.log(chalk.dim("  You can audit the source code before proceeding."));
+      }
       console.log("");
     } catch (error) {
       console.error(renderError(error));

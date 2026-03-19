@@ -366,8 +366,8 @@
       "description": "USER VALUE: Advanced zero-trust acquisition for security-paranoid users. Not on default install path. Blocked by CQ-014 and CQ-003 anyway. Build after trusted-cache install is working end-to-end.",
       "category": "build",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-014",
         "CQ-003"
@@ -384,7 +384,9 @@
         "Engine artifact stored in ~/.clawhq/engine/"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "All dependencies done (CQ-014 install scaffold, CQ-003 two-stage Docker build). Zero-trust acquisition path for security-paranoid users. Clones OpenClaw, runs two-stage build from source, stores artifact to ~/.clawhq/engine/. Artifact verification step ensures parity with trusted cache."
+      "groomingNotes": "All dependencies done (CQ-014 install scaffold, CQ-003 two-stage Docker build). Zero-trust acquisition path for security-paranoid users. Clones OpenClaw, runs two-stage build from source, stores artifact to ~/.clawhq/engine/. Artifact verification step ensures parity with trusted cache.",
+      "passes": true,
+      "completedAt": "2026-03-19T08:37:19-07:00"
     },
     {
       "id": "CQ-016",
