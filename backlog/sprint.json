@@ -1,31 +1,30 @@
 {
-  "sprintId": "sprint-1773920052",
-  "startedAt": "2026-03-19T04:34:12-07:00",
+  "sprintId": "sprint-1773921012",
+  "startedAt": "2026-03-19T04:50:12-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-006",
-    "title": "PII + secrets scanner",
-    "intent": "Surface any API keys, passwords, or PII in workspace files before deploy. False positives must not train users to ignore scan results.",
-    "description": "USER VALUE: Security hardening, not blocking adoption. Scanning existing workspace for PII is important but the agent runs without it. Promote back to must when install flow is complete and security pass begins.",
+    "id": "CQ-012",
+    "title": "Encrypted backup + restore",
+    "intent": "Deliver encrypted, integrity-verified snapshots that restore a working agent state. Post-restore doctor check must confirm the restored agent is healthy.",
+    "description": "USER VALUE: Day-2 operational maturity. Encrypted backup is essential for production use but does not block first working agent. Users need a running agent before they need to snapshot it. Promote to must before first public release.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement pattern-based scanner for API keys, passwords, tokens, PII",
-      "Add false-positive filtering for comments, placeholders, example.com",
-      "Implement redacted output display",
-      "Add recursive directory walk",
-      "Add git history scanning for committed secrets"
+      "Implement GPG-encrypted snapshot creation",
+      "Add SHA-256 integrity verification on restore",
+      "Use temp directory isolation during restore operations",
+      "Run post-restore doctor check automatically"
     ],
     "acceptanceCriteria": [
-      "Scanner detects common API key, password, and token patterns",
-      "False positives filtered for comments and placeholder values",
-      "Output shows redacted matches, not raw secret values",
-      "Git history scanning catches previously committed secrets"
+      "Snapshots are GPG-encrypted at rest",
+      "SHA-256 integrity verified before any restore",
+      "Post-restore doctor check confirms healthy agent state",
+      "Restore from backup produces a fully working agent"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T04:34:12-07:00",
+    "startedAt": "2026-03-19T04:50:12-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T04:50:10-07:00"
+    "completedAt": "2026-03-19T05:03:46-07:00"
   },
-  "completedAt": "2026-03-19T04:50:10-07:00",
+  "completedAt": "2026-03-19T05:03:46-07:00",
   "attempts": 1
 }
