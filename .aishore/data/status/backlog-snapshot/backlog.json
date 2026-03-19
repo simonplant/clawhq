@@ -127,7 +127,9 @@
       ],
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-19T00:19:10-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Ground-up implementation — src/secure/firewall/ does not exist yet. CQ-028 (quickstart) chains through CQ-004 (deploy) which includes a 'firewall apply' step — CQ-005 must succeed for quickstart to work end-to-end. CQ-041 (air-gapped mode) directly extends this work. IMPLEMENTATION RISKS: (1) iptables requires elevated privileges — implement a dry-run/mock mode so tests can exercise logic without root; (2) Docker bridge interface name varies (docker0 vs br-XXXX) — detect dynamically from 'docker network inspect'; (3) idempotency is critical — apply must not duplicate rules on re-run. SUGGESTED APPROACH: create src/secure/firewall/firewall.ts with apply/remove/verify operations; derive bridge interface at runtime; run iptables via child_process.exec with sudo; use execDry flag for testing. Doctor integration: CQ-011 is done — add one firewall check to the existing doctor check array."
     },
     {
       "id": "CQ-006",
@@ -213,7 +215,7 @@
       "status": "done",
       "readyForSprint": false,
       "steps": [
-        "Implement YAML blueprint loader from configs/templates/",
+        "Implement YAML blueprint loader from configs/blueprints/",
         "Add 70+ validation checks for blueprint correctness",
         "Enforce security baseline requirements in blueprints",
         "Support multiple load paths (local, built-in)",
@@ -365,7 +367,7 @@
       "category": "build",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-014",
         "CQ-003"
@@ -380,7 +382,9 @@
         "From-source build produces identical engine artifact to cached install",
         "Build completes without network calls beyond initial clone",
         "Engine artifact stored in ~/.clawhq/engine/"
-      ]
+      ],
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "All dependencies done (CQ-014 install scaffold, CQ-003 two-stage Docker build). Zero-trust acquisition path for security-paranoid users. Clones OpenClaw, runs two-stage build from source, stores artifact to ~/.clawhq/engine/. Artifact verification step ensures parity with trusted cache."
     },
     {
       "id": "CQ-016",
@@ -390,7 +394,7 @@
       "category": "build",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-014"
       ],
@@ -403,7 +407,9 @@
         "Configurable deployment root respected throughout codebase",
         "Migration command moves existing data without loss",
         "Existing ~/.openclaw/ installations migrate cleanly to ~/.clawhq/"
-      ]
+      ],
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "REVISED SCOPE: grep shows 6 files with .openclaw/ references, but ALL are container-internal paths (/home/node/.openclaw/) — where OpenClaw looks for its config inside the Docker container. These are correct per AD-03 (tight coupling to OpenClaw) and must NOT be changed. Host deployment paths are already parameterized via deployDir (from clawhq.yaml). ACTUAL WORK: (1) audit that every host-path reference in ClawHQ CLI uses the configurable deploymentRoot, not a hardcoded ~/.openclaw/ or ~/.clawhq/; (2) if any host-paths are hardcoded, replace with config lookup; (3) add migration command that moves ~/.openclaw/ to ~/.clawhq/ for existing pre-release installs. Estimated scope: small — host paths already appear to use deployDir. Verify first before sprint."
     },
     {
       "id": "CQ-017",
@@ -440,7 +446,7 @@
       "category": "design",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-010",
         "CQ-017"
@@ -454,7 +460,9 @@
         "Blueprint YAML supports customization_questions field",
         "Wizard asks 1-3 tailored questions per blueprint",
         "Answers reflected in generated config output"
-      ]
+      ],
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "All dependencies done (CQ-010 init wizard, CQ-017 email-manager blueprint). Phase 2 personalization: add customization_questions field to blueprint YAML schema, have wizard ask 1-3 tailored questions per blueprint, apply answers to config output. Additive change to existing wizard flow — no rework required."
     },
     {
       "id": "CQ-019",
@@ -683,7 +691,7 @@
       "category": "Foundation",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-010",
         "CQ-003",
@@ -700,7 +708,9 @@
         "Phase-labeled spinners show progress for each step",
         "Failure at any step leaves clear next-step guidance",
         "Telegram connected and verified at completion"
-      ]
+      ],
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "All direct dependencies done (CQ-010, CQ-003, CQ-004, CQ-014). SEQUENCING NOTE: Sprint CQ-005 (egress firewall) before this — CQ-004 deploy sequence includes 'firewall apply' step, so quickstart will silently skip firewall until CQ-005 is implemented. Quickstart without firewall is incomplete for the privacy promise. Pure orchestration command — no new implementation logic, chains existing commands. Phase spinners are the only net-new UX work. Run CQ-005 first, then this."
     },
     {
       "id": "CQ-029",
@@ -978,7 +988,7 @@
       "category": "operate",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-011",
         "CQ-026",
@@ -999,7 +1009,9 @@
         "Doctor page shows same output as CLI",
         "Approvals queue shows pending items with approve/reject",
         "Init wizard completes full setup via browser"
-      ]
+      ],
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "All dependencies done (CQ-011 doctor, CQ-026 status/logs, CQ-025 approvals). Hono + htmx + Pico CSS stack. Web is a UI layer over CLI-complete features — no new business logic. BUG-006 (src/server/ path) should be done first but is not a hard blocker. 7 pages are well-scoped."
     },
     {
       "id": "CQ-041",
@@ -1024,7 +1036,9 @@
         "Firewall blocks all outbound traffic",
         "Doctor confirms air-gap is active at both layers",
         "Agent remains fully functional without any network access"
-      ]
+      ],
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Hard-blocked by CQ-005 (egress firewall). Once CQ-005 lands, air-gap mode is a thin extension: step 2 (CLAWHQ_FWD block-all) reuses the same chain — just omit the allowlist and drop everything except ESTABLISHED/RELATED. Step 1 (zero egress in openclaw.json) touches the config schema already established in CQ-001. Step 3 (doctor check) appends to the existing check array in CQ-011. Estimated scope: small — CQ-005 does the heavy lifting. Mark readyForSprint after CQ-005 is done."
     },
     {
       "id": "CQ-042",

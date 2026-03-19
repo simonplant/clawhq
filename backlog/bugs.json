@@ -20,17 +20,22 @@
     {
       "id": "BUG-006",
       "title": "src/ scaffold has server/ and ui/ dirs not in target architecture",
-      "description": "Empty scaffold directories src/server/ and src/ui/ exist but are absent from the target package structure defined in CLAUDE.md and ARCHITECTURE.md. The web dashboard (CQ-040) uses Hono but no specific src path is defined for it. These directories will cause confusion during Track E (source reorganization). Should either add them to the target architecture spec or remove them from scaffold.",
+      "description": "Empty scaffold dirs src/server/ and src/ui/ exist but are absent from target architecture in CLAUDE.md and ARCHITECTURE.md. Fix: update both docs to include src/server/ (Hono server for CQ-040) and src/ui/ (htmx assets). Doc-only change. Steps: 1. Update CLAUDE.md Key Source Layout — add src/server/ and src/ui/ with their purpose. 2. Update docs/ARCHITECTURE.md package structure to match. 3. Verify no other spec contradicts.",
       "priority": "should",
       "category": null,
       "steps": [],
-      "acceptanceCriteria": [],
+      "acceptanceCriteria": [
+        "CLAUDE.md target architecture lists src/server/ and src/ui/ with ownership",
+        "docs/ARCHITECTURE.md package structure matches CLAUDE.md",
+        "No scaffold directory in src/ contradicts the spec",
+        "CQ-040 has an unambiguous target path in the architecture docs"
+      ],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomedAt": "2026-03-18",
-      "groomingNotes": "Low-urgency. Options: (a) add src/server/ and src/ui/ to target architecture in CLAUDE.md/ARCHITECTURE.md for CQ-040 web dashboard, or (b) delete empty dirs and let CQ-040 create them. Recommend option (a) — update architecture docs to include web server path.",
-      "intent": "Decide whether src/server/ and src/ui/ belong in the target architecture or should be removed. No orphaned scaffold directories that contradict the spec."
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Doc-only fix. Update CLAUDE.md and docs/ARCHITECTURE.md to include src/server/ and src/ui/ for CQ-040 web dashboard. Option (a) preferred — avoids deleting dirs CQ-040 will need. Do this sprint slot before or alongside CQ-040 to clear ambiguity. Single PR touching two docs files. No code changes.",
+      "intent": "The target architecture spec must be the single source of truth for src/ layout. No scaffold directories that contradict it."
     }
   ]
 }

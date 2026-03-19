@@ -8,6 +8,8 @@
  * AD-03: Tight coupling to OpenClaw — uses Gateway's WebSocket RPC directly.
  */
 
+import WebSocket from "ws";
+
 import {
   AuthError,
   ConnectionError,

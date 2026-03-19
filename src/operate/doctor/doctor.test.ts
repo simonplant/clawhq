@@ -97,7 +97,7 @@ async function writeIdentityFiles(): Promise<void> {
 }
 
 /** Find a check by name and assert it exists. */
-function findCheck(checks: DoctorCheckResult[], name: string): DoctorCheckResult {
+function findCheck(checks: readonly DoctorCheckResult[], name: string): DoctorCheckResult {
   const check = checks.find((c) => c.name === name);
   if (!check) {
     throw new Error(`Expected check "${name}" not found`);
