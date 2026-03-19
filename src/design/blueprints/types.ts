@@ -28,6 +28,7 @@ export interface Personality {
 export interface BlueprintSecurityPosture {
   readonly posture: "standard" | "hardened" | "paranoid";
   readonly egress: "default" | "restricted" | "allowlist-only";
+  readonly egress_domains: readonly string[];
   readonly identity_mount: "read-only";
 }
 
