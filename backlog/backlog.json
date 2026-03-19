@@ -530,8 +530,8 @@
       "description": "HIGH VALUE: First autonomous capability the user sees. Pairs with CQ-017 (Email Manager blueprint). This skill is why the user chose ClawHQ over Gmail. SEQUENCING: Requires CQ-021 (skill lifecycle + vetting — email-digest must go through stage->vet->approve->activate pipeline), CQ-025 (approval queue — 'propose responses with approval gates' is the core safety feature), and CQ-017 (Email Manager blueprint to define context). Acceptance: SKILL.md + prompts installed via skill lifecycle pipeline; agent triages inbox, categorizes emails, proposes responses with approval gates; runs on 15min cron; no data leaves machine (local Ollama).",
       "category": "evolve",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Create SKILL.md defining email triage behavior and boundaries",
         "Write prompts for inbox categorization, summarization, and response proposal",
@@ -544,7 +544,9 @@
         "Proposed responses queue for approval (no auto-send)",
         "Runs on 15min cron schedule",
         "No data leaves machine (local Ollama only)"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T02:58:13-07:00"
     },
     {
       "id": "CQ-023",

@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1773913314",
   "startedAt": "2026-03-19T02:41:54-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "CQ-022",
     "title": "Skill: email-digest",
@@ -22,6 +22,10 @@
       "No data leaves machine (local Ollama only)"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T02:41:54-07:00"
-  }
+    "startedAt": "2026-03-19T02:41:54-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-19T02:58:13-07:00"
+  },
+  "completedAt": "2026-03-19T02:58:13-07:00",
+  "attempts": 3
 }
