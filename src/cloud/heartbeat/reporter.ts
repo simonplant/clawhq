@@ -57,8 +57,12 @@ function writeHeartbeatState(deployDir: string, state: HeartbeatState): void {
   const tmpName = `.heartbeat.tmp.${randomBytes(6).toString("hex")}`;
   const tmpPath = join(dir, tmpName);
 
-  writeFileSync(tmpPath, content);
-  renameSync(tmpPath, path);
+  try {
+    writeFileSync(tmpPath, content);
+    renameSync(tmpPath, path);
+  } catch (err) {
+    console.warn("[cloud] Failed to write heartbeat state:", err);
+  }
 }
 
 // ── Health collection ────────────────────────────────────────────────────────

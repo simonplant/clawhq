@@ -71,8 +71,14 @@ function writeTrustModeState(deployDir: string, state: TrustModeState): void {
   const tmpName = `.trust-mode.tmp.${randomBytes(6).toString("hex")}`;
   const tmpPath = join(dir, tmpName);
 
-  writeFileSync(tmpPath, content);
-  renameSync(tmpPath, path);
+  try {
+    writeFileSync(tmpPath, content);
+    renameSync(tmpPath, path);
+  } catch (err) {
+    throw new Error(
+      `[cloud] Failed to write trust mode state: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 // ── Switch ───────────────────────────────────────────────────────────────────

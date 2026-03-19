@@ -461,18 +461,19 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Pattern identical to BUG-025 (Ollama URL) and BUG-031 (file mode constants). 7 hardcoded 'llama3:8b' literals across 5 runtime files: design/configure/ollama.ts:10, design/configure/smart.ts:51, design/configure/wizard.ts:61, web/server.tsx:238, evolve/migrate/extract.ts:77, evolve/memory/summarize.ts:56. Add OLLAMA_DEFAULT_MODEL = 'llama3:8b' to defaults.ts. Import and replace in all 6 runtime files. web/pages/init.tsx HTML placeholder text (presentational) does not need updating. Run tests for design/, evolve/, web/ after. No blocking dependencies — standalone constant extraction."
+      "groomingNotes": "Pattern identical to BUG-025 (Ollama URL) and BUG-031 (file mode constants). 7 hardcoded 'llama3:8b' literals across 5 runtime files: design/configure/ollama.ts:10, design/configure/smart.ts:51, design/configure/wizard.ts:61, web/server.tsx:238, evolve/migrate/extract.ts:77, evolve/memory/summarize.ts:56. Add OLLAMA_DEFAULT_MODEL = 'llama3:8b' to defaults.ts. Import and replace in all 6 runtime files. web/pages/init.tsx HTML placeholder text (presentational) does not need updating. Run tests for design/, evolve/, web/ after. No blocking dependencies — standalone constant extraction.",
+      "completedAt": "2026-03-19T11:57:20-07:00"
     },
     {
       "id": "BUG-034",
       "title": "Cloud state writers missing try-catch on atomic file writes",
-      "intent": "No cloud state write fails silently. Trust mode switches and command enqueues that fail must surface errors to the caller — silent failures here are security and reliability failures.",
+      "intent": "Trust mode and command queue writes must never fail silently. A trust mode switch to paranoid that fails silently leaves the agent in a less-restrictive security posture with no indication — this is a security failure, not a reliability failure.",
       "description": "Four cloud module state writers perform atomic writes (writeFileSync + renameSync) without try-catch: src/cloud/heartbeat/reporter.ts:56-61 (heartbeat state), src/cloud/trust-modes/switch.ts:70-75 (trust mode state), src/cloud/commands/queue.ts:63-68 (command queue), src/cloud/fleet/discovery.ts:60-65 (fleet registry). BUG-027 fixed the read side (JSON.parse) but missed the write side. A disk write failure silently discards the update — a trust mode switch to 'paranoid' could fail with no warning, leaving the agent in an unexpected state. Steps: (1) src/cloud/trust-modes/switch.ts:70-75 — wrap in try-catch and THROW on error (critical path — caller must know if trust mode change failed); (2) src/cloud/commands/queue.ts:63-68 — wrap in try-catch and throw (enqueue failure must propagate); (3) src/cloud/heartbeat/reporter.ts:56-61 — wrap in try-catch and console.warn (best-effort, non-critical); (4) src/cloud/fleet/discovery.ts:60-65 — wrap in try-catch and console.warn (best-effort); (5) run cloud/ tests after each change. Scope: 4 files, ~8 additions. Note: trust-modes/switch.ts and commands/queue.ts must throw; reporter.ts and discovery.ts log-only.",
-      "priority": "should",
+      "priority": "must",
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
@@ -480,7 +481,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Write-side counterpart to BUG-027 (read-side JSON.parse). 4 atomic write blocks in cloud/ lack try-catch: cloud/trust-modes/switch.ts:70-75 (THROW — trust mode change failure must propagate to caller), cloud/commands/queue.ts:63-68 (THROW — enqueue failure must propagate), cloud/heartbeat/reporter.ts:56-61 (console.warn only — best-effort), cloud/fleet/discovery.ts:60-65 (console.warn only — best-effort). SECURITY NOTE: trust-modes/switch.ts is on the security-critical path — if a trust mode switch to 'paranoid' silently fails, the agent stays in a less-restrictive mode with no indication. Must throw so the caller can surface the error to the user. Run cloud/ tests after each file. No blocking dependencies."
+      "groomingNotes": "PRIORITY UPGRADED: should → must. Same classification as BUG-029 (Dockerfile injection) and BUG-035 (approval queue silent drop) — all three are cases where a silent failure directly violates a core security promise. For this item: trust-modes/switch.ts:70-75 and commands/queue.ts:63-68 MUST THROW (security-critical path — caller must know the state change failed); heartbeat/reporter.ts:56-61 and fleet/discovery.ts:60-65 log-only (best-effort, non-critical). BUG-027 fixed the read side (JSON.parse); this is the write-side counterpart. Run cloud/ tests after each file. No blocking dependencies."
     },
     {
       "id": "BUG-035",
@@ -497,6 +498,51 @@
       "groomedAt": "2026-03-19",
       "groomingNotes": "PRIORITY UPGRADED: 'should' → 'must'. The no-auto-send guarantee is a core product promise — it appears in marketing, README, and product docs. A silently dropped saveQueue() write means the user receives a Telegram approval notification but their approve/reject action is lost and never persisted. The agent then proceeds (or doesn't) with no record of what the user chose. This is a direct violation of the safety contract, not a quality-of-life fix. The fix is in the generator that produces approve-action.ts — wrap writeFileSync in try-catch with console.error + process.exit(1) (loud failure is correct for a CLI tool). Existing deployed agents get the fix on next 'clawhq build' Stage 2 rebuild. No blocking dependencies — run design/tools/ tests to verify generated output. Sprint alongside CQ-005 or immediately after.",
       "completedAt": "2026-03-19T11:50:41-07:00"
+    },
+    {
+      "id": "BUG-036",
+      "title": "Path traversal risk in web dashboard /api/init deployDir input",
+      "intent": "deployDir submitted via web form must be sanitized and resolved to prevent writing files outside the user's home directory. No path traversal from web init.",
+      "description": "src/web/server.tsx:240-245 accepts a user-supplied deployDir via POST /api/init and resolves ~ with a simple string replace, but does not validate the resulting path with path.resolve() or check it stays within the user's home directory. A crafted deployDir value like '../../sensitive' could cause agent config files to be written outside ~/.clawhq/. The web dashboard runs on localhost:3737 so this is local-only, but it is still a path traversal vulnerability. Steps: (1) import { resolve } from 'path' in server.tsx; (2) after resolving ~, apply path.resolve() to canonicalize; (3) validate the resolved path starts with homedir() — if not, reject with 400 error; (4) run web/ tests to confirm no regression. Scope: ~5 lines in one file.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Security fix in web/server.tsx:240-245. The deployDir input from POST /api/init is resolved via simple ~ replacement but not canonicalized. Fix: (1) after rawDeployDir.replace('~', homedir()), call path.resolve() on the result; (2) check resolvedDeployDir.startsWith(homedir()) — if false, return c.html(<InitResult success={false} message='Invalid deployment directory'/>) with status 400; (3) require 'path' is already imported (check — if not, add it). The gatewayPort input on line 239 also lacks range validation: add isNaN check (line 254 already does this — pattern already there). Focus on path traversal fix only. Scope: 5 lines max. Run web/ tests after. No blocking dependencies."
+    },
+    {
+      "id": "BUG-037",
+      "title": "parseInt/parseFloat NaN propagation in CLI commands",
+      "intent": "All numeric CLI options must reject non-numeric input with a clear error message. NaN must never propagate silently into cron schedules, interval timers, or config fields.",
+      "description": "Multiple CLI option parsers use parseInt/parseFloat without guarding against NaN. Key cases: (1) src/cli/index.ts:1920 — digestHour: Math.max(0, Math.min(23, parseInt(opts.digestHour, 10))) — Math.max(0, NaN) = NaN, so a non-numeric --digest-hour writes NaN into the cron schedule; (2) src/cli/index.ts:1959 — memoryLifecycleInterval: Math.max(1, parseFloat(opts.memoryLifecycleInterval)) * 3600_000 — same issue; (3) src/cli/index.ts:2705 — maxEgressDomains: parseInt(opts.maxEgress, 10) — no NaN check, written directly to config; (4) src/cli/index.ts:1845 — lineCount: parseInt(opts.lines, 10) — no NaN guard before use. Pattern: the dashboard port on line 3183-3184 already validates correctly (isNaN check + clear error). Extend that pattern to the 4 affected options. Steps: (1) digestHour — validate isNaN before clamping, exit with error if NaN; (2) memoryLifecycleInterval — same; (3) maxEgressDomains — add isNaN guard; (4) lineCount — add isNaN guard. Scope: ~8 additions across one file. Pattern to follow: lines 3183-3184 in same file.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "4 specific locations in src/cli/index.ts. Pattern to follow: lines 3183-3184 (isNaN check + process.exit). Fix each: (1) line 1920: after parseInt, add if (isNaN(digestHour)) { console.error('--digest-hour must be a number 0-23'); process.exit(1); } — move parseInt to its own line first; (2) line 1959: after parseFloat, add NaN guard; (3) line 2705: after parseInt, add NaN guard before assigning to maxEgressDomains; (4) line 1845: add NaN guard on lineCount before passing to logs command. Also note: lines 1583, 1919 already use Math.max() guards that coerce NaN to the minimum (Math.max(1, NaN) = NaN actually — check these too). Run cli/ tests after. No blocking dependencies. Scope: one file, ~12 lines."
+    },
+    {
+      "id": "BUG-038",
+      "title": "Gateway and operate/ timeout constants scattered — not in config/defaults.ts",
+      "intent": "All timeout and interval constants in gateway/ and operate/ must have a single source of truth in config/defaults.ts. Changing timeouts must require editing one file.",
+      "description": "The same BUG-011/BUG-025 constant-scattering pattern applies to timeout and interval values. Key locations: src/gateway/client.ts:31 (DEFAULT_TIMEOUT_MS = 10_000), src/gateway/client.ts:32 (CONNECT_TIMEOUT_MS = 5_000), src/gateway/health.ts:19 (DEFAULT_INTERVAL_MS = 30_000), src/gateway/health.ts:20 (DEFAULT_HEALTH_TIMEOUT_MS = 5_000), src/operate/doctor/checks.ts:26 (EXEC_TIMEOUT_MS = 15_000), src/secure/credentials/probes.ts:37 (timeoutMs = 10_000). These are local-only constants — if you need to tune the gateway timeout for a slow network, you must find all the right files. The credentials probe timeout is especially important as it affects CI/CD pipelines. Steps: (1) add GATEWAY_RPC_TIMEOUT_MS = 10_000, GATEWAY_CONNECT_TIMEOUT_MS = 5_000, GATEWAY_HEALTH_INTERVAL_MS = 30_000, GATEWAY_HEALTH_TIMEOUT_MS = 5_000, DOCTOR_EXEC_TIMEOUT_MS = 15_000, CREDENTIALS_PROBE_TIMEOUT_MS = 10_000 to src/config/defaults.ts; (2) import and replace local constants in each file; (3) run gateway/ and operate/ tests. Scope: 6 files, no logic change. Pattern identical to BUG-011.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "6 local timeout constants to centralize. Files: gateway/client.ts (DEFAULT_TIMEOUT_MS, CONNECT_TIMEOUT_MS), gateway/health.ts (DEFAULT_INTERVAL_MS, DEFAULT_HEALTH_TIMEOUT_MS), operate/doctor/checks.ts (EXEC_TIMEOUT_MS), secure/credentials/probes.ts (timeoutMs default). Add 6 named constants to defaults.ts, import and replace each. Keep the same variable names locally if needed for backwards compat, or replace inline. Also check operate/monitor/recovery.ts:21, operate/monitor/alerts.ts:27, operate/status/status.ts:26-27, operate/logs/logs.ts:17, operate/updater/updater.ts:27 — all define local EXEC_TIMEOUT_MS = 30_000; each can import the same DOCTOR_EXEC_TIMEOUT_MS or a new OPERATE_EXEC_TIMEOUT_MS depending on value. SCOPE LIMIT: Only the 6 gateway/ and operate/doctor/ + secure/credentials/ instances — do not sweep all operate/ in one PR. Defer the remaining operate/ monitor/recovery/alerts/status/logs/updater to a follow-up. Run gateway/ and operate/ tests after. No blocking dependencies."
     }
   ]
 }

@@ -64,8 +64,14 @@ function writeQueueState(deployDir: string, state: CommandQueueState): void {
   const tmpName = `.commands.tmp.${randomBytes(6).toString("hex")}`;
   const tmpPath = join(dir, tmpName);
 
-  writeFileSync(tmpPath, content);
-  renameSync(tmpPath, path);
+  try {
+    writeFileSync(tmpPath, content);
+    renameSync(tmpPath, path);
+  } catch (err) {
+    throw new Error(
+      `[cloud] Failed to write command queue state: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 // ── Queue operations ─────────────────────────────────────────────────────────

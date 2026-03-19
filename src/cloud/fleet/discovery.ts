@@ -61,8 +61,12 @@ function writeFleetRegistry(deployDir: string, registry: FleetRegistry): void {
   const tmpName = `.fleet.tmp.${randomBytes(6).toString("hex")}`;
   const tmpPath = join(dir, tmpName);
 
-  writeFileSync(tmpPath, content);
-  renameSync(tmpPath, path);
+  try {
+    writeFileSync(tmpPath, content);
+    renameSync(tmpPath, path);
+  } catch (err) {
+    console.warn("[cloud] Failed to write fleet registry:", err);
+  }
 }
 
 /** Register an agent in the fleet. No-op if already registered at same path. */
