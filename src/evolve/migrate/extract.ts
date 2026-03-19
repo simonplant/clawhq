@@ -10,12 +10,12 @@
  * preferences with a warning instead of failing.
  */
 
+import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 import {
   generate,
   isOllamaAvailable,
   OllamaError,
 } from "../../design/configure/ollama.js";
-import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 
 import type {
   ExtractedPreference,

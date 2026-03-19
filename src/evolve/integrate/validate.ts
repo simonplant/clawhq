@@ -6,8 +6,9 @@
  * Probes never throw — they return a result object.
  */
 
-import { getIntegrationDef } from "./registry.js";
 import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+
+import { getIntegrationDef } from "./registry.js";
 
 /** Result of a validation probe. */
 export interface ValidationResult {

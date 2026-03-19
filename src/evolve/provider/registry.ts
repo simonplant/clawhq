@@ -5,8 +5,9 @@
  * validation endpoint, and default model configuration.
  */
 
-import type { ProviderDefinition } from "./types.js";
 import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+
+import type { ProviderDefinition } from "./types.js";
 
 /** All known providers. */
 export const PROVIDER_REGISTRY: Record<string, ProviderDefinition> = {

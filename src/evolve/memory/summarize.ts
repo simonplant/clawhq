@@ -6,12 +6,12 @@
  * Falls back to truncation if Ollama is unavailable.
  */
 
+import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 import {
   generate,
   isOllamaAvailable,
   OllamaError,
 } from "../../design/configure/ollama.js";
-import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 
 import type { SummarizeOptions, SummarizeResult } from "./types.js";
 

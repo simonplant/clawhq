@@ -5,8 +5,9 @@
  * and how to validate the connection. New integrations are added here.
  */
 
-import type { IntegrationDefinition } from "./types.js";
 import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+
+import type { IntegrationDefinition } from "./types.js";
 
 /** All known integrations. */
 export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {

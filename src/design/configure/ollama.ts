@@ -6,6 +6,7 @@
  */
 
 import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+
 const DEFAULT_MODEL = "llama3:8b";
 const GENERATE_TIMEOUT_MS = 120_000; // 2 minutes — local inference can be slow
 
