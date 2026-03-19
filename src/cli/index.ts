@@ -19,6 +19,7 @@ import ora from "ora";
 
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
+import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string; description: string };
@@ -199,6 +200,31 @@ function stepLabel(step: string): string {
   };
   return chalk.dim(labels[step] ?? `[${step}]`);
 }
+
+// ── Secure Commands ────────────────────────────────────────────────────────
+
+program
+  .command("creds")
+  .description("Check credential health for all configured integrations")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--configured", "Show only configured integrations (hide unconfigured)")
+  .action(async (opts: { deployDir: string; configured?: boolean }) => {
+    const envPath = join(opts.deployDir, "engine", ".env");
+    const spinner = ora("Checking credentials…");
+    spinner.start();
+
+    const report = await runProbes({
+      envPath,
+      includeUnconfigured: !opts.configured,
+    });
+
+    spinner.stop();
+    console.log(formatProbeReport(report));
+
+    if (!report.healthy) {
+      process.exit(1);
+    }
+  });
 
 // ── Commands are registered here as they're built ──
 // Each command file exports a create*Command() function.

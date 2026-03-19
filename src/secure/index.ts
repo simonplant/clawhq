@@ -4,7 +4,7 @@
  * Hardening, credentials, firewall, audit. Security is architecture, not policy (AD-05).
  */
 
-// Credentials (.env store)
+// Credentials (.env store + health probes)
 export type { EnvFile, EnvLine, ReadEnvOptions, WriteEnvOptions } from "./credentials/index.js";
 export {
   deleteEnvValue,
@@ -20,6 +20,11 @@ export {
   writeEnvAtomic,
   writeEnvValue,
 } from "./credentials/index.js";
+
+// Credential health probes
+export type { CredentialProbe, ProbeReport, ProbeResult } from "./credentials/index.js";
+export { builtinProbes, formatProbeReport, probeAnthropic, probeOpenAI, probeTelegram, runProbes } from "./credentials/index.js";
+export type { RunProbesOptions } from "./credentials/index.js";
 
 // Sanitizer (input injection firewall)
 export {
