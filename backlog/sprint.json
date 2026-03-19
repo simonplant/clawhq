@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773941796",
-  "startedAt": "2026-03-19T10:36:36-07:00",
+  "sprintId": "sprint-1773942169",
+  "startedAt": "2026-03-19T10:42:49-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-019",
-    "title": "Silent catch block in gateway/health.ts hides connection errors",
-    "intent": "Gateway health check failures must log the underlying error. When the agent goes down, the operator needs the actual error (connection refused, timeout, auth failure) — not just 'down'.",
-    "description": "src/gateway/health.ts line 104 has a catch block that swallows the error and returns status 'down' with no logging. While the 'down' fallback is correct, the actual error (connection refused vs. TLS error vs. auth failure) is completely invisible to the operator. This makes diagnosing gateway connectivity failures much harder. Note: gateway/client.ts:215 has an intentional 'Ignore non-JSON messages' catch — do NOT touch that one. Steps: (1) open src/gateway/health.ts; (2) find catch block at line 104; (3) add console.warn() logging the error before returning the 'down' status; (4) do NOT change the 'down' return value; (5) run gateway/ tests to confirm no regression. Scope: 1 one-line addition in one file.",
+    "id": "BUG-021",
+    "title": "Silent catch block in cli/index.ts swallows notification channel config error",
+    "intent": "No error in cli/index.ts is silently discarded. The notification channel config catch must log when it fails so operators know monitoring won't send alerts.",
+    "description": "src/cli/index.ts line 3167 has a catch block with a comment 'No channels configured — monitor still runs, just no notifications' but no logging. If the notification channel config throws due to misconfiguration, the operator has no trace. The monitor continues silently degraded. This is the only silent catch in the cli/ module — the sweep that covered evolve/, operate/, build/, secure/, design/, cloud/, and gateway/ (BUG-012 through BUG-019) did not cover cli/. Steps: (1) open src/cli/index.ts; (2) find catch block at line 3167; (3) add console.warn() logging the error and context before continuing; (4) do NOT change the fallback behavior — monitor should still run without notifications; (5) run cli tests to confirm no regression. Scope: 1 one-line addition in one file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:36:36-07:00",
+    "startedAt": "2026-03-19T10:42:49-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:37:54-07:00"
+    "completedAt": "2026-03-19T10:44:26-07:00"
   },
-  "completedAt": "2026-03-19T10:37:54-07:00",
+  "completedAt": "2026-03-19T10:44:26-07:00",
   "attempts": 1
 }

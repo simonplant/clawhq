@@ -270,11 +270,42 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "1 silent catch in cli/index.ts:3167. Notification channel config fails silently — monitor runs degraded with no alerts sent and no trace. Add console.warn(error, 'notification channel config failed — monitoring will run without alerts') before continuing. Keep fallback behavior unchanged. No dependencies. Pairs with BUG-012 through BUG-019 sweep pattern. Zero-risk one-liner.",
+      "completedAt": "2026-03-19T10:44:26-07:00"
+    },
+    {
+      "id": "BUG-022",
+      "title": "Silent catch block audit for src/config/ module",
+      "intent": "No error in src/config/ is silently discarded. Config parse, schema validation, and file read failures must be observable without enabling debug mode.",
+      "description": "The systematic silent-catch sweep (BUG-012 through BUG-019, BUG-021) covered evolve/, operate/, build/, secure/, design/, cloud/, gateway/, and cli/. The src/config/ module was not included. BUG-016 fixed a specific process.env.HOME issue in config/paths.ts but was not a general silent-catch sweep. Config module files to audit: defaults.ts, paths.ts, validate.ts, loader.ts, types.ts — any silent catches here would hide config parse failures, schema validation errors, or file read problems that are critical to every command. Steps: (1) search src/config/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() with error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour; (4) run config/ tests to confirm no regression. Scope: likely 2-5 additions, low risk.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "1 silent catch in cli/index.ts:3167. Notification channel config fails silently — monitor runs degraded with no alerts sent and no trace. Add console.warn(error, 'notification channel config failed — monitoring will run without alerts') before continuing. Keep fallback behavior unchanged. No dependencies. Pairs with BUG-012 through BUG-019 sweep pattern. Zero-risk one-liner."
+      "groomingNotes": "No hard dependencies — all modules it references (config/) are fully implemented. Pattern is identical to BUG-012 through BUG-019: search 'catch {' and 'catch (_', add console.warn(err, context) to each non-fatal catch, keep fallback return values unchanged, run tests. Config module is small (defaults.ts, paths.ts, validate.ts, loader.ts, types.ts) so scope is minimal. BUG-016 fixed a specific HOME env issue in paths.ts but was not a silent-catch sweep. This completes the module coverage gap. Zero risk."
+    },
+    {
+      "id": "BUG-023",
+      "title": "Post-CQ-005: Update CLAUDE.md cross-module security code section",
+      "intent": "CLAUDE.md accurately reflects the canonical firewall location after CQ-005. Contributors find firewall code on first look.",
+      "description": "CQ-005 moves applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts to src/secure/firewall/firewall.ts. After CQ-005 completes, the CLAUDE.md 'Cross-module security code' section still references the old path: 'Egress firewall (iptables CLAWHQ_FWD) → src/build/launcher/firewall.ts'. This will mislead contributors looking for firewall code. Doc-only change, single section in one file. Steps: (1) Confirm CQ-005 is complete and src/secure/firewall/firewall.ts exists; (2) Open CLAUDE.md, find 'Cross-module security code' section; (3) Update firewall entry from src/build/launcher/firewall.ts to src/secure/firewall/firewall.ts; (4) Verify no other CLAUDE.md references point to the old location; (5) No code changes required.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "BLOCKED BY CQ-005. Do not sprint until CQ-005 is complete and src/secure/firewall/firewall.ts exists. After CQ-005: single CLAUDE.md edit in the 'Cross-module security code' section — change 'src/build/launcher/firewall.ts' to 'src/secure/firewall/firewall.ts'. Check for any other references to the old path. Doc-only, zero risk, pairs with BUG-020 and CQ-041 in the post-CQ-005 batch. Mark readyForSprint after CQ-005 sprint completes."
     }
   ]
 }
