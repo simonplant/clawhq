@@ -12,6 +12,7 @@
 
 import type { Blueprint } from "../blueprints/types.js";
 
+import { generateApproveActionTool } from "./approve-action.js";
 import { generateEmailTool } from "./email.js";
 import { generateIcalTool } from "./ical.js";
 import { generateQuoteTool } from "./quote.js";
@@ -79,6 +80,17 @@ export function generateToolWrappers(blueprint: Blueprint): ToolFileContent[] {
       name: tool.name,
       relativePath: `workspace/tools/${tool.name}`,
       content: generator(),
+      mode: 0o755,
+    });
+  }
+
+  // Always include the approve-action platform tool — required for the
+  // approval gate that high-stakes actions (send, reply, delete) route through.
+  if (blueprint.autonomy_model.requires_approval.length > 0) {
+    wrappers.push({
+      name: "approve-action",
+      relativePath: "workspace/tools/approve-action",
+      content: generateApproveActionTool(),
       mode: 0o755,
     });
   }

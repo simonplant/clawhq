@@ -45,10 +45,11 @@ describe("generateToolWrappers", () => {
     }
   });
 
-  it("generates exactly the number of tools in the blueprint", () => {
+  it("generates exactly the number of tools in the blueprint plus platform tools", () => {
     const bp = loadEmailManager();
     const wrappers = generateToolWrappers(bp);
-    expect(wrappers).toHaveLength(bp.toolbelt.tools.length);
+    const blueprintTools = wrappers.filter((w) => w.name !== "approve-action");
+    expect(blueprintTools).toHaveLength(bp.toolbelt.tools.length);
   });
 
   it("uses correct relative paths", () => {
@@ -103,8 +104,9 @@ describe("generateToolWrappers — all blueprints", () => {
         `${name} should produce tool wrappers`,
       ).toBeGreaterThan(0);
 
+      const blueprintTools = wrappers.filter((w) => w.name !== "approve-action");
       expect(
-        wrappers.length,
+        blueprintTools.length,
         `${name} wrapper count should match blueprint tool count`,
       ).toBe(bp.toolbelt.tools.length);
     }
@@ -118,7 +120,7 @@ describe("generateToolWrappers — all blueprints", () => {
         expect(
           wrapper.content,
           `${name}/${wrapper.name} should have a shebang`,
-        ).toMatch(/^#!\/usr\/bin\/env (bash|python3)/);
+        ).toMatch(/^#!\/usr\/bin\/env (bash|python3|node)/);
       }
     }
   });
@@ -133,7 +135,9 @@ describe("tool names match AGENTS.md references", () => {
       const wrappers = generateToolWrappers(bp);
       const agentsContent = generateAgents(bp);
 
-      for (const wrapper of wrappers) {
+      // Platform tools (approve-action) are not listed in AGENTS.md
+      const blueprintTools = wrappers.filter((w) => w.name !== "approve-action");
+      for (const wrapper of blueprintTools) {
         expect(
           agentsContent,
           `${name}: tool "${wrapper.name}" should be referenced in AGENTS.md`,

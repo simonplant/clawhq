@@ -38,3 +38,7 @@ export type { NotifyResult, TelegramConfig } from "./notify.js";
 // Telegram approval bot
 export { startApprovalBot } from "./telegram.js";
 export type { ApprovalBotOptions } from "./telegram.js";
+
+// Action gate — the primary integration point for high-stakes action enforcement
+export { loadTelegramConfig, submitForApproval } from "./gate.js";
+export type { GateOptions, GateResult } from "./gate.js";
