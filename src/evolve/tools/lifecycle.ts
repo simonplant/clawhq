@@ -10,9 +10,9 @@ import { existsSync, mkdirSync } from "node:fs";
 import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { FILE_MODE_EXEC } from "../../config/defaults.js";
 import { build } from "../../build/docker/build.js";
 import type { Stage1Config, Stage2Config } from "../../build/docker/types.js";
+import { FILE_MODE_EXEC } from "../../config/defaults.js";
 
 import {
   loadToolManifest,

@@ -11,7 +11,6 @@
  */
 
 import { FILE_MODE_EXEC } from "../../config/defaults.js";
-
 import type { Blueprint } from "../blueprints/types.js";
 
 import { generateApproveActionTool } from "./approve-action.js";
