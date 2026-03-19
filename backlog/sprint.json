@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773937769",
-  "startedAt": "2026-03-19T09:29:29-07:00",
+  "sprintId": "sprint-1773938767",
+  "startedAt": "2026-03-19T09:46:07-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-007",
-    "title": "Remove extraneous npm dependencies",
-    "intent": "No unused packages in package.json. npm install size is minimal.",
-    "description": "package.json includes several unused packages: @emnapi/core, @emnapi/runtime, @emnapi/wasi-threads, @tybys/wasm-util, tslib. These are not imported anywhere in the codebase and add unnecessary install weight. Steps: (1) verify each package is unused via grep; (2) npm uninstall each confirmed-unused package; (3) run tests to confirm nothing breaks. Low-risk cleanup.",
+    "id": "BUG-009",
+    "title": "Firewall allowlist uses hand-rolled YAML parser",
+    "intent": "Firewall allowlist is parsed reliably. No hand-rolled YAML in the codebase.",
+    "description": "src/build/launcher/firewall.ts loadAllowlist() implements a custom line-by-line YAML parser instead of using the 'yaml' package already in package.json. The hand-rolled parser is brittle — it won't handle quoted values, inline lists, comments, or multi-document YAML correctly. Steps: (1) replace loadAllowlist() to use yaml.parse() from the 'yaml' package; (2) update allowlist.yaml type to match parsed structure; (3) add tests covering edge cases (quoted domains, comments, empty file). Scope: small — one function in one file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T09:29:29-07:00",
+    "startedAt": "2026-03-19T09:46:07-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T09:41:15-07:00"
+    "completedAt": "2026-03-19T09:49:00-07:00"
   },
-  "completedAt": "2026-03-19T09:41:15-07:00",
+  "completedAt": "2026-03-19T09:49:00-07:00",
   "attempts": 1
 }

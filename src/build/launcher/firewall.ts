@@ -13,6 +13,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { parse as yamlParse } from "yaml";
+
 import type { FirewallAllowEntry, FirewallOptions, FirewallResult } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -138,45 +140,30 @@ async function attachToForward(signal?: AbortSignal): Promise<void> {
   }
 }
 
-async function loadAllowlist(deployDir: string): Promise<FirewallAllowEntry[]> {
+export async function loadAllowlist(deployDir: string): Promise<FirewallAllowEntry[]> {
   const allowlistPath = join(deployDir, "ops", "firewall", "allowlist.yaml");
   try {
     const raw = await readFile(allowlistPath, "utf-8");
-    // Simple YAML parsing for the allowlist format:
-    // - domain: api.example.com
-    //   port: 443
-    const entries: FirewallAllowEntry[] = [];
-    const lines = raw.split("\n");
+    const parsed: unknown = yamlParse(raw);
 
-    let currentDomain: string | undefined;
-    let currentPort: number | undefined;
-    let currentComment: string | undefined;
-
-    for (const line of lines) {
-      const domainMatch = line.match(/^\s*-?\s*domain:\s*(.+)/);
-      const portMatch = line.match(/^\s*port:\s*(\d+)/);
-      const commentMatch = line.match(/^\s*comment:\s*(.+)/);
-
-      if (domainMatch) {
-        if (currentDomain) {
-          entries.push({ domain: currentDomain, port: currentPort ?? 443, comment: currentComment });
-        }
-        currentDomain = domainMatch[1].trim();
-        currentPort = undefined;
-        currentComment = undefined;
-      } else if (portMatch) {
-        currentPort = parseInt(portMatch[1], 10);
-      } else if (commentMatch) {
-        currentComment = commentMatch[1].trim();
-      }
+    if (!Array.isArray(parsed)) {
+      return [];
     }
-    if (currentDomain) {
-      entries.push({ domain: currentDomain, port: currentPort ?? 443, comment: currentComment });
+
+    const entries: FirewallAllowEntry[] = [];
+    for (const item of parsed) {
+      if (typeof item === "object" && item !== null && "domain" in item && typeof item.domain === "string") {
+        entries.push({
+          domain: item.domain,
+          port: typeof item.port === "number" ? item.port : 443,
+          comment: typeof item.comment === "string" ? item.comment : undefined,
+        });
+      }
     }
 
     return entries;
   } catch {
-    // No allowlist file — return empty (default: block all non-DNS egress)
+    // No allowlist file or invalid YAML — return empty (default: block all non-DNS egress)
     return [];
   }
 }

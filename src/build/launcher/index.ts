@@ -12,7 +12,7 @@ export { deploy, restart, shutdown } from "./deploy.js";
 export { runPreflight } from "./preflight.js";
 
 // Firewall
-export { applyFirewall, removeFirewall } from "./firewall.js";
+export { applyFirewall, loadAllowlist, removeFirewall } from "./firewall.js";
 
 // Health
 export { smokeTest, verifyHealth } from "./health.js";
