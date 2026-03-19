@@ -6,7 +6,7 @@
  * Probes never throw — they return a result object.
  */
 
-import { OLLAMA_DEFAULT_URL, WHATSAPP_API_BASE, WHATSAPP_API_VERSION } from "../../config/defaults.js";
+import { ANTHROPIC_API_BASE, OLLAMA_DEFAULT_URL, OPENAI_API_BASE, TELEGRAM_API_BASE, WHATSAPP_API_BASE, WHATSAPP_API_VERSION } from "../../config/defaults.js";
 
 import { getIntegrationDef } from "./registry.js";
 
@@ -48,7 +48,7 @@ const validators: Record<string, Validator> = {
     if (!key) return { ok: false, message: "ANTHROPIC_API_KEY not set" };
     if (!key.startsWith("sk-ant-")) return { ok: false, message: "ANTHROPIC_API_KEY format invalid (expected sk-ant-... prefix)" };
 
-    const result = await probeFetch("https://api.anthropic.com/v1/models", {
+    const result = await probeFetch(`${ANTHROPIC_API_BASE}/v1/models`, {
       method: "GET",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01" },
     });
@@ -63,7 +63,7 @@ const validators: Record<string, Validator> = {
     if (!key) return { ok: false, message: "OPENAI_API_KEY not set" };
     if (!key.startsWith("sk-")) return { ok: false, message: "OPENAI_API_KEY format invalid (expected sk-... prefix)" };
 
-    const result = await probeFetch("https://api.openai.com/v1/models", {
+    const result = await probeFetch(`${OPENAI_API_BASE}/v1/models`, {
       method: "GET",
       headers: { Authorization: `Bearer ${key}` },
     });
@@ -77,7 +77,7 @@ const validators: Record<string, Validator> = {
     const token = env["TELEGRAM_BOT_TOKEN"];
     if (!token) return { ok: false, message: "TELEGRAM_BOT_TOKEN not set" };
 
-    const result = await probeFetch(`https://api.telegram.org/bot${token}/getMe`, { method: "GET" });
+    const result = await probeFetch(`${TELEGRAM_API_BASE}/bot${token}/getMe`, { method: "GET" });
     if ("error" in result) return { ok: false, message: `API unreachable: ${result.error}` };
     if (result.response.status === 200) {
       try {
