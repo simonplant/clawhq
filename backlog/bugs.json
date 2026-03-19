@@ -509,11 +509,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Security fix in web/server.tsx:240-245. The deployDir input from POST /api/init is resolved via simple ~ replacement but not canonicalized. Fix: (1) after rawDeployDir.replace('~', homedir()), call path.resolve() on the result; (2) check resolvedDeployDir.startsWith(homedir()) — if false, return c.html(<InitResult success={false} message='Invalid deployment directory'/>) with status 400; (3) require 'path' is already imported (check — if not, add it). The gatewayPort input on line 239 also lacks range validation: add isNaN check (line 254 already does this — pattern already there). Focus on path traversal fix only. Scope: 5 lines max. Run web/ tests after. No blocking dependencies."
+      "groomingNotes": "Security fix in web/server.tsx:240-245. The deployDir input from POST /api/init is resolved via simple ~ replacement but not canonicalized. Fix: (1) after rawDeployDir.replace('~', homedir()), call path.resolve() on the result; (2) check resolvedDeployDir.startsWith(homedir()) — if false, return c.html(<InitResult success={false} message='Invalid deployment directory'/>) with status 400; (3) require 'path' is already imported (check — if not, add it). The gatewayPort input on line 239 also lacks range validation: add isNaN check (line 254 already does this — pattern already there). Focus on path traversal fix only. Scope: 5 lines max. Run web/ tests after. No blocking dependencies.",
+      "completedAt": "2026-03-19T12:10:13-07:00"
     },
     {
       "id": "BUG-037",

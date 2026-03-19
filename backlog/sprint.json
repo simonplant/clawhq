@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773947025",
-  "startedAt": "2026-03-19T12:03:45-07:00",
+  "sprintId": "sprint-1773947255",
+  "startedAt": "2026-03-19T12:07:35-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-034",
-    "title": "Cloud state writers missing try-catch on atomic file writes",
-    "intent": "Trust mode and command queue writes must never fail silently. A trust mode switch to paranoid that fails silently leaves the agent in a less-restrictive security posture with no indication — this is a security failure, not a reliability failure.",
-    "description": "Four cloud module state writers perform atomic writes (writeFileSync + renameSync) without try-catch: src/cloud/heartbeat/reporter.ts:56-61 (heartbeat state), src/cloud/trust-modes/switch.ts:70-75 (trust mode state), src/cloud/commands/queue.ts:63-68 (command queue), src/cloud/fleet/discovery.ts:60-65 (fleet registry). BUG-027 fixed the read side (JSON.parse) but missed the write side. A disk write failure silently discards the update — a trust mode switch to 'paranoid' could fail with no warning, leaving the agent in an unexpected state. Steps: (1) src/cloud/trust-modes/switch.ts:70-75 — wrap in try-catch and THROW on error (critical path — caller must know if trust mode change failed); (2) src/cloud/commands/queue.ts:63-68 — wrap in try-catch and throw (enqueue failure must propagate); (3) src/cloud/heartbeat/reporter.ts:56-61 — wrap in try-catch and console.warn (best-effort, non-critical); (4) src/cloud/fleet/discovery.ts:60-65 — wrap in try-catch and console.warn (best-effort); (5) run cloud/ tests after each change. Scope: 4 files, ~8 additions. Note: trust-modes/switch.ts and commands/queue.ts must throw; reporter.ts and discovery.ts log-only.",
+    "id": "BUG-036",
+    "title": "Path traversal risk in web dashboard /api/init deployDir input",
+    "intent": "deployDir submitted via web form must be sanitized and resolved to prevent writing files outside the user's home directory. No path traversal from web init.",
+    "description": "src/web/server.tsx:240-245 accepts a user-supplied deployDir via POST /api/init and resolves ~ with a simple string replace, but does not validate the resulting path with path.resolve() or check it stays within the user's home directory. A crafted deployDir value like '../../sensitive' could cause agent config files to be written outside ~/.clawhq/. The web dashboard runs on localhost:3737 so this is local-only, but it is still a path traversal vulnerability. Steps: (1) import { resolve } from 'path' in server.tsx; (2) after resolving ~, apply path.resolve() to canonicalize; (3) validate the resolved path starts with homedir() — if not, reject with 400 error; (4) run web/ tests to confirm no regression. Scope: ~5 lines in one file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T12:03:45-07:00",
+    "startedAt": "2026-03-19T12:07:35-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T12:07:33-07:00"
+    "completedAt": "2026-03-19T12:10:13-07:00"
   },
-  "completedAt": "2026-03-19T12:07:33-07:00",
+  "completedAt": "2026-03-19T12:10:13-07:00",
   "attempts": 1
 }

@@ -203,6 +203,20 @@ describe("dashboard API endpoints", () => {
     const html = await res.text();
     expect(html).toContain("Blueprint selection is required");
   });
+
+  it("POST /api/init rejects path traversal in deployDir", async () => {
+    const app = createApp({ deployDir: testDir });
+    const formData = new FormData();
+    formData.append("blueprint", "email-manager");
+    formData.append("deployDir", "/tmp/evil-traversal");
+    const res = await app.request("/api/init", {
+      method: "POST",
+      body: formData,
+    });
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("Deploy directory must be within your home directory");
+  });
 });
 
 describe("approvals with items", () => {
