@@ -233,8 +233,8 @@
       "description": "CORE USER FLOW: This is the forging ceremony — the moment where a blueprint becomes a personalized agent. The guided wizard is the primary path for the Privacy Migrant persona who chose ClawHQ specifically because they don't want to hand-write 13,500 tokens of config. Air-gapped mode support ensures the wizard works without calling home. Acceptance: wizard completes without errors on happy path; generated config passes all 14 landmine rules; atomic writer never produces partial files; air-gap mode skips cloud-dependent steps gracefully.",
       "category": "design",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-001",
         "CQ-009"
@@ -250,7 +250,9 @@
         "Generated config passes all 14 landmine validation rules",
         "Atomic writer never produces partial config files",
         "Air-gap mode skips cloud-dependent steps gracefully"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T01:07:21-07:00"
     },
     {
       "id": "CQ-011",
