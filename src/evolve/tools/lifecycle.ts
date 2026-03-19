@@ -12,13 +12,14 @@ import { join } from "node:path";
 
 import { build } from "../../build/docker/build.js";
 import type { Stage1Config, Stage2Config } from "../../build/docker/types.js";
-import { TOOL_REGISTRY } from "./registry.js";
+
 import {
   loadToolManifest,
   removeEntry,
   saveToolManifest,
   upsertEntry,
 } from "./manifest.js";
+import { TOOL_REGISTRY } from "./registry.js";
 import type {
   ToolInstallOptions,
   ToolInstallResult,
