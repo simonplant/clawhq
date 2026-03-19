@@ -39,12 +39,13 @@ const DEFAULT_MAX_CHARS = 20_000;
 export function generateIdentityFiles(
   blueprint: Blueprint,
   maxChars: number = DEFAULT_MAX_CHARS,
+  customizationAnswers: Readonly<Record<string, string>> = {},
 ): IdentityFileContent[] {
   const files: IdentityFileContent[] = [
     {
       name: "SOUL.md",
       relativePath: "workspace/identity/SOUL.md",
-      content: generateSoul(blueprint),
+      content: generateSoul(blueprint, customizationAnswers),
     },
     {
       name: "AGENTS.md",

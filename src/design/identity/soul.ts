@@ -17,7 +17,10 @@ import type { Blueprint } from "../blueprints/types.js";
  * - Boundaries (what the agent will and won't do)
  * - A day in the life (narrative context)
  */
-export function generateSoul(blueprint: Blueprint): string {
+export function generateSoul(
+  blueprint: Blueprint,
+  customizationAnswers: Readonly<Record<string, string>> = {},
+): string {
   const { personality, use_case_mapping: useCase } = blueprint;
 
   const sections: string[] = [
@@ -38,11 +41,26 @@ export function generateSoul(blueprint: Blueprint): string {
     "## Boundaries",
     "",
     personality.boundaries,
+  ];
+
+  // Add user preferences from customization questions
+  const answerEntries = Object.entries(customizationAnswers);
+  if (answerEntries.length > 0) {
+    sections.push("", "## User Preferences", "");
+    const questions = blueprint.customization_questions ?? [];
+    for (const [id, answer] of answerEntries) {
+      const question = questions.find((q) => q.id === id);
+      const label = question ? question.prompt : id;
+      sections.push(`- **${label}** ${answer}`);
+    }
+  }
+
+  sections.push(
     "",
     "## A Day in the Life",
     "",
     useCase.day_in_the_life.trim(),
-  ];
+  );
 
   return sections.join("\n") + "\n";
 }

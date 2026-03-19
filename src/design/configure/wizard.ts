@@ -3,11 +3,13 @@
  *
  * Guides a non-technical user from blueprint selection to a valid config:
  * 1. Choose a blueprint
- * 2. Select messaging channel
- * 3. Configure model routing (local/cloud)
- * 4. Set gateway port and deploy directory
- * 5. Collect integration credentials
- * 6. Confirm and generate
+ * 2. Answer customization questions (if blueprint defines them)
+ * 3. Select messaging channel
+ * 4. Detect air-gapped mode
+ * 5. Configure model routing (local/cloud)
+ * 6. Set gateway port and deploy directory
+ * 7. Collect integration credentials
+ * 8. Confirm and generate
  *
  * Air-gapped mode: skips cloud model selection, remote validation, and any
  * cloud-dependent steps. Everything works offline with local models.
@@ -75,14 +77,17 @@ export async function runWizard(
   const { blueprint, blueprintPath } = await selectBlueprint(prompter, options);
   console.log(chalk.green(`\n✓ Blueprint: ${blueprint.name}`));
 
-  // Step 2: Channel selection
+  // Step 2: Customization questions (if blueprint defines them)
+  const customizationAnswers = await askCustomizationQuestions(prompter, blueprint);
+
+  // Step 3: Channel selection
   const channel = await selectChannel(prompter, blueprint);
   console.log(chalk.green(`✓ Channel: ${channel}`));
 
-  // Step 3: Air-gapped mode detection
+  // Step 4: Air-gapped mode detection
   const airGapped = options.airGapped ?? await detectAirGapped(prompter);
 
-  // Step 4: Model routing
+  // Step 5: Model routing
   const { modelProvider, localModel } = await configureModels(
     prompter,
     blueprint,
@@ -90,7 +95,7 @@ export async function runWizard(
   );
   console.log(chalk.green(`✓ Model: ${modelProvider === "local" ? localModel : "cloud provider"}`));
 
-  // Step 5: Deploy directory and gateway port
+  // Step 6: Deploy directory and gateway port
   const deployDir = options.deployDir ?? await prompter.input({
     message: "Deploy directory:",
     default: DEFAULT_DEPLOY_DIR,
@@ -102,10 +107,10 @@ export async function runWizard(
   });
   const gatewayPort = parseInt(portStr, 10) || DEFAULT_GATEWAY_PORT;
 
-  // Step 6: Integration credentials
+  // Step 7: Integration credentials
   const integrations = await collectIntegrations(prompter, blueprint, airGapped);
 
-  // Step 7: Confirmation
+  // Step 8: Confirmation
   console.log(chalk.bold("\n📋 Configuration Summary"));
   console.log(chalk.dim("─".repeat(40)));
   console.log(`  Blueprint:  ${blueprint.name}`);
@@ -139,6 +144,7 @@ export async function runWizard(
     deployDir,
     airGapped,
     integrations,
+    customizationAnswers,
   };
 }
 
@@ -181,6 +187,44 @@ async function selectBlueprint(
   }
 
   return { blueprint: match.blueprint, blueprintPath: match.sourcePath };
+}
+
+async function askCustomizationQuestions(
+  prompter: Prompter,
+  blueprint: Blueprint,
+): Promise<Record<string, string>> {
+  const questions = blueprint.customization_questions;
+  if (!questions || questions.length === 0) {
+    return {};
+  }
+
+  console.log(chalk.bold("\n📝 Customize your agent"));
+
+  const answers: Record<string, string> = {};
+
+  for (const q of questions) {
+    let answer: string;
+
+    if (q.type === "select" && q.options && q.options.length > 0) {
+      answer = await prompter.select<string>({
+        message: q.prompt,
+        choices: q.options.map((opt) => ({
+          name: opt,
+          value: opt,
+        })),
+      });
+    } else {
+      answer = await prompter.input({
+        message: q.prompt,
+        default: q.default,
+      });
+    }
+
+    answers[q.id] = answer;
+    console.log(chalk.green(`  ✓ ${q.id}: ${answer}`));
+  }
+
+  return answers;
 }
 
 async function selectChannel(

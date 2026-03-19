@@ -112,6 +112,24 @@ export interface Toolbelt {
   readonly skills: readonly SkillEntry[];
 }
 
+/** A single customization question asked during setup. */
+export interface CustomizationQuestion {
+  /** Unique identifier for this question (used as key in answers). */
+  readonly id: string;
+
+  /** The prompt shown to the user. */
+  readonly prompt: string;
+
+  /** Question type: "select" shows choices, "input" accepts free text. */
+  readonly type: "select" | "input";
+
+  /** Available choices (required when type is "select"). */
+  readonly options?: readonly string[];
+
+  /** Default value (first option for select, empty for input). */
+  readonly default?: string;
+}
+
 // ── Complete Blueprint ──────────────────────────────────────────────────────
 
 /**
@@ -135,6 +153,9 @@ export interface Blueprint {
   readonly channels: Channels;
   readonly skill_bundle: SkillBundle;
   readonly toolbelt: Toolbelt;
+
+  /** Optional customization questions asked during setup (1-3 per blueprint). */
+  readonly customization_questions?: readonly CustomizationQuestion[];
 }
 
 // ── Validation Types ────────────────────────────────────────────────────────

@@ -16,6 +16,28 @@ use_case_mapping:
     and suggests related work you may have missed. All processing runs locally —
     your unpublished research never leaves your machine.
 
+customization_questions:
+  - id: research_field
+    prompt: "What is your primary research field?"
+    type: input
+    default: ""
+  - id: citation_style
+    prompt: "Preferred citation format?"
+    type: select
+    options:
+      - "APA"
+      - "MLA"
+      - "Chicago"
+      - "IEEE"
+      - "Harvard"
+  - id: writing_stage
+    prompt: "What stage of research are you typically in?"
+    type: select
+    options:
+      - "Literature review — exploring and mapping the field"
+      - "Active research — running experiments, collecting data"
+      - "Writing — drafting papers, dissertations, or reports"
+
 personality:
   tone: analytical
   style: "precise, citation-aware, methodical, minimal interruption"

@@ -32,10 +32,14 @@ function mockPrompter(answers: unknown[]): Prompter {
 
 describe("runWizard", () => {
   it("completes happy path without errors", async () => {
-    // Script: select blueprint → channel → air-gapped? → model → local model →
-    //         deploy dir → port → configure tasks? → confirm
+    // Script: select blueprint → customization Qs → channel → air-gapped? →
+    //         model → local model → deploy dir → port → configure tasks? → confirm
     const prompter = mockPrompter([
       "family-hub",       // blueprint selection
+      // customization questions (family-hub has 3)
+      "3-4 (small family)",      // family_size (select)
+      "",                        // meal_preferences (input, use default)
+      "Friendly but firm — clear expectations with warmth",  // reminder_style (select)
       "telegram",         // channel selection
       false,              // not air-gapped
       "local",            // model provider
@@ -64,6 +68,10 @@ describe("runWizard", () => {
 
   it("uses pre-selected blueprint from options", async () => {
     const prompter = mockPrompter([
+      // customization questions (family-hub has 3)
+      "3-4 (small family)",
+      "",
+      "Friendly but firm — clear expectations with warmth",
       "telegram",         // channel
       false,              // not air-gapped
       "local",            // model
@@ -85,6 +93,10 @@ describe("runWizard", () => {
   it("throws WizardAbortError when user cancels", async () => {
     const prompter = mockPrompter([
       "family-hub",
+      // customization questions
+      "3-4 (small family)",
+      "",
+      "Friendly but firm — clear expectations with warmth",
       "telegram",
       false,
       "local",
@@ -104,6 +116,10 @@ describe("runWizard", () => {
 
   it("skips cloud-dependent integrations in air-gapped mode", async () => {
     const prompter = mockPrompter([
+      // customization questions
+      "3-4 (small family)",
+      "",
+      "Friendly but firm — clear expectations with warmth",
       "telegram",         // channel
       true,               // air-gapped
       "",                 // local model default (forced local)
@@ -125,6 +141,10 @@ describe("runWizard", () => {
 
   it("supports air-gapped flag from options", async () => {
     const prompter = mockPrompter([
+      // customization questions
+      "3-4 (small family)",
+      "",
+      "Friendly but firm — clear expectations with warmth",
       "telegram",
       "",                 // local model default
       "",                 // deploy dir
@@ -148,6 +168,10 @@ describe("runWizard", () => {
 
   it("collects integration credentials correctly", async () => {
     const prompter = mockPrompter([
+      // customization questions
+      "3-4 (small family)",
+      "",
+      "Friendly but firm — clear expectations with warmth",
       "telegram",
       false,
       "local",

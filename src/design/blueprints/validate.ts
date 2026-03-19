@@ -382,6 +382,80 @@ function checkToolbelt(raw: RawBlueprint): BlueprintValidationResult[] {
   return results;
 }
 
+// ── customization_questions (optional, checks 77-82) ────────────────────────
+
+function checkCustomizationQuestions(raw: RawBlueprint): BlueprintValidationResult[] {
+  const section = raw.customization_questions;
+
+  // Optional field — skip if absent
+  if (section === undefined) return [];
+
+  const results: BlueprintValidationResult[] = [];
+
+  // Must be an array
+  if (!Array.isArray(section)) {
+    results.push(fail("customization_questions", "customization_questions must be an array"));
+    return results;
+  }
+
+  results.push(pass("customization_questions", "customization_questions is an array"));
+
+  // Max 3 questions
+  if (section.length > 3) {
+    results.push(
+      fail("customization_questions.max_count", `customization_questions has ${section.length} items — maximum is 3`),
+    );
+  } else if (section.length > 0) {
+    results.push(pass("customization_questions.max_count", `customization_questions has ${section.length} item(s)`));
+  }
+
+  // Per-question validation
+  for (let i = 0; i < section.length; i++) {
+    const q = section[i] as unknown;
+    const prefix = `customization_questions[${i}]`;
+
+    if (!isObj(q)) {
+      results.push(fail(prefix, `${prefix} must be an object`));
+      continue;
+    }
+
+    results.push(checkRequiredString(q, "id", prefix));
+    results.push(checkRequiredString(q, "prompt", prefix));
+    results.push(checkEnum(q, "type", prefix, ["select", "input"]));
+
+    // If type is "select", options must be a non-empty string array
+    if (q.type === "select") {
+      const optCheck = `${prefix}.options`;
+      if (!isStrArray(q.options)) {
+        results.push(fail(optCheck, `${prefix}.options must be an array of strings when type is "select"`));
+      } else if ((q.options as string[]).length === 0) {
+        results.push(fail(optCheck, `${prefix}.options must not be empty when type is "select"`));
+      } else {
+        results.push(pass(optCheck, `${prefix}.options is valid`));
+      }
+    }
+
+    // Default is optional — if present, must be a string
+    if (q.default !== undefined && !isStr(q.default)) {
+      results.push(fail(`${prefix}.default`, `${prefix}.default must be a string`));
+    }
+  }
+
+  // Question IDs must be unique
+  const ids = section.filter(isObj).map((q) => q.id).filter(isStr);
+  const idSet = new Set(ids);
+  if (idSet.size === ids.length) {
+    results.push(pass("customization_questions.unique_ids", "All question IDs are unique"));
+  } else {
+    const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+    results.push(
+      fail("customization_questions.unique_ids", `Duplicate question IDs: ${[...new Set(dupes)].join(", ")}`),
+    );
+  }
+
+  return results;
+}
+
 // ── Security Baseline Enforcement ───────────────────────────────────────────
 
 function checkSecurityBaseline(raw: RawBlueprint): BlueprintValidationResult[] {
@@ -626,6 +700,7 @@ export function validateBlueprint(
     ...checkChannels(raw),
     ...checkSkillBundle(raw),
     ...checkToolbelt(raw),
+    ...checkCustomizationQuestions(raw),
     ...checkSecurityBaseline(raw),
     ...checkCrossSection(raw),
   ];
