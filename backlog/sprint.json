@@ -1,31 +1,30 @@
 {
-  "sprintId": "sprint-1773905795",
-  "startedAt": "2026-03-19T00:36:35-07:00",
+  "sprintId": "sprint-1773906633",
+  "startedAt": "2026-03-19T00:50:33-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-009",
-    "title": "Blueprint loader + validator",
-    "intent": "Load and validate any blueprint YAML — built-in or community — rejecting malformed input with clear errors. This is the read path the entire blueprint engine depends on.",
-    "description": "BLUEPRINT ENGINE FOUNDATION: The loader is the reading end of the blueprint system. Without it, 'clawhq blueprint list/preview' (FEAT-001) and the init wizard (CQ-010) have nothing to work with. 70+ validation checks mean a malformed community blueprint can't corrupt the user's setup. Acceptance: all built-in blueprints load cleanly; invalid YAML surfaces readable error; size limit prevents DoS on large files; templateToChoice() works correctly for wizard display.",
+    "id": "CQ-010",
+    "title": "Init wizard + config generation + writer",
+    "intent": "Guide a non-technical user from blueprint selection to a valid, landmine-free config in one interactive session. Generated config must pass all 14 validation rules.",
+    "description": "CORE USER FLOW: This is the forging ceremony — the moment where a blueprint becomes a personalized agent. The guided wizard is the primary path for the Privacy Migrant persona who chose ClawHQ specifically because they don't want to hand-write 13,500 tokens of config. Air-gapped mode support ensures the wizard works without calling home. Acceptance: wizard completes without errors on happy path; generated config passes all 14 landmine rules; atomic writer never produces partial files; air-gap mode skips cloud-dependent steps gracefully.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement YAML blueprint loader from configs/templates/",
-      "Add 70+ validation checks for blueprint correctness",
-      "Enforce security baseline requirements in blueprints",
-      "Support multiple load paths (local, built-in)",
-      "Implement templateToChoice() conversion for wizard display"
+      "Build interactive setup wizard with guided prompts",
+      "Implement config generation enforcing all 14 landmine rules",
+      "Add atomic file writer (temp + rename)",
+      "Support air-gapped mode (skip cloud-dependent steps gracefully)"
     ],
     "acceptanceCriteria": [
-      "All built-in blueprints load without errors",
-      "Invalid YAML surfaces readable error message",
-      "Size limit prevents DoS on oversized blueprint files",
-      "templateToChoice() produces correct wizard display data"
+      "Wizard completes without errors on happy path",
+      "Generated config passes all 14 landmine validation rules",
+      "Atomic writer never produces partial config files",
+      "Air-gap mode skips cloud-dependent steps gracefully"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T00:36:35-07:00",
+    "startedAt": "2026-03-19T00:50:33-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T00:50:31-07:00"
+    "completedAt": "2026-03-19T01:07:21-07:00"
   },
-  "completedAt": "2026-03-19T00:50:31-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T01:07:21-07:00",
+  "attempts": 1
 }
