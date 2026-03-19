@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Core Intent
+
+Today you choose between **surveillance AI** (polished, easy, you own nothing) and **raw framework** (sovereign, powerful, requires months of expertise). Nobody makes the sovereign option usable. ClawHQ closes that gap.
+
+**Core bet:** People will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
+
+**Three non-negotiables:**
+1. **Data sovereignty** — local-first, zero bytes leave unless you choose, portable export, verified destroy
+2. **Security by default** — hardening is automatic, not opt-in; content access architecturally blocked (no code path, not a policy flag)
+3. **The agent grows** — skills, integrations, capabilities evolve over time through a validated pipeline; the agent at month 6 does more than at day 1
+
+Every decision should be tested against this intent. If a feature doesn't make sovereignty more usable or security more invisible, question whether it belongs.
+
 ## Project Overview
 
 ClawHQ is an agent platform for OpenClaw. It forges purpose-built agents from blueprints — complete operational designs that configure every dimension of OpenClaw for a specific job. Choose a blueprint ("Email Manager," "Stock Trading Assistant," "Meal Planner"), customize it, and ClawHQ forges a hardened, running agent. The user gets a Signal, Telegram, or Discord UI. We do the rest.

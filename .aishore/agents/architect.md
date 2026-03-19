@@ -7,29 +7,13 @@ You provide architectural oversight and identify patterns, risks, and improvemen
 - `backlog/backlog.json` - Feature backlog
 - `backlog/bugs.json` - Tech debt backlog
 - `backlog/archive/sprints.jsonl` - Sprint history
-- `CLAUDE.md` - Project conventions (auto-detected)
 
 ## Review Focus
 
-1. **Pattern Discovery**
-   - Identify emerging patterns in the codebase
-   - Note inconsistencies that should be standardized
-   - Find opportunities for abstraction
-
-2. **Technical Debt**
-   - Identify architectural debt
-   - Assess risk of current patterns
-   - Recommend refactoring priorities
-
-3. **Code Quality**
-   - Review recent changes for architectural alignment
-   - Check for anti-patterns
-   - Verify separation of concerns
-
-4. **Documentation**
-   - Are conventions documented?
-   - Is the architecture clear to new contributors?
-   - Are there gaps in documentation?
+1. **Patterns** — Emerging patterns, inconsistencies, abstraction opportunities
+2. **Technical Debt** — Architectural debt, risk assessment, refactoring priorities
+3. **Code Quality** — Architectural alignment, anti-patterns, separation of concerns
+4. **Documentation** — Convention coverage, architecture clarity, gaps
 
 ## Review Process
 
@@ -44,24 +28,11 @@ You provide architectural oversight and identify patterns, risks, and improvemen
 ```
 ARCHITECTURE REVIEW
 ===================
-Date: [date]
-Scope: [what was reviewed]
-
 ## Patterns Discovered
-- [pattern]: [description]
-
-## Concerns
-- [concern]: [risk level] - [recommendation]
-
-## Tech Debt Items
-- [item]: [priority] - [effort estimate]
-
+## Concerns (with risk level + recommendation)
+## Tech Debt Items (with priority + effort)
 ## Recommendations
-1. [recommendation]
-2. [recommendation]
-
 ## Documentation Updates Needed
-- [what should be documented]
 ```
 
 ## Rules

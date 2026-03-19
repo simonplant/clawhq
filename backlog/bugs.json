@@ -13,8 +13,8 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-18",
-      "groomingNotes": "Blocking: resolve before CQ-009 sprint. Decision needed: rename configs/templates/ to configs/blueprints/ OR update loader to use templates/. Rename preferred — aligns with canonical terminology. Single-step fix.",
-      "intent": "Resolve the blueprint directory path to a single canonical location before CQ-009 implementation. The loader must not guess which directory to read."
+      "groomingNotes": "BLOCKING: Resolve before CQ-009 sprint starts — the blueprint loader must not guess which directory to read. Decision: rename configs/templates/ to configs/blueprints/ (preferred — aligns with canonical ARCHITECTURE.md spec and CQ-009 implementation target). Also: the _sprint_order note in backlog.json references 'configs/templates/' — update it to 'configs/blueprints/' after rename. Single-step fix. Must be done in the same sprint slot as or immediately before CQ-009.",
+      "intent": "configs/blueprints/ is the canonical path. Rename configs/templates/ before CQ-009 implementation begins. The loader targets one path, not two."
     },
     {
       "id": "BUG-006",

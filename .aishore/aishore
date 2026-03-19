@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # aishore - AI Sprint Runner CLI
+# Copyright (C) 2026 Simon Plant. Licensed under AGPL-3.0. See LICENSE.
+#
 # A self-contained sprint orchestration tool for Claude Code
 #
 # Usage: .aishore/aishore <command> [options]
@@ -124,16 +126,23 @@ log_agent()   { echo -e "${MAGENTA}[$1]${NC} $2"; }
 # ============================================================================
 
 build_context() {
+    local agent_role="${AGENT_CONTEXT_ROLE:-developer}"
     local context=""
     for arg in "$@"; do
         [[ -n "$context" ]] && context="$context $arg" || context="$arg"
     done
-    local claude_md
-    claude_md=$(find_claude_md)
-    [[ -n "$claude_md" ]] && context="$context @$claude_md"
-    local project_docs
-    project_docs=$(find_project_docs)
-    [[ -n "$project_docs" ]] && context="$context $project_docs"
+    # Developer/architect need CLAUDE.md; validator/groom agents don't benefit enough to justify tokens
+    if [[ "$agent_role" == "developer" || "$agent_role" == "architect" ]]; then
+        local claude_md
+        claude_md=$(find_claude_md)
+        [[ -n "$claude_md" ]] && context="$context @$claude_md"
+    fi
+    # Only developer/architect need ARCHITECTURE.md/PRODUCT.md
+    if [[ "$agent_role" == "developer" || "$agent_role" == "architect" ]]; then
+        local project_docs
+        project_docs=$(find_project_docs)
+        [[ -n "$project_docs" ]] && context="$context $project_docs"
+    fi
     echo "$context"
 }
 
@@ -141,19 +150,9 @@ build_completion_contract() {
     cat <<'EOCONTRACT'
 
 ## Completion Contract
-When you are finished, you MUST write to `.aishore/data/status/result.json`:
-
-On success:
-```json
-{"status": "pass", "summary": "brief description of what was done"}
-```
-
-On failure:
-```json
-{"status": "fail", "reason": "what went wrong"}
-```
-
-This file is how the orchestrator knows you finished. Write it as your final action.
+When finished, write `.aishore/data/status/result.json` as your final action:
+- Success: `{"status": "pass", "summary": "what was done"}`
+- Failure: `{"status": "fail", "reason": "what went wrong"}`
 EOCONTRACT
 }
 
@@ -224,42 +223,38 @@ find_project_docs() {
     echo "$docs"
 }
 
+# Return path to a temp file with only the last N lines of sprints.jsonl
+recent_sprints_file() {
+    local max_lines="${1:-20}"
+    local src="$ARCHIVE_DIR/sprints.jsonl"
+    [[ ! -f "$src" ]] && return 0
+    local line_count
+    line_count=$(wc -l < "$src")
+    if [[ "$line_count" -le "$max_lines" ]]; then
+        echo "@$src"
+        return 0
+    fi
+    local tmp
+    tmp="$(ensure_tmpdir)/recent_sprints.jsonl"
+    tail -n "$max_lines" "$src" > "$tmp"
+    echo "@$tmp"
+}
+
 get_claudemd_snippet() {
     cat <<'EOSNIPPET'
 
 ## Sprint Orchestration (aishore)
 
-This project uses [aishore](https://github.com/simonplant/aishore) for AI-assisted sprint management.
-
-### Commands
+AI sprint runner. Backlog lives in `backlog/`, tool lives in `.aishore/`. Run `.aishore/aishore help` for full usage.
 
 ```bash
-# Sprints (each item gets a feature branch, committed, merged, pushed)
-.aishore/aishore run [count]        # Run N sprints (default: 1)
-.aishore/aishore run FEAT-001       # Run specific item by ID
-.aishore/aishore run --no-merge     # Keep branches for PR review
-
-# Grooming
-.aishore/aishore groom              # Tech lead: groom bugs
-.aishore/aishore groom --backlog    # Product owner: groom features
-
-# Review
+.aishore/aishore run [N|ID]         # Run sprints (branch, commit, merge, push per item)
+.aishore/aishore groom [--backlog]  # Groom bugs or features
 .aishore/aishore review             # Architecture review
-.aishore/aishore review --update-docs          # Review and update docs
-.aishore/aishore review --since <commit>       # Review changes since commit
-
-# Info
-.aishore/aishore metrics            # Sprint metrics
-.aishore/aishore metrics --json     # Metrics as JSON
-
-# Maintenance
-.aishore/aishore update             # Update from upstream (checksum-verified)
-.aishore/aishore update --dry-run   # Check for updates without applying
-.aishore/aishore checksums          # Regenerate checksums after editing .aishore/ files
-.aishore/aishore init               # Interactive setup wizard
+.aishore/aishore status             # Backlog overview
 ```
 
-**Important**: After modifying any files in `.aishore/` (script, agent prompts, etc.), run `.aishore/aishore checksums` before committing. This regenerates `checksums.sha256` which is used to verify integrity during `update`.
+After modifying `.aishore/` files, run `.aishore/aishore checksums` before committing.
 EOSNIPPET
 }
 
@@ -953,59 +948,35 @@ build_agent_prompt() {
     local prompt_file="$AGENTS_DIR/${agent_name}.md"
     [[ ! -f "$prompt_file" ]] && { log_error "Agent not found: $agent_name"; return 1; }
 
-    # Build orchestrator injections (same logic as run_agent)
+    # Build orchestrator injections
     local validate_hint=""
     if [[ "$agent_name" == "developer" ]]; then
         validate_hint="
 ## Commander's Intent
-The sprint item may include an \`intent\` field in sprint.json. This is the commander's intent — a non-negotiable directive that defines what must be true when you're done. It overrides ambiguity: when the spec is unclear, the steps seem wrong, or you have to make a judgment call, intent is the order you follow."
+The \`intent\` field in sprint.json is a non-negotiable directive — what must be true when done. When the spec is unclear or steps seem wrong, intent is the order you follow."
 
         if [[ "$MATURITY_ENABLED" == "true" ]]; then
             validate_hint="$validate_hint
 
-## Maturity Protocol (MANDATORY)
-You MUST complete all phases before signaling done. Do NOT skip phases.
-
-### Phase 1 — Implement
-Write the code. Follow the spec, match existing patterns, keep it clean.${VALIDATE_CMD:+
-Run the validation command after implementation: \`$VALIDATE_CMD\`
-Fix any failures before proceeding to Phase 2.}
-
-### Phase 2 — Critique
-STOP writing code. Shift to reviewer mindset. Re-read every file you changed from top to bottom.
-- Check the item's intent — would the commander look at this and say the hill is taken? Every decision should trace back to the directive.
-- Walk through each acceptance criterion and verify it is actually met (not just \"probably\").
-- Look for: bugs, off-by-one errors, missing edge cases, error handling gaps, broken integrations with existing code.
-- Check: did you leave dead code, debug prints, TODOs, or incomplete implementations?
-- Ask yourself: what would break in production that works in a happy-path test?
-Fix everything you find. This is not optional.
-
-### Phase 3 — Harden
-Run the full validation suite${VALIDATE_CMD:+ (\`$VALIDATE_CMD\`)} again. Fix any regressions from Phase 2 fixes.
-Re-verify every acceptance criterion one final time — confirm each is provably met, not assumed.
-Only when everything is clean: commit and signal completion.
-
-Output a one-line phase marker as you transition:
-\`═══ PHASE 2: CRITIQUE ═══\`
-\`═══ PHASE 3: HARDEN ═══\`"
+## Maturity Protocol (MANDATORY — complete all phases)
+**Phase 1 — Implement:** Write the code. Follow spec, match patterns.${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix failures.}
+**Phase 2 — Critique:** STOP coding. Re-read every changed file. Verify intent is fulfilled and each AC is provably met. Hunt bugs, edge cases, dead code, missing error handling. Fix everything found.
+**Phase 3 — Harden:** Run validation${VALIDATE_CMD:+ (\`$VALIDATE_CMD\`)} again. Fix regressions. Re-verify all AC. Only then commit and signal done.
+Output phase markers: \`═══ PHASE 2: CRITIQUE ═══\` / \`═══ PHASE 3: HARDEN ═══\`"
         elif [[ -n "$VALIDATE_CMD" ]]; then
             validate_hint="$validate_hint
 
-## Validation Command
-After implementing, run this command to verify your work passes: \`$VALIDATE_CMD\`
-Fix any failures before writing result.json."
+## Validation
+Run \`$VALIDATE_CMD\` after implementing. Fix failures before writing result.json."
         fi
     elif [[ "$agent_name" == "validator" ]]; then
         validate_hint="
 ## Commander's Intent
-The sprint item may include an \`intent\` field in sprint.json. If present, this is the non-negotiable directive. Verify the implementation fulfills it — AC can pass mechanically while the intent is missed entirely."
+The \`intent\` field in sprint.json is a non-negotiable directive. Verify the implementation fulfills it — AC can pass mechanically while intent is missed."
     elif [[ "$agent_name" == "tech-lead" || "$agent_name" == "product-owner" ]]; then
         validate_hint="
 ## Commander's Intent
-Every backlog item should have an \`intent\` field — the commander's intent. A clear, non-negotiable directive that defines what must be true when the work is done. The developer will follow this when the spec is ambiguous or steps seem wrong.
-Use \`--intent \"...\" \` when adding or editing items. Example:
-  .aishore/aishore backlog edit <ID> --intent \"Webhooks must deliver or tell the user why not. Silent failure is not acceptable.\"
-Write it like an order, not a description. Not \"improve webhook reliability\" but \"webhooks never silently fail.\""
+Every item should have an \`intent\` field — a non-negotiable directive stating what must be true when done. Use \`--intent \"...\"\` when adding/editing items. Write it like an order, not a description."
     fi
 
     local prompt
@@ -1035,9 +1006,9 @@ run_agent() {
 
     local context_files
     if [[ -n "$context_args" ]]; then
-        context_files=$(build_context $context_args)
+        context_files=$(AGENT_CONTEXT_ROLE="$agent_name" build_context $context_args)
     else
-        context_files=$(build_context "@$BACKLOG_DIR/sprint.json")
+        context_files=$(AGENT_CONTEXT_ROLE="$agent_name" build_context "@$BACKLOG_DIR/sprint.json")
     fi
 
     # Derive permissions based on agent role and mode
@@ -1143,7 +1114,7 @@ check_scope_violations() {
         for glob in "${globs[@]}"; do
             # Convert ** to * for bash pattern matching (simplistic but functional)
             local pattern="${glob//\*\*/*}"
-            # shellcheck disable=SC2254
+            # shellcheck disable=SC2254,SC2053
             if [[ "$file" == $pattern ]]; then
                 in_scope=true
                 break
@@ -1342,13 +1313,13 @@ cmd_auto() {
     local scope="${1:-}"
 
     if [[ -z "$scope" ]]; then
-        log_error "Usage: auto {done|p0|p1|p2} [--retries N] [--no-merge] [--max-failures N] [--dry-run]"
-        echo ""
-        echo "Scopes:"
-        echo "  done  Drain entire backlog to completion"
-        echo "  p0    Complete all P0 (must) items"
-        echo "  p1    Complete all P0+P1 (must + should) items"
-        echo "  p2    Complete all P0–P2 (must + should + could) items"
+        log_error "Usage: auto {done|p0|p1|p2} [--retries N] [--max-failures N] [--no-merge] [--refine] [--quick] [--dry-run]"
+        echo "" >&2
+        echo "Scopes:" >&2
+        echo "  done  Drain entire backlog to completion" >&2
+        echo "  p0    Complete all P0 (must) items" >&2
+        echo "  p1    Complete all P0+P1 (must + should) items" >&2
+        echo "  p2    Complete all P0–P2 (must + should + could) items" >&2
         return 1
     fi
 
@@ -1894,7 +1865,8 @@ cmd_run() {
             if [[ "$total_ready" -lt "$AUTO_GROOM_THRESHOLD" ]]; then
                 log_info "Auto: ready buffer low ($total_ready < $AUTO_GROOM_THRESHOLD) — grooming"
                 local groom_context="@$BACKLOG_DIR/backlog.json @$BACKLOG_DIR/bugs.json"
-                [[ -f "$ARCHIVE_DIR/sprints.jsonl" ]] && groom_context="$groom_context @$ARCHIVE_DIR/sprints.jsonl"
+                local recent_sprints; recent_sprints=$(recent_sprints_file 20)
+                [[ -n "$recent_sprints" ]] && groom_context="$groom_context $recent_sprints"
                 run_agent "tech-lead" "groom" "$MODEL_FAST" "$groom_context" || true
                 check_result || log_warning "Tech-lead groom did not pass — continuing"
                 run_agent "product-owner" "groom" "$MODEL_FAST" "$groom_context" || true
@@ -1929,7 +1901,7 @@ cmd_run() {
             local item_priority
             item_priority=$(echo "$item_json" | jq -r '.priority // "should"')
             local in_scope=false
-            # shellcheck disable=SC2086 — intentional word-splitting on priority list
+            # shellcheck disable=SC2086 # intentional word-splitting on priority list
             for _p in $auto_priorities; do
                 [[ "$item_priority" == "$_p" ]] && { in_scope=true; break; }
             done
@@ -2053,7 +2025,8 @@ cmd_groom() {
     print_groom_summary
 
     local context_args="@$BACKLOG_DIR/backlog.json @$BACKLOG_DIR/bugs.json"
-    [[ -f "$ARCHIVE_DIR/sprints.jsonl" ]] && context_args="$context_args @$ARCHIVE_DIR/sprints.jsonl"
+    local recent_sprints; recent_sprints=$(recent_sprints_file 20)
+    [[ -n "$recent_sprints" ]] && context_args="$context_args $recent_sprints"
 
     # Snapshot backlog state for progress tracking
     local snap_before
@@ -2198,7 +2171,8 @@ cmd_review() {
     echo ""
 
     local context_args="@$BACKLOG_DIR/backlog.json @$BACKLOG_DIR/bugs.json"
-    [[ -f "$ARCHIVE_DIR/sprints.jsonl" ]] && context_args="$context_args @$ARCHIVE_DIR/sprints.jsonl"
+    local recent_sprints; recent_sprints=$(recent_sprints_file 20)
+    [[ -n "$recent_sprints" ]] && context_args="$context_args $recent_sprints"
 
     local extra_prompt
     extra_prompt="## Additional Context
@@ -2672,6 +2646,16 @@ An item is done when:
 | L    | Significant feature, multiple components    |
 | XL   | Large feature, consider splitting           |
 
+## Writing Commander's Intent
+
+Intent is a non-negotiable directive — what must be true when the work is done.
+Write it like an order, not a description. State the outcome, not the implementation.
+
+Good: "Webhooks must deliver or tell the user why not. Silent failure is not acceptable."
+Bad:  "Improve webhook reliability" (vague, no bar, no consequence)
+
+See the full examples in this file after updating via groom or manually.
+
 ## Backlog Item Structure
 
 ```json
@@ -2887,7 +2871,6 @@ cmd_version() {
 }
 
 cmd_update() {
-    local repo_url="https://raw.githubusercontent.com/simonplant/aishore/main"
     local dry_run=false
     local force=false
     local no_verify=false
@@ -2921,8 +2904,20 @@ cmd_update() {
         exit 1
     fi
 
-    # Fetch remote version from VERSION file
+    # Resolve latest release tag
+    local api_url="https://api.github.com/repos/simonplant/aishore/releases/latest"
     log_info "Checking for updates..."
+    local release_tag=""
+    release_tag=$($fetch_cmd "$api_url" 2>/dev/null | jq -r '.tag_name // empty') || true
+
+    if [[ -z "$release_tag" ]]; then
+        log_warning "Could not resolve latest release — falling back to main"
+        release_tag="main"
+    fi
+
+    local repo_url="https://raw.githubusercontent.com/simonplant/aishore/$release_tag"
+
+    # Fetch remote version from VERSION file
     local remote_version
     remote_version=$($fetch_cmd "$repo_url/.aishore/VERSION" 2>/dev/null | tr -d '[:space:]') || {
         log_error "Failed to fetch remote version from $repo_url/.aishore/VERSION"
@@ -2934,7 +2929,7 @@ cmd_update() {
         exit 1
     fi
 
-    echo "Remote version: $remote_version"
+    echo "Remote version: $remote_version (tag: $release_tag)"
     echo ""
 
     if [[ "$AISHORE_VERSION" == "$remote_version" ]] && [[ "$force" != "true" ]]; then
@@ -2942,17 +2937,44 @@ cmd_update() {
         return 0
     fi
 
+    # Fetch checksums manifest (needed for file discovery and verification)
+    log_info "Fetching checksums..."
+    local checksums_content=""
+    checksums_content=$($fetch_cmd "$repo_url/.aishore/checksums.sha256" 2>/dev/null) || {
+        log_error "Cannot fetch checksums manifest — check connectivity and try again"
+        exit 1
+    }
+
+    # Build file list from checksums manifest (with path validation)
+    local update_files=()
+    if [[ -n "$checksums_content" ]]; then
+        while IFS= read -r line; do
+            local fpath
+            fpath=$(echo "$line" | awk '{print $2}')
+            [[ -z "$fpath" ]] && continue
+            # Validate: must be inside .aishore/, no traversal, no absolute paths
+            if [[ "$fpath" != .aishore/* ]] || [[ "$fpath" == *..* ]] || [[ "$fpath" == /* ]]; then
+                log_error "Unsafe path in checksums manifest: $fpath"
+                exit 1
+            fi
+            # Protect user config from overwrite
+            if [[ "$fpath" == ".aishore/config.yaml" ]]; then
+                continue
+            fi
+            update_files+=("$fpath")
+        done <<< "$checksums_content"
+    fi
+
+    if [[ ${#update_files[@]} -eq 0 ]]; then
+        log_error "No files found in checksums manifest"
+        exit 1
+    fi
+
     # Show what will be updated
     echo "Files to update:"
-    echo "  .aishore/VERSION"
-    echo "  .aishore/aishore"
-    echo "  .aishore/README.md"
-    echo "  .aishore/gitignore-entries.txt"
-    echo "  .aishore/agents/developer.md"
-    echo "  .aishore/agents/validator.md"
-    echo "  .aishore/agents/tech-lead.md"
-    echo "  .aishore/agents/product-owner.md"
-    echo "  .aishore/agents/architect.md"
+    for f in "${update_files[@]}"; do
+        echo "  $f"
+    done
     echo ""
     echo "Not modified (your content):"
     echo "  .aishore/config.yaml"
@@ -2967,23 +2989,10 @@ cmd_update() {
         return 0
     fi
 
-    # Fetch checksums manifest
-    log_info "Fetching checksums..."
-    local checksums_content=""
-    checksums_content=$($fetch_cmd "$repo_url/.aishore/checksums.sha256" 2>/dev/null) || {
-        if [[ "$no_verify" == "true" ]]; then
-            log_warning "Skipping verification (--no-verify)"
-            checksums_content=""
-        else
-            log_error "Cannot fetch checksums — aborting (use --force --no-verify to skip)"
-            exit 1
-        fi
-    }
-
     get_expected_checksum() {
         local filepath="$1"
         [[ -z "$checksums_content" ]] && { echo ""; return 0; }
-        echo "$checksums_content" | grep -F "$filepath" | awk '{print $1}' | head -1 || true
+        echo "$checksums_content" | awk -v f="$filepath" '$2 == f {print $1; exit}' || true
     }
 
     verify_or_abort() {
@@ -3032,16 +3041,23 @@ cmd_update() {
     # ── Phase 1: Fetch & verify all files into staging ──
     local staging_dir
     staging_dir="$(ensure_tmpdir)/update_staging"
-    mkdir -p "$staging_dir/agents"
     local all_verified=true
+    local file_count=0
 
-    _fetch_and_stage ".aishore/VERSION" "$staging_dir/VERSION" "VERSION" ".aishore/VERSION" true
-    _fetch_and_stage ".aishore/aishore" "$staging_dir/aishore" "aishore" ".aishore/aishore" true
-    _fetch_and_stage ".aishore/README.md" "$staging_dir/README.md" "README.md" ".aishore/README.md"
-    _fetch_and_stage ".aishore/gitignore-entries.txt" "$staging_dir/gitignore-entries.txt" "gitignore-entries.txt" ".aishore/gitignore-entries.txt"
+    # Create staging subdirectories for all files
+    for f in "${update_files[@]}"; do
+        mkdir -p "$staging_dir/$(dirname "$f")"
+    done
 
-    for agent in developer validator tech-lead product-owner architect; do
-        _fetch_and_stage ".aishore/agents/$agent.md" "$staging_dir/agents/$agent.md" "$agent.md" ".aishore/agents/$agent.md"
+    # Fetch and verify each file
+    for f in "${update_files[@]}"; do
+        local basename_f
+        basename_f=$(basename "$f")
+        local required=false
+        # VERSION and aishore CLI are required
+        [[ "$f" == ".aishore/VERSION" || "$f" == ".aishore/aishore" ]] && required=true
+        _fetch_and_stage "$f" "$staging_dir/$f" "$basename_f" "$f" "$required"
+        ((file_count++))
     done
 
     # ── Phase 2: Install (only if all verified) ──
@@ -3051,33 +3067,35 @@ cmd_update() {
     fi
 
     log_info "All files verified — installing..."
-    mv "$staging_dir/VERSION" "$AISHORE_ROOT/VERSION"
-    mv "$staging_dir/aishore" "$AISHORE_ROOT/aishore"
-    chmod +x "$AISHORE_ROOT/aishore"
-    mv "$staging_dir/README.md" "$AISHORE_ROOT/README.md"
-    mv "$staging_dir/gitignore-entries.txt" "$AISHORE_ROOT/gitignore-entries.txt"
-    for agent in developer validator tech-lead product-owner architect; do
-        mv "$staging_dir/agents/$agent.md" "$AGENTS_DIR/$agent.md"
+    for f in "${update_files[@]}"; do
+        local dest="$PROJECT_ROOT/$f"
+        mkdir -p "$(dirname "$dest")"
+        mv "$staging_dir/$f" "$dest"
     done
+    chmod +x "$AISHORE_ROOT/aishore"
 
     echo ""
-    log_success "Updated to $remote_version (9 files installed)"
+    log_success "Updated to $remote_version ($file_count files installed)"
 }
 
 cmd_checksums() {
     cd "$PROJECT_ROOT"
 
     local checksum_file="$AISHORE_ROOT/checksums.sha256"
-    local files=(
+    local files=()
+
+    # Distributable files: VERSION, CLI, docs, and agent prompts
+    local distributable=(
         .aishore/VERSION
         .aishore/aishore
         .aishore/README.md
         .aishore/gitignore-entries.txt
     )
-
-    # Add all agent prompts
     for f in "$AGENTS_DIR"/*.md; do
-        [[ -f "$f" ]] && files+=(".aishore/agents/$(basename "$f")")
+        [[ -f "$f" ]] && distributable+=(".aishore/agents/$(basename "$f")")
+    done
+    for f in "${distributable[@]}"; do
+        [[ -f "$f" ]] && files+=("$f")
     done
 
     # Generate checksums
@@ -3119,7 +3137,7 @@ cmd_backlog() {
         check)      cmd_backlog_check "$@" ;;
         *)
             log_error "Unknown backlog command: $subcmd"
-            echo "Usage: backlog {list|add|show|edit|check|rm}"
+            echo "Usage: backlog {list|add|show|edit|check|rm}" >&2
             return 1
             ;;
     esac
@@ -3601,29 +3619,32 @@ cmd_usage() {
 aishore - AI Sprint Runner (v$AISHORE_VERSION)
 
 Usage: .aishore/aishore <command> [options]
+       .aishore/aishore auto <scope> [--retries N] [--max-failures N] [--no-merge] [--refine] [--quick] [--dry-run]
+       .aishore/aishore run [<count>|<ID>] [--dry-run] [--no-merge] [--retries N] [--refine] [--quick]
 
 Sprint:
-  auto <scope>      Autonomous mode (done, p0, p1, p2)
-  run [N|ID]        Run sprints or a specific item
-  groom             Groom bugs (--backlog for features)
-  review            Architecture review
+  auto <scope>       Autonomous mode (done, p0, p1, p2)
+  run [N|ID]         Run sprints or a specific item
+  groom              Groom bugs (--backlog for features)
+  review             Architecture review
 
 Backlog:
-  backlog list      List all items
-  backlog add       Add a new item
-  backlog show <ID> Show item detail
-  backlog edit <ID> Update an item
-  backlog rm <ID>   Remove an item
+  backlog list       List all items
+  backlog add        Add a new item
+  backlog show <ID>  Show item detail
+  backlog edit <ID>  Update an item
+  backlog check <ID> Check readiness gates
+  backlog rm <ID>    Remove an item
 
 Info:
-  status            Backlog overview and sprint readiness
-  metrics           Sprint metrics
+  status             Backlog overview and sprint readiness
+  metrics            Sprint metrics
 
 Maintenance:
-  init              Setup wizard
-  update            Update from upstream
-  clean             Remove done items
-  checksums         Regenerate checksums
+  init               Setup wizard
+  update             Update from upstream
+  clean              Remove done items
+  checksums          Regenerate checksums
 
 Examples:
   .aishore/aishore auto done          # Drain entire backlog
@@ -3639,6 +3660,8 @@ cmd_help() {
 aishore - AI Sprint Runner (v$AISHORE_VERSION)
 
 Usage: .aishore/aishore <command> [options]
+       .aishore/aishore auto <scope> [--retries N] [--max-failures N] [--no-merge] [--refine] [--quick] [--dry-run]
+       .aishore/aishore run [<count>|<ID>] [--dry-run] [--no-merge] [--retries N] [--refine] [--quick]
 
 Commands:
   backlog list      List all items (features + bugs)
@@ -3674,6 +3697,7 @@ Commands:
     --retries N     Per-item retry attempts on failure
     --no-merge      Keep feature branches for PR review
     --refine        Refine spec on exhausted retries and try once more
+    --quick         Skip maturity protocol (fast iteration)
     --dry-run       Preview first item without running
 
   run [count]       Run N sprints (default: 1, feature branches, push/pull)
@@ -3691,74 +3715,30 @@ Commands:
     --update-docs   Allow updates to docs
     --since <hash>  Review since specific commit
 
-  metrics           Show sprint metrics
-    --json          Output as JSON
-
+  metrics           Show sprint metrics (--json for JSON output)
   status            Show backlog overview and sprint readiness
-
-  update            Update aishore from upstream
-    --dry-run       Check for updates without applying
-    --check         Alias for --dry-run
-    --force         Update even if already on latest version
-    --no-verify     Skip checksum verification (use with --force)
-
-  clean             Remove done items from backlog and bugs
-    --dry-run       Show what would be removed without changing files
-
+  update            Update from upstream (--dry-run to check, --force to override)
+  clean             Remove done items (--dry-run to preview)
   checksums         Regenerate checksums.sha256 for update verification
   init              Setup wizard — checks prerequisites, configures project
-  version           Show version
-  help              Show this help
+  version, -v, --version   Show version
+  help, -h, --help         Show this help
 
 Examples:
   .aishore/aishore auto done            # Drain entire backlog autonomously
-  .aishore/aishore auto p1              # Complete all must + should items
-  .aishore/aishore auto p1 --retries 2  # With per-item retries
-  .aishore/aishore auto done --no-merge # Keep branches for PR review
-  .aishore/aishore run                  # Run 1 sprint
-  .aishore/aishore run 5               # Run 5 sprints
-  .aishore/aishore run FEAT-001        # Run specific item
-  .aishore/aishore run --no-merge 3    # Keep branches for PR review
-  .aishore/aishore groom
-  .aishore/aishore update --dry-run
+  .aishore/aishore auto p1 --retries 2  # Complete must + should, with retries
+  .aishore/aishore run FEAT-001         # Run specific item
+  .aishore/aishore run --no-merge 3     # Keep branches for PR review
+  .aishore/aishore groom --backlog      # Groom features
+  .aishore/aishore update --dry-run     # Check for updates
 
 Files:
   backlog/backlog.json    Your feature backlog (user content)
   backlog/bugs.json       Your bugs/tech debt (user content)
   backlog/sprint.json     Current sprint state
   .aishore/config.yaml    Optional configuration overrides
-  .aishore/agents/        Agent prompts (updated by 'update')
 
-Environment Variables:
-  AISHORE_MODEL_PRIMARY     Primary model (default: claude-opus-4-6)
-  AISHORE_MODEL_FAST        Fast model (default: claude-sonnet-4-6)
-  AISHORE_AGENT_TIMEOUT     Agent timeout in seconds (default: 3600)
-  AISHORE_VALIDATE_CMD      Validation command to run after implementation
-  AISHORE_VALIDATE_TIMEOUT  Validation command timeout in seconds (default: 120)
-  AISHORE_NOTIFY_CMD        Command to run on sprint completion (receives \$1=status, \$2=item_id)
-  AISHORE_AUTO_GROOM_THRESHOLD  Ready items below this triggers auto-groom (default: 3)
-  AISHORE_AUTO_MAX_FAILURES     Max consecutive failures before stopping (default: 5)
-  AISHORE_SCOPE_MODE            Scope checking mode: warn (default) or strict
-  AISHORE_MATURITY              Maturity protocol: true (default) or false
-
-Agent Permissions:
-  Each agent role has a default permission set:
-    developer       Bash,Edit,Write,Read,Glob,Grep
-    validator       Bash,Read,Write,Glob,Grep
-    reviewer        Read,Glob,Grep  (with --update-docs: Read,Glob,Grep,Edit,Write)
-    groom agents    Same as developer (they update backlog files)
-
-  Override in config.yaml:
-    permissions:
-      developer: "Bash,Edit,Write,Read,Glob,Grep"
-      validator: "Bash,Read,Write,Glob,Grep"
-      reviewer: "Read,Glob,Grep"
-
-Trust Model:
-  The 'update' command fetches from GitHub and verifies SHA-256 checksums.
-  If checksums cannot be fetched, the update aborts unless --force --no-verify
-  is passed. This ensures integrity but does NOT verify authorship — you trust
-  the upstream repository and your network path to it.
+See README.md for environment variables, agent permissions, and configuration.
 EOF
 }
 
@@ -3789,7 +3769,7 @@ main() {
         usage) cmd_usage ;;
         *)
             log_error "Unknown command: $cmd"
-            cmd_usage
+            cmd_usage >&2
             exit 1
             ;;
     esac
