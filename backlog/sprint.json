@@ -1,31 +1,29 @@
 {
-  "sprintId": "sprint-1773922683",
-  "startedAt": "2026-03-19T05:18:03-07:00",
+  "sprintId": "sprint-1773923283",
+  "startedAt": "2026-03-19T05:28:03-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-030",
-    "title": "Additional skills (5)",
-    "intent": "Ship 5 skills that install cleanly, run on cron, and make their respective blueprints actually useful. A blueprint without skills is an empty promise.",
-    "description": "BLUEPRINT COMPLETENESS: Skills are the value-add that make each blueprint useful. morning-brief is what makes 'Replace Google Assistant' actually replace Google Assistant. market-scan is why Stock Trading blueprint earns its name. Each skill is a standalone SKILL.md + prompts — thin to implement, high user impact. Acceptance: each skill installs via 'clawhq skill install'; SKILL.md + prompts present; skill runs on configured cron schedule.",
+    "id": "CQ-031",
+    "title": "Tool installation framework",
+    "intent": "clawhq tool install must add tools and trigger a Stage 2 rebuild automatically. Users must never hand-edit Dockerfiles to extend agent capabilities.",
+    "description": "EXTENSIBILITY: Tool install framework is how users extend their agent's capabilities after initial setup. Without it, adding a new tool requires manual Dockerfile edits. Dockerfile patching + Stage 2 rebuild trigger means 'clawhq tool install' just works. Depends on CQ-003 (two-stage build) being complete. Acceptance: 'clawhq tool install <name>' adds tool to Dockerfile, triggers Stage 2 rebuild; 'clawhq tool list' shows installed tools; 'clawhq tool remove' cleanly uninstalls.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create morning-brief skill (SKILL.md + prompts)",
-      "Create market-scan skill (SKILL.md + prompts)",
-      "Create meal-plan skill (SKILL.md + prompts)",
-      "Create investor-update skill (SKILL.md + prompts)",
-      "Create schedule-guard skill (SKILL.md + prompts)",
-      "Verify each installs via skill lifecycle pipeline"
+      "Implement 'clawhq tool install <name>' with Dockerfile patching",
+      "Implement 'clawhq tool list' showing installed tools",
+      "Implement 'clawhq tool remove' for clean uninstall",
+      "Trigger Stage 2 rebuild automatically on tool changes"
     ],
     "acceptanceCriteria": [
-      "Each skill installs via 'clawhq skill install'",
-      "SKILL.md + prompts present for each skill",
-      "Each skill runs on its configured cron schedule"
+      "'clawhq tool install <name>' adds tool to Dockerfile and triggers Stage 2 rebuild",
+      "'clawhq tool list' shows installed tools",
+      "'clawhq tool remove' cleanly uninstalls and triggers rebuild"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T05:18:03-07:00",
+    "startedAt": "2026-03-19T05:28:03-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T05:28:01-07:00"
+    "completedAt": "2026-03-19T05:40:29-07:00"
   },
-  "completedAt": "2026-03-19T05:28:01-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T05:40:29-07:00",
+  "attempts": 2
 }
