@@ -133,14 +133,40 @@ export async function checkOllama(): Promise<PrereqCheckResult> {
   };
 }
 
+/** Check that Git is installed (required for --from-source). */
+export async function checkGit(): Promise<PrereqCheckResult> {
+  const output = await run("git", ["--version"]);
+  if (output === null) {
+    return {
+      name: "git",
+      ok: false,
+      detail: "Git not found. Install Git: https://git-scm.com/downloads",
+    };
+  }
+
+  const version = extractVersion(output);
+  return {
+    name: "git",
+    ok: true,
+    detail: version ? `Git ${version}` : "Git available",
+  };
+}
+
 // ── Aggregate ───────────────────────────────────────────────────────────────
 
+/** Options for prerequisite detection. */
+export interface DetectPrereqsOptions {
+  /** Include git check (required for --from-source). */
+  readonly fromSource?: boolean;
+}
+
 /** Run all prerequisite checks and return an aggregate report. */
-export async function detectPrereqs(): Promise<PrereqReport> {
+export async function detectPrereqs(options?: DetectPrereqsOptions): Promise<PrereqReport> {
   const checks = await Promise.all([
     checkDocker(),
     checkNode(),
     checkOllama(),
+    ...(options?.fromSource ? [checkGit()] : []),
   ]);
 
   return {

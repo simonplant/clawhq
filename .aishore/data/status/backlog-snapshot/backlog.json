@@ -690,8 +690,8 @@
       "description": "HIGH VALUE: The target user experience — one command to working agent. Phase-labeled spinners: Install -> Init -> Build -> Deploy -> Connect -> Verify. Missing dependency: also requires CQ-014 (install scaffold). Not ready until CQ-010+CQ-003+CQ-004+CQ-014 all land. Acceptance: 'clawhq quickstart --blueprint email-manager' produces a running, reachable agent with Telegram connected.",
       "category": "Foundation",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-010",
         "CQ-003",
@@ -710,7 +710,9 @@
         "Telegram connected and verified at completion"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "All direct dependencies done (CQ-010, CQ-003, CQ-004, CQ-014). SEQUENCING NOTE: Sprint CQ-005 (egress firewall) before this — CQ-004 deploy sequence includes 'firewall apply' step, so quickstart will silently skip firewall until CQ-005 is implemented. Quickstart without firewall is incomplete for the privacy promise. Pure orchestration command — no new implementation logic, chains existing commands. Phase spinners are the only net-new UX work. Run CQ-005 first, then this."
+      "groomingNotes": "All direct dependencies done (CQ-010, CQ-003, CQ-004, CQ-014). SEQUENCING NOTE: Sprint CQ-005 (egress firewall) before this — CQ-004 deploy sequence includes 'firewall apply' step, so quickstart will silently skip firewall until CQ-005 is implemented. Quickstart without firewall is incomplete for the privacy promise. Pure orchestration command — no new implementation logic, chains existing commands. Phase spinners are the only net-new UX work. Run CQ-005 first, then this.",
+      "passes": true,
+      "completedAt": "2026-03-19T08:27:34-07:00"
     },
     {
       "id": "CQ-029",

@@ -1,30 +1,29 @@
 {
-  "sprintId": "sprint-1773933211",
-  "startedAt": "2026-03-19T08:13:31-07:00",
+  "sprintId": "sprint-1773934056",
+  "startedAt": "2026-03-19T08:27:36-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-028",
-    "title": "Quickstart (init -> build -> deploy -> verify)",
-    "intent": "clawhq quickstart must take a user from zero to a running, reachable agent in one command. Any failure must leave clear guidance, not a half-deployed mess.",
-    "description": "HIGH VALUE: The target user experience — one command to working agent. Phase-labeled spinners: Install -> Init -> Build -> Deploy -> Connect -> Verify. Missing dependency: also requires CQ-014 (install scaffold). Not ready until CQ-010+CQ-003+CQ-004+CQ-014 all land. Acceptance: 'clawhq quickstart --blueprint email-manager' produces a running, reachable agent with Telegram connected.",
+    "id": "CQ-015",
+    "title": "clawhq install --from-source",
+    "intent": "Enable zero-trust users to clone, audit, and build OpenClaw from source with the same install command. The from-source path must produce an identical engine artifact.",
+    "description": "USER VALUE: Advanced zero-trust acquisition for security-paranoid users. Not on default install path. Blocked by CQ-014 and CQ-003 anyway. Build after trusted-cache install is working end-to-end.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement 'clawhq quickstart [--blueprint] [--smart]' orchestrator command",
-      "Chain phases: install -> init -> build -> deploy -> connect -> verify",
-      "Add phase-labeled spinners showing progress for each step",
-      "Reuse existing command logic — no new implementation logic"
+      "Clone OpenClaw repository from source",
+      "Run two-stage Docker build from cloned source",
+      "Store built engine artifact in ~/.clawhq/engine/",
+      "Verify built artifact matches release artifact"
     ],
     "acceptanceCriteria": [
-      "'clawhq quickstart --blueprint email-manager' produces a running, reachable agent",
-      "Phase-labeled spinners show progress for each step",
-      "Failure at any step leaves clear next-step guidance",
-      "Telegram connected and verified at completion"
+      "From-source build produces identical engine artifact to cached install",
+      "Build completes without network calls beyond initial clone",
+      "Engine artifact stored in ~/.clawhq/engine/"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T08:13:31-07:00",
+    "startedAt": "2026-03-19T08:27:36-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T08:27:34-07:00"
+    "completedAt": "2026-03-19T08:37:19-07:00"
   },
-  "completedAt": "2026-03-19T08:27:34-07:00",
+  "completedAt": "2026-03-19T08:37:19-07:00",
   "attempts": 1
 }
