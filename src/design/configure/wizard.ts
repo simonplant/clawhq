@@ -157,7 +157,7 @@ async function selectBlueprint(
   // Load all built-in blueprints
   const loaded = loadAllBuiltinBlueprints();
   if (loaded.length === 0) {
-    throw new WizardError("No blueprints found. Ensure configs/templates/ contains blueprint YAML files.");
+    throw new WizardError("No blueprints found. Ensure configs/blueprints/ contains blueprint YAML files.");
   }
 
   const choices = allTemplatesToChoices(loaded);

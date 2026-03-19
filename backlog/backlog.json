@@ -213,7 +213,7 @@
       "status": "done",
       "readyForSprint": false,
       "steps": [
-        "Implement YAML blueprint loader from configs/templates/",
+        "Implement YAML blueprint loader from configs/blueprints/",
         "Add 70+ validation checks for blueprint correctness",
         "Enforce security baseline requirements in blueprints",
         "Support multiple load paths (local, built-in)",

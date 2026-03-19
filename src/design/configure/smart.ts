@@ -104,7 +104,7 @@ export async function runSmartInference(
   const blueprints = loadAllBuiltinBlueprints();
   if (blueprints.length === 0) {
     throw new SmartInferenceError(
-      "No blueprints found. Ensure configs/templates/ contains blueprint YAML files.",
+      "No blueprints found. Ensure configs/blueprints/ contains blueprint YAML files.",
     );
   }
 
