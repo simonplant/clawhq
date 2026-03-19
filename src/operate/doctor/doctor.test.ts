@@ -2,10 +2,10 @@
  * Tests for doctor diagnostics, auto-fix, and formatters.
  */
 
-import { mkdir, writeFile, chmod } from "node:fs/promises";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { rm } from "node:fs/promises";
+
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 
 import { runChecks } from "./checks.js";
@@ -96,6 +96,15 @@ async function writeIdentityFiles(): Promise<void> {
   await writeFile(join(testDir, "workspace", "identity", "AGENTS.md"), "# Agents\nInstructions.");
 }
 
+/** Find a check by name and assert it exists. */
+function findCheck(checks: DoctorCheckResult[], name: string): DoctorCheckResult {
+  const check = checks.find((c) => c.name === name);
+  if (!check) {
+    throw new Error(`Expected check "${name}" not found`);
+  }
+  return check;
+}
+
 // ── Type Tests ──────────────────────────────────────────────────────────────
 
 describe("types", () => {
@@ -129,17 +138,16 @@ describe("types", () => {
 describe("checks", () => {
   it("config-exists fails when openclaw.json is missing", async () => {
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "config-exists");
-    expect(check).toBeDefined();
-    expect(check!.passed).toBe(false);
-    expect(check!.message).toContain("not found");
+    const check = findCheck(checks, "config-exists");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("not found");
   });
 
   it("config-exists passes when openclaw.json exists", async () => {
     await writeValidConfig();
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "config-exists");
-    expect(check!.passed).toBe(true);
+    const check = findCheck(checks, "config-exists");
+    expect(check.passed).toBe(true);
   });
 
   it("config-valid detects landmine violations", async () => {
@@ -148,62 +156,62 @@ describe("checks", () => {
       JSON.stringify({ tools: { exec: { host: "node" } } }),
     );
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "config-valid");
-    expect(check!.passed).toBe(false);
-    expect(check!.message).toContain("landmine");
+    const check = findCheck(checks, "config-valid");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("landmine");
   });
 
   it("config-valid passes with correct config", async () => {
     await writeValidConfig();
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "config-valid");
-    expect(check!.passed).toBe(true);
+    const check = findCheck(checks, "config-valid");
+    expect(check.passed).toBe(true);
   });
 
   it("secrets-perms fails with wrong permissions", async () => {
     await writeFile(join(testDir, "engine", ".env"), "KEY=val\n");
     await chmod(join(testDir, "engine", ".env"), 0o644);
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "secrets-perms");
-    expect(check!.passed).toBe(false);
-    expect(check!.fixable).toBe(true);
+    const check = findCheck(checks, "secrets-perms");
+    expect(check.passed).toBe(false);
+    expect(check.fixable).toBe(true);
   });
 
   it("secrets-perms passes with 0600", async () => {
     await writeValidEnv();
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "secrets-perms");
-    expect(check!.passed).toBe(true);
+    const check = findCheck(checks, "secrets-perms");
+    expect(check.passed).toBe(true);
   });
 
   it("cron-syntax passes with valid cron expressions", async () => {
     await writeValidCron();
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "cron-syntax");
-    expect(check!.passed).toBe(true);
+    const check = findCheck(checks, "cron-syntax");
+    expect(check.passed).toBe(true);
   });
 
   it("cron-syntax fails with invalid stepping", async () => {
     const jobs = [{ id: "bad", kind: "cron", expr: "5/15 * * * *", task: "Test", enabled: true }];
     await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(jobs));
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "cron-syntax");
-    expect(check!.passed).toBe(false);
-    expect(check!.message).toContain("silently not run");
+    const check = findCheck(checks, "cron-syntax");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("silently not run");
   });
 
   it("workspace-exists passes with complete structure", async () => {
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "workspace-exists");
-    expect(check!.passed).toBe(true);
+    const check = findCheck(checks, "workspace-exists");
+    expect(check.passed).toBe(true);
   });
 
   it("identity-size passes when within limit", async () => {
     await writeValidConfig();
     await writeIdentityFiles();
     const checks = await runChecks(testDir);
-    const check = checks.find((c) => c.name === "identity-size");
-    expect(check!.passed).toBe(true);
+    const check = findCheck(checks, "identity-size");
+    expect(check.passed).toBe(true);
   });
 
   it("runs all 17 checks", async () => {
@@ -249,7 +257,7 @@ describe("auto-fix", () => {
 
     const secretsFix = fixReport.fixes.find((f) => f.name === "secrets-perms");
     expect(secretsFix).toBeDefined();
-    expect(secretsFix!.success).toBe(true);
+    expect(secretsFix?.success).toBe(true);
   });
 
   it("fixes config landmine violations", async () => {
@@ -264,8 +272,8 @@ describe("auto-fix", () => {
 
     const configFix = fixReport.fixes.find((f) => f.name === "config-valid");
     expect(configFix).toBeDefined();
-    expect(configFix!.success).toBe(true);
-    expect(configFix!.message).toContain("landmine");
+    expect(configFix?.success).toBe(true);
+    expect(configFix?.message).toContain("landmine");
   });
 
   it("runDoctorWithFix re-verifies after fixes", async () => {
@@ -285,11 +293,11 @@ describe("auto-fix", () => {
     expect(fixReport.fixed).toBeGreaterThanOrEqual(2);
 
     // Re-verified checks should show fixed config
-    const configCheck = report.checks.find((c) => c.name === "config-valid");
-    expect(configCheck!.passed).toBe(true);
+    const configCheck = findCheck(report.checks, "config-valid");
+    expect(configCheck.passed).toBe(true);
 
-    const secretsCheck = report.checks.find((c) => c.name === "secrets-perms");
-    expect(secretsCheck!.passed).toBe(true);
+    const secretsCheck = findCheck(report.checks, "secrets-perms");
+    expect(secretsCheck.passed).toBe(true);
   });
 
   it("returns empty report when no fixable issues", async () => {
