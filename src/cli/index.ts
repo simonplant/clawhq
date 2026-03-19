@@ -101,18 +101,18 @@ import {
 } from "../operate/doctor/index.js";
 import { streamLogs } from "../operate/logs/index.js";
 import {
-  formatStatusJson,
-  formatStatusTable,
-  getStatus,
-  watchStatus,
-} from "../operate/status/index.js";
-import {
   formatMonitorEvent,
   formatMonitorStateJson,
   formatMonitorStateTable,
   startMonitor,
 } from "../operate/monitor/index.js";
 import type { MonitorEvent, NotificationChannel, TelegramNotificationChannel } from "../operate/monitor/index.js";
+import {
+  formatStatusJson,
+  formatStatusTable,
+  getStatus,
+  watchStatus,
+} from "../operate/status/index.js";
 import {
   applyUpdate,
   checkForUpdates,
@@ -1352,6 +1352,8 @@ program
   .option("--no-alerts", "Disable alert notifications")
   .option("--no-digest", "Disable daily digest")
   .option("--digest-hour <hour>", "Hour (0-23) to send daily digest", "8")
+  .option("--memory-lifecycle", "Enable scheduled memory lifecycle runs")
+  .option("--memory-lifecycle-interval <hours>", "Memory lifecycle interval in hours", "6")
   .option("--json", "Output events as JSON")
   .action(async (opts: {
     deployDir: string;
@@ -1360,6 +1362,8 @@ program
     alerts: boolean;
     digest: boolean;
     digestHour: string;
+    memoryLifecycle?: boolean;
+    memoryLifecycleInterval: string;
     json?: boolean;
   }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
@@ -1381,6 +1385,7 @@ program
       console.log(chalk.dim(`  Alerts: ${opts.alerts ? "enabled" : "disabled"}`));
       console.log(chalk.dim(`  Digest: ${opts.digest ? `enabled (${digestHour}:00)` : "disabled"}`));
       console.log(chalk.dim(`  Channels: ${channels.length > 0 ? channels.map((c) => c.type).join(", ") : "none configured"}`));
+      console.log(chalk.dim(`  Memory lifecycle: ${opts.memoryLifecycle ? `enabled (every ${opts.memoryLifecycleInterval}h)` : "disabled"}`));
       console.log(chalk.dim("  Press Ctrl+C to stop.\n"));
     }
 
@@ -1400,11 +1405,17 @@ program
           case "digest":
             console.log(chalk.green(line));
             break;
+          case "memory-lifecycle":
+            console.log(chalk.cyan(line));
+            break;
           default:
             console.log(chalk.dim(line));
         }
       }
     };
+
+    const memoryLifecycleIntervalMs =
+      Math.max(1, parseFloat(opts.memoryLifecycleInterval)) * 3600_000;
 
     const state = await startMonitor({
       deployDir: opts.deployDir,
@@ -1418,6 +1429,9 @@ program
         digestEnabled: opts.digest,
         digestHour,
       },
+      memoryLifecycle: opts.memoryLifecycle
+        ? { enabled: true, intervalMs: memoryLifecycleIntervalMs }
+        : undefined,
       signal: ac.signal,
       onEvent,
     });
