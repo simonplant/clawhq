@@ -1,29 +1,28 @@
 {
-  "sprintId": "sprint-1773934056",
-  "startedAt": "2026-03-19T08:27:36-07:00",
+  "sprintId": "sprint-1773934642",
+  "startedAt": "2026-03-19T08:37:22-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-015",
-    "title": "clawhq install --from-source",
-    "intent": "Enable zero-trust users to clone, audit, and build OpenClaw from source with the same install command. The from-source path must produce an identical engine artifact.",
-    "description": "USER VALUE: Advanced zero-trust acquisition for security-paranoid users. Not on default install path. Blocked by CQ-014 and CQ-003 anyway. Build after trusted-cache install is working end-to-end.",
+    "id": "CQ-016",
+    "title": "~/.clawhq/ deployment directory migration",
+    "intent": "Replace all hardcoded ~/.openclaw/ paths with configurable ~/.clawhq/ deployment root. Existing installations must migrate without data loss.",
+    "description": "USER VALUE: Internal path migration — replaces hardcoded ~/.openclaw/ with configurable ~/.clawhq/. User-invisible refactor. Does not block MVP. Do after install scaffold (CQ-014) is working.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Clone OpenClaw repository from source",
-      "Run two-stage Docker build from cloned source",
-      "Store built engine artifact in ~/.clawhq/engine/",
-      "Verify built artifact matches release artifact"
+      "Make deployment root configurable via clawhq.yaml",
+      "Replace all hardcoded ~/.openclaw/ paths with configurable root",
+      "Implement migration command for existing installations"
     ],
     "acceptanceCriteria": [
-      "From-source build produces identical engine artifact to cached install",
-      "Build completes without network calls beyond initial clone",
-      "Engine artifact stored in ~/.clawhq/engine/"
+      "Configurable deployment root respected throughout codebase",
+      "Migration command moves existing data without loss",
+      "Existing ~/.openclaw/ installations migrate cleanly to ~/.clawhq/"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T08:27:36-07:00",
+    "startedAt": "2026-03-19T08:37:22-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T08:37:19-07:00"
+    "completedAt": "2026-03-19T08:51:20-07:00"
   },
-  "completedAt": "2026-03-19T08:37:19-07:00",
+  "completedAt": "2026-03-19T08:51:20-07:00",
   "attempts": 1
 }

@@ -16,16 +16,12 @@ import { join } from "node:path";
 
 import { parse as parseYaml } from "yaml";
 
+import { DEFAULT_DEPLOY_DIR } from "./paths.js";
 import type { ClawHQConfig } from "./types.js";
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
 const CONFIG_FILENAME = "clawhq.yaml";
-
-const DEFAULT_DEPLOY_DIR = join(
-  process.env.HOME ?? "/root",
-  ".clawhq",
-);
 
 // ── Defaults ────────────────────────────────────────────────────────────────
 

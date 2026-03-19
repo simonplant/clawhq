@@ -6,6 +6,13 @@
  * landmine rules (LM-06, LM-07, LM-10, LM-12, LM-13).
  */
 
+import {
+  OPENCLAW_CONTAINER_CONFIG,
+  OPENCLAW_CONTAINER_CREDENTIALS,
+  OPENCLAW_CONTAINER_CRON,
+  OPENCLAW_CONTAINER_WORKSPACE,
+} from "../../config/paths.js";
+
 import type { PostureConfig } from "./types.js";
 
 /** Generated docker-compose structure. */
@@ -66,16 +73,16 @@ export function generateCompose(
     tmpfs: [`/tmp:size=${posture.tmpfs.sizeMb}m,${posture.tmpfs.options}`],
     volumes: [
       // Config files read-only (LM-12)
-      `${deployDir}/engine/openclaw.json:/home/node/.openclaw/openclaw.json:ro`,
-      `${deployDir}/engine/credentials.json:/home/node/.openclaw/credentials.json:ro`,
+      `${deployDir}/engine/openclaw.json:${OPENCLAW_CONTAINER_CONFIG}:ro`,
+      `${deployDir}/engine/credentials.json:${OPENCLAW_CONTAINER_CREDENTIALS}:ro`,
       // Identity files read-only
-      `${deployDir}/workspace/identity:/home/node/.openclaw/workspace/identity:ro`,
+      `${deployDir}/workspace/identity:${OPENCLAW_CONTAINER_WORKSPACE}/identity:ro`,
       // Workspace writable (tools, skills, memory)
-      `${deployDir}/workspace/tools:/home/node/.openclaw/workspace/tools`,
-      `${deployDir}/workspace/skills:/home/node/.openclaw/workspace/skills`,
-      `${deployDir}/workspace/memory:/home/node/.openclaw/workspace/memory`,
+      `${deployDir}/workspace/tools:${OPENCLAW_CONTAINER_WORKSPACE}/tools`,
+      `${deployDir}/workspace/skills:${OPENCLAW_CONTAINER_WORKSPACE}/skills`,
+      `${deployDir}/workspace/memory:${OPENCLAW_CONTAINER_WORKSPACE}/memory`,
       // Cron
-      `${deployDir}/cron:/home/node/.openclaw/cron`,
+      `${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`,
     ],
     networks: ["clawhq_net"],
     env_file: [".env"],

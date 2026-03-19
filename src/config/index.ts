@@ -62,3 +62,14 @@ export {
 // Loader
 export { deepMerge, defaultConfig, loadConfig } from "./loader.js";
 export type { LoadConfigOptions } from "./loader.js";
+
+// Paths
+export {
+  DEFAULT_DEPLOY_DIR,
+  LEGACY_DEPLOY_DIR,
+  OPENCLAW_CONTAINER_CONFIG,
+  OPENCLAW_CONTAINER_CREDENTIALS,
+  OPENCLAW_CONTAINER_CRON,
+  OPENCLAW_CONTAINER_ROOT,
+  OPENCLAW_CONTAINER_WORKSPACE,
+} from "./paths.js";
