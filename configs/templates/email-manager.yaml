@@ -1,0 +1,130 @@
+name: Email Manager
+version: "1.0.0"
+
+use_case_mapping:
+  replaces: Gmail / Outlook / Apple Mail (manual triage)
+  tagline: "Inbox zero, email triage, calendar-aware digests, task extraction"
+  description: >
+    Purpose-built email operations agent. Triages your inbox every 15 minutes,
+    extracts action items into tasks, guards your calendar, and delivers a
+    morning digest so you start the day informed — not overwhelmed. Auto-replies
+    to routine messages in your voice with approval gates on anything sensitive.
+  day_in_the_life: >
+    8:00am digest: "Morning. 52 emails overnight — 7 need you, 12 auto-replied,
+    rest archived. 4 meetings today; your 10-12 focus block is protected. Sarah's
+    contract review is due tomorrow — I've added it to your tasks. Investor email
+    from Mark flagged for your reply." Every 15 minutes the agent checks your inbox,
+    triages new mail, and updates your task list. End of day: summary of what was
+    handled, what's pending, and what it learned about your preferences.
+
+personality:
+  tone: direct
+  style: "efficient, no fluff, protective of attention — like a great executive assistant"
+  relationship: email operations manager
+  boundaries: "never sends without approval on first contact, never auto-replies to flagged senders, protects focus blocks"
+
+security_posture:
+  posture: hardened
+  egress: allowlist-only
+  identity_mount: read-only
+
+monitoring:
+  heartbeat_frequency: "10min"
+  checks:
+    - email
+    - calendar
+    - tasks
+  quiet_hours: "23:00-06:00"
+  alert_on:
+    - credential_expiry
+    - memory_bloat
+    - cron_failure
+    - integration_degraded
+
+memory_policy:
+  hot_max: "120KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+cron_config:
+  heartbeat: "*/10 waking"
+  work_session: "*/15 waking"
+  morning_brief: "08:00"
+
+autonomy_model:
+  default: medium
+  requires_approval:
+    - sending_messages
+    - account_changes
+    - public_posts
+
+model_routing_strategy:
+  default_provider: local
+  local_model_preference: "llama3:8b"
+  cloud_escalation_categories:
+    - long_form_writing
+    - complex_triage
+  quality_threshold: medium
+
+integration_requirements:
+  required:
+    - messaging
+    - email
+  recommended:
+    - calendar
+    - tasks
+  optional:
+    - research
+
+channels:
+  supported:
+    - telegram
+    - whatsapp
+    - signal
+    - discord
+  default: telegram
+
+skill_bundle:
+  included:
+    - email-digest
+    - morning-brief
+  recommended:
+    - auto-reply
+    - calendar-sync
+
+toolbelt:
+  role: "Email operations manager"
+  description: "Inbox triage, calendar-aware digests, task extraction, morning briefs — replaces manual email management"
+  tools:
+    - name: email
+      category: email
+      required: true
+      description: "Email reading, triage, and drafting via himalaya — inbox zero engine"
+    - name: ical
+      category: calendar
+      required: true
+      description: "Calendar awareness via CalDAV — schedule conflicts, focus block protection"
+    - name: todoist
+      category: tasks
+      required: false
+      description: "Task extraction and tracking via Todoist API"
+    - name: todoist-sync
+      category: tasks
+      required: false
+      description: "Task deadline alerts and follow-up reminders"
+    - name: tasks
+      category: core
+      required: true
+      description: "Local work queue for autonomous task execution and action item tracking"
+  skills:
+    - name: email-digest
+      required: true
+      description: "Periodic inbox digest — triage summary, action items extracted, auto-reply status"
+    - name: morning-brief
+      required: true
+      description: "Daily morning briefing — inbox status, calendar preview, priority items, overnight summary"
+    - name: auto-reply
+      required: false
+      description: "Autonomous replies to routine emails in user's voice with approval gates"

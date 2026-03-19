@@ -1,31 +1,30 @@
 {
-  "sprintId": "sprint-1773909252",
-  "startedAt": "2026-03-19T01:34:12-07:00",
+  "sprintId": "sprint-1773909807",
+  "startedAt": "2026-03-19T01:43:27-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-014",
-    "title": "clawhq install — pre-req detection + scaffold",
-    "intent": "Make 'clawhq install' the first command that works — detect prerequisites, scaffold ~/.clawhq/, and leave the user with clear next-step guidance.",
-    "description": "HIGH VALUE: This is the literal first command a user runs. Gate: Docker detected, Node >=20, Ollama running. Creates ~/.clawhq/ scaffold. Without this, nothing else works. Acceptance: 'clawhq install' exits 0, ~/.clawhq/ structure exists, clawhq.yaml written, user sees next-step guidance.",
+    "id": "CQ-017",
+    "title": "Email Manager blueprint YAML",
+    "intent": "Deliver the Email Manager blueprint as the reference implementation — email triage, calendar, tasks, cron, hardened security. This is the demo-ready first use case.",
+    "description": "HIGH VALUE: THE first use case — this is what we show in demos. Defines Email Manager end-to-end: email + calendar + tasks tools, email-digest + morning-brief skills, 15min inbox cron, 8am daily digest. Acceptance: clawhq blueprint preview email-manager shows complete design; forge from CQ-010 produces valid openclaw.json. Must pair with CQ-022 (email-digest skill).",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Detect Docker, Node.js >=20, Ollama prerequisites",
-      "Create ~/.clawhq/ directory with correct structure",
-      "Write initial clawhq.yaml with sensible defaults",
-      "Scaffold all required subdirectories",
-      "Display clear next-step guidance on success"
+      "Define Email Manager blueprint YAML with email + calendar + tasks tools",
+      "Configure email-digest and morning-brief skills in blueprint",
+      "Set up 15min inbox cron and 8am daily digest schedule",
+      "Apply hardened security posture with minimal egress allowlist"
     ],
     "acceptanceCriteria": [
-      "'clawhq install' exits 0 on success",
-      "~/.clawhq/ structure exists with correct layout",
-      "clawhq.yaml written with defaults",
-      "User sees clear next-step guidance after install"
+      "'clawhq blueprint preview email-manager' shows complete design",
+      "Forge via init wizard produces valid openclaw.json",
+      "Blueprint defines all tools, skills, cron schedules, and security settings",
+      "Blueprint pairs correctly with email-digest skill (CQ-022)"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T01:34:12-07:00",
+    "startedAt": "2026-03-19T01:43:27-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T01:43:25-07:00"
+    "completedAt": "2026-03-19T01:55:56-07:00"
   },
-  "completedAt": "2026-03-19T01:43:25-07:00",
+  "completedAt": "2026-03-19T01:55:56-07:00",
   "attempts": 2
 }
