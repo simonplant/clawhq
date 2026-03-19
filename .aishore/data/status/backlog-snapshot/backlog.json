@@ -408,8 +408,8 @@
       "description": "HIGH VALUE: THE first use case — this is what we show in demos. Defines Email Manager end-to-end: email + calendar + tasks tools, email-digest + morning-brief skills, 15min inbox cron, 8am daily digest. Acceptance: clawhq blueprint preview email-manager shows complete design; forge from CQ-010 produces valid openclaw.json. Must pair with CQ-022 (email-digest skill).",
       "category": "design",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-009"
       ],
@@ -424,7 +424,9 @@
         "Forge via init wizard produces valid openclaw.json",
         "Blueprint defines all tools, skills, cron schedules, and security settings",
         "Blueprint pairs correctly with email-digest skill (CQ-022)"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T01:55:56-07:00"
     },
     {
       "id": "CQ-018",
