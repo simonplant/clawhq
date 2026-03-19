@@ -395,8 +395,8 @@
       "description": "USER VALUE: Internal path migration — replaces hardcoded ~/.openclaw/ with configurable ~/.clawhq/. User-invisible refactor. Does not block MVP. Do after install scaffold (CQ-014) is working.",
       "category": "build",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-014"
       ],
@@ -411,7 +411,9 @@
         "Existing ~/.openclaw/ installations migrate cleanly to ~/.clawhq/"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "REVISED SCOPE: grep shows 6 files with .openclaw/ references, but ALL are container-internal paths (/home/node/.openclaw/) — where OpenClaw looks for its config inside the Docker container. These are correct per AD-03 (tight coupling to OpenClaw) and must NOT be changed. Host deployment paths are already parameterized via deployDir (from clawhq.yaml). ACTUAL WORK: (1) audit that every host-path reference in ClawHQ CLI uses the configurable deploymentRoot, not a hardcoded ~/.openclaw/ or ~/.clawhq/; (2) if any host-paths are hardcoded, replace with config lookup; (3) add migration command that moves ~/.openclaw/ to ~/.clawhq/ for existing pre-release installs. Estimated scope: small — host paths already appear to use deployDir. Verify first before sprint."
+      "groomingNotes": "REVISED SCOPE: grep shows 6 files with .openclaw/ references, but ALL are container-internal paths (/home/node/.openclaw/) — where OpenClaw looks for its config inside the Docker container. These are correct per AD-03 (tight coupling to OpenClaw) and must NOT be changed. Host deployment paths are already parameterized via deployDir (from clawhq.yaml). ACTUAL WORK: (1) audit that every host-path reference in ClawHQ CLI uses the configurable deploymentRoot, not a hardcoded ~/.openclaw/ or ~/.clawhq/; (2) if any host-paths are hardcoded, replace with config lookup; (3) add migration command that moves ~/.openclaw/ to ~/.clawhq/ for existing pre-release installs. Estimated scope: small — host paths already appear to use deployDir. Verify first before sprint.",
+      "passes": true,
+      "completedAt": "2026-03-19T08:51:20-07:00"
     },
     {
       "id": "CQ-017",
