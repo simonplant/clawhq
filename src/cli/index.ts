@@ -799,10 +799,35 @@ program
   .command("scan")
   .description("PII and secrets scanner")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (opts: { deployDir: string }) => {
+  .option("--git", "Scan git history for committed secrets")
+  .option("--max-commits <n>", "Max git commits to scan (default: 100)", "100")
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; git?: boolean; maxCommits: string; json?: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+    try {
+      const { runScan, formatScanTable, formatScanJson } = await import("../secure/scanner/index.js");
+      const spinner = ora("Scanning for secrets and PII…");
+      if (!opts.json) spinner.start();
+
+      const report = await runScan({
+        deployDir: opts.deployDir,
+        git: opts.git,
+        maxCommits: parseInt(opts.maxCommits, 10),
+      });
+
+      if (!opts.json) spinner.stop();
+
+      if (opts.json) {
+        console.log(formatScanJson(report));
+      } else {
+        console.log(formatScanTable(report));
+      }
+
+      if (!report.clean) process.exit(1);
+    } catch (error) {
+      console.error(renderError(error));
+      process.exit(1);
+    }
   });
 
 program
