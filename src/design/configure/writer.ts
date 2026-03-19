@@ -21,6 +21,8 @@ import {
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
+import { FILE_MODE_CONFIG } from "../../config/defaults.js";
+
 import type { FileEntry, WriteResult } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -52,12 +54,12 @@ export class WriteError extends Error {
  *
  * @param absolutePath — Full path to the target file
  * @param content — File content to write
- * @param mode — File permission mode (default 0o644)
+ * @param mode — File permission mode (default FILE_MODE_CONFIG / 0o644)
  */
 export function writeFileAtomic(
   absolutePath: string,
   content: string,
-  mode: number = 0o644,
+  mode: number = FILE_MODE_CONFIG,
 ): void {
   const dir = dirname(absolutePath);
   const tempPath = join(dir, `${TEMP_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2)}`);

@@ -28,3 +28,14 @@ export const OPENAI_API_BASE = "https://api.openai.com";
 
 /** Base URL for the Telegram Bot API (no trailing slash). */
 export const TELEGRAM_API_BASE = "https://api.telegram.org";
+
+// ── File permission modes ────────────────────────────────────────────────────
+
+/** Owner read/write only — secrets (.env, credentials.json). */
+export const FILE_MODE_SECRET = 0o600;
+
+/** Owner read/write, group+other read — general config files. */
+export const FILE_MODE_CONFIG = 0o644;
+
+/** Owner rwx, group+other rx — executable scripts (tool wrappers, skills). */
+export const FILE_MODE_EXEC = 0o755;

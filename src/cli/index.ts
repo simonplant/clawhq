@@ -48,7 +48,7 @@ import {
   switchTrustMode,
   unregisterAgent,
 } from "../cloud/index.js";
-import { DASHBOARD_DEFAULT_PORT, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+import { DASHBOARD_DEFAULT_PORT, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import type { TrustMode } from "../config/types.js";
 import { validateBundle } from "../config/validate.js";
 import {
@@ -838,12 +838,12 @@ function bundleToFiles(
       content: Object.entries(bundle.envVars)
         .map(([k, v]) => `${k}=${v}`)
         .join("\n") + "\n",
-      mode: 0o600,
+      mode: FILE_MODE_SECRET,
     },
     {
       relativePath: "engine/credentials.json",
       content: JSON.stringify({}, null, 2) + "\n",
-      mode: 0o600,
+      mode: FILE_MODE_SECRET,
     },
     {
       relativePath: "cron/jobs.json",

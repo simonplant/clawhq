@@ -12,12 +12,11 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { FILE_MODE_SECRET } from "../../config/defaults.js";
+
 import type { CredentialEntry, CredentialStore } from "./credential-store-types.js";
 
 // ── Constants ───────────────────────────────────────────────────────────────
-
-/** File permission: owner read/write only. */
-const MODE_0600 = 0o600;
 
 /** Default file name within the engine directory. */
 const CREDENTIALS_FILE = "credentials.json";
@@ -65,8 +64,8 @@ export function writeCredentialStore(deployDir: string, store: CredentialStore):
   const tmpName = `.credentials.tmp.${randomBytes(6).toString("hex")}`;
   const tmpPath = join(dir, tmpName);
 
-  writeFileSync(tmpPath, content, { mode: MODE_0600 });
-  chmodSync(tmpPath, MODE_0600);
+  writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
+  chmodSync(tmpPath, FILE_MODE_SECRET);
   renameSync(tmpPath, path);
 }
 
@@ -133,7 +132,7 @@ export function verifyCredentialPermissions(deployDir: string): boolean {
   const path = credentialsPath(deployDir);
   if (!existsSync(path)) return false;
   const stat = statSync(path);
-  return (stat.mode & 0o777) === MODE_0600;
+  return (stat.mode & 0o777) === FILE_MODE_SECRET;
 }
 
 // ── High-level convenience ──────────────────────────────────────────────────

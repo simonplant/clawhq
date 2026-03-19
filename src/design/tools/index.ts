@@ -10,6 +10,8 @@
  * wrapper, not modifying the agent.
  */
 
+import { FILE_MODE_EXEC } from "../../config/defaults.js";
+
 import type { Blueprint } from "../blueprints/types.js";
 
 import { generateApproveActionTool } from "./approve-action.js";
@@ -31,7 +33,7 @@ export interface ToolFileContent {
   readonly relativePath: string;
   /** Script content (bash or python3). */
   readonly content: string;
-  /** File permission mode — always 0o755 (executable). */
+  /** File permission mode — always FILE_MODE_EXEC (0o755, executable). */
   readonly mode: number;
 }
 
@@ -80,7 +82,7 @@ export function generateToolWrappers(blueprint: Blueprint): ToolFileContent[] {
       name: tool.name,
       relativePath: `workspace/tools/${tool.name}`,
       content: generator(),
-      mode: 0o755,
+      mode: FILE_MODE_EXEC,
     });
   }
 
@@ -91,7 +93,7 @@ export function generateToolWrappers(blueprint: Blueprint): ToolFileContent[] {
       name: "approve-action",
       relativePath: "workspace/tools/approve-action",
       content: generateApproveActionTool(),
-      mode: 0o755,
+      mode: FILE_MODE_EXEC,
     });
   }
 
