@@ -147,7 +147,13 @@ export async function sendWhatsAppTestMessage(
 export function updateChannelConfig(deployDir: string, channel: ChannelName): void {
   const configPath = join(deployDir, "engine", "openclaw.json");
   const raw = readFileSync(configPath, "utf-8");
-  const config = JSON.parse(raw) as Record<string, unknown>;
+  let config: Record<string, unknown>;
+  try {
+    config = JSON.parse(raw) as Record<string, unknown>;
+  } catch (err) {
+    console.warn("[connect] Failed to parse openclaw.json:", err);
+    throw new Error("Failed to parse openclaw.json — file may be corrupted", { cause: err });
+  }
 
   // Ensure channels object exists
   const channels = (config["channels"] ?? {}) as Record<string, Record<string, unknown>>;

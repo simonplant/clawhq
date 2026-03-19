@@ -382,6 +382,10 @@ program
     }
 
     const gatewayPort = parseInt(opts.port, 10);
+    if (isNaN(gatewayPort)) {
+      console.error(chalk.red("Invalid port number"));
+      process.exit(1);
+    }
     const deploySpinner = ora();
     const onDeployProgress = createProgressHandler(deploySpinner);
 
@@ -1047,6 +1051,12 @@ program
       process.exit(1);
     }
 
+    const gatewayPort = parseInt(opts.port, 10);
+    if (isNaN(gatewayPort)) {
+      console.error(chalk.red("Invalid port number"));
+      process.exit(1);
+    }
+
     const ac = new AbortController();
     process.on("SIGINT", () => ac.abort());
     process.on("SIGTERM", () => ac.abort());
@@ -1057,7 +1067,7 @@ program
     const result = await deploy({
       deployDir: opts.deployDir,
       gatewayToken: token,
-      gatewayPort: parseInt(opts.port, 10),
+      gatewayPort,
       skipPreflight: opts.skipPreflight,
       skipFirewall: opts.skipFirewall,
       onProgress,
@@ -1129,6 +1139,12 @@ program
       process.exit(1);
     }
 
+    const gatewayPort = parseInt(opts.port, 10);
+    if (isNaN(gatewayPort)) {
+      console.error(chalk.red("Invalid port number"));
+      process.exit(1);
+    }
+
     const ac = new AbortController();
     process.on("SIGINT", () => ac.abort());
     process.on("SIGTERM", () => ac.abort());
@@ -1139,7 +1155,7 @@ program
     const result = await restart({
       deployDir: opts.deployDir,
       gatewayToken: token,
-      gatewayPort: parseInt(opts.port, 10),
+      gatewayPort,
       skipPreflight: opts.skipPreflight,
       skipFirewall: opts.skipFirewall,
       onProgress,
@@ -1192,6 +1208,12 @@ program
 
       if (!gatewayToken) {
         console.error(chalk.red("Error: Gateway token required. Use --token or set CLAWHQ_GATEWAY_TOKEN"));
+        process.exit(1);
+      }
+
+      const gatewayPort = parseInt(opts.port, 10);
+      if (isNaN(gatewayPort)) {
+        console.error(chalk.red("Invalid port number"));
         process.exit(1);
       }
 
@@ -1285,7 +1307,7 @@ program
         channel,
         credentials: { channel, vars },
         gatewayToken,
-        gatewayPort: parseInt(opts.port, 10),
+        gatewayPort,
         onProgress,
       });
 
@@ -1338,10 +1360,19 @@ service
     const spinner = ora(`Adding ${name}…`);
     spinner.start();
 
+    let port: number | undefined;
+    if (opts.port) {
+      port = parseInt(opts.port, 10);
+      if (isNaN(port)) {
+        console.error(chalk.red("Invalid port number"));
+        process.exit(1);
+      }
+    }
+
     const result = await addService({
       deployDir: opts.deployDir,
       service: name as ServiceName,
-      port: opts.port ? parseInt(opts.port, 10) : undefined,
+      port,
     });
 
     spinner.stop();
@@ -1755,6 +1786,12 @@ program
   }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
 
+    const gatewayPort = parseInt(opts.port, 10);
+    if (isNaN(gatewayPort)) {
+      console.error(chalk.red("Invalid port number"));
+      process.exit(1);
+    }
+
     const ac = new AbortController();
     process.on("SIGINT", () => ac.abort());
     process.on("SIGTERM", () => ac.abort());
@@ -1801,7 +1838,7 @@ program
           deployDir: opts.deployDir,
           passphrase: opts.passphrase,
           gatewayToken: token,
-          gatewayPort: parseInt(opts.port, 10),
+          gatewayPort,
           onProgress,
           signal: ac.signal,
         });
