@@ -184,6 +184,7 @@ import {
   readAuditReport,
 } from "../secure/audit/index.js";
 import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
+import { startDashboard } from "../web/index.js";
 
 import { renderError, warnIfNotInstalled } from "./ux.js";
 
@@ -3168,6 +3169,42 @@ async function loadNotificationChannels(deployDir: string): Promise<Notification
 
   return channels;
 }
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+
+program
+  .command("dashboard")
+  .description("Start the web dashboard (Hono + htmx + Pico CSS)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("-p, --port <port>", "Dashboard port", "3737")
+  .option("--host <host>", "Hostname to bind to", "localhost")
+  .action(async (opts: { deployDir: string; port: string; host: string }) => {
+    const port = parseInt(opts.port, 10);
+    if (isNaN(port)) {
+      console.error(chalk.red("Invalid port number"));
+      process.exit(1);
+    }
+
+    console.log(chalk.bold("\nclawhq dashboard\n"));
+    console.log(chalk.dim(`Starting web dashboard on ${opts.host}:${port}…\n`));
+
+    const server = await startDashboard({
+      deployDir: opts.deployDir,
+      port,
+      hostname: opts.host,
+    });
+
+    console.log(chalk.green(`Dashboard running at http://${server.hostname}:${server.port}`));
+    console.log(chalk.dim("Press Ctrl+C to stop.\n"));
+
+    const shutdownServer = () => {
+      console.log(chalk.dim("\nShutting down dashboard…"));
+      server.close();
+      process.exit(0);
+    };
+    process.on("SIGINT", shutdownServer);
+    process.on("SIGTERM", shutdownServer);
+  });
 
 // ── Parse ───────────────────────────────────────────────────────────────────
 

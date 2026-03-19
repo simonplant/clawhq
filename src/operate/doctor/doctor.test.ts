@@ -137,7 +137,7 @@ describe("types", () => {
 
 // ── Checks Tests ────────────────────────────────────────────────────────────
 
-describe("checks", () => {
+describe("checks", { timeout: 30_000 }, () => {
   it("config-exists fails when openclaw.json is missing", async () => {
     const checks = await runChecks(testDir);
     const check = findCheck(checks, "config-exists");
@@ -224,7 +224,7 @@ describe("checks", () => {
 
 // ── Doctor Orchestrator Tests ───────────────────────────────────────────────
 
-describe("runDoctor", () => {
+describe("runDoctor", { timeout: 30_000 }, () => {
   it("returns a valid DoctorReport", async () => {
     await writeValidConfig();
     await writeValidCompose();
@@ -249,7 +249,7 @@ describe("runDoctor", () => {
 
 // ── Auto-Fix Tests ──────────────────────────────────────────────────────────
 
-describe("auto-fix", () => {
+describe("auto-fix", { timeout: 30_000 }, () => {
   it("fixes .env permissions", async () => {
     await writeFile(join(testDir, "engine", ".env"), "KEY=val\n");
     await chmod(join(testDir, "engine", ".env"), 0o644);

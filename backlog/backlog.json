@@ -995,8 +995,8 @@
       "description": "WEB UI OPTION: Hono + htmx + Pico CSS keeps the stack minimal. Web dashboard is for users who prefer a browser to a terminal for day-to-day ops. Not blocking CLI users. Depends on CQ-011 (doctor), CQ-026 (status), CQ-025 (approvals) being solid first — web is just a UI layer over CLI-complete features. Acceptance: all 7 pages render; doctor page shows same output as CLI; approvals queue shows pending items; init wizard works via browser.",
       "category": "operate",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-011",
         "CQ-026",
@@ -1019,7 +1019,9 @@
         "Init wizard completes full setup via browser"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "All dependencies done (CQ-011 doctor, CQ-026 status/logs, CQ-025 approvals). Hono + htmx + Pico CSS stack. Web is a UI layer over CLI-complete features — no new business logic. BUG-006 (src/server/ path) should be done first but is not a hard blocker. 7 pages are well-scoped."
+      "groomingNotes": "All dependencies done (CQ-011 doctor, CQ-026 status/logs, CQ-025 approvals). Hono + htmx + Pico CSS stack. Web is a UI layer over CLI-complete features — no new business logic. BUG-006 (src/server/ path) should be done first but is not a hard blocker. 7 pages are well-scoped.",
+      "passes": true,
+      "completedAt": "2026-03-19T09:17:01-07:00"
     },
     {
       "id": "CQ-041",
