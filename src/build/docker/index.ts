@@ -22,6 +22,9 @@ export type { ComposeOutput } from "./compose.js";
 // Security postures
 export { DEFAULT_POSTURE, getPostureConfig, POSTURE_LEVELS } from "./posture.js";
 
+// Posture YAML writer
+export { generatePostureYaml, posturePath, readCurrentPosture, writePostureYaml } from "./posture-writer.js";
+
 // Cache detection
 export { checkCache, computeStage1Hash, computeStage2Hash, manifestPath } from "./cache.js";
 

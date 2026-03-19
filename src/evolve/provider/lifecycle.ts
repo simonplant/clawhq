@@ -13,6 +13,7 @@ import {
   readEnv,
   writeEnvValue,
 } from "../../secure/credentials/env-store.js";
+import { createCapabilitySnapshot } from "../rollback/capability-snapshot.js";
 
 import {
   loadProviderManifest,
@@ -133,6 +134,9 @@ export async function addProvider(
     };
   }
 
+  // Create rollback snapshot before making changes
+  await createCapabilitySnapshot(deployDir, "providers", `pre-add: ${name}`);
+
   // Store API key
   if (def.requiresApiKey && def.envKey) {
     if (!apiKey) {
@@ -182,9 +186,9 @@ export async function addProvider(
 
 // ── Remove Provider ────────────────────────────────────────────────────────
 
-export function removeProviderCmd(
+export async function removeProviderCmd(
   options: ProviderRemoveOptions,
-): ProviderRemoveResult {
+): Promise<ProviderRemoveResult> {
   const { deployDir, name, keepCredentials } = options;
   const manifest = loadProviderManifest(deployDir);
   const entry = manifest.providers.find((p) => p.name === name);
@@ -192,6 +196,9 @@ export function removeProviderCmd(
   if (!entry) {
     return { success: false, providerName: name, error: `Provider "${name}" is not configured.` };
   }
+
+  // Create rollback snapshot before making changes
+  await createCapabilitySnapshot(deployDir, "providers", `pre-remove: ${name}`);
 
   // Remove env key
   if (!keepCredentials) {

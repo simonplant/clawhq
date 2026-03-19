@@ -26,6 +26,20 @@ export type { CredentialProbe, ProbeReport, ProbeResult } from "./credentials/in
 export { builtinProbes, formatProbeReport, probeAnthropic, probeOpenAI, probeTelegram, runProbes } from "./credentials/index.js";
 export type { RunProbesOptions } from "./credentials/index.js";
 
+// Credential store (credentials.json)
+export type { CredentialEntry, CredentialStore } from "./credentials/index.js";
+export {
+  credentialsPath,
+  deleteIntegrationCredentials,
+  getCredentials,
+  readCredentialStore,
+  removeCredentials,
+  setCredentials,
+  storeIntegrationCredentials,
+  verifyCredentialPermissions,
+  writeCredentialStore,
+} from "./credentials/index.js";
+
 // Audit trail (tool execution, egress, secret lifecycle, approval resolution)
 export type {
   ApprovalResolutionEvent,

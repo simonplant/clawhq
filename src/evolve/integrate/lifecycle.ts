@@ -9,11 +9,16 @@
 import { join } from "node:path";
 
 import {
+  deleteIntegrationCredentials,
+  storeIntegrationCredentials,
+} from "../../secure/credentials/credential-store.js";
+import {
   deleteEnvValue,
   readEnv,
   getAllEnvValues,
   writeEnvValue,
 } from "../../secure/credentials/env-store.js";
+import { createCapabilitySnapshot } from "../rollback/capability-snapshot.js";
 
 import {
   loadIntegrationManifest,
@@ -78,17 +83,29 @@ export async function addIntegration(
     };
   }
 
-  // Store credentials
+  // Create rollback snapshot before making changes
+  await createCapabilitySnapshot(deployDir, "integrations", `pre-add: ${name}`);
+
+  // Store credentials in both .env (for runtime) and credentials.json (for management)
   progress(onProgress, "credentials", "running", `Storing credentials for ${def.label}`);
   const envPath = join(deployDir, "engine", ".env");
   const storedKeys: string[] = [];
+  const credValues: Record<string, string> = {};
 
   for (const envKey of def.envKeys) {
     const value = credentials?.[envKey.key] ?? envKey.defaultValue;
     if (value) {
       writeEnvValue(envPath, envKey.key, value);
       storedKeys.push(envKey.key);
+      if (envKey.secret) {
+        credValues[envKey.key] = value;
+      }
     }
+  }
+
+  // Store secret credentials in credentials.json (mode 0600)
+  if (Object.keys(credValues).length > 0) {
+    storeIntegrationCredentials(deployDir, name, credValues);
   }
   progress(onProgress, "credentials", "done", `${storedKeys.length} credential(s) stored`);
 
@@ -134,9 +151,9 @@ export async function addIntegration(
  * 1. Remove from manifest
  * 2. Delete credentials from .env (unless keepCredentials)
  */
-export function removeIntegrationCmd(
+export async function removeIntegrationCmd(
   options: IntegrationRemoveOptions,
-): IntegrationRemoveResult {
+): Promise<IntegrationRemoveResult> {
   const { deployDir, name, keepCredentials } = options;
   const manifest = loadIntegrationManifest(deployDir);
   const entry = manifest.integrations.find((i) => i.name === name);
@@ -150,7 +167,10 @@ export function removeIntegrationCmd(
     };
   }
 
-  // Remove env keys
+  // Create rollback snapshot before making changes
+  await createCapabilitySnapshot(deployDir, "integrations", `pre-remove: ${name}`);
+
+  // Remove env keys and credentials.json entry
   const envKeysRemoved: string[] = [];
   if (!keepCredentials) {
     const envPath = join(deployDir, "engine", ".env");
@@ -158,6 +178,7 @@ export function removeIntegrationCmd(
       deleteEnvValue(envPath, key);
       envKeysRemoved.push(key);
     }
+    deleteIntegrationCredentials(deployDir, name);
   }
 
   // Update manifest
