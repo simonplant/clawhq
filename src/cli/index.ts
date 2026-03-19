@@ -24,6 +24,11 @@ import { deploy, restart, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
 import { validateBundle } from "../config/validate.js";
 import {
+  loadAllBuiltinBlueprints,
+  loadBlueprint,
+} from "../design/blueprints/index.js";
+import type { Blueprint } from "../design/blueprints/index.js";
+import {
   createInquirerPrompter,
   generateBundle,
   generateIdentityFiles,
@@ -31,11 +36,6 @@ import {
   WizardAbortError,
   writeBundle,
 } from "../design/configure/index.js";
-import {
-  loadAllBuiltinBlueprints,
-  loadBlueprint,
-} from "../design/blueprints/index.js";
-import type { Blueprint } from "../design/blueprints/index.js";
 import {
   formatDoctorJson,
   formatDoctorTable,
