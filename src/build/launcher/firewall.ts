@@ -95,7 +95,8 @@ export async function removeFirewall(signal?: AbortSignal): Promise<FirewallResu
     // Detach from FORWARD
     try {
       await iptables(["-D", "FORWARD", "-j", CHAIN_NAME], signal);
-    } catch {
+    } catch (e) {
+      console.warn(`[firewall:remove] Failed to detach chain from FORWARD:`, e);
       // Not attached — that's fine
     }
 
@@ -103,7 +104,8 @@ export async function removeFirewall(signal?: AbortSignal): Promise<FirewallResu
     try {
       await iptables(["-F", CHAIN_NAME], signal);
       await iptables(["-X", CHAIN_NAME], signal);
-    } catch {
+    } catch (e) {
+      console.warn(`[firewall:remove] Failed to flush/delete chain:`, e);
       // Chain doesn't exist — that's fine
     }
 
@@ -124,7 +126,8 @@ async function ensureChain(signal?: AbortSignal): Promise<void> {
   try {
     // Try to create the chain
     await iptables(["-N", CHAIN_NAME], signal);
-  } catch {
+  } catch (e) {
+    console.warn(`[firewall:ensure-chain] Chain already exists, flushing:`, e);
     // Chain already exists — flush it
     await iptables(["-F", CHAIN_NAME], signal);
   }
@@ -134,7 +137,8 @@ async function attachToForward(signal?: AbortSignal): Promise<void> {
   try {
     // Check if already attached
     await iptables(["-C", "FORWARD", "-j", CHAIN_NAME], signal);
-  } catch {
+  } catch (e) {
+    console.warn(`[firewall:attach] Chain not yet attached to FORWARD, adding:`, e);
     // Not attached — add it
     await iptables(["-I", "FORWARD", "-j", CHAIN_NAME], signal);
   }
@@ -162,7 +166,8 @@ export async function loadAllowlist(deployDir: string): Promise<FirewallAllowEnt
     }
 
     return entries;
-  } catch {
+  } catch (e) {
+    console.warn(`[firewall:allowlist] Failed to load allowlist file:`, e);
     // No allowlist file or invalid YAML — return empty (default: block all non-DNS egress)
     return [];
   }
