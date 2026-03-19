@@ -909,8 +909,8 @@
       "description": "SECURITY MATURITY: credentials.json separation from .env is the difference between 'works' and 'production-grade'. Integration credentials in a dedicated store (mode 0600) means rotate one integration without touching others. Security posture YAML makes the container hardening visible and reviewable — the Tinkerer persona wants to see what posture they're running. Rollback snapshots for all capability changes complete the safety story started in CQ-021. Acceptance: credentials.json separate from .env; posture.yaml reflects active security settings; rollback restores previous capability state.",
       "category": "secure",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Separate credentials into credentials.json with mode 0600",
         "Create posture.yaml reflecting active security settings",
@@ -920,7 +920,9 @@
         "credentials.json separate from .env with 0600 permissions",
         "posture.yaml reflects active security settings and is human-reviewable",
         "Rollback restores previous capability state cleanly"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T07:24:52-07:00"
     },
     {
       "id": "CQ-038",

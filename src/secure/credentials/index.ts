@@ -40,3 +40,17 @@ export type { RunProbesOptions } from "./health.js";
 
 // Built-in probes
 export { builtinProbes, probeAnthropic, probeOpenAI, probeTelegram } from "./probes.js";
+
+// Credential store (credentials.json — integration credentials separate from .env)
+export type { CredentialEntry, CredentialStore } from "./credential-store-types.js";
+export {
+  credentialsPath,
+  deleteIntegrationCredentials,
+  getCredentials,
+  readCredentialStore,
+  removeCredentials,
+  setCredentials,
+  storeIntegrationCredentials,
+  verifyCredentialPermissions,
+  writeCredentialStore,
+} from "./credential-store.js";

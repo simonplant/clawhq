@@ -2019,7 +2019,7 @@ integrate
   .option("--keep-credentials", "Keep credentials in .env")
   .action(async (name: string, opts: { deployDir: string; keepCredentials?: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    const result = removeIntegrationCmd({
+    const result = await removeIntegrationCmd({
       deployDir: opts.deployDir,
       name,
       keepCredentials: opts.keepCredentials,
@@ -2128,7 +2128,7 @@ provider
   .option("--keep-credentials", "Keep API key in .env")
   .action(async (name: string, opts: { deployDir: string; keepCredentials?: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    const result = removeProviderCmd({
+    const result = await removeProviderCmd({
       deployDir: opts.deployDir,
       name,
       keepCredentials: opts.keepCredentials,
@@ -2186,7 +2186,7 @@ role
     const permissions = opts.permissions.split(",").map((s) => s.trim()) as Permission[];
     const categories = opts.categories ? opts.categories.split(",").map((s) => s.trim()) : undefined;
 
-    const result = addRole({
+    const result = await addRole({
       deployDir: opts.deployDir,
       name,
       description: opts.description,
@@ -2210,7 +2210,7 @@ role
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .action(async (name: string, opts: { deployDir: string }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    const result = removeRoleCmd({ deployDir: opts.deployDir, name });
+    const result = await removeRoleCmd({ deployDir: opts.deployDir, name });
     if (result.success) {
       console.log(chalk.green(`Role "${name}" removed.`));
       if (result.unassigned.length > 0) {
@@ -2230,7 +2230,7 @@ role
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .action(async (roleName: string, integrationName: string, opts: { deployDir: string }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    const result = assignRoleToIntegration({
+    const result = await assignRoleToIntegration({
       deployDir: opts.deployDir,
       roleName,
       integrationName,

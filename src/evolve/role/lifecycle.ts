@@ -10,6 +10,7 @@ import {
   saveIntegrationManifest,
   upsertIntegration,
 } from "../integrate/manifest.js";
+import { createCapabilitySnapshot } from "../rollback/capability-snapshot.js";
 
 import {
   assignRole as assignRoleManifest,
@@ -34,7 +35,7 @@ import type {
 
 // ── Add Role ───────────────────────────────────────────────────────────────
 
-export function addRole(options: RoleAddOptions): RoleAddResult {
+export async function addRole(options: RoleAddOptions): Promise<RoleAddResult> {
   const { deployDir, name, description, permissions, categories, maxEgressDomains } = options;
 
   if (!name || name.length === 0) {
@@ -54,6 +55,9 @@ export function addRole(options: RoleAddOptions): RoleAddResult {
     return { success: false, roleName: name, error: `Role "${name}" already exists. Remove it first to recreate.` };
   }
 
+  // Create rollback snapshot before making changes
+  await createCapabilitySnapshot(deployDir, "roles", `pre-add: ${name}`);
+
   const role = {
     name,
     description,
@@ -71,7 +75,7 @@ export function addRole(options: RoleAddOptions): RoleAddResult {
 
 // ── Remove Role ────────────────────────────────────────────────────────────
 
-export function removeRoleCmd(options: RoleRemoveOptions): RoleRemoveResult {
+export async function removeRoleCmd(options: RoleRemoveOptions): Promise<RoleRemoveResult> {
   const { deployDir, name } = options;
 
   const manifest = loadRoleManifest(deployDir);
@@ -85,6 +89,9 @@ export function removeRoleCmd(options: RoleRemoveOptions): RoleRemoveResult {
     return { success: false, roleName: name, unassigned: [], error: `Cannot remove built-in role "${name}".` };
   }
 
+  // Create rollback snapshot before making changes
+  await createCapabilitySnapshot(deployDir, "roles", `pre-remove: ${name}`);
+
   const { manifest: updated, unassigned } = removeRoleManifest(manifest, name);
   saveRoleManifest(deployDir, updated);
 
@@ -93,7 +100,7 @@ export function removeRoleCmd(options: RoleRemoveOptions): RoleRemoveResult {
 
 // ── Assign Role ────────────────────────────────────────────────────────────
 
-export function assignRoleToIntegration(options: RoleAssignOptions): RoleAssignResult {
+export async function assignRoleToIntegration(options: RoleAssignOptions): Promise<RoleAssignResult> {
   const { deployDir, roleName, integrationName } = options;
 
   const manifest = loadRoleManifest(deployDir);
@@ -101,6 +108,9 @@ export function assignRoleToIntegration(options: RoleAssignOptions): RoleAssignR
   if (!role) {
     return { success: false, roleName, integrationName, error: `Role "${roleName}" does not exist.` };
   }
+
+  // Create rollback snapshot before making changes
+  await createCapabilitySnapshot(deployDir, "roles", `pre-assign: ${roleName} → ${integrationName}`);
 
   // Update role manifest
   const updated = assignRoleManifest(manifest, integrationName, roleName);

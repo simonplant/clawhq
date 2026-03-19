@@ -887,8 +887,8 @@
       "description": "INTEGRATION MANAGEMENT: As agents grow (Month 1-6 story), users add integrations. Integration management makes this clean vs. ad-hoc file editing. Provider abstraction means credential routing is automatic. Identity governance (roles) matters for Fleet Operator persona managing agents for multiple people. Acceptance: 'clawhq integrate' connects new service with live validation; 'clawhq provider' manages cloud API routing; role definitions control what each integration can access.",
       "category": "design",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement 'clawhq integrate' for connecting new services with live validation",
         "Implement 'clawhq provider' for cloud API credential routing",
@@ -898,7 +898,9 @@
         "'clawhq integrate' connects service with live validation",
         "'clawhq provider' manages cloud API routing correctly",
         "Role definitions control what each integration can access"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T07:01:41-07:00"
     },
     {
       "id": "CQ-037",
