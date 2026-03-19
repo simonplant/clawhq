@@ -100,9 +100,9 @@ export async function startApprovalBot(opts: ApprovalBotOptions): Promise<void> 
           );
         }
       }
-    } catch {
+    } catch (err) {
       if (signal?.aborted) break;
-      // Wait before retrying on error
+      console.warn("[evolve] Telegram polling error:", err);
       await sleep(5000, signal);
     }
   }
@@ -148,8 +148,8 @@ async function answerCallback(
         text,
       }),
     });
-  } catch {
-    // Best-effort
+  } catch (err) {
+    console.warn("[evolve] Failed to answer Telegram callback:", err);
   }
 }
 

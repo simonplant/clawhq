@@ -38,7 +38,8 @@ export async function loadManifest(deployDir: string): Promise<SkillManifest> {
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as SkillManifest;
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read skill manifest:", err);
     return { version: 1, skills: [] };
   }
 }
@@ -192,8 +193,8 @@ export async function installSkill(
     if (file.endsWith(".sh") || file.endsWith(".bash") || file.endsWith(".py")) {
       try {
         await chmod(join(stageResult.stagingDir, file), 0o755);
-      } catch {
-        // Non-critical — file may not need exec permission
+      } catch (err) {
+        console.warn("[evolve] Failed to set executable permission on", file, err);
       }
     }
   }

@@ -72,8 +72,8 @@ async function secureWipe(filePath: string): Promise<void> {
       // Second pass: zeros
       await writeFile(filePath, Buffer.alloc(stat.size));
     }
-  } catch {
-    // File may already be gone or unreadable — continue
+  } catch (err) {
+    console.warn("[evolve] Failed to secure-wipe file:", filePath, err);
   }
 }
 
@@ -123,8 +123,8 @@ export async function destroyAgent(options: DestroyOptions): Promise<DestroyResu
         sizeBefore: stat.size,
       });
       totalBytes += stat.size;
-    } catch {
-      // File vanished between collect and hash — skip
+    } catch (err) {
+      console.warn("[evolve] Failed to hash file before destroy:", filePath, err);
     }
   }
 

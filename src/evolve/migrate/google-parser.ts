@@ -169,7 +169,8 @@ async function parseActivityFile(filePath: string): Promise<ParseResult> {
       };
     }
     activities = parsed as GoogleAssistantActivity[];
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to parse Google activity JSON:", err);
     return {
       success: false,
       source: "google-assistant",
@@ -223,7 +224,8 @@ async function parseRoutineFile(filePath: string): Promise<ParsedRoutine[]> {
   let raw: string;
   try {
     raw = await readFile(filePath, { encoding: "utf-8" });
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read routine file:", filePath, err);
     return [];
   }
 
@@ -246,7 +248,8 @@ async function parseRoutineFile(filePath: string): Promise<ParsedRoutine[]> {
           .join(", ") ?? r.name,
         source: "google-assistant" as const,
       }));
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to parse routine JSON:", filePath, err);
     return [];
   }
 }
@@ -265,7 +268,8 @@ async function findFiles(
   let entries: string[];
   try {
     entries = await readdir(dir);
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read directory:", dir, err);
     return [];
   }
 
@@ -296,7 +300,8 @@ async function findRoutineFiles(
   let entries: string[];
   try {
     entries = await readdir(dir);
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read directory:", dir, err);
     return [];
   }
 
@@ -308,7 +313,10 @@ async function findRoutineFiles(
     if (entryStat.isDirectory()) {
       if (ROUTINE_DIR_NAMES.includes(entry)) {
         // This is a routines directory — grab all JSON files
-        const routineEntries = await readdir(fullPath).catch(() => [] as string[]);
+        const routineEntries = await readdir(fullPath).catch((err) => {
+          console.warn("[evolve] Failed to read routines directory:", fullPath, err);
+          return [] as string[];
+        });
         for (const re of routineEntries) {
           if (re.endsWith(".json")) {
             results.push(join(fullPath, re));

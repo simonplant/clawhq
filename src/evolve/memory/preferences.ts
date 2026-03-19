@@ -164,7 +164,8 @@ export async function loadPreferences(
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as PreferenceReport;
-  } catch {
+  } catch (err) {
+    console.warn("[evolve] Failed to read preference report:", err);
     return null;
   }
 }
