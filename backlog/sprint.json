@@ -1,28 +1,20 @@
 {
-  "sprintId": "sprint-1773931614",
-  "startedAt": "2026-03-19T07:46:54-07:00",
+  "sprintId": "sprint-1773932523",
+  "startedAt": "2026-03-19T08:02:03-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-039",
-    "title": "Fleet management",
-    "intent": "Fleet management must discover all running agents and aggregate health into a single view. Fleet-wide doctor must surface issues across all agents in one check.",
-    "description": "FLEET OPERATOR: Multi-agent discovery + fleet-wide doctor is for the Fleet Operator persona managing agents for multiple people. Single pane of glass: see which agents are healthy, which need attention. Fleet-wide doctor means one check to confirm all agents are configured correctly. Not blocking single-user adoption. Acceptance: 'clawhq cloud fleet' discovers running agents; fleet health shows aggregate status; fleet doctor surfaces issues across all agents.",
-    "sourceBacklog": "backlog.json",
-    "steps": [
-      "Implement multi-agent discovery across running instances",
-      "Build health aggregation into single fleet view",
-      "Add fleet-wide doctor command"
-    ],
-    "acceptanceCriteria": [
-      "'clawhq cloud fleet' discovers all running agents",
-      "Fleet health shows aggregate status in single view",
-      "Fleet doctor surfaces issues across all agents in one check"
-    ],
+    "id": "BUG-001",
+    "title": "Blueprint directory path mismatch: configs/templates/ vs configs/blueprints/",
+    "intent": "configs/blueprints/ is the canonical path. Rename configs/templates/ before CQ-009 implementation begins. The loader targets one path, not two.",
+    "description": "The 6 blueprint YAMLs live in configs/templates/ but ARCHITECTURE.md and CLAUDE.md specify configs/blueprints/ as the target path. CQ-009 (blueprint loader) must know which path to use. Must resolve before CQ-009 implementation or the loader will target wrong directory.",
+    "sourceBacklog": "bugs.json",
+    "steps": [],
+    "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T07:46:54-07:00",
+    "startedAt": "2026-03-19T08:02:03-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T08:02:00-07:00"
+    "completedAt": "2026-03-19T08:04:56-07:00"
   },
-  "completedAt": "2026-03-19T08:02:00-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T08:04:56-07:00",
+  "attempts": 1
 }

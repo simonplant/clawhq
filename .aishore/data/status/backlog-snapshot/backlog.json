@@ -955,8 +955,8 @@
       "description": "FLEET OPERATOR: Multi-agent discovery + fleet-wide doctor is for the Fleet Operator persona managing agents for multiple people. Single pane of glass: see which agents are healthy, which need attention. Fleet-wide doctor means one check to confirm all agents are configured correctly. Not blocking single-user adoption. Acceptance: 'clawhq cloud fleet' discovers running agents; fleet health shows aggregate status; fleet doctor surfaces issues across all agents.",
       "category": "cloud",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement multi-agent discovery across running instances",
         "Build health aggregation into single fleet view",
@@ -966,7 +966,9 @@
         "'clawhq cloud fleet' discovers all running agents",
         "Fleet health shows aggregate status in single view",
         "Fleet doctor surfaces issues across all agents in one check"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T08:02:00-07:00"
     },
     {
       "id": "CQ-040",
