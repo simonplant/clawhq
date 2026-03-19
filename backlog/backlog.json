@@ -580,8 +580,8 @@
       "description": "EXIT GUARANTEE: Privacy Migrant won't commit to a sovereign agent without knowing they can leave. 'clawhq export gives you everything portable. clawhq destroy proves it's gone. Zero lock-in.' — this is the product promise. PII masking on export means they can share the export without leaking data. Cryptographic proof of destruction is what makes 'destroy' trustworthy vs. just deleting files. Acceptance: export produces self-contained portable bundle; PII masked in export; destroy wipes all local data; crypto proof can be independently verified.",
       "category": "evolve",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement portable export bundling all agent data",
         "Add PII masking to export output",
@@ -593,7 +593,9 @@
         "PII masked in exported data",
         "Destroy wipes all local data completely",
         "Crypto proof of destruction independently verifiable"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-19T03:23:51-07:00"
     },
     {
       "id": "CQ-025",

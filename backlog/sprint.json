@@ -1,31 +1,30 @@
 {
-  "sprintId": "sprint-1773914295",
-  "startedAt": "2026-03-19T02:58:15-07:00",
+  "sprintId": "sprint-1773915178",
+  "startedAt": "2026-03-19T03:12:58-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-023",
-    "title": "Audit trail (tool + egress + secrets)",
-    "intent": "Log every tool execution, secret access, and egress event to tamper-evident JSONL. The user must be able to answer 'what did my agent do?' at any time.",
-    "description": "TRANSPARENCY PROMISE: 'You know what your agent did, what data it touched, and what left your machine' — this is a design principle. Without audit trail, it's just a claim. The user should be able to ask 'what did my agent do today?' and get an answer. HMAC-chaining on secret lifecycle means the audit is tamper-evident, not just logged. OWASP compliance export matters for the Tinkerer persona running in an org context. Acceptance: every tool execution logged to JSONL; secret lifecycle events HMAC-chained; 'clawhq audit' shows recent activity; export produces OWASP-compatible format.",
+    "id": "CQ-024",
+    "title": "Export + destroy (data sovereignty)",
+    "intent": "Users must be able to export a portable agent bundle and cryptographically prove destruction. Zero lock-in — data sovereignty is the exit guarantee.",
+    "description": "EXIT GUARANTEE: Privacy Migrant won't commit to a sovereign agent without knowing they can leave. 'clawhq export gives you everything portable. clawhq destroy proves it's gone. Zero lock-in.' — this is the product promise. PII masking on export means they can share the export without leaking data. Cryptographic proof of destruction is what makes 'destroy' trustworthy vs. just deleting files. Acceptance: export produces self-contained portable bundle; PII masked in export; destroy wipes all local data; crypto proof can be independently verified.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement tool execution audit logging to append-only JSONL",
-      "Add egress event logging",
-      "Implement HMAC-chained secret lifecycle events",
-      "Build OWASP compliance export format",
-      "Add 'clawhq audit' command for recent activity view"
+      "Implement portable export bundling all agent data",
+      "Add PII masking to export output",
+      "Implement verified destruction with cryptographic proof",
+      "Ensure export bundle is self-contained and portable"
     ],
     "acceptanceCriteria": [
-      "Every tool execution logged to append-only JSONL",
-      "Secret lifecycle events HMAC-chained (tamper-evident)",
-      "'clawhq audit' shows recent activity",
-      "Export produces OWASP-compatible format"
+      "Export produces self-contained portable bundle",
+      "PII masked in exported data",
+      "Destroy wipes all local data completely",
+      "Crypto proof of destruction independently verifiable"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T02:58:15-07:00",
+    "startedAt": "2026-03-19T03:12:58-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T03:12:56-07:00"
+    "completedAt": "2026-03-19T03:23:51-07:00"
   },
-  "completedAt": "2026-03-19T03:12:56-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T03:23:51-07:00",
+  "attempts": 1
 }
