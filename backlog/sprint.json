@@ -1,26 +1,31 @@
 {
-  "sprintId": "sprint-1773901860",
-  "startedAt": "2026-03-18T23:31:00-07:00",
-  "status": "in_progress",
+  "sprintId": "sprint-1773902097",
+  "startedAt": "2026-03-18T23:34:57-07:00",
+  "status": "completed",
   "item": {
-    "id": "CQ-001",
-    "title": "Config schema + 14 landmine validator",
-    "intent": "Establish the config contract that every config-generating command validates against. All 14 OpenClaw landmine rules must be enforced at the schema level so no silent misconfiguration ships to users.",
-    "description": "FOUNDATION: Every config-generating command in ClawHQ tests against this schema. Without it, config generation has no contract and silent landmines ship to users. The 14 landmine validator is the difference between 'it works' and 'it works correctly'. Acceptance: all 14 rules validate correctly against OPENCLAW-REFERENCE.md; config loader handles precedence merging (project > user > defaults).",
+    "id": "CQ-002",
+    "title": "Gateway WebSocket RPC client",
+    "intent": "Give ClawHQ the ability to talk to a running OpenClaw agent. Every live operation depends on this RPC client — without it, ClawHQ can only write files, never observe or control a deployed agent.",
+    "description": "FOUNDATION: Every live operation — deploy health checks, config patches, session queries — goes through this client. Without it, ClawHQ can only write files; it cannot talk to a running agent. Acceptance: RPC round-trip works with real Gateway; timeout + abort signal paths exercised; typed error classes surface correct user messages.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Define TypeScript types: OpenClawConfig, ClawHQConfig, DeploymentBundle, CronJobDefinition",
-      "Implement all 14 landmine validation rules from OPENCLAW-REFERENCE.md",
-      "Build YAML config loader with precedence merging (project > user > defaults)",
-      "Add clear, actionable error messages for each validation failure"
+      "Implement token-authenticated WebSocket client for OpenClaw Gateway",
+      "Add request/response RPC with typed errors and timeout handling",
+      "Implement AbortSignal support for cancellation",
+      "Create custom error classes: GatewayError, ConnectionError, AuthError, RateLimitError, RpcTimeoutError",
+      "Add health polling with configurable interval and timeout"
     ],
     "acceptanceCriteria": [
-      "All 14 landmine rules validate correctly against OPENCLAW-REFERENCE.md",
-      "Config loader merges project > user > defaults precedence correctly",
-      "TypeScript types exported for all config shapes",
-      "Invalid configs rejected with actionable error messages"
+      "RPC round-trip works with real Gateway",
+      "Timeout and abort signal paths exercised in tests",
+      "Typed error classes surface correct user messages",
+      "Health polling detects Gateway up/down state"
     ],
     "scope": [],
-    "startedAt": "2026-03-18T23:31:00-07:00"
-  }
+    "startedAt": "2026-03-18T23:34:57-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-18T23:44:46-07:00"
+  },
+  "completedAt": "2026-03-18T23:44:46-07:00",
+  "attempts": 2
 }
