@@ -36,6 +36,14 @@ import {
   WizardAbortError,
   writeBundle,
 } from "../design/configure/index.js";
+import type { SkillProgress } from "../evolve/skills/index.js";
+import {
+  formatSkillList,
+  formatSkillListJson,
+  installSkill,
+  listSkills,
+  removeSkill,
+} from "../evolve/skills/index.js";
 import {
   formatDoctorJson,
   formatDoctorTable,
@@ -711,10 +719,29 @@ skill
   .description("Install a skill with security vetting")
   .argument("<source>", "Skill source (URL, path, or registry name)")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (_source: string, opts: { deployDir: string }) => {
+  .option("--auto-approve", "Auto-approve if vetting passes")
+  .action(async (source: string, opts: { deployDir: string; autoApprove?: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+    const spinner = ora();
+    const result = await installSkill({
+      deployDir: opts.deployDir,
+      source,
+      autoApprove: opts.autoApprove,
+      onProgress: createSkillProgressHandler(spinner),
+    });
+    if (result.success) {
+      console.log(chalk.green(`\nSkill "${result.skillName}" installed and active.`));
+    } else {
+      console.log(chalk.red(`\nSkill installation failed: ${result.error}`));
+      if (result.vetReport && result.vetReport.findings.length > 0) {
+        console.log(chalk.dim("\nSecurity findings:"));
+        for (const f of result.vetReport.findings) {
+          const sev = f.severity === "critical" ? chalk.red(f.severity) : chalk.yellow(f.severity);
+          console.log(`  ${sev} ${f.file}:${f.line} — ${f.detail}`);
+        }
+      }
+      process.exit(1);
+    }
   });
 
 skill
@@ -733,20 +760,30 @@ skill
   .description("Remove an installed skill")
   .argument("<name>", "Skill name")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (_name: string, opts: { deployDir: string }) => {
+  .action(async (name: string, opts: { deployDir: string }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+    const result = await removeSkill(opts.deployDir, name);
+    if (result.success) {
+      console.log(chalk.green(`Skill "${name}" removed.`));
+    } else {
+      console.log(chalk.red(`Failed to remove skill: ${result.error}`));
+      process.exit(1);
+    }
   });
 
 skill
   .command("list")
   .description("List installed skills")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (opts: { deployDir: string }) => {
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+    const result = await listSkills({ deployDir: opts.deployDir });
+    if (opts.json) {
+      console.log(formatSkillListJson(result));
+    } else {
+      console.log(formatSkillList(result));
+    }
   });
 
 program
@@ -856,6 +893,28 @@ function stepLabel(step: string): string {
     "smoke-test": "[smoke]",
   };
   return chalk.dim(labels[step] ?? `[${step}]`);
+}
+
+// ── Skill Progress Handler ────────────────────────────────────────────────
+
+function createSkillProgressHandler(spinner: ReturnType<typeof ora>) {
+  return (event: SkillProgress): void => {
+    const label = chalk.dim(`[${event.step}]`);
+    switch (event.status) {
+      case "running":
+        spinner.start(`${label} ${event.message}`);
+        break;
+      case "done":
+        spinner.succeed(`${label} ${event.message}`);
+        break;
+      case "failed":
+        spinner.fail(`${label} ${event.message}`);
+        break;
+      case "skipped":
+        spinner.warn(`${label} ${event.message}`);
+        break;
+    }
+  };
 }
 
 // ── Parse ───────────────────────────────────────────────────────────────────

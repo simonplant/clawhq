@@ -1,29 +1,30 @@
 {
-  "sprintId": "sprint-1773911346",
-  "startedAt": "2026-03-19T02:09:06-07:00",
+  "sprintId": "sprint-1773912499",
+  "startedAt": "2026-03-19T02:28:19-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-020",
-    "title": "Workspace tool generators",
-    "intent": "Generate all 7 workspace tool wrappers from blueprint config so the agent can act on the world. An agent without its tools is decoration.",
-    "description": "AGENT'S HANDS: Tools are what the agent can DO. An email agent without an email tool can't triage inbox. Blueprint-driven generation means tools are consistent with what the identity and skills expect. CLI wrappers (bash/python3) are thin — they call himalaya, caldav, etc. — so adding a new integration means writing a wrapper, not modifying the agent. Acceptance: all 7 tool wrappers generate correctly from blueprint config; generated tools executable in container; tool names match blueprint's tool references in AGENTS.md.",
+    "id": "CQ-021",
+    "title": "Skill lifecycle + vetting",
+    "intent": "Every skill installation must pass security vetting before activation. Rollback must restore the previous state if a skill breaks the agent.",
+    "description": "CAPABILITY GATE: Skill lifecycle is what makes skills safe. Without it, installing a skill means manually copying files with no vetting, no rollback, no audit. The email-digest skill (CQ-022) must go through this pipeline. The URL trap fix is critical — malicious skills should not be able to call out to arbitrary hosts. Rollback snapshots mean 'clawhq skill install' is reversible. Acceptance: install flow runs stage->vet->approve->activate; vet catches URL patterns; rollback restores previous state; 'clawhq skill list' shows installed skills with status.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Generate CLI tool wrappers for: email, tasks, todoist, ical, quote, tavily, todoist-sync",
-      "Derive tool configuration from blueprint YAML",
-      "Ensure generated wrappers are executable in container",
-      "Match tool names to blueprint's tool references in AGENTS.md"
+      "Implement stage -> vet -> approve -> activate pipeline",
+      "Add rollback snapshots before each installation",
+      "Implement security vetting with URL trap detection",
+      "Build 'clawhq skill list' showing installed skills with status"
     ],
     "acceptanceCriteria": [
-      "All 7 tool wrappers generate correctly from blueprint config",
-      "Generated tools are executable in container",
-      "Tool names match blueprint's tool references in AGENTS.md"
+      "Install flow runs full stage -> vet -> approve -> activate pipeline",
+      "Vetting catches malicious URL patterns in skill code",
+      "Rollback restores previous state on failure or rejection",
+      "'clawhq skill list' shows installed skills with status"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T02:09:06-07:00",
+    "startedAt": "2026-03-19T02:28:19-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T02:28:17-07:00"
+    "completedAt": "2026-03-19T02:41:52-07:00"
   },
-  "completedAt": "2026-03-19T02:28:17-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T02:41:52-07:00",
+  "attempts": 1
 }
