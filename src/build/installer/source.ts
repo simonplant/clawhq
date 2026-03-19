@@ -13,8 +13,9 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
-import type { SourceBuildOptions, SourceBuildResult } from "./types.js";
 import { OPENCLAW_REPO_URL } from "../../config/defaults.js";
+
+import type { SourceBuildOptions, SourceBuildResult } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
