@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773941536",
-  "startedAt": "2026-03-19T10:32:16-07:00",
+  "sprintId": "sprint-1773941676",
+  "startedAt": "2026-03-19T10:34:36-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-017",
-    "title": "Silent catch blocks in design/ swallow errors with no logging",
-    "intent": "No error in the design/ module is silently discarded. Blueprint load failures and Ollama inference errors must be logged. A blueprint that fails to load silently is indistinguishable from one that doesn't exist.",
-    "description": "8 catch blocks across design/ swallow errors silently. Key locations: src/design/configure/smart.ts (lines 122,273 — blueprint lookup and JSON parse failures), src/design/configure/ollama.ts (lines 41,62 — Ollama availability check and model listing failures), src/design/blueprints/loader.ts (line 224 — silently skips a blueprint that fails to load, indistinguishable from missing blueprint), src/design/tools/approve-action.ts (lines 50,89,139 — queue JSON parse, Telegram config read, and Telegram API call failures). The loader.ts instance is especially problematic — a blueprint that fails validation or load is silently skipped, the user sees an incomplete blueprint list with no explanation. Steps: (1) search design/ for 'catch {' and 'catch (_' patterns, excluding writer.ts cleanup catches (intentional best-effort); (2) for each non-fatal catch, add console.warn() with the error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour; (4) run design/ tests to confirm no regression. Scope: ~8 one-line additions across 4 files.",
+    "id": "BUG-018",
+    "title": "Silent catch blocks in cloud/ swallow errors with no logging",
+    "intent": "No error in the cloud/ module is silently discarded. Heartbeat reporter failures must be logged — a silent heartbeat calculation error produces incorrect health metrics with no trace.",
+    "description": "2 catch blocks in src/cloud/heartbeat/reporter.ts swallow errors silently. Line 85: directory size calculation error swallowed, returns partial result (wrong size metrics). Line 101: credentials file read error swallowed, returns 0 count (wrong credential count). Both produce incorrect health data sent to the remote monitoring layer with no indication they failed. Steps: (1) open src/cloud/heartbeat/reporter.ts; (2) find catch blocks at lines 85 and 101; (3) add console.warn() with the error and context for each; (4) do NOT change fallback return values — keep returning partial/0 values on failure; (5) run cloud/ tests to confirm no regression. Scope: 2 one-line additions in one file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:32:16-07:00",
+    "startedAt": "2026-03-19T10:34:36-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:34:34-07:00"
+    "completedAt": "2026-03-19T10:36:34-07:00"
   },
-  "completedAt": "2026-03-19T10:34:34-07:00",
+  "completedAt": "2026-03-19T10:36:34-07:00",
   "attempts": 1
 }
