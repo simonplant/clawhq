@@ -38,8 +38,8 @@ export async function walkAndScan(
     let entries;
     try {
       entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      // Permission denied or missing dir — skip silently
+    } catch (err) {
+      console.warn(`[secure/scanner] Cannot read directory ${dir}`, err);
       return;
     }
 
@@ -59,7 +59,8 @@ export async function walkAndScan(
           const info = await stat(fullPath);
           if (info.size > 1_048_576) continue;
           if (info.size === 0) continue;
-        } catch {
+        } catch (err) {
+          console.warn(`[secure/scanner] Cannot stat file ${fullPath}`, err);
           continue;
         }
 
@@ -67,7 +68,8 @@ export async function walkAndScan(
         let content: string;
         try {
           content = await readFile(fullPath, "utf-8");
-        } catch {
+        } catch (err) {
+          console.warn(`[secure/scanner] Cannot read file ${fullPath}`, err);
           continue;
         }
 
