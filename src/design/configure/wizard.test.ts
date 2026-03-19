@@ -18,7 +18,7 @@ function mockPrompter(answers: unknown[]): Prompter {
   };
 
   return {
-    select: async () => next(),
+    select: async <T>(_opts: { message: string; choices: { name: string; value: T; description?: string }[] }) => next() as T,
     input: async (opts) => {
       const answer = next();
       // If the answer is empty string, use the default

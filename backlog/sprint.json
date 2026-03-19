@@ -1,20 +1,30 @@
 {
-  "sprintId": "sprint-1773932523",
-  "startedAt": "2026-03-19T08:02:03-07:00",
+  "sprintId": "sprint-1773933211",
+  "startedAt": "2026-03-19T08:13:31-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-001",
-    "title": "Blueprint directory path mismatch: configs/templates/ vs configs/blueprints/",
-    "intent": "configs/blueprints/ is the canonical path. Rename configs/templates/ before CQ-009 implementation begins. The loader targets one path, not two.",
-    "description": "The 6 blueprint YAMLs live in configs/templates/ but ARCHITECTURE.md and CLAUDE.md specify configs/blueprints/ as the target path. CQ-009 (blueprint loader) must know which path to use. Must resolve before CQ-009 implementation or the loader will target wrong directory.",
-    "sourceBacklog": "bugs.json",
-    "steps": [],
-    "acceptanceCriteria": [],
+    "id": "CQ-028",
+    "title": "Quickstart (init -> build -> deploy -> verify)",
+    "intent": "clawhq quickstart must take a user from zero to a running, reachable agent in one command. Any failure must leave clear guidance, not a half-deployed mess.",
+    "description": "HIGH VALUE: The target user experience — one command to working agent. Phase-labeled spinners: Install -> Init -> Build -> Deploy -> Connect -> Verify. Missing dependency: also requires CQ-014 (install scaffold). Not ready until CQ-010+CQ-003+CQ-004+CQ-014 all land. Acceptance: 'clawhq quickstart --blueprint email-manager' produces a running, reachable agent with Telegram connected.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Implement 'clawhq quickstart [--blueprint] [--smart]' orchestrator command",
+      "Chain phases: install -> init -> build -> deploy -> connect -> verify",
+      "Add phase-labeled spinners showing progress for each step",
+      "Reuse existing command logic — no new implementation logic"
+    ],
+    "acceptanceCriteria": [
+      "'clawhq quickstart --blueprint email-manager' produces a running, reachable agent",
+      "Phase-labeled spinners show progress for each step",
+      "Failure at any step leaves clear next-step guidance",
+      "Telegram connected and verified at completion"
+    ],
     "scope": [],
-    "startedAt": "2026-03-19T08:02:03-07:00",
+    "startedAt": "2026-03-19T08:13:31-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T08:04:56-07:00"
+    "completedAt": "2026-03-19T08:27:34-07:00"
   },
-  "completedAt": "2026-03-19T08:04:56-07:00",
+  "completedAt": "2026-03-19T08:27:34-07:00",
   "attempts": 1
 }
