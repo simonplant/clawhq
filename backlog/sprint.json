@@ -1,29 +1,29 @@
 {
-  "sprintId": "sprint-1773924031",
-  "startedAt": "2026-03-19T05:40:31-07:00",
+  "sprintId": "sprint-1773924811",
+  "startedAt": "2026-03-19T05:53:31-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-032",
-    "title": "Notifications + alerts + self-repair + digest",
-    "intent": "Proactively alert users to agent health issues and auto-recover from common failures. Users should not discover their agent died by noticing silence.",
-    "description": "DAY-2 OPS: Users who've had an agent for 30+ days need to know it's healthy without checking manually. Predictive health alerts catch problems before they become failures. Auto-recovery handles the common cases (container stopped, OOM) without user intervention. Daily digest gives the 'what did my agent do today?' answer proactively. Acceptance: health alerts fire before service goes down; auto-recovery handles restart + OOM cases; daily digest delivered via configured channel.",
+    "id": "CQ-033",
+    "title": "AI config inference (--smart)",
+    "intent": "clawhq init --smart must infer the right blueprint and integrations from natural language, fully local via Ollama. No data leaves the machine.",
+    "description": "DELIGHT PATH: 'clawhq init --smart' is the < 5 minute path. Users describe what they need, Ollama infers blueprint + integrations. Local Ollama means zero data leaves. This is the product's wow moment. Correctly positioned as should — guided wizard (CQ-010) must work first as the fallback path. Acceptance: natural language description maps to correct blueprint; integration suggestions accurate; result produces same output as guided wizard; works fully locally with Ollama.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement multi-channel notification system",
-      "Add predictive health alerts based on resource trends",
-      "Implement auto-recovery for container stopped and OOM cases",
-      "Build daily digest delivery via configured channel"
+      "Implement natural language to blueprint inference via local Ollama",
+      "Map user description to blueprint selection + integration suggestions",
+      "Ensure inference result matches guided wizard output format"
     ],
     "acceptanceCriteria": [
-      "Health alerts fire before service goes down",
-      "Auto-recovery handles container restart and OOM cases",
-      "Daily digest delivered via configured notification channel"
+      "Natural language description maps to correct blueprint",
+      "Integration suggestions are accurate for described use case",
+      "Result produces same output format as guided wizard",
+      "Works fully locally with Ollama — no data leaves machine"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T05:40:31-07:00",
+    "startedAt": "2026-03-19T05:53:31-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T05:53:29-07:00"
+    "completedAt": "2026-03-19T06:06:00-07:00"
   },
-  "completedAt": "2026-03-19T05:53:29-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T06:06:00-07:00",
+  "attempts": 2
 }
