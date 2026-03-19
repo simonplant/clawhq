@@ -6,18 +6,18 @@
  * Pull model — the cloud never pushes. No open ports, no SSH, no reverse tunnels.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import type { TrustMode } from "../../config/types.js";
+import { getCommandDisposition, isArchitecturallyBlocked } from "../trust-modes/policy.js";
 import type {
-  CloudCommandType,
   CommandQueueState,
   CommandResult,
   SignedCommand,
 } from "../types.js";
-import { getCommandDisposition, isArchitecturallyBlocked } from "../trust-modes/policy.js";
+
 import { verifyCommandSignature } from "./verify.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────

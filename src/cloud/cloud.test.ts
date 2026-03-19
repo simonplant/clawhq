@@ -1,10 +1,23 @@
 import { createSign, generateKeyPairSync } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import {
+  enqueueCommand,
+  processNextCommand,
+  readQueueState,
+} from "./commands/queue.js";
+import {
+  buildSignatureMessage,
+  verifyCommandSignature,
+} from "./commands/verify.js";
+import {
+  collectHealthReport,
+  readHeartbeatState,
+} from "./heartbeat/index.js";
 import {
   connectCloud,
   disconnectCloud,
@@ -17,20 +30,6 @@ import {
   isArchitecturallyBlocked,
   isCommandSupported,
 } from "./trust-modes/policy.js";
-import {
-  collectHealthReport,
-  readHeartbeatState,
-} from "./heartbeat/index.js";
-import {
-  buildSignatureMessage,
-  verifyCommandSignature,
-} from "./commands/verify.js";
-import {
-  commandQueuePath,
-  enqueueCommand,
-  processNextCommand,
-  readQueueState,
-} from "./commands/queue.js";
 import type { SignedCommand } from "./types.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -377,9 +376,10 @@ describe("command queue", () => {
       const result = processNextCommand(deployDir, "managed", publicKey);
 
       expect(result).toBeDefined();
-      expect(result!.commandId).toBe("cmd-020");
-      expect(result!.disposition).toBe("allowed");
-      expect(result!.executed).toBe(true);
+      if (!result) throw new Error("Expected result to be defined");
+      expect(result.commandId).toBe("cmd-020");
+      expect(result.disposition).toBe("allowed");
+      expect(result.executed).toBe(true);
     });
 
     it("blocks all commands in paranoid mode", () => {
@@ -394,8 +394,9 @@ describe("command queue", () => {
       const result = processNextCommand(deployDir, "paranoid", publicKey);
 
       expect(result).toBeDefined();
-      expect(result!.disposition).toBe("blocked");
-      expect(result!.executed).toBe(false);
+      if (!result) throw new Error("Expected result to be defined");
+      expect(result.disposition).toBe("blocked");
+      expect(result.executed).toBe(false);
     });
 
     it("rejects architecturally blocked commands regardless of mode", () => {
@@ -410,9 +411,10 @@ describe("command queue", () => {
       const result = processNextCommand(deployDir, "managed", publicKey);
 
       expect(result).toBeDefined();
-      expect(result!.disposition).toBe("blocked");
-      expect(result!.executed).toBe(false);
-      expect(result!.error).toContain("Architecturally blocked");
+      if (!result) throw new Error("Expected result to be defined");
+      expect(result.disposition).toBe("blocked");
+      expect(result.executed).toBe(false);
+      expect(result.error).toContain("Architecturally blocked");
     });
 
     it("rejects commands with invalid signatures", () => {
@@ -429,8 +431,9 @@ describe("command queue", () => {
       const result = processNextCommand(deployDir, "managed", publicKey);
 
       expect(result).toBeDefined();
-      expect(result!.executed).toBe(false);
-      expect(result!.error).toContain("Signature rejected");
+      if (!result) throw new Error("Expected result to be defined");
+      expect(result.executed).toBe(false);
+      expect(result.error).toContain("Signature rejected");
     });
 
     it("returns undefined on empty queue", () => {
@@ -452,8 +455,9 @@ describe("command queue", () => {
       const result = processNextCommand(deployDir, "zero-trust", publicKey);
 
       expect(result).toBeDefined();
-      expect(result!.disposition).toBe("approval");
-      expect(result!.executed).toBe(false);
+      if (!result) throw new Error("Expected result to be defined");
+      expect(result.disposition).toBe("approval");
+      expect(result.executed).toBe(false);
     });
 
     it("auto-approves trigger-update in managed mode", () => {
@@ -468,8 +472,9 @@ describe("command queue", () => {
       const result = processNextCommand(deployDir, "managed", publicKey);
 
       expect(result).toBeDefined();
-      expect(result!.disposition).toBe("auto");
-      expect(result!.executed).toBe(true);
+      if (!result) throw new Error("Expected result to be defined");
+      expect(result.disposition).toBe("auto");
+      expect(result.executed).toBe(true);
     });
   });
 });

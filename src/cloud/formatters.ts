@@ -2,7 +2,6 @@
  * Terminal formatters for cloud module output.
  */
 
-import type { TrustMode } from "../config/types.js";
 import type {
   CommandQueueState,
   DisconnectResult,

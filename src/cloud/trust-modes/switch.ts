@@ -5,8 +5,8 @@
  * (`clawhq cloud disconnect`) that disconnects immediately with no prompt.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import type { TrustMode } from "../../config/types.js";
@@ -108,7 +108,7 @@ export function switchTrustMode(
  */
 export function connectCloud(
   deployDir: string,
-  token: string,
+  _token: string,
 ): { success: boolean; error?: string } {
   const current = readTrustModeState(deployDir);
 

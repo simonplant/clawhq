@@ -22,6 +22,20 @@ import { install } from "../build/installer/index.js";
 import type { PrereqCheckResult } from "../build/installer/index.js";
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
+import {
+  connectCloud,
+  disconnectCloud,
+  formatCloudStatus,
+  formatCloudStatusJson,
+  formatDisconnectResult,
+  formatSwitchResult,
+  readHeartbeatState,
+  readQueueState,
+  readTrustModeState,
+  sendHeartbeat,
+  switchTrustMode,
+} from "../cloud/index.js";
+import type { TrustMode } from "../config/types.js";
 import { validateBundle } from "../config/validate.js";
 import {
   loadAllBuiltinBlueprints,
@@ -157,20 +171,6 @@ import {
   readAuditReport,
 } from "../secure/audit/index.js";
 import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
-import {
-  connectCloud,
-  disconnectCloud,
-  formatCloudStatus,
-  formatCloudStatusJson,
-  formatDisconnectResult,
-  formatSwitchResult,
-  readHeartbeatState,
-  readQueueState,
-  readTrustModeState,
-  sendHeartbeat,
-  switchTrustMode,
-} from "../cloud/index.js";
-import type { TrustMode } from "../config/types.js";
 
 import { renderError, warnIfNotInstalled } from "./ux.js";
 
