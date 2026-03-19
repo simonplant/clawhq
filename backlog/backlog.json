@@ -55,8 +55,8 @@
       "description": "BUILD GATE: No Docker build = no running agent. The two-stage architecture matters for user experience: Stage 1 rebuilds rarely (base image), Stage 2 rebuilds fast (custom tools/skills). Hash-based change detection means 'clawhq build' doesn't waste the user's time. Four security postures mean users get hardened-by-default without knowing what cap_drop means. Acceptance: build produces a runnable image; Stage 1 cache hit on no-change; security posture applied without user configuration.",
       "category": "build",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Implement Stage 1 Dockerfile: base OpenClaw + apt packages (cached layer)",
         "Implement Stage 2 Dockerfile: custom tools + skills (fast rebuild layer)",
@@ -70,7 +70,9 @@
         "Stage 1 cache hit when base image unchanged",
         "Standard security posture applied by default without user configuration",
         "Build manifest written with image hash and layer info"
-      ]
+      ],
+      "passes": true,
+      "completedAt": "2026-03-18T23:54:44-07:00"
     },
     {
       "id": "CQ-004",
