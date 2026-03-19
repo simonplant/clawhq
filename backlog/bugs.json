@@ -317,11 +317,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Two-location fix in two files. src/web/start.ts:10 (DEFAULT_PORT = 3737) and src/cli/index.ts:3180 (string '3737' in .option()). Add DASHBOARD_DEFAULT_PORT = 3737 to src/config/defaults.ts. Import and replace in both files. Run tests after — zero logic change, pure constant extraction. Pattern identical to BUG-011. No dependencies."
+      "groomingNotes": "Two-location fix in two files. src/web/start.ts:10 (DEFAULT_PORT = 3737) and src/cli/index.ts:3180 (string '3737' in .option()). Add DASHBOARD_DEFAULT_PORT = 3737 to src/config/defaults.ts. Import and replace in both files. Run tests after — zero logic change, pure constant extraction. Pattern identical to BUG-011. No dependencies.",
+      "completedAt": "2026-03-19T10:58:46-07:00"
     },
     {
       "id": "BUG-025",

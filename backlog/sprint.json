@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773942810",
-  "startedAt": "2026-03-19T10:53:30-07:00",
+  "sprintId": "sprint-1773942995",
+  "startedAt": "2026-03-19T10:56:35-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-022",
-    "title": "Silent catch block audit for src/config/ module",
-    "intent": "No error in src/config/ is silently discarded. Config parse, schema validation, and file read failures must be observable without enabling debug mode.",
-    "description": "The systematic silent-catch sweep (BUG-012 through BUG-019, BUG-021) covered evolve/, operate/, build/, secure/, design/, cloud/, gateway/, and cli/. The src/config/ module was not included. BUG-016 fixed a specific process.env.HOME issue in config/paths.ts but was not a general silent-catch sweep. Config module files to audit: defaults.ts, paths.ts, validate.ts, loader.ts, types.ts — any silent catches here would hide config parse failures, schema validation errors, or file read problems that are critical to every command. Steps: (1) search src/config/ for 'catch {' and 'catch (_' patterns; (2) for each non-fatal catch, add console.warn() with error and context; (3) do NOT convert non-fatal catches to throws — keep fallback behaviour; (4) run config/ tests to confirm no regression. Scope: likely 2-5 additions, low risk.",
+    "id": "BUG-024",
+    "title": "Web dashboard port 3737 hardcoded in 2 locations",
+    "intent": "Dashboard default port has a single source of truth. No literal 3737 appears outside src/config/defaults.ts. Changing the default requires editing one line.",
+    "description": "The dashboard default port 3737 is hardcoded in two locations: src/web/start.ts:10 (const DEFAULT_PORT = 3737) and src/cli/index.ts:3180 (string default \"3737\" in .option()). This is the same BUG-011 pattern as the Gateway port 18789. If the port is changed in start.ts, the CLI help text stays stale. Steps: (1) add DASHBOARD_DEFAULT_PORT = 3737 to src/config/defaults.ts; (2) import and use it in src/web/start.ts replacing DEFAULT_PORT; (3) import and use it in src/cli/index.ts replacing \"3737\" string; (4) run tests to confirm no regression. Scope: two files, ~4 lines changed.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T10:53:30-07:00",
+    "startedAt": "2026-03-19T10:56:35-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T10:56:33-07:00"
+    "completedAt": "2026-03-19T10:58:46-07:00"
   },
-  "completedAt": "2026-03-19T10:56:33-07:00",
+  "completedAt": "2026-03-19T10:58:46-07:00",
   "attempts": 1
 }

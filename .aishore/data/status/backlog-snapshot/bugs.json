@@ -286,11 +286,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "No hard dependencies — all modules it references (config/) are fully implemented. Pattern is identical to BUG-012 through BUG-019: search 'catch {' and 'catch (_', add console.warn(err, context) to each non-fatal catch, keep fallback return values unchanged, run tests. Config module is small (defaults.ts, paths.ts, validate.ts, loader.ts, types.ts) so scope is minimal. BUG-016 fixed a specific HOME env issue in paths.ts but was not a silent-catch sweep. This completes the module coverage gap. Zero risk."
+      "groomingNotes": "No hard dependencies — all modules it references (config/) are fully implemented. Pattern is identical to BUG-012 through BUG-019: search 'catch {' and 'catch (_', add console.warn(err, context) to each non-fatal catch, keep fallback return values unchanged, run tests. Config module is small (defaults.ts, paths.ts, validate.ts, loader.ts, types.ts) so scope is minimal. BUG-016 fixed a specific HOME env issue in paths.ts but was not a silent-catch sweep. This completes the module coverage gap. Zero risk.",
+      "completedAt": "2026-03-19T10:56:33-07:00"
     },
     {
       "id": "BUG-023",
