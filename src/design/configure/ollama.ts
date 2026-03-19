@@ -5,9 +5,9 @@
  * Uses the Ollama REST API: POST /api/generate for text completion.
  */
 
-import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+import { OLLAMA_DEFAULT_MODEL, OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 
-const DEFAULT_MODEL = "llama3:8b";
+const DEFAULT_MODEL = OLLAMA_DEFAULT_MODEL;
 const GENERATE_TIMEOUT_MS = 120_000; // 2 minutes — local inference can be slow
 
 /** Options for the Ollama client. */

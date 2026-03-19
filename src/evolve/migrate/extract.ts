@@ -10,7 +10,7 @@
  * preferences with a warning instead of failing.
  */
 
-import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+import { OLLAMA_DEFAULT_MODEL, OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
 import {
   generate,
   isOllamaAvailable,
@@ -74,7 +74,7 @@ export async function extractPreferences(
   } = {},
 ): Promise<ExtractionResult> {
   const ollamaUrl = options.ollamaUrl ?? OLLAMA_DEFAULT_URL;
-  const model = options.ollamaModel ?? "llama3:8b";
+  const model = options.ollamaModel ?? OLLAMA_DEFAULT_MODEL;
 
   if (messages.length === 0) {
     return {

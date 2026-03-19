@@ -461,11 +461,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Pattern identical to BUG-025 (Ollama URL) and BUG-031 (file mode constants). 7 hardcoded 'llama3:8b' literals across 5 runtime files: design/configure/ollama.ts:10, design/configure/smart.ts:51, design/configure/wizard.ts:61, web/server.tsx:238, evolve/migrate/extract.ts:77, evolve/memory/summarize.ts:56. Add OLLAMA_DEFAULT_MODEL = 'llama3:8b' to defaults.ts. Import and replace in all 6 runtime files. web/pages/init.tsx HTML placeholder text (presentational) does not need updating. Run tests for design/, evolve/, web/ after. No blocking dependencies — standalone constant extraction."
+      "groomingNotes": "Pattern identical to BUG-025 (Ollama URL) and BUG-031 (file mode constants). 7 hardcoded 'llama3:8b' literals across 5 runtime files: design/configure/ollama.ts:10, design/configure/smart.ts:51, design/configure/wizard.ts:61, web/server.tsx:238, evolve/migrate/extract.ts:77, evolve/memory/summarize.ts:56. Add OLLAMA_DEFAULT_MODEL = 'llama3:8b' to defaults.ts. Import and replace in all 6 runtime files. web/pages/init.tsx HTML placeholder text (presentational) does not need updating. Run tests for design/, evolve/, web/ after. No blocking dependencies — standalone constant extraction.",
+      "completedAt": "2026-03-19T11:57:20-07:00"
     },
     {
       "id": "BUG-034",

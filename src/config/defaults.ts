@@ -14,6 +14,9 @@ export const DASHBOARD_DEFAULT_PORT = 3737;
 /** Default base URL for the local Ollama API. */
 export const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
 
+/** Default Ollama model for local inference. */
+export const OLLAMA_DEFAULT_MODEL = "llama3:8b";
+
 /** Canonical WhatsApp / Facebook Graph API version. */
 export const WHATSAPP_API_VERSION = "v21.0";
 
