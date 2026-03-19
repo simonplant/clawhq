@@ -573,11 +573,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Pattern identical to BUG-038/BUG-039. 6 local constants in 2 files (health.ts, preflight.ts). IMPORTANT: Do NOT touch src/build/launcher/firewall.ts:25 — that file moves to src/secure/firewall/firewall.ts as part of CQ-005. The firewall.ts EXEC_TIMEOUT_MS is deferred to BUG-020 post-CQ-005. health.ts has 5 constants (DEFAULT_TIMEOUT_MS, DEFAULT_INTERVAL_MS, MAX_INTERVAL_MS, RPC_TIMEOUT_MS, SMOKE_MESSAGE_TIMEOUT_MS). preflight.ts has 1 (EXEC_TIMEOUT_MS=15_000 — same value as PREFLIGHT_EXEC_TIMEOUT_MS from BUG-038). Check if BUG-038 already exported DOCTOR_EXEC_TIMEOUT_MS=15_000 — if so, reuse it for preflight.ts instead of adding a new constant. Run build/ tests after. No blocking dependencies — CQ-005 only affects firewall.ts which is explicitly excluded."
+      "groomingNotes": "Pattern identical to BUG-038/BUG-039. 6 local constants in 2 files (health.ts, preflight.ts). IMPORTANT: Do NOT touch src/build/launcher/firewall.ts:25 — that file moves to src/secure/firewall/firewall.ts as part of CQ-005. The firewall.ts EXEC_TIMEOUT_MS is deferred to BUG-020 post-CQ-005. health.ts has 5 constants (DEFAULT_TIMEOUT_MS, DEFAULT_INTERVAL_MS, MAX_INTERVAL_MS, RPC_TIMEOUT_MS, SMOKE_MESSAGE_TIMEOUT_MS). preflight.ts has 1 (EXEC_TIMEOUT_MS=15_000 — same value as PREFLIGHT_EXEC_TIMEOUT_MS from BUG-038). Check if BUG-038 already exported DOCTOR_EXEC_TIMEOUT_MS=15_000 — if so, reuse it for preflight.ts instead of adding a new constant. Run build/ tests after. No blocking dependencies — CQ-005 only affects firewall.ts which is explicitly excluded.",
+      "completedAt": "2026-03-19T12:35:13-07:00"
     },
     {
       "id": "BUG-041",

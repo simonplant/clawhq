@@ -70,6 +70,7 @@ function writeQueueState(deployDir: string, state: CommandQueueState): void {
   } catch (err) {
     throw new Error(
       `[cloud] Failed to write command queue state: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
 }
