@@ -550,12 +550,159 @@ program
 
 program
   .command("connect")
-  .description("Connect messaging channel (Telegram, Signal, Discord)")
+  .description("Connect messaging channel (Telegram, WhatsApp)")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (opts: { deployDir: string }) => {
+  .option("-t, --token <token>", "Gateway auth token")
+  .option("-p, --port <port>", "Gateway port", "18789")
+  .option("-c, --channel <channel>", "Channel to connect (telegram, whatsapp)")
+  .action(async (opts: {
+    deployDir: string;
+    token?: string;
+    port: string;
+    channel?: string;
+  }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+
+    try {
+      const { select, input, password } = await import("@inquirer/prompts");
+      const {
+        connectChannel,
+        validateTelegramToken,
+        validateWhatsAppToken,
+      } = await import("../build/launcher/connect.js");
+      const { readEnvValue } = await import("../secure/credentials/env-store.js");
+
+      console.log(chalk.bold("\nclawhq connect\n"));
+      console.log(chalk.dim("Connect a messaging channel so you can talk to your agent.\n"));
+
+      // Resolve gateway token
+      const envPath = join(opts.deployDir, "engine", ".env");
+      const gatewayToken = opts.token
+        ?? process.env["CLAWHQ_GATEWAY_TOKEN"]
+        ?? readEnvValue(envPath, "GATEWAY_TOKEN")
+        ?? "";
+
+      if (!gatewayToken) {
+        console.error(chalk.red("Error: Gateway token required. Use --token or set CLAWHQ_GATEWAY_TOKEN"));
+        process.exit(1);
+      }
+
+      // Step 1: Select channel
+      const channel = (opts.channel as "telegram" | "whatsapp") ?? await select({
+        message: "Which messaging channel?",
+        choices: [
+          { name: "Telegram", value: "telegram" as const, description: "Bot token + chat ID" },
+          { name: "WhatsApp", value: "whatsapp" as const, description: "Business API + phone number" },
+        ],
+      });
+
+      if (channel !== "telegram" && channel !== "whatsapp") {
+        console.error(chalk.red(`Unsupported channel: ${channel}. Use telegram or whatsapp.`));
+        process.exit(1);
+      }
+
+      // Step 2: Collect and validate credentials
+      const vars: Record<string, string> = {};
+      const spinner = ora();
+
+      if (channel === "telegram") {
+        console.log(chalk.dim("\nCreate a Telegram bot via @BotFather and paste the token below.\n"));
+
+        const botToken = await password({ message: "Telegram bot token:", mask: "*" });
+        if (!botToken) {
+          console.error(chalk.red("Bot token is required."));
+          process.exit(1);
+        }
+
+        // Validate token
+        spinner.start("Validating bot token…");
+        try {
+          const botUsername = await validateTelegramToken(botToken);
+          spinner.succeed(`Bot verified: @${botUsername}`);
+        } catch (err) {
+          spinner.fail(`Token validation failed: ${err instanceof Error ? err.message : String(err)}`);
+          process.exit(1);
+        }
+
+        const chatId = await input({
+          message: "Telegram chat ID (your user ID or group ID):",
+        });
+        if (!chatId) {
+          console.error(chalk.red("Chat ID is required."));
+          process.exit(1);
+        }
+
+        vars["TELEGRAM_BOT_TOKEN"] = botToken;
+        vars["TELEGRAM_CHAT_ID"] = chatId;
+      } else {
+        console.log(chalk.dim("\nYou need a WhatsApp Business API account. Enter your credentials below.\n"));
+
+        const phoneNumberId = await input({ message: "Phone Number ID:" });
+        const accessToken = await password({ message: "Access Token:", mask: "*" });
+        if (!phoneNumberId || !accessToken) {
+          console.error(chalk.red("Phone Number ID and Access Token are required."));
+          process.exit(1);
+        }
+
+        // Validate token
+        spinner.start("Validating WhatsApp credentials…");
+        try {
+          const displayPhone = await validateWhatsAppToken(phoneNumberId, accessToken);
+          spinner.succeed(`WhatsApp verified: ${displayPhone}`);
+        } catch (err) {
+          spinner.fail(`Validation failed: ${err instanceof Error ? err.message : String(err)}`);
+          process.exit(1);
+        }
+
+        const recipientPhone = await input({
+          message: "Your phone number (for test message, with country code, e.g. 14155551234):",
+        });
+        if (!recipientPhone) {
+          console.error(chalk.red("Recipient phone is required for test message."));
+          process.exit(1);
+        }
+
+        vars["WHATSAPP_PHONE_NUMBER_ID"] = phoneNumberId;
+        vars["WHATSAPP_ACCESS_TOKEN"] = accessToken;
+        vars["WHATSAPP_RECIPIENT_PHONE"] = recipientPhone;
+      }
+
+      // Step 3: Run connect flow
+      console.log("");
+      const connectSpinner = ora();
+      const onProgress = createConnectProgressHandler(connectSpinner);
+
+      const result = await connectChannel({
+        deployDir: opts.deployDir,
+        channel,
+        credentials: { channel, vars },
+        gatewayToken,
+        gatewayPort: parseInt(opts.port, 10),
+        onProgress,
+      });
+
+      connectSpinner.stop();
+
+      if (result.success) {
+        console.log(chalk.green("\n✔ Channel connected"));
+        if (result.testMessageSent) {
+          console.log(chalk.green("✔ Test message sent — check your channel!"));
+        } else if (result.error) {
+          console.log(chalk.yellow(`⚠ ${result.error}`));
+        }
+        console.log(chalk.dim("\n  Your agent is now reachable. Send it a message!"));
+      } else {
+        console.error(chalk.red(`\n✘ ${result.error}`));
+        process.exit(1);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "ExitPromptError") {
+        console.log(chalk.yellow("\nSetup cancelled."));
+        process.exit(0);
+      }
+      console.error(renderError(error));
+      process.exit(1);
+    }
   });
 
 // ── Secure Commands ────────────────────────────────────────────────────────
@@ -1152,6 +1299,26 @@ function formatPrereqCheck(check: PrereqCheckResult): void {
 function createProgressHandler(spinner: ReturnType<typeof ora>) {
   return (event: DeployProgress): void => {
     const label = stepLabel(event.step);
+    switch (event.status) {
+      case "running":
+        spinner.start(`${label} ${event.message}`);
+        break;
+      case "done":
+        spinner.succeed(`${label} ${event.message}`);
+        break;
+      case "failed":
+        spinner.fail(`${label} ${event.message}`);
+        break;
+      case "skipped":
+        spinner.warn(`${label} ${event.message}`);
+        break;
+    }
+  };
+}
+
+function createConnectProgressHandler(spinner: ReturnType<typeof ora>) {
+  return (event: { step: string; status: string; message: string }): void => {
+    const label = chalk.dim(`[${event.step}]`);
     switch (event.status) {
       case "running":
         spinner.start(`${label} ${event.message}`);
