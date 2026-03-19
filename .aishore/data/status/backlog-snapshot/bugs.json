@@ -490,11 +490,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "PRIORITY UPGRADED: 'should' → 'must'. The no-auto-send guarantee is a core product promise — it appears in marketing, README, and product docs. A silently dropped saveQueue() write means the user receives a Telegram approval notification but their approve/reject action is lost and never persisted. The agent then proceeds (or doesn't) with no record of what the user chose. This is a direct violation of the safety contract, not a quality-of-life fix. The fix is in the generator that produces approve-action.ts — wrap writeFileSync in try-catch with console.error + process.exit(1) (loud failure is correct for a CLI tool). Existing deployed agents get the fix on next 'clawhq build' Stage 2 rebuild. No blocking dependencies — run design/tools/ tests to verify generated output. Sprint alongside CQ-005 or immediately after."
+      "groomingNotes": "PRIORITY UPGRADED: 'should' → 'must'. The no-auto-send guarantee is a core product promise — it appears in marketing, README, and product docs. A silently dropped saveQueue() write means the user receives a Telegram approval notification but their approve/reject action is lost and never persisted. The agent then proceeds (or doesn't) with no record of what the user chose. This is a direct violation of the safety contract, not a quality-of-life fix. The fix is in the generator that produces approve-action.ts — wrap writeFileSync in try-catch with console.error + process.exit(1) (loud failure is correct for a CLI tool). Existing deployed agents get the fix on next 'clawhq build' Stage 2 rebuild. No blocking dependencies — run design/tools/ tests to verify generated output. Sprint alongside CQ-005 or immediately after.",
+      "completedAt": "2026-03-19T11:50:41-07:00"
     }
   ]
 }

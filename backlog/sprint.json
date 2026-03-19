@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773946018",
-  "startedAt": "2026-03-19T11:46:58-07:00",
+  "sprintId": "sprint-1773946243",
+  "startedAt": "2026-03-19T11:50:43-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-035",
-    "title": "approve-action tool saveQueue() writes approval queue without error handling",
-    "intent": "Approval queue writes never fail silently. A disk write error in saveQueue() must be caught and logged — a silently dropped write means an approval is lost, directly violating the no-auto-send guarantee.",
-    "description": "src/design/tools/approve-action.ts:59 defines a saveQueue() function that calls writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2)) without try-catch. This is an agent-side script installed into the deployed agent's tools directory. If the file write fails (disk full, permission error), the approval is silently dropped — the user receives a Telegram approval notification but their approve/reject action is never persisted. The no-auto-send guarantee depends on this write succeeding. Note: this is a GENERATED file. The fix must be applied in the template/generator that produces it, not in the output file directly. Steps: (1) locate the generator for approve-action.ts in src/design/tools/ (likely tools.ts or approve-action generator); (2) update the saveQueue() template to wrap writeFileSync in try-catch with console.error(err) and process.exit(1) on failure (the tool is a CLI script — failure must be loud); (3) verify the fix propagates to newly generated tools by running design/tools/ tests; (4) if existing deployed approve-action.ts files are not regenerated automatically, note in the fix that re-running 'clawhq init' or 'clawhq build' regenerates the tool. Scope: 1 generator file, ~5 lines added to template.",
+    "id": "BUG-032",
+    "title": "DEFAULT_REPO_URL hardcoded in build/installer/source.ts",
+    "intent": "OpenClaw repository URL has a single source of truth in config/defaults.ts. No hardcoded repo URL appears in source.ts.",
+    "description": "src/build/installer/source.ts:23 defines const DEFAULT_REPO_URL = 'https://github.com/nicepkg/openclaw.git' as a local constant that is never exported or centralised. This is the canonical OpenClaw repository URL — if the repo URL ever changes (mirror, org rename), there is no single place to update it. Same BUG-011/BUG-025 pattern as other scattered constants. Steps: (1) add OPENCLAW_REPO_URL = 'https://github.com/nicepkg/openclaw.git' to src/config/defaults.ts; (2) import and replace DEFAULT_REPO_URL in source.ts; (3) check for any other hardcoded references to this URL in the codebase (grep for 'nicepkg/openclaw'); (4) run build/ tests. Scope: 2 files, ~3 lines changed.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T11:46:58-07:00",
+    "startedAt": "2026-03-19T11:50:43-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T11:50:41-07:00"
+    "completedAt": "2026-03-19T11:54:25-07:00"
   },
-  "completedAt": "2026-03-19T11:50:41-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T11:54:25-07:00",
+  "attempts": 2
 }
