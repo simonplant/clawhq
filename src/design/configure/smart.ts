@@ -18,8 +18,8 @@ import type { LoadedBlueprint } from "../blueprints/loader.js";
 
 import { generate, isOllamaAvailable, listOllamaModels, OllamaError } from "./ollama.js";
 import type { OllamaOptions } from "./ollama.js";
-import type { Prompter } from "./wizard.js";
 import type { WizardAnswers } from "./types.js";
+import type { Prompter } from "./wizard.js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -261,7 +261,7 @@ function parseInferenceResponse(
   try {
     const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
     return {
-      blueprint: typeof parsed["blueprint"] === "string" ? parsed["blueprint"] : blueprints[0]!.blueprint.name,
+      blueprint: typeof parsed["blueprint"] === "string" ? parsed["blueprint"] : (blueprints[0]?.blueprint.name ?? ""),
       channel: typeof parsed["channel"] === "string" ? parsed["channel"] : "telegram",
       integrations: Array.isArray(parsed["integrations"])
         ? (parsed["integrations"] as unknown[]).filter((i): i is string => typeof i === "string")
@@ -274,7 +274,10 @@ function parseInferenceResponse(
 }
 
 function fallbackResult(blueprints: LoadedBlueprint[]): InferenceResult {
-  const first = blueprints[0]!;
+  const first = blueprints[0];
+  if (first === undefined) {
+    throw new SmartInferenceError("No blueprints available for fallback.");
+  }
   return {
     blueprint: first.blueprint.name.toLowerCase().replace(/\s+/g, "-"),
     channel: first.blueprint.channels.default,
