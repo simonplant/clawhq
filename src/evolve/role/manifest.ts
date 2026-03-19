@@ -88,20 +88,21 @@ export function removeRole(
   name: string,
 ): { manifest: RoleManifest; unassigned: string[] } {
   const unassigned: string[] = [];
-  const assignments = { ...manifest.assignments };
 
-  for (const [integration, role] of Object.entries(assignments)) {
+  for (const [integration, role] of Object.entries(manifest.assignments)) {
     if (role === name) {
-      delete assignments[integration];
       unassigned.push(integration);
     }
   }
+  const cleaned = Object.fromEntries(
+    Object.entries(manifest.assignments).filter(([, role]) => role !== name),
+  );
 
   return {
     manifest: {
       ...manifest,
       roles: manifest.roles.filter((r) => r.name !== name),
-      assignments,
+      assignments: cleaned,
     },
     unassigned,
   };

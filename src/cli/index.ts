@@ -48,6 +48,17 @@ import {
 } from "../evolve/approval/index.js";
 import type { TelegramConfig } from "../evolve/approval/index.js";
 import {
+  addIntegration,
+  availableIntegrationNames,
+  formatIntegrationList,
+  formatIntegrationListJson,
+  getIntegrationDef,
+  listIntegrations,
+  removeIntegrationCmd,
+  testIntegration,
+} from "../evolve/integrate/index.js";
+import type { IntegrationProgress } from "../evolve/integrate/index.js";
+import {
   destroyAgent,
   exportBundle,
   formatDestroyJson,
@@ -71,25 +82,6 @@ import {
 } from "../evolve/memory/index.js";
 import type { MemoryProgress } from "../evolve/memory/index.js";
 import {
-  formatSkillList,
-  formatSkillListJson,
-  installSkill,
-  listSkills,
-  removeSkill,
-} from "../evolve/skills/index.js";
-import type { SkillProgress } from "../evolve/skills/index.js";
-import {
-  addIntegration,
-  availableIntegrationNames,
-  formatIntegrationList,
-  formatIntegrationListJson,
-  getIntegrationDef,
-  listIntegrations,
-  removeIntegrationCmd,
-  testIntegration,
-} from "../evolve/integrate/index.js";
-import type { IntegrationProgress } from "../evolve/integrate/index.js";
-import {
   addProvider,
   availableProviderNames,
   formatProviderList,
@@ -109,6 +101,14 @@ import {
   removeRoleCmd,
 } from "../evolve/role/index.js";
 import type { Permission } from "../evolve/role/index.js";
+import {
+  formatSkillList,
+  formatSkillListJson,
+  installSkill,
+  listSkills,
+  removeSkill,
+} from "../evolve/skills/index.js";
+import type { SkillProgress } from "../evolve/skills/index.js";
 import {
   availableToolNames,
   formatToolList,
