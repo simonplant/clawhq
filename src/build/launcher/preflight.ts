@@ -11,7 +11,7 @@ import { access, constants, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT, PREFLIGHT_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
 
 import type { PreflightCheckName, PreflightCheckResult, PreflightReport } from "./types.js";
 
@@ -20,7 +20,6 @@ const execFileAsync = promisify(execFile);
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const GATEWAY_PORT = GATEWAY_DEFAULT_PORT;
-const EXEC_TIMEOUT_MS = 15_000;
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -57,7 +56,7 @@ async function checkDocker(signal?: AbortSignal): Promise<PreflightCheckResult> 
   const name: PreflightCheckName = "docker";
   try {
     await execFileAsync("docker", ["info", "--format", "{{.ServerVersion}}"], {
-      timeout: EXEC_TIMEOUT_MS,
+      timeout: PREFLIGHT_EXEC_TIMEOUT_MS,
       signal,
     });
     return { name, passed: true, message: "Docker daemon is running" };
@@ -106,7 +105,7 @@ async function checkImages(
     const tag = manifest.imageTag ?? "openclaw:custom";
 
     await execFileAsync("docker", ["image", "inspect", tag], {
-      timeout: EXEC_TIMEOUT_MS,
+      timeout: PREFLIGHT_EXEC_TIMEOUT_MS,
       signal,
     });
     return { name, passed: true, message: `Image ${tag} is available` };
@@ -189,7 +188,7 @@ async function checkPorts(signal?: AbortSignal): Promise<PreflightCheckResult> {
     const { stdout } = await execFileAsync(
       "ss",
       ["-tlnp", `sport = :${GATEWAY_PORT}`],
-      { timeout: EXEC_TIMEOUT_MS, signal },
+      { timeout: PREFLIGHT_EXEC_TIMEOUT_MS, signal },
     );
 
     // ss always outputs a header line; if there's a second line, port is in use
@@ -209,7 +208,7 @@ async function checkPorts(signal?: AbortSignal): Promise<PreflightCheckResult> {
     // ss not available (macOS) — try lsof
     try {
       await execFileAsync("lsof", ["-i", `:${GATEWAY_PORT}`, "-sTCP:LISTEN"], {
-        timeout: EXEC_TIMEOUT_MS,
+        timeout: PREFLIGHT_EXEC_TIMEOUT_MS,
         signal,
       });
       // lsof exits 0 if port is in use
@@ -232,7 +231,7 @@ async function checkOllama(signal?: AbortSignal): Promise<PreflightCheckResult> 
   const name: PreflightCheckName = "ollama";
   try {
     await execFileAsync("ollama", ["list"], {
-      timeout: EXEC_TIMEOUT_MS,
+      timeout: PREFLIGHT_EXEC_TIMEOUT_MS,
       signal,
     });
     return { name, passed: true, message: "Ollama is running" };
