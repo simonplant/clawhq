@@ -1,25 +1,20 @@
 {
-  "sprintId": "sprint-1773937466",
-  "startedAt": "2026-03-19T09:24:26-07:00",
+  "sprintId": "sprint-1773937769",
+  "startedAt": "2026-03-19T09:29:29-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-006",
-    "title": "src/ scaffold has server/ and ui/ dirs not in target architecture",
-    "intent": "The target architecture spec must be the single source of truth for src/ layout. No scaffold directories that contradict it.",
-    "description": "Empty scaffold dirs src/server/ and src/ui/ exist but are absent from target architecture in CLAUDE.md and ARCHITECTURE.md. Fix: update both docs to include src/server/ (Hono server for CQ-040) and src/ui/ (htmx assets). Doc-only change. Steps: 1. Update CLAUDE.md Key Source Layout — add src/server/ and src/ui/ with their purpose. 2. Update docs/ARCHITECTURE.md package structure to match. 3. Verify no other spec contradicts.",
+    "id": "BUG-007",
+    "title": "Remove extraneous npm dependencies",
+    "intent": "No unused packages in package.json. npm install size is minimal.",
+    "description": "package.json includes several unused packages: @emnapi/core, @emnapi/runtime, @emnapi/wasi-threads, @tybys/wasm-util, tslib. These are not imported anywhere in the codebase and add unnecessary install weight. Steps: (1) verify each package is unused via grep; (2) npm uninstall each confirmed-unused package; (3) run tests to confirm nothing breaks. Low-risk cleanup.",
     "sourceBacklog": "bugs.json",
     "steps": [],
-    "acceptanceCriteria": [
-      "CLAUDE.md target architecture lists src/web/ with ownership (Hono + htmx, CQ-040)",
-      "docs/ARCHITECTURE.md package structure matches CLAUDE.md",
-      "No scaffold directory in src/ contradicts the spec",
-      "CQ-040 has an unambiguous target path in the architecture docs"
-    ],
+    "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T09:24:26-07:00",
+    "startedAt": "2026-03-19T09:29:29-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T09:29:27-07:00"
+    "completedAt": "2026-03-19T09:38:00-07:00"
   },
-  "completedAt": "2026-03-19T09:29:27-07:00",
-  "attempts": 2
+  "completedAt": "2026-03-19T09:38:00-07:00",
+  "attempts": 1
 }
