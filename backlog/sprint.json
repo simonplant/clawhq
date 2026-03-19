@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773945077",
-  "startedAt": "2026-03-19T11:31:17-07:00",
+  "sprintId": "sprint-1773945197",
+  "startedAt": "2026-03-19T11:33:17-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-030",
-    "title": "Hardcoded API probe URLs in evolve/integrate/validate.ts",
-    "intent": "Credential probe URLs have a single source of truth in config/defaults.ts. No literal API base URLs appear in validate.ts.",
-    "description": "src/evolve/integrate/validate.ts hardcodes three API probe endpoints as string literals: line 51 'https://api.anthropic.com/v1/models', line 66 'https://api.openai.com/v1/models', line 80 'https://api.telegram.org/bot{token}/getMe' (template). These are the same pattern as BUG-025 (Ollama URL) and BUG-026 (WhatsApp Graph API) — probe endpoints hardcoded in one module with no single source of truth. Steps: (1) add ANTHROPIC_API_BASE='https://api.anthropic.com', OPENAI_API_BASE='https://api.openai.com', TELEGRAM_API_BASE='https://api.telegram.org' to src/config/defaults.ts; (2) import and replace the three string literals in validate.ts; (3) run evolve/ tests to confirm no regression. Scope: 4 files, ~6 lines changed. Same pattern as BUG-025/BUG-026.",
+    "id": "BUG-031",
+    "title": "File permission mode literals scattered across 3+ files",
+    "intent": "File permission modes have a single source of truth in config/defaults.ts. No bare octal literals appear outside that file.",
+    "description": "The octal literal 0o600 appears as a magic number in src/design/configure/writer.ts:60 (mode: 0o644 default parameter), src/build/launcher/preflight.ts:161 (mode !== 0o600), src/operate/doctor/checks.ts:159 (mode !== 0o600). The constants MODE_0600 and MODE_0644 are already defined locally in src/secure/credentials/credential-store.ts and env-store.ts — but those definitions are not exported or reused. Same pattern as BUG-011 (Gateway port) and BUG-025 (Ollama URL). Steps: (1) add FILE_MODE_SECRET = 0o600, FILE_MODE_CONFIG = 0o644, FILE_MODE_EXEC = 0o755 constants to src/config/defaults.ts; (2) replace magic octal literals in writer.ts, preflight.ts, doctor/checks.ts with imports; (3) remove the duplicate local MODE_0600 constants from credential-store.ts and env-store.ts, import from defaults.ts instead; (4) run full test suite. Scope: ~5 files, no logic change.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T11:31:17-07:00",
+    "startedAt": "2026-03-19T11:33:17-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T11:33:15-07:00"
+    "completedAt": "2026-03-19T11:41:13-07:00"
   },
-  "completedAt": "2026-03-19T11:33:15-07:00",
-  "attempts": 1
+  "completedAt": "2026-03-19T11:41:13-07:00",
+  "attempts": 2
 }
