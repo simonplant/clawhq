@@ -1,29 +1,29 @@
 {
-  "sprintId": "sprint-1773921827",
-  "startedAt": "2026-03-19T05:03:47-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1773922428",
+  "startedAt": "2026-03-19T05:13:48-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "CQ-026",
-    "title": "Status dashboard + logs + updates",
-    "intent": "Deliver status, logs, and update commands so operators can observe agent state, diagnose failures, and safely update without data loss.",
-    "description": "USER VALUE: Important day-2 ops visibility but not blocking first agent. Users need a working agent before they need to watch its status. Depends on CQ-003+CQ-012 anyway. Promote to must when ops track begins.",
+    "id": "CQ-029",
+    "title": "Additional blueprint YAMLs (6)",
+    "intent": "Ship 6 additional blueprint YAMLs that validate against the schema and render correctly in blueprint list/preview. Every blueprint must be forgeable.",
+    "description": "BLUEPRINT LIBRARY: 6 additional blueprint YAMLs — Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot. Validate against current blueprint schema (CQ-009), adapt naming/paths, add missing fields (email-manager-adjacent skills, cron). Email Manager (CQ-017) is separate and higher priority — do not include it here. Acceptance: 'clawhq blueprint list' shows 7+ blueprints; 'clawhq blueprint preview <each>' renders valid design.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement 'clawhq status [--watch]' showing current agent state",
-      "Implement 'clawhq logs' for viewing agent logs",
-      "Implement 'clawhq update [--check]' with automatic rollback on failure"
+      "Create Family Hub blueprint YAML",
+      "Create Founder's Ops blueprint YAML",
+      "Create Replace Google Assistant blueprint YAML",
+      "Create Replace ChatGPT Plus blueprint YAML",
+      "Create Replace my PA blueprint YAML",
+      "Create Research Co-pilot blueprint YAML",
+      "Validate all against blueprint schema from CQ-009"
     ],
     "acceptanceCriteria": [
-      "'clawhq status' shows current agent state clearly",
-      "'clawhq status --watch' updates in real-time",
-      "'clawhq logs' displays agent logs",
-      "'clawhq update' applies updates with rollback on failure"
+      "'clawhq blueprint list' shows 7+ blueprints",
+      "'clawhq blueprint preview <name>' renders valid design for each",
+      "All blueprints pass schema validation",
+      "Every blueprint is forgeable via init wizard"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T05:03:47-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-19T05:13:46-07:00"
-  },
-  "completedAt": "2026-03-19T05:13:46-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-19T05:13:48-07:00"
+  }
 }
