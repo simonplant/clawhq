@@ -381,17 +381,33 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "6 evolve/ manifest loaders missing try-catch: evolve/role/manifest.ts:54, evolve/provider/manifest.ts:26, evolve/integrate/manifest.ts:26, evolve/memory/lifecycle.ts:61, evolve/rollback/capability-snapshot.ts:67, evolve/skills/rollback.ts:39. Correct pattern already in evolve/tools/manifest.ts:28-34 and evolve/skills/lifecycle.ts:38-45 — copy this pattern to the 6 missing files. Fallbacks: role={version:1,roles:[...BUILTIN_ROLES],assignments:{}}, provider={version:1,providers:[]}, integrate={version:1,integrations:[]}, memory lifecycle=return null or empty, rollback snapshots=[]. Add console.warn('[evolve] Failed to read <manifest>:', err) in each catch. No dependencies. Run evolve/ tests after. Scope: 6 files, each ~5 lines added."
+      "groomingNotes": "6 evolve/ manifest loaders missing try-catch: evolve/role/manifest.ts:54, evolve/provider/manifest.ts:26, evolve/integrate/manifest.ts:26, evolve/memory/lifecycle.ts:61, evolve/rollback/capability-snapshot.ts:67, evolve/skills/rollback.ts:39. Correct pattern already in evolve/tools/manifest.ts:28-34 and evolve/skills/lifecycle.ts:38-45 — copy this pattern to the 6 missing files. Fallbacks: role={version:1,roles:[...BUILTIN_ROLES],assignments:{}}, provider={version:1,providers:[]}, integrate={version:1,integrations:[]}, memory lifecycle=return null or empty, rollback snapshots=[]. Add console.warn('[evolve] Failed to read <manifest>:', err) in each catch. No dependencies. Run evolve/ tests after. Scope: 6 files, each ~5 lines added.",
+      "completedAt": "2026-03-19T11:21:53-07:00"
     },
     {
       "id": "BUG-029",
       "title": "Dockerfile Stage 2 binary URL and path not validated before template injection",
       "intent": "Generated Dockerfiles never contain malformed or shell-unsafe content from binary tool config. URL scheme must be https:// and destPath must be a safe absolute path.",
       "description": "src/build/docker/dockerfile.ts:81-82 interpolates binary.url and binary.destPath directly into Dockerfile content via template strings: 'RUN curl -fsSL \"${binary.url}\" -o \"${binary.destPath}\"'. There is no validation that: (1) binary.url is a valid https:// URL before insertion, (2) binary.destPath is a safe absolute path with no newlines, quotes, or shell metacharacters. A malformed URL causes a confusing Docker build failure. A path with embedded newlines could inject additional Dockerfile instructions. The Stage2Config type accepts any string values. Steps: (1) add validateBinaryUrl(url: string): void helper that throws if url is not a valid https:// URL (use new URL(url) + check protocol); (2) add validateBinaryDestPath(path: string): void that throws if path contains newlines, quotes, or backslashes; (3) call both before inserting into Dockerfile lines; (4) call validation in the Stage 2 generator and/or in the tool manifest layer where binaries are added; (5) run docker/ tests to confirm no regression. Scope: ~15 lines in one file.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "SECURITY UPGRADE — elevated from 'should' to 'must'. This is an active Dockerfile injection vulnerability: destPath with embedded newlines can inject arbitrary Dockerfile instructions into the Stage 2 build. CQ-031 (tool install) is already shipped so the attack surface is live. For a platform whose core promise is 'security by default', shipping a Dockerfile injection vector is directly contradictory. The fix is ~15 lines and low-risk — no reason to defer. Grooming notes unchanged: validateBinaryUrl() + validateBinaryDestPath() in dockerfile.ts:81-82, called before template insertion. No dependencies. Run docker/ tests after."
+    },
+    {
+      "id": "BUG-030",
+      "title": "Hardcoded API probe URLs in evolve/integrate/validate.ts",
+      "intent": "Credential probe URLs have a single source of truth in config/defaults.ts. No literal API base URLs appear in validate.ts.",
+      "description": "src/evolve/integrate/validate.ts hardcodes three API probe endpoints as string literals: line 51 'https://api.anthropic.com/v1/models', line 66 'https://api.openai.com/v1/models', line 80 'https://api.telegram.org/bot{token}/getMe' (template). These are the same pattern as BUG-025 (Ollama URL) and BUG-026 (WhatsApp Graph API) — probe endpoints hardcoded in one module with no single source of truth. Steps: (1) add ANTHROPIC_API_BASE='https://api.anthropic.com', OPENAI_API_BASE='https://api.openai.com', TELEGRAM_API_BASE='https://api.telegram.org' to src/config/defaults.ts; (2) import and replace the three string literals in validate.ts; (3) run evolve/ tests to confirm no regression. Scope: 4 files, ~6 lines changed. Same pattern as BUG-025/BUG-026.",
       "priority": "should",
       "category": null,
       "steps": [],
@@ -400,7 +416,37 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "build/docker/dockerfile.ts:81-82 interpolates binary.url and binary.destPath directly into Dockerfile without validation. Fix: (1) add validateBinaryUrl(url): throws if not valid https:// (use new URL(url) + assert protocol === 'https:'). (2) add validateBinaryDestPath(path): throws if path contains newlines, double-quotes, or dollar signs. (3) call both in generateStage2Dockerfile() before pushing lines. No changes to types needed — validation is at generation time. Run docker/ tests after. Also check if there are existing tests for dockerfile.ts that cover the binary case and add test cases for invalid URLs/paths. Scope: ~15 lines in dockerfile.ts plus test cases. No dependencies."
+      "groomingNotes": "Pattern identical to BUG-025 (Ollama URL) and BUG-026 (WhatsApp API). Three API base URLs in evolve/integrate/validate.ts:51,66,80. Add ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE to src/config/defaults.ts (base URLs only, not paths). Import in validate.ts. Verify no other files also hardcode these bases (check evolve/credentials/probes.ts — those probe endpoints may already derive from these). Run evolve/ tests after. No dependencies — standalone fix."
+    },
+    {
+      "id": "BUG-031",
+      "title": "File permission mode literals scattered across 3+ files",
+      "intent": "File permission modes have a single source of truth in config/defaults.ts. No bare octal literals appear outside that file.",
+      "description": "The octal literal 0o600 appears as a magic number in src/design/configure/writer.ts:60 (mode: 0o644 default parameter), src/build/launcher/preflight.ts:161 (mode !== 0o600), src/operate/doctor/checks.ts:159 (mode !== 0o600). The constants MODE_0600 and MODE_0644 are already defined locally in src/secure/credentials/credential-store.ts and env-store.ts — but those definitions are not exported or reused. Same pattern as BUG-011 (Gateway port) and BUG-025 (Ollama URL). Steps: (1) add FILE_MODE_SECRET = 0o600, FILE_MODE_CONFIG = 0o644, FILE_MODE_EXEC = 0o755 constants to src/config/defaults.ts; (2) replace magic octal literals in writer.ts, preflight.ts, doctor/checks.ts with imports; (3) remove the duplicate local MODE_0600 constants from credential-store.ts and env-store.ts, import from defaults.ts instead; (4) run full test suite. Scope: ~5 files, no logic change.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Pattern identical to BUG-011 (Gateway port) and BUG-024 (Dashboard port). Octal literals 0o600, 0o644 scattered across writer.ts, preflight.ts, doctor/checks.ts. Consolidation target: src/config/defaults.ts. Export FILE_MODE_SECRET=0o600, FILE_MODE_CONFIG=0o644. Remove duplicate local MODE_0600 from credential-store.ts and env-store.ts — import from defaults.ts instead. No logic change — pure constant extraction. Run full test suite after (these mode values affect file creation so tests cover the behaviour). No blocking dependencies."
+    },
+    {
+      "id": "BUG-032",
+      "title": "DEFAULT_REPO_URL hardcoded in build/installer/source.ts",
+      "intent": "OpenClaw repository URL has a single source of truth in config/defaults.ts. No hardcoded repo URL appears in source.ts.",
+      "description": "src/build/installer/source.ts:23 defines const DEFAULT_REPO_URL = 'https://github.com/nicepkg/openclaw.git' as a local constant that is never exported or centralised. This is the canonical OpenClaw repository URL — if the repo URL ever changes (mirror, org rename), there is no single place to update it. Same BUG-011/BUG-025 pattern as other scattered constants. Steps: (1) add OPENCLAW_REPO_URL = 'https://github.com/nicepkg/openclaw.git' to src/config/defaults.ts; (2) import and replace DEFAULT_REPO_URL in source.ts; (3) check for any other hardcoded references to this URL in the codebase (grep for 'nicepkg/openclaw'); (4) run build/ tests. Scope: 2 files, ~3 lines changed.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Single local constant in one file. source.ts:23 defines DEFAULT_REPO_URL = 'https://github.com/nicepkg/openclaw.git'. Add OPENCLAW_REPO_URL to defaults.ts, import and replace. Also grep for 'nicepkg/openclaw' across the whole codebase to catch any other occurrences (installer docs, README mentions are fine — only fix runtime string literals in src/). Run build/ tests after. Zero-risk constant extraction. No blocking dependencies."
     }
   ]
 }
