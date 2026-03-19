@@ -65,7 +65,7 @@ export interface DeployOptions {
   readonly deployDir: string;
   /** Gateway auth token for health checks. */
   readonly gatewayToken: string;
-  /** Gateway port (default: 18789). */
+  /** Gateway port (default: GATEWAY_DEFAULT_PORT). */
   readonly gatewayPort?: number;
   /** Skip preflight checks (not recommended). */
   readonly skipPreflight?: boolean;
@@ -160,7 +160,7 @@ export interface ConnectOptions {
   };
   /** Gateway auth token for health ping. */
   readonly gatewayToken: string;
-  /** Gateway port (default: 18789). */
+  /** Gateway port (default: GATEWAY_DEFAULT_PORT). */
   readonly gatewayPort?: number;
   /** Agent name for the test message. */
   readonly agentName?: string;

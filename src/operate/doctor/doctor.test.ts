@@ -8,6 +8,8 @@ import { join } from "node:path";
 
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
 
 import { runChecks } from "./checks.js";
@@ -42,7 +44,7 @@ afterEach(async () => {
 async function writeValidConfig(): Promise<void> {
   const config = {
     dangerouslyDisableDeviceAuth: true,
-    allowedOrigins: ["http://localhost:18789"],
+    allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`],
     trustedProxies: ["172.17.0.1"],
     tools: {
       exec: { host: "gateway", security: "full" },

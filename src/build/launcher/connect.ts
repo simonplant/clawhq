@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { GatewayClient } from "../../gateway/index.js";
 import { readEnv, setEnvValue, writeEnvAtomic } from "../../secure/credentials/env-store.js";
 
@@ -208,7 +209,7 @@ export async function connectChannel(options: ConnectOptions): Promise<ConnectRe
     channel,
     credentials,
     gatewayToken,
-    gatewayPort = 18789,
+    gatewayPort = GATEWAY_DEFAULT_PORT,
     agentName = "Your agent",
     onProgress,
   } = options;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { GATEWAY_DEFAULT_PORT } from "./defaults.js";
 import {
   OPENCLAW_CONTAINER_CONFIG,
   OPENCLAW_CONTAINER_CREDENTIALS,
@@ -35,7 +36,7 @@ import {
 function validOpenClawConfig(): OpenClawConfig {
   return {
     dangerouslyDisableDeviceAuth: true,
-    allowedOrigins: ["http://localhost:18789"],
+    allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`],
     trustedProxies: ["172.17.0.1"],
     tools: {
       exec: { host: "gateway", security: "full" },
@@ -129,7 +130,7 @@ describe("LM-01: dangerouslyDisableDeviceAuth", () => {
 
 describe("LM-02: allowedOrigins", () => {
   it("passes with origins", () => {
-    expect(validateLM02({ allowedOrigins: ["http://localhost:18789"] }).passed).toBe(true);
+    expect(validateLM02({ allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`] }).passed).toBe(true);
   });
 
   it("fails when empty", () => {

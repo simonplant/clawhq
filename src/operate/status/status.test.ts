@@ -14,6 +14,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { formatStatusJson, formatStatusTable } from "./format.js";
 import { getStatus, watchStatus } from "./status.js";
 import type { StatusSnapshot } from "./types.js";
@@ -38,7 +39,7 @@ afterEach(async () => {
 async function writeValidConfig(): Promise<void> {
   const config = {
     dangerouslyDisableDeviceAuth: true,
-    allowedOrigins: ["http://localhost:18789"],
+    allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`],
     trustedProxies: ["172.17.0.1"],
     tools: { exec: { host: "gateway", security: "full" } },
   };

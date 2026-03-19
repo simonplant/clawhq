@@ -7,6 +7,7 @@
  * See docs/OPENCLAW-REFERENCE.md § "The 14 Configuration Landmines" for details.
  */
 
+import { GATEWAY_DEFAULT_PORT } from "./defaults.js";
 import type {
   ComposeConfig,
   ComposeServiceConfig,
@@ -70,7 +71,7 @@ export function validateLM02(config: OpenClawConfig): ValidationResult {
     message: passed
       ? `allowedOrigins has ${origins.length} origin(s)`
       : "allowedOrigins is empty or missing — the control UI will return CORS errors",
-    fix: 'Add expected origins to "allowedOrigins" array (e.g. ["http://localhost:18789"])',
+    fix: `Add expected origins to "allowedOrigins" array (e.g. ["http://localhost:${GATEWAY_DEFAULT_PORT}"])`,
   };
 }
 

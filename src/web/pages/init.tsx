@@ -6,6 +6,7 @@
  * WizardAnswers and calls generateBundle + writeBundle.
  */
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import type { Blueprint } from "../../design/blueprints/types.js";
 import { Layout } from "../layout.js";
 
@@ -59,7 +60,7 @@ export function InitPage({ blueprints }: { blueprints: readonly Blueprint[] }) {
             </label>
             <label>
               Gateway Port
-              <input type="number" name="gatewayPort" value="18789" />
+              <input type="number" name="gatewayPort" value={String(GATEWAY_DEFAULT_PORT)} />
             </label>
           </div>
           <label>

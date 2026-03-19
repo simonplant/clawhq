@@ -48,6 +48,7 @@ import {
   switchTrustMode,
   unregisterAgent,
 } from "../cloud/index.js";
+import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import type { TrustMode } from "../config/types.js";
 import { validateBundle } from "../config/validate.js";
 import {
@@ -216,7 +217,7 @@ program
   .option("--smart", "AI-powered config inference via local Ollama")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("--from-source", "Zero-trust: install from source")
-  .option("-p, --port <port>", "Gateway port", "18789")
+  .option("-p, --port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
   .option("--ollama-model <model>", "Ollama model for --smart inference")
   .action(async (opts: {
     blueprint?: string;
@@ -1028,7 +1029,7 @@ program
   .description("Deploy agent with preflight checks, firewall, and health verify")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("-t, --token <token>", "Gateway auth token")
-  .option("-p, --port <port>", "Gateway port", "18789")
+  .option("-p, --port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
   .option("--skip-preflight", "Skip preflight checks")
   .option("--skip-firewall", "Skip egress firewall setup")
   .action(async (opts: {
@@ -1110,7 +1111,7 @@ program
   .description("Restart agent with firewall reapply")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("-t, --token <token>", "Gateway auth token")
-  .option("-p, --port <port>", "Gateway port", "18789")
+  .option("-p, --port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
   .option("--skip-preflight", "Skip preflight checks")
   .option("--skip-firewall", "Skip egress firewall setup")
   .action(async (opts: {
@@ -1160,7 +1161,7 @@ program
   .description("Connect messaging channel (Telegram, WhatsApp)")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("-t, --token <token>", "Gateway auth token")
-  .option("-p, --port <port>", "Gateway port", "18789")
+  .option("-p, --port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
   .option("-c, --channel <channel>", "Channel to connect (telegram, whatsapp)")
   .action(async (opts: {
     deployDir: string;
@@ -1744,7 +1745,7 @@ program
   .option("--check", "Check for updates without applying")
   .option("-p, --passphrase <passphrase>", "Passphrase for pre-update backup encryption")
   .option("-t, --token <token>", "Gateway auth token for post-update verification")
-  .option("--port <port>", "Gateway port", "18789")
+  .option("--port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
   .action(async (opts: {
     deployDir: string;
     check?: boolean;

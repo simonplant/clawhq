@@ -63,7 +63,7 @@ export interface UpdateOptions {
   readonly passphrase?: string;
   /** Gateway auth token for restart verification. */
   readonly gatewayToken?: string;
-  /** Gateway port (default: 18789). */
+  /** Gateway port (default: GATEWAY_DEFAULT_PORT). */
   readonly gatewayPort?: number;
   /** Progress callback. */
   readonly onProgress?: UpdateProgressCallback;

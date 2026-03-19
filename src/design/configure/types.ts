@@ -27,7 +27,7 @@ export interface WizardAnswers {
   /** Preferred local model (e.g. "llama3:8b"). Only when modelProvider is local. */
   readonly localModel: string;
 
-  /** Gateway port (default 18789). */
+  /** Gateway port (default: GATEWAY_DEFAULT_PORT). */
   readonly gatewayPort: number;
 
   /** Deployment directory (default ~/.clawhq). */
