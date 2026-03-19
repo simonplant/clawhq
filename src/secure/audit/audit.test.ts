@@ -9,6 +9,7 @@ import {
   createAuditConfig,
   initHmacChain,
   initSeqCounter,
+  logApprovalResolution,
   logEgressEvent,
   logSecretEvent,
   logToolExecution,
@@ -31,6 +32,7 @@ beforeEach(async () => {
   await initSeqCounter(config.toolLogPath);
   await initSeqCounter(config.egressLogPath);
   await initSeqCounter(config.secretLogPath);
+  await initSeqCounter(config.approvalLogPath);
   await initHmacChain(config.secretLogPath);
 });
 
@@ -420,5 +422,94 @@ describe("initHmacChain", () => {
     expect(events).toHaveLength(2);
     expect(events[1].prevHmac).toBe(firstEvent.hmac);
     expect(verifyHmacChain(events, HMAC_KEY)).toBe(true);
+  });
+});
+
+// ── Approval Resolution Logging ──────────────────────────────────────────────
+
+describe("logApprovalResolution", () => {
+  it("appends an approval resolution event to JSONL", async () => {
+    await logApprovalResolution(config, {
+      itemId: "apv-abc-1234",
+      category: "send_email",
+      summary: "Reply to alice@example.com: Re: Meeting",
+      resolution: "approved",
+      resolvedVia: "telegram",
+      source: "email-digest",
+    });
+
+    const content = readFileSync(config.approvalLogPath, "utf-8");
+    const lines = content.trim().split("\n");
+    expect(lines).toHaveLength(1);
+
+    const event = JSON.parse(lines[0]);
+    expect(event.type).toBe("approval_resolution");
+    expect(event.itemId).toBe("apv-abc-1234");
+    expect(event.category).toBe("send_email");
+    expect(event.resolution).toBe("approved");
+    expect(event.resolvedVia).toBe("telegram");
+    expect(event.source).toBe("email-digest");
+    expect(event.seq).toBe(1);
+  });
+
+  it("truncates long summary strings", async () => {
+    await logApprovalResolution(config, {
+      itemId: "apv-xyz-5678",
+      category: "send_message",
+      summary: "x".repeat(300),
+      resolution: "rejected",
+      resolvedVia: "cli",
+      source: "test-skill",
+    });
+
+    const content = readFileSync(config.approvalLogPath, "utf-8");
+    const event = JSON.parse(content.trim());
+    expect(event.summary.length).toBe(200);
+    expect(event.resolution).toBe("rejected");
+  });
+
+  it("appears in audit report", async () => {
+    await logApprovalResolution(config, {
+      itemId: "apv-rpt-0001",
+      category: "purchase",
+      summary: "Buy 10 shares AAPL",
+      resolution: "approved",
+      resolvedVia: "telegram",
+      source: "trading-bot",
+    });
+    await logApprovalResolution(config, {
+      itemId: "apv-rpt-0002",
+      category: "delete",
+      summary: "Delete draft email",
+      resolution: "rejected",
+      resolvedVia: "cli",
+      source: "email-digest",
+    });
+
+    const report = await readAuditReport(config);
+
+    expect(report.approvalEvents).toHaveLength(2);
+    expect(report.summary.totalApprovalEvents).toBe(2);
+    expect(report.summary.approvedCount).toBe(1);
+    expect(report.summary.rejectedCount).toBe(1);
+  });
+
+  it("appears in OWASP export", async () => {
+    await logApprovalResolution(config, {
+      itemId: "apv-owasp-001",
+      category: "send_email",
+      summary: "Reply to bob",
+      resolution: "approved",
+      resolvedVia: "telegram",
+      source: "email-digest",
+    });
+
+    const report = await readAuditReport(config);
+    const exported = buildOwaspExport(report, testDir);
+
+    const approvalEvents = exported.events.filter((e) => e.category === "approval-resolution");
+    expect(approvalEvents).toHaveLength(1);
+    expect(approvalEvents[0].action).toBe("send_email:approved");
+    expect(approvalEvents[0].outcome).toBe("success");
   });
 });

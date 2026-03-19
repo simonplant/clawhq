@@ -7,6 +7,7 @@
 
 // Types
 export type {
+  ApprovalResolutionEvent,
   AuditEvent,
   AuditReport,
   AuditSummary,
@@ -24,6 +25,7 @@ export {
   createAuditConfig,
   initHmacChain,
   initSeqCounter,
+  logApprovalResolution,
   logEgressEvent,
   logSecretEvent,
   logToolExecution,

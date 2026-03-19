@@ -26,8 +26,9 @@ export type { CredentialProbe, ProbeReport, ProbeResult } from "./credentials/in
 export { builtinProbes, formatProbeReport, probeAnthropic, probeOpenAI, probeTelegram, runProbes } from "./credentials/index.js";
 export type { RunProbesOptions } from "./credentials/index.js";
 
-// Audit trail (tool execution, egress, secret lifecycle)
+// Audit trail (tool execution, egress, secret lifecycle, approval resolution)
 export type {
+  ApprovalResolutionEvent,
   AuditEvent,
   AuditReport,
   AuditSummary,
@@ -47,6 +48,7 @@ export {
   formatAuditTable,
   initHmacChain,
   initSeqCounter,
+  logApprovalResolution,
   logEgressEvent,
   logSecretEvent,
   logToolExecution,

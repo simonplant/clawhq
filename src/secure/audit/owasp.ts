@@ -6,6 +6,7 @@
  */
 
 import type {
+  ApprovalResolutionEvent,
   AuditReport,
   EgressEvent,
   OwaspEvent,
@@ -25,6 +26,7 @@ export function buildOwaspExport(
     ...report.toolExecutions.map(mapToolEvent),
     ...report.egressEvents.map(mapEgressEvent),
     ...report.secretEvents.map(mapSecretEvent),
+    ...report.approvalEvents.map(mapApprovalEvent),
   ];
 
   // Sort all events by timestamp
@@ -89,6 +91,21 @@ function mapSecretEvent(event: SecretLifecycleEvent): OwaspEvent {
     target: event.secretId,
     details: {
       hmacValid: true,
+    },
+  };
+}
+
+function mapApprovalEvent(event: ApprovalResolutionEvent): OwaspEvent {
+  return {
+    timestamp: event.ts,
+    category: "approval-resolution",
+    action: `${event.category}:${event.resolution}`,
+    outcome: event.resolution === "approved" ? "success" : "blocked",
+    actor: event.resolvedVia,
+    target: event.itemId,
+    details: {
+      summary: event.summary,
+      source: event.source,
     },
   };
 }

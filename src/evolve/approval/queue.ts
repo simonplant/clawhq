@@ -17,7 +17,11 @@ import type {
   ApprovalItem,
   ApprovalQueue,
   EnqueueOptions,
+  ResolveOptions,
 } from "./types.js";
+
+import type { AuditTrailConfig } from "../../secure/audit/types.js";
+import { logApprovalResolution } from "../../secure/audit/logger.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -107,8 +111,9 @@ export async function enqueue(
 export async function approve(
   deployDir: string,
   itemId: string,
+  opts?: ResolveOptions & { auditConfig?: AuditTrailConfig },
 ): Promise<{ success: boolean; error?: string }> {
-  return resolveItem(deployDir, itemId, "approved");
+  return resolveItem(deployDir, itemId, "approved", opts);
 }
 
 /**
@@ -117,14 +122,16 @@ export async function approve(
 export async function reject(
   deployDir: string,
   itemId: string,
+  opts?: ResolveOptions & { auditConfig?: AuditTrailConfig },
 ): Promise<{ success: boolean; error?: string }> {
-  return resolveItem(deployDir, itemId, "rejected");
+  return resolveItem(deployDir, itemId, "rejected", opts);
 }
 
 async function resolveItem(
   deployDir: string,
   itemId: string,
   status: "approved" | "rejected",
+  opts?: ResolveOptions & { auditConfig?: AuditTrailConfig },
 ): Promise<{ success: boolean; error?: string }> {
   const queue = await loadQueue(deployDir);
   const idx = queue.items.findIndex((i) => i.id === itemId);
@@ -151,6 +158,19 @@ async function resolveItem(
   items[idx] = updated;
 
   await saveQueue(deployDir, { version: 1, items });
+
+  // Log resolution to audit trail (never throws — errors caught internally)
+  if (opts?.auditConfig) {
+    await logApprovalResolution(opts.auditConfig, {
+      itemId: item.id,
+      category: item.category,
+      summary: item.summary,
+      resolution: status,
+      resolvedVia: opts.resolvedVia ?? "cli",
+      source: item.source,
+    });
+  }
+
   return { success: true };
 }
 

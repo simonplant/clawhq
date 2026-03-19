@@ -49,6 +49,15 @@ import {
 import type { DestructionProof, LifecycleProgress } from "../evolve/lifecycle/index.js";
 import type { SkillProgress } from "../evolve/skills/index.js";
 import {
+  approve as approveItem,
+  countPending,
+  listPending,
+  reject as rejectItem,
+  sendApprovalNotification,
+  startApprovalBot,
+} from "../evolve/approval/index.js";
+import type { TelegramConfig } from "../evolve/approval/index.js";
+import {
   formatSkillList,
   formatSkillListJson,
   installSkill,
@@ -848,6 +857,165 @@ program
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
     console.log(chalk.yellow("Not yet implemented. Coming soon."));
     process.exit(1);
+  });
+
+// ── Approval Commands ──────────────────────────────────────────────────────
+
+const approval = program.command("approval").description("Manage approval queue for high-stakes actions");
+
+approval
+  .command("list")
+  .description("List pending approval items")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const pending = await listPending(opts.deployDir);
+    if (opts.json) {
+      console.log(JSON.stringify(pending, null, 2));
+      return;
+    }
+    if (pending.length === 0) {
+      console.log(chalk.dim("No pending approvals."));
+      return;
+    }
+    console.log(chalk.bold(`${pending.length} pending approval(s):\n`));
+    for (const item of pending) {
+      console.log(`  ${chalk.cyan(item.id)}  ${item.category}  ${item.summary}`);
+      if (item.metadata) {
+        const meta = Object.entries(item.metadata).map(([k, v]) => `${k}=${v}`).join(", ");
+        console.log(`    ${chalk.dim(meta)}`);
+      }
+      console.log(`    ${chalk.dim(`source: ${item.source}  queued: ${item.createdAt}`)}`);
+      console.log();
+    }
+  });
+
+approval
+  .command("approve")
+  .description("Approve a pending item")
+  .argument("<id>", "Approval item ID")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (id: string, opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const auditConfig = createAuditConfig(opts.deployDir, "");
+    const result = await approveItem(opts.deployDir, id, { resolvedVia: "cli", auditConfig });
+    if (result.success) {
+      console.log(chalk.green(`Approved: ${id}`));
+    } else {
+      console.log(chalk.red(result.error ?? "Failed to approve."));
+      process.exit(1);
+    }
+  });
+
+approval
+  .command("reject")
+  .description("Reject a pending item")
+  .argument("<id>", "Approval item ID")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (id: string, opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const auditConfig = createAuditConfig(opts.deployDir, "");
+    const result = await rejectItem(opts.deployDir, id, { resolvedVia: "cli", auditConfig });
+    if (result.success) {
+      console.log(chalk.green(`Rejected: ${id}`));
+    } else {
+      console.log(chalk.red(result.error ?? "Failed to reject."));
+      process.exit(1);
+    }
+  });
+
+approval
+  .command("count")
+  .description("Count pending approval items")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    const count = await countPending(opts.deployDir);
+    console.log(String(count));
+  });
+
+approval
+  .command("watch")
+  .description("Start Telegram approval bot (polls for approve/reject button presses)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
+    const { readEnvValue } = await import("../secure/credentials/env-store.js");
+    const envPath = join(opts.deployDir, "engine", ".env");
+    const botToken = readEnvValue(envPath, "TELEGRAM_BOT_TOKEN");
+    const chatId = readEnvValue(envPath, "TELEGRAM_CHAT_ID");
+
+    if (!botToken) {
+      console.error(chalk.red("TELEGRAM_BOT_TOKEN not set in .env. Configure via clawhq creds."));
+      process.exit(1);
+    }
+    if (!chatId) {
+      console.error(chalk.red("TELEGRAM_CHAT_ID not set in .env. Set the chat ID for approval notifications."));
+      process.exit(1);
+    }
+
+    const telegramConfig: TelegramConfig = { botToken, chatId };
+    const auditConfig = createAuditConfig(opts.deployDir, "");
+    const ac = new AbortController();
+
+    process.on("SIGINT", () => ac.abort());
+    process.on("SIGTERM", () => ac.abort());
+
+    console.log(chalk.green("Approval bot started. Listening for Telegram callbacks..."));
+    console.log(chalk.dim("Press Ctrl+C to stop.\n"));
+
+    await startApprovalBot({
+      deployDir: opts.deployDir,
+      telegramConfig,
+      auditConfig,
+      signal: ac.signal,
+      onResolution: (itemId, resolution) => {
+        const color = resolution === "approved" ? chalk.green : chalk.red;
+        console.log(`${color(resolution)}: ${itemId}`);
+      },
+    });
+
+    console.log(chalk.dim("\nApproval bot stopped."));
+  });
+
+approval
+  .command("notify")
+  .description("Send Telegram notification for a pending approval item")
+  .argument("<id>", "Approval item ID")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (id: string, opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
+    const { readEnvValue } = await import("../secure/credentials/env-store.js");
+    const { getItem } = await import("../evolve/approval/queue.js");
+    const envPath = join(opts.deployDir, "engine", ".env");
+    const botToken = readEnvValue(envPath, "TELEGRAM_BOT_TOKEN");
+    const chatId = readEnvValue(envPath, "TELEGRAM_CHAT_ID");
+
+    if (!botToken || !chatId) {
+      console.error(chalk.red("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set in .env."));
+      process.exit(1);
+    }
+
+    const item = await getItem(opts.deployDir, id);
+    if (!item) {
+      console.error(chalk.red(`Approval item "${id}" not found.`));
+      process.exit(1);
+    }
+    if (item.status !== "pending") {
+      console.error(chalk.red(`Item "${id}" is already ${item.status}.`));
+      process.exit(1);
+    }
+
+    const result = await sendApprovalNotification({ botToken, chatId }, item);
+    if (result.success) {
+      console.log(chalk.green(`Telegram notification sent for ${id}.`));
+    } else {
+      console.error(chalk.red(`Failed to notify: ${result.error}`));
+      process.exit(1);
+    }
   });
 
 program

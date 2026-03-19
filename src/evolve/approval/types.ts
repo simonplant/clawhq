@@ -63,3 +63,9 @@ export interface EnqueueOptions {
   readonly source: string;
   readonly metadata?: Record<string, string>;
 }
+
+/** Options for resolving (approving/rejecting) an approval item. */
+export interface ResolveOptions {
+  /** How the resolution was delivered (e.g., "cli", "telegram"). */
+  readonly resolvedVia?: string;
+}

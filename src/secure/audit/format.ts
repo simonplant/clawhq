@@ -102,13 +102,42 @@ export function formatAuditTable(report: AuditReport): string {
 
   lines.push("");
 
+  // ── Approval Resolutions ──
+  lines.push("── Approval Resolutions ──");
+  if (report.approvalEvents.length === 0) {
+    lines.push("  No approval events recorded.");
+  } else {
+    const col1 = 22;
+    const col2 = 16;
+    const col3 = 12;
+
+    lines.push(
+      pad("Timestamp", col1) + pad("Category", col2) + pad("Resolution", col3) + "Summary",
+    );
+    lines.push(
+      pad("─".repeat(col1 - 2), col1) +
+        pad("─".repeat(col2 - 2), col2) +
+        pad("─".repeat(col3 - 2), col3) +
+        "─".repeat(30),
+    );
+
+    for (const e of report.approvalEvents) {
+      const ts = formatTs(e.ts);
+      const res = e.resolution === "approved" ? "✔ approved" : "✘ rejected";
+      lines.push(pad(ts, col1) + pad(e.category, col2) + pad(res, col3) + truncate(e.summary, 40));
+    }
+  }
+
+  lines.push("");
+
   // ── Summary ──
   lines.push("── Summary ──");
   const s = report.summary;
-  lines.push(`  Tools:   ${s.totalToolExecutions} total (${s.successfulExecutions} ok, ${s.failedExecutions} failed)`);
-  lines.push(`  Egress:  ${s.totalEgressEvents} total (${s.allowedEgress} allowed, ${s.blockedEgress} blocked)`);
-  lines.push(`  Secrets: ${s.totalSecretEvents} events`);
-  lines.push(`  Chain:   ${s.chainValid ? "✔ valid (tamper-evident)" : "✘ BROKEN — log may have been tampered with"}`);
+  lines.push(`  Tools:     ${s.totalToolExecutions} total (${s.successfulExecutions} ok, ${s.failedExecutions} failed)`);
+  lines.push(`  Egress:    ${s.totalEgressEvents} total (${s.allowedEgress} allowed, ${s.blockedEgress} blocked)`);
+  lines.push(`  Secrets:   ${s.totalSecretEvents} events`);
+  lines.push(`  Approvals: ${s.totalApprovalEvents} total (${s.approvedCount} approved, ${s.rejectedCount} rejected)`);
+  lines.push(`  Chain:     ${s.chainValid ? "✔ valid (tamper-evident)" : "✘ BROKEN — log may have been tampered with"}`);
 
   return lines.join("\n");
 }

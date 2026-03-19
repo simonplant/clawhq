@@ -1,10 +1,11 @@
 /**
  * Types for the audit trail system.
  *
- * Three event streams, each append-only JSONL:
+ * Four event streams, each append-only JSONL:
  *   - Tool execution: what the agent did
  *   - Egress: what data left the machine
  *   - Secret lifecycle: credential added/rotated/revoked (HMAC-chained)
+ *   - Approval resolution: high-stakes action approved/rejected by user
  */
 
 // ── Common ─────────────────────────────────────────────────────────────────
@@ -71,12 +72,31 @@ export interface SecretLifecycleEvent extends AuditEventBase {
   readonly prevHmac: string;
 }
 
+// ── Approval Resolution ──────────────────────────────────────────────────
+
+/** Logged when a high-stakes action is approved or rejected by the user. */
+export interface ApprovalResolutionEvent extends AuditEventBase {
+  readonly type: "approval_resolution";
+  /** Approval item ID. */
+  readonly itemId: string;
+  /** Category of action (send_email, purchase, delete, etc.). */
+  readonly category: string;
+  /** Human-readable summary of the proposed action. */
+  readonly summary: string;
+  /** Resolution: approved or rejected. */
+  readonly resolution: "approved" | "rejected";
+  /** How the resolution was delivered (cli, telegram). */
+  readonly resolvedVia: string;
+  /** Source skill that generated the proposal. */
+  readonly source: string;
+}
+
 /** Union of all audit event types. */
-export type AuditEvent = ToolExecutionEvent | EgressEvent | SecretLifecycleEvent;
+export type AuditEvent = ToolExecutionEvent | EgressEvent | SecretLifecycleEvent | ApprovalResolutionEvent;
 
 // ── Config ─────────────────────────────────────────────────────────────────
 
-/** Paths for the three audit log files. */
+/** Paths for the four audit log files. */
 export interface AuditTrailConfig {
   /** Path to tool execution JSONL log. */
   readonly toolLogPath: string;
@@ -84,6 +104,8 @@ export interface AuditTrailConfig {
   readonly egressLogPath: string;
   /** Path to secret lifecycle JSONL log. */
   readonly secretLogPath: string;
+  /** Path to approval resolution JSONL log. */
+  readonly approvalLogPath: string;
   /** HMAC secret key for chaining secret lifecycle events. */
   readonly hmacKey: string;
 }
@@ -96,6 +118,7 @@ export interface AuditReport {
   readonly toolExecutions: readonly ToolExecutionEvent[];
   readonly egressEvents: readonly EgressEvent[];
   readonly secretEvents: readonly SecretLifecycleEvent[];
+  readonly approvalEvents: readonly ApprovalResolutionEvent[];
   readonly summary: AuditSummary;
 }
 
@@ -109,6 +132,9 @@ export interface AuditSummary {
   readonly blockedEgress: number;
   readonly totalSecretEvents: number;
   readonly chainValid: boolean;
+  readonly totalApprovalEvents: number;
+  readonly approvedCount: number;
+  readonly rejectedCount: number;
 }
 
 // ── OWASP Export ───────────────────────────────────────────────────────────
@@ -128,7 +154,7 @@ export interface OwaspExport {
 /** Normalized event for OWASP export. */
 export interface OwaspEvent {
   readonly timestamp: string;
-  readonly category: "tool-execution" | "data-egress" | "secret-lifecycle";
+  readonly category: "tool-execution" | "data-egress" | "secret-lifecycle" | "approval-resolution";
   readonly action: string;
   readonly outcome: "success" | "failure" | "blocked";
   readonly actor: string;
