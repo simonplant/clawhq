@@ -10,6 +10,7 @@
  *   const data  = await sanitizeJson(obj, ["title", "body"], { source: "api" });
  */
 
+import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { writeAuditLog, writeQuarantine, type AuditConfig } from "./audit.js";
@@ -22,7 +23,7 @@ import { sanitize, threatScore, wrapUntrusted } from "./sanitize.js";
 const QUARANTINE_THRESHOLD = 0.6;
 
 const DEFAULT_OPS_DIR = join(
-  process.env.HOME ?? "/root",
+  homedir(),
   ".clawhq",
   "ops",
   "security",
