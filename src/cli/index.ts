@@ -3164,8 +3164,8 @@ async function loadNotificationChannels(deployDir: string): Promise<Notification
         url: webhookUrl,
       });
     }
-  } catch {
-    // No channels configured — monitor still runs, just no notifications
+  } catch (error) {
+    console.warn("Notification channel config failed — monitor will run without notifications:", error);
   }
 
   return channels;
