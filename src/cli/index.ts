@@ -38,8 +38,12 @@ import {
 } from "../operate/doctor/index.js";
 import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
 
+import { renderError, warnIfNotInstalled } from "./ux.js";
+
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string; description: string };
+
+const DEFAULT_DEPLOY_DIR = join(homedir(), ".clawhq");
 
 const program = new Command();
 
@@ -55,6 +59,18 @@ program
     console.log(`clawhq v${pkg.version}`);
   });
 
+// ── Install Commands ────────────────────────────────────────────────────────
+
+program
+  .command("install")
+  .description("Full platform install — prerequisites, engine, scaffold")
+  .option("--from-source", "Zero-trust: clone, audit, build from source")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async () => {
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
 // ── Design Commands ─────────────────────────────────────────────────────────
 
 program
@@ -62,7 +78,7 @@ program
   .description("Interactive setup — choose blueprint, configure, forge agent")
   .option("--guided", "Run the guided setup wizard (default)")
   .option("-b, --blueprint <name>", "Pre-select a blueprint by name")
-  .option("-d, --deploy-dir <path>", "Deployment directory", join(homedir(), ".clawhq"))
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("--air-gapped", "Run in air-gapped mode (no internet)")
   .action(async (opts: {
     guided?: boolean;
@@ -115,8 +131,7 @@ program
         console.log(chalk.yellow("\nSetup cancelled."));
         process.exit(0);
       }
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(chalk.red(`\nSetup failed: ${message}`));
+      console.error(renderError(error));
       process.exit(1);
     }
   });
@@ -165,9 +180,38 @@ function bundleToFiles(
   ];
 }
 
-// ── Deploy Commands ─────────────────────────────────────────────────────────
+const blueprint = program.command("blueprint").description("Browse and preview blueprints");
 
-const DEFAULT_DEPLOY_DIR = join(homedir(), ".clawhq");
+blueprint
+  .command("list")
+  .description("Browse available blueprints")
+  .action(async () => {
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+blueprint
+  .command("preview")
+  .description("Preview a blueprint's operational design")
+  .argument("<name>", "Blueprint name")
+  .action(async () => {
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+// ── Build Commands ──────────────────────────────────────────────────────────
+
+program
+  .command("build")
+  .description("Two-stage Docker build with change detection and manifests")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+// ── Deploy Commands ─────────────────────────────────────────────────────────
 
 program
   .command("up")
@@ -184,6 +228,8 @@ program
     skipPreflight?: boolean;
     skipFirewall?: boolean;
   }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
     const token = opts.token ?? process.env["CLAWHQ_GATEWAY_TOKEN"] ?? "";
     if (!token) {
       console.error(chalk.red("Error: Gateway token required. Use --token or set CLAWHQ_GATEWAY_TOKEN"));
@@ -223,6 +269,8 @@ program
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("-v, --volumes", "Remove volumes")
   .action(async (opts: { deployDir: string; volumes?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
     const ac = new AbortController();
     process.on("SIGINT", () => ac.abort());
     process.on("SIGTERM", () => ac.abort());
@@ -262,6 +310,8 @@ program
     skipPreflight?: boolean;
     skipFirewall?: boolean;
   }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
     const token = opts.token ?? process.env["CLAWHQ_GATEWAY_TOKEN"] ?? "";
     if (!token) {
       console.error(chalk.red("Error: Gateway token required. Use --token or set CLAWHQ_GATEWAY_TOKEN"));
@@ -295,38 +345,62 @@ program
     }
   });
 
-// ── Progress Handler ────────────────────────────────────────────────────────
+program
+  .command("connect")
+  .description("Connect messaging channel (Telegram, Signal, Discord)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
 
-function createProgressHandler(spinner: ReturnType<typeof ora>) {
-  return (event: DeployProgress): void => {
-    const label = stepLabel(event.step);
-    switch (event.status) {
-      case "running":
-        spinner.start(`${label} ${event.message}`);
-        break;
-      case "done":
-        spinner.succeed(`${label} ${event.message}`);
-        break;
-      case "failed":
-        spinner.fail(`${label} ${event.message}`);
-        break;
-      case "skipped":
-        spinner.warn(`${label} ${event.message}`);
-        break;
+// ── Secure Commands ────────────────────────────────────────────────────────
+
+program
+  .command("scan")
+  .description("PII and secrets scanner")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+program
+  .command("creds")
+  .description("Check credential health for all configured integrations")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--configured", "Show only configured integrations (hide unconfigured)")
+  .action(async (opts: { deployDir: string; configured?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
+    const envPath = join(opts.deployDir, "engine", ".env");
+    const spinner = ora("Checking credentials…");
+    spinner.start();
+
+    const report = await runProbes({
+      envPath,
+      includeUnconfigured: !opts.configured,
+    });
+
+    spinner.stop();
+    console.log(formatProbeReport(report));
+
+    if (!report.healthy) {
+      process.exit(1);
     }
-  };
-}
+  });
 
-function stepLabel(step: string): string {
-  const labels: Record<string, string> = {
-    "preflight": "[preflight]",
-    "compose-up": "[compose]",
-    "firewall": "[firewall]",
-    "health-verify": "[health]",
-    "smoke-test": "[smoke]",
-  };
-  return chalk.dim(labels[step] ?? `[${step}]`);
-}
+program
+  .command("audit")
+  .description("Tool execution and egress audit trail")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
 
 // ── Operate Commands ──────────────────────────────────────────────────────
 
@@ -341,6 +415,8 @@ program
     fix?: boolean;
     json?: boolean;
   }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+
     const ac = new AbortController();
     process.on("SIGINT", () => ac.abort());
     process.on("SIGTERM", () => ac.abort());
@@ -391,41 +467,226 @@ program
     }
   });
 
-// ── Secure Commands ────────────────────────────────────────────────────────
-
 program
-  .command("creds")
-  .description("Check credential health for all configured integrations")
+  .command("status")
+  .description("Single-pane status dashboard")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .option("--configured", "Show only configured integrations (hide unconfigured)")
-  .action(async (opts: { deployDir: string; configured?: boolean }) => {
-    const envPath = join(opts.deployDir, "engine", ".env");
-    const spinner = ora("Checking credentials…");
-    spinner.start();
-
-    const report = await runProbes({
-      envPath,
-      includeUnconfigured: !opts.configured,
-    });
-
-    spinner.stop();
-    console.log(formatProbeReport(report));
-
-    if (!report.healthy) {
-      process.exit(1);
-    }
+  .option("-w, --watch", "Continuous monitoring mode")
+  .action(async (opts: { deployDir: string; watch?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
   });
 
-// ── Commands are registered here as they're built ──
-// Each command file exports a create*Command() function.
-// Group labels use program.commandsGroup() for --help display.
+const backup = program.command("backup").description("Encrypted backup and restore");
+
+backup
+  .command("create")
+  .description("Create encrypted backup snapshot")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+backup
+  .command("list")
+  .description("List available backup snapshots")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+backup
+  .command("restore")
+  .description("Restore from a backup snapshot")
+  .argument("<snapshot>", "Snapshot ID or path")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (_snapshot: string, opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+program
+  .command("update")
+  .description("Safe upstream upgrade with rollback")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--check", "Check for updates without applying")
+  .action(async (opts: { deployDir: string; check?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+program
+  .command("logs")
+  .description("Stream agent logs")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("-f, --follow", "Follow log output")
+  .option("-n, --lines <count>", "Number of lines to show", "50")
+  .action(async (opts: { deployDir: string; follow?: boolean; lines: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+// ── Evolve Commands ─────────────────────────────────────────────────────────
+
+const skill = program.command("skill").description("Manage agent skills");
+
+skill
+  .command("install")
+  .description("Install a skill with security vetting")
+  .argument("<source>", "Skill source (URL, path, or registry name)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (_source: string, opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+skill
+  .command("update")
+  .description("Update installed skills")
+  .argument("[name]", "Skill name (all if omitted)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (_name: string | undefined, opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+skill
+  .command("remove")
+  .description("Remove an installed skill")
+  .argument("<name>", "Skill name")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (_name: string, opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+skill
+  .command("list")
+  .description("List installed skills")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+program
+  .command("evolve")
+  .description("Manage agent capabilities")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+program
+  .command("export")
+  .description("Export portable agent bundle")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("-o, --output <path>", "Output file path")
+  .action(async (opts: { deployDir: string; output?: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+program
+  .command("destroy")
+  .description("Verified agent destruction")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--confirm", "Skip confirmation prompt")
+  .action(async (opts: { deployDir: string; confirm?: boolean }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+// ── Cloud Commands ──────────────────────────────────────────────────────────
+
+const cloud = program.command("cloud").description("Remote monitoring and managed hosting (optional)");
+
+cloud
+  .command("connect")
+  .description("Link to clawhq.com for remote monitoring")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+cloud
+  .command("status")
+  .description("Remote health dashboard")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+cloud
+  .command("disconnect")
+  .description("Disconnect from cloud — agent keeps running")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { deployDir: string }) => {
+    if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+    console.log(chalk.yellow("Not yet implemented. Coming soon."));
+    process.exit(1);
+  });
+
+// ── Progress Handler ────────────────────────────────────────────────────────
+
+function createProgressHandler(spinner: ReturnType<typeof ora>) {
+  return (event: DeployProgress): void => {
+    const label = stepLabel(event.step);
+    switch (event.status) {
+      case "running":
+        spinner.start(`${label} ${event.message}`);
+        break;
+      case "done":
+        spinner.succeed(`${label} ${event.message}`);
+        break;
+      case "failed":
+        spinner.fail(`${label} ${event.message}`);
+        break;
+      case "skipped":
+        spinner.warn(`${label} ${event.message}`);
+        break;
+    }
+  };
+}
+
+function stepLabel(step: string): string {
+  const labels: Record<string, string> = {
+    "preflight": "[preflight]",
+    "compose-up": "[compose]",
+    "firewall": "[firewall]",
+    "health-verify": "[health]",
+    "smoke-test": "[smoke]",
+  };
+  return chalk.dim(labels[step] ?? `[${step}]`);
+}
+
+// ── Parse ───────────────────────────────────────────────────────────────────
 
 if (!process.argv.slice(2).length) {
   program.outputHelp();
 } else {
   program.parseAsync(process.argv).catch((err: unknown) => {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`Error: ${message}`);
+    console.error(renderError(err));
     process.exit(1);
   });
 }
