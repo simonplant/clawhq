@@ -54,11 +54,13 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.5.0",
+    "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.0",
     "eslint": "^10.0.3",
     "eslint-plugin-import-x": "^4.16.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.0",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "ws": "^8.19.0"
   }
 }

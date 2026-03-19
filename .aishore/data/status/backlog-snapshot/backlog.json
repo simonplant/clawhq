@@ -30,8 +30,8 @@
       "description": "FOUNDATION: Every live operation — deploy health checks, config patches, session queries — goes through this client. Without it, ClawHQ can only write files; it cannot talk to a running agent. Acceptance: RPC round-trip works with real Gateway; timeout + abort signal paths exercised; typed error classes surface correct user messages.",
       "category": "Foundation",
       "priority": "must",
-      "status": "done",
-      "readyForSprint": false,
+      "status": "todo",
+      "readyForSprint": true,
       "steps": [
         "Implement token-authenticated WebSocket client for OpenClaw Gateway",
         "Add request/response RPC with typed errors and timeout handling",
@@ -44,9 +44,7 @@
         "Timeout and abort signal paths exercised in tests",
         "Typed error classes surface correct user messages",
         "Health polling detects Gateway up/down state"
-      ],
-      "passes": true,
-      "completedAt": "2026-03-18T23:44:46-07:00"
+      ]
     },
     {
       "id": "CQ-003",
