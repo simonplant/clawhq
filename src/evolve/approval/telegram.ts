@@ -10,7 +10,7 @@
 
 import type { AuditTrailConfig } from "../../secure/audit/types.js";
 
-import { TELEGRAM_API_BASE } from "../../config/defaults.js";
+import { TELEGRAM_API_BASE, TELEGRAM_POLLING_TIMEOUT_SEC } from "../../config/defaults.js";
 import type { TelegramConfig } from "./notify.js";
 import { sendResolutionConfirmation } from "./notify.js";
 import { approve, reject, getItem } from "./queue.js";
@@ -122,7 +122,7 @@ async function getUpdates(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       offset,
-      timeout: 30,
+      timeout: TELEGRAM_POLLING_TIMEOUT_SEC,
       allowed_updates: ["callback_query"],
     }),
     signal,

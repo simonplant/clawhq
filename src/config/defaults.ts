@@ -138,3 +138,9 @@ export const DEPLOY_COMPOSE_TIMEOUT_MS = 120_000;
 
 /** Timeout for Ollama local inference generation (ms). */
 export const OLLAMA_GENERATE_TIMEOUT_MS = 120_000;
+
+/** Ollama availability check and model listing timeout (ms). */
+export const OLLAMA_PROBE_TIMEOUT_MS = 5_000;
+
+/** Telegram long-poll getUpdates timeout in seconds. */
+export const TELEGRAM_POLLING_TIMEOUT_SEC = 30;
