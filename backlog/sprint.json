@@ -1,23 +1,24 @@
 {
-  "sprintId": "sprint-1774042206",
-  "startedAt": "2026-03-20T14:30:06-07:00",
+  "sprintId": "sprint-1774042338",
+  "startedAt": "2026-03-20T14:32:18-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-063",
-    "title": "snapshot.ts silently swallows builder VM destroy failures — leaves orphaned instances",
-    "intent": "No cloud resource must be silently abandoned. If a builder VM cannot be destroyed, the user must be warned with enough info to clean it up manually.",
-    "description": "src/cloud/provisioning/snapshot.ts lines 113, 126, and 144 call adapter.destroyVm() with .catch(() => {}) — silently discarding any destroy error. If the cleanup of the temporary builder VM fails (API error, timeout, network failure), the user is never notified and the VM continues running, incurring cost. Fix: replace .catch(() => {}) with .catch((err) => { log a warning to stderr with the VM ID and provider so the user can manually destroy it }).",
+    "id": "BUG-065",
+    "title": "Hardcoded AWS AMI IDs in aws.ts will become stale and silently break EC2 provisioning",
+    "intent": "EC2 provisioning must work in any supported AWS region with the current Ubuntu 24.04 LTS AMI. Hardcoded AMI IDs are a time bomb — runtime lookup is required.",
+    "description": "src/cloud/provisioning/providers/aws.ts lines 37-42 contain a hardcoded map of Ubuntu 24.04 AMI IDs per AWS region (e.g. 'us-east-1': 'ami-0c7217cdde317cfec'). AWS periodically updates these AMIs and the old IDs become invalid, causing provisioning to fail with an opaque EC2 error. Only 4 of ~25 AWS regions are covered — users in other regions fall back silently to the us-east-1 AMI which may not work in their region. Fix: add a runtime AMI lookup using the AWS EC2 DescribeImages API to fetch the current Ubuntu 24.04 LTS AMI for the target region at provision time. Fall back to hardcoded values only if the API call fails, and log a warning.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "No .catch(() => {}) on destroyVm() calls in snapshot.ts",
-      "Builder VM destroy failure logs a warning to stderr with VM ID and provider context"
+      "AWS provisioning resolves the current Ubuntu 24.04 LTS AMI for the target region at runtime via EC2 DescribeImages",
+      "Provisioning works in AWS regions not in the old hardcoded map",
+      "If DescribeImages fails, falls back to hardcoded map and logs a visible warning"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T14:30:06-07:00",
+    "startedAt": "2026-03-20T14:32:18-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T14:32:17-07:00"
+    "completedAt": "2026-03-20T14:37:37-07:00"
   },
-  "completedAt": "2026-03-20T14:32:17-07:00",
+  "completedAt": "2026-03-20T14:37:37-07:00",
   "attempts": 1
 }
