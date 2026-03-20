@@ -768,11 +768,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "2 one-line changes in one file. sanitizer.ts:125 — replace .catch(() => {}) with .catch(err => console.warn('[sanitizer] audit log write failed:', err)). sanitizer.ts:130 — replace .catch(() => {}) with .catch(err => console.warn('[sanitizer] quarantine write failed:', err)). Fire-and-forget is the correct pattern (sanitize() must never block on logging) — only the error visibility is wrong. Pattern identical to BUG-012 through BUG-019 and BUG-015 (which fixed audit/logger.ts but missed these callers). No blocking dependencies. Run secure/ tests after. Zero-risk."
+      "groomingNotes": "2 one-line changes in one file. sanitizer.ts:125 — replace .catch(() => {}) with .catch(err => console.warn('[sanitizer] audit log write failed:', err)). sanitizer.ts:130 — replace .catch(() => {}) with .catch(err => console.warn('[sanitizer] quarantine write failed:', err)). Fire-and-forget is the correct pattern (sanitize() must never block on logging) — only the error visibility is wrong. Pattern identical to BUG-012 through BUG-019 and BUG-015 (which fixed audit/logger.ts but missed these callers). No blocking dependencies. Run secure/ tests after. Zero-risk.",
+      "completedAt": "2026-03-19T18:29:46-07:00"
     },
     {
       "id": "BUG-053",
