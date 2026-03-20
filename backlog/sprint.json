@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773965965",
-  "startedAt": "2026-03-19T17:19:25-07:00",
+  "sprintId": "sprint-1773967020",
+  "startedAt": "2026-03-19T17:37:00-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-023",
-    "title": "Post-CQ-005: Update CLAUDE.md cross-module security code section",
-    "intent": "CLAUDE.md accurately reflects the canonical firewall location after CQ-005. Contributors find firewall code on first look.",
-    "description": "CQ-005 moves applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts to src/secure/firewall/firewall.ts. After CQ-005 completes, the CLAUDE.md 'Cross-module security code' section still references the old path: 'Egress firewall (iptables CLAWHQ_FWD) → src/build/launcher/firewall.ts'. This will mislead contributors looking for firewall code. Doc-only change, single section in one file. Steps: (1) Confirm CQ-005 is complete and src/secure/firewall/firewall.ts exists; (2) Open CLAUDE.md, find 'Cross-module security code' section; (3) Update firewall entry from src/build/launcher/firewall.ts to src/secure/firewall/firewall.ts; (4) Verify no other CLAUDE.md references point to the old location; (5) No code changes required.",
+    "id": "BUG-041",
+    "title": "Scattered timeout constants in build/installer, build/launcher/deploy+connect, and design/configure/ollama",
+    "intent": "All timeout constants in build/installer, build/launcher/deploy+connect, and design/configure/ollama have a single source of truth in config/defaults.ts. No local timeout literals remain in these files.",
+    "description": "Four more local timeout constants not yet in config/defaults.ts, continuing the BUG-038/BUG-039/BUG-040 sweep: src/build/installer/source.ts:26 (CLONE_TIMEOUT_MS=300_000), src/build/installer/source.ts:29 (BUILD_TIMEOUT_MS=600_000), src/build/launcher/deploy.ts:34 (COMPOSE_TIMEOUT_MS=120_000), src/build/launcher/connect.ts:24 (GATEWAY_RPC_TIMEOUT_MS=10_000 — note: BUG-038 adds this to defaults.ts as part of gateway/ sweep; verify it's exported and reuse it in connect.ts rather than adding a duplicate), src/design/configure/ollama.ts:11 (GENERATE_TIMEOUT_MS=120_000). Steps: (1) verify BUG-038 has already exported GATEWAY_RPC_TIMEOUT_MS=10_000 to defaults.ts — if yes, import it in connect.ts and remove local; (2) add INSTALL_CLONE_TIMEOUT_MS=300_000, INSTALL_BUILD_TIMEOUT_MS=600_000, DEPLOY_COMPOSE_TIMEOUT_MS=120_000, OLLAMA_GENERATE_TIMEOUT_MS=120_000 to src/config/defaults.ts; (3) import and replace in each file; (4) run build/ and design/ tests. Scope: 5 files, no logic change. Do NOT touch firewall.ts.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T17:19:25-07:00",
+    "startedAt": "2026-03-19T17:37:00-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T17:21:23-07:00"
+    "completedAt": "2026-03-19T17:40:18-07:00"
   },
-  "completedAt": "2026-03-19T17:21:23-07:00",
+  "completedAt": "2026-03-19T17:40:18-07:00",
   "attempts": 1
 }
