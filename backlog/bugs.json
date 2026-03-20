@@ -884,11 +884,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Explicitly deferred from BUG-036 sprint (grooming notes: 'The gatewayPort input on line 239 also lacks range validation... Focus on path traversal fix only'). BUG-037 established the correct NaN guard pattern for CLI options. BUG-051 added validatePort() to cli/ux.ts. The web handler should use the same validation logic (inline — do not import cli/ux into server code). Find the gatewayPort parseInt call in server.tsx (~line 239). After parseInt: (1) check isNaN — if true, return 400 with message 'Gateway port must be a number'; (2) check port < 1 || port > 65535 — if true, return 400 with message 'Gateway port must be between 1 and 65535'. Use the existing InitResult component pattern for error responses (BUG-036 shows the correct pattern). Test by submitting the /api/init form with port='abc' and port='99999'. Scope: 1 file, ~6 lines. No blocking dependencies."
+      "groomingNotes": "Explicitly deferred from BUG-036 sprint (grooming notes: 'The gatewayPort input on line 239 also lacks range validation... Focus on path traversal fix only'). BUG-037 established the correct NaN guard pattern for CLI options. BUG-051 added validatePort() to cli/ux.ts. The web handler should use the same validation logic (inline — do not import cli/ux into server code). Find the gatewayPort parseInt call in server.tsx (~line 239). After parseInt: (1) check isNaN — if true, return 400 with message 'Gateway port must be a number'; (2) check port < 1 || port > 65535 — if true, return 400 with message 'Gateway port must be between 1 and 65535'. Use the existing InitResult component pattern for error responses (BUG-036 shows the correct pattern). Test by submitting the /api/init form with port='abc' and port='99999'. Scope: 1 file, ~6 lines. No blocking dependencies.",
+      "completedAt": "2026-03-20T12:32:58-07:00"
     }
   ]
 }
