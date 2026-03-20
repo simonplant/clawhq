@@ -1,24 +1,24 @@
 {
-  "sprintId": "sprint-1774041195",
-  "startedAt": "2026-03-20T14:13:15-07:00",
+  "sprintId": "sprint-1774041373",
+  "startedAt": "2026-03-20T14:16:13-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-061",
-    "title": "Shell injection in demo --cloud browser open: exec() interpolates chatUrl without escaping",
-    "intent": "Browser launch must never pass user-derived or network-derived strings through a shell. execFile with argument array is the only acceptable form.",
-    "description": "src/cli/index.ts line 420 calls exec(`${openCmd} ${chatUrl}`) where chatUrl is constructed from cloud provisioning output (IP address + port). The URL is passed directly to a shell via exec() string interpolation with no quoting or escaping. A malformed API response containing shell metacharacters could execute arbitrary commands on the user's machine. Fix: replace exec(string) with execFile(cmd, [chatUrl]) to use argument-list form, which does not invoke a shell.",
+    "id": "BUG-064",
+    "title": "Firewall creation failure leaves provisioned VM with unrestricted inbound traffic — no abort",
+    "intent": "A provisioned agent must never reach the user in an insecure state. Firewall failure is fatal — the VM must be destroyed and the user must be told to retry.",
+    "description": "src/cloud/provisioning/engine.ts line 184: when adapter.createFirewall() fails, the engine logs a warning ('Inbound traffic is unrestricted') and continues, leaving the VM running without firewall protection. The instance is then registered as active in an insecure state. Users who see this warning may not understand that all ports are open to the internet. Fix: on firewall failure, abort provisioning, destroy the VM, and return a ProvisionError. A VM without firewall must not be registered as an active instance.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "exec() string interpolation replaced with execFile argument array in demo --cloud browser open",
-      "Browser opens correctly in demo --cloud on Linux and macOS",
-      "No shell is invoked when launching the browser URL"
+      "Firewall creation failure causes provisioning to abort and destroy the VM — no active instance is registered",
+      "User receives a clear error message that firewall failed and the VM was cleaned up automatically",
+      "No VM remains running after a firewall failure — verified by checking provider console"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T14:13:15-07:00",
+    "startedAt": "2026-03-20T14:16:13-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T14:16:11-07:00"
+    "completedAt": "2026-03-20T14:21:31-07:00"
   },
-  "completedAt": "2026-03-20T14:16:11-07:00",
+  "completedAt": "2026-03-20T14:21:31-07:00",
   "attempts": 1
 }
