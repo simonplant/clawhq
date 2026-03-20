@@ -1,20 +1,33 @@
 {
-  "sprintId": "sprint-1773970452",
-  "startedAt": "2026-03-19T18:34:12-07:00",
+  "sprintId": "sprint-1774031132",
+  "startedAt": "2026-03-20T11:25:32-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-054",
-    "title": "evolve/provider/registry.ts uses 'llama3.2' instead of OLLAMA_DEFAULT_MODEL constant",
-    "intent": "The Ollama provider registry uses the same default model as all other Ollama callers. No inconsistent model name literals remain after BUG-033.",
-    "description": "src/evolve/provider/registry.ts:42 hardcodes defaultModel: 'llama3.2' as a string literal. This is inconsistent with OLLAMA_DEFAULT_MODEL = 'llama3:8b' defined in src/config/defaults.ts (added by BUG-033 sprint). The provider registry uses a different model name (llama3.2 vs llama3:8b) which means the default provider has a different model than the rest of the system. BUG-033 swept design/configure/ollama.ts, design/configure/smart.ts, design/configure/wizard.ts, web/server.tsx, evolve/migrate/extract.ts, evolve/memory/summarize.ts — but missed registry.ts. Steps: (1) verify OLLAMA_DEFAULT_MODEL is exported from src/config/defaults.ts; (2) open src/evolve/provider/registry.ts; (3) add import { OLLAMA_DEFAULT_MODEL } from '../../config/defaults.js'; (4) replace 'llama3.2' string literal on line 42 with OLLAMA_DEFAULT_MODEL; (5) run evolve/ tests. Scope: 2 files, 2 lines changed. Zero logic change.",
-    "sourceBacklog": "bugs.json",
-    "steps": [],
-    "acceptanceCriteria": [],
+    "id": "CQ-043",
+    "title": "Cloud provisioning engine — spin up agents on DO/AWS/GCP from CLI",
+    "intent": "One command creates a running agent on a cloud provider. The user never touches a VPS console, SSH, or cloud-init. ClawHQ handles everything from VM creation to agent deployment.",
+    "description": "Core provisioning engine in src/cloud/provisioning/. Provider-agnostic interface with DigitalOcean as first implementation, AWS and GCP to follow. Flow: user runs `clawhq deploy --provider do` → ClawHQ creates VM via provider API → injects cloud-init (Docker + clawhq bootstrap) → waits for agent health → returns URL. Uses pre-built VM snapshots for speed where providers support them. Credentials stored locally in ~/.clawhq/cloud/credentials.json (mode 0600). VM metadata tracked in ~/.clawhq/cloud/instances.json for lifecycle management.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Define provider interface: ProvisionOptions, ProvisionResult, ProviderAdapter",
+      "Implement DigitalOcean adapter: create/destroy/status via DO API v2",
+      "Build cloud-init template: Docker install, clawhq install, agent bootstrap",
+      "Add instance registry: track provisioned VMs in ~/.clawhq/cloud/instances.json",
+      "Implement health polling: wait for agent to report healthy after provision",
+      "Wire CLI: clawhq deploy --provider do/aws/gcp with interactive credential setup"
+    ],
+    "acceptanceCriteria": [
+      "clawhq deploy --provider do creates a running agent on DigitalOcean",
+      "VM is provisioned, Docker installed, agent deployed, health verified — all automated",
+      "Cloud credentials stored securely (mode 0600, never in config files)",
+      "Instance lifecycle tracked: create, status, destroy from CLI",
+      "Provider interface is generic enough for AWS/GCP without rewrite"
+    ],
     "scope": [],
-    "startedAt": "2026-03-19T18:34:12-07:00",
+    "startedAt": "2026-03-20T11:25:32-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T18:35:39-07:00"
+    "completedAt": "2026-03-20T11:38:15-07:00"
   },
-  "completedAt": "2026-03-19T18:35:39-07:00",
+  "completedAt": "2026-03-20T11:38:15-07:00",
   "attempts": 1
 }

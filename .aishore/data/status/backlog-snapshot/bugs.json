@@ -734,14 +734,15 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
       "groomingNotes": "Pattern identical to BUG-011/BUG-033. Files: src/build/services/definitions.ts:15-52. Constants to add to defaults.ts: SERVICE_POSTGRES_IMAGE='postgres:16-alpine', SERVICE_REDIS_IMAGE='redis:7-alpine', SERVICE_QDRANT_IMAGE='qdrant/qdrant:v1.12.5', SERVICE_POSTGRES_PORT=5432, SERVICE_REDIS_PORT=6379, SERVICE_QDRANT_PORT=6333, SERVICE_HEALTHCHECK_INTERVAL='10s', SERVICE_HEALTHCHECK_TIMEOUT='5s', SERVICE_HEALTHCHECK_RETRIES=5. Also check if qdrant port 6333 is used in healthcheck URL http://localhost:6333 — if so, use SERVICE_QDRANT_PORT in template. Import and replace all literals in definitions.ts. Run build/ tests after. Zero logic change. No blocking dependencies.",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-19T18:16:14-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-19T19:16:00-07:00"
     },
     {
       "id": "BUG-051",
@@ -800,11 +801,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Missed instance from BUG-033 sprint. OLLAMA_DEFAULT_MODEL = 'llama3:8b' is already in defaults.ts (added by BUG-033). evolve/provider/registry.ts:42 has defaultModel: 'llama3.2' — a different model name. Fix: (1) grep defaults.ts to confirm OLLAMA_DEFAULT_MODEL is exported; (2) open evolve/provider/registry.ts; (3) add import { OLLAMA_DEFAULT_MODEL } from '../../config/defaults.js'; (4) replace 'llama3.2' with OLLAMA_DEFAULT_MODEL; (5) run evolve/ tests. Also check web/pages/init.tsx:59 which has an HTML placeholder — that can remain as-is (presentational, not runtime). Scope: 2 files, 2 lines. Zero logic change. No blocking dependencies — BUG-033 already done."
+      "groomingNotes": "Missed instance from BUG-033 sprint. OLLAMA_DEFAULT_MODEL = 'llama3:8b' is already in defaults.ts (added by BUG-033). evolve/provider/registry.ts:42 has defaultModel: 'llama3.2' — a different model name. Fix: (1) grep defaults.ts to confirm OLLAMA_DEFAULT_MODEL is exported; (2) open evolve/provider/registry.ts; (3) add import { OLLAMA_DEFAULT_MODEL } from '../../config/defaults.js'; (4) replace 'llama3.2' with OLLAMA_DEFAULT_MODEL; (5) run evolve/ tests. Also check web/pages/init.tsx:59 which has an HTML placeholder — that can remain as-is (presentational, not runtime). Scope: 2 files, 2 lines. Zero logic change. No blocking dependencies — BUG-033 already done.",
+      "completedAt": "2026-03-19T18:35:39-07:00"
     },
     {
       "id": "BUG-055",
@@ -815,11 +817,73 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Write-side companion to BUG-028 (which fixed read-side JSON.parse). Three save functions missing try-catch: evolve/provider/manifest.ts:38 (saveProviderManifest), evolve/role/manifest.ts:79 (saveRoleManifest), evolve/integrate/manifest.ts:38 (saveIntegrationManifest). Each calls writeFileSync directly with no error handling. Unlike BUG-034 (cloud state writers — heartbeat/fleet are best-effort) these manifest saves are critical path — a provider, role, or integration save that silently fails leaves the manifest in an inconsistent state. MUST THROW on error (do NOT log-only). Pattern to follow: BUG-034 treatment of trust-modes/switch.ts and commands/queue.ts (throw on failure). Error message template: 'Failed to save [type] manifest to [path]: [err.message]'. Run evolve/ tests after each file. No blocking dependencies — BUG-028 is done.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-19T18:38:24-07:00",
+      "failCount": 1,
+      "completedAt": "2026-03-19T19:16:00-07:00"
+    },
+    {
+      "id": "BUG-056",
+      "title": "cloud/ timeout and capacity constants not in config/defaults.ts",
+      "intent": "All cloud module timeout and capacity constants have a single source of truth in config/defaults.ts. No bare timeout literals or capacity magic numbers remain in cloud/.",
+      "description": "Two constants in the cloud module are not centralized in config/defaults.ts, continuing the timeout-sweep pattern from BUG-038 through BUG-046. (1) src/cloud/heartbeat/reporter.ts:202 uses AbortSignal.timeout(10_000) as an inline literal for the health reporter RPC timeout. (2) src/cloud/commands/queue.ts:28 defines const MAX_HISTORY = 100 as a local constant — an important capacity limit. Steps: (1) add CLOUD_HEARTBEAT_RPC_TIMEOUT_MS = 10_000 and CLOUD_COMMAND_QUEUE_MAX_HISTORY = 100 to src/config/defaults.ts with descriptive comments; (2) import and replace AbortSignal.timeout(10_000) in reporter.ts:202 with AbortSignal.timeout(CLOUD_HEARTBEAT_RPC_TIMEOUT_MS); (3) import and replace MAX_HISTORY in queue.ts:28 with CLOUD_COMMAND_QUEUE_MAX_HISTORY; (4) run cloud/ tests to confirm no regression. Scope: 3 files, ~6 lines changed. Zero logic change — pure constant extraction.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomedAt": "2026-03-19",
-      "groomingNotes": "Write-side companion to BUG-028 (which fixed read-side JSON.parse). Three save functions missing try-catch: evolve/provider/manifest.ts:38 (saveProviderManifest), evolve/role/manifest.ts:79 (saveRoleManifest), evolve/integrate/manifest.ts:38 (saveIntegrationManifest). Each calls writeFileSync directly with no error handling. Unlike BUG-034 (cloud state writers — heartbeat/fleet are best-effort) these manifest saves are critical path — a provider, role, or integration save that silently fails leaves the manifest in an inconsistent state. MUST THROW on error (do NOT log-only). Pattern to follow: BUG-034 treatment of trust-modes/switch.ts and commands/queue.ts (throw on failure). Error message template: 'Failed to save [type] manifest to [path]: [err.message]'. Run evolve/ tests after each file. No blocking dependencies — BUG-028 is done."
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Pattern identical to BUG-038 through BUG-046 (timeout constants sweep) and BUG-047/BUG-050 (capacity constants). Two items: (1) cloud/heartbeat/reporter.ts:202 AbortSignal.timeout(10_000) — add CLOUD_HEARTBEAT_RPC_TIMEOUT_MS = 10_000 to defaults.ts (comment: 'Cloud health reporter RPC ping timeout'); (2) cloud/commands/queue.ts:28 MAX_HISTORY = 100 — add CLOUD_COMMAND_QUEUE_MAX_HISTORY = 100 to defaults.ts (comment: 'Maximum command history entries retained in cloud command queue'). Import path from defaults.ts: for cloud/ files it should be ../../config/defaults.js. No other cloud timeout constants remain unswept — the full module was audited. Run cloud/ tests after each file change. No blocking dependencies — all prior constant sweeps are done."
+    },
+    {
+      "id": "BUG-057",
+      "title": "Host-side deployment subdirectory names hardcoded in cloud/ module",
+      "intent": "Host-side deployment subdirectory names and key filenames have a single source of truth in config/paths.ts. Changing the ClawHQ deployment directory structure requires editing one file.",
+      "description": "src/cloud/heartbeat/reporter.ts and src/cloud/fleet/discovery.ts hardcode the host-side deployment subdirectory names as inline string literals, same BUG-011/BUG-025 constant-scattering pattern. Locations: reporter.ts:104 join(deployDir, 'engine', 'credentials.json'), reporter.ts:122 join(deployDir, 'engine', 'docker-compose.yml'), reporter.ts:128 join(deployDir, 'engine', 'openclaw.json'), reporter.ts:152 join(deployDir, 'workspace', 'memory'), reporter.ts:27 join(deployDir, 'cloud', HEARTBEAT_FILE), discovery.ts:122 join(agentDeployDir, 'engine', 'openclaw.json'). The subdirectory names 'engine', 'workspace', 'cloud' and key filenames within them are part of ClawHQ deployment directory layout and should be constants in src/config/paths.ts alongside DEFAULT_DEPLOY_DIR. Steps: (1) add DEPLOY_ENGINE_SUBDIR = 'engine', DEPLOY_WORKSPACE_SUBDIR = 'workspace', DEPLOY_CLOUD_SUBDIR = 'cloud', DEPLOY_ENGINE_OPENCLAW_JSON = 'openclaw.json', DEPLOY_ENGINE_COMPOSE_FILE = 'docker-compose.yml', DEPLOY_ENGINE_CREDENTIALS_JSON = 'credentials.json', DEPLOY_WORKSPACE_MEMORY_DIR = 'memory' to src/config/paths.ts; (2) update reporter.ts to use path.join(deployDir, DEPLOY_ENGINE_SUBDIR, DEPLOY_ENGINE_CREDENTIALS_JSON) etc.; (3) update discovery.ts accordingly; (4) run cloud/ tests. Scope: 3 files, ~15 lines changed. Zero logic change.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Pattern identical to BUG-011 (Gateway port 18789 scattered). src/config/paths.ts already centralizes container-internal paths (OPENCLAW_CONTAINER_ROOT etc.) and DEFAULT_DEPLOY_DIR but does NOT define the host-side subdirectory layout. Add to paths.ts: DEPLOY_ENGINE_SUBDIR = 'engine', DEPLOY_WORKSPACE_SUBDIR = 'workspace', DEPLOY_CLOUD_SUBDIR = 'cloud', and file-name constants DEPLOY_ENGINE_OPENCLAW_FILE = 'openclaw.json', DEPLOY_ENGINE_COMPOSE_FILE = 'docker-compose.yml', DEPLOY_ENGINE_CREDENTIALS_FILE = 'credentials.json', DEPLOY_WORKSPACE_MEMORY_DIR = 'memory'. Then update cloud/heartbeat/reporter.ts (lines 27, 104, 122, 128, 152) and cloud/fleet/discovery.ts (line 122) to import and use the new constants. Import path from these files: ../../config/paths.js. Do NOT change join() call structure — only replace string literals. Run cloud/ tests after. Zero logic change. Also grep for other join(deployDir, 'engine' or 'workspace' or 'cloud') patterns across the full src/ to catch any other occurrences (build/launcher likely has some — scope those to a follow-up if found)."
+    },
+    {
+      "id": "BUG-058",
+      "title": "Post-CQ-043: CLAUDE.md Key Source Layout missing cloud/provisioning/ module entry",
+      "intent": "CLAUDE.md Key Source Layout accurately describes cloud/provisioning/ after CQ-043. Contributors find provisioning code on first look.",
+      "description": "CQ-043 (cloud provisioning engine) creates src/cloud/provisioning/ with provider interface, DigitalOcean adapter, instance registry, and health polling. After CQ-043 completes, CLAUDE.md Key Source Layout under the cloud/ section will be missing this new subdirectory. Same pattern as BUG-006 (src/web/ doc update), BUG-008 (src/secure/ doc update), and BUG-023 (firewall path doc update). Steps: (1) confirm CQ-043 is complete and src/cloud/provisioning/ exists with its key files; (2) open CLAUDE.md, find the cloud/ section in Key Source Layout; (3) add cloud/provisioning/ entry with subdirectories (providers/, cloud-init.ts, snapshot.ts) and ownership description; (4) update docs/ARCHITECTURE.md cloud module section to reflect provisioning submodule; (5) no code changes. Scope: 2 doc files, doc-only change. BLOCKED on CQ-043 — do not sprint until src/cloud/provisioning/ exists.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "BUG-059",
+      "title": "Web dashboard /api/init gatewayPort input missing range validation",
+      "intent": "Web dashboard /api/init rejects invalid gateway port values with a clear error. No NaN or out-of-range port reaches the generated config.",
+      "description": "src/web/server.tsx:239 accepts a user-supplied gatewayPort from POST /api/init and parses it with parseInt, but does not validate: (1) isNaN check, (2) range check (1-65535). BUG-036 grooming notes explicitly deferred this: 'The gatewayPort input on line 239 also lacks range validation: add isNaN check (line 254 already does this — pattern already there). Focus on path traversal fix only.' This deferred item needs to be addressed. An invalid port value (NaN, 0, 65536, negative) is written directly into the generated openclaw.json config, which will either fail silently or produce an unrunnable agent config with no clear error message to the user. BUG-037 fixed CLI parseInt NaN propagation; BUG-051 added validatePort() helper to src/cli/ux.ts. Steps: (1) open src/web/server.tsx; (2) find the gatewayPort parseInt call (~line 239); (3) add isNaN check and port range validation (1-65535) matching the pattern at line 254; (4) on invalid port, return c.html(<InitResult success={false} message='Invalid gateway port: must be 1-65535'/>) with status 400; (5) run web/ tests to confirm no regression. Scope: ~5 lines in one file.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Explicitly deferred from BUG-036 sprint (grooming notes: 'The gatewayPort input on line 239 also lacks range validation... Focus on path traversal fix only'). BUG-037 established the correct NaN guard pattern for CLI options. BUG-051 added validatePort() to cli/ux.ts. The web handler should use the same validation logic (inline — do not import cli/ux into server code). Find the gatewayPort parseInt call in server.tsx (~line 239). After parseInt: (1) check isNaN — if true, return 400 with message 'Gateway port must be a number'; (2) check port < 1 || port > 65535 — if true, return 400 with message 'Gateway port must be between 1 and 65535'. Use the existing InitResult component pattern for error responses (BUG-036 shows the correct pattern). Test by submitting the /api/init form with port='abc' and port='99999'. Scope: 1 file, ~6 lines. No blocking dependencies."
     }
   ]
 }
