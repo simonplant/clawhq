@@ -6,6 +6,7 @@
  * the monitor loop.
  */
 
+import { TELEGRAM_API_BASE } from "../../config/defaults.js";
 import type {
   NotificationChannel,
   NotifyResult,
@@ -64,7 +65,7 @@ async function sendTelegram(
   const text = `*${escapeMarkdown(subject)}*\n\n${escapeMarkdown(body)}`;
 
   try {
-    const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
+    const url = `${TELEGRAM_API_BASE}/bot${config.botToken}/sendMessage`;
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

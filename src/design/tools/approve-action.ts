@@ -17,6 +17,8 @@
  *   approve-action list
  */
 
+import { TELEGRAM_API_BASE } from "../../config/defaults.js";
+
 export function generateApproveActionTool(): string {
   return `#!/usr/bin/env node
 // approve-action — submit high-stakes actions for user approval
@@ -132,7 +134,7 @@ async function sendTelegramNotification(config, item) {
   };
 
   try {
-    const res = await fetch(\`https://api.telegram.org/bot\${config.botToken}/sendMessage\`, {
+    const res = await fetch(\`${TELEGRAM_API_BASE}/bot\${config.botToken}/sendMessage\`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
