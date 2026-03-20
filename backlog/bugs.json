@@ -702,11 +702,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "BUG-044 fixed telegram.ts (TELEGRAM_API_BASE already in defaults.ts but callers didn't import it). Same pattern for provider/registry.ts. ANTHROPIC_API_BASE = 'https://api.anthropic.com' and OPENAI_API_BASE = 'https://api.openai.com' were added to defaults.ts by BUG-030. evolve/provider/registry.ts:20,29 ignores them. Fix: (1) open evolve/provider/registry.ts; (2) add import { ANTHROPIC_API_BASE, OPENAI_API_BASE } from '../../config/defaults.js'; (3) replace hardcoded baseUrl string literals with the constants; (4) run evolve/ tests. Grep defaults.ts to confirm both constants are exported before starting. Zero logic change — pure import substitution. No blocking dependencies."
+      "groomingNotes": "BUG-044 fixed telegram.ts (TELEGRAM_API_BASE already in defaults.ts but callers didn't import it). Same pattern for provider/registry.ts. ANTHROPIC_API_BASE = 'https://api.anthropic.com' and OPENAI_API_BASE = 'https://api.openai.com' were added to defaults.ts by BUG-030. evolve/provider/registry.ts:20,29 ignores them. Fix: (1) open evolve/provider/registry.ts; (2) add import { ANTHROPIC_API_BASE, OPENAI_API_BASE } from '../../config/defaults.js'; (3) replace hardcoded baseUrl string literals with the constants; (4) run evolve/ tests. Grep defaults.ts to confirm both constants are exported before starting. Zero logic change — pure import substitution. No blocking dependencies.",
+      "completedAt": "2026-03-19T18:13:13-07:00"
     },
     {
       "id": "BUG-049",

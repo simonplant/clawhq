@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773968942",
-  "startedAt": "2026-03-19T18:09:02-07:00",
+  "sprintId": "sprint-1773969097",
+  "startedAt": "2026-03-19T18:11:37-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-047",
-    "title": "BOOTSTRAP_MAX_CHARS 20_000 scattered across 4 files",
-    "intent": "Bootstrap max chars has a single source of truth in config/defaults.ts. No bare 20_000 literal appears in runtime code outside that file.",
-    "description": "The constant 20_000 (bootstrap max chars limit) is defined as a local magic number in four separate files: src/design/configure/generate.ts:127, src/design/identity/index.ts:27, src/operate/doctor/checks.ts:393, and src/config/validate.ts:26. This is the same BUG-011/BUG-025 constant-scattering pattern. If the limit changes, all four files must be updated. Steps: (1) add BOOTSTRAP_MAX_CHARS = 20_000 to src/config/defaults.ts with a comment describing its purpose; (2) import and replace the literal in generate.ts, identity/index.ts, doctor/checks.ts, and validate.ts; (3) run full test suite. Scope: 5 files, ~6 lines changed. Zero logic change — pure constant extraction.",
+    "id": "BUG-048",
+    "title": "Provider registry hardcodes API base URLs despite constants existing in defaults.ts",
+    "intent": "evolve/provider/registry.ts imports ANTHROPIC_API_BASE and OPENAI_API_BASE from config/defaults.ts. No literal API base URLs remain in that file.",
+    "description": "src/evolve/provider/registry.ts:20,29 hardcodes baseUrl: 'https://api.anthropic.com' and baseUrl: 'https://api.openai.com' as string literals. Both constants ANTHROPIC_API_BASE and OPENAI_API_BASE are already defined and exported from src/config/defaults.ts (added by BUG-030). The registry simply doesn't import them. This is the same pattern BUG-044 fixed for telegram.ts (TELEGRAM_API_BASE). Steps: (1) verify ANTHROPIC_API_BASE and OPENAI_API_BASE are exported from src/config/defaults.ts; (2) import both in src/evolve/provider/registry.ts; (3) replace the two hardcoded baseUrl string literals with the constants; (4) run evolve/ tests. Scope: 2 files, ~4 lines changed. Zero logic change.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T18:09:02-07:00",
+    "startedAt": "2026-03-19T18:11:37-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T18:11:35-07:00"
+    "completedAt": "2026-03-19T18:13:13-07:00"
   },
-  "completedAt": "2026-03-19T18:11:35-07:00",
+  "completedAt": "2026-03-19T18:13:13-07:00",
   "attempts": 1
 }
