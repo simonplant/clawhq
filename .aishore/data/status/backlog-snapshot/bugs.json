@@ -591,11 +591,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Part of the constants-centralization sweep (BUG-011, BUG-024 through BUG-033, BUG-038, BUG-039, BUG-040). Files and constants: (1) build/installer/source.ts:26,29 — CLONE_TIMEOUT_MS=300_000, BUILD_TIMEOUT_MS=600_000 (from-source install path, source clone and Docker build timeouts); (2) build/launcher/deploy.ts:34 — COMPOSE_TIMEOUT_MS=120_000 (docker compose up timeout); (3) build/launcher/connect.ts:24 — GATEWAY_RPC_TIMEOUT_MS=10_000 (IMPORTANT: BUG-038 adds this to defaults.ts already — reuse rather than duplicate, just update the import); (4) design/configure/ollama.ts:11 — GENERATE_TIMEOUT_MS=120_000 (local Ollama inference timeout, comment says '2 minutes — local inference can be slow' — preserve this comment in defaults.ts). Key dependency check: run BUG-038 sprint first if GATEWAY_RPC_TIMEOUT_MS is not yet in defaults.ts. Otherwise no blocking dependencies. Run build/ and design/ tests after. Scope: 5 files, ~10 lines changed."
+      "groomingNotes": "Part of the constants-centralization sweep (BUG-011, BUG-024 through BUG-033, BUG-038, BUG-039, BUG-040). Files and constants: (1) build/installer/source.ts:26,29 — CLONE_TIMEOUT_MS=300_000, BUILD_TIMEOUT_MS=600_000 (from-source install path, source clone and Docker build timeouts); (2) build/launcher/deploy.ts:34 — COMPOSE_TIMEOUT_MS=120_000 (docker compose up timeout); (3) build/launcher/connect.ts:24 — GATEWAY_RPC_TIMEOUT_MS=10_000 (IMPORTANT: BUG-038 adds this to defaults.ts already — reuse rather than duplicate, just update the import); (4) design/configure/ollama.ts:11 — GENERATE_TIMEOUT_MS=120_000 (local Ollama inference timeout, comment says '2 minutes — local inference can be slow' — preserve this comment in defaults.ts). Key dependency check: run BUG-038 sprint first if GATEWAY_RPC_TIMEOUT_MS is not yet in defaults.ts. Otherwise no blocking dependencies. Run build/ and design/ tests after. Scope: 5 files, ~10 lines changed.",
+      "completedAt": "2026-03-19T17:40:18-07:00"
     },
     {
       "id": "BUG-042",
@@ -610,6 +611,66 @@
       "passes": false,
       "readyForSprint": true,
       "groomingNotes": "Deferred from BUG-040 (grooming notes: 'Do NOT touch src/build/launcher/firewall.ts:25 — deferred to BUG-020 post-CQ-005'). CQ-005 is now done. File stayed at src/build/launcher/firewall.ts:31 — const EXEC_TIMEOUT_MS = 15_000. DOCTOR_EXEC_TIMEOUT_MS = 15_000 already in defaults.ts (added by BUG-038). Reuse it — same value, one source of truth. Import path: ../../config/defaults.js. Grep firewall.ts for EXEC_TIMEOUT_MS to find all usage sites. Run: npm test (or equivalent) after change. Pattern identical to BUG-038/039/040/041 constant sweep. No blocking dependencies — BUG-038 already exported the constant."
+    },
+    {
+      "id": "BUG-043",
+      "title": "Anthropic API version '2023-06-01' hardcoded in 3 files",
+      "intent": "ANTHROPIC_API_VERSION has a single source of truth in config/defaults.ts. No literal version string appears in runtime code outside that file.",
+      "description": "The Anthropic API version string '2023-06-01' is hardcoded as a literal in three separate files: src/secure/credentials/probes.ts:80 (anthropic-version header), src/evolve/integrate/validate.ts:53 (anthropic-version header), src/evolve/provider/lifecycle.ts:90 (anthropic-version header). If Anthropic updates their minimum supported API version, this must be updated in three places with no single source of truth. Same BUG-026 pattern (WhatsApp API version mismatch) — that fix added WHATSAPP_GRAPH_API_VERSION to defaults.ts. Steps: (1) add ANTHROPIC_API_VERSION = '2023-06-01' to src/config/defaults.ts; (2) import and replace the literal string in all three files; (3) run tests to confirm no regression. Scope: 4 files, ~6 lines changed. Pattern identical to BUG-026.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Pattern identical to BUG-026 (WhatsApp API version). Three files all use '2023-06-01' as a literal header value: secure/credentials/probes.ts:80, evolve/integrate/validate.ts:53, evolve/provider/lifecycle.ts:90. Add ANTHROPIC_API_VERSION = '2023-06-01' to src/config/defaults.ts. Import and replace in all three files. Note: BUG-030 already added ANTHROPIC_API_BASE to defaults.ts — this is the complementary version constant. Verify imports are consistent across all three files after change. Run secure/ and evolve/ tests. No blocking dependencies — BUG-030 is done."
+    },
+    {
+      "id": "BUG-044",
+      "title": "Telegram API base URL hardcoded in 3 files despite TELEGRAM_API_BASE constant existing",
+      "intent": "No Telegram API base URL literal appears in runtime code. All three callers import TELEGRAM_API_BASE from config/defaults.ts.",
+      "description": "The Telegram API base URL 'https://api.telegram.org' is hardcoded as a string literal in three files even though TELEGRAM_API_BASE is already defined in src/config/defaults.ts (added by BUG-030). Locations: src/build/launcher/connect.ts:22 (const TELEGRAM_API = 'https://api.telegram.org'), src/evolve/approval/telegram.ts:118,142 (inline template literals), src/operate/monitor/notify.ts:67 (inline template literal). These files know about other constants from defaults.ts but skip TELEGRAM_API_BASE. Steps: (1) verify TELEGRAM_API_BASE is exported from src/config/defaults.ts (should be from BUG-030); (2) import TELEGRAM_API_BASE in connect.ts, telegram.ts, notify.ts; (3) replace local const TELEGRAM_API and inline literals with the constant; (4) run build/, evolve/, and operate/ tests. Scope: 4 files, ~6 lines changed. Pattern: BUG-025 (Ollama URL), BUG-030 (API base URLs).",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "TELEGRAM_API_BASE is already in defaults.ts (added by BUG-030 sprint). Three callers hardcode the URL anyway: connect.ts:22 defines local const TELEGRAM_API, telegram.ts:118,142 uses inline template literals, notify.ts:67 uses inline template literal. All must import from defaults.ts. Check: grep defaults.ts for TELEGRAM_API_BASE to confirm it exists. If not present (BUG-030 may have only added TELEGRAM_API_BASE to validate.ts context), add it to defaults.ts first. Import path varies by file: connect.ts uses ../../config/defaults.js, telegram.ts uses ../../config/defaults.js, notify.ts uses ../../config/defaults.js. Run build/ evolve/ operate/ tests after. No blocking dependencies — BUG-030 is done."
+    },
+    {
+      "id": "BUG-045",
+      "title": "API probe URLs in secure/credentials/probes.ts not using defaults.ts constants",
+      "intent": "No hardcoded API URL literals appear in secure/credentials/probes.ts. All probe endpoints derive from constants already defined in config/defaults.ts.",
+      "description": "src/secure/credentials/probes.ts hardcodes three probe API URLs as string literals despite the constants ANTHROPIC_API_BASE, OPENAI_API_BASE, and TELEGRAM_API_BASE already being defined in src/config/defaults.ts (added by BUG-030). Locations: line 76 'https://api.anthropic.com/v1/models', line 125 'https://api.openai.com/v1/models', line 171 'https://api.telegram.org/bot{token}/getMe'. Note: src/evolve/integrate/validate.ts does the same thing (BUG-030 fixed validate.ts) but probes.ts in secure/ was missed — it is a parallel credential probe implementation with identical hardcoding. Steps: (1) import ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE from ../../config/defaults.js in probes.ts; (2) replace the three literal URL strings with template expressions using the constants; (3) also replace the anthropic-version header literal with ANTHROPIC_API_VERSION from defaults.ts (BUG-043 adds this constant); (4) run secure/ tests. Scope: 1 file, ~6 lines changed. No blocking dependencies if BUG-043 is done first (or run alongside).",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "BUG-030 fixed evolve/integrate/validate.ts but missed the parallel implementation in secure/credentials/probes.ts. Three probe URLs and one API version header need replacing. Sequence: (1) verify ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE exported from defaults.ts (should be from BUG-030); (2) BUG-043 adds ANTHROPIC_API_VERSION — sprint BUG-043 first or combine in same PR; (3) import constants in probes.ts (import path: ../../config/defaults.js); (4) replace probes.ts:76 with template using ANTHROPIC_API_BASE; (5) replace probes.ts:125 with OPENAI_API_BASE; (6) replace probes.ts:171 with TELEGRAM_API_BASE; (7) replace probes.ts:80 anthropic-version value with ANTHROPIC_API_VERSION; (8) run secure/ tests. Soft dependency on BUG-043 for the version header (can hardcode that part and defer if needed). Zero logic change."
+    },
+    {
+      "id": "BUG-046",
+      "title": "Inline timeout literals in design/configure/ollama.ts and evolve/approval/telegram.ts not in defaults.ts",
+      "intent": "All AbortSignal timeout and polling interval values in design/ and evolve/ modules have a single source of truth in config/defaults.ts. No bare timeout literals remain in those files.",
+      "description": "Two files contain inline timeout values not yet centralized in config/defaults.ts, continuing the BUG-038 through BUG-041 timeout sweep. (1) src/design/configure/ollama.ts: lines 38 and 58 use AbortSignal.timeout(5_000) — an Ollama tag-listing probe timeout. OLLAMA_GENERATE_TIMEOUT_MS (120_000) was added by BUG-041 but this shorter 5_000ms probe timeout was missed. (2) src/evolve/approval/telegram.ts: line 124 uses timeout: 30 (Telegram long-polling timeout in seconds). This controls how long the bot waits for updates — a tunable value with no constant. Steps: (1) add OLLAMA_PROBE_TIMEOUT_MS = 5_000 to src/config/defaults.ts with a comment 'Ollama availability check and model listing timeout'; (2) add TELEGRAM_POLLING_TIMEOUT_SEC = 30 to src/config/defaults.ts with a comment 'Telegram long-poll getUpdates timeout in seconds'; (3) import and replace in ollama.ts (lines 38, 58) and telegram.ts (line 124); (4) run design/ and evolve/ tests. Scope: 3 files, ~6 lines changed. Pattern: BUG-038/039/040/041.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Direct follow-up to BUG-041 timeout sweep. Two remaining timeout literals missed: (1) design/configure/ollama.ts:38,58 — AbortSignal.timeout(5_000). BUG-041 added OLLAMA_GENERATE_TIMEOUT_MS for the inference timeout but this shorter 5s probe timeout for tag-listing was not covered. Add OLLAMA_PROBE_TIMEOUT_MS = 5_000 to defaults.ts. (2) evolve/approval/telegram.ts:124 — { timeout: 30 } in Telegram getUpdates long-poll fetch. Add TELEGRAM_POLLING_TIMEOUT_SEC = 30 to defaults.ts. Both are standalone — no blocking dependencies. Pattern is identical to BUG-038/039/040/041. Run design/ and evolve/ tests after. Zero logic change."
     }
   ]
 }
