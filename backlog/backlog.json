@@ -1058,25 +1058,37 @@
     },
     {
       "id": "CQ-042",
-      "title": "Smoke test + backing services",
+      "title": "clawhq demo \u2014 zero-config working agent in 60 seconds",
       "intent": "Post-deploy smoke test must send a real message and get a response \u2014 'container started' is not 'agent works'. Users must not discover a dead agent by noticing silence.",
-      "description": "MUST: The first-deploy user experience is broken without this. 'clawhq up succeeded' when the agent doesn't actually respond is worse than a clear failure \u2014 the user wastes time debugging a silently dead agent. Upgrade to must: smoke test (real message + response) is non-negotiable for deploy confidence. Scope split: smoke test (real message exchange) is must; backing services (postgres/redis/qdrant) can be a separate should item if needed. Acceptance: 'clawhq up' ends with a real message sent to agent and response received; failure is loud with actionable fix; 'clawhq service add postgres' configures backing service.",
+      "description": "Ship a `clawhq demo` command that spins up a fully working agent with zero configuration. Two paths: (1) Cloud-first (default): provisions an ephemeral instance on DigitalOcean, deploys agent, hands back a browser URL. Auto-destroys after 1 hour or upgrade to keep. No local Docker needed. (2) Local fallback: `clawhq demo --local` uses local Docker + Ollama if available. Both paths end with the user talking to their agent in a browser within 60 seconds. No API keys, no messaging setup, no .env files. This is the command that turns ClawHQ from an architecture into a product.",
       "category": "build",
       "priority": "must",
       "status": "done",
       "readyForSprint": false,
       "steps": [
-        "Implement post-deploy smoke test: send real message, verify response",
-        "Implement 'clawhq service add' for postgres, redis, qdrant backing services",
-        "Make deploy fail loudly if smoke test fails"
+        "Create demo blueprint: zero external deps, web chat UI, local Ollama or mock LLM",
+        "Cloud path: provision ephemeral DO droplet via CQ-043, deploy agent, return URL",
+        "Local path: Docker + Ollama detection, fallback to mock LLM",
+        "Embedded web chat page (extend CQ-040 dashboard with /chat route)",
+        "Ephemeral mode: auto-cleanup on exit (local) or 1-hour TTL (cloud)",
+        "Progress UI: clear step-by-step terminal output with time estimates",
+        "clawhq demo --keep to convert ephemeral to permanent deployment"
       ],
       "acceptanceCriteria": [
-        "'clawhq up' ends with real message sent to agent and response received",
-        "Smoke test failure is loud with actionable fix guidance",
-        "'clawhq service add postgres' configures backing service correctly"
+        "clawhq demo produces a working agent on a fresh machine \u2014 no Docker required for cloud path",
+        "No API keys, tokens, or manual configuration required",
+        "User is talking to the agent in their browser within 60 seconds",
+        "Cloud demo auto-destroys after 1 hour unless upgraded",
+        "Local demo cleans up on exit",
+        "Works fully offline with --local if Docker and Ollama are pre-installed"
       ],
       "passes": true,
-      "completedAt": "2026-03-19T04:24:32-07:00"
+      "completedAt": "2026-03-19T04:24:32-07:00",
+      "dependencies": [
+        "CQ-040",
+        "CQ-043"
+      ],
+      "groomingNotes": "THE PRODUCT UNLOCK. Cloud-first path removes the Docker gate \u2014 biggest friction point. Local fallback preserves sovereignty story. Depends on CQ-043 (cloud provisioning) for the cloud path. The 60-second budget: ~5s provision, ~20s deploy, ~10s health check, ~25s buffer. DigitalOcean API can create a droplet in <10s with a pre-built snapshot."
     },
     {
       "id": "FEAT-001",
@@ -1132,6 +1144,212 @@
       ],
       "groomedAt": "2026-03-20",
       "groomingNotes": "THE PRODUCT UNLOCK. Every current path to a running agent has gates (Telegram token, Docker config, blueprint selection, credentials). Each gate loses ~80% of potential users. This command eliminates all gates for first experience. Not a toy \u2014 it runs the real platform stack in demo mode, so the user sees exactly what they would get in production. Priority: must \u2014 without this, the product has no acquisition funnel. Depends on CQ-040 (web dashboard) for the chat UI surface. Consider: could this reuse the web dashboard pages with a \"demo chat\" page added?"
+    },
+    {
+      "id": "CQ-043",
+      "title": "Cloud provisioning engine \u2014 spin up agents on DO/AWS/GCP from CLI",
+      "intent": "One command creates a running agent on a cloud provider. The user never touches a VPS console, SSH, or cloud-init. ClawHQ handles everything from VM creation to agent deployment.",
+      "description": "Core provisioning engine in src/cloud/provisioning/. Provider-agnostic interface with DigitalOcean as first implementation, AWS and GCP to follow. Flow: user runs `clawhq deploy --provider do` \u2192 ClawHQ creates VM via provider API \u2192 injects cloud-init (Docker + clawhq bootstrap) \u2192 waits for agent health \u2192 returns URL. Uses pre-built VM snapshots for speed where providers support them. Credentials stored locally in ~/.clawhq/cloud/credentials.json (mode 0600). VM metadata tracked in ~/.clawhq/cloud/instances.json for lifecycle management.",
+      "category": "cloud",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "dependencies": [],
+      "steps": [
+        "Define provider interface: ProvisionOptions, ProvisionResult, ProviderAdapter",
+        "Implement DigitalOcean adapter: create/destroy/status via DO API v2",
+        "Build cloud-init template: Docker install, clawhq install, agent bootstrap",
+        "Add instance registry: track provisioned VMs in ~/.clawhq/cloud/instances.json",
+        "Implement health polling: wait for agent to report healthy after provision",
+        "Wire CLI: clawhq deploy --provider do/aws/gcp with interactive credential setup"
+      ],
+      "acceptanceCriteria": [
+        "clawhq deploy --provider do creates a running agent on DigitalOcean",
+        "VM is provisioned, Docker installed, agent deployed, health verified \u2014 all automated",
+        "Cloud credentials stored securely (mode 0600, never in config files)",
+        "Instance lifecycle tracked: create, status, destroy from CLI",
+        "Provider interface is generic enough for AWS/GCP without rewrite"
+      ],
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "EPIC ANCHOR. This is the infrastructure layer that CQ-042 (demo), CQ-045 (AWS), and CQ-046 (GCP) all depend on. Start with DigitalOcean \u2014 they have an existing OpenClaw hosting solution and the simplest API. The provider interface must be clean from day one because AWS and GCP adapters follow immediately. Key design decision: cloud-init vs pre-built snapshot. Cloud-init is slower (~2-3 min) but works everywhere. Pre-built snapshots are fast (~30s) but require per-provider image maintenance. Recommendation: support both, prefer snapshot when available."
+    },
+    {
+      "id": "CQ-044",
+      "title": "DigitalOcean provider adapter",
+      "intent": "DigitalOcean is the fastest path to cloud deployment. Existing OpenClaw hosting on DO means the ecosystem is proven. First provider, reference implementation for the adapter interface.",
+      "description": "Implement DigitalOceanAdapter in src/cloud/provisioning/providers/digitalocean.ts. Uses DO API v2 for droplet lifecycle. Supports both cloud-init (universal) and pre-built snapshot (fast) paths. Smallest viable droplet: s-1vcpu-1gb ($6/mo). Includes SSH key injection for emergency access, firewall group creation (ports 443 + gateway only), and floating IP for stable DNS. API token stored in ~/.clawhq/cloud/credentials.json.",
+      "category": "cloud",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "dependencies": [
+        "CQ-043"
+      ],
+      "steps": [
+        "Implement DO API v2 client: droplets, SSH keys, firewalls, snapshots",
+        "Create droplet with cloud-init: Docker + clawhq + agent bootstrap script",
+        "Build pre-built snapshot workflow: create golden image, register as DO snapshot",
+        "Add DO firewall group: allow 443 (HTTPS) + gateway port, block everything else",
+        "Implement status polling: wait for droplet active + agent healthy",
+        "Add destroy with verification: terminate droplet, confirm deletion"
+      ],
+      "acceptanceCriteria": [
+        "DO droplet created and agent running within 3 minutes (cloud-init) or 60 seconds (snapshot)",
+        "Firewall restricts inbound to HTTPS + gateway port only",
+        "API token setup is interactive with validation before storage",
+        "Droplet can be destroyed cleanly from CLI",
+        "Cost is transparent: shown during provision and in status output"
+      ],
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Reference implementation. Keep the DO-specific code thin \u2014 most logic should be in the generic provisioning engine (CQ-043). DO API is simple: POST /v2/droplets with user_data for cloud-init. Pre-built snapshot path: create a droplet, install everything, snapshot it, destroy the builder. Then future provisions use the snapshot ID. Region selection: auto-pick closest or let user choose."
+    },
+    {
+      "id": "CQ-045",
+      "title": "AWS provider adapter (EC2 + cloud-init)",
+      "intent": "AWS is where enterprise and power users already have accounts. Supporting EC2 removes the \"I only use AWS\" blocker.",
+      "description": "Implement AWSAdapter in src/cloud/provisioning/providers/aws.ts. Uses AWS SDK v3 for EC2 lifecycle. Launches t3.micro (free tier eligible) or t3.small with cloud-init user data. Creates security group (443 + gateway port inbound), key pair for emergency SSH. Supports AMI snapshots for fast provision. Credentials via AWS CLI profile or explicit access key \u2014 stored in ~/.clawhq/cloud/credentials.json, never in environment.",
+      "category": "cloud",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "dependencies": [
+        "CQ-043"
+      ],
+      "steps": [
+        "Implement EC2 client via AWS SDK v3: launch, terminate, describe, security groups",
+        "Create cloud-init user data script for Amazon Linux 2023 / Ubuntu",
+        "Build security group: inbound 443 + gateway, outbound all (agent firewall handles egress)",
+        "Add AMI snapshot workflow for fast re-provision",
+        "Implement region selection with latency estimation",
+        "Wire into provider interface with credential validation"
+      ],
+      "acceptanceCriteria": [
+        "EC2 instance launched and agent running within 3 minutes",
+        "Security group restricts inbound to HTTPS + gateway port",
+        "Works with existing AWS CLI credentials or explicit key entry",
+        "Free tier eligible instance type used by default",
+        "Instance can be stopped/started/terminated from CLI"
+      ],
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Second provider. AWS SDK v3 is TypeScript-native \u2014 good fit. Key complexity: IAM permissions. The user needs ec2:RunInstances, ec2:TerminateInstances, ec2:CreateSecurityGroup, etc. Document the minimum IAM policy. Consider: should we support AWS Lightsail as a simpler alternative to raw EC2?"
+    },
+    {
+      "id": "CQ-046",
+      "title": "GCP provider adapter (Compute Engine + cloud-init)",
+      "intent": "GCP completes the big-three cloud coverage. Same pattern as AWS adapter.",
+      "description": "Implement GCPAdapter in src/cloud/provisioning/providers/gcp.ts. Uses Google Cloud Compute API for VM lifecycle. Launches e2-micro (free tier) or e2-small. Creates firewall rule on default network. Credentials via gcloud CLI or service account JSON. Same cloud-init bootstrap as DO/AWS.",
+      "category": "cloud",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "dependencies": [
+        "CQ-043"
+      ],
+      "steps": [
+        "Implement Compute Engine client: create, delete, get, set metadata",
+        "Create cloud-init startup script for Debian/Ubuntu GCE images",
+        "Build firewall rule: allow 443 + gateway port from 0.0.0.0/0",
+        "Implement machine image snapshot for fast re-provision",
+        "Wire into provider interface with credential validation"
+      ],
+      "acceptanceCriteria": [
+        "GCE instance launched and agent running within 3 minutes",
+        "Firewall rule restricts inbound to HTTPS + gateway port",
+        "Works with gcloud CLI credentials or service account key",
+        "Free tier eligible instance type used by default"
+      ],
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Third provider. Same pattern as CQ-045. GCP complexity: project selection, zone vs region, firewall rules on VPC network instead of per-instance. Consider deferring if DO + AWS cover 90% of users."
+    },
+    {
+      "id": "CQ-047",
+      "title": "clawhq deploy \u2014 unified cloud deployment command",
+      "intent": "Single command to deploy an agent to any supported cloud provider. The user picks a provider, clawhq does the rest.",
+      "description": "Wire the provisioning engine into a user-facing `clawhq deploy` command. Interactive flow: choose provider \u2192 enter/confirm credentials \u2192 select region \u2192 select blueprint \u2192 provision \u2192 deploy \u2192 verify \u2192 return URL. Non-interactive mode with flags for CI/automation. Shows cost estimate before confirming. Integrates with existing cloud module (trust modes, heartbeat) for post-deploy monitoring.",
+      "category": "cloud",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "dependencies": [
+        "CQ-043",
+        "CQ-044"
+      ],
+      "steps": [
+        "Build interactive deploy wizard: provider \u2192 credentials \u2192 region \u2192 blueprint \u2192 confirm",
+        "Add cost estimation: show monthly cost before provisioning",
+        "Implement non-interactive mode: --provider, --region, --blueprint flags",
+        "Post-deploy: auto-configure trust mode (zero-trust default), start heartbeat",
+        "Add clawhq deploy status: show all cloud-deployed agents",
+        "Add clawhq deploy destroy: teardown with confirmation"
+      ],
+      "acceptanceCriteria": [
+        "clawhq deploy walks user through cloud deployment end-to-end",
+        "Cost shown before confirmation \u2014 no surprise bills",
+        "Non-interactive mode works for automation",
+        "Post-deploy monitoring configured automatically",
+        "Destroy is clean: VM terminated, DNS removed, local state cleaned"
+      ],
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "This is the user-facing command that ties together CQ-043 (engine) and CQ-044/045/046 (providers). Must feel as simple as clawhq up but for cloud. Key UX: the user should never see a cloud console. Everything happens in their terminal."
+    },
+    {
+      "id": "CQ-048",
+      "title": "Cloud-init bootstrap template",
+      "intent": "A single cloud-init script that takes a bare VM to a running ClawHQ agent. Provider-agnostic \u2014 works on DO, AWS, GCP, Hetzner, any cloud with cloud-init support.",
+      "description": "Template in src/cloud/provisioning/cloud-init.ts that generates a cloud-init user data script. Steps: install Docker, install clawhq, run clawhq install + init with provided blueprint config, clawhq up, signal health to provisioning engine. Parameterized: blueprint name, gateway token, trust mode, deploy dir. Must be idempotent (safe to re-run on reboot). Tested against Ubuntu 22.04 and Debian 12.",
+      "category": "cloud",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "dependencies": [
+        "CQ-043"
+      ],
+      "steps": [
+        "Build cloud-init template generator with parameter injection",
+        "Docker install section: apt-get, Docker CE, enable on boot",
+        "ClawHQ install section: npm install -g clawhq or from source",
+        "Agent bootstrap: clawhq install \u2192 init with blueprint \u2192 up",
+        "Health signal: curl back to provisioning engine when agent is live",
+        "Make idempotent: skip steps that are already complete on re-run"
+      ],
+      "acceptanceCriteria": [
+        "Cloud-init takes a bare Ubuntu/Debian VM to running agent without manual steps",
+        "Parameterized: blueprint, tokens, trust mode all injected at provision time",
+        "Idempotent: safe to re-run on reboot without duplicating work",
+        "Health signal fires when agent is ready",
+        "Works on Ubuntu 22.04 and Debian 12"
+      ],
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Shared infrastructure for all providers. The template must be rock-solid \u2014 if cloud-init fails, the user gets a dead VM and a bad experience. Consider: should we use a phone-home URL or poll-based health check? Phone-home is faster but requires a temporary endpoint. Polling is simpler but slower."
+    },
+    {
+      "id": "CQ-049",
+      "title": "Pre-built VM snapshots for sub-60s provisioning",
+      "intent": "Cloud-init takes 2-3 minutes. Pre-built snapshots with Docker + ClawHQ pre-installed provision in under 60 seconds. This is what makes clawhq demo feel instant.",
+      "description": "Snapshot builder in src/cloud/provisioning/snapshot.ts. Creates a golden VM image per provider: provisions base VM, installs Docker + clawhq, cleans up, snapshots. The snapshot is reused for all future provisions \u2014 only blueprint config and tokens are injected at boot time via metadata/user-data. Snapshot version tracked and auto-rebuilt when clawhq version changes.",
+      "category": "cloud",
+      "priority": "should",
+      "status": "todo",
+      "readyForSprint": false,
+      "dependencies": [
+        "CQ-043",
+        "CQ-048"
+      ],
+      "steps": [
+        "Build snapshot creation pipeline: provision \u2192 install \u2192 snapshot \u2192 destroy builder",
+        "Implement per-provider snapshot management (DO snapshots, AWS AMIs, GCP images)",
+        "Add boot-time config injection: blueprint + tokens via cloud metadata",
+        "Version tracking: rebuild snapshot when clawhq version changes",
+        "Add clawhq cloud snapshot build/list/delete commands"
+      ],
+      "acceptanceCriteria": [
+        "Snapshot-based provision produces running agent in under 60 seconds",
+        "Snapshot auto-rebuilt when clawhq version changes",
+        "Boot-time config injection works without re-running full install",
+        "Snapshot management commands available in CLI"
+      ],
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Optimization layer. Not required for MVP but required for the 60-second demo promise. DO snapshots cost $0.05/GB/mo \u2014 negligible. AWS AMIs are free to store. Build this after CQ-048 (cloud-init) proves the bootstrap flow works."
     }
   ]
 }
