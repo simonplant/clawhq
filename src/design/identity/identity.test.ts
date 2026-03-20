@@ -33,12 +33,15 @@ describe("generateSoul", () => {
     expect(content).toContain(bp.use_case_mapping.tagline);
   });
 
-  it("includes personality tone, style, and relationship", () => {
+  it("includes personality sections when dimensions are present", () => {
     const bp = loadEmailManager();
     const content = generateSoul(bp);
-    expect(content).toContain(`**Tone:** ${bp.personality.tone}`);
-    expect(content).toContain(`**Style:** ${bp.personality.style}`);
-    expect(content).toContain(`**Relationship:** ${bp.personality.relationship}`);
+    // With dimensions, personality renders as prose sections
+    expect(content).toContain("### Communication Style");
+    expect(content).toContain("### Working Style");
+    expect(content).toContain("### Cognitive Style");
+    expect(content).toContain("## Relationship");
+    expect(content).toContain(bp.personality.relationship);
   });
 
   it("includes boundaries", () => {
@@ -196,7 +199,8 @@ describe("generateIdentityFiles", () => {
     const soul = files.find((f) => f.name === "SOUL.md");
     expect(soul).toBeDefined();
     const soulContent = soul?.content ?? "";
-    expect(soulContent).toContain(bp.personality.tone);
+    // With dimensions, personality renders as prose sections, not flat strings
+    expect(soulContent).toContain("## Personality");
     expect(soulContent).toContain(bp.personality.boundaries);
   });
 

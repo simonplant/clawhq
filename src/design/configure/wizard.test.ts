@@ -40,6 +40,7 @@ describe("runWizard", () => {
       "3-4 (small family)",      // family_size (select)
       "",                        // meal_preferences (input, use default)
       "Friendly but firm — clear expectations with warmth",  // reminder_style (select)
+      false,              // customize personality? no (use defaults)
       "telegram",         // channel selection
       false,              // not air-gapped
       "local",            // model provider
@@ -72,6 +73,7 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
+      false,              // customize personality? no
       "telegram",         // channel
       false,              // not air-gapped
       "local",            // model
@@ -97,6 +99,7 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
+      false,              // customize personality? no
       "telegram",
       false,
       "local",
@@ -120,6 +123,7 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
+      false,              // customize personality? no
       "telegram",         // channel
       true,               // air-gapped
       "",                 // local model default (forced local)
@@ -145,6 +149,7 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
+      false,              // customize personality? no
       "telegram",
       "",                 // local model default
       "",                 // deploy dir
@@ -172,6 +177,7 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
+      false,              // customize personality? no
       "telegram",
       false,
       "local",

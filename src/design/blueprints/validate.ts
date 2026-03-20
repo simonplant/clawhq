@@ -143,17 +143,49 @@ function checkUseCaseMapping(raw: RawBlueprint): BlueprintValidationResult[] {
   ];
 }
 
-// ── personality (checks 19-22) ──────────────────────────────────────────────
+// ── personality (checks 19-22 + dimension validation) ───────────────────────
+
+const DIMENSION_IDS = [
+  "directness", "warmth", "verbosity",
+  "proactivity", "caution", "formality", "analyticalDepth",
+] as const;
+
+function isValidDimensionValue(v: unknown): v is 1 | 2 | 3 | 4 | 5 {
+  return typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 5;
+}
 
 function checkPersonality(raw: RawBlueprint): BlueprintValidationResult[] {
   const section = raw.personality;
   if (!isObj(section)) return [];
-  return [
+
+  const results = [
     checkRequiredString(section, "tone", "personality"),
     checkRequiredString(section, "style", "personality"),
     checkRequiredString(section, "relationship", "personality"),
     checkRequiredString(section, "boundaries", "personality"),
   ];
+
+  // Optional dimensions validation
+  const dims = section.dimensions;
+  if (dims !== undefined) {
+    if (!isObj(dims)) {
+      results.push(fail("personality.dimensions", "personality.dimensions must be an object"));
+    } else {
+      for (const dimId of DIMENSION_IDS) {
+        const check = `personality.dimensions.${dimId}`;
+        const val = dims[dimId];
+        if (val === undefined) {
+          results.push(fail(check, `Missing dimension: ${dimId}`));
+        } else if (!isValidDimensionValue(val)) {
+          results.push(fail(check, `${dimId} must be an integer 1-5 (got ${String(val)})`));
+        } else {
+          results.push(pass(check, `${dimId} is valid (${val})`));
+        }
+      }
+    }
+  }
+
+  return results;
 }
 
 // ── security_posture (checks 23-25) ─────────────────────────────────────────
