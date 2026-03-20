@@ -8,9 +8,9 @@
  * Each callback_data has the format: `apv:approve:<itemId>` or `apv:reject:<itemId>`.
  */
 
+import { TELEGRAM_API_BASE, TELEGRAM_POLLING_TIMEOUT_SEC } from "../../config/defaults.js";
 import type { AuditTrailConfig } from "../../secure/audit/types.js";
 
-import { TELEGRAM_API_BASE, TELEGRAM_POLLING_TIMEOUT_SEC } from "../../config/defaults.js";
 import type { TelegramConfig } from "./notify.js";
 import { sendResolutionConfirmation } from "./notify.js";
 import { approve, reject, getItem } from "./queue.js";

@@ -33,9 +33,13 @@ export function loadIntegrationManifest(deployDir: string): IntegrationManifest 
 
 /** Save the integration manifest atomically. */
 export function saveIntegrationManifest(deployDir: string, manifest: IntegrationManifest): void {
-  const dir = join(deployDir, MANIFEST_DIR);
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(manifestPath(deployDir), JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+  const path = manifestPath(deployDir);
+  try {
+    mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true });
+    writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+  } catch (err) {
+    throw new Error(`Failed to write integration manifest: ${path}`, { cause: err });
+  }
 }
 
 /** Add or update an entry in the manifest. Returns new manifest. */

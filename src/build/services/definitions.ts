@@ -6,14 +6,26 @@
  * service that runs alongside the OpenClaw agent container.
  */
 
+import {
+  SERVICE_HEALTHCHECK_INTERVAL,
+  SERVICE_HEALTHCHECK_RETRIES,
+  SERVICE_HEALTHCHECK_TIMEOUT,
+  SERVICE_POSTGRES_IMAGE,
+  SERVICE_POSTGRES_PORT,
+  SERVICE_QDRANT_IMAGE,
+  SERVICE_QDRANT_PORT,
+  SERVICE_REDIS_IMAGE,
+  SERVICE_REDIS_PORT,
+} from "../../config/defaults.js";
+
 import type { ServiceConfig, ServiceName } from "./types.js";
 
 // ── Service Catalog ──────────────────────────────────────────────────────────
 
 const POSTGRES: ServiceConfig = {
   name: "postgres",
-  image: "postgres:16-alpine",
-  port: 5432,
+  image: SERVICE_POSTGRES_IMAGE,
+  port: SERVICE_POSTGRES_PORT,
   envVars: {
     POSTGRES_USER: "clawhq",
     POSTGRES_PASSWORD: "",  // Generated at add time
@@ -22,37 +34,37 @@ const POSTGRES: ServiceConfig = {
   volumes: ["clawhq_postgres_data:/var/lib/postgresql/data"],
   healthcheck: {
     test: "pg_isready -U clawhq",
-    interval: "10s",
-    timeout: "5s",
-    retries: 5,
+    interval: SERVICE_HEALTHCHECK_INTERVAL,
+    timeout: SERVICE_HEALTHCHECK_TIMEOUT,
+    retries: SERVICE_HEALTHCHECK_RETRIES,
   },
 };
 
 const REDIS: ServiceConfig = {
   name: "redis",
-  image: "redis:7-alpine",
-  port: 6379,
+  image: SERVICE_REDIS_IMAGE,
+  port: SERVICE_REDIS_PORT,
   envVars: {},
   volumes: ["clawhq_redis_data:/data"],
   healthcheck: {
     test: "redis-cli ping",
-    interval: "10s",
-    timeout: "5s",
-    retries: 5,
+    interval: SERVICE_HEALTHCHECK_INTERVAL,
+    timeout: SERVICE_HEALTHCHECK_TIMEOUT,
+    retries: SERVICE_HEALTHCHECK_RETRIES,
   },
 };
 
 const QDRANT: ServiceConfig = {
   name: "qdrant",
-  image: "qdrant/qdrant:v1.12.5",
-  port: 6333,
+  image: SERVICE_QDRANT_IMAGE,
+  port: SERVICE_QDRANT_PORT,
   envVars: {},
   volumes: ["clawhq_qdrant_data:/qdrant/storage"],
   healthcheck: {
     test: "wget --no-verbose --tries=1 --spider http://localhost:6333/readyz || exit 1",
-    interval: "10s",
-    timeout: "5s",
-    retries: 5,
+    interval: SERVICE_HEALTHCHECK_INTERVAL,
+    timeout: SERVICE_HEALTHCHECK_TIMEOUT,
+    retries: SERVICE_HEALTHCHECK_RETRIES,
   },
 };
 

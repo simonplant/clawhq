@@ -154,3 +154,32 @@ export const TELEGRAM_POLLING_TIMEOUT_SEC = 30;
 
 /** Maximum character budget for identity bootstrap content (LM-08). */
 export const BOOTSTRAP_MAX_CHARS = 20_000;
+
+// ── Backing service defaults ───────────────────────────────────────────────
+
+/** Default PostgreSQL Docker image. */
+export const SERVICE_POSTGRES_IMAGE = "postgres:16-alpine";
+
+/** Default PostgreSQL host port. */
+export const SERVICE_POSTGRES_PORT = 5432;
+
+/** Default Redis Docker image. */
+export const SERVICE_REDIS_IMAGE = "redis:7-alpine";
+
+/** Default Redis host port. */
+export const SERVICE_REDIS_PORT = 6379;
+
+/** Default Qdrant Docker image. */
+export const SERVICE_QDRANT_IMAGE = "qdrant/qdrant:v1.12.5";
+
+/** Default Qdrant host port. */
+export const SERVICE_QDRANT_PORT = 6333;
+
+/** Default healthcheck interval for backing services. */
+export const SERVICE_HEALTHCHECK_INTERVAL = "10s";
+
+/** Default healthcheck timeout for backing services. */
+export const SERVICE_HEALTHCHECK_TIMEOUT = "5s";
+
+/** Default healthcheck retry count for backing services. */
+export const SERVICE_HEALTHCHECK_RETRIES = 5;

@@ -9,6 +9,7 @@
  */
 
 import { CONTAINER_USER } from "../../config/defaults.js";
+
 import type { BuildSecurityPosture, PostureConfig } from "./types.js";
 
 // ── Posture Definitions ─────────────────────────────────────────────────────

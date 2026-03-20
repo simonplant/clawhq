@@ -33,9 +33,13 @@ export function loadProviderManifest(deployDir: string): ProviderManifest {
 
 /** Save the provider manifest. */
 export function saveProviderManifest(deployDir: string, manifest: ProviderManifest): void {
-  const dir = join(deployDir, MANIFEST_DIR);
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(manifestPath(deployDir), JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+  const path = manifestPath(deployDir);
+  try {
+    mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true });
+    writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+  } catch (err) {
+    throw new Error(`Failed to write provider manifest: ${path}`, { cause: err });
+  }
 }
 
 /** Add or update a provider entry. Returns new manifest. */

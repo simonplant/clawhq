@@ -74,9 +74,13 @@ export function loadRoleManifest(deployDir: string): RoleManifest {
 
 /** Save the role manifest. */
 export function saveRoleManifest(deployDir: string, manifest: RoleManifest): void {
-  const dir = join(deployDir, MANIFEST_DIR);
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(manifestPath(deployDir), JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+  const path = manifestPath(deployDir);
+  try {
+    mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true });
+    writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+  } catch (err) {
+    throw new Error(`Failed to write role manifest: ${path}`, { cause: err });
+  }
 }
 
 /** Add or update a role. Returns new manifest. */
