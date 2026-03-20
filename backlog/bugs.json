@@ -654,11 +654,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "BUG-030 fixed evolve/integrate/validate.ts but missed the parallel implementation in secure/credentials/probes.ts. Three probe URLs and one API version header need replacing. Sequence: (1) verify ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE exported from defaults.ts (should be from BUG-030); (2) BUG-043 adds ANTHROPIC_API_VERSION — sprint BUG-043 first or combine in same PR; (3) import constants in probes.ts (import path: ../../config/defaults.js); (4) replace probes.ts:76 with template using ANTHROPIC_API_BASE; (5) replace probes.ts:125 with OPENAI_API_BASE; (6) replace probes.ts:171 with TELEGRAM_API_BASE; (7) replace probes.ts:80 anthropic-version value with ANTHROPIC_API_VERSION; (8) run secure/ tests. Soft dependency on BUG-043 for the version header (can hardcode that part and defer if needed). Zero logic change."
+      "groomingNotes": "BUG-030 fixed evolve/integrate/validate.ts but missed the parallel implementation in secure/credentials/probes.ts. Three probe URLs and one API version header need replacing. Sequence: (1) verify ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE exported from defaults.ts (should be from BUG-030); (2) BUG-043 adds ANTHROPIC_API_VERSION — sprint BUG-043 first or combine in same PR; (3) import constants in probes.ts (import path: ../../config/defaults.js); (4) replace probes.ts:76 with template using ANTHROPIC_API_BASE; (5) replace probes.ts:125 with OPENAI_API_BASE; (6) replace probes.ts:171 with TELEGRAM_API_BASE; (7) replace probes.ts:80 anthropic-version value with ANTHROPIC_API_VERSION; (8) run secure/ tests. Soft dependency on BUG-043 for the version header (can hardcode that part and defer if needed). Zero logic change.",
+      "completedAt": "2026-03-19T17:57:31-07:00"
     },
     {
       "id": "BUG-046",

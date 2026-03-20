@@ -8,7 +8,7 @@
  * an actionable fix message on failure.
  */
 
-import { ANTHROPIC_API_VERSION, CREDENTIALS_PROBE_TIMEOUT_MS, TELEGRAM_API_BASE } from "../../config/defaults.js";
+import { ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION, CREDENTIALS_PROBE_TIMEOUT_MS, OPENAI_API_BASE, TELEGRAM_API_BASE } from "../../config/defaults.js";
 
 import type { CredentialProbe, ProbeResult } from "./probe-types.js";
 
@@ -73,7 +73,7 @@ export const probeAnthropic: CredentialProbe = async (env) => {
     return fail(integration, envKey, "Key format invalid (expected sk-ant-... prefix)", `Check ${envKey} — it should start with sk-ant-`);
   }
 
-  const result = await probeFetch("https://api.anthropic.com/v1/models", {
+  const result = await probeFetch(`${ANTHROPIC_API_BASE}/v1/models`, {
     method: "GET",
     headers: {
       "x-api-key": key,
@@ -122,7 +122,7 @@ export const probeOpenAI: CredentialProbe = async (env) => {
     return fail(integration, envKey, "Key format invalid (expected sk-... prefix)", `Check ${envKey} — it should start with sk-`);
   }
 
-  const result = await probeFetch("https://api.openai.com/v1/models", {
+  const result = await probeFetch(`${OPENAI_API_BASE}/v1/models`, {
     method: "GET",
     headers: { Authorization: `Bearer ${key}` },
   });

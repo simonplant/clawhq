@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773967908",
-  "startedAt": "2026-03-19T17:51:48-07:00",
+  "sprintId": "sprint-1773968113",
+  "startedAt": "2026-03-19T17:55:13-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-044",
-    "title": "Telegram API base URL hardcoded in 3 files despite TELEGRAM_API_BASE constant existing",
-    "intent": "No Telegram API base URL literal appears in runtime code. All three callers import TELEGRAM_API_BASE from config/defaults.ts.",
-    "description": "The Telegram API base URL 'https://api.telegram.org' is hardcoded as a string literal in three files even though TELEGRAM_API_BASE is already defined in src/config/defaults.ts (added by BUG-030). Locations: src/build/launcher/connect.ts:22 (const TELEGRAM_API = 'https://api.telegram.org'), src/evolve/approval/telegram.ts:118,142 (inline template literals), src/operate/monitor/notify.ts:67 (inline template literal). These files know about other constants from defaults.ts but skip TELEGRAM_API_BASE. Steps: (1) verify TELEGRAM_API_BASE is exported from src/config/defaults.ts (should be from BUG-030); (2) import TELEGRAM_API_BASE in connect.ts, telegram.ts, notify.ts; (3) replace local const TELEGRAM_API and inline literals with the constant; (4) run build/, evolve/, and operate/ tests. Scope: 4 files, ~6 lines changed. Pattern: BUG-025 (Ollama URL), BUG-030 (API base URLs).",
+    "id": "BUG-045",
+    "title": "API probe URLs in secure/credentials/probes.ts not using defaults.ts constants",
+    "intent": "No hardcoded API URL literals appear in secure/credentials/probes.ts. All probe endpoints derive from constants already defined in config/defaults.ts.",
+    "description": "src/secure/credentials/probes.ts hardcodes three probe API URLs as string literals despite the constants ANTHROPIC_API_BASE, OPENAI_API_BASE, and TELEGRAM_API_BASE already being defined in src/config/defaults.ts (added by BUG-030). Locations: line 76 'https://api.anthropic.com/v1/models', line 125 'https://api.openai.com/v1/models', line 171 'https://api.telegram.org/bot{token}/getMe'. Note: src/evolve/integrate/validate.ts does the same thing (BUG-030 fixed validate.ts) but probes.ts in secure/ was missed — it is a parallel credential probe implementation with identical hardcoding. Steps: (1) import ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE from ../../config/defaults.js in probes.ts; (2) replace the three literal URL strings with template expressions using the constants; (3) also replace the anthropic-version header literal with ANTHROPIC_API_VERSION from defaults.ts (BUG-043 adds this constant); (4) run secure/ tests. Scope: 1 file, ~6 lines changed. No blocking dependencies if BUG-043 is done first (or run alongside).",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T17:51:48-07:00",
+    "startedAt": "2026-03-19T17:55:13-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T17:55:11-07:00"
+    "completedAt": "2026-03-19T17:57:31-07:00"
   },
-  "completedAt": "2026-03-19T17:55:11-07:00",
+  "completedAt": "2026-03-19T17:57:31-07:00",
   "attempts": 1
 }

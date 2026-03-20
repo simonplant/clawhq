@@ -638,11 +638,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "TELEGRAM_API_BASE is already in defaults.ts (added by BUG-030 sprint). Three callers hardcode the URL anyway: connect.ts:22 defines local const TELEGRAM_API, telegram.ts:118,142 uses inline template literals, notify.ts:67 uses inline template literal. All must import from defaults.ts. Check: grep defaults.ts for TELEGRAM_API_BASE to confirm it exists. If not present (BUG-030 may have only added TELEGRAM_API_BASE to validate.ts context), add it to defaults.ts first. Import path varies by file: connect.ts uses ../../config/defaults.js, telegram.ts uses ../../config/defaults.js, notify.ts uses ../../config/defaults.js. Run build/ evolve/ operate/ tests after. No blocking dependencies — BUG-030 is done."
+      "groomingNotes": "TELEGRAM_API_BASE is already in defaults.ts (added by BUG-030 sprint). Three callers hardcode the URL anyway: connect.ts:22 defines local const TELEGRAM_API, telegram.ts:118,142 uses inline template literals, notify.ts:67 uses inline template literal. All must import from defaults.ts. Check: grep defaults.ts for TELEGRAM_API_BASE to confirm it exists. If not present (BUG-030 may have only added TELEGRAM_API_BASE to validate.ts context), add it to defaults.ts first. Import path varies by file: connect.ts uses ../../config/defaults.js, telegram.ts uses ../../config/defaults.js, notify.ts uses ../../config/defaults.js. Run build/ evolve/ operate/ tests after. No blocking dependencies — BUG-030 is done.",
+      "completedAt": "2026-03-19T17:55:11-07:00"
     },
     {
       "id": "BUG-045",
