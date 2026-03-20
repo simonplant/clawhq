@@ -1,24 +1,23 @@
 {
-  "sprintId": "sprint-1774041373",
-  "startedAt": "2026-03-20T14:16:13-07:00",
+  "sprintId": "sprint-1774042206",
+  "startedAt": "2026-03-20T14:30:06-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-064",
-    "title": "Firewall creation failure leaves provisioned VM with unrestricted inbound traffic — no abort",
-    "intent": "A provisioned agent must never reach the user in an insecure state. Firewall failure is fatal — the VM must be destroyed and the user must be told to retry.",
-    "description": "src/cloud/provisioning/engine.ts line 184: when adapter.createFirewall() fails, the engine logs a warning ('Inbound traffic is unrestricted') and continues, leaving the VM running without firewall protection. The instance is then registered as active in an insecure state. Users who see this warning may not understand that all ports are open to the internet. Fix: on firewall failure, abort provisioning, destroy the VM, and return a ProvisionError. A VM without firewall must not be registered as an active instance.",
+    "id": "BUG-063",
+    "title": "snapshot.ts silently swallows builder VM destroy failures — leaves orphaned instances",
+    "intent": "No cloud resource must be silently abandoned. If a builder VM cannot be destroyed, the user must be warned with enough info to clean it up manually.",
+    "description": "src/cloud/provisioning/snapshot.ts lines 113, 126, and 144 call adapter.destroyVm() with .catch(() => {}) — silently discarding any destroy error. If the cleanup of the temporary builder VM fails (API error, timeout, network failure), the user is never notified and the VM continues running, incurring cost. Fix: replace .catch(() => {}) with .catch((err) => { log a warning to stderr with the VM ID and provider so the user can manually destroy it }).",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "Firewall creation failure causes provisioning to abort and destroy the VM — no active instance is registered",
-      "User receives a clear error message that firewall failed and the VM was cleaned up automatically",
-      "No VM remains running after a firewall failure — verified by checking provider console"
+      "No .catch(() => {}) on destroyVm() calls in snapshot.ts",
+      "Builder VM destroy failure logs a warning to stderr with VM ID and provider context"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T14:16:13-07:00",
+    "startedAt": "2026-03-20T14:30:06-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T14:21:31-07:00"
+    "completedAt": "2026-03-20T14:32:17-07:00"
   },
-  "completedAt": "2026-03-20T14:21:31-07:00",
+  "completedAt": "2026-03-20T14:32:17-07:00",
   "attempts": 1
 }

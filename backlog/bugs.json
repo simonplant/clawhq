@@ -954,7 +954,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Confirmed in digitalocean.ts:100,426,469 and hetzner.ts:77. Bare response.json() calls with no error handling. Wrap each in try-catch, re-throw as ProvisionError with HTTP status. Check AWS and GCP providers too. Scope: 4-6 call sites across 2-4 files. Single sprint, ~30 min."
+      "groomingNotes": "Confirmed in digitalocean.ts:100,426,469 and hetzner.ts:77. Bare response.json() calls with no error handling. Wrap each in try-catch, re-throw as ProvisionError with HTTP status. Check AWS and GCP providers too. Scope: 4-6 call sites across 2-4 files. Single sprint, ~30 min.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-20T14:30:06-07:00",
+      "failCount": 1
     },
     {
       "id": "BUG-063",
@@ -968,11 +971,12 @@
         "No .catch(() => {}) on destroyVm() calls in snapshot.ts",
         "Builder VM destroy failure logs a warning to stderr with VM ID and provider context"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Confirmed at snapshot.ts:113,126,144. Three identical .catch(() => {}) patterns. All three are in the cleanup path after snapshot build. Fix: replace each with .catch((err) => { process.stderr.write('Warning: builder VM destroy failed: ' + err.message + ' — VM ID: ' + builderId + ' must be manually destroyed'); }). Surgical 3-line change. Single sprint."
+      "groomingNotes": "Confirmed at snapshot.ts:113,126,144. Three identical .catch(() => {}) patterns. All three are in the cleanup path after snapshot build. Fix: replace each with .catch((err) => { process.stderr.write('Warning: builder VM destroy failed: ' + err.message + ' — VM ID: ' + builderId + ' must be manually destroyed'); }). Surgical 3-line change. Single sprint.",
+      "completedAt": "2026-03-20T14:32:17-07:00"
     },
     {
       "id": "BUG-064",
