@@ -670,11 +670,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Direct follow-up to BUG-041 timeout sweep. Two remaining timeout literals missed: (1) design/configure/ollama.ts:38,58 — AbortSignal.timeout(5_000). BUG-041 added OLLAMA_GENERATE_TIMEOUT_MS for the inference timeout but this shorter 5s probe timeout for tag-listing was not covered. Add OLLAMA_PROBE_TIMEOUT_MS = 5_000 to defaults.ts. (2) evolve/approval/telegram.ts:124 — { timeout: 30 } in Telegram getUpdates long-poll fetch. Add TELEGRAM_POLLING_TIMEOUT_SEC = 30 to defaults.ts. Both are standalone — no blocking dependencies. Pattern is identical to BUG-038/039/040/041. Run design/ and evolve/ tests after. Zero logic change."
+      "groomingNotes": "Direct follow-up to BUG-041 timeout sweep. Two remaining timeout literals missed: (1) design/configure/ollama.ts:38,58 — AbortSignal.timeout(5_000). BUG-041 added OLLAMA_GENERATE_TIMEOUT_MS for the inference timeout but this shorter 5s probe timeout for tag-listing was not covered. Add OLLAMA_PROBE_TIMEOUT_MS = 5_000 to defaults.ts. (2) evolve/approval/telegram.ts:124 — { timeout: 30 } in Telegram getUpdates long-poll fetch. Add TELEGRAM_POLLING_TIMEOUT_SEC = 30 to defaults.ts. Both are standalone — no blocking dependencies. Pattern is identical to BUG-038/039/040/041. Run design/ and evolve/ tests after. Zero logic change.",
+      "completedAt": "2026-03-19T18:09:00-07:00"
     },
     {
       "id": "BUG-047",

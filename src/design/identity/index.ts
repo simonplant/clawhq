@@ -6,6 +6,7 @@
  * token budget (LM-08: bootstrapMaxChars, default 20,000).
  */
 
+import { BOOTSTRAP_MAX_CHARS } from "../../config/defaults.js";
 import type { Blueprint } from "../blueprints/types.js";
 
 import { generateAgents } from "./agents.js";
@@ -24,7 +25,7 @@ export interface IdentityFileContent {
 }
 
 /** Default token budget for identity content (LM-08). */
-const DEFAULT_MAX_CHARS = 20_000;
+const DEFAULT_MAX_CHARS = BOOTSTRAP_MAX_CHARS;
 
 // ── Generator ───────────────────────────────────────────────────────────────
 

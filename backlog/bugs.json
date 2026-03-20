@@ -686,11 +686,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Pattern identical to BUG-011/BUG-025/BUG-031/BUG-033. Four files all use 20_000 as a magic number for bootstrap max chars. Add BOOTSTRAP_MAX_CHARS = 20_000 to src/config/defaults.ts with comment 'Maximum characters for agent bootstrap/identity content'. Import and replace in: (1) src/design/configure/generate.ts:127; (2) src/design/identity/index.ts:27; (3) src/operate/doctor/checks.ts:393; (4) src/config/validate.ts:26. Run full test suite after — these files are tested by design/, operate/, and config/ test suites. Zero risk — pure constant extraction, no logic change. No blocking dependencies — all prior constant-sweep bugs are done."
+      "groomingNotes": "Pattern identical to BUG-011/BUG-025/BUG-031/BUG-033. Four files all use 20_000 as a magic number for bootstrap max chars. Add BOOTSTRAP_MAX_CHARS = 20_000 to src/config/defaults.ts with comment 'Maximum characters for agent bootstrap/identity content'. Import and replace in: (1) src/design/configure/generate.ts:127; (2) src/design/identity/index.ts:27; (3) src/operate/doctor/checks.ts:393; (4) src/config/validate.ts:26. Run full test suite after — these files are tested by design/, operate/, and config/ test suites. Zero risk — pure constant extraction, no logic change. No blocking dependencies — all prior constant-sweep bugs are done.",
+      "completedAt": "2026-03-19T18:11:35-07:00"
     },
     {
       "id": "BUG-048",
