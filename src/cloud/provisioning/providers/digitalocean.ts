@@ -159,7 +159,7 @@ export function createDigitalOceanAdapter(token: string): ProviderAdapter {
         ? Number(options.snapshotId)
         : options.snapshotId;
 
-      const body = {
+      const body: Record<string, unknown> = {
         name: options.name,
         region: options.region,
         size: options.size,
@@ -170,6 +170,7 @@ export function createDigitalOceanAdapter(token: string): ProviderAdapter {
         monitoring: true,
         tags: ["clawhq"],
       };
+      if (options.userData) body.user_data = options.userData;
 
       const result = await doRequest("/droplets", {
         method: "POST",

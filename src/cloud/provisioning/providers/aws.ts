@@ -291,6 +291,7 @@ export function createAwsAdapter(token: string, region = "us-east-1"): ProviderA
         "TagSpecification.1.Tag.1.Value": options.name,
       };
       if (options.sshKeys?.[0]) params["KeyName"] = options.sshKeys[0];
+      if (options.userData) params["UserData"] = Buffer.from(options.userData).toString("base64");
 
       const result = await ec2Request(params, options.signal);
       if (!result.ok) return { success: false, error: result.body.slice(0, 300) };

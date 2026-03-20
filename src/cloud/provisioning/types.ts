@@ -257,6 +257,8 @@ export interface CreateVmFromSnapshotOptions {
   readonly size: string;
   /** Provider-specific snapshot ID to use as the image. */
   readonly snapshotId: string;
+  /** Boot-time user data script (config injection, not full install). */
+  readonly userData?: string;
   /** SSH key identifiers (IDs or fingerprints). */
   readonly sshKeys?: readonly string[];
   /** Abort signal. */
@@ -333,3 +335,75 @@ export type ProvisionStepName =
   | "registry";
 
 export type ProvisionProgressCallback = (progress: ProvisionProgress) => void;
+
+// ── Snapshot Registry ────────────────────────────────────────────────────────
+
+/** A pre-built VM snapshot tracked in the snapshot registry. */
+export interface SnapshotRecord {
+  /** Provider-specific snapshot ID (e.g. DO snapshot ID, AWS AMI ID, GCP machine image name). */
+  readonly snapshotId: string;
+  /** Cloud provider this snapshot belongs to. */
+  readonly provider: CloudProvider;
+  /** Region where the snapshot was created. */
+  readonly region: string;
+  /** VM size used for the builder VM. */
+  readonly builderSize: string;
+  /** ClawHQ version baked into the snapshot. */
+  readonly clawhqVersion: string;
+  /** ISO 8601 timestamp of when the snapshot was built. */
+  readonly builtAt: string;
+  /** Human-readable label. */
+  readonly name: string;
+}
+
+/** Persisted snapshot registry at ~/.clawhq/cloud/snapshots.json. */
+export interface SnapshotRegistry {
+  readonly version: 1;
+  readonly snapshots: readonly SnapshotRecord[];
+}
+
+/** Options for building a golden VM snapshot. */
+export interface SnapshotBuildOptions {
+  /** Cloud provider to build the snapshot on. */
+  readonly provider: CloudProvider;
+  /** Deployment directory (local ~/.clawhq for credentials + registry). */
+  readonly deployDir: string;
+  /** Region for the builder VM. */
+  readonly region: string;
+  /** Size for the builder VM. */
+  readonly size: string;
+  /** SSH key IDs to add to the builder VM (optional, for debugging). */
+  readonly sshKeys?: readonly string[];
+  /** Optional abort signal. */
+  readonly signal?: AbortSignal;
+  /** Progress callback. */
+  readonly onProgress?: SnapshotBuildProgressCallback;
+}
+
+/** Result of building a snapshot. */
+export interface SnapshotBuildResult {
+  readonly success: boolean;
+  /** Provider-specific snapshot ID. */
+  readonly snapshotId?: string;
+  /** ClawHQ version baked in. */
+  readonly clawhqVersion?: string;
+  readonly error?: string;
+}
+
+/** Progress events during snapshot build. */
+export interface SnapshotBuildProgress {
+  readonly step: SnapshotBuildStepName;
+  readonly status: "running" | "done" | "failed";
+  readonly message: string;
+}
+
+/** Steps in the snapshot build pipeline. */
+export type SnapshotBuildStepName =
+  | "credentials"
+  | "provision-builder"
+  | "wait-install"
+  | "snapshot"
+  | "destroy-builder"
+  | "registry";
+
+export type SnapshotBuildProgressCallback = (progress: SnapshotBuildProgress) => void;
