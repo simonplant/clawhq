@@ -22,7 +22,7 @@ import { build } from "../build/docker/index.js";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../build/docker/index.js";
 import { detectLegacyInstallation, install, migrateDeployDir } from "../build/installer/index.js";
 import type { PrereqCheckResult } from "../build/installer/index.js";
-import { deploy, restart, shutdown } from "../build/launcher/index.js";
+import { buildAllowlistFromBlueprint, deploy, restart, serializeAllowlist, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
 import {
   connectCloud,
@@ -828,6 +828,9 @@ function bundleToFiles(
 ) {
   const identityFiles = generateIdentityFiles(blueprint, customizationAnswers);
 
+  // Derive per-integration domain allowlist from blueprint egress_domains
+  const allowlist = buildAllowlistFromBlueprint(blueprint.security_posture.egress_domains);
+
   return [
     {
       relativePath: "engine/openclaw.json",
@@ -856,6 +859,11 @@ function bundleToFiles(
     {
       relativePath: "clawhq.yaml",
       content: yamlStringify(bundle.clawhqConfig),
+    },
+    // Egress firewall allowlist (derived from blueprint egress_domains)
+    {
+      relativePath: "ops/firewall/allowlist.yaml",
+      content: serializeAllowlist(allowlist),
     },
     // Identity files (SOUL.md, AGENTS.md)
     ...identityFiles.map((f) => ({

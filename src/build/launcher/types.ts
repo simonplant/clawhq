@@ -71,6 +71,8 @@ export interface DeployOptions {
   readonly skipPreflight?: boolean;
   /** Skip firewall setup. */
   readonly skipFirewall?: boolean;
+  /** Block ALL egress including DNS (air-gap mode). */
+  readonly airGap?: boolean;
   /** Progress callback for step-by-step reporting. */
   readonly onProgress?: ProgressCallback;
   /** AbortSignal for cancellation. */
@@ -114,10 +116,12 @@ export interface FirewallAllowEntry {
   readonly comment?: string;
 }
 
-/** Options for firewall apply/remove. */
+/** Options for firewall apply/remove/verify. */
 export interface FirewallOptions {
   readonly deployDir: string;
   readonly allowlist?: readonly FirewallAllowEntry[];
+  /** Block ALL egress including DNS. The paranoid user's kill switch. */
+  readonly airGap?: boolean;
   readonly signal?: AbortSignal;
 }
 
@@ -125,6 +129,19 @@ export interface FirewallOptions {
 export interface FirewallResult {
   readonly success: boolean;
   readonly rulesApplied: number;
+  readonly error?: string;
+}
+
+/** Result of firewall verification (expected vs actual rule diff). */
+export interface FirewallVerifyResult {
+  /** True when live rules match expected rules. */
+  readonly matches: boolean;
+  readonly expectedCount: number;
+  readonly actualCount: number;
+  /** Rules that should exist but don't. */
+  readonly missing: readonly import("./firewall.js").FirewallRuleDescriptor[];
+  /** Rules that exist but shouldn't. */
+  readonly extra: readonly import("./firewall.js").FirewallRuleDescriptor[];
   readonly error?: string;
 }
 

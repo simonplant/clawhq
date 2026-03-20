@@ -109,8 +109,8 @@
       "description": "PRIVACY PROMISE: The egress firewall is what makes 'zero data leaves your machine by default' true, not marketing. Without it, an agent tool or skill could call out to arbitrary domains. Per-integration domain allowlist means the user's email agent can reach email APIs and nothing else. Air-gap mode is the paranoid user's kill switch. Acceptance: docker bridge traffic blocked to non-allowlisted domains; DNS and HTTPS to allowlist work; firewall reapplied after compose down; 'clawhq doctor' verifies rules are active.",
       "category": "secure",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Create dedicated iptables chain CLAWHQ_FWD: ESTABLISHED/RELATED -> DNS -> HTTPS allowlist -> LOG + DROP",
         "Derive per-integration domain allowlist from config",
@@ -129,7 +129,9 @@
       "lastFailAt": "2026-03-19T00:19:10-07:00",
       "failCount": 1,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "SECOND GROOMING (updated) — failed once (reason: implementation failed, no further detail). BUG-009 (yaml parser fix) is ALREADY DONE — do not re-do it. IMPLEMENTATION CHECKLIST: (1) Create src/secure/firewall/firewall.ts — move applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts, add verifyFirewall() that diffs expected vs actual iptables rules. (2) Add air-gap mode flag: skip allowlist, drop all outbound except ESTABLISHED/RELATED. (3) Detect Docker bridge interface dynamically via 'docker network inspect' — never hardcode. (4) Compose-down watcher for auto-reapply. (5) EXEC_DRY env var for test dry-run mode — iptables calls must be mockable. (6) Doctor integration: add verifyFirewall() check to existing src/operate/doctor/ check array. (7) sudo/privilege handling: detect non-root and surface actionable error. SUDO NOTE: iptables requires root — document requirement in error messages. TESTING: All tests must use EXEC_DRY=1 or a mock exec to avoid requiring root in CI. ACCEPTANCE CHECK: applyFirewall() idempotent (run twice = same rules); verifyFirewall() returns diff when rules are missing; air-gap mode drops all outbound; doctor check reports fail with fix message when rules absent. POST-COMPLETION BATCH: After CQ-005 sprint completes successfully, immediately mark CQ-041, BUG-020, and BUG-023 as readyForSprint — they are all blocked exclusively on this item."
+      "groomingNotes": "SECOND GROOMING (updated) — failed once (reason: implementation failed, no further detail). BUG-009 (yaml parser fix) is ALREADY DONE — do not re-do it. IMPLEMENTATION CHECKLIST: (1) Create src/secure/firewall/firewall.ts — move applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts, add verifyFirewall() that diffs expected vs actual iptables rules. (2) Add air-gap mode flag: skip allowlist, drop all outbound except ESTABLISHED/RELATED. (3) Detect Docker bridge interface dynamically via 'docker network inspect' — never hardcode. (4) Compose-down watcher for auto-reapply. (5) EXEC_DRY env var for test dry-run mode — iptables calls must be mockable. (6) Doctor integration: add verifyFirewall() check to existing src/operate/doctor/ check array. (7) sudo/privilege handling: detect non-root and surface actionable error. SUDO NOTE: iptables requires root — document requirement in error messages. TESTING: All tests must use EXEC_DRY=1 or a mock exec to avoid requiring root in CI. ACCEPTANCE CHECK: applyFirewall() idempotent (run twice = same rules); verifyFirewall() returns diff when rules are missing; air-gap mode drops all outbound; doctor check reports fail with fix message when rules absent. POST-COMPLETION BATCH: After CQ-005 sprint completes successfully, immediately mark CQ-041, BUG-020, and BUG-023 as readyForSprint — they are all blocked exclusively on this item.",
+      "passes": true,
+      "completedAt": "2026-03-19T17:01:59-07:00"
     },
     {
       "id": "CQ-006",

@@ -63,7 +63,7 @@ export async function runChecks(
     checkIdentitySize(deployDir),
     checkCronSyntax(deployDir),
     checkEnvVars(deployDir),
-    checkFirewallActive(signal),
+    checkFirewallActive(deployDir, signal),
     checkWorkspaceExists(deployDir),
     checkGatewayReachable(signal),
     checkDiskSpace(deployDir, signal),
@@ -527,15 +527,43 @@ async function checkEnvVars(deployDir: string): Promise<DoctorCheckResult> {
   }
 }
 
-/** 14. CLAWHQ_FWD iptables chain exists. */
-async function checkFirewallActive(signal?: AbortSignal): Promise<DoctorCheckResult> {
+/** 14. CLAWHQ_FWD iptables chain exists and rules match expected. */
+async function checkFirewallActive(deployDir: string, signal?: AbortSignal): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "firewall-active";
   try {
-    await execFileAsync("sudo", ["iptables", "-L", "CLAWHQ_FWD", "-n"], {
+    // First check: does the chain exist?
+    const { stdout } = await execFileAsync("sudo", ["iptables", "-L", "CLAWHQ_FWD", "-n", "--line-numbers"], {
       timeout: DOCTOR_EXEC_TIMEOUT_MS,
       signal,
     });
-    return ok(name, "Egress firewall chain CLAWHQ_FWD is active");
+
+    // Second check: does it have the expected rules?
+    // Count non-header lines to verify rules are populated
+    const ruleLines = stdout.split("\n").filter(
+      (l) => l.trim() && !l.startsWith("Chain ") && !l.startsWith("num "),
+    );
+
+    if (ruleLines.length === 0) {
+      return fail(
+        name,
+        "warning",
+        "Egress firewall chain CLAWHQ_FWD exists but has no rules — egress is unfiltered",
+        "Run: clawhq up (firewall rules are applied during deploy)",
+      );
+    }
+
+    // Verify DROP rule is present (last line of defense)
+    const hasDropRule = ruleLines.some((l) => l.includes("DROP"));
+    if (!hasDropRule) {
+      return fail(
+        name,
+        "warning",
+        "Egress firewall chain CLAWHQ_FWD is missing DROP rule — egress may be unfiltered",
+        "Run: clawhq up (firewall is reapplied during deploy)",
+      );
+    }
+
+    return ok(name, `Egress firewall chain CLAWHQ_FWD is active (${ruleLines.length} rules)`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("No chain") || msg.includes("doesn't exist")) {
