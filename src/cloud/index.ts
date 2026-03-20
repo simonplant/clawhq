@@ -91,8 +91,15 @@ export {
 
 // Provisioning
 export type {
+  AddSshKeyOptions,
+  AddSshKeyResult,
   CloudCredentials,
   CloudProvider,
+  CreateFirewallOptions,
+  CreateFirewallResult,
+  CreateSnapshotOptions,
+  CreateSnapshotResult,
+  CreateVmFromSnapshotOptions,
   DestroyOptions,
   DestroyResult as ProvisionDestroyResult,
   InstanceRegistry,
@@ -107,9 +114,12 @@ export type {
   ProvisionProgressCallback,
   ProvisionResult,
   ProvisionStepName,
+  SshKeyInfo,
+  TokenValidationResult,
 } from "./provisioning/index.js";
 export {
   cloudCredentialsPath,
+  createDigitalOceanAdapter,
   destroyInstance,
   findInstance,
   findInstanceByName,
@@ -124,4 +134,6 @@ export {
   removeProviderCredential,
   resolveAdapter,
   setProviderCredential,
+  setProviderCredentialWithValidation,
+  validateProviderToken,
 } from "./provisioning/index.js";

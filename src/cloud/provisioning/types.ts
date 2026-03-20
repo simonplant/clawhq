@@ -27,6 +27,10 @@ export interface ProvisionOptions {
   readonly size: string;
   /** Optional SSH key IDs/fingerprints to add to the VM. */
   readonly sshKeys?: readonly string[];
+  /** Use a pre-built snapshot instead of cloud-init (fast path). */
+  readonly snapshotId?: string;
+  /** Gateway port for firewall rules (defaults to GATEWAY_DEFAULT_PORT). */
+  readonly gatewayPort?: number;
   /** Optional abort signal for cancellation. */
   readonly signal?: AbortSignal;
   /** Progress callback. */
@@ -64,6 +68,8 @@ export interface ProvisionResult {
   readonly ipAddress?: string;
   /** Whether the agent passed health checks after provisioning. */
   readonly healthy?: boolean;
+  /** Monthly cost in USD for the selected size. */
+  readonly monthlyCost?: number;
   /** Error message on failure. */
   readonly error?: string;
 }
@@ -84,6 +90,8 @@ export interface InstanceStatus {
   readonly ipAddress?: string;
   /** Whether the agent is healthy (if reachable). */
   readonly healthy?: boolean;
+  /** Monthly cost in USD (if known). */
+  readonly monthlyCost?: number;
   readonly error?: string;
 }
 
@@ -105,6 +113,30 @@ export interface ProviderAdapter {
 
   /** Get current status of a VM by its provider-specific ID. */
   getVmStatus(providerInstanceId: string, signal?: AbortSignal): Promise<InstanceStatus>;
+
+  /** Validate the API token by making a lightweight API call. */
+  validateToken(signal?: AbortSignal): Promise<TokenValidationResult>;
+
+  /** Register an SSH public key with the provider. Returns the key ID. */
+  addSshKey(options: AddSshKeyOptions): Promise<AddSshKeyResult>;
+
+  /** List SSH keys registered with the provider. */
+  listSshKeys(signal?: AbortSignal): Promise<SshKeyInfo[]>;
+
+  /** Create a firewall restricting inbound to specified ports. */
+  createFirewall(options: CreateFirewallOptions): Promise<CreateFirewallResult>;
+
+  /** Create a snapshot from a running VM. */
+  createSnapshot(options: CreateSnapshotOptions): Promise<CreateSnapshotResult>;
+
+  /** Create a VM from a pre-built snapshot (fast path). */
+  createVmFromSnapshot(options: CreateVmFromSnapshotOptions): Promise<CreateVmResult>;
+
+  /** Verify a VM has been fully destroyed (no longer exists at provider). */
+  verifyDestroyed(providerInstanceId: string, signal?: AbortSignal): Promise<boolean>;
+
+  /** Get monthly cost for a given size slug. */
+  getMonthlyCost(size: string): number | undefined;
 }
 
 /** Options passed to the provider adapter's createVm. */
@@ -131,6 +163,104 @@ export interface CreateVmResult {
   /** Public IPv4 address (may not be available immediately). */
   readonly ipAddress?: string;
   readonly error?: string;
+}
+
+// ── Token Validation ──────────────────────────────────────────────────────
+
+/** Result of validating an API token. */
+export interface TokenValidationResult {
+  readonly valid: boolean;
+  /** Account email or identifier (if available). */
+  readonly account?: string;
+  readonly error?: string;
+}
+
+// ── SSH Keys ──────────────────────────────────────────────────────────────
+
+/** Options for adding an SSH key to a provider. */
+export interface AddSshKeyOptions {
+  /** Human-readable name for the key. */
+  readonly name: string;
+  /** Public key content (e.g. "ssh-ed25519 AAAA..."). */
+  readonly publicKey: string;
+  /** Abort signal. */
+  readonly signal?: AbortSignal;
+}
+
+/** Result of adding an SSH key. */
+export interface AddSshKeyResult {
+  readonly success: boolean;
+  /** Provider-specific key ID. */
+  readonly keyId?: string;
+  /** Key fingerprint. */
+  readonly fingerprint?: string;
+  readonly error?: string;
+}
+
+/** SSH key info from the provider. */
+export interface SshKeyInfo {
+  readonly id: string;
+  readonly name: string;
+  readonly fingerprint: string;
+  readonly publicKey: string;
+}
+
+// ── Firewall ──────────────────────────────────────────────────────────────
+
+/** Options for creating a firewall. */
+export interface CreateFirewallOptions {
+  /** Firewall name. */
+  readonly name: string;
+  /** Inbound ports to allow (e.g. [443, 18789]). */
+  readonly inboundPorts: readonly number[];
+  /** Provider instance IDs to attach the firewall to. */
+  readonly dropletIds: readonly string[];
+  /** Abort signal. */
+  readonly signal?: AbortSignal;
+}
+
+/** Result of creating a firewall. */
+export interface CreateFirewallResult {
+  readonly success: boolean;
+  /** Provider-specific firewall ID. */
+  readonly firewallId?: string;
+  readonly error?: string;
+}
+
+// ── Snapshots ─────────────────────────────────────────────────────────────
+
+/** Options for creating a snapshot from a running VM. */
+export interface CreateSnapshotOptions {
+  /** Provider instance ID of the source VM. */
+  readonly providerInstanceId: string;
+  /** Snapshot name. */
+  readonly name: string;
+  /** Abort signal. */
+  readonly signal?: AbortSignal;
+}
+
+/** Result of creating a snapshot. */
+export interface CreateSnapshotResult {
+  readonly success: boolean;
+  /** Provider-specific snapshot ID. */
+  readonly snapshotId?: string;
+  readonly error?: string;
+}
+
+/** Options for creating a VM from a snapshot. */
+export interface CreateVmFromSnapshotOptions {
+  /** Human-readable name for the VM. */
+  readonly name: string;
+  /** Region slug. */
+  readonly region: string;
+  /** Size/type slug. */
+  readonly size: string;
+  /** Provider-specific snapshot ID to use as the image. */
+  readonly snapshotId: string;
+  /** SSH key identifiers (IDs or fingerprints). */
+  readonly sshKeys?: readonly string[];
+  /** Abort signal. */
+  readonly signal?: AbortSignal;
 }
 
 // ── Instance Registry ───────────────────────────────────────────────────────
@@ -198,6 +328,7 @@ export type ProvisionStepName =
   | "credentials"
   | "create-vm"
   | "wait-boot"
+  | "firewall"
   | "health-check"
   | "registry";
 
