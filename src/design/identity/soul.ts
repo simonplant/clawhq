@@ -10,9 +10,9 @@
  * - Dimensions absent  → legacy rendering (flat strings, zero behavioral change)
  */
 
-import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
-import { ALWAYS_ON_BOUNDARIES, renderAllDimensionsProse } from "../blueprints/personality-presets.js";
 import { sanitizeContentSync } from "../../secure/sanitizer/index.js";
+import { ALWAYS_ON_BOUNDARIES, renderAllDimensionsProse } from "../blueprints/personality-presets.js";
+import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
 
 /**
  * Generate SOUL.md content from a blueprint.
@@ -28,7 +28,7 @@ export function generateSoul(
   customizationAnswers: Readonly<Record<string, string>> = {},
   dimensionOverrides?: PersonalityDimensions,
 ): string {
-  const { personality, use_case_mapping: useCase } = blueprint;
+  const { personality } = blueprint;
 
   // Determine which dimensions to use (override > blueprint > none)
   const dimensions = dimensionOverrides ?? personality.dimensions;
