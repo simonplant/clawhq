@@ -1119,7 +1119,7 @@
       "category": "cloud",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-043"
       ],
@@ -1149,7 +1149,7 @@
       "category": "cloud",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-043"
       ],
@@ -1197,7 +1197,7 @@
         "Free tier eligible instance type used by default"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Third provider. Same pattern as CQ-045. GCP complexity: project selection, zone vs region, firewall rules on VPC network instead of per-instance. Consider deferring if DO + AWS cover 90% of users."
+      "groomingNotes": "Third cloud provider. GCP complexity: project selection, zone vs region, firewall rules on VPC network. Consider deferring until DO + Hetzner + AWS cover the primary user base. The Privacy Migrant persona is covered by DO + Hetzner. Enterprise users are covered by AWS. GCP is a third provider for completeness. Sprint after CQ-045 (AWS) is complete and the pattern is proven across three providers. NOT READY until CQ-045 (AWS) is done — mark readyForSprint when CQ-045 completes."
     },
     {
       "id": "CQ-047",
@@ -1228,7 +1228,7 @@
         "Destroy is clean: VM terminated, DNS removed, local state cleaned"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "This is the user-facing command that ties together CQ-043 (engine) and CQ-044/045/046 (providers). Must feel as simple as clawhq up but for cloud. Key UX: the user should never see a cloud console. Everything happens in their terminal."
+      "groomingNotes": "Depends on CQ-043 (engine, DONE) and CQ-044 (DO adapter). This is the user-facing command that ties the entire cloud deployment story together — provider selection, cost estimate, provisioning, post-deploy monitoring. Must feel as simple as 'clawhq up' but for cloud. READYFORSPRING: mark ready when CQ-044 completes. Key UX requirement: the user never sees a cloud console — everything happens in their terminal. Interactive flow: choose provider → enter/confirm credentials → select region → select blueprint → show cost estimate → confirm → provision → deploy → verify → return URL. Non-interactive mode with --provider --region --blueprint --yes flags for CI/automation. Post-deploy: auto-configure zero-trust mode, start heartbeat. Destroy is clean: VM terminated, DNS removed, local state cleaned. CRITICAL: show monthly cost estimate BEFORE provisioning — no surprise bills."
     },
     {
       "id": "CQ-048",
@@ -1238,7 +1238,7 @@
       "category": "cloud",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-043"
       ],
@@ -1300,15 +1300,30 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "LOCAL-FIRST DEMO — zero gates to first working agent. CQ-040 (web dashboard) is DONE — only dependency satisfied. Tech Lead: mark readyForSprint. SCOPE: (1) demo blueprint in configs/blueprints/demo.yaml with zero external deps — no Telegram token, no email config, no API keys; (2) add /chat route to CQ-040 Hono server — browser chat UI for direct agent interaction; (3) Ollama auto-detection: use llama3:8b if available, else fallback to mock LLM that echoes 'I am an AI agent [model: mock]. You said: {message}' with capability list; (4) ephemeral mode: tempdir for deploy data, SIGINT handler calls cleanup — demo data never persists; (5) clawhq demo CLI command chains: build (if needed) -> deploy (demo blueprint) -> open browser -> chat. PHASE 2 (post-CQ-044): add --cloud flag using DO provisioning for zero-Docker path. ACCEPTANCE CHECK: run clawhq demo on a fresh machine with Docker installed — user should be in browser chat within 60 seconds with no prompts."
+      "groomingNotes": "READY TO SPRINT — Tech Lead clearance per prior grooming. CQ-040 (web dashboard) is DONE, the only dependency. SCOPE: (1) configs/blueprints/demo.yaml — demo blueprint with zero external deps, no Telegram token, no email config, no API keys; (2) add /chat route to existing CQ-040 Hono server in src/web/ — browser chat UI for direct agent interaction via Gateway WebSocket; (3) Ollama auto-detection: use llama3:8b if available, else fallback to mock LLM returning 'I am an AI agent [model: mock]. You said: {message}'; (4) ephemeral mode: tempdir for deploy data, SIGINT cleanup handler, demo data never persists; (5) clawhq demo CLI command chains build (if needed) -> deploy (demo blueprint) -> open browser -> chat. ACCEPTANCE: clawhq demo on fresh Docker machine → user in browser chat within 60s, no prompts. PHASE 2 (post-CQ-044 only): --cloud flag for zero-Docker path. Do not implement phase 2 in this sprint."
     },
     {
       "id": "FEAT-003",
       "title": "Hetzner Cloud provider adapter (CX series + cloud-init)",
-      "intent": "Hetzner is the privacy-conscious European cloud provider — the natural choice for the Privacy Migrant persona who wants sovereignty without US cloud. CLAUDE.md names it explicitly. Hetzner support removes the 'I only trust European providers' blocker.",
+      "intent": "Hetzner Cloud adapter provisions a running agent on CX11. EU-sovereign path for the Privacy Migrant persona. Works identically to DigitalOcean adapter.",
       "description": "Implement HetznerAdapter in src/cloud/provisioning/providers/hetzner.ts. Uses Hetzner Cloud API v1 for server lifecycle. Launches CX11 (2.96 EUR/mo) or CX21. Creates firewall rules (443 + gateway port). Hetzner is GDPR-compliant, EU-hosted, privacy-conscious, and explicitly called out in CLAUDE.md as a target deployment platform alongside DigitalOcean. Same cloud-init bootstrap as DO/AWS/GCP adapters. Credentials via Hetzner API token stored in ~/.clawhq/cloud/credentials.json (mode 0600). Key differentiator for the Privacy Migrant persona: Hetzner is cheaper than AWS/GCP and explicitly European-sovereign.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "UPGRADED TO MUST — CLAUDE.md explicitly names Hetzner alongside DigitalOcean as a primary deployment target ('User's PC, Mac Mini, DigitalOcean, Hetzner — same software, different host'). Privacy Migrant is the primary persona; they prefer EU-sovereign, GDPR-compliant hosting at a lower price point. DO + Hetzner together cover the primary personas — AWS/GCP cover enterprise secondary users. CQ-043 (ProviderAdapter interface) is DONE. CQ-044 (DO adapter) should be done first as the reference implementation, but FEAT-003 can sprint in parallel since the interface is stable. IMPLEMENTATION: HetznerAdapter in src/cloud/provisioning/providers/hetzner.ts following exact same pattern as providers/digitalocean.ts. Hetzner Cloud API v1. Key endpoints: POST /servers (cx11, ubuntu-24.04, user_data=cloud-init), DELETE /servers/{id}, GET /servers/{id}. Add 'hetzner' to CloudProvider union type in types.ts. Data centers: FSN/NBG (Germany), HEL (Finland) — GDPR-compliant. TESTING: mock Hetzner API responses same as DO tests."
+    },
+    {
+      "id": "FEAT-004",
+      "title": "clawhq demo --cloud — zero-config cloud demo (phase 2)",
+      "intent": "clawhq demo --cloud takes a user from zero to a cloud-hosted agent demo in 60 seconds with no Docker, no setup, just a DO API token. The droplet self-destructs on exit.",
+      "description": "Phase 2 of FEAT-002 demo command. After CQ-044 (DO adapter) ships, add --cloud flag to 'clawhq demo' that provisions an ephemeral DigitalOcean droplet, spins up the demo agent in the cloud, opens the browser chat UI pointing at the cloud URL, and destroys the droplet on exit. Zero Docker requirement on the user's machine — they just need a DO API token. Scope: add --cloud flag to existing demo command; provision ephemeral DO droplet using CQ-043 engine + CQ-044 adapter; inject demo blueprint + mock LLM config via cloud-init (CQ-048); open browser pointing at cloud agent URL; cleanup droplet on SIGINT/exit. Cost: minimal — cx1 droplet for ~60s demo = fractions of a cent.",
       "priority": "should",
       "category": null,
       "steps": [],
@@ -1316,8 +1331,7 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": false,
-      "groomedAt": "2026-03-20",
-      "groomingNotes": "Explicitly referenced in CLAUDE.md: 'Same platform everywhere — User's PC, Mac Mini, DigitalOcean, Hetzner'. Blocked by CQ-043 (cloud provisioning engine) — do not sprint until CQ-043 is done. IMPLEMENTATION NOTES: Hetzner Cloud API v1 at api.hetzner.cloud/v1. Key endpoints: POST /servers (create), DELETE /servers/{id} (destroy), GET /servers/{id} (status), POST /firewalls (create firewall rule). HetznerAdapter follows same interface as DigitalOceanAdapter (CQ-044) — implement after CQ-044 is complete as the reference. CX11 (2 vCPU, 2GB RAM, 20GB disk, 2.96 EUR/mo) is the smallest viable size. cloud-init user data is identical to CQ-048 template — parameterize provider only. GDPR note: Hetzner data centers are in Germany (FSN, NBG) and Finland (HEL) — relevant for EU privacy compliance. API token stored in ~/.clawhq/cloud/credentials.json (0600) under 'hetzner' key."
+      "groomingNotes": "Depends on FEAT-002 (base demo command, DONE when FEAT-002 ships), CQ-044 (DO adapter), and CQ-048 (cloud-init template). NOT READY until all three dependencies complete. Phase 2 of the demo story — zero Docker path for users who just want to try before installing locally. Ephemeral DO droplet: provision, run demo, destroy on exit. Blueprint: same demo.yaml as FEAT-002. LLM: inject mock LLM or Ollama config via cloud-init params. Browser: open same /chat UI but pointing at cloud URL. COST TRANSPARENCY: show estimated cost before provisioning (fractions of a cent for 60s). CLEANUP: SIGINT handler destroys droplet immediately — no orphaned instances."
     }
   ]
 }
