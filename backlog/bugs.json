@@ -931,11 +931,12 @@
         "Browser opens correctly in demo --cloud on Linux and macOS",
         "No shell is invoked when launching the browser URL"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Confirmed at src/cli/index.ts:420. exec() with string interpolation is exploitable if chatUrl contains shell metacharacters — source is cloud API response (IP + port). Fix is one-line: use execFile(openCmd, [chatUrl]) instead. Steps: (1) import execFile from node:child_process, (2) replace exec string call with execFile(openCmd, [chatUrl], callback), (3) verify browser still opens on demo --cloud run. No other files need changes. Single-sprint, sub-15-minute fix. HIGH priority because this is a security issue in the demo path that most new users will hit."
+      "groomingNotes": "Confirmed at src/cli/index.ts:420. exec() with string interpolation is exploitable if chatUrl contains shell metacharacters — source is cloud API response (IP + port). Fix is one-line: use execFile(openCmd, [chatUrl]) instead. Steps: (1) import execFile from node:child_process, (2) replace exec string call with execFile(openCmd, [chatUrl], callback), (3) verify browser still opens on demo --cloud run. No other files need changes. Single-sprint, sub-15-minute fix. HIGH priority because this is a security issue in the demo path that most new users will hit.",
+      "completedAt": "2026-03-20T14:16:11-07:00"
     },
     {
       "id": "BUG-062",
