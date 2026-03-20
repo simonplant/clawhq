@@ -58,6 +58,8 @@ import type { CloudProvider, ProvisionProgress } from "../cloud/index.js";
 import { DASHBOARD_DEFAULT_PORT, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import type { TrustMode } from "../config/types.js";
 import { validateBundle } from "../config/validate.js";
+import { runDemo } from "../demo/index.js";
+import type { DemoProgress } from "../demo/index.js";
 import {
   loadAllBuiltinBlueprints,
   loadBlueprint,
@@ -213,6 +215,84 @@ program
   .description("Print version info")
   .action(() => {
     console.log(`clawhq v${pkg.version}`);
+  });
+
+// ── Demo ─────────────────────────────────────────────────────────────────────
+
+program
+  .command("demo")
+  .description("Zero-config demo — talk to a working agent in your browser in 60 seconds")
+  .option("-p, --port <port>", "Web chat port", "3838")
+  .action(async (opts: { port: string }) => {
+    const port = parseInt(opts.port, 10);
+    if (isNaN(port) || port < 1 || port > 65535) {
+      console.error(chalk.red("Invalid port number"));
+      process.exit(1);
+    }
+
+    console.log("");
+    console.log(chalk.bold.magenta("  ╔═══════════════════════════════════════╗"));
+    console.log(chalk.bold.magenta("  ║         ClawHQ Demo                  ║"));
+    console.log(chalk.bold.magenta("  ║   Zero-config agent in 60 seconds    ║"));
+    console.log(chalk.bold.magenta("  ╚═══════════════════════════════════════╝"));
+    console.log("");
+
+    const spinner = ora();
+
+    const stepLabels: Record<string, string> = {
+      "init": "init",
+      "ollama-probe": "ollama",
+      "mock-llm": "llm",
+      "blueprint": "blueprint",
+      "config": "config",
+      "chat-server": "server",
+      "ready": "ready",
+    };
+
+    const onProgress = (event: DemoProgress) => {
+      const label = chalk.dim(`[${stepLabels[event.step] ?? event.step}]`);
+      if (event.status === "running") {
+        spinner.start(`${label} ${event.message}`);
+      } else if (event.status === "done") {
+        spinner.succeed(`${label} ${event.message}`);
+      } else if (event.status === "skipped") {
+        spinner.info(chalk.dim(`${label} ${event.message}`));
+      }
+    };
+
+    let demo: { port: number; close: () => void } | undefined;
+
+    const shutdown = () => {
+      if (demo) {
+        console.log("");
+        spinner.start("Cleaning up demo...");
+        demo.close();
+        spinner.succeed("Demo cleaned up. All temporary data removed.");
+        demo = undefined;
+      }
+      process.exit(0);
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+
+    try {
+      demo = await runDemo({ port }, onProgress);
+
+      const url = `http://localhost:${demo.port}`;
+      console.log("");
+      console.log(chalk.bold.green("  Your agent is ready!"));
+      console.log(`  Open: ${chalk.bold.underline.cyan(url)}`);
+      console.log("");
+      console.log(chalk.dim("  Press Ctrl+C to stop the demo."));
+      console.log(chalk.dim("  This is ephemeral — no data persists after exit."));
+      console.log(chalk.dim("  For a full agent: clawhq quickstart"));
+      console.log("");
+    } catch (err) {
+      spinner.fail(err instanceof Error ? err.message : "Demo failed");
+      if (demo) demo.close();
+      process.exit(1);
+    }
   });
 
 // ── Quickstart ──────────────────────────────────────────────────────────────
