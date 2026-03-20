@@ -911,11 +911,12 @@
         "Both deploy create and deploy credentials error messages list all four providers including hetzner (hz)",
         "No other provider aliases are broken by the change"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Confirmed bug: FEAT-003 (Hetzner adapter, DONE) added hetzner.ts and CloudProvider includes 'hetzner', but resolveProviderAlias() in src/cli/index.ts lines 3529-3537 has no 'hetzner' or 'hz' entry. Two error messages (lines 3378, 3520) say 'Must be one of: digitalocean (do), aws, gcp' — Hetzner omitted. Fix is surgical: add hetzner/hz to aliases map, update both error strings. No other files need changes. All acceptance criteria are directly testable. Single-sprint, sub-hour fix. ORDERING: This must run before CQ-047 (deploy command) ships — the deploy wizard will surface all providers to users, and Hetzner must be accessible."
+      "groomingNotes": "Confirmed bug: FEAT-003 (Hetzner adapter, DONE) added hetzner.ts and CloudProvider includes 'hetzner', but resolveProviderAlias() in src/cli/index.ts lines 3529-3537 has no 'hetzner' or 'hz' entry. Two error messages (lines 3378, 3520) say 'Must be one of: digitalocean (do), aws, gcp' — Hetzner omitted. Fix is surgical: add hetzner/hz to aliases map, update both error strings. No other files need changes. All acceptance criteria are directly testable. Single-sprint, sub-hour fix. ORDERING: This must run before CQ-047 (deploy command) ships — the deploy wizard will surface all providers to users, and Hetzner must be accessible.",
+      "completedAt": "2026-03-20T14:13:14-07:00"
     },
     {
       "id": "BUG-061",

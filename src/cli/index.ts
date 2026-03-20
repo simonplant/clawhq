@@ -415,9 +415,9 @@ async function runCloudDemoAction(opts: { yes?: boolean; region: string }): Prom
 
     // 4. Open browser
     try {
-      const { exec } = await import("node:child_process");
+      const { execFile } = await import("node:child_process");
       const openCmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-      exec(`${openCmd} ${chatUrl}`);
+      execFile(openCmd, [chatUrl]);
     } catch {
       // Browser open is best-effort
     }

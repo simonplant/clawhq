@@ -1,31 +1,24 @@
 {
-  "sprintId": "sprint-1774041015",
-  "startedAt": "2026-03-20T14:10:15-07:00",
+  "sprintId": "sprint-1774041195",
+  "startedAt": "2026-03-20T14:13:15-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-060",
-    "title": "resolveProviderAlias() omits Hetzner — clawhq deploy create --provider hetzner silently rejected",
-    "intent": "Every provider with a working adapter must be usable from the CLI. Hetzner is a first-class provider — users choosing sovereignty on European infrastructure must not hit a broken CLI gate.",
-    "description": "FEAT-003 implemented the Hetzner Cloud provider adapter (src/cloud/provisioning/providers/hetzner.ts) and CloudProvider type includes 'hetzner'. However, the resolveProviderAlias() function in src/cli/index.ts (line 3528-3537) only maps 'digitalocean', 'do', 'aws', 'gcp' — no 'hetzner' or 'hz' alias. Consequence: clawhq deploy create --provider hetzner exits with 'Invalid provider' error even though the adapter exists and works. Two error messages (lines 3378, 3520) also show the wrong provider list, omitting Hetzner. Fix: add 'hetzner' and 'hz' to the aliases map; update both error messages to include hetzner (hz).",
+    "id": "BUG-061",
+    "title": "Shell injection in demo --cloud browser open: exec() interpolates chatUrl without escaping",
+    "intent": "Browser launch must never pass user-derived or network-derived strings through a shell. execFile with argument array is the only acceptable form.",
+    "description": "src/cli/index.ts line 420 calls exec(`${openCmd} ${chatUrl}`) where chatUrl is constructed from cloud provisioning output (IP address + port). The URL is passed directly to a shell via exec() string interpolation with no quoting or escaping. A malformed API response containing shell metacharacters could execute arbitrary commands on the user's machine. Fix: replace exec(string) with execFile(cmd, [chatUrl]) to use argument-list form, which does not invoke a shell.",
     "sourceBacklog": "bugs.json",
-    "steps": [
-      "Add hetzner and hz entries to resolveProviderAlias() aliases map in src/cli/index.ts",
-      "Update error message at line 3378 to include hetzner (hz) in provider list",
-      "Update error message at line 3520 to include hetzner (hz) in provider list",
-      "Verify clawhq deploy create --provider hetzner proceeds past alias resolution",
-      "Verify clawhq deploy credentials --provider hz stores credentials correctly"
-    ],
+    "steps": [],
     "acceptanceCriteria": [
-      "clawhq deploy create --provider hetzner does not exit with Invalid provider error",
-      "clawhq deploy create --provider hz resolves to hetzner provider",
-      "Both deploy create and deploy credentials error messages list all four providers including hetzner (hz)",
-      "No other provider aliases are broken by the change"
+      "exec() string interpolation replaced with execFile argument array in demo --cloud browser open",
+      "Browser opens correctly in demo --cloud on Linux and macOS",
+      "No shell is invoked when launching the browser URL"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T14:10:15-07:00",
+    "startedAt": "2026-03-20T14:13:15-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T14:13:14-07:00"
+    "completedAt": "2026-03-20T14:16:11-07:00"
   },
-  "completedAt": "2026-03-20T14:13:14-07:00",
+  "completedAt": "2026-03-20T14:16:11-07:00",
   "attempts": 1
 }
