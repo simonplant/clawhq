@@ -8,7 +8,7 @@
 import { chmod, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { CONTAINER_USER, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import type { DoctorCheckResult, DoctorCheckName, FixReport, FixResult } from "./types.js";
 
@@ -177,16 +177,18 @@ async function fixNoNewPrivileges(deployDir: string): Promise<FixResult> {
   });
 }
 
-/** Fix missing user: 1000:1000 in docker-compose.yml. */
+/** Fix missing user in docker-compose.yml. */
 async function fixUserUid(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "user-uid";
+  const expectedUid = CONTAINER_USER.split(":")[0];
   return patchCompose(deployDir, name, (content) => {
-    if (!/user:\s*["']?1000/.test(content)) {
+    const uidPattern = new RegExp(`user:\\s*["']?${expectedUid}`);
+    if (!uidPattern.test(content)) {
       content = content.replace(
         /(services:\s*\n\s+\w+:\s*\n)/,
-        '$1    user: "1000:1000"\n',
+        `$1    user: "${CONTAINER_USER}"\n`,
       );
-      return { content, message: 'Set user: "1000:1000" in compose' };
+      return { content, message: `Set user: "${CONTAINER_USER}" in compose` };
     }
     return null;
   });

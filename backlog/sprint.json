@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773970103",
-  "startedAt": "2026-03-19T18:28:23-07:00",
+  "sprintId": "sprint-1773970188",
+  "startedAt": "2026-03-19T18:29:48-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-052",
-    "title": "Silent .catch(() => {}) in sanitizer.ts swallows audit log and quarantine write errors",
-    "intent": "No security event in the sanitizer module is silently discarded. Both audit log write failures and quarantine write failures must log a warning. A sanitizer that silently fails to log threats is indistinguishable from one that has no threats.",
-    "description": "src/secure/sanitizer/sanitizer.ts lines 125 and 130 use fire-and-forget .catch(() => {}) on writeAuditLog() and writeQuarantine() calls. This silently swallows errors from audit log and quarantine file writes with zero observability. If writes fail (disk full, permissions, path errors), the sanitizer continues as if nothing happened — threat events are never logged and injected content is never quarantined, with no trace. The audit logger (BUG-015) sweep fixed silent catches in audit/logger.ts, but missed these two callers in sanitizer.ts. Pattern: identical to BUG-012 through BUG-019 (add console.warn, keep fallback behavior). Steps: (1) open src/secure/sanitizer/sanitizer.ts; (2) replace .catch(() => {}) on line 125 with .catch(err => console.warn('[sanitizer] audit log write failed:', err)); (3) replace .catch(() => {}) on line 130 with .catch(err => console.warn('[sanitizer] quarantine write failed:', err)); (4) run secure/ tests. Scope: 2 one-line changes in one file. Zero behavior change — fire-and-forget is correct, just needs to log.",
+    "id": "BUG-053",
+    "title": "Container user '1000:1000' hardcoded in 10+ locations across 6 files",
+    "intent": "Container user '1000:1000' has a single source of truth in config/defaults.ts. No literal '1000:1000' or '1000' string appears in runtime code outside that file. Changing the container user UID/GID requires editing one line.",
+    "description": "The container user string '1000:1000' is hardcoded in at least 10 locations across 6 files: src/build/docker/dockerfile.ts (lines 77, 121, 135, 142 — chown and USER directives), src/build/docker/posture.ts (lines 21, 31, 41, 51 — all four security posture configs), src/design/configure/generate.ts:34 (local const CONTAINER_USER = '1000:1000' — defines it but doesn't export), src/operate/doctor/checks.ts:373,378 (container user validation), src/operate/doctor/fix.ts:180,187,189 (container user auto-fix), src/config/validate.ts:146,153,154 (LM-06 landmine validation). Same BUG-011/BUG-025 constant-scattering pattern. generate.ts already defines CONTAINER_USER locally — it just doesn't export or share it. Steps: (1) add CONTAINER_USER = '1000:1000' to src/config/defaults.ts with comment 'Container non-root user (LM-06 landmine requirement)'; (2) replace the local const in generate.ts with an import from defaults.ts; (3) import CONTAINER_USER in dockerfile.ts, posture.ts, doctor/checks.ts, doctor/fix.ts, config/validate.ts and replace all hardcoded '1000:1000' strings; (4) run full test suite. Scope: 7 files, no logic change. Pure constant extraction.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T18:28:23-07:00",
+    "startedAt": "2026-03-19T18:29:48-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T18:29:46-07:00"
+    "completedAt": "2026-03-19T18:34:11-07:00"
   },
-  "completedAt": "2026-03-19T18:29:46-07:00",
+  "completedAt": "2026-03-19T18:34:11-07:00",
   "attempts": 1
 }

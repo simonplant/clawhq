@@ -10,6 +10,7 @@
  * ClawHQ builds *on top of* OpenClaw's Dockerfiles, not by modifying them.
  */
 
+import { CONTAINER_USER } from "../../config/defaults.js";
 import {
   OPENCLAW_CONTAINER_ROOT,
   OPENCLAW_CONTAINER_WORKSPACE,
@@ -74,7 +75,7 @@ export function generateStage1Dockerfile(config: Stage1Config): string {
   lines.push(
     "# Ensure workspace directory exists with correct ownership",
     `RUN mkdir -p ${OPENCLAW_CONTAINER_WORKSPACE} && \\`,
-    `    chown -R 1000:1000 ${OPENCLAW_CONTAINER_ROOT}`,
+    `    chown -R ${CONTAINER_USER} ${OPENCLAW_CONTAINER_ROOT}`,
     "",
   );
 
@@ -118,7 +119,7 @@ export function generateStage2Dockerfile(
     lines.push("# Copy workspace tools");
     for (const tool of config.workspaceTools) {
       lines.push(
-        `COPY --chown=1000:1000 workspace/tools/${tool} ${OPENCLAW_CONTAINER_WORKSPACE}/tools/${tool}`,
+        `COPY --chown=${CONTAINER_USER} workspace/tools/${tool} ${OPENCLAW_CONTAINER_WORKSPACE}/tools/${tool}`,
       );
     }
     lines.push(
@@ -132,14 +133,14 @@ export function generateStage2Dockerfile(
     lines.push("# Copy skills");
     for (const skill of config.skills) {
       lines.push(
-        `COPY --chown=1000:1000 workspace/skills/${skill} ${OPENCLAW_CONTAINER_WORKSPACE}/skills/${skill}`,
+        `COPY --chown=${CONTAINER_USER} workspace/skills/${skill} ${OPENCLAW_CONTAINER_WORKSPACE}/skills/${skill}`,
       );
     }
     lines.push("");
   }
 
   lines.push(
-    "USER 1000:1000",
+    `USER ${CONTAINER_USER}`,
     "",
   );
 

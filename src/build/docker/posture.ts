@@ -8,6 +8,7 @@
  * See docs/OPENCLAW-REFERENCE.md § "Container Hardening Matrix" for spec.
  */
 
+import { CONTAINER_USER } from "../../config/defaults.js";
 import type { BuildSecurityPosture, PostureConfig } from "./types.js";
 
 // ── Posture Definitions ─────────────────────────────────────────────────────
@@ -18,7 +19,7 @@ const POSTURES: Record<BuildSecurityPosture, PostureConfig> = {
     capDrop: ["ALL"],
     securityOpt: ["no-new-privileges"],
     readOnlyRootfs: false,
-    user: "1000:1000",
+    user: CONTAINER_USER,
     iccDisabled: false,
     resources: { cpus: 0, memoryMb: 0, pidsLimit: 0 },
     tmpfs: { sizeMb: 512, options: "noexec,nosuid" },
@@ -28,7 +29,7 @@ const POSTURES: Record<BuildSecurityPosture, PostureConfig> = {
     capDrop: ["ALL"],
     securityOpt: ["no-new-privileges"],
     readOnlyRootfs: true,
-    user: "1000:1000",
+    user: CONTAINER_USER,
     iccDisabled: true,
     resources: { cpus: 4, memoryMb: 4096, pidsLimit: 512 },
     tmpfs: { sizeMb: 256, options: "noexec,nosuid" },
@@ -38,7 +39,7 @@ const POSTURES: Record<BuildSecurityPosture, PostureConfig> = {
     capDrop: ["ALL"],
     securityOpt: ["no-new-privileges"],
     readOnlyRootfs: true,
-    user: "1000:1000",
+    user: CONTAINER_USER,
     iccDisabled: true,
     resources: { cpus: 2, memoryMb: 2048, pidsLimit: 256 },
     tmpfs: { sizeMb: 128, options: "noexec,nosuid" },
@@ -48,7 +49,7 @@ const POSTURES: Record<BuildSecurityPosture, PostureConfig> = {
     capDrop: ["ALL"],
     securityOpt: ["no-new-privileges"],
     readOnlyRootfs: true,
-    user: "1000:1000",
+    user: CONTAINER_USER,
     iccDisabled: true,
     resources: { cpus: 1, memoryMb: 1024, pidsLimit: 128 },
     tmpfs: { sizeMb: 64, options: "noexec,nosuid" },
