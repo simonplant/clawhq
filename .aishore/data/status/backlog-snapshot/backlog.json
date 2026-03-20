@@ -1184,8 +1184,8 @@
       "description": "Implement GCPAdapter in src/cloud/provisioning/providers/gcp.ts. Uses Google Cloud Compute API for VM lifecycle. Launches e2-micro (free tier) or e2-small. Creates firewall rule on default network. Credentials via gcloud CLI or service account JSON. Same cloud-init bootstrap as DO/AWS.",
       "category": "cloud",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-043"
       ],
@@ -1203,7 +1203,9 @@
         "Free tier eligible instance type used by default"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Blocking dependency CQ-045 (AWS adapter) is DONE. Pattern established across DO, Hetzner, and AWS providers — GCP follows the same interface. GCP-specific complexity (project selection, zone vs region, VPC firewall rules) is well-understood from prior provider work. src/cloud/provisioning/providers/gcp.ts is the target file matching the existing directory structure. Steps map cleanly to the established provider interface. Acceptance criteria are testable. Scope is one sprint matching AWS adapter scope. ORDERING: Do not start until CQ-047 (deploy command) ships. A 4th provider adapter with no user-facing deploy command is dead code — value is only realized once users can issue 'clawhq deploy' and choose their provider."
+      "groomingNotes": "Blocking dependency CQ-045 (AWS adapter) is DONE. Pattern established across DO, Hetzner, and AWS providers — GCP follows the same interface. GCP-specific complexity (project selection, zone vs region, VPC firewall rules) is well-understood from prior provider work. src/cloud/provisioning/providers/gcp.ts is the target file matching the existing directory structure. Steps map cleanly to the established provider interface. Acceptance criteria are testable. Scope is one sprint matching AWS adapter scope. ORDERING: Do not start until CQ-047 (deploy command) ships. A 4th provider adapter with no user-facing deploy command is dead code — value is only realized once users can issue 'clawhq deploy' and choose their provider.",
+      "passes": true,
+      "completedAt": "2026-03-20T13:29:36-07:00"
     },
     {
       "id": "CQ-047",

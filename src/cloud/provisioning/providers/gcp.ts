@@ -498,10 +498,15 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
         },
       };
 
+      const metadataItems: { key: string; value: string }[] = [];
       if (options.sshKeys?.length) {
-        (body as Record<string, unknown>).metadata = {
-          items: [{ key: "ssh-keys", value: options.sshKeys.join("\n") }],
-        };
+        metadataItems.push({ key: "ssh-keys", value: options.sshKeys.join("\n") });
+      }
+      if (options.userData) {
+        metadataItems.push({ key: "startup-script", value: options.userData });
+      }
+      if (metadataItems.length > 0) {
+        (body as Record<string, unknown>).metadata = { items: metadataItems };
       }
 
       const result = await gcpRequest(

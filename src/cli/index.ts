@@ -25,7 +25,9 @@ import type { PrereqCheckResult } from "../build/installer/index.js";
 import { buildAllowlistFromBlueprint, deploy, restart, serializeAllowlist, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
 import {
+  buildSnapshot,
   connectCloud,
+  deleteSnapshot,
   destroyInstance,
   disconnectCloud,
   findInstance,
@@ -39,13 +41,16 @@ import {
   formatFleetList,
   formatFleetListJson,
   formatSwitchResult,
+  getClawhqVersion,
   getFleetHealth,
   getInstanceStatus,
+  isSnapshotStale,
   provision,
   readFleetRegistry,
   readHeartbeatState,
   readInstanceRegistry,
   readQueueState,
+  readSnapshotRegistry,
   readTrustModeState,
   registerAgent,
   runFleetDoctor,
@@ -54,7 +59,7 @@ import {
   switchTrustMode,
   unregisterAgent,
 } from "../cloud/index.js";
-import type { CloudProvider, ProvisionProgress } from "../cloud/index.js";
+import type { CloudProvider, ProvisionProgress, SnapshotBuildProgress } from "../cloud/index.js";
 import { DASHBOARD_DEFAULT_PORT, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import type { TrustMode } from "../config/types.js";
 import { validateBundle } from "../config/validate.js";
@@ -3357,10 +3362,11 @@ const deployCmd = program.command("deploy").description("Provision and manage cl
 deployCmd
   .command("create")
   .description("Provision a new cloud VM with a running agent")
-  .requiredOption("-p, --provider <provider>", "Cloud provider (digitalocean)")
+  .requiredOption("-p, --provider <provider>", "Cloud provider (digitalocean, do, aws, gcp, hetzner)")
   .requiredOption("-n, --name <name>", "Instance name")
   .option("-r, --region <region>", "VM region", "nyc3")
   .option("-s, --size <size>", "VM size", "s-2vcpu-4gb")
+  .option("--snapshot <id>", "Use a pre-built snapshot for sub-60s provisioning")
   .option("--ssh-keys <keys>", "Comma-separated SSH key IDs or fingerprints")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("--json", "Output as JSON")
@@ -3369,13 +3375,14 @@ deployCmd
     name: string;
     region: string;
     size: string;
+    snapshot?: string;
     sshKeys?: string;
     deployDir: string;
     json?: boolean;
   }) => {
     const provider = resolveProviderAlias(opts.provider);
     if (!provider) {
-      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp`));
+      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner`));
       process.exit(1);
     }
 
@@ -3392,6 +3399,7 @@ deployCmd
       name: opts.name,
       region: opts.region,
       size: opts.size,
+      snapshotId: opts.snapshot,
       sshKeys,
       onProgress,
     });
@@ -3525,11 +3533,120 @@ deployCmd
     console.log(chalk.green(`Credentials stored for ${provider} (mode 0600).`));
   });
 
+// ── Snapshot commands ────────────────────────────────────────────────────────
+
+const snapshotCmd = deployCmd.command("snapshot").description("Manage pre-built VM snapshots for fast provisioning");
+
+snapshotCmd
+  .command("build")
+  .description("Build a golden VM snapshot (provision → install → snapshot → destroy)")
+  .requiredOption("-p, --provider <provider>", "Cloud provider (digitalocean, do, aws, gcp, hetzner)")
+  .option("-r, --region <region>", "Builder VM region", "nyc3")
+  .option("-s, --size <size>", "Builder VM size", "s-2vcpu-4gb")
+  .option("--ssh-keys <keys>", "Comma-separated SSH key IDs (for debugging builder)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: {
+    provider: string;
+    region: string;
+    size: string;
+    sshKeys?: string;
+    deployDir: string;
+    json?: boolean;
+  }) => {
+    const provider = resolveProviderAlias(opts.provider);
+    if (!provider) {
+      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner`));
+      process.exit(1);
+    }
+
+    const sshKeys = opts.sshKeys ? opts.sshKeys.split(",").map((k) => k.trim()) : undefined;
+
+    const spinner = ora("Building golden VM snapshot…");
+    if (!opts.json) spinner.start();
+
+    const onProgress = createSnapshotProgressHandler(spinner, opts.json);
+
+    const result = await buildSnapshot({
+      provider,
+      deployDir: opts.deployDir,
+      region: opts.region,
+      size: opts.size,
+      sshKeys,
+      onProgress,
+    });
+
+    if (!opts.json) spinner.stop();
+
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else if (result.success) {
+      console.log(chalk.green(`\nSnapshot built successfully.`));
+      console.log(chalk.dim(`  Snapshot ID:  ${result.snapshotId}`));
+      console.log(chalk.dim(`  Version:      ${result.clawhqVersion}`));
+      console.log(chalk.dim(`\n  Use it:  clawhq deploy create --provider ${provider} --name my-agent --snapshot ${result.snapshotId}`));
+      console.log(chalk.dim(`  List:    clawhq deploy snapshot list`));
+      console.log(chalk.dim(`  Delete:  clawhq deploy snapshot delete ${result.snapshotId}`));
+    } else {
+      console.error(chalk.red(`Snapshot build failed: ${result.error}`));
+      process.exit(1);
+    }
+  });
+
+snapshotCmd
+  .command("list")
+  .description("List pre-built VM snapshots")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action((opts: { deployDir: string; json?: boolean }) => {
+    const registry = readSnapshotRegistry(opts.deployDir);
+    const currentVersion = getClawhqVersion();
+
+    if (opts.json) {
+      console.log(JSON.stringify({ ...registry, currentVersion }, null, 2));
+    } else if (registry.snapshots.length === 0) {
+      console.log(chalk.dim("No pre-built snapshots."));
+      console.log(chalk.dim("  Build one: clawhq deploy snapshot build --provider digitalocean"));
+    } else {
+      console.log(chalk.bold("\nPre-built VM Snapshots\n"));
+      for (const snap of registry.snapshots) {
+        const stale = isSnapshotStale(snap, currentVersion);
+        const versionTag = stale
+          ? chalk.yellow(`v${snap.clawhqVersion} → v${currentVersion} (rebuild needed)`)
+          : chalk.green(`v${snap.clawhqVersion} (current)`);
+        console.log(`  ${chalk.bold(snap.name)} ${chalk.dim(`(${snap.snapshotId})`)}`);
+        console.log(`    Provider: ${snap.provider}  Region: ${snap.region}  Size: ${snap.builderSize}`);
+        console.log(`    Version:  ${versionTag}`);
+        console.log(`    Built:    ${snap.builtAt}\n`);
+      }
+    }
+  });
+
+snapshotCmd
+  .command("delete")
+  .description("Delete a pre-built VM snapshot")
+  .argument("<snapshot-id>", "Provider-specific snapshot ID")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (snapshotId: string, opts: { deployDir: string; json?: boolean }) => {
+    const result = await deleteSnapshot(opts.deployDir, snapshotId);
+
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else if (result.success) {
+      console.log(chalk.green(`Snapshot removed: ${snapshotId}`));
+    } else {
+      console.error(chalk.red(`Failed to delete snapshot: ${result.error}`));
+      process.exit(1);
+    }
+  });
+
 /** Resolve provider aliases (e.g. "do" → "digitalocean"). */
 function resolveProviderAlias(input: string): CloudProvider | undefined {
   const aliases: Record<string, CloudProvider> = {
     "digitalocean": "digitalocean",
     "do": "digitalocean",
+    "hetzner": "hetzner",
     "aws": "aws",
     "gcp": "gcp",
   };
@@ -3538,6 +3655,24 @@ function resolveProviderAlias(input: string): CloudProvider | undefined {
 
 function createProvisionProgressHandler(spinner: ReturnType<typeof ora>, json?: boolean) {
   return (event: ProvisionProgress): void => {
+    if (json) return;
+    const label = chalk.dim(`[${event.step}]`);
+    switch (event.status) {
+      case "running":
+        spinner.start(`${label} ${event.message}`);
+        break;
+      case "done":
+        spinner.succeed(`${label} ${event.message}`);
+        break;
+      case "failed":
+        spinner.fail(`${label} ${event.message}`);
+        break;
+    }
+  };
+}
+
+function createSnapshotProgressHandler(spinner: ReturnType<typeof ora>, json?: boolean) {
+  return (event: SnapshotBuildProgress): void => {
     if (json) return;
     const label = chalk.dim(`[${event.step}]`);
     switch (event.status) {

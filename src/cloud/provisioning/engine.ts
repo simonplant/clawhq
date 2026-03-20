@@ -26,6 +26,7 @@ import {
   removeInstance,
   updateInstanceStatus,
 } from "./registry.js";
+import { generateSnapshotInit } from "./snapshot-init.js";
 import type {
   CloudProvider,
   DestroyOptions,
@@ -105,12 +106,14 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
 
   let createResult;
   if (options.snapshotId) {
-    // Fast path: boot from pre-built snapshot
+    // Fast path: boot from pre-built snapshot with minimal config injection
+    const userData = generateSnapshotInit({ name: options.name });
     createResult = await adapter.createVmFromSnapshot({
       name: options.name,
       region: options.region,
       size: options.size,
       snapshotId: options.snapshotId,
+      userData,
       sshKeys: options.sshKeys,
       signal: options.signal,
     });

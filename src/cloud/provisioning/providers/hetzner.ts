@@ -195,7 +195,7 @@ export function createHetznerAdapter(token: string): ProviderAdapter {
     },
 
     async createVmFromSnapshot(options: CreateVmFromSnapshotOptions): Promise<CreateVmResult> {
-      const body = {
+      const body: Record<string, unknown> = {
         name: options.name,
         server_type: options.size,
         image: options.snapshotId,
@@ -204,6 +204,7 @@ export function createHetznerAdapter(token: string): ProviderAdapter {
         start_after_create: true,
         labels: { managed_by: "clawhq" },
       };
+      if (options.userData) body.user_data = options.userData;
 
       const result = await hetznerRequest("/servers", { method: "POST", body, signal: options.signal });
       if (!result.ok) return { success: false, error: result.error };

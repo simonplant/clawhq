@@ -32,6 +32,13 @@ export type {
   ProvisionProgressCallback,
   ProvisionResult,
   ProvisionStepName,
+  SnapshotBuildOptions,
+  SnapshotBuildProgress,
+  SnapshotBuildProgressCallback,
+  SnapshotBuildResult,
+  SnapshotBuildStepName,
+  SnapshotRecord,
+  SnapshotRegistry,
   SshKeyInfo,
   TokenValidationResult,
 } from "./types.js";
@@ -73,6 +80,25 @@ export type { CloudInitOptions, CloudInitTrustMode } from "./cloud-init.js";
 // Health
 export type { HealthPollOptions, HealthPollResult } from "./health.js";
 export { pollInstanceHealth } from "./health.js";
+
+// Snapshot builder
+export { buildSnapshot, deleteSnapshot, getClawhqVersion } from "./snapshot.js";
+export type { SnapshotDeleteResult } from "./snapshot.js";
+
+// Snapshot registry
+export {
+  addSnapshot,
+  findLatestSnapshot,
+  findSnapshot,
+  isSnapshotStale,
+  readSnapshotRegistry,
+  removeSnapshot,
+  snapshotRegistryPath,
+} from "./snapshot-registry.js";
+
+// Snapshot boot-time init
+export { generateSnapshotInit } from "./snapshot-init.js";
+export type { SnapshotInitOptions } from "./snapshot-init.js";
 
 // Providers
 export { createAwsAdapter } from "./providers/aws.js";

@@ -1282,8 +1282,8 @@
       "description": "Snapshot builder in src/cloud/provisioning/snapshot.ts. Creates a golden VM image per provider: provisions base VM, installs Docker + clawhq, cleans up, snapshots. The snapshot is reused for all future provisions — only blueprint config and tokens are injected at boot time via metadata/user-data. Snapshot version tracked and auto-rebuilt when clawhq version changes.",
       "category": "cloud",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-043",
         "CQ-048"
@@ -1302,7 +1302,9 @@
         "Snapshot management commands available in CLI"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "CQ-048 (cloud-init bootstrap) is DONE and proven. DO, AWS, and Hetzner adapters are all operational. The snapshot pipeline follows a clear pattern: provision golden VM, install Docker + clawhq, clean up, snapshot, destroy builder. Each provider has its own snapshot format (DO snapshots, AWS AMIs, Hetzner snapshots). Boot-time config injection replaces full cloud-init with lightweight metadata-only injection. Target: src/cloud/provisioning/snapshot.ts. CLI commands: clawhq cloud snapshot build/list/delete. Scope is one sprint — parallel builder across 3 providers is the main complexity. ORDERING: Ship after FEAT-004 (cloud demo) — the 3-minute provisioning experience needs to be validated in the wild before optimizing. CQ-049 makes the good experience excellent; FEAT-004 establishes it first. GCP snapshots (CQ-049 step 2) require CQ-046 to ship first — implement DO/AWS/Hetzner snapshots initially, add GCP once CQ-046 is done."
+      "groomingNotes": "CQ-048 (cloud-init bootstrap) is DONE and proven. DO, AWS, and Hetzner adapters are all operational. The snapshot pipeline follows a clear pattern: provision golden VM, install Docker + clawhq, clean up, snapshot, destroy builder. Each provider has its own snapshot format (DO snapshots, AWS AMIs, Hetzner snapshots). Boot-time config injection replaces full cloud-init with lightweight metadata-only injection. Target: src/cloud/provisioning/snapshot.ts. CLI commands: clawhq cloud snapshot build/list/delete. Scope is one sprint — parallel builder across 3 providers is the main complexity. ORDERING: Ship after FEAT-004 (cloud demo) — the 3-minute provisioning experience needs to be validated in the wild before optimizing. CQ-049 makes the good experience excellent; FEAT-004 establishes it first. GCP snapshots (CQ-049 step 2) require CQ-046 to ship first — implement DO/AWS/Hetzner snapshots initially, add GCP once CQ-046 is done.",
+      "passes": true,
+      "completedAt": "2026-03-20T13:44:21-07:00"
     },
     {
       "id": "FEAT-002",

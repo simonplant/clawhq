@@ -1,31 +1,31 @@
 {
-  "sprintId": "sprint-1774038207",
-  "startedAt": "2026-03-20T13:23:27-07:00",
+  "sprintId": "sprint-1774038577",
+  "startedAt": "2026-03-20T13:29:37-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-046",
-    "title": "GCP provider adapter (Compute Engine + cloud-init)",
-    "intent": "GCP Compute Engine completes big-three cloud coverage. Implement GCPAdapter following the proven provider interface pattern. Users with GCP credits or existing GCP infrastructure can deploy agents with the same single clawhq deploy command.",
-    "description": "Implement GCPAdapter in src/cloud/provisioning/providers/gcp.ts. Uses Google Cloud Compute API for VM lifecycle. Launches e2-micro (free tier) or e2-small. Creates firewall rule on default network. Credentials via gcloud CLI or service account JSON. Same cloud-init bootstrap as DO/AWS.",
+    "id": "CQ-049",
+    "title": "Pre-built VM snapshots for sub-60s provisioning",
+    "intent": "Pre-built VM snapshots reduce provisioning time from 3 minutes to under 60 seconds. This is the technical foundation of the 60-second demo promise and a key competitive differentiator for sovereignty-first cloud deployment.",
+    "description": "Snapshot builder in src/cloud/provisioning/snapshot.ts. Creates a golden VM image per provider: provisions base VM, installs Docker + clawhq, cleans up, snapshots. The snapshot is reused for all future provisions — only blueprint config and tokens are injected at boot time via metadata/user-data. Snapshot version tracked and auto-rebuilt when clawhq version changes.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Implement Compute Engine client: create, delete, get, set metadata",
-      "Create cloud-init startup script for Debian/Ubuntu GCE images",
-      "Build firewall rule: allow 443 + gateway port from 0.0.0.0/0",
-      "Implement machine image snapshot for fast re-provision",
-      "Wire into provider interface with credential validation"
+      "Build snapshot creation pipeline: provision → install → snapshot → destroy builder",
+      "Implement per-provider snapshot management (DO snapshots, AWS AMIs, GCP images)",
+      "Add boot-time config injection: blueprint + tokens via cloud metadata",
+      "Version tracking: rebuild snapshot when clawhq version changes",
+      "Add clawhq cloud snapshot build/list/delete commands"
     ],
     "acceptanceCriteria": [
-      "GCE instance launched and agent running within 3 minutes",
-      "Firewall rule restricts inbound to HTTPS + gateway port",
-      "Works with gcloud CLI credentials or service account key",
-      "Free tier eligible instance type used by default"
+      "Snapshot-based provision produces running agent in under 60 seconds",
+      "Snapshot auto-rebuilt when clawhq version changes",
+      "Boot-time config injection works without re-running full install",
+      "Snapshot management commands available in CLI"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T13:23:27-07:00",
+    "startedAt": "2026-03-20T13:29:37-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T13:29:36-07:00"
+    "completedAt": "2026-03-20T13:44:21-07:00"
   },
-  "completedAt": "2026-03-20T13:29:36-07:00",
+  "completedAt": "2026-03-20T13:44:21-07:00",
   "attempts": 1
 }
