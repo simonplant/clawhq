@@ -1,31 +1,36 @@
 {
-  "sprintId": "sprint-1774038577",
-  "startedAt": "2026-03-20T13:29:37-07:00",
+  "sprintId": "sprint-1774039462",
+  "startedAt": "2026-03-20T13:44:22-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-049",
-    "title": "Pre-built VM snapshots for sub-60s provisioning",
-    "intent": "Pre-built VM snapshots reduce provisioning time from 3 minutes to under 60 seconds. This is the technical foundation of the 60-second demo promise and a key competitive differentiator for sovereignty-first cloud deployment.",
-    "description": "Snapshot builder in src/cloud/provisioning/snapshot.ts. Creates a golden VM image per provider: provisions base VM, installs Docker + clawhq, cleans up, snapshots. The snapshot is reused for all future provisions — only blueprint config and tokens are injected at boot time via metadata/user-data. Snapshot version tracked and auto-rebuilt when clawhq version changes.",
+    "id": "FEAT-004",
+    "title": "clawhq demo --cloud — zero-config cloud demo (phase 2)",
+    "intent": "clawhq demo --cloud gives any user a zero-Docker path to experiencing a live agent in 60 seconds. Just a DO API token. Ephemeral droplet self-destructs on exit — no orphaned instances, no ongoing cost. This is the conversion tool for the sovereignty pitch.",
+    "description": "Phase 2 of FEAT-002 demo command. After CQ-044 (DO adapter) ships, add --cloud flag to 'clawhq demo' that provisions an ephemeral DigitalOcean droplet, spins up the demo agent in the cloud, opens the browser chat UI pointing at the cloud URL, and destroys the droplet on exit. Zero Docker requirement on the user's machine — they just need a DO API token. Scope: add --cloud flag to existing demo command; provision ephemeral DO droplet using CQ-043 engine + CQ-044 adapter; inject demo blueprint + mock LLM config via cloud-init (CQ-048); open browser pointing at cloud agent URL; cleanup droplet on SIGINT/exit. Cost: minimal — cx1 droplet for ~60s demo = fractions of a cent.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Build snapshot creation pipeline: provision → install → snapshot → destroy builder",
-      "Implement per-provider snapshot management (DO snapshots, AWS AMIs, GCP images)",
-      "Add boot-time config injection: blueprint + tokens via cloud metadata",
-      "Version tracking: rebuild snapshot when clawhq version changes",
-      "Add clawhq cloud snapshot build/list/delete commands"
+      "Add --cloud flag to existing clawhq demo command in src/cli/index.ts",
+      "Check for DIGITALOCEAN_TOKEN env var; prompt user if not set",
+      "Provision ephemeral DO droplet via provisioning engine (smallest size, nearest region)",
+      "Inject demo blueprint + mock LLM config via cloud-init template (CQ-048)",
+      "Poll until agent responds healthy (max 3 min timeout with progress spinner)",
+      "Open browser to cloud agent chat URL",
+      "Register SIGINT/exit handler to destroy droplet immediately on exit",
+      "Show estimated cost (fractions of a cent) before provisioning and confirm"
     ],
     "acceptanceCriteria": [
-      "Snapshot-based provision produces running agent in under 60 seconds",
-      "Snapshot auto-rebuilt when clawhq version changes",
-      "Boot-time config injection works without re-running full install",
-      "Snapshot management commands available in CLI"
+      "clawhq demo --cloud provisions a cloud agent without Docker on the users machine",
+      "Only a DIGITALOCEAN_TOKEN is required — no other setup",
+      "Cost estimate shown before provisioning; user must confirm",
+      "Browser opens automatically to live cloud chat UI within 3 minutes",
+      "SIGINT destroys the droplet immediately — no orphaned instances",
+      "Exit path destroys droplet even on crash (best-effort cleanup with user warning)"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T13:29:37-07:00",
+    "startedAt": "2026-03-20T13:44:22-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T13:44:21-07:00"
+    "completedAt": "2026-03-20T13:57:01-07:00"
   },
-  "completedAt": "2026-03-20T13:44:21-07:00",
+  "completedAt": "2026-03-20T13:57:01-07:00",
   "attempts": 1
 }

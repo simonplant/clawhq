@@ -1366,11 +1366,12 @@
         "SIGINT destroys the droplet immediately — no orphaned instances",
         "Exit path destroys droplet even on crash (best-effort cleanup with user warning)"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "All three blocking dependencies are DONE: FEAT-002 (base demo command), CQ-044 (DO adapter), CQ-048 (cloud-init bootstrap). The existing clawhq demo command in cli/index.ts provides the structure to extend with --cloud flag. Implementation: detect --cloud flag, provision ephemeral DO droplet via CQ-043 engine + CQ-044 adapter, inject demo blueprint via CQ-048 cloud-init, open browser to cloud agent URL, destroy droplet on SIGINT/exit. SIGINT handler pattern already used elsewhere in the codebase. Scope is one sprint. ORDERING: Ship after CQ-047 (deploy command) — the deploy wizard establishes the interactive UX pattern for cloud provisioning that this command should mirror. Sharing patterns avoids drift. PERFORMANCE NOTE: Without CQ-049 (snapshots), provisioning takes ~3 minutes — AC correctly says 'within 3 minutes'. CQ-049 later brings this to sub-60s. Do not over-promise 60 seconds in the demo UX until CQ-049 ships.",
-      "groomedAt": "2026-03-20"
+      "groomedAt": "2026-03-20",
+      "completedAt": "2026-03-20T13:57:01-07:00"
     },
     {
       "id": "FEAT-005",
