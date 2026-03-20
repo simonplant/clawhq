@@ -12,6 +12,7 @@
  */
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+
 import { generateCloudInit } from "./cloud-init.js";
 import { getProviderCredential } from "./credentials.js";
 import { pollInstanceHealth } from "./health.js";
@@ -240,11 +241,10 @@ export async function destroyInstance(options: DestroyOptions): Promise<DestroyR
   }
 
   // Verify destruction — poll until the droplet is confirmed gone
-  let verified = false;
   for (let i = 0; i < DESTROY_VERIFY_ATTEMPTS; i++) {
     if (options.signal?.aborted) break;
 
-    verified = await adapter.verifyDestroyed(instance.providerInstanceId, options.signal);
+    const verified = await adapter.verifyDestroyed(instance.providerInstanceId, options.signal);
     if (verified) break;
 
     await new Promise<void>((resolve) => setTimeout(resolve, DESTROY_VERIFY_INTERVAL_MS));

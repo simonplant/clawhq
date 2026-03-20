@@ -26,9 +26,9 @@ import {
   loadAllBuiltinBlueprints,
   loadBlueprint,
 } from "../blueprints/loader.js";
-import type { Blueprint, BlueprintChoice, PersonalityDimensions, DimensionValue } from "../blueprints/types.js";
 import { DIMENSION_META, PERSONALITY_PRESETS, type DimensionMeta } from "../blueprints/personality-presets.js";
 import { detectTensions, hasConflicts, type DetectedTension } from "../blueprints/personality-tensions.js";
+import type { Blueprint, BlueprintChoice, PersonalityDimensions, DimensionValue } from "../blueprints/types.js";
 
 import type { WizardAnswers, WizardOptions } from "./types.js";
 

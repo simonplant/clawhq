@@ -32,7 +32,7 @@ function mockPrompter(answers: unknown[]): Prompter {
 
 describe("runWizard", () => {
   it("completes happy path without errors", async () => {
-    // Script: select blueprint → customization Qs → channel → air-gapped? →
+    // Script: select blueprint → customization Qs → personality → channel → air-gapped? →
     //         model → local model → deploy dir → port → configure tasks? → confirm
     const prompter = mockPrompter([
       "family-hub",       // blueprint selection
