@@ -987,11 +987,12 @@
         "User receives a clear error message that firewall failed and the VM was cleaned up automatically",
         "No VM remains running after a firewall failure — verified by checking provider console"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "PRIORITY UPGRADED FROM SHOULD TO MUST. Rationale: AD-05 (Security is architecture, not policy) and the three non-negotiables both say security hardening is automatic, not opt-in. A provisioned VM without inbound firewall is a security breach — the user asked for a sovereign, hardened agent and got an internet-exposed VM instead. This is a trust-destroying failure mode, not a cosmetic issue. No active instance must ever be registered after a firewall failure. Fix is in engine.ts:184 — on firewallResult.success === false, call adapter.destroyVm(vmId), clean up registry entry, throw ProvisionError. Error message must be explicit: firewall failed, VM destroyed, please retry. Scope: ~10 lines in engine.ts. ORDERING: Sprint before CQ-047 (deploy command) — the deploy wizard must never surface this failure mode to users."
+      "groomingNotes": "PRIORITY UPGRADED FROM SHOULD TO MUST. Rationale: AD-05 (Security is architecture, not policy) and the three non-negotiables both say security hardening is automatic, not opt-in. A provisioned VM without inbound firewall is a security breach — the user asked for a sovereign, hardened agent and got an internet-exposed VM instead. This is a trust-destroying failure mode, not a cosmetic issue. No active instance must ever be registered after a firewall failure. Fix is in engine.ts:184 — on firewallResult.success === false, call adapter.destroyVm(vmId), clean up registry entry, throw ProvisionError. Error message must be explicit: firewall failed, VM destroyed, please retry. Scope: ~10 lines in engine.ts. ORDERING: Sprint before CQ-047 (deploy command) — the deploy wizard must never surface this failure mode to users.",
+      "completedAt": "2026-03-20T14:21:31-07:00"
     },
     {
       "id": "BUG-065",
