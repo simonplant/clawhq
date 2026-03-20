@@ -10,6 +10,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { DEPLOY_CLOUD_SUBDIR, DEPLOY_ENGINE_OPENCLAW_JSON, DEPLOY_ENGINE_SUBDIR } from "../../config/paths.js";
 import { collectHealthReport } from "../heartbeat/reporter.js";
 import { readTrustModeState } from "../trust-modes/index.js";
 
@@ -28,7 +29,7 @@ const FLEET_FILE = "fleet.json";
 
 /** Resolve fleet.json path for a deployment directory. */
 export function fleetRegistryPath(deployDir: string): string {
-  return join(deployDir, "cloud", FLEET_FILE);
+  return join(deployDir, DEPLOY_CLOUD_SUBDIR, FLEET_FILE);
 }
 
 // ── Registry management ──────────────────────────────────────────────────────
@@ -119,7 +120,7 @@ export function unregisterAgent(
 
 /** Check if a deployment directory has a valid engine configuration. */
 function isConfigured(agentDeployDir: string): boolean {
-  return existsSync(join(agentDeployDir, "engine", "openclaw.json"));
+  return existsSync(join(agentDeployDir, DEPLOY_ENGINE_SUBDIR, DEPLOY_ENGINE_OPENCLAW_JSON));
 }
 
 /** Discover a single agent — check existence, config, and collect health. */
