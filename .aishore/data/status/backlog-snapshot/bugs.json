@@ -852,11 +852,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Pattern identical to BUG-011 (Gateway port 18789 scattered). src/config/paths.ts already centralizes container-internal paths (OPENCLAW_CONTAINER_ROOT etc.) and DEFAULT_DEPLOY_DIR but does NOT define the host-side subdirectory layout. Add to paths.ts: DEPLOY_ENGINE_SUBDIR = 'engine', DEPLOY_WORKSPACE_SUBDIR = 'workspace', DEPLOY_CLOUD_SUBDIR = 'cloud', and file-name constants DEPLOY_ENGINE_OPENCLAW_FILE = 'openclaw.json', DEPLOY_ENGINE_COMPOSE_FILE = 'docker-compose.yml', DEPLOY_ENGINE_CREDENTIALS_FILE = 'credentials.json', DEPLOY_WORKSPACE_MEMORY_DIR = 'memory'. Then update cloud/heartbeat/reporter.ts (lines 27, 104, 122, 128, 152) and cloud/fleet/discovery.ts (line 122) to import and use the new constants. Import path from these files: ../../config/paths.js. Do NOT change join() call structure — only replace string literals. Run cloud/ tests after. Zero logic change. Also grep for other join(deployDir, 'engine' or 'workspace' or 'cloud') patterns across the full src/ to catch any other occurrences (build/launcher likely has some — scope those to a follow-up if found)."
+      "groomingNotes": "Pattern identical to BUG-011 (Gateway port 18789 scattered). src/config/paths.ts already centralizes container-internal paths (OPENCLAW_CONTAINER_ROOT etc.) and DEFAULT_DEPLOY_DIR but does NOT define the host-side subdirectory layout. Add to paths.ts: DEPLOY_ENGINE_SUBDIR = 'engine', DEPLOY_WORKSPACE_SUBDIR = 'workspace', DEPLOY_CLOUD_SUBDIR = 'cloud', and file-name constants DEPLOY_ENGINE_OPENCLAW_FILE = 'openclaw.json', DEPLOY_ENGINE_COMPOSE_FILE = 'docker-compose.yml', DEPLOY_ENGINE_CREDENTIALS_FILE = 'credentials.json', DEPLOY_WORKSPACE_MEMORY_DIR = 'memory'. Then update cloud/heartbeat/reporter.ts (lines 27, 104, 122, 128, 152) and cloud/fleet/discovery.ts (line 122) to import and use the new constants. Import path from these files: ../../config/paths.js. Do NOT change join() call structure — only replace string literals. Run cloud/ tests after. Zero logic change. Also grep for other join(deployDir, 'engine' or 'workspace' or 'cloud') patterns across the full src/ to catch any other occurrences (build/launcher likely has some — scope those to a follow-up if found).",
+      "completedAt": "2026-03-20T12:29:24-07:00"
     },
     {
       "id": "BUG-058",
