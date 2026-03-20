@@ -1,5 +1,5 @@
 {
-  "description": "ClawHQ backlog — derived from PRODUCT.md, ARCHITECTURE.md, README.md (2026-03-18)",
+  "description": "ClawHQ backlog \u2014 derived from PRODUCT.md, ARCHITECTURE.md, README.md (2026-03-18)",
   "items": [
     {
       "id": "CQ-001",
@@ -26,8 +26,8 @@
     {
       "id": "CQ-002",
       "title": "Gateway WebSocket RPC client",
-      "intent": "Give ClawHQ the ability to talk to a running OpenClaw agent. Every live operation depends on this RPC client — without it, ClawHQ can only write files, never observe or control a deployed agent.",
-      "description": "FOUNDATION: Every live operation — deploy health checks, config patches, session queries — goes through this client. Without it, ClawHQ can only write files; it cannot talk to a running agent. Acceptance: RPC round-trip works with real Gateway; timeout + abort signal paths exercised; typed error classes surface correct user messages.",
+      "intent": "Give ClawHQ the ability to talk to a running OpenClaw agent. Every live operation depends on this RPC client \u2014 without it, ClawHQ can only write files, never observe or control a deployed agent.",
+      "description": "FOUNDATION: Every live operation \u2014 deploy health checks, config patches, session queries \u2014 goes through this client. Without it, ClawHQ can only write files; it cannot talk to a running agent. Acceptance: RPC round-trip works with real Gateway; timeout + abort signal paths exercised; typed error classes surface correct user messages.",
       "category": "Foundation",
       "priority": "must",
       "status": "done",
@@ -77,8 +77,8 @@
     {
       "id": "CQ-004",
       "title": "Deploy orchestration + preflight checks",
-      "intent": "Make 'clawhq up' produce a running, reachable agent or a clear, actionable error — never silent failure. Every preflight check must block deploy if it fails.",
-      "description": "USER MOMENT: This is what 'clawhq up' does — the user's first deploy experience. The full sequence (preflight -> compose -> firewall -> health -> smoke test) ensures the user gets a working agent or a clear error, never silent failure. Step-by-step progress reporting means the user isn't staring at a frozen terminal. Acceptance: 'clawhq up' produces a running agent; all 6 preflight checks surface actionable errors; health verify confirms agent is reachable before returning.",
+      "intent": "Make 'clawhq up' produce a running, reachable agent or a clear, actionable error \u2014 never silent failure. Every preflight check must block deploy if it fails.",
+      "description": "USER MOMENT: This is what 'clawhq up' does \u2014 the user's first deploy experience. The full sequence (preflight -> compose -> firewall -> health -> smoke test) ensures the user gets a working agent or a clear error, never silent failure. Step-by-step progress reporting means the user isn't staring at a frozen terminal. Acceptance: 'clawhq up' produces a running agent; all 6 preflight checks surface actionable errors; health verify confirms agent is reachable before returning.",
       "category": "build",
       "priority": "must",
       "status": "done",
@@ -129,7 +129,7 @@
       "lastFailAt": "2026-03-19T00:19:10-07:00",
       "failCount": 1,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "SECOND GROOMING (updated) — failed once (reason: implementation failed, no further detail). BUG-009 (yaml parser fix) is ALREADY DONE — do not re-do it. IMPLEMENTATION CHECKLIST: (1) Create src/secure/firewall/firewall.ts — move applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts, add verifyFirewall() that diffs expected vs actual iptables rules. (2) Add air-gap mode flag: skip allowlist, drop all outbound except ESTABLISHED/RELATED. (3) Detect Docker bridge interface dynamically via 'docker network inspect' — never hardcode. (4) Compose-down watcher for auto-reapply. (5) EXEC_DRY env var for test dry-run mode — iptables calls must be mockable. (6) Doctor integration: add verifyFirewall() check to existing src/operate/doctor/ check array. (7) sudo/privilege handling: detect non-root and surface actionable error. SUDO NOTE: iptables requires root — document requirement in error messages. TESTING: All tests must use EXEC_DRY=1 or a mock exec to avoid requiring root in CI. ACCEPTANCE CHECK: applyFirewall() idempotent (run twice = same rules); verifyFirewall() returns diff when rules are missing; air-gap mode drops all outbound; doctor check reports fail with fix message when rules absent. POST-COMPLETION BATCH: After CQ-005 sprint completes successfully, immediately mark CQ-041, BUG-020, and BUG-023 as readyForSprint — they are all blocked exclusively on this item.",
+      "groomingNotes": "SECOND GROOMING (updated) \u2014 failed once (reason: implementation failed, no further detail). BUG-009 (yaml parser fix) is ALREADY DONE \u2014 do not re-do it. IMPLEMENTATION CHECKLIST: (1) Create src/secure/firewall/firewall.ts \u2014 move applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts, add verifyFirewall() that diffs expected vs actual iptables rules. (2) Add air-gap mode flag: skip allowlist, drop all outbound except ESTABLISHED/RELATED. (3) Detect Docker bridge interface dynamically via 'docker network inspect' \u2014 never hardcode. (4) Compose-down watcher for auto-reapply. (5) EXEC_DRY env var for test dry-run mode \u2014 iptables calls must be mockable. (6) Doctor integration: add verifyFirewall() check to existing src/operate/doctor/ check array. (7) sudo/privilege handling: detect non-root and surface actionable error. SUDO NOTE: iptables requires root \u2014 document requirement in error messages. TESTING: All tests must use EXEC_DRY=1 or a mock exec to avoid requiring root in CI. ACCEPTANCE CHECK: applyFirewall() idempotent (run twice = same rules); verifyFirewall() returns diff when rules are missing; air-gap mode drops all outbound; doctor check reports fail with fix message when rules absent. POST-COMPLETION BATCH: After CQ-005 sprint completes successfully, immediately mark CQ-041, BUG-020, and BUG-023 as readyForSprint \u2014 they are all blocked exclusively on this item.",
       "passes": true,
       "completedAt": "2026-03-19T17:01:59-07:00"
     },
@@ -162,7 +162,7 @@
       "id": "CQ-007",
       "title": "Secrets management (.env store)",
       "intent": "Ensure every credential written to disk is atomic, 0600-permissioned, and survives process interruption. No partial writes, no world-readable secrets.",
-      "description": "SECURITY BASELINE: If .env is misconfigured or readable by other processes, the user's API keys are exposed. Atomic writes (temp + rename) and 0600 permissions are non-negotiable. This is the lowest layer of the credentials stack — everything CQ-008 (health probes) does depends on reliable .env reads. Acceptance: written files are always 0600; atomic write survives process kill mid-write; get/set/remove preserve format and comments.",
+      "description": "SECURITY BASELINE: If .env is misconfigured or readable by other processes, the user's API keys are exposed. Atomic writes (temp + rename) and 0600 permissions are non-negotiable. This is the lowest layer of the credentials stack \u2014 everything CQ-008 (health probes) does depends on reliable .env reads. Acceptance: written files are always 0600; atomic write survives process kill mid-write; get/set/remove preserve format and comments.",
       "category": "secure",
       "priority": "must",
       "status": "done",
@@ -210,7 +210,7 @@
     {
       "id": "CQ-009",
       "title": "Blueprint loader + validator",
-      "intent": "Load and validate any blueprint YAML — built-in or community — rejecting malformed input with clear errors. This is the read path the entire blueprint engine depends on.",
+      "intent": "Load and validate any blueprint YAML \u2014 built-in or community \u2014 rejecting malformed input with clear errors. This is the read path the entire blueprint engine depends on.",
       "description": "BLUEPRINT ENGINE FOUNDATION: The loader is the reading end of the blueprint system. Without it, 'clawhq blueprint list/preview' (FEAT-001) and the init wizard (CQ-010) have nothing to work with. 70+ validation checks mean a malformed community blueprint can't corrupt the user's setup. Acceptance: all built-in blueprints load cleanly; invalid YAML surfaces readable error; size limit prevents DoS on large files; templateToChoice() works correctly for wizard display.",
       "category": "design",
       "priority": "must",
@@ -236,7 +236,7 @@
       "id": "CQ-010",
       "title": "Init wizard + config generation + writer",
       "intent": "Guide a non-technical user from blueprint selection to a valid, landmine-free config in one interactive session. Generated config must pass all 14 validation rules.",
-      "description": "CORE USER FLOW: This is the forging ceremony — the moment where a blueprint becomes a personalized agent. The guided wizard is the primary path for the Privacy Migrant persona who chose ClawHQ specifically because they don't want to hand-write 13,500 tokens of config. Air-gapped mode support ensures the wizard works without calling home. Acceptance: wizard completes without errors on happy path; generated config passes all 14 landmine rules; atomic writer never produces partial files; air-gap mode skips cloud-dependent steps gracefully.",
+      "description": "CORE USER FLOW: This is the forging ceremony \u2014 the moment where a blueprint becomes a personalized agent. The guided wizard is the primary path for the Privacy Migrant persona who chose ClawHQ specifically because they don't want to hand-write 13,500 tokens of config. Air-gapped mode support ensures the wizard works without calling home. Acceptance: wizard completes without errors on happy path; generated config passes all 14 landmine rules; atomic writer never produces partial files; air-gap mode skips cloud-dependent steps gracefully.",
       "category": "design",
       "priority": "must",
       "status": "done",
@@ -264,7 +264,7 @@
       "id": "CQ-011",
       "title": "Doctor diagnostics + auto-fix",
       "intent": "Make 'clawhq doctor' the single command that catches every known failure mode before it hits the user. Auto-fix must resolve common issues without requiring knowledge of internals.",
-      "description": "HERO FEATURE: 'doctor' is the safety net that turns OpenClaw from 'it silently broke' to 'I know exactly what's wrong and how to fix it'. The 14+ checks cover every known failure mode preventively. Auto-fix means the user doesn't need to know what cap_drop is — they just run 'clawhq doctor --fix' and it works. Table output is the key UX: all checks visible at a glance, pass/fail clear, fix suggestions actionable. Acceptance: all 14+ checks run; auto-fix resolves common issues; table alignment clean; JSON output available for scripting.",
+      "description": "HERO FEATURE: 'doctor' is the safety net that turns OpenClaw from 'it silently broke' to 'I know exactly what's wrong and how to fix it'. The 14+ checks cover every known failure mode preventively. Auto-fix means the user doesn't need to know what cap_drop is \u2014 they just run 'clawhq doctor --fix' and it works. Table output is the key UX: all checks visible at a glance, pass/fail clear, fix suggestions actionable. Acceptance: all 14+ checks run; auto-fix resolves common issues; table alignment clean; JSON output available for scripting.",
       "category": "operate",
       "priority": "must",
       "status": "done",
@@ -317,7 +317,7 @@
       "id": "CQ-013",
       "title": "CLI entry point + UX helpers",
       "intent": "Ship the CLI entry point so every command is reachable, errors are human-readable, and first-run detects missing prerequisites. Nothing runs without this.",
-      "description": "HIGH VALUE: Gate item — nothing runs without this. Commander.js flat CLI (AD-01), first-run detection, spinner/error UX helpers. Acceptance: clawhq --help lists all commands; error handler formats cleanly; first-run detects missing install.",
+      "description": "HIGH VALUE: Gate item \u2014 nothing runs without this. Commander.js flat CLI (AD-01), first-run detection, spinner/error UX helpers. Acceptance: clawhq --help lists all commands; error handler formats cleanly; first-run detects missing install.",
       "category": "Foundation",
       "priority": "must",
       "status": "done",
@@ -338,8 +338,8 @@
     },
     {
       "id": "CQ-014",
-      "title": "clawhq install — pre-req detection + scaffold",
-      "intent": "Make 'clawhq install' the first command that works — detect prerequisites, scaffold ~/.clawhq/, and leave the user with clear next-step guidance.",
+      "title": "clawhq install \u2014 pre-req detection + scaffold",
+      "intent": "Make 'clawhq install' the first command that works \u2014 detect prerequisites, scaffold ~/.clawhq/, and leave the user with clear next-step guidance.",
       "description": "HIGH VALUE: This is the literal first command a user runs. Gate: Docker detected, Node >=20, Ollama running. Creates ~/.clawhq/ scaffold. Without this, nothing else works. Acceptance: 'clawhq install' exits 0, ~/.clawhq/ structure exists, clawhq.yaml written, user sees next-step guidance.",
       "category": "build",
       "priority": "must",
@@ -394,7 +394,7 @@
       "id": "CQ-016",
       "title": "~/.clawhq/ deployment directory migration",
       "intent": "Replace all hardcoded ~/.openclaw/ paths with configurable ~/.clawhq/ deployment root. Existing installations must migrate without data loss.",
-      "description": "USER VALUE: Internal path migration — replaces hardcoded ~/.openclaw/ with configurable ~/.clawhq/. User-invisible refactor. Does not block MVP. Do after install scaffold (CQ-014) is working.",
+      "description": "USER VALUE: Internal path migration \u2014 replaces hardcoded ~/.openclaw/ with configurable ~/.clawhq/. User-invisible refactor. Does not block MVP. Do after install scaffold (CQ-014) is working.",
       "category": "build",
       "priority": "should",
       "status": "done",
@@ -413,15 +413,15 @@
         "Existing ~/.openclaw/ installations migrate cleanly to ~/.clawhq/"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "REVISED SCOPE: grep shows 6 files with .openclaw/ references, but ALL are container-internal paths (/home/node/.openclaw/) — where OpenClaw looks for its config inside the Docker container. These are correct per AD-03 (tight coupling to OpenClaw) and must NOT be changed. Host deployment paths are already parameterized via deployDir (from clawhq.yaml). ACTUAL WORK: (1) audit that every host-path reference in ClawHQ CLI uses the configurable deploymentRoot, not a hardcoded ~/.openclaw/ or ~/.clawhq/; (2) if any host-paths are hardcoded, replace with config lookup; (3) add migration command that moves ~/.openclaw/ to ~/.clawhq/ for existing pre-release installs. Estimated scope: small — host paths already appear to use deployDir. Verify first before sprint.",
+      "groomingNotes": "REVISED SCOPE: grep shows 6 files with .openclaw/ references, but ALL are container-internal paths (/home/node/.openclaw/) \u2014 where OpenClaw looks for its config inside the Docker container. These are correct per AD-03 (tight coupling to OpenClaw) and must NOT be changed. Host deployment paths are already parameterized via deployDir (from clawhq.yaml). ACTUAL WORK: (1) audit that every host-path reference in ClawHQ CLI uses the configurable deploymentRoot, not a hardcoded ~/.openclaw/ or ~/.clawhq/; (2) if any host-paths are hardcoded, replace with config lookup; (3) add migration command that moves ~/.openclaw/ to ~/.clawhq/ for existing pre-release installs. Estimated scope: small \u2014 host paths already appear to use deployDir. Verify first before sprint.",
       "passes": true,
       "completedAt": "2026-03-19T08:51:20-07:00"
     },
     {
       "id": "CQ-017",
       "title": "Email Manager blueprint YAML",
-      "intent": "Deliver the Email Manager blueprint as the reference implementation — email triage, calendar, tasks, cron, hardened security. This is the demo-ready first use case.",
-      "description": "HIGH VALUE: THE first use case — this is what we show in demos. Defines Email Manager end-to-end: email + calendar + tasks tools, email-digest + morning-brief skills, 15min inbox cron, 8am daily digest. Acceptance: clawhq blueprint preview email-manager shows complete design; forge from CQ-010 produces valid openclaw.json. Must pair with CQ-022 (email-digest skill).",
+      "intent": "Deliver the Email Manager blueprint as the reference implementation \u2014 email triage, calendar, tasks, cron, hardened security. This is the demo-ready first use case.",
+      "description": "HIGH VALUE: THE first use case \u2014 this is what we show in demos. Defines Email Manager end-to-end: email + calendar + tasks tools, email-digest + morning-brief skills, 15min inbox cron, 8am daily digest. Acceptance: clawhq blueprint preview email-manager shows complete design; forge from CQ-010 produces valid openclaw.json. Must pair with CQ-022 (email-digest skill).",
       "category": "design",
       "priority": "must",
       "status": "done",
@@ -468,15 +468,15 @@
         "Answers reflected in generated config output"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "All dependencies done (CQ-010 init wizard, CQ-017 email-manager blueprint). Phase 2 personalization: add customization_questions field to blueprint YAML schema, have wizard ask 1-3 tailored questions per blueprint, apply answers to config output. Additive change to existing wizard flow — no rework required.",
+      "groomingNotes": "All dependencies done (CQ-010 init wizard, CQ-017 email-manager blueprint). Phase 2 personalization: add customization_questions field to blueprint YAML schema, have wizard ask 1-3 tailored questions per blueprint, apply answers to config output. Additive change to existing wizard flow \u2014 no rework required.",
       "passes": true,
       "completedAt": "2026-03-19T09:02:35-07:00"
     },
     {
       "id": "CQ-019",
       "title": "Identity file generators (SOUL.md, AGENTS.md, etc.)",
-      "intent": "Generate SOUL.md and AGENTS.md from the blueprint so every forged agent has a distinct identity. Identity files must be read-only at runtime — agents cannot rewrite who they are.",
-      "description": "IDENTITY IS THE PRODUCT: SOUL.md defines who the agent IS — its personality, communication style, boundaries. Without it, the user gets a generic OpenClaw instance, not a purpose-built agent. Read-only mount means the agent cannot modify its own personality at runtime (LM-12 prevention). SOUL.md (not IDENTITY.md) per current docs. Acceptance: SOUL.md generated from blueprint + wizard answers; AGENTS.md reflects correct tool/skill inventory; identity files mounted read-only in container; token budget respected.",
+      "intent": "Generate SOUL.md and AGENTS.md from the blueprint so every forged agent has a distinct identity. Identity files must be read-only at runtime \u2014 agents cannot rewrite who they are.",
+      "description": "IDENTITY IS THE PRODUCT: SOUL.md defines who the agent IS \u2014 its personality, communication style, boundaries. Without it, the user gets a generic OpenClaw instance, not a purpose-built agent. Read-only mount means the agent cannot modify its own personality at runtime (LM-12 prevention). SOUL.md (not IDENTITY.md) per current docs. Acceptance: SOUL.md generated from blueprint + wizard answers; AGENTS.md reflects correct tool/skill inventory; identity files mounted read-only in container; token budget respected.",
       "category": "design",
       "priority": "must",
       "status": "done",
@@ -491,7 +491,7 @@
         "SOUL.md generated with personality, communication style, boundaries from blueprint",
         "AGENTS.md reflects correct tool/skill inventory",
         "Identity files mounted read-only in container (LM-12 prevention)",
-        "Token budget respected — identity content fits within limits"
+        "Token budget respected \u2014 identity content fits within limits"
       ],
       "passes": true,
       "completedAt": "2026-03-19T02:09:04-07:00"
@@ -500,7 +500,7 @@
       "id": "CQ-020",
       "title": "Workspace tool generators",
       "intent": "Generate all 7 workspace tool wrappers from blueprint config so the agent can act on the world. An agent without its tools is decoration.",
-      "description": "AGENT'S HANDS: Tools are what the agent can DO. An email agent without an email tool can't triage inbox. Blueprint-driven generation means tools are consistent with what the identity and skills expect. CLI wrappers (bash/python3) are thin — they call himalaya, caldav, etc. — so adding a new integration means writing a wrapper, not modifying the agent. Acceptance: all 7 tool wrappers generate correctly from blueprint config; generated tools executable in container; tool names match blueprint's tool references in AGENTS.md.",
+      "description": "AGENT'S HANDS: Tools are what the agent can DO. An email agent without an email tool can't triage inbox. Blueprint-driven generation means tools are consistent with what the identity and skills expect. CLI wrappers (bash/python3) are thin \u2014 they call himalaya, caldav, etc. \u2014 so adding a new integration means writing a wrapper, not modifying the agent. Acceptance: all 7 tool wrappers generate correctly from blueprint config; generated tools executable in container; tool names match blueprint's tool references in AGENTS.md.",
       "category": "design",
       "priority": "must",
       "status": "done",
@@ -523,7 +523,7 @@
       "id": "CQ-021",
       "title": "Skill lifecycle + vetting",
       "intent": "Every skill installation must pass security vetting before activation. Rollback must restore the previous state if a skill breaks the agent.",
-      "description": "CAPABILITY GATE: Skill lifecycle is what makes skills safe. Without it, installing a skill means manually copying files with no vetting, no rollback, no audit. The email-digest skill (CQ-022) must go through this pipeline. The URL trap fix is critical — malicious skills should not be able to call out to arbitrary hosts. Rollback snapshots mean 'clawhq skill install' is reversible. Acceptance: install flow runs stage->vet->approve->activate; vet catches URL patterns; rollback restores previous state; 'clawhq skill list' shows installed skills with status.",
+      "description": "CAPABILITY GATE: Skill lifecycle is what makes skills safe. Without it, installing a skill means manually copying files with no vetting, no rollback, no audit. The email-digest skill (CQ-022) must go through this pipeline. The URL trap fix is critical \u2014 malicious skills should not be able to call out to arbitrary hosts. Rollback snapshots mean 'clawhq skill install' is reversible. Acceptance: install flow runs stage->vet->approve->activate; vet catches URL patterns; rollback restores previous state; 'clawhq skill list' shows installed skills with status.",
       "category": "evolve",
       "priority": "must",
       "status": "done",
@@ -547,7 +547,7 @@
       "id": "CQ-022",
       "title": "Skill: email-digest",
       "intent": "Deliver the email-digest skill so the Email Manager agent triages inbox, categorizes, and proposes responses with approval gates. No auto-send, no data leaves the machine.",
-      "description": "HIGH VALUE: First autonomous capability the user sees. Pairs with CQ-017 (Email Manager blueprint). This skill is why the user chose ClawHQ over Gmail. SEQUENCING: Requires CQ-021 (skill lifecycle + vetting — email-digest must go through stage->vet->approve->activate pipeline), CQ-025 (approval queue — 'propose responses with approval gates' is the core safety feature), and CQ-017 (Email Manager blueprint to define context). Acceptance: SKILL.md + prompts installed via skill lifecycle pipeline; agent triages inbox, categorizes emails, proposes responses with approval gates; runs on 15min cron; no data leaves machine (local Ollama).",
+      "description": "HIGH VALUE: First autonomous capability the user sees. Pairs with CQ-017 (Email Manager blueprint). This skill is why the user chose ClawHQ over Gmail. SEQUENCING: Requires CQ-021 (skill lifecycle + vetting \u2014 email-digest must go through stage->vet->approve->activate pipeline), CQ-025 (approval queue \u2014 'propose responses with approval gates' is the core safety feature), and CQ-017 (Email Manager blueprint to define context). Acceptance: SKILL.md + prompts installed via skill lifecycle pipeline; agent triages inbox, categorizes emails, proposes responses with approval gates; runs on 15min cron; no data leaves machine (local Ollama).",
       "category": "evolve",
       "priority": "must",
       "status": "done",
@@ -556,7 +556,7 @@
         "Create SKILL.md defining email triage behavior and boundaries",
         "Write prompts for inbox categorization, summarization, and response proposal",
         "Configure 15min cron schedule for inbox checks",
-        "Integrate with approval queue — proposed responses require user approval"
+        "Integrate with approval queue \u2014 proposed responses require user approval"
       ],
       "acceptanceCriteria": [
         "SKILL.md + prompts installed via skill lifecycle pipeline",
@@ -572,7 +572,7 @@
       "id": "CQ-023",
       "title": "Audit trail (tool + egress + secrets)",
       "intent": "Log every tool execution, secret access, and egress event to tamper-evident JSONL. The user must be able to answer 'what did my agent do?' at any time.",
-      "description": "TRANSPARENCY PROMISE: 'You know what your agent did, what data it touched, and what left your machine' — this is a design principle. Without audit trail, it's just a claim. The user should be able to ask 'what did my agent do today?' and get an answer. HMAC-chaining on secret lifecycle means the audit is tamper-evident, not just logged. OWASP compliance export matters for the Tinkerer persona running in an org context. Acceptance: every tool execution logged to JSONL; secret lifecycle events HMAC-chained; 'clawhq audit' shows recent activity; export produces OWASP-compatible format.",
+      "description": "TRANSPARENCY PROMISE: 'You know what your agent did, what data it touched, and what left your machine' \u2014 this is a design principle. Without audit trail, it's just a claim. The user should be able to ask 'what did my agent do today?' and get an answer. HMAC-chaining on secret lifecycle means the audit is tamper-evident, not just logged. OWASP compliance export matters for the Tinkerer persona running in an org context. Acceptance: every tool execution logged to JSONL; secret lifecycle events HMAC-chained; 'clawhq audit' shows recent activity; export produces OWASP-compatible format.",
       "category": "secure",
       "priority": "must",
       "status": "done",
@@ -596,8 +596,8 @@
     {
       "id": "CQ-024",
       "title": "Export + destroy (data sovereignty)",
-      "intent": "Users must be able to export a portable agent bundle and cryptographically prove destruction. Zero lock-in — data sovereignty is the exit guarantee.",
-      "description": "EXIT GUARANTEE: Privacy Migrant won't commit to a sovereign agent without knowing they can leave. 'clawhq export gives you everything portable. clawhq destroy proves it's gone. Zero lock-in.' — this is the product promise. PII masking on export means they can share the export without leaking data. Cryptographic proof of destruction is what makes 'destroy' trustworthy vs. just deleting files. Acceptance: export produces self-contained portable bundle; PII masked in export; destroy wipes all local data; crypto proof can be independently verified.",
+      "intent": "Users must be able to export a portable agent bundle and cryptographically prove destruction. Zero lock-in \u2014 data sovereignty is the exit guarantee.",
+      "description": "EXIT GUARANTEE: Privacy Migrant won't commit to a sovereign agent without knowing they can leave. 'clawhq export gives you everything portable. clawhq destroy proves it's gone. Zero lock-in.' \u2014 this is the product promise. PII masking on export means they can share the export without leaking data. Cryptographic proof of destruction is what makes 'destroy' trustworthy vs. just deleting files. Acceptance: export produces self-contained portable bundle; PII masked in export; destroy wipes all local data; crypto proof can be independently verified.",
       "category": "evolve",
       "priority": "must",
       "status": "done",
@@ -621,7 +621,7 @@
       "id": "CQ-025",
       "title": "Approval queue",
       "intent": "High-stakes agent actions must queue for user approval before execution. No auto-send, no auto-buy, no auto-delete without explicit user consent.",
-      "description": "SAFE AUTOMATION: Without approval queue, the agent can't safely propose actions that have real-world consequences. The email-digest skill must propose draft replies for approval — not auto-send. Telegram integration means the user gets notified on their phone, not just in a terminal. Resolution tracking means the agent knows what was approved vs. rejected, and can learn from the pattern. Acceptance: high-stakes actions queue for approval; Telegram notification sent; user can approve/reject from Telegram; resolution recorded in audit trail.",
+      "description": "SAFE AUTOMATION: Without approval queue, the agent can't safely propose actions that have real-world consequences. The email-digest skill must propose draft replies for approval \u2014 not auto-send. Telegram integration means the user gets notified on their phone, not just in a terminal. Resolution tracking means the agent knows what was approved vs. rejected, and can learn from the pattern. Acceptance: high-stakes actions queue for approval; Telegram notification sent; user can approve/reject from Telegram; resolution recorded in audit trail.",
       "category": "operate",
       "priority": "must",
       "status": "done",
@@ -672,7 +672,7 @@
       "id": "CQ-027",
       "title": "Messaging channel connection",
       "intent": "clawhq connect must configure and verify a messaging channel so the user can talk to their agent. Without this, the agent exists but is unreachable.",
-      "description": "HIGH VALUE: The last step before the user has a working agent. Without messaging channel, the agent exists but the user can't talk to it. SEQUENCING: Must run after CQ-002 (gateway client — health ping requires WebSocket RPC) and CQ-004 (agent must be deployed before channel can be connected). Acceptance: 'clawhq connect' guides Telegram/WhatsApp bot token setup + verifies with live health ping via Gateway WebSocket; user receives a test message from their new agent.",
+      "description": "HIGH VALUE: The last step before the user has a working agent. Without messaging channel, the agent exists but the user can't talk to it. SEQUENCING: Must run after CQ-002 (gateway client \u2014 health ping requires WebSocket RPC) and CQ-004 (agent must be deployed before channel can be connected). Acceptance: 'clawhq connect' guides Telegram/WhatsApp bot token setup + verifies with live health ping via Gateway WebSocket; user receives a test message from their new agent.",
       "category": "design",
       "priority": "must",
       "status": "done",
@@ -695,7 +695,7 @@
       "id": "CQ-028",
       "title": "Quickstart (init -> build -> deploy -> verify)",
       "intent": "clawhq quickstart must take a user from zero to a running, reachable agent in one command. Any failure must leave clear guidance, not a half-deployed mess.",
-      "description": "HIGH VALUE: The target user experience — one command to working agent. Phase-labeled spinners: Install -> Init -> Build -> Deploy -> Connect -> Verify. Missing dependency: also requires CQ-014 (install scaffold). Not ready until CQ-010+CQ-003+CQ-004+CQ-014 all land. Acceptance: 'clawhq quickstart --blueprint email-manager' produces a running, reachable agent with Telegram connected.",
+      "description": "HIGH VALUE: The target user experience \u2014 one command to working agent. Phase-labeled spinners: Install -> Init -> Build -> Deploy -> Connect -> Verify. Missing dependency: also requires CQ-014 (install scaffold). Not ready until CQ-010+CQ-003+CQ-004+CQ-014 all land. Acceptance: 'clawhq quickstart --blueprint email-manager' produces a running, reachable agent with Telegram connected.",
       "category": "Foundation",
       "priority": "must",
       "status": "done",
@@ -709,7 +709,7 @@
         "Implement 'clawhq quickstart [--blueprint] [--smart]' orchestrator command",
         "Chain phases: install -> init -> build -> deploy -> connect -> verify",
         "Add phase-labeled spinners showing progress for each step",
-        "Reuse existing command logic — no new implementation logic"
+        "Reuse existing command logic \u2014 no new implementation logic"
       ],
       "acceptanceCriteria": [
         "'clawhq quickstart --blueprint email-manager' produces a running, reachable agent",
@@ -718,7 +718,7 @@
         "Telegram connected and verified at completion"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "All direct dependencies done (CQ-010, CQ-003, CQ-004, CQ-014). SEQUENCING NOTE: Sprint CQ-005 (egress firewall) before this — CQ-004 deploy sequence includes 'firewall apply' step, so quickstart will silently skip firewall until CQ-005 is implemented. Quickstart without firewall is incomplete for the privacy promise. Pure orchestration command — no new implementation logic, chains existing commands. Phase spinners are the only net-new UX work. Run CQ-005 first, then this.",
+      "groomingNotes": "All direct dependencies done (CQ-010, CQ-003, CQ-004, CQ-014). SEQUENCING NOTE: Sprint CQ-005 (egress firewall) before this \u2014 CQ-004 deploy sequence includes 'firewall apply' step, so quickstart will silently skip firewall until CQ-005 is implemented. Quickstart without firewall is incomplete for the privacy promise. Pure orchestration command \u2014 no new implementation logic, chains existing commands. Phase spinners are the only net-new UX work. Run CQ-005 first, then this.",
       "passes": true,
       "completedAt": "2026-03-19T08:27:34-07:00"
     },
@@ -726,7 +726,7 @@
       "id": "CQ-029",
       "title": "Additional blueprint YAMLs (6)",
       "intent": "Ship 6 additional blueprint YAMLs that validate against the schema and render correctly in blueprint list/preview. Every blueprint must be forgeable.",
-      "description": "BLUEPRINT LIBRARY: 6 additional blueprint YAMLs — Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot. Validate against current blueprint schema (CQ-009), adapt naming/paths, add missing fields (email-manager-adjacent skills, cron). Email Manager (CQ-017) is separate and higher priority — do not include it here. Acceptance: 'clawhq blueprint list' shows 7+ blueprints; 'clawhq blueprint preview <each>' renders valid design.",
+      "description": "BLUEPRINT LIBRARY: 6 additional blueprint YAMLs \u2014 Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot. Validate against current blueprint schema (CQ-009), adapt naming/paths, add missing fields (email-manager-adjacent skills, cron). Email Manager (CQ-017) is separate and higher priority \u2014 do not include it here. Acceptance: 'clawhq blueprint list' shows 7+ blueprints; 'clawhq blueprint preview <each>' renders valid design.",
       "category": "design",
       "priority": "should",
       "status": "done",
@@ -756,7 +756,7 @@
       "id": "CQ-030",
       "title": "Additional skills (5)",
       "intent": "Ship 5 skills that install cleanly, run on cron, and make their respective blueprints actually useful. A blueprint without skills is an empty promise.",
-      "description": "BLUEPRINT COMPLETENESS: Skills are the value-add that make each blueprint useful. morning-brief is what makes 'Replace Google Assistant' actually replace Google Assistant. market-scan is why Stock Trading blueprint earns its name. Each skill is a standalone SKILL.md + prompts — thin to implement, high user impact. Acceptance: each skill installs via 'clawhq skill install'; SKILL.md + prompts present; skill runs on configured cron schedule.",
+      "description": "BLUEPRINT COMPLETENESS: Skills are the value-add that make each blueprint useful. morning-brief is what makes 'Replace Google Assistant' actually replace Google Assistant. market-scan is why Stock Trading blueprint earns its name. Each skill is a standalone SKILL.md + prompts \u2014 thin to implement, high user impact. Acceptance: each skill installs via 'clawhq skill install'; SKILL.md + prompts present; skill runs on configured cron schedule.",
       "category": "evolve",
       "priority": "should",
       "status": "done",
@@ -830,7 +830,7 @@
       "id": "CQ-033",
       "title": "AI config inference (--smart)",
       "intent": "clawhq init --smart must infer the right blueprint and integrations from natural language, fully local via Ollama. No data leaves the machine.",
-      "description": "DELIGHT PATH: 'clawhq init --smart' is the < 5 minute path. Users describe what they need, Ollama infers blueprint + integrations. Local Ollama means zero data leaves. This is the product's wow moment. Correctly positioned as should — guided wizard (CQ-010) must work first as the fallback path. Acceptance: natural language description maps to correct blueprint; integration suggestions accurate; result produces same output as guided wizard; works fully locally with Ollama.",
+      "description": "DELIGHT PATH: 'clawhq init --smart' is the < 5 minute path. Users describe what they need, Ollama infers blueprint + integrations. Local Ollama means zero data leaves. This is the product's wow moment. Correctly positioned as should \u2014 guided wizard (CQ-010) must work first as the fallback path. Acceptance: natural language description maps to correct blueprint; integration suggestions accurate; result produces same output as guided wizard; works fully locally with Ollama.",
       "category": "design",
       "priority": "should",
       "status": "done",
@@ -844,7 +844,7 @@
         "Natural language description maps to correct blueprint",
         "Integration suggestions are accurate for described use case",
         "Result produces same output format as guided wizard",
-        "Works fully locally with Ollama — no data leaves machine"
+        "Works fully locally with Ollama \u2014 no data leaves machine"
       ],
       "passes": true,
       "completedAt": "2026-03-19T06:06:00-07:00"
@@ -878,7 +878,7 @@
       "id": "CQ-035",
       "title": "Migration import (ChatGPT + Google Assistant)",
       "intent": "Import ChatGPT and Google Assistant exports so migrating users start with preferences intact on day 1. All processing local, PII masked.",
-      "description": "MIGRATION STORY: Lowers the barrier for Privacy Migrants coming from ChatGPT or Google Assistant. Extracting preferences from export data means the forged agent already knows the user's patterns on day 1. PII masking during import keeps sensitive data local. Cron mapping from routines is the key value-add — not just importing preferences but translating them to scheduled jobs. Acceptance: ChatGPT export parsed; preferences extracted via Ollama; routine → cron mapping produced; PII masked; import completes without network calls.",
+      "description": "MIGRATION STORY: Lowers the barrier for Privacy Migrants coming from ChatGPT or Google Assistant. Extracting preferences from export data means the forged agent already knows the user's patterns on day 1. PII masking during import keeps sensitive data local. Cron mapping from routines is the key value-add \u2014 not just importing preferences but translating them to scheduled jobs. Acceptance: ChatGPT export parsed; preferences extracted via Ollama; routine \u2192 cron mapping produced; PII masked; import completes without network calls.",
       "category": "evolve",
       "priority": "should",
       "status": "done",
@@ -926,7 +926,7 @@
       "id": "CQ-037",
       "title": "Evolve rollback + credentials.json + posture.yaml",
       "intent": "Separate credentials into credentials.json (mode 0600), expose security posture in posture.yaml, and ensure every capability change has a rollback snapshot.",
-      "description": "SECURITY MATURITY: credentials.json separation from .env is the difference between 'works' and 'production-grade'. Integration credentials in a dedicated store (mode 0600) means rotate one integration without touching others. Security posture YAML makes the container hardening visible and reviewable — the Tinkerer persona wants to see what posture they're running. Rollback snapshots for all capability changes complete the safety story started in CQ-021. Acceptance: credentials.json separate from .env; posture.yaml reflects active security settings; rollback restores previous capability state.",
+      "description": "SECURITY MATURITY: credentials.json separation from .env is the difference between 'works' and 'production-grade'. Integration credentials in a dedicated store (mode 0600) means rotate one integration without touching others. Security posture YAML makes the container hardening visible and reviewable \u2014 the Tinkerer persona wants to see what posture they're running. Rollback snapshots for all capability changes complete the safety story started in CQ-021. Acceptance: credentials.json separate from .env; posture.yaml reflects active security settings; rollback restores previous capability state.",
       "category": "secure",
       "priority": "should",
       "status": "done",
@@ -993,8 +993,8 @@
     {
       "id": "CQ-040",
       "title": "Web dashboard (server + 7 pages)",
-      "intent": "Web dashboard must expose full operational control — doctor, logs, approvals, init — not a read-only view. Browser users get the same capability as CLI users.",
-      "description": "WEB UI OPTION: Hono + htmx + Pico CSS keeps the stack minimal. Web dashboard is for users who prefer a browser to a terminal for day-to-day ops. Not blocking CLI users. Depends on CQ-011 (doctor), CQ-026 (status), CQ-025 (approvals) being solid first — web is just a UI layer over CLI-complete features. Acceptance: all 7 pages render; doctor page shows same output as CLI; approvals queue shows pending items; init wizard works via browser.",
+      "intent": "Web dashboard must expose full operational control \u2014 doctor, logs, approvals, init \u2014 not a read-only view. Browser users get the same capability as CLI users.",
+      "description": "WEB UI OPTION: Hono + htmx + Pico CSS keeps the stack minimal. Web dashboard is for users who prefer a browser to a terminal for day-to-day ops. Not blocking CLI users. Depends on CQ-011 (doctor), CQ-026 (status), CQ-025 (approvals) being solid first \u2014 web is just a UI layer over CLI-complete features. Acceptance: all 7 pages render; doctor page shows same output as CLI; approvals queue shows pending items; init wizard works via browser.",
       "category": "operate",
       "priority": "should",
       "status": "done",
@@ -1021,7 +1021,7 @@
         "Init wizard completes full setup via browser"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "All dependencies done (CQ-011 doctor, CQ-026 status/logs, CQ-025 approvals). Hono + htmx + Pico CSS stack. Web is a UI layer over CLI-complete features — no new business logic. BUG-006 (src/server/ path) should be done first but is not a hard blocker. 7 pages are well-scoped.",
+      "groomingNotes": "All dependencies done (CQ-011 doctor, CQ-026 status/logs, CQ-025 approvals). Hono + htmx + Pico CSS stack. Web is a UI layer over CLI-complete features \u2014 no new business logic. BUG-006 (src/server/ path) should be done first but is not a hard blocker. 7 pages are well-scoped.",
       "passes": true,
       "completedAt": "2026-03-19T09:17:01-07:00"
     },
@@ -1032,8 +1032,8 @@
       "description": "PARANOID MODE: Air-gapped deployment for users who want zero network access from the agent. Config-level (zero egress in openclaw.json) + firewall-level (CLAWHQ_FWD blocks all outbound) hardening in combination. Doctor verifies both layers are active. Use case: sensitive environments, compliance requirements, maximum privacy. Depends on CQ-005 (firewall) and CQ-010 (wizard) being complete first. Acceptance: air-gap mode sets zero egress in config; firewall blocks all outbound; doctor confirms air-gap active; agent functional without any network access.",
       "category": "secure",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-005",
         "CQ-010"
@@ -1050,16 +1050,17 @@
         "Agent remains fully functional without any network access"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "THIRD GROOMING (failCount: 2) — Analysis shows firewall blocking, CLI flags, and doctor check are ALL ALREADY IMPLEMENTED. The sprint kept failing because of one specific missing piece: explicit zero-egress config in the generated openclaw.json. WHAT IS DONE: (1) applyFirewall() accepts airGap option and skips allowlist rules when true (src/build/launcher/firewall.ts:46-82); (2) --air-gap CLI flag on 'clawhq up' and 'clawhq restart' (src/cli/index.ts:1054, 1149); (3) doctor check 'air-gap-active' verifies empty allowlist + no ACCEPT rules for port 443/53 (src/operate/doctor/checks.ts:686-741); (4) ClawHQConfig.security.airGap field exists (src/config/types.ts:276). WHAT IS MISSING (the blocker): src/design/configure/generate.ts sets airGapped cloud mode to paranoid but does NOT write an explicit empty egress list to the generated openclaw.json config. When the sprint validates 'Air-gap mode sets zero egress in config' it finds no egress field set. THE FIX: In src/design/configure/generate.ts, locate where openclaw.json fields are written. When answers.airGapped === true, set the egress/allowedDomains field to [] (empty array) in the generated config output. Grep 'airGapped' in generate.ts to find the right location — around line 420-421. Verify the field name in the OpenClaw config schema (CQ-001 — src/config/types.ts OpenClawConfig type). ACCEPTANCE CHECK: run init wizard with air-gap option; inspect generated openclaw.json for an explicit egress domains field set to []; run 'clawhq doctor' and verify 'air-gap-active' check passes. All iptables calls must use EXEC_DRY=1 in tests.",
+      "groomingNotes": "THIRD GROOMING (failCount: 2) \u2014 Analysis shows firewall blocking, CLI flags, and doctor check are ALL ALREADY IMPLEMENTED. The sprint kept failing because of one specific missing piece: explicit zero-egress config in the generated openclaw.json. WHAT IS DONE: (1) applyFirewall() accepts airGap option and skips allowlist rules when true (src/build/launcher/firewall.ts:46-82); (2) --air-gap CLI flag on 'clawhq up' and 'clawhq restart' (src/cli/index.ts:1054, 1149); (3) doctor check 'air-gap-active' verifies empty allowlist + no ACCEPT rules for port 443/53 (src/operate/doctor/checks.ts:686-741); (4) ClawHQConfig.security.airGap field exists (src/config/types.ts:276). WHAT IS MISSING (the blocker): src/design/configure/generate.ts sets airGapped cloud mode to paranoid but does NOT write an explicit empty egress list to the generated openclaw.json config. When the sprint validates 'Air-gap mode sets zero egress in config' it finds no egress field set. THE FIX: In src/design/configure/generate.ts, locate where openclaw.json fields are written. When answers.airGapped === true, set the egress/allowedDomains field to [] (empty array) in the generated config output. Grep 'airGapped' in generate.ts to find the right location \u2014 around line 420-421. Verify the field name in the OpenClaw config schema (CQ-001 \u2014 src/config/types.ts OpenClawConfig type). ACCEPTANCE CHECK: run init wizard with air-gap option; inspect generated openclaw.json for an explicit egress domains field set to []; run 'clawhq doctor' and verify 'air-gap-active' check passes. All iptables calls must use EXEC_DRY=1 in tests.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-19T17:37:00-07:00",
-      "failCount": 2
+      "failCount": 2,
+      "completedAt": "2026-03-19T17:35:00-07:00"
     },
     {
       "id": "CQ-042",
       "title": "Smoke test + backing services",
-      "intent": "Post-deploy smoke test must send a real message and get a response — 'container started' is not 'agent works'. Users must not discover a dead agent by noticing silence.",
-      "description": "MUST: The first-deploy user experience is broken without this. 'clawhq up succeeded' when the agent doesn't actually respond is worse than a clear failure — the user wastes time debugging a silently dead agent. Upgrade to must: smoke test (real message + response) is non-negotiable for deploy confidence. Scope split: smoke test (real message exchange) is must; backing services (postgres/redis/qdrant) can be a separate should item if needed. Acceptance: 'clawhq up' ends with a real message sent to agent and response received; failure is loud with actionable fix; 'clawhq service add postgres' configures backing service.",
+      "intent": "Post-deploy smoke test must send a real message and get a response \u2014 'container started' is not 'agent works'. Users must not discover a dead agent by noticing silence.",
+      "description": "MUST: The first-deploy user experience is broken without this. 'clawhq up succeeded' when the agent doesn't actually respond is worse than a clear failure \u2014 the user wastes time debugging a silently dead agent. Upgrade to must: smoke test (real message + response) is non-negotiable for deploy confidence. Scope split: smoke test (real message exchange) is must; backing services (postgres/redis/qdrant) can be a separate should item if needed. Acceptance: 'clawhq up' ends with a real message sent to agent and response received; failure is loud with actionable fix; 'clawhq service add postgres' configures backing service.",
       "category": "build",
       "priority": "must",
       "status": "done",
@@ -1081,7 +1082,7 @@
       "id": "FEAT-001",
       "title": "clawhq blueprint list + preview commands",
       "intent": "clawhq blueprint list and preview must let users evaluate every available blueprint before committing to init. Users must never choose a blueprint blind.",
-      "description": "HIGH VALUE: Gate for informed blueprint selection. Without clawhq blueprint list/preview, users run init blind — they can't evaluate options before committing. Pairs tightly with CQ-009 (loader already does the heavy lifting). Build immediately after CQ-009. Acceptance: 'clawhq blueprint list' shows all available blueprints with one-line descriptions; 'clawhq blueprint preview email-manager' renders full design (identity, tools, skills, cron, integrations, security posture, egress domains). No net-new logic — thin CLI surface over CQ-009.",
+      "description": "HIGH VALUE: Gate for informed blueprint selection. Without clawhq blueprint list/preview, users run init blind \u2014 they can't evaluate options before committing. Pairs tightly with CQ-009 (loader already does the heavy lifting). Build immediately after CQ-009. Acceptance: 'clawhq blueprint list' shows all available blueprints with one-line descriptions; 'clawhq blueprint preview email-manager' renders full design (identity, tools, skills, cron, integrations, security posture, egress domains). No net-new logic \u2014 thin CLI surface over CQ-009.",
       "category": "design",
       "priority": "must",
       "status": "done",
