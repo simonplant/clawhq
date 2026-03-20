@@ -7,6 +7,7 @@
 
 import {
   ANTHROPIC_API_BASE,
+  OLLAMA_DEFAULT_MODEL,
   OLLAMA_DEFAULT_URL,
   OPENAI_API_BASE,
 } from "../../config/defaults.js";
@@ -39,7 +40,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderDefinition> = {
     description: "Local models via Ollama — air-gapped, zero egress",
     requiresApiKey: false,
     baseUrl: OLLAMA_DEFAULT_URL,
-    defaultModel: "llama3.2",
+    defaultModel: OLLAMA_DEFAULT_MODEL,
   },
 };
 

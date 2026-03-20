@@ -784,11 +784,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Pattern identical to BUG-011 (Gateway port) and BUG-025 (Ollama URL). generate.ts:34 already defines local CONTAINER_USER = '1000:1000' — extract to defaults.ts and export instead. Add CONTAINER_USER = '1000:1000' to src/config/defaults.ts with comment 'Container non-root user (LM-06 landmine requirement)'. Import and replace in 7 files: (1) src/build/docker/dockerfile.ts (4 sites: lines 77, 121, 135, 142); (2) src/build/docker/posture.ts (4 sites: lines 21, 31, 41, 51); (3) src/design/configure/generate.ts (remove local const, import from defaults.ts); (4) src/operate/doctor/checks.ts (2 sites: lines 373, 378 — comparison and error message); (5) src/operate/doctor/fix.ts (3 sites: lines 180, 187, 189); (6) src/config/validate.ts (3 sites: lines 146, 153, 154). Note: validate.ts also uses '1000' (without GID) as an acceptable fallback — add CONTAINER_UID_ONLY = '1000' as a separate constant if needed, or handle inline. Run full test suite after. No logic change — pure constant extraction. No blocking dependencies."
+      "groomingNotes": "Pattern identical to BUG-011 (Gateway port) and BUG-025 (Ollama URL). generate.ts:34 already defines local CONTAINER_USER = '1000:1000' — extract to defaults.ts and export instead. Add CONTAINER_USER = '1000:1000' to src/config/defaults.ts with comment 'Container non-root user (LM-06 landmine requirement)'. Import and replace in 7 files: (1) src/build/docker/dockerfile.ts (4 sites: lines 77, 121, 135, 142); (2) src/build/docker/posture.ts (4 sites: lines 21, 31, 41, 51); (3) src/design/configure/generate.ts (remove local const, import from defaults.ts); (4) src/operate/doctor/checks.ts (2 sites: lines 373, 378 — comparison and error message); (5) src/operate/doctor/fix.ts (3 sites: lines 180, 187, 189); (6) src/config/validate.ts (3 sites: lines 146, 153, 154). Note: validate.ts also uses '1000' (without GID) as an acceptable fallback — add CONTAINER_UID_ONLY = '1000' as a separate constant if needed, or handle inline. Run full test suite after. No logic change — pure constant extraction. No blocking dependencies.",
+      "completedAt": "2026-03-19T18:34:11-07:00"
     },
     {
       "id": "BUG-054",
