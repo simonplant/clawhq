@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773965745",
-  "startedAt": "2026-03-19T17:15:45-07:00",
+  "sprintId": "sprint-1773965965",
+  "startedAt": "2026-03-19T17:19:25-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-020",
-    "title": "Post-CQ-005: silent catch blocks in new src/secure/firewall/firewall.ts",
-    "intent": "The new firewall module created by CQ-005 must not have silent catch blocks. Firewall rule failures that are silently swallowed allow a misconfigured firewall to go undetected.",
-    "description": "BUG-014 intentionally deferred the 5 silent catch blocks in src/build/launcher/firewall.ts because CQ-005 moves that code to src/secure/firewall/firewall.ts. When CQ-005 is complete, the moved firewall code must be checked for silent catches and fixed. The original 5 locations were lines 98,106,127,137,165 in the old firewall.ts — these handle iptables rule application, removal, and verification errors. Steps: (1) CQ-005 must be complete first; (2) open src/secure/firewall/firewall.ts (the new CQ-005 file); (3) search for 'catch {' and 'catch (_' patterns; (4) add console.warn() with error and context for each non-fatal catch; (5) do NOT convert non-fatal catches to throws — keep fallback behaviour; (6) run firewall tests (using EXEC_DRY=1) after. Scope: ~5 one-line additions in one file. Blocked by CQ-005.",
+    "id": "BUG-023",
+    "title": "Post-CQ-005: Update CLAUDE.md cross-module security code section",
+    "intent": "CLAUDE.md accurately reflects the canonical firewall location after CQ-005. Contributors find firewall code on first look.",
+    "description": "CQ-005 moves applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts to src/secure/firewall/firewall.ts. After CQ-005 completes, the CLAUDE.md 'Cross-module security code' section still references the old path: 'Egress firewall (iptables CLAWHQ_FWD) → src/build/launcher/firewall.ts'. This will mislead contributors looking for firewall code. Doc-only change, single section in one file. Steps: (1) Confirm CQ-005 is complete and src/secure/firewall/firewall.ts exists; (2) Open CLAUDE.md, find 'Cross-module security code' section; (3) Update firewall entry from src/build/launcher/firewall.ts to src/secure/firewall/firewall.ts; (4) Verify no other CLAUDE.md references point to the old location; (5) No code changes required.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T17:15:45-07:00",
+    "startedAt": "2026-03-19T17:19:25-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T17:19:23-07:00"
+    "completedAt": "2026-03-19T17:21:23-07:00"
   },
-  "completedAt": "2026-03-19T17:19:23-07:00",
+  "completedAt": "2026-03-19T17:21:23-07:00",
   "attempts": 1
 }
