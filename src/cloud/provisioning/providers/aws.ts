@@ -142,6 +142,59 @@ export function createAwsAdapter(token: string, region = "us-east-1"): ProviderA
     return match?.[1];
   }
 
+  function extractAllXmlValues(xml: string, tag: string): string[] {
+    const matches = xml.matchAll(new RegExp(`<${tag}>([^<]*)</${tag}>`, "g"));
+    return [...matches].map((m) => m[1]);
+  }
+
+  /**
+   * Resolve the current Ubuntu 24.04 LTS AMI for this region via DescribeImages.
+   * Returns the most recently published AMI from Canonical (owner 099720109477).
+   * Falls back to the hardcoded map if the API call fails.
+   */
+  async function resolveAmi(signal?: AbortSignal): Promise<string> {
+    try {
+      const result = await ec2Request({
+        Action: "DescribeImages",
+        "Owner.1": "099720109477",
+        "Filter.1.Name": "name",
+        "Filter.1.Value.1": "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*",
+        "Filter.2.Name": "state",
+        "Filter.2.Value.1": "available",
+        "Filter.3.Name": "architecture",
+        "Filter.3.Value.1": "x86_64",
+      }, signal);
+
+      if (!result.ok) {
+        throw new Error(`DescribeImages returned ${result.status}: ${result.body.slice(0, 200)}`);
+      }
+
+      const imageIds = extractAllXmlValues(result.body, "imageId");
+      const creationDates = extractAllXmlValues(result.body, "creationDate");
+
+      if (imageIds.length === 0) {
+        throw new Error("DescribeImages returned no matching Ubuntu 24.04 LTS AMIs");
+      }
+
+      // Pick the most recently created AMI
+      let latestIndex = 0;
+      for (let i = 1; i < creationDates.length; i++) {
+        if (creationDates[i] > creationDates[latestIndex]) {
+          latestIndex = i;
+        }
+      }
+
+      return imageIds[latestIndex];
+    } catch (err) {
+      const fallback = DEFAULT_AMI_REGION[region] ?? DEFAULT_AMI_REGION["us-east-1"];
+      console.warn(
+        `[provisioning] WARNING: Failed to resolve Ubuntu 24.04 AMI via DescribeImages for region ${region}. ` +
+        `Falling back to hardcoded AMI ${fallback}. Error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return fallback;
+    }
+  }
+
   async function pollForRunningInstance(instanceId: string, signal?: AbortSignal): Promise<string | undefined> {
     const start = Date.now();
     while (Date.now() - start < POLL_TIMEOUT_MS) {
@@ -170,7 +223,7 @@ export function createAwsAdapter(token: string, region = "us-east-1"): ProviderA
     },
 
     async createVm(options: CreateVmOptions): Promise<CreateVmResult> {
-      const ami = DEFAULT_AMI_REGION[region] ?? DEFAULT_AMI_REGION["us-east-1"];
+      const ami = await resolveAmi(options.signal);
       const params: Record<string, string> = {
         Action: "RunInstances",
         ImageId: ami,
