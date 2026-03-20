@@ -26,7 +26,9 @@ import { buildAllowlistFromBlueprint, deploy, restart, serializeAllowlist, shutd
 import type { DeployProgress } from "../build/launcher/index.js";
 import {
   connectCloud,
+  destroyInstance,
   disconnectCloud,
+  findInstance,
   formatCloudStatus,
   formatCloudStatusJson,
   formatDisconnectResult,
@@ -38,16 +40,21 @@ import {
   formatFleetListJson,
   formatSwitchResult,
   getFleetHealth,
+  getInstanceStatus,
+  provision,
   readFleetRegistry,
   readHeartbeatState,
+  readInstanceRegistry,
   readQueueState,
   readTrustModeState,
   registerAgent,
   runFleetDoctor,
   sendHeartbeat,
+  setProviderCredential,
   switchTrustMode,
   unregisterAgent,
 } from "../cloud/index.js";
+import type { CloudProvider, ProvisionProgress } from "../cloud/index.js";
 import { DASHBOARD_DEFAULT_PORT, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import type { TrustMode } from "../config/types.js";
 import { validateBundle } from "../config/validate.js";
@@ -3262,6 +3269,210 @@ program
     process.on("SIGINT", shutdownServer);
     process.on("SIGTERM", shutdownServer);
   });
+
+// ── Deploy (Cloud Provisioning) ─────────────────────────────────────────────
+
+const deployCmd = program.command("deploy").description("Provision and manage cloud-hosted agents");
+
+deployCmd
+  .command("create")
+  .description("Provision a new cloud VM with a running agent")
+  .requiredOption("-p, --provider <provider>", "Cloud provider (digitalocean)")
+  .requiredOption("-n, --name <name>", "Instance name")
+  .option("-r, --region <region>", "VM region", "nyc3")
+  .option("-s, --size <size>", "VM size", "s-2vcpu-4gb")
+  .option("--ssh-keys <keys>", "Comma-separated SSH key IDs or fingerprints")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: {
+    provider: string;
+    name: string;
+    region: string;
+    size: string;
+    sshKeys?: string;
+    deployDir: string;
+    json?: boolean;
+  }) => {
+    const provider = resolveProviderAlias(opts.provider);
+    if (!provider) {
+      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp`));
+      process.exit(1);
+    }
+
+    const sshKeys = opts.sshKeys ? opts.sshKeys.split(",").map((k) => k.trim()) : undefined;
+
+    const spinner = ora("Provisioning cloud instance…");
+    if (!opts.json) spinner.start();
+
+    const onProgress = createProvisionProgressHandler(spinner, opts.json);
+
+    const result = await provision({
+      provider,
+      deployDir: opts.deployDir,
+      name: opts.name,
+      region: opts.region,
+      size: opts.size,
+      sshKeys,
+      onProgress,
+    });
+
+    if (!opts.json) spinner.stop();
+
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else if (result.success) {
+      console.log(chalk.green(`\nInstance provisioned successfully.`));
+      console.log(chalk.dim(`  ID:       ${result.instanceId}`));
+      console.log(chalk.dim(`  IP:       ${result.ipAddress}`));
+      console.log(chalk.dim(`  Healthy:  ${result.healthy ? "yes" : "no"}`));
+      console.log(chalk.dim(`\n  Destroy:  clawhq deploy destroy ${result.instanceId}`));
+      console.log(chalk.dim(`  Status:   clawhq deploy status ${result.instanceId}`));
+    } else {
+      console.error(chalk.red(`Provisioning failed: ${result.error}`));
+      if (result.instanceId) {
+        console.error(chalk.dim(`  Instance ID: ${result.instanceId} (partially created)`));
+      }
+      process.exit(1);
+    }
+  });
+
+deployCmd
+  .command("destroy")
+  .description("Destroy a provisioned cloud instance")
+  .argument("<instance-id>", "Instance ID to destroy")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (instanceId: string, opts: { deployDir: string; json?: boolean }) => {
+    const instance = findInstance(opts.deployDir, instanceId);
+    if (!instance) {
+      console.error(chalk.red(`Instance not found: ${instanceId}`));
+      process.exit(1);
+    }
+
+    const spinner = ora(`Destroying instance ${instance.name}…`);
+    if (!opts.json) spinner.start();
+
+    const result = await destroyInstance({
+      deployDir: opts.deployDir,
+      instanceId,
+    });
+
+    if (!opts.json) spinner.stop();
+
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else if (result.success) {
+      console.log(chalk.green(`Instance destroyed: ${instance.name} (${instance.provider})`));
+    } else {
+      console.error(chalk.red(`Failed to destroy instance: ${result.error}`));
+      process.exit(1);
+    }
+  });
+
+deployCmd
+  .command("status")
+  .description("Check status of a provisioned instance")
+  .argument("<instance-id>", "Instance ID to check")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (instanceId: string, opts: { deployDir: string; json?: boolean }) => {
+    const instance = findInstance(opts.deployDir, instanceId);
+    if (!instance) {
+      console.error(chalk.red(`Instance not found: ${instanceId}`));
+      process.exit(1);
+    }
+
+    const status = await getInstanceStatus({
+      deployDir: opts.deployDir,
+      instanceId,
+    });
+
+    if (opts.json) {
+      console.log(JSON.stringify({ instance, liveStatus: status }, null, 2));
+    } else {
+      console.log(chalk.bold(`\n${instance.name}`));
+      console.log(chalk.dim(`  Provider:  ${instance.provider}`));
+      console.log(chalk.dim(`  Region:    ${instance.region}`));
+      console.log(chalk.dim(`  Size:      ${instance.size}`));
+      console.log(chalk.dim(`  IP:        ${instance.ipAddress}`));
+      console.log(chalk.dim(`  State:     ${status.state}`));
+      console.log(chalk.dim(`  Created:   ${instance.createdAt}`));
+      if (status.error) {
+        console.log(chalk.red(`  Error:     ${status.error}`));
+      }
+    }
+  });
+
+deployCmd
+  .command("list")
+  .description("List all provisioned instances")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
+    const registry = readInstanceRegistry(opts.deployDir);
+
+    if (opts.json) {
+      console.log(JSON.stringify(registry, null, 2));
+    } else if (registry.instances.length === 0) {
+      console.log(chalk.dim("No provisioned instances."));
+      console.log(chalk.dim("  Create one: clawhq deploy create --provider digitalocean --name my-agent"));
+    } else {
+      console.log(chalk.bold("\nProvisioned Instances\n"));
+      for (const inst of registry.instances) {
+        const statusColor = inst.status === "active" ? chalk.green : inst.status === "error" ? chalk.red : chalk.yellow;
+        console.log(`  ${chalk.bold(inst.name)} ${chalk.dim(`(${inst.id.slice(0, 8)}…)`)}`);
+        console.log(`    Provider: ${inst.provider}  Region: ${inst.region}  Size: ${inst.size}`);
+        console.log(`    IP: ${inst.ipAddress}  Status: ${statusColor(inst.status)}`);
+        console.log(`    Created: ${inst.createdAt}\n`);
+      }
+    }
+  });
+
+deployCmd
+  .command("credentials")
+  .description("Set up cloud provider credentials")
+  .requiredOption("-p, --provider <provider>", "Cloud provider (digitalocean)")
+  .requiredOption("-t, --token <token>", "API token")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .action(async (opts: { provider: string; token: string; deployDir: string }) => {
+    const provider = resolveProviderAlias(opts.provider);
+    if (!provider) {
+      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp`));
+      process.exit(1);
+    }
+
+    setProviderCredential(opts.deployDir, provider, opts.token);
+    console.log(chalk.green(`Credentials stored for ${provider} (mode 0600).`));
+  });
+
+/** Resolve provider aliases (e.g. "do" → "digitalocean"). */
+function resolveProviderAlias(input: string): CloudProvider | undefined {
+  const aliases: Record<string, CloudProvider> = {
+    "digitalocean": "digitalocean",
+    "do": "digitalocean",
+    "aws": "aws",
+    "gcp": "gcp",
+  };
+  return aliases[input.toLowerCase()];
+}
+
+function createProvisionProgressHandler(spinner: ReturnType<typeof ora>, json?: boolean) {
+  return (event: ProvisionProgress): void => {
+    if (json) return;
+    const label = chalk.dim(`[${event.step}]`);
+    switch (event.status) {
+      case "running":
+        spinner.start(`${label} ${event.message}`);
+        break;
+      case "done":
+        spinner.succeed(`${label} ${event.message}`);
+        break;
+      case "failed":
+        spinner.fail(`${label} ${event.message}`);
+        break;
+    }
+  };
+}
 
 // ── Parse ───────────────────────────────────────────────────────────────────
 

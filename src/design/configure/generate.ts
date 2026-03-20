@@ -18,7 +18,7 @@ import type {
   OpenClawConfig,
   ToolFileInfo,
 } from "../../config/types.js";
-import type { Blueprint } from "../blueprints/types.js";
+import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
 import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../identity/index.js";
 import type { IdentityFileContent } from "../identity/index.js";
 import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../tools/index.js";
@@ -62,7 +62,7 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     composeConfig: buildComposeConfig(answers, port),
     envVars: buildEnvVars(answers),
     cronJobs: buildCronJobs(answers.blueprint),
-    identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers),
+    identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions),
     toolFiles: buildToolFiles(answers.blueprint),
     clawhqConfig: buildClawHQConfig(answers),
   };
@@ -350,8 +350,9 @@ export type { IdentityFileContent } from "../identity/index.js";
 export function generateIdentityFiles(
   blueprint: Blueprint,
   customizationAnswers: Readonly<Record<string, string>> = {},
+  personalityDimensions?: PersonalityDimensions,
 ): IdentityFileContent[] {
-  return generateIdentityFilesFromBlueprint(blueprint, undefined, customizationAnswers);
+  return generateIdentityFilesFromBlueprint(blueprint, undefined, customizationAnswers, personalityDimensions);
 }
 
 /**
@@ -362,8 +363,9 @@ export function generateIdentityFiles(
 function buildIdentityFiles(
   blueprint: Blueprint,
   customizationAnswers: Readonly<Record<string, string>> = {},
+  personalityDimensions?: PersonalityDimensions,
 ): IdentityFileInfo[] {
-  return generateIdentityFiles(blueprint, customizationAnswers).map((f) => ({
+  return generateIdentityFiles(blueprint, customizationAnswers, personalityDimensions).map((f) => ({
     name: f.name,
     path: f.relativePath,
     sizeBytes: Buffer.byteLength(f.content, "utf-8"),

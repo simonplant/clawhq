@@ -6,7 +6,7 @@
  * WriteResult reports what was written and where.
  */
 
-import type { Blueprint } from "../blueprints/types.js";
+import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
 
 // ── Wizard Types ─────────────────────────────────────────────────────────────
 
@@ -41,6 +41,9 @@ export interface WizardAnswers {
 
   /** Answers to blueprint customization questions, keyed by question ID. */
   readonly customizationAnswers: Readonly<Record<string, string>>;
+
+  /** Personality dimensions selected during setup (optional — defaults from blueprint). */
+  readonly personalityDimensions?: PersonalityDimensions;
 }
 
 /** Options for the interactive wizard. */

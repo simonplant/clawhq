@@ -26,7 +26,9 @@ import {
   loadAllBuiltinBlueprints,
   loadBlueprint,
 } from "../blueprints/loader.js";
-import type { Blueprint, BlueprintChoice } from "../blueprints/types.js";
+import type { Blueprint, BlueprintChoice, PersonalityDimensions, DimensionValue } from "../blueprints/types.js";
+import { DIMENSION_META, PERSONALITY_PRESETS, type DimensionMeta } from "../blueprints/personality-presets.js";
+import { detectTensions, hasConflicts, type DetectedTension } from "../blueprints/personality-tensions.js";
 
 import type { WizardAnswers, WizardOptions } from "./types.js";
 
@@ -80,6 +82,12 @@ export async function runWizard(
 
   // Step 2: Customization questions (if blueprint defines them)
   const customizationAnswers = await askCustomizationQuestions(prompter, blueprint);
+
+  // Step 2.5: Personality dimensions
+  const personalityDimensions = await configurePersonality(prompter, blueprint);
+  if (personalityDimensions) {
+    console.log(chalk.green("✓ Personality: customized"));
+  }
 
   // Step 3: Channel selection
   const channel = await selectChannel(prompter, blueprint);
@@ -146,6 +154,7 @@ export async function runWizard(
     airGapped,
     integrations,
     customizationAnswers,
+    personalityDimensions,
   };
 }
 
@@ -226,6 +235,103 @@ async function askCustomizationQuestions(
   }
 
   return answers;
+}
+
+async function configurePersonality(
+  prompter: Prompter,
+  blueprint: Blueprint,
+): Promise<PersonalityDimensions | undefined> {
+  // Use blueprint dimensions as defaults, or find closest preset
+  const defaults = blueprint.personality.dimensions
+    ?? findDefaultPreset(blueprint)?.dimensions;
+
+  if (!defaults) {
+    // Legacy blueprint with no dimensions and no matching preset — skip
+    return undefined;
+  }
+
+  const customize = await prompter.confirm({
+    message: "Customize agent personality?",
+    default: false,
+  });
+
+  if (!customize) {
+    // Use defaults (blueprint or preset)
+    return defaults;
+  }
+
+  console.log(chalk.bold("\n🎛  Personality Sliders"));
+  console.log(chalk.dim("Adjust each dimension on a 1-5 scale.\n"));
+
+  const dims: Record<string, DimensionValue> = {};
+
+  for (const meta of DIMENSION_META) {
+    const defaultVal = defaults[meta.id];
+    const value = await promptDimension(prompter, meta, defaultVal);
+    dims[meta.id] = value;
+  }
+
+  const result = dims as unknown as PersonalityDimensions;
+
+  // Tension detection
+  const tensions = detectTensions(result);
+  if (tensions.length > 0) {
+    displayTensions(tensions);
+    const proceed = await prompter.confirm({
+      message: hasConflicts(tensions)
+        ? "Conflicts detected. Continue with this personality?"
+        : "Continue with this personality?",
+      default: !hasConflicts(tensions),
+    });
+    if (!proceed) {
+      // Let them redo — recurse
+      return configurePersonality(prompter, blueprint);
+    }
+  }
+
+  return result;
+}
+
+async function promptDimension(
+  prompter: Prompter,
+  meta: DimensionMeta,
+  defaultVal: DimensionValue,
+): Promise<DimensionValue> {
+  const choices = meta.labels.map((label, i) => ({
+    name: `${i + 1} — ${label}`,
+    value: (i + 1) as DimensionValue,
+    description: i + 1 === defaultVal ? "(default)" : undefined,
+  }));
+
+  return prompter.select<DimensionValue>({
+    message: `${meta.label}:`,
+    choices,
+  });
+}
+
+function findDefaultPreset(blueprint: Blueprint): typeof PERSONALITY_PRESETS[number] | undefined {
+  // Match by blueprint name to preset mapping
+  const nameMap: Record<string, string> = {
+    "Email Manager": "executive-assistant",
+    "Family Hub": "family-coordinator",
+    "Research Co-pilot": "research-partner",
+    "Founder's Ops": "chief-of-staff",
+    "Replace my PA": "professional-aide",
+    "Replace Google Assistant": "trusted-steward",
+    "Replace ChatGPT+": "thoughtful-writer",
+  };
+  const presetId = nameMap[blueprint.name];
+  return presetId ? PERSONALITY_PRESETS.find((p) => p.id === presetId) : undefined;
+}
+
+function displayTensions(tensions: readonly DetectedTension[]): void {
+  console.log(chalk.yellow("\n⚠  Personality tensions detected:\n"));
+  for (const t of tensions) {
+    const icon = t.severity === "conflict" ? chalk.red("✗") : chalk.yellow("!");
+    const label = t.severity === "conflict" ? chalk.red("CONFLICT") : chalk.yellow("WARNING");
+    console.log(`  ${icon} ${label} [${t.id}]: ${t.description}`);
+  }
+  console.log();
 }
 
 async function selectChannel(

@@ -16,12 +16,32 @@ export interface UseCaseMapping {
   readonly day_in_the_life: string;
 }
 
+/** Valid dimension scale value (1-5). */
+export type DimensionValue = 1 | 2 | 3 | 4 | 5;
+
+/** Dimension identifiers for the personality system. */
+export type DimensionId = "directness" | "warmth" | "verbosity"
+  | "proactivity" | "caution" | "formality" | "analyticalDepth";
+
+/** Slider-based personality dimensions (7 dimensions, 1-5 scale). */
+export interface PersonalityDimensions {
+  readonly directness: DimensionValue;
+  readonly warmth: DimensionValue;
+  readonly verbosity: DimensionValue;
+  readonly proactivity: DimensionValue;
+  readonly caution: DimensionValue;
+  readonly formality: DimensionValue;
+  readonly analyticalDepth: DimensionValue;
+}
+
 /** Agent personality configuration. */
 export interface Personality {
   readonly tone: string;
   readonly style: string;
   readonly relationship: string;
   readonly boundaries: string;
+  /** Slider-based personality dimensions (optional — legacy blueprints omit). */
+  readonly dimensions?: PersonalityDimensions;
 }
 
 /** Security posture for the agent. */
