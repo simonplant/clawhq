@@ -68,10 +68,13 @@ export {
 
 // Cloud-init
 export { generateCloudInit } from "./cloud-init.js";
+export type { CloudInitOptions, CloudInitTrustMode } from "./cloud-init.js";
 
 // Health
 export type { HealthPollOptions, HealthPollResult } from "./health.js";
 export { pollInstanceHealth } from "./health.js";
 
 // Providers
+export { createAwsAdapter } from "./providers/aws.js";
 export { createDigitalOceanAdapter } from "./providers/digitalocean.js";
+export { createHetznerAdapter } from "./providers/hetzner.js";

@@ -9,7 +9,7 @@
 // ── Provider Identity ───────────────────────────────────────────────────────
 
 /** Supported cloud providers. */
-export type CloudProvider = "digitalocean" | "aws" | "gcp";
+export type CloudProvider = "digitalocean" | "hetzner" | "aws" | "gcp";
 
 // ── Provision Options ───────────────────────────────────────────────────────
 

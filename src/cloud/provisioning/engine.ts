@@ -16,7 +16,9 @@ import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { generateCloudInit } from "./cloud-init.js";
 import { getProviderCredential } from "./credentials.js";
 import { pollInstanceHealth } from "./health.js";
+import { createAwsAdapter } from "./providers/aws.js";
 import { createDigitalOceanAdapter } from "./providers/digitalocean.js";
+import { createHetznerAdapter } from "./providers/hetzner.js";
 import {
   addInstance,
   findInstance,
@@ -58,8 +60,10 @@ export function resolveAdapter(
   switch (provider) {
     case "digitalocean":
       return { adapter: createDigitalOceanAdapter(credential.token) };
+    case "hetzner":
+      return { adapter: createHetznerAdapter(credential.token) };
     case "aws":
-      return { error: "AWS provider is not yet implemented. Coming soon." };
+      return { adapter: createAwsAdapter(credential.token) };
     case "gcp":
       return { error: "GCP provider is not yet implemented. Coming soon." };
     default:

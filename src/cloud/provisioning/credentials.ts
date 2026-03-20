@@ -110,16 +110,20 @@ export async function validateProviderToken(
   token: string,
   signal?: AbortSignal,
 ): Promise<TokenValidationResult> {
-  // Lazy import to avoid circular dependency
-  const { createDigitalOceanAdapter } = await import("./providers/digitalocean.js");
-
+  // Lazy imports to avoid circular dependency
   switch (provider) {
     case "digitalocean": {
-      const adapter = createDigitalOceanAdapter(token);
-      return adapter.validateToken(signal);
+      const { createDigitalOceanAdapter } = await import("./providers/digitalocean.js");
+      return createDigitalOceanAdapter(token).validateToken(signal);
     }
-    case "aws":
-      return { valid: false, error: "AWS provider is not yet implemented." };
+    case "hetzner": {
+      const { createHetznerAdapter } = await import("./providers/hetzner.js");
+      return createHetznerAdapter(token).validateToken(signal);
+    }
+    case "aws": {
+      const { createAwsAdapter } = await import("./providers/aws.js");
+      return createAwsAdapter(token).validateToken(signal);
+    }
     case "gcp":
       return { valid: false, error: "GCP provider is not yet implemented." };
     default:
