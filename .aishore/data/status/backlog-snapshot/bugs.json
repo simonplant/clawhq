@@ -607,10 +607,11 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomingNotes": "Deferred from BUG-040 (grooming notes: 'Do NOT touch src/build/launcher/firewall.ts:25 — deferred to BUG-020 post-CQ-005'). CQ-005 is now done. File stayed at src/build/launcher/firewall.ts:31 — const EXEC_TIMEOUT_MS = 15_000. DOCTOR_EXEC_TIMEOUT_MS = 15_000 already in defaults.ts (added by BUG-038). Reuse it — same value, one source of truth. Import path: ../../config/defaults.js. Grep firewall.ts for EXEC_TIMEOUT_MS to find all usage sites. Run: npm test (or equivalent) after change. Pattern identical to BUG-038/039/040/041 constant sweep. No blocking dependencies — BUG-038 already exported the constant."
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomingNotes": "Deferred from BUG-040 (grooming notes: 'Do NOT touch src/build/launcher/firewall.ts:25 — deferred to BUG-020 post-CQ-005'). CQ-005 is now done. File stayed at src/build/launcher/firewall.ts:31 — const EXEC_TIMEOUT_MS = 15_000. DOCTOR_EXEC_TIMEOUT_MS = 15_000 already in defaults.ts (added by BUG-038). Reuse it — same value, one source of truth. Import path: ../../config/defaults.js. Grep firewall.ts for EXEC_TIMEOUT_MS to find all usage sites. Run: npm test (or equivalent) after change. Pattern identical to BUG-038/039/040/041 constant sweep. No blocking dependencies — BUG-038 already exported the constant.",
+      "completedAt": "2026-03-19T17:51:46-07:00"
     },
     {
       "id": "BUG-043",

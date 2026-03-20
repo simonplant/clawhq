@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773967758",
-  "startedAt": "2026-03-19T17:49:18-07:00",
+  "sprintId": "sprint-1773967908",
+  "startedAt": "2026-03-19T17:51:48-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-042",
-    "title": "firewall.ts EXEC_TIMEOUT_MS not centralized in config/defaults.ts",
-    "intent": "firewall.ts must not define its own timeout constant. EXEC_TIMEOUT_MS must import DOCTOR_EXEC_TIMEOUT_MS from config/defaults.ts. No duplicate timeout literal remains in firewall.ts.",
-    "description": "src/build/launcher/firewall.ts:31 defines const EXEC_TIMEOUT_MS = 15_000 as a local constant. This was explicitly excluded from BUG-040 (which said 'Do NOT touch src/build/launcher/firewall.ts:25 — deferred to BUG-020 post-CQ-005'). CQ-005 is now done and the file stayed in build/launcher/. DOCTOR_EXEC_TIMEOUT_MS = 15_000 is already exported from src/config/defaults.ts — reuse it instead of maintaining a duplicate. Steps: (1) open src/build/launcher/firewall.ts; (2) remove the local const EXEC_TIMEOUT_MS = 15_000 at line 31; (3) add import { DOCTOR_EXEC_TIMEOUT_MS } from '../../config/defaults.js'; (4) replace EXEC_TIMEOUT_MS with DOCTOR_EXEC_TIMEOUT_MS at all usage sites in the file; (5) run build/ tests to confirm no regression. Scope: one file, ~3 lines changed. Zero logic change — pure constant consolidation.",
+    "id": "BUG-044",
+    "title": "Telegram API base URL hardcoded in 3 files despite TELEGRAM_API_BASE constant existing",
+    "intent": "No Telegram API base URL literal appears in runtime code. All three callers import TELEGRAM_API_BASE from config/defaults.ts.",
+    "description": "The Telegram API base URL 'https://api.telegram.org' is hardcoded as a string literal in three files even though TELEGRAM_API_BASE is already defined in src/config/defaults.ts (added by BUG-030). Locations: src/build/launcher/connect.ts:22 (const TELEGRAM_API = 'https://api.telegram.org'), src/evolve/approval/telegram.ts:118,142 (inline template literals), src/operate/monitor/notify.ts:67 (inline template literal). These files know about other constants from defaults.ts but skip TELEGRAM_API_BASE. Steps: (1) verify TELEGRAM_API_BASE is exported from src/config/defaults.ts (should be from BUG-030); (2) import TELEGRAM_API_BASE in connect.ts, telegram.ts, notify.ts; (3) replace local const TELEGRAM_API and inline literals with the constant; (4) run build/, evolve/, and operate/ tests. Scope: 4 files, ~6 lines changed. Pattern: BUG-025 (Ollama URL), BUG-030 (API base URLs).",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T17:49:18-07:00",
+    "startedAt": "2026-03-19T17:51:48-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T17:51:46-07:00"
+    "completedAt": "2026-03-19T17:55:11-07:00"
   },
-  "completedAt": "2026-03-19T17:51:46-07:00",
+  "completedAt": "2026-03-19T17:55:11-07:00",
   "attempts": 1
 }
