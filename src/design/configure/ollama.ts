@@ -8,7 +8,6 @@
 import { OLLAMA_DEFAULT_MODEL, OLLAMA_DEFAULT_URL, OLLAMA_GENERATE_TIMEOUT_MS } from "../../config/defaults.js";
 
 const DEFAULT_MODEL = OLLAMA_DEFAULT_MODEL;
-const GENERATE_TIMEOUT_MS = OLLAMA_GENERATE_TIMEOUT_MS;
 
 /** Options for the Ollama client. */
 export interface OllamaOptions {
@@ -95,12 +94,12 @@ export async function generate(
           temperature: 0.1, // Low temperature for deterministic inference
         },
       }),
-      signal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
+      signal: AbortSignal.timeout(OLLAMA_GENERATE_TIMEOUT_MS),
     });
   } catch (err) {
     if (err instanceof Error && err.name === "TimeoutError") {
       throw new OllamaError(
-        `Ollama inference timed out after ${GENERATE_TIMEOUT_MS / 1000}s. Is the model loaded?`,
+        `Ollama inference timed out after ${OLLAMA_GENERATE_TIMEOUT_MS / 1000}s. Is the model loaded?`,
       );
     }
     throw new OllamaError(

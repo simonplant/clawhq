@@ -31,8 +31,6 @@ import type {
 
 const execFileAsync = promisify(execFile);
 
-const COMPOSE_TIMEOUT_MS = DEPLOY_COMPOSE_TIMEOUT_MS;
-
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -82,7 +80,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     await execFileAsync(
       "docker",
       ["compose", "-f", join(engineDir, "docker-compose.yml"), "up", "-d", "--wait"],
-      { timeout: COMPOSE_TIMEOUT_MS, signal },
+      { timeout: DEPLOY_COMPOSE_TIMEOUT_MS, signal },
     );
     report("compose-up", "done", "Containers started");
   } catch (err) {
@@ -211,7 +209,7 @@ export async function shutdown(options: ShutdownOptions): Promise<ShutdownResult
     const args = ["compose", "-f", join(engineDir, "docker-compose.yml"), "down"];
     if (options.removeVolumes) args.push("-v");
 
-    await execFileAsync("docker", args, { timeout: COMPOSE_TIMEOUT_MS, signal });
+    await execFileAsync("docker", args, { timeout: DEPLOY_COMPOSE_TIMEOUT_MS, signal });
     report("compose-up", "done", "Containers stopped");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

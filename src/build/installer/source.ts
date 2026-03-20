@@ -26,9 +26,6 @@ const execFileAsync = promisify(execFile);
 /** Docker image tag for the from-source build. */
 const SOURCE_IMAGE_TAG = "openclaw:local";
 
-const CLONE_TIMEOUT_MS = INSTALL_CLONE_TIMEOUT_MS;
-const BUILD_TIMEOUT_MS = INSTALL_BUILD_TIMEOUT_MS;
-
 // ── Source Build ─────────────────────────────────────────────────────────────
 
 /**
@@ -120,10 +117,10 @@ async function cloneRepo(
     if (existsSync(join(targetDir, ".git"))) {
       // Already cloned — fetch latest
       await execFileAsync("git", ["-C", targetDir, "fetch", "--tags"], {
-        timeout: CLONE_TIMEOUT_MS,
+        timeout: INSTALL_CLONE_TIMEOUT_MS,
       });
       await execFileAsync("git", ["-C", targetDir, "pull", "--ff-only"], {
-        timeout: CLONE_TIMEOUT_MS,
+        timeout: INSTALL_CLONE_TIMEOUT_MS,
       });
       return { success: true };
     }
@@ -131,7 +128,7 @@ async function cloneRepo(
     await execFileAsync(
       "git",
       ["clone", "--depth", "1", repoUrl, targetDir],
-      { timeout: CLONE_TIMEOUT_MS },
+      { timeout: INSTALL_CLONE_TIMEOUT_MS },
     );
     return { success: true };
   } catch (err) {
@@ -150,7 +147,7 @@ async function checkout(
     await execFileAsync(
       "git",
       ["-C", sourceDir, "fetch", "--depth", "1", "origin", ref],
-      { timeout: CLONE_TIMEOUT_MS },
+      { timeout: INSTALL_CLONE_TIMEOUT_MS },
     );
     await execFileAsync(
       "git",
@@ -182,7 +179,7 @@ async function dockerBuildFromSource(sourceDir: string): Promise<CommandResult> 
         "-t", SOURCE_IMAGE_TAG,
         sourceDir,
       ],
-      { timeout: BUILD_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 },
+      { timeout: INSTALL_BUILD_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 },
     );
 
     // Extract image ID from build output
