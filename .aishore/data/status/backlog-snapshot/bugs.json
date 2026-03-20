@@ -255,11 +255,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "CQ-005 was implemented in-place — src/build/launcher/firewall.ts was NOT moved to src/secure/firewall/firewall.ts. The existing catch blocks in firewall.ts already have console.warn or structured error handling (verified at lines 94, 109, 118, 124, 161, 297, 314, 325 — all non-silent). Sprint task: (1) open src/build/launcher/firewall.ts; (2) confirm every catch block has console.warn or returns a typed error object — no additions needed based on current state; (3) if all catches are observable, mark this item done. Estimated scope: read + verify + close, under 10 minutes. NOTE: src/secure/firewall/firewall.ts does not exist and was never created — premise of this bug is resolved differently than expected."
+      "groomingNotes": "CQ-005 was implemented in-place — src/build/launcher/firewall.ts was NOT moved to src/secure/firewall/firewall.ts. The existing catch blocks in firewall.ts already have console.warn or structured error handling (verified at lines 94, 109, 118, 124, 161, 297, 314, 325 — all non-silent). Sprint task: (1) open src/build/launcher/firewall.ts; (2) confirm every catch block has console.warn or returns a typed error object — no additions needed based on current state; (3) if all catches are observable, mark this item done. Estimated scope: read + verify + close, under 10 minutes. NOTE: src/secure/firewall/firewall.ts does not exist and was never created — premise of this bug is resolved differently than expected.",
+      "completedAt": "2026-03-19T17:19:23-07:00"
     },
     {
       "id": "BUG-021",

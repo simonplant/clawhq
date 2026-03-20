@@ -303,11 +303,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "CQ-005 was implemented in-place — firewall code stayed in src/build/launcher/firewall.ts, NOT moved to src/secure/firewall/firewall.ts. CLAUDE.md 'Cross-module security code' section already correctly reads: 'Egress firewall (iptables CLAWHQ_FWD) → src/build/launcher/firewall.ts'. No changes needed. Sprint task: (1) read CLAUDE.md cross-module security code section; (2) confirm firewall entry matches actual file location src/build/launcher/firewall.ts; (3) if already correct, mark done immediately. Estimated scope: read + verify + close, under 5 minutes."
+      "groomingNotes": "CQ-005 was implemented in-place — firewall code stayed in src/build/launcher/firewall.ts, NOT moved to src/secure/firewall/firewall.ts. CLAUDE.md 'Cross-module security code' section already correctly reads: 'Egress firewall (iptables CLAWHQ_FWD) → src/build/launcher/firewall.ts'. No changes needed. Sprint task: (1) read CLAUDE.md cross-module security code section; (2) confirm firewall entry matches actual file location src/build/launcher/firewall.ts; (3) if already correct, mark done immediately. Estimated scope: read + verify + close, under 5 minutes.",
+      "completedAt": "2026-03-19T17:21:23-07:00"
     },
     {
       "id": "BUG-024",
