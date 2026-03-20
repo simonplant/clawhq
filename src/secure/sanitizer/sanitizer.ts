@@ -122,12 +122,12 @@ export async function sanitizeContent(
   // Audit log (fire-and-forget, never blocks)
   if (result.threats.length > 0 && log) {
     const action = result.quarantined ? "quarantined" : "sanitized";
-    writeAuditLog(audit, source, result.threats, text, action).catch(() => {});
+    writeAuditLog(audit, source, result.threats, text, action).catch((err) => console.warn("[sanitizer] audit log write failed:", err));
   }
 
   // Quarantine log
   if (result.quarantined && quarantine && log) {
-    writeQuarantine(audit, source, text, result.threats).catch(() => {});
+    writeQuarantine(audit, source, text, result.threats).catch((err) => console.warn("[sanitizer] quarantine write failed:", err));
   }
 
   return result;
