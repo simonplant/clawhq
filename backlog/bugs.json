@@ -1011,11 +1011,12 @@
         "Provisioning works in AWS regions not in the old hardcoded map",
         "If DescribeImages fails, falls back to hardcoded map and logs a visible warning"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Confirmed at aws.ts:37-42. Only 4 regions hardcoded, AMIs not versioned, no refresh mechanism. Fix: use AWS EC2 describe-images API (filter: owner=099720109477 Canonical, name=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*, latest). Cache result in memory for the provisioning session. Fall back to hardcoded map if API call fails, log warning. Scope: ~30 lines in aws.ts, no new dependencies (AWS SDK already present). Single sprint."
+      "groomingNotes": "Confirmed at aws.ts:37-42. Only 4 regions hardcoded, AMIs not versioned, no refresh mechanism. Fix: use AWS EC2 describe-images API (filter: owner=099720109477 Canonical, name=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*, latest). Cache result in memory for the provisioning session. Fall back to hardcoded map if API call fails, log warning. Scope: ~30 lines in aws.ts, no new dependencies (AWS SDK already present). Single sprint.",
+      "completedAt": "2026-03-20T14:37:37-07:00"
     }
   ]
 }
