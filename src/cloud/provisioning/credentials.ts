@@ -124,8 +124,10 @@ export async function validateProviderToken(
       const { createAwsAdapter } = await import("./providers/aws.js");
       return createAwsAdapter(token).validateToken(signal);
     }
-    case "gcp":
-      return { valid: false, error: "GCP provider is not yet implemented." };
+    case "gcp": {
+      const { createGcpAdapter } = await import("./providers/gcp.js");
+      return createGcpAdapter(token).validateToken(signal);
+    }
     default:
       return { valid: false, error: `Unknown provider: ${provider}` };
   }

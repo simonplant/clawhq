@@ -884,11 +884,38 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Explicitly deferred from BUG-036 sprint (grooming notes: 'The gatewayPort input on line 239 also lacks range validation... Focus on path traversal fix only'). BUG-037 established the correct NaN guard pattern for CLI options. BUG-051 added validatePort() to cli/ux.ts. The web handler should use the same validation logic (inline — do not import cli/ux into server code). Find the gatewayPort parseInt call in server.tsx (~line 239). After parseInt: (1) check isNaN — if true, return 400 with message 'Gateway port must be a number'; (2) check port < 1 || port > 65535 — if true, return 400 with message 'Gateway port must be between 1 and 65535'. Use the existing InitResult component pattern for error responses (BUG-036 shows the correct pattern). Test by submitting the /api/init form with port='abc' and port='99999'. Scope: 1 file, ~6 lines. No blocking dependencies.",
+      "completedAt": "2026-03-20T12:32:58-07:00"
+    },
+    {
+      "id": "BUG-060",
+      "title": "resolveProviderAlias() omits Hetzner — clawhq deploy create --provider hetzner silently rejected",
+      "intent": "Every provider with a working adapter must be usable from the CLI. Hetzner is a first-class provider — users choosing sovereignty on European infrastructure must not hit a broken CLI gate.",
+      "description": "FEAT-003 implemented the Hetzner Cloud provider adapter (src/cloud/provisioning/providers/hetzner.ts) and CloudProvider type includes 'hetzner'. However, the resolveProviderAlias() function in src/cli/index.ts (line 3528-3537) only maps 'digitalocean', 'do', 'aws', 'gcp' — no 'hetzner' or 'hz' alias. Consequence: clawhq deploy create --provider hetzner exits with 'Invalid provider' error even though the adapter exists and works. Two error messages (lines 3378, 3520) also show the wrong provider list, omitting Hetzner. Fix: add 'hetzner' and 'hz' to the aliases map; update both error messages to include hetzner (hz).",
+      "priority": "must",
+      "category": null,
+      "steps": [
+        "Add hetzner and hz entries to resolveProviderAlias() aliases map in src/cli/index.ts",
+        "Update error message at line 3378 to include hetzner (hz) in provider list",
+        "Update error message at line 3520 to include hetzner (hz) in provider list",
+        "Verify clawhq deploy create --provider hetzner proceeds past alias resolution",
+        "Verify clawhq deploy credentials --provider hz stores credentials correctly"
+      ],
+      "acceptanceCriteria": [
+        "clawhq deploy create --provider hetzner does not exit with Invalid provider error",
+        "clawhq deploy create --provider hz resolves to hetzner provider",
+        "Both deploy create and deploy credentials error messages list all four providers including hetzner (hz)",
+        "No other provider aliases are broken by the change"
+      ],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Explicitly deferred from BUG-036 sprint (grooming notes: 'The gatewayPort input on line 239 also lacks range validation... Focus on path traversal fix only'). BUG-037 established the correct NaN guard pattern for CLI options. BUG-051 added validatePort() to cli/ux.ts. The web handler should use the same validation logic (inline — do not import cli/ux into server code). Find the gatewayPort parseInt call in server.tsx (~line 239). After parseInt: (1) check isNaN — if true, return 400 with message 'Gateway port must be a number'; (2) check port < 1 || port > 65535 — if true, return 400 with message 'Gateway port must be between 1 and 65535'. Use the existing InitResult component pattern for error responses (BUG-036 shows the correct pattern). Test by submitting the /api/init form with port='abc' and port='99999'. Scope: 1 file, ~6 lines. No blocking dependencies."
+      "groomingNotes": "Confirmed bug: FEAT-003 (Hetzner adapter, DONE) added hetzner.ts and CloudProvider includes 'hetzner', but resolveProviderAlias() in src/cli/index.ts lines 3529-3537 has no 'hetzner' or 'hz' entry. Two error messages (lines 3378, 3520) say 'Must be one of: digitalocean (do), aws, gcp' — Hetzner omitted. Fix is surgical: add hetzner/hz to aliases map, update both error strings. No other files need changes. All acceptance criteria are directly testable. Single-sprint, sub-hour fix. ORDERING: This must run before CQ-047 (deploy command) ships — the deploy wizard will surface all providers to users, and Hetzner must be accessible."
     }
   ]
 }

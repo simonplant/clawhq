@@ -77,4 +77,5 @@ export { pollInstanceHealth } from "./health.js";
 // Providers
 export { createAwsAdapter } from "./providers/aws.js";
 export { createDigitalOceanAdapter } from "./providers/digitalocean.js";
+export { createGcpAdapter } from "./providers/gcp.js";
 export { createHetznerAdapter } from "./providers/hetzner.js";

@@ -18,6 +18,7 @@ import { getProviderCredential } from "./credentials.js";
 import { pollInstanceHealth } from "./health.js";
 import { createAwsAdapter } from "./providers/aws.js";
 import { createDigitalOceanAdapter } from "./providers/digitalocean.js";
+import { createGcpAdapter } from "./providers/gcp.js";
 import { createHetznerAdapter } from "./providers/hetzner.js";
 import {
   addInstance,
@@ -65,7 +66,7 @@ export function resolveAdapter(
     case "aws":
       return { adapter: createAwsAdapter(credential.token) };
     case "gcp":
-      return { error: "GCP provider is not yet implemented. Coming soon." };
+      return { adapter: createGcpAdapter(credential.token) };
     default:
       return { error: `Unknown provider: ${provider}` };
   }

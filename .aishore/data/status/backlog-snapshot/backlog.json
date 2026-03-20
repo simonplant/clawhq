@@ -1150,8 +1150,8 @@
       "description": "Implement AWSAdapter in src/cloud/provisioning/providers/aws.ts. Uses AWS SDK v3 for EC2 lifecycle. Launches t3.micro (free tier eligible) or t3.small with cloud-init user data. Creates security group (443 + gateway port inbound), key pair for emergency SSH. Supports AMI snapshots for fast provision. Credentials via AWS CLI profile or explicit access key — stored in ~/.clawhq/cloud/credentials.json, never in environment.",
       "category": "cloud",
       "priority": "should",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-043"
       ],
@@ -1174,17 +1174,18 @@
       "groomingNotes": "Second provider. AWS SDK v3 is TypeScript-native — good fit. Key complexity: IAM permissions. The user needs ec2:RunInstances, ec2:TerminateInstances, ec2:CreateSecurityGroup, etc. Document the minimum IAM policy. Consider: should we support AWS Lightsail as a simpler alternative to raw EC2?",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-20T12:26:40-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-20T13:01:00-07:00"
     },
     {
       "id": "CQ-046",
       "title": "GCP provider adapter (Compute Engine + cloud-init)",
-      "intent": "GCP completes the big-three cloud coverage. Same pattern as AWS adapter.",
+      "intent": "GCP Compute Engine completes big-three cloud coverage. Implement GCPAdapter following the proven provider interface pattern. Users with GCP credits or existing GCP infrastructure can deploy agents with the same single clawhq deploy command.",
       "description": "Implement GCPAdapter in src/cloud/provisioning/providers/gcp.ts. Uses Google Cloud Compute API for VM lifecycle. Launches e2-micro (free tier) or e2-small. Creates firewall rule on default network. Credentials via gcloud CLI or service account JSON. Same cloud-init bootstrap as DO/AWS.",
       "category": "cloud",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-043"
       ],
@@ -1202,17 +1203,17 @@
         "Free tier eligible instance type used by default"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Third cloud provider. GCP complexity: project selection, zone vs region, firewall rules on VPC network. Consider deferring until DO + Hetzner + AWS cover the primary user base. The Privacy Migrant persona is covered by DO + Hetzner. Enterprise users are covered by AWS. GCP is a third provider for completeness. Sprint after CQ-045 (AWS) is complete and the pattern is proven across three providers. NOT READY until CQ-045 (AWS) is done — mark readyForSprint when CQ-045 completes."
+      "groomingNotes": "Blocking dependency CQ-045 (AWS adapter) is DONE. Pattern established across DO, Hetzner, and AWS providers — GCP follows the same interface. GCP-specific complexity (project selection, zone vs region, VPC firewall rules) is well-understood from prior provider work. src/cloud/provisioning/providers/gcp.ts is the target file matching the existing directory structure. Steps map cleanly to the established provider interface. Acceptance criteria are testable. Scope is one sprint matching AWS adapter scope. ORDERING: Do not start until CQ-047 (deploy command) ships. A 4th provider adapter with no user-facing deploy command is dead code — value is only realized once users can issue 'clawhq deploy' and choose their provider."
     },
     {
       "id": "CQ-047",
       "title": "clawhq deploy — unified cloud deployment command",
-      "intent": "Single command to deploy an agent to any supported cloud provider. The user picks a provider, clawhq does the rest.",
+      "intent": "clawhq deploy walks a user from zero to a cloud-deployed agent in one terminal session. No cloud console, no manual steps. Cost shown before charge. Trust mode configured automatically on success.",
       "description": "Wire the provisioning engine into a user-facing `clawhq deploy` command. Interactive flow: choose provider → enter/confirm credentials → select region → select blueprint → provision → deploy → verify → return URL. Non-interactive mode with flags for CI/automation. Shows cost estimate before confirming. Integrates with existing cloud module (trust modes, heartbeat) for post-deploy monitoring.",
       "category": "cloud",
       "priority": "must",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-043",
         "CQ-044"
@@ -1233,7 +1234,10 @@
         "Destroy is clean: VM terminated, DNS removed, local state cleaned"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Depends on CQ-043 (engine, DONE) and CQ-044 (DO adapter). This is the user-facing command that ties the entire cloud deployment story together — provider selection, cost estimate, provisioning, post-deploy monitoring. Must feel as simple as 'clawhq up' but for cloud. READYFORSPRING: mark ready when CQ-044 completes. Key UX requirement: the user never sees a cloud console — everything happens in their terminal. Interactive flow: choose provider → enter/confirm credentials → select region → select blueprint → show cost estimate → confirm → provision → deploy → verify → return URL. Non-interactive mode with --provider --region --blueprint --yes flags for CI/automation. Post-deploy: auto-configure zero-trust mode, start heartbeat. Destroy is clean: VM terminated, DNS removed, local state cleaned. CRITICAL: show monthly cost estimate BEFORE provisioning — no surprise bills."
+      "groomingNotes": "All dependencies met: CQ-043 (provisioning engine DONE), CQ-044 (DO adapter DONE), CQ-048 (cloud-init DONE), FEAT-003 (Hetzner DONE), CQ-045 (AWS DONE). The deploy command skeleton exists in cli/index.ts (line 3355+) with create/destroy/status subcommands. CQ-047 must complete the interactive wizard flow, cost estimation, non-interactive flags, and post-deploy trust mode setup. Scope is well-defined: one sprint for the interactive flow + cost estimate + post-deploy monitoring hookup. ORDERING: BUG-060 (Hetzner alias fix) must ship first so all four providers are accessible in the deploy wizard. PARTIAL FAILURE: The deploy wizard must handle mid-flight failures cleanly — if provisioning fails after VM creation but before agent start, the VM must be destroyed automatically. No orphaned instances, ever.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-20T13:23:27-07:00",
+      "failCount": 1
     },
     {
       "id": "CQ-048",
@@ -1242,8 +1246,8 @@
       "description": "Template in src/cloud/provisioning/cloud-init.ts that generates a cloud-init user data script. Steps: install Docker, install clawhq, run clawhq install + init with provided blueprint config, clawhq up, signal health to provisioning engine. Parameterized: blueprint name, gateway token, trust mode, deploy dir. Must be idempotent (safe to re-run on reboot). Tested against Ubuntu 22.04 and Debian 12.",
       "category": "cloud",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-043"
       ],
@@ -1266,17 +1270,18 @@
       "groomingNotes": "Depends on CQ-043 (cloud provisioning engine) which must be complete first. NOT READY until CQ-043 is done. After CQ-043 completes, mark this ready alongside CQ-044. IMPLEMENTATION NOTES: Template in src/cloud/provisioning/cloud-init.ts. The template is a function generateCloudInit(params: CloudInitParams): string that produces a cloud-init YAML user-data script. Params: blueprintName, gatewayToken, trustMode, clawhqVersion, deployDir. Script sections: (1) #cloud-config header; (2) apt: install docker.io, curl, nodejs; (3) runcmd: enable docker, install clawhq via npm, run clawhq install, inject blueprint config from params, run clawhq up, curl health endpoint back to provisioning engine. IDEMPOTENT: use if/then guards around each install step. HEALTH SIGNAL: use a simple curl with retry to the provisioning engine's callback URL — include the droplet's public IP in the signal. TESTED AGAINST: Ubuntu 22.04 LTS and Debian 12 (these are standard DO, AWS, GCP base images). POST-CQ-043 UNLOCK: when CQ-043 merges, mark this readyForSprint.",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-20T12:01:01-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-20T13:01:00-07:00"
     },
     {
       "id": "CQ-049",
       "title": "Pre-built VM snapshots for sub-60s provisioning",
-      "intent": "Cloud-init takes 2-3 minutes. Pre-built snapshots with Docker + ClawHQ pre-installed provision in under 60 seconds. This is what makes clawhq demo feel instant.",
+      "intent": "Pre-built VM snapshots reduce provisioning time from 3 minutes to under 60 seconds. This is the technical foundation of the 60-second demo promise and a key competitive differentiator for sovereignty-first cloud deployment.",
       "description": "Snapshot builder in src/cloud/provisioning/snapshot.ts. Creates a golden VM image per provider: provisions base VM, installs Docker + clawhq, cleans up, snapshots. The snapshot is reused for all future provisions — only blueprint config and tokens are injected at boot time via metadata/user-data. Snapshot version tracked and auto-rebuilt when clawhq version changes.",
       "category": "cloud",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-043",
         "CQ-048"
@@ -1295,7 +1300,7 @@
         "Snapshot management commands available in CLI"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Optimization layer. Not required for MVP but required for the 60-second demo promise. DO snapshots cost $0.05/GB/mo — negligible. AWS AMIs are free to store. Build this after CQ-048 (cloud-init) proves the bootstrap flow works."
+      "groomingNotes": "CQ-048 (cloud-init bootstrap) is DONE and proven. DO, AWS, and Hetzner adapters are all operational. The snapshot pipeline follows a clear pattern: provision golden VM, install Docker + clawhq, clean up, snapshot, destroy builder. Each provider has its own snapshot format (DO snapshots, AWS AMIs, Hetzner snapshots). Boot-time config injection replaces full cloud-init with lightweight metadata-only injection. Target: src/cloud/provisioning/snapshot.ts. CLI commands: clawhq cloud snapshot build/list/delete. Scope is one sprint — parallel builder across 3 providers is the main complexity. ORDERING: Ship after FEAT-004 (cloud demo) — the 3-minute provisioning experience needs to be validated in the wild before optimizing. CQ-049 makes the good experience excellent; FEAT-004 establishes it first. GCP snapshots (CQ-049 step 2) require CQ-046 to ship first — implement DO/AWS/Hetzner snapshots initially, add GCP once CQ-046 is done."
     },
     {
       "id": "FEAT-002",
@@ -1322,20 +1327,52 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
+      "status": "done",
       "passes": false,
-      "readyForSprint": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
       "groomingNotes": "UPGRADED TO MUST — CLAUDE.md explicitly names Hetzner alongside DigitalOcean as a primary deployment target ('User's PC, Mac Mini, DigitalOcean, Hetzner — same software, different host'). Privacy Migrant is the primary persona; they prefer EU-sovereign, GDPR-compliant hosting at a lower price point. DO + Hetzner together cover the primary personas — AWS/GCP cover enterprise secondary users. CQ-043 (ProviderAdapter interface) is DONE. CQ-044 (DO adapter) should be done first as the reference implementation, but FEAT-003 can sprint in parallel since the interface is stable. IMPLEMENTATION: HetznerAdapter in src/cloud/provisioning/providers/hetzner.ts following exact same pattern as providers/digitalocean.ts. Hetzner Cloud API v1. Key endpoints: POST /servers (cx11, ubuntu-24.04, user_data=cloud-init), DELETE /servers/{id}, GET /servers/{id}. Add 'hetzner' to CloudProvider union type in types.ts. Data centers: FSN/NBG (Germany), HEL (Finland) — GDPR-compliant. TESTING: mock Hetzner API responses same as DO tests.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-20T12:15:21-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-20T13:01:00-07:00"
     },
     {
       "id": "FEAT-004",
       "title": "clawhq demo --cloud — zero-config cloud demo (phase 2)",
-      "intent": "clawhq demo --cloud takes a user from zero to a cloud-hosted agent demo in 60 seconds with no Docker, no setup, just a DO API token. The droplet self-destructs on exit.",
+      "intent": "clawhq demo --cloud gives any user a zero-Docker path to experiencing a live agent in 60 seconds. Just a DO API token. Ephemeral droplet self-destructs on exit — no orphaned instances, no ongoing cost. This is the conversion tool for the sovereignty pitch.",
       "description": "Phase 2 of FEAT-002 demo command. After CQ-044 (DO adapter) ships, add --cloud flag to 'clawhq demo' that provisions an ephemeral DigitalOcean droplet, spins up the demo agent in the cloud, opens the browser chat UI pointing at the cloud URL, and destroys the droplet on exit. Zero Docker requirement on the user's machine — they just need a DO API token. Scope: add --cloud flag to existing demo command; provision ephemeral DO droplet using CQ-043 engine + CQ-044 adapter; inject demo blueprint + mock LLM config via cloud-init (CQ-048); open browser pointing at cloud agent URL; cleanup droplet on SIGINT/exit. Cost: minimal — cx1 droplet for ~60s demo = fractions of a cent.",
+      "priority": "should",
+      "category": null,
+      "steps": [
+        "Add --cloud flag to existing clawhq demo command in src/cli/index.ts",
+        "Check for DIGITALOCEAN_TOKEN env var; prompt user if not set",
+        "Provision ephemeral DO droplet via provisioning engine (smallest size, nearest region)",
+        "Inject demo blueprint + mock LLM config via cloud-init template (CQ-048)",
+        "Poll until agent responds healthy (max 3 min timeout with progress spinner)",
+        "Open browser to cloud agent chat URL",
+        "Register SIGINT/exit handler to destroy droplet immediately on exit",
+        "Show estimated cost (fractions of a cent) before provisioning and confirm"
+      ],
+      "acceptanceCriteria": [
+        "clawhq demo --cloud provisions a cloud agent without Docker on the users machine",
+        "Only a DIGITALOCEAN_TOKEN is required — no other setup",
+        "Cost estimate shown before provisioning; user must confirm",
+        "Browser opens automatically to live cloud chat UI within 3 minutes",
+        "SIGINT destroys the droplet immediately — no orphaned instances",
+        "Exit path destroys droplet even on crash (best-effort cleanup with user warning)"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "All three blocking dependencies are DONE: FEAT-002 (base demo command), CQ-044 (DO adapter), CQ-048 (cloud-init bootstrap). The existing clawhq demo command in cli/index.ts provides the structure to extend with --cloud flag. Implementation: detect --cloud flag, provision ephemeral DO droplet via CQ-043 engine + CQ-044 adapter, inject demo blueprint via CQ-048 cloud-init, open browser to cloud agent URL, destroy droplet on SIGINT/exit. SIGINT handler pattern already used elsewhere in the codebase. Scope is one sprint. ORDERING: Ship after CQ-047 (deploy command) — the deploy wizard establishes the interactive UX pattern for cloud provisioning that this command should mirror. Sharing patterns avoids drift. PERFORMANCE NOTE: Without CQ-049 (snapshots), provisioning takes ~3 minutes — AC correctly says 'within 3 minutes'. CQ-049 later brings this to sub-60s. Do not over-promise 60 seconds in the demo UX until CQ-049 ships.",
+      "groomedAt": "2026-03-20"
+    },
+    {
+      "id": "FEAT-005",
+      "title": "clawhq deploy update — push config and version updates to cloud-deployed agents",
+      "intent": "A sovereign cloud agent that cannot be updated is a liability, not an asset. clawhq deploy update must let users push config changes, version upgrades, and new skills to any cloud-deployed agent without reprovisioning. The agent grows pillar must hold for cloud deployments.",
+      "description": "After clawhq deploy provisions a cloud agent, users need to push updates without reprovisioning from scratch. Three update scenarios: (1) config change — update blueprint vars or credentials without restart, (2) clawhq version upgrade — pull latest, rebuild Docker image, restart agent, (3) skill install/remove — evolve the cloud agent remotely. Implementation: SSH keypair injected at provision time (cloud-init). clawhq deploy update --id <agent-id> connects via SSH, pulls new config or runs clawhq update/skill commands on the remote. Requires deploy state file to track SSH endpoint and keypair location. Works in zero-trust mode — user initiates, no inbound from cloud service.",
       "priority": "should",
       "category": null,
       "steps": [],
@@ -1343,7 +1380,8 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": false,
-      "groomingNotes": "Depends on FEAT-002 (base demo command, DONE when FEAT-002 ships), CQ-044 (DO adapter), and CQ-048 (cloud-init template). NOT READY until all three dependencies complete. Phase 2 of the demo story — zero Docker path for users who just want to try before installing locally. Ephemeral DO droplet: provision, run demo, destroy on exit. Blueprint: same demo.yaml as FEAT-002. LLM: inject mock LLM or Ollama config via cloud-init params. Browser: open same /chat UI but pointing at cloud URL. COST TRANSPARENCY: show estimated cost before provisioning (fractions of a cent for 60s). CLEANUP: SIGINT handler destroys droplet immediately — no orphaned instances."
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Gap identified during sprint grooming: CQ-047 (deploy command) covers provision/status/destroy but has no update path. CQ-037 (local updater) is done but won't reach a remote VM. The 'agent grows' pillar is broken for cloud deployments without this. SSH keypair must be injected at provision time (cloud-init in CQ-048) so this command has access. Deploy state file must track: instance ID, IP, SSH key path, provider. Three subcommands: deploy update config (push vars), deploy update version (pull + rebuild), deploy update skill (remote skill install). Depends on CQ-047 shipping first — deploy state file format must be established. Not sprint-ready until CQ-047 is done."
     }
   ]
 }
