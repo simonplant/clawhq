@@ -255,11 +255,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "BLOCKED BY CQ-005. Do not sprint until CQ-005 completes — the file doesn't exist yet. After CQ-005: src/secure/firewall/firewall.ts will contain the moved firewall code. The original 5 silent catches were at lines 98,106,127,137,165 of src/build/launcher/firewall.ts. Find the moved equivalents in the new file and add console.warn(err, context) to each. All tests must use EXEC_DRY=1 (no real iptables calls in CI). BUG-014 grooming notes documented this follow-up explicitly. Mark readyForSprint after CQ-005 sprint completes."
+      "groomingNotes": "CQ-005 was implemented in-place — src/build/launcher/firewall.ts was NOT moved to src/secure/firewall/firewall.ts. The existing catch blocks in firewall.ts already have console.warn or structured error handling (verified at lines 94, 109, 118, 124, 161, 297, 314, 325 — all non-silent). Sprint task: (1) open src/build/launcher/firewall.ts; (2) confirm every catch block has console.warn or returns a typed error object — no additions needed based on current state; (3) if all catches are observable, mark this item done. Estimated scope: read + verify + close, under 10 minutes. NOTE: src/secure/firewall/firewall.ts does not exist and was never created — premise of this bug is resolved differently than expected.",
+      "completedAt": "2026-03-19T17:19:23-07:00"
     },
     {
       "id": "BUG-021",
@@ -304,9 +305,9 @@
       "acceptanceCriteria": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "BLOCKED BY CQ-005. Do not sprint until CQ-005 is complete and src/secure/firewall/firewall.ts exists. After CQ-005: single CLAUDE.md edit in the 'Cross-module security code' section — change 'src/build/launcher/firewall.ts' to 'src/secure/firewall/firewall.ts'. Check for any other references to the old path. Doc-only, zero risk, pairs with BUG-020 and CQ-041 in the post-CQ-005 batch. Mark readyForSprint after CQ-005 sprint completes."
+      "groomingNotes": "CQ-005 was implemented in-place — firewall code stayed in src/build/launcher/firewall.ts, NOT moved to src/secure/firewall/firewall.ts. CLAUDE.md 'Cross-module security code' section already correctly reads: 'Egress firewall (iptables CLAWHQ_FWD) → src/build/launcher/firewall.ts'. No changes needed. Sprint task: (1) read CLAUDE.md cross-module security code section; (2) confirm firewall entry matches actual file location src/build/launcher/firewall.ts; (3) if already correct, mark done immediately. Estimated scope: read + verify + close, under 5 minutes."
     },
     {
       "id": "BUG-024",
@@ -594,6 +595,20 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
       "groomingNotes": "Part of the constants-centralization sweep (BUG-011, BUG-024 through BUG-033, BUG-038, BUG-039, BUG-040). Files and constants: (1) build/installer/source.ts:26,29 — CLONE_TIMEOUT_MS=300_000, BUILD_TIMEOUT_MS=600_000 (from-source install path, source clone and Docker build timeouts); (2) build/launcher/deploy.ts:34 — COMPOSE_TIMEOUT_MS=120_000 (docker compose up timeout); (3) build/launcher/connect.ts:24 — GATEWAY_RPC_TIMEOUT_MS=10_000 (IMPORTANT: BUG-038 adds this to defaults.ts already — reuse rather than duplicate, just update the import); (4) design/configure/ollama.ts:11 — GENERATE_TIMEOUT_MS=120_000 (local Ollama inference timeout, comment says '2 minutes — local inference can be slow' — preserve this comment in defaults.ts). Key dependency check: run BUG-038 sprint first if GATEWAY_RPC_TIMEOUT_MS is not yet in defaults.ts. Otherwise no blocking dependencies. Run build/ and design/ tests after. Scope: 5 files, ~10 lines changed."
+    },
+    {
+      "id": "BUG-042",
+      "title": "firewall.ts EXEC_TIMEOUT_MS not centralized in config/defaults.ts",
+      "intent": "firewall.ts must not define its own timeout constant. EXEC_TIMEOUT_MS must import DOCTOR_EXEC_TIMEOUT_MS from config/defaults.ts. No duplicate timeout literal remains in firewall.ts.",
+      "description": "src/build/launcher/firewall.ts:31 defines const EXEC_TIMEOUT_MS = 15_000 as a local constant. This was explicitly excluded from BUG-040 (which said 'Do NOT touch src/build/launcher/firewall.ts:25 — deferred to BUG-020 post-CQ-005'). CQ-005 is now done and the file stayed in build/launcher/. DOCTOR_EXEC_TIMEOUT_MS = 15_000 is already exported from src/config/defaults.ts — reuse it instead of maintaining a duplicate. Steps: (1) open src/build/launcher/firewall.ts; (2) remove the local const EXEC_TIMEOUT_MS = 15_000 at line 31; (3) add import { DOCTOR_EXEC_TIMEOUT_MS } from '../../config/defaults.js'; (4) replace EXEC_TIMEOUT_MS with DOCTOR_EXEC_TIMEOUT_MS at all usage sites in the file; (5) run build/ tests to confirm no regression. Scope: one file, ~3 lines changed. Zero logic change — pure constant consolidation.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "Deferred from BUG-040 (grooming notes: 'Do NOT touch src/build/launcher/firewall.ts:25 — deferred to BUG-020 post-CQ-005'). CQ-005 is now done. File stayed at src/build/launcher/firewall.ts:31 — const EXEC_TIMEOUT_MS = 15_000. DOCTOR_EXEC_TIMEOUT_MS = 15_000 already in defaults.ts (added by BUG-038). Reuse it — same value, one source of truth. Import path: ../../config/defaults.js. Grep firewall.ts for EXEC_TIMEOUT_MS to find all usage sites. Run: npm test (or equivalent) after change. Pattern identical to BUG-038/039/040/041 constant sweep. No blocking dependencies — BUG-038 already exported the constant."
     }
   ]
 }

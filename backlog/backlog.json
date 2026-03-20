@@ -1033,7 +1033,7 @@
       "category": "secure",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-005",
         "CQ-010"
@@ -1050,7 +1050,10 @@
         "Agent remains fully functional without any network access"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Hard-blocked by CQ-005 (egress firewall). DO NOT SPRINT until CQ-005 is complete and passing. Once CQ-005 lands: (1) air-gap mode = CQ-005 CLAWHQ_FWD chain with empty allowlist, drop all outbound except ESTABLISHED/RELATED — reuse same chain, skip allowlist loop; (2) set zero egress domains in openclaw.json config (touches CQ-001 schema, field already exists); (3) doctor check: verify both layers active (config zero-egress flag + verifyFirewall() confirms drop-all rule present). Estimated scope: small extension on top of CQ-005. Mark readyForSprint after CQ-005 sprint completes successfully."
+      "groomingNotes": "Both blocking dependencies now complete: CQ-005 (egress firewall, completedAt 2026-03-19T17:01:59-07:00) and CQ-010 (init wizard, completedAt 2026-03-19T01:07:21-07:00). NOTE: CQ-005 was implemented in-place in src/build/launcher/firewall.ts (not moved to src/secure/firewall/). Air-gap mode reuses the existing CLAWHQ_FWD chain. IMPLEMENTATION: (1) air-gap mode = pass empty allowlist to applyFirewall() in src/build/launcher/firewall.ts — the chain already drops all non-allowlisted traffic, so empty allowlist = block all outbound except ESTABLISHED/RELATED; (2) set zero egress domains in openclaw.json config via existing field in CQ-001 schema (verify field name via src/config/types.ts); (3) doctor check: add check that verifies both config zero-egress flag AND firewall rules show drop-all pattern — use existing checkFirewallActive() pattern in src/operate/doctor/checks.ts. ACCEPTANCE: air-gap mode sets zero egress in config; firewall blocks all outbound; doctor confirms air-gap active at both layers; agent functional without any network access. All tests must use EXEC_DRY=1 for iptables calls.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-19T17:15:45-07:00",
+      "failCount": 1
     },
     {
       "id": "CQ-042",

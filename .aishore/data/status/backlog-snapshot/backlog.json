@@ -109,8 +109,8 @@
       "description": "PRIVACY PROMISE: The egress firewall is what makes 'zero data leaves your machine by default' true, not marketing. Without it, an agent tool or skill could call out to arbitrary domains. Per-integration domain allowlist means the user's email agent can reach email APIs and nothing else. Air-gap mode is the paranoid user's kill switch. Acceptance: docker bridge traffic blocked to non-allowlisted domains; DNS and HTTPS to allowlist work; firewall reapplied after compose down; 'clawhq doctor' verifies rules are active.",
       "category": "secure",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "steps": [
         "Create dedicated iptables chain CLAWHQ_FWD: ESTABLISHED/RELATED -> DNS -> HTTPS allowlist -> LOG + DROP",
         "Derive per-integration domain allowlist from config",
@@ -129,7 +129,9 @@
       "lastFailAt": "2026-03-19T00:19:10-07:00",
       "failCount": 1,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "SECOND GROOMING (updated) — failed once (reason: implementation failed, no further detail). BUG-009 (yaml parser fix) is ALREADY DONE — do not re-do it. IMPLEMENTATION CHECKLIST: (1) Create src/secure/firewall/firewall.ts — move applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts, add verifyFirewall() that diffs expected vs actual iptables rules. (2) Add air-gap mode flag: skip allowlist, drop all outbound except ESTABLISHED/RELATED. (3) Detect Docker bridge interface dynamically via 'docker network inspect' — never hardcode. (4) Compose-down watcher for auto-reapply. (5) EXEC_DRY env var for test dry-run mode — iptables calls must be mockable. (6) Doctor integration: add verifyFirewall() check to existing src/operate/doctor/ check array. (7) sudo/privilege handling: detect non-root and surface actionable error. SUDO NOTE: iptables requires root — document requirement in error messages. TESTING: All tests must use EXEC_DRY=1 or a mock exec to avoid requiring root in CI. ACCEPTANCE CHECK: applyFirewall() idempotent (run twice = same rules); verifyFirewall() returns diff when rules are missing; air-gap mode drops all outbound; doctor check reports fail with fix message when rules absent. POST-COMPLETION BATCH: After CQ-005 sprint completes successfully, immediately mark CQ-041, BUG-020, and BUG-023 as readyForSprint — they are all blocked exclusively on this item."
+      "groomingNotes": "SECOND GROOMING (updated) — failed once (reason: implementation failed, no further detail). BUG-009 (yaml parser fix) is ALREADY DONE — do not re-do it. IMPLEMENTATION CHECKLIST: (1) Create src/secure/firewall/firewall.ts — move applyFirewall()/removeFirewall() from src/build/launcher/firewall.ts, add verifyFirewall() that diffs expected vs actual iptables rules. (2) Add air-gap mode flag: skip allowlist, drop all outbound except ESTABLISHED/RELATED. (3) Detect Docker bridge interface dynamically via 'docker network inspect' — never hardcode. (4) Compose-down watcher for auto-reapply. (5) EXEC_DRY env var for test dry-run mode — iptables calls must be mockable. (6) Doctor integration: add verifyFirewall() check to existing src/operate/doctor/ check array. (7) sudo/privilege handling: detect non-root and surface actionable error. SUDO NOTE: iptables requires root — document requirement in error messages. TESTING: All tests must use EXEC_DRY=1 or a mock exec to avoid requiring root in CI. ACCEPTANCE CHECK: applyFirewall() idempotent (run twice = same rules); verifyFirewall() returns diff when rules are missing; air-gap mode drops all outbound; doctor check reports fail with fix message when rules absent. POST-COMPLETION BATCH: After CQ-005 sprint completes successfully, immediately mark CQ-041, BUG-020, and BUG-023 as readyForSprint — they are all blocked exclusively on this item.",
+      "passes": true,
+      "completedAt": "2026-03-19T17:01:59-07:00"
     },
     {
       "id": "CQ-006",
@@ -1031,7 +1033,7 @@
       "category": "secure",
       "priority": "should",
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "dependencies": [
         "CQ-005",
         "CQ-010"
@@ -1048,7 +1050,10 @@
         "Agent remains fully functional without any network access"
       ],
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Hard-blocked by CQ-005 (egress firewall). DO NOT SPRINT until CQ-005 is complete and passing. Once CQ-005 lands: (1) air-gap mode = CQ-005 CLAWHQ_FWD chain with empty allowlist, drop all outbound except ESTABLISHED/RELATED — reuse same chain, skip allowlist loop; (2) set zero egress domains in openclaw.json config (touches CQ-001 schema, field already exists); (3) doctor check: verify both layers active (config zero-egress flag + verifyFirewall() confirms drop-all rule present). Estimated scope: small extension on top of CQ-005. Mark readyForSprint after CQ-005 sprint completes successfully."
+      "groomingNotes": "Both blocking dependencies now complete: CQ-005 (egress firewall, completedAt 2026-03-19T17:01:59-07:00) and CQ-010 (init wizard, completedAt 2026-03-19T01:07:21-07:00). NOTE: CQ-005 was implemented in-place in src/build/launcher/firewall.ts (not moved to src/secure/firewall/). Air-gap mode reuses the existing CLAWHQ_FWD chain. IMPLEMENTATION: (1) air-gap mode = pass empty allowlist to applyFirewall() in src/build/launcher/firewall.ts — the chain already drops all non-allowlisted traffic, so empty allowlist = block all outbound except ESTABLISHED/RELATED; (2) set zero egress domains in openclaw.json config via existing field in CQ-001 schema (verify field name via src/config/types.ts); (3) doctor check: add check that verifies both config zero-egress flag AND firewall rules show drop-all pattern — use existing checkFirewallActive() pattern in src/operate/doctor/checks.ts. ACCEPTANCE: air-gap mode sets zero egress in config; firewall blocks all outbound; doctor confirms air-gap active at both layers; agent functional without any network access. All tests must use EXEC_DRY=1 for iptables calls.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-19T17:15:45-07:00",
+      "failCount": 1
     },
     {
       "id": "CQ-042",
