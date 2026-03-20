@@ -1393,6 +1393,259 @@
       "readyForSprint": false,
       "groomedAt": "2026-03-20",
       "groomingNotes": "NOT READY until CQ-047 ships — deploy state file format and SSH keypair injection are defined by CQ-047. This is the correct sequencing. DEPENDENCY CHAIN: CQ-047 must: (1) inject SSH keypair at provision time, (2) store keypair path + instance IP + provider in deploy state file at ~/.clawhq/cloud/instances.json (extended format). FEAT-005 reads that state file to know how to connect. THREE UPDATE SUBCOMMANDS: (a) deploy update config — rsync updated vars to remote /home/clawhq/.clawhq/, restart agent; (b) deploy update version — SSH in, run clawhq update, verify health; (c) deploy update skill — SSH in, run clawhq skill install <source>, verify. ALL three must be user-initiated (zero-trust) — no inbound from cloud service. READINESS GATE: mark readyForSprint when CQ-047 is done AND confirmed to include SSH keypair injection in deploy state file. Priority SHOULD is correct — this is day-2 functionality, not blocking first cloud deployment. AC is user-focused and covers all three subcommands. No AC changes needed."
+    },
+    {
+      "id": "FEAT-006",
+      "title": "Add skill system section to docs/ARCHITECTURE.md",
+      "intent": "A contributor or evaluator reading ARCHITECTURE.md must understand the full system — the skill system is a core architectural layer that is currently undocumented there.",
+      "description": "docs/ARCHITECTURE.md is nearly production-ready and covers platform, blueprints, security, deployment, modules, and architectural decisions. But the skill system — a core runtime layer — has no dedicated section. Skills are documented individually in configs/skills/*/SKILL.md and configs/skills/*/config.yaml but the architectural pattern (declarative skill definition, cron trigger, prompt templates, boundary enforcement, approval gates) is never explained as a system. Add a 'Layer 3: Skills' section (or 'The Skill System') to ARCHITECTURE.md between the Blueprint and Security sections. Source content from: the 6 existing SKILL.md files (email-digest, investor-update, market-scan, meal-plan, morning-brief, schedule-guard) for the pattern, and the 6 config.yaml files for the schema (schedule, model, dependencies, approval, boundaries). The section should explain: what a skill is, the skill lifecycle (trigger → prompt → execute → boundary check → approval gate), the config.yaml schema, and how skills compose with blueprints.",
+      "priority": "must",
+      "category": "documentation",
+      "steps": [
+        "Read docs/ARCHITECTURE.md to understand the current structure and find the right insertion point (after Layer 2: Blueprints, before Security Architecture)",
+        "Read configs/skills/email-digest/SKILL.md and configs/skills/email-digest/config.yaml as the reference skill implementation",
+        "Read configs/skills/morning-brief/SKILL.md and configs/skills/morning-brief/config.yaml for a second pattern example",
+        "Read at least 2 more configs/skills/*/config.yaml files to confirm the schema is consistent across skills",
+        "Add a new section to docs/ARCHITECTURE.md covering: what a skill is (declarative capability definition), skill lifecycle (trigger → prompt template → model execution → boundary enforcement → approval gate if configured), config.yaml schema reference (schedule, model, dependencies, approval, boundaries fields), how blueprints compose skills (blueprint YAML references skill names), skill isolation and boundary enforcement",
+        "Ensure the new section follows the same tone and depth as the existing Blueprint and Platform sections"
+      ],
+      "acceptanceCriteria": [
+        "docs/ARCHITECTURE.md contains a skill system section explaining: what skills are, the skill lifecycle, config.yaml schema, blueprint-skill composition, and boundary enforcement",
+        "The section is sourced from existing SKILL.md and config.yaml files — no invented claims",
+        "The section is positioned logically within the document (between blueprints and security, or after blueprints)",
+        "Existing content in ARCHITECTURE.md is not altered beyond the insertion"
+      ],
+      "scope": ["docs/ARCHITECTURE.md"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-007",
+      "title": "Create docs/QUICKSTART.md — install to working agent in under 10 minutes",
+      "intent": "A new user must go from nothing to a working personal AI agent using a single document — if they need to read the README, ARCHITECTURE.md, and PRODUCT.md to get started, they won't.",
+      "description": "No quickstart document exists. Content fragments are scattered across: README.md (install commands: curl one-liner and git clone, clawhq init --guided/--smart, clawhq doctor, clawhq status), docs/ARCHITECTURE.md (Install Phases: install → configure → harden → test → launch, Engine Acquisition: trusted cache vs from-source), CLAUDE.md (CLI Commands: full command listing with descriptions), and docs/PRODUCT.md (What Your Day Looks Like: before/after narrative showing the user experience). The quickstart must walk through: prerequisites (Docker, Node.js >=22, Ollama for local models), install (curl or git clone), init wizard (--guided walkthrough with expected output for each step), pick a blueprint (email-manager as the default first experience), connect integrations (IMAP/SMTP for email-manager), launch (clawhq up), verify (clawhq status, clawhq doctor), first interaction (send a message via Signal/Telegram/Discord). Include expected terminal output at each step. The email-manager blueprint is the best first experience because email is universal and the blueprint is fully defined.",
+      "priority": "must",
+      "category": "documentation",
+      "steps": [
+        "Read README.md for install commands (curl, git clone), init commands (--guided, --smart), and post-install commands (doctor, status)",
+        "Read docs/ARCHITECTURE.md Install Phases section and Engine Acquisition section for the installation flow",
+        "Read docs/PRODUCT.md 'What Your Day Looks Like' section for the user experience narrative",
+        "Read CLAUDE.md CLI Commands section for the full command listing",
+        "Read configs/blueprints/email-manager.yaml to understand what the first blueprint configures",
+        "Read backlog/GAP-ANALYSIS.md for prerequisites and known gaps that affect the quickstart",
+        "Compose docs/QUICKSTART.md with sections: Prerequisites (Docker, Node.js >=22, Ollama optional), Install (curl one-liner + from-source option), Initialize (clawhq init --guided walkthrough with expected terminal output), Pick Your First Blueprint (email-manager, what it configures, why start here), Connect Integrations (IMAP/SMTP setup for email-manager), Launch (clawhq up + what to expect), Verify (clawhq status + clawhq doctor), Your First Interaction (send a test message), What's Next (links to ARCHITECTURE.md, CONFIGURATION.md)",
+        "Add expected terminal output blocks after every command",
+        "Keep under 250 lines — this is a quickstart, not a manual"
+      ],
+      "acceptanceCriteria": [
+        "docs/QUICKSTART.md exists and covers: prerequisites, install, init, first blueprint, connect integrations, launch, verify, first interaction",
+        "Each step includes the exact command and expected terminal output",
+        "The email-manager blueprint is used as the first-run example throughout",
+        "A user following only this document can go from zero to a working agent",
+        "The document is under 250 lines"
+      ],
+      "scope": ["docs/QUICKSTART.md"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-008",
+      "title": "Create docs/CONFIGURATION.md — blueprint schema, skill schema, every config option",
+      "intent": "Users writing custom blueprints or skills must have a single reference document — reading 7 example YAMLs and reverse-engineering the schema is not documentation.",
+      "description": "Configuration content exists but only as examples and scattered references: configs/blueprints/*.yaml (7 blueprints establishing the blueprint schema by example), configs/skills/*/config.yaml (6 skills establishing the skill schema by example), configs/skills/*/SKILL.md (6 behavior definitions establishing the SKILL.md format by example), docs/ARCHITECTURE.md ('What a Blueprint Configures' 10-dimension table, 'The 14 Landmine Rules' table, 'What Gets Generated' directory tree), docs/OPENCLAW-REFERENCE.md (openclaw.json reference section 10, Configuration Surface Inventory section 11, The 14 Configuration Landmines section 12 with detailed explanations, Automation section 14 for cron config), CLAUDE.md (Key Design Constraints, CLI Commands). The unified document must cover: blueprint YAML schema (field-by-field, every dimension from the 10-dimension table), skill config.yaml schema (field-by-field: schedule, model, dependencies, approval, boundaries), SKILL.md authoring format, the 14 landmine rules with explanations, model routing configuration, and integration configuration patterns.",
+      "priority": "should",
+      "category": "documentation",
+      "steps": [
+        "Read configs/blueprints/email-manager.yaml and configs/blueprints/research-copilot.yaml as reference blueprints to extract the full field set",
+        "Read configs/skills/email-digest/config.yaml and configs/skills/morning-brief/config.yaml as reference skills to extract the full field set",
+        "Read configs/skills/email-digest/SKILL.md as reference for the SKILL.md authoring format",
+        "Read docs/ARCHITECTURE.md sections: 'What a Blueprint Configures' (10-dimension table), 'The 14 Landmine Rules', 'What Gets Generated'",
+        "Read docs/OPENCLAW-REFERENCE.md sections 10 (openclaw.json), 11 (Configuration Surface Inventory), 12 (14 Configuration Landmines with detailed explanations), 14 (cron/heartbeat/hooks)",
+        "Read CLAUDE.md Key Design Constraints section",
+        "Compose docs/CONFIGURATION.md with sections: Blueprint Schema (every field, type, required/optional, description, default), Skill Schema (config.yaml field-by-field + SKILL.md format guide), The 14 Landmine Rules (sourced from OPENCLAW-REFERENCE.md section 12, each rule with explanation and safe default), Model Routing (local vs cloud, per-task-type routing), Integration Patterns (how to configure IMAP, SMTP, CalDAV, etc.), Generated Directory Structure (from ARCHITECTURE.md 'What Gets Generated')",
+        "For each schema field, document: name, type, required/optional, default, description, example value"
+      ],
+      "acceptanceCriteria": [
+        "docs/CONFIGURATION.md exists and documents the full blueprint YAML schema, skill config.yaml schema, SKILL.md format, and all 14 landmine rules",
+        "Every blueprint schema field includes: name, type, required/optional, default, description",
+        "Every skill config.yaml field includes: name, type, required/optional, default, description",
+        "The 14 landmine rules each have an explanation and the safe default ClawHQ enforces",
+        "A user can write a custom blueprint or skill using only this document as reference"
+      ],
+      "scope": ["docs/CONFIGURATION.md"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-009",
+      "title": "Create docs/PROBLEMS.md — why OpenClaw is hard and what ClawHQ fixes",
+      "intent": "People search for problems, not solutions — this document must rank for the frustrations that drive users to ClawHQ.",
+      "description": "The pain point content is the richest of any doc area but scattered across 4 files: docs/PRODUCT.md ('The Problem' section: freelancers/enthusiasts abandoned within a month, too much config), README.md (second paragraph: 13,500 tokens of config, 11+ files, 14 silent landmines, most deployments abandoned), docs/OPENCLAW-REFERENCE.md (section 12: the 14 Configuration Landmines with detailed explanations of each; section 8: Memory System 360KB bloat in 3 days; section 9: Identity Drift; section 15: Threat Model showing security-by-default gaps; section 30: Production Discoveries documenting real-world failures), CLAUDE.md (Core Intent: surveillance AI vs raw framework framing). This is primarily a consolidation and narrative job. Each problem should be stated as a user would google it, with evidence from OPENCLAW-REFERENCE.md production discoveries, and a concrete explanation of how ClawHQ addresses it.",
+      "priority": "should",
+      "category": "documentation",
+      "steps": [
+        "Read docs/PRODUCT.md 'The Problem' section for the core problem statement",
+        "Read README.md second paragraph for the quantified pain (13,500 tokens, 11+ files, 14 landmines, abandoned deployments)",
+        "Read docs/OPENCLAW-REFERENCE.md section 12 (14 Configuration Landmines) for detailed landmine documentation",
+        "Read docs/OPENCLAW-REFERENCE.md section 8 (Memory System: 360KB bloat), section 9 (Identity Drift), section 15 (Threat Model), section 30 (Production Discoveries)",
+        "Read CLAUDE.md Core Intent section for the surveillance-vs-sovereignty framing",
+        "Compose docs/PROBLEMS.md with one section per problem, each structured as: search-friendly heading, pain description (2-3 sentences), evidence (from OPENCLAW-REFERENCE.md production data or mark TODO), how ClawHQ addresses it (specific feature/blueprint/automation)",
+        "Cover at minimum: OpenClaw configuration is 13,500 tokens across 11+ files, 14 silent configuration landmines that break agents without warning, Memory bloats to 360KB in 3 days without management, Identity drift degrades agent quality over time, No security hardening by default (cap_drop, egress, rootfs), Most OpenClaw deployments abandoned within a month, People paying consultants to install what should be a consumer product",
+        "Write problem headings as search queries: e.g. 'OpenClaw configuration is too complex for non-developers' not 'Configuration Complexity'"
+      ],
+      "acceptanceCriteria": [
+        "docs/PROBLEMS.md exists with at least 7 distinct problem sections",
+        "Each problem is stated as a user would search for it (search-friendly heading)",
+        "Each problem section includes: pain description, evidence from OPENCLAW-REFERENCE.md or real-world data, and how ClawHQ addresses it",
+        "Quantified claims (13,500 tokens, 14 landmines, 360KB bloat, 11+ files) are included with source attribution",
+        "Problems reference specific ClawHQ features (blueprints, auto-hardening, clawhq doctor, memory management) not vague claims"
+      ],
+      "scope": ["docs/PROBLEMS.md"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-010",
+      "title": "Create docs/ROADMAP.md — public-facing roadmap from internal planning docs",
+      "intent": "Contributors and evaluators must see where the project is going and what's real vs aspirational — a project with no visible roadmap looks abandoned.",
+      "description": "Roadmap content is rich but entirely internal-facing: docs/PRODUCT.md ('What We're Building' with 6 modules and checkboxes, 'Build Order' with Tracks A-F, 'How the Agent Grows' vision timeline for weeks/months, 'Risks & Open Questions'), backlog/GAP-ANALYSIS.md ('GAP ANALYSIS' Gaps 1-10 documenting technical gaps, 'REMEDIATION PRIORITY' Phases 1-3 with phased delivery plan, 'AS-IS: What's Built' subsystem status table with line counts). This content needs reframing from internal planning language to public-facing roadmap. Organize as: What's Built (current state from GAP-ANALYSIS AS-IS), Now (active work from todo backlog items), Next (committed direction from PRODUCT.md Build Order), Later (vision from PRODUCT.md 'How the Agent Grows'), Known Limitations (honest constraints from GAP-ANALYSIS gaps), Risks (from PRODUCT.md 'Risks & Open Questions'). Keep under 120 lines.",
+      "priority": "should",
+      "category": "documentation",
+      "steps": [
+        "Read docs/PRODUCT.md sections: 'What We're Building' (6 modules with status), 'Build Order' (Tracks A-F), 'How the Agent Grows' (week/month timeline), 'Risks & Open Questions'",
+        "Read backlog/GAP-ANALYSIS.md sections: 'AS-IS: What's Built' (subsystem status), 'GAP ANALYSIS' (Gaps 1-10), 'REMEDIATION PRIORITY' (Phases 1-3)",
+        "Review backlog/backlog.json for remaining todo items (CQ-047, FEAT-005) to populate the 'Now' section",
+        "Compose docs/ROADMAP.md with sections: What's Built (summarize AS-IS subsystem table), Now (active backlog items), Next (Track A-C from Build Order — platform, blueprints, security), Later (Tracks D-F — operate, evolve, cloud + the 'How the Agent Grows' vision), Known Limitations (from GAP-ANALYSIS gaps: e.g. single-machine only, no Windows support, requires Docker), Risks (from PRODUCT.md — honest about what might not work)",
+        "Reframe all internal language to public-facing: 'CQ-047' becomes 'Cloud deployment command', 'Track A' becomes descriptive feature names",
+        "Keep under 120 lines — signpost, not a product spec"
+      ],
+      "acceptanceCriteria": [
+        "docs/ROADMAP.md exists with sections: What's Built, Now, Next, Later, Known Limitations, Risks",
+        "Internal IDs and track names are translated to user-facing descriptions",
+        "Known Limitations is honest about real constraints",
+        "The document is under 120 lines",
+        "Each roadmap item is a clear statement with enough context to understand scope"
+      ],
+      "scope": ["docs/ROADMAP.md"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-011",
+      "title": "Create docs/CONTRIBUTING.md — how to contribute blueprints, skills, and code",
+      "intent": "A potential contributor must know exactly how to help — what's needed, what format to follow, and what the quality bar is. No CONTRIBUTING.md means no contributions.",
+      "description": "No CONTRIBUTING.md exists. The content must be written from scratch but patterns can be derived from: configs/blueprints/*.yaml (7 blueprints establishing the blueprint contribution format), configs/skills/*/SKILL.md + config.yaml (6 skills establishing the skill contribution format), docs/ARCHITECTURE.md (Architectural Decisions AD-01 through AD-05 establishing constraints contributors must respect), CLAUDE.md (Terminology table for naming conventions, Key Design Constraints for invariants). Cover three contribution types: blueprints (write a new blueprint YAML following the schema, test against landmine validator), skills (write SKILL.md + config.yaml + prompts/, follow boundary enforcement rules), and code (TypeScript conventions, branch strategy, PR process). Include a 'What's Needed' section listing the highest-impact contributions — e.g. 'we need blueprints for: stock trading, home automation, content creation' to guide contributors toward valuable work.",
+      "priority": "should",
+      "category": "documentation",
+      "steps": [
+        "Read configs/blueprints/email-manager.yaml as the reference blueprint format for contributors",
+        "Read configs/skills/email-digest/SKILL.md, config.yaml, and prompts/ as the reference skill format",
+        "Read docs/ARCHITECTURE.md Architectural Decisions section (AD-01 through AD-05) for constraints",
+        "Read CLAUDE.md Terminology table and Key Design Constraints for naming conventions and invariants",
+        "Compose docs/CONTRIBUTING.md with sections: Overview (three ways to contribute: blueprints, skills, code), Blueprint Contribution Guide (YAML schema, required fields, testing with landmine validator, example walkthrough), Skill Contribution Guide (SKILL.md format, config.yaml schema, prompt template patterns, boundary enforcement requirements), Code Contribution Guide (TypeScript conventions, branch strategy, PR process, testing requirements), What's Needed (list of high-impact contributions: specific blueprint ideas, skill ideas, tooling gaps), Architectural Constraints (link to AD-01 through AD-05 in ARCHITECTURE.md), Security Requirements (boundary enforcement for skills, no network unless declared, egress rules)"
+      ],
+      "acceptanceCriteria": [
+        "docs/CONTRIBUTING.md exists and covers: blueprint contribution guide, skill contribution guide, code contribution guide, what's needed, architectural constraints",
+        "Blueprint guide includes the YAML schema with required fields and a worked example",
+        "Skill guide includes SKILL.md format, config.yaml schema, and boundary enforcement rules",
+        "A 'What's Needed' section lists specific high-impact contribution opportunities",
+        "Security requirements for contributed skills are clearly stated"
+      ],
+      "scope": ["docs/CONTRIBUTING.md"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-012",
+      "title": "Create docs/CHANGELOG.md — retroactive changelog from build history",
+      "intent": "A project with no changelog looks like it was built in one shot — the changelog proves sustained development and helps evaluators gauge velocity and direction.",
+      "description": "No CHANGELOG.md exists and no version tags are in the repo. However, build history can be reconstructed from: backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' (subsystem status table with line counts showing what has shipped), docs/PRODUCT.md checkbox items showing completed features, backlog/archive/sprints.jsonl (sprint completion records with dates and item IDs), and backlog/backlog.json + bugs.json (done items with completedAt timestamps). Create a retroactive changelog organized by development phase rather than version numbers (since no versions exist yet). Phase 1: Foundation (config schema, landmine validator, gateway client, workspace generator). Phase 2: Blueprints (blueprint engine, 7 blueprints, skill system, 6 skills). Phase 3: Platform (install pipeline, security hardening, doctor/status, cron engine). Include dates where available from completedAt timestamps.",
+      "priority": "could",
+      "category": "documentation",
+      "steps": [
+        "Read backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' section for the subsystem status table",
+        "Read backlog/backlog.json done items with completedAt timestamps to establish timeline",
+        "Read backlog/archive/sprints.jsonl for sprint completion records with dates",
+        "Read docs/PRODUCT.md 'What We're Building' checkbox items for completed feature list",
+        "Compose docs/CHANGELOG.md organized by development phase: Phase 1 Foundation (with dates from completedAt), Phase 2 Blueprints, Phase 3 Platform, using Added/Changed/Fixed format within each phase",
+        "Include line counts from GAP-ANALYSIS where available to show scope of each phase"
+      ],
+      "acceptanceCriteria": [
+        "docs/CHANGELOG.md exists with retroactive entries organized by development phase",
+        "Each phase lists completed features with dates where available",
+        "Entries use Added/Changed/Fixed format consistent with Keep a Changelog convention",
+        "The changelog accurately reflects what has been built — no aspirational entries"
+      ],
+      "scope": ["docs/CHANGELOG.md"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-013",
+      "title": "Slim README.md to storefront format — problem, solution, quickstart, links",
+      "intent": "The README must sell the project in 60 seconds — the current README is a product document pretending to be a landing page.",
+      "description": "The current README.md is a comprehensive product document containing architecture diagrams, deployment tables, data sovereignty matrices, CLI command listings, and blueprint dimension tables. This content belongs in docs/ files (most of which already exist in docs/ARCHITECTURE.md, docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md, or will be created by FEAT-006 through FEAT-012). After the docs/ files exist, the README must be cut to storefront format: one-sentence pitch ('WordPress for AI agents'), the problem (13,500 tokens, 14 landmines, abandoned deployments — 3 sentences max from the existing second paragraph), the solution (what ClawHQ does — 1 paragraph), quick start (install + init — 3 commands max, link to docs/QUICKSTART.md), the blueprint concept (1 paragraph + simple example, link to docs/CONFIGURATION.md), status (honest assessment), links section (all docs/ files), author section. Remove: How It Works detail, The Platform CLI listings, Blueprints dimension table, Cloud section, Deployment Options table, Data Sovereignty table, Why This Exists (fold into problem/solution). All removed content must have a home in a docs/ file.",
+      "priority": "must",
+      "category": "documentation",
+      "steps": [
+        "Verify that docs/ARCHITECTURE.md (with FEAT-006 skill section), docs/QUICKSTART.md, docs/CONFIGURATION.md, docs/PROBLEMS.md, docs/ROADMAP.md, docs/CONTRIBUTING.md, and docs/CHANGELOG.md all exist",
+        "Keep in README.md: opening pitch ('WordPress for AI agents'), the problem paragraph (13,500 tokens, 14 landmines, abandoned deployments), the solution paragraph ('ClawHQ turns generic...')",
+        "Keep in README.md: the three-layer ASCII diagram from How It Works (Cloud/Blueprints/Platform) but remove all detail below it",
+        "Add abbreviated Quick Start: install one-liner, clawhq init --guided, clawhq up — then link to docs/QUICKSTART.md",
+        "Add one blueprint example (email-manager in 3 lines) then link to docs/CONFIGURATION.md",
+        "Add Status section with honest assessment",
+        "Add Links section listing every docs/ file with one-line description",
+        "Add Author section: Simon Plant, building AI infrastructure tools, open to roles",
+        "Remove: The Platform (CLI listings), Blueprints (dimension table, evolution commands), Cloud (managed hosting details), Deployment Options table, Data Sovereignty table, Why This Exists section",
+        "Verify all removed content exists in a docs/ file — nothing lost"
+      ],
+      "acceptanceCriteria": [
+        "README.md is under 150 lines (current is 300+)",
+        "README.md contains only: pitch, problem, solution, three-layer diagram, quick start (abbreviated), one blueprint example, status, links, author",
+        "Every section removed from README.md has a corresponding docs/ file containing the content",
+        "Links section includes: Architecture, Quickstart, Configuration, Problems, Roadmap, Contributing, Changelog",
+        "No content is lost — everything is in README.md or linked from it"
+      ],
+      "scope": ["README.md"],
+      "dependsOn": ["FEAT-006", "FEAT-007", "FEAT-008", "FEAT-009", "FEAT-010", "FEAT-011", "FEAT-012"],
+      "status": "todo",
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-014",
+      "title": "Add .doc-standard.yaml schema file for doc structure enforcement",
+      "intent": "The repo must declare its doc standard version and structure so automated checks can validate compliance — undeclared standards are unenforceable.",
+      "description": "Part of a cross-repo documentation standard shared with aishore, GigOS, and other portfolio repos. The .doc-standard.yaml declares: schema version, project metadata (name: ClawHQ, tagline: WordPress for AI agents, category: infrastructure), required files list matching the docs/ structure, cross-repo links to sibling projects (aishore, Easy-Markdown, GigOS), and author info for consistency enforcement across the portfolio. This file enables a future GitHub Action to validate doc structure compliance on PR. Note: ClawHQ has additional docs not in the standard (docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md) — these should be listed in an optional_files section so the validator doesn't flag them as non-standard.",
+      "priority": "could",
+      "category": "documentation",
+      "steps": [
+        "Create .doc-standard.yaml at repo root",
+        "Set schema_version to '1.0'",
+        "Set project name to 'ClawHQ', tagline to 'WordPress for AI agents', category to 'infrastructure'",
+        "List required_files: README.md, docs/ARCHITECTURE.md, docs/QUICKSTART.md, docs/CONFIGURATION.md, docs/PROBLEMS.md, docs/ROADMAP.md, docs/CONTRIBUTING.md, docs/CHANGELOG.md",
+        "Add optional_files: docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md (repo-specific docs not in the standard)",
+        "Add portfolio section with sibling repos: aishore (complementary), Easy-Markdown (related), GigOS (related)",
+        "Add author section: name Simon Plant, location Santa Barbara CA, status 'Building AI infrastructure tools. Open to roles.'",
+        "Verify the file is valid YAML"
+      ],
+      "acceptanceCriteria": [
+        ".doc-standard.yaml exists at repo root and is valid YAML",
+        "File declares schema_version, project metadata, required_files, optional_files, portfolio siblings, and author info",
+        "required_files matches the docs/ structure created by FEAT-006 through FEAT-012",
+        "optional_files lists docs/PRODUCT.md and docs/OPENCLAW-REFERENCE.md so they are not flagged as non-standard",
+        "Portfolio section lists aishore, Easy-Markdown, and GigOS with correct GitHub URLs"
+      ],
+      "scope": [".doc-standard.yaml"],
+      "dependsOn": ["FEAT-013"],
+      "status": "todo",
+      "readyForSprint": false
     }
   ]
 }
