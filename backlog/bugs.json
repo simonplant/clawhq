@@ -868,11 +868,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "CQ-043 is DONE — src/cloud/provisioning/ exists with: engine.ts, types.ts, registry.ts, health.ts, cloud-init.ts, credentials.ts, index.ts, providers/digitalocean.ts. Blocker cleared. SCOPE: doc-only, 2 files. (1) CLAUDE.md Key Source Layout cloud/ section: add provisioning/ entry with providers/ subdir, describe ownership (provider adapters, instance registry, health polling, cloud-init bootstrap). (2) docs/ARCHITECTURE.md cloud module section: add provisioning as a named submodule with its role. No code changes. ACCEPTANCE CHECK: grep 'provisioning' in both files; entry appears under cloud/ with correct subdirs listed. Zero test overhead — doc change only."
+      "groomingNotes": "CQ-043 is DONE — src/cloud/provisioning/ exists with: engine.ts, types.ts, registry.ts, health.ts, cloud-init.ts, credentials.ts, index.ts, providers/digitalocean.ts. Blocker cleared. SCOPE: doc-only, 2 files. (1) CLAUDE.md Key Source Layout cloud/ section: add provisioning/ entry with providers/ subdir, describe ownership (provider adapters, instance registry, health polling, cloud-init bootstrap). (2) docs/ARCHITECTURE.md cloud module section: add provisioning as a named submodule with its role. No code changes. ACCEPTANCE CHECK: grep 'provisioning' in both files; entry appears under cloud/ with correct subdirs listed. Zero test overhead — doc change only.",
+      "completedAt": "2026-03-20T12:31:09-07:00"
     },
     {
       "id": "BUG-059",

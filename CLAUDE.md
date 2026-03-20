@@ -186,7 +186,9 @@ src/
 │   ├── agentd/                 — Managed mode daemon
 │   ├── heartbeat/              — Health reporting
 │   ├── commands/               — Command queue (pull, verify, execute)
-│   └── fleet/                  — Multi-agent management
+│   ├── fleet/                  — Multi-agent management
+│   └── provisioning/           — Cloud instance provisioning engine
+│       └── providers/          — Provider adapters (DigitalOcean)
 │
 ├── web/                        — Web dashboard (Hono + htmx, CQ-040)
 │   ├── pages/                  — 7 dashboard pages (doctor, logs, approvals, init, etc.)

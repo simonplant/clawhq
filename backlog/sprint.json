@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1774034800",
-  "startedAt": "2026-03-20T12:26:40-07:00",
+  "sprintId": "sprint-1774034966",
+  "startedAt": "2026-03-20T12:29:26-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-057",
-    "title": "Host-side deployment subdirectory names hardcoded in cloud/ module",
-    "intent": "Host-side deployment subdirectory names and key filenames have a single source of truth in config/paths.ts. Changing the ClawHQ deployment directory structure requires editing one file.",
-    "description": "src/cloud/heartbeat/reporter.ts and src/cloud/fleet/discovery.ts hardcode the host-side deployment subdirectory names as inline string literals, same BUG-011/BUG-025 constant-scattering pattern. Locations: reporter.ts:104 join(deployDir, 'engine', 'credentials.json'), reporter.ts:122 join(deployDir, 'engine', 'docker-compose.yml'), reporter.ts:128 join(deployDir, 'engine', 'openclaw.json'), reporter.ts:152 join(deployDir, 'workspace', 'memory'), reporter.ts:27 join(deployDir, 'cloud', HEARTBEAT_FILE), discovery.ts:122 join(agentDeployDir, 'engine', 'openclaw.json'). The subdirectory names 'engine', 'workspace', 'cloud' and key filenames within them are part of ClawHQ deployment directory layout and should be constants in src/config/paths.ts alongside DEFAULT_DEPLOY_DIR. Steps: (1) add DEPLOY_ENGINE_SUBDIR = 'engine', DEPLOY_WORKSPACE_SUBDIR = 'workspace', DEPLOY_CLOUD_SUBDIR = 'cloud', DEPLOY_ENGINE_OPENCLAW_JSON = 'openclaw.json', DEPLOY_ENGINE_COMPOSE_FILE = 'docker-compose.yml', DEPLOY_ENGINE_CREDENTIALS_JSON = 'credentials.json', DEPLOY_WORKSPACE_MEMORY_DIR = 'memory' to src/config/paths.ts; (2) update reporter.ts to use path.join(deployDir, DEPLOY_ENGINE_SUBDIR, DEPLOY_ENGINE_CREDENTIALS_JSON) etc.; (3) update discovery.ts accordingly; (4) run cloud/ tests. Scope: 3 files, ~15 lines changed. Zero logic change.",
+    "id": "BUG-058",
+    "title": "Post-CQ-043: CLAUDE.md Key Source Layout missing cloud/provisioning/ module entry",
+    "intent": "CLAUDE.md Key Source Layout accurately describes cloud/provisioning/ after CQ-043. Contributors find provisioning code on first look.",
+    "description": "CQ-043 (cloud provisioning engine) creates src/cloud/provisioning/ with provider interface, DigitalOcean adapter, instance registry, and health polling. After CQ-043 completes, CLAUDE.md Key Source Layout under the cloud/ section will be missing this new subdirectory. Same pattern as BUG-006 (src/web/ doc update), BUG-008 (src/secure/ doc update), and BUG-023 (firewall path doc update). Steps: (1) confirm CQ-043 is complete and src/cloud/provisioning/ exists with its key files; (2) open CLAUDE.md, find the cloud/ section in Key Source Layout; (3) add cloud/provisioning/ entry with subdirectories (providers/, cloud-init.ts, snapshot.ts) and ownership description; (4) update docs/ARCHITECTURE.md cloud module section to reflect provisioning submodule; (5) no code changes. Scope: 2 doc files, doc-only change. BLOCKED on CQ-043 — do not sprint until src/cloud/provisioning/ exists.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-20T12:26:40-07:00",
+    "startedAt": "2026-03-20T12:29:26-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T12:29:24-07:00"
+    "completedAt": "2026-03-20T12:31:09-07:00"
   },
-  "completedAt": "2026-03-20T12:29:24-07:00",
+  "completedAt": "2026-03-20T12:31:09-07:00",
   "attempts": 1
 }
