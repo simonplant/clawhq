@@ -180,8 +180,25 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
   if (firewallResult.success) {
     report("firewall", "done", `Firewall created (ID: ${firewallResult.firewallId})`);
   } else {
-    // Firewall failure is not fatal — log and continue
-    report("firewall", "failed", `Firewall creation failed: ${firewallResult.error}. Inbound traffic is unrestricted.`);
+    // Firewall failure is fatal — VM must not run without firewall protection.
+    // Destroy the VM to prevent an insecure instance from reaching the user.
+    report("firewall", "failed", `Firewall creation failed: ${firewallResult.error}. Destroying VM to prevent insecure instance.`);
+
+    const destroyResult = await adapter.destroyVm(createResult.providerInstanceId, options.signal);
+
+    if (!destroyResult.success) {
+      return {
+        success: false,
+        error: `Firewall creation failed: ${firewallResult.error}. ` +
+          `WARNING: VM cleanup also failed (${destroyResult.error}). ` +
+          `Instance ${createResult.providerInstanceId} may still be running without firewall protection — destroy it manually via your ${options.provider} console.`,
+      };
+    }
+
+    return {
+      success: false,
+      error: `Firewall creation failed: ${firewallResult.error}. The VM has been destroyed automatically. Please retry provisioning.`,
+    };
   }
 
   // Step 5: Register instance (provisioning status)
