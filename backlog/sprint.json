@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1774034966",
-  "startedAt": "2026-03-20T12:29:26-07:00",
+  "sprintId": "sprint-1774035070",
+  "startedAt": "2026-03-20T12:31:10-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-058",
-    "title": "Post-CQ-043: CLAUDE.md Key Source Layout missing cloud/provisioning/ module entry",
-    "intent": "CLAUDE.md Key Source Layout accurately describes cloud/provisioning/ after CQ-043. Contributors find provisioning code on first look.",
-    "description": "CQ-043 (cloud provisioning engine) creates src/cloud/provisioning/ with provider interface, DigitalOcean adapter, instance registry, and health polling. After CQ-043 completes, CLAUDE.md Key Source Layout under the cloud/ section will be missing this new subdirectory. Same pattern as BUG-006 (src/web/ doc update), BUG-008 (src/secure/ doc update), and BUG-023 (firewall path doc update). Steps: (1) confirm CQ-043 is complete and src/cloud/provisioning/ exists with its key files; (2) open CLAUDE.md, find the cloud/ section in Key Source Layout; (3) add cloud/provisioning/ entry with subdirectories (providers/, cloud-init.ts, snapshot.ts) and ownership description; (4) update docs/ARCHITECTURE.md cloud module section to reflect provisioning submodule; (5) no code changes. Scope: 2 doc files, doc-only change. BLOCKED on CQ-043 — do not sprint until src/cloud/provisioning/ exists.",
+    "id": "BUG-059",
+    "title": "Web dashboard /api/init gatewayPort input missing range validation",
+    "intent": "Web dashboard /api/init rejects invalid gateway port values with a clear error. No NaN or out-of-range port reaches the generated config.",
+    "description": "src/web/server.tsx:239 accepts a user-supplied gatewayPort from POST /api/init and parses it with parseInt, but does not validate: (1) isNaN check, (2) range check (1-65535). BUG-036 grooming notes explicitly deferred this: 'The gatewayPort input on line 239 also lacks range validation: add isNaN check (line 254 already does this — pattern already there). Focus on path traversal fix only.' This deferred item needs to be addressed. An invalid port value (NaN, 0, 65536, negative) is written directly into the generated openclaw.json config, which will either fail silently or produce an unrunnable agent config with no clear error message to the user. BUG-037 fixed CLI parseInt NaN propagation; BUG-051 added validatePort() helper to src/cli/ux.ts. Steps: (1) open src/web/server.tsx; (2) find the gatewayPort parseInt call (~line 239); (3) add isNaN check and port range validation (1-65535) matching the pattern at line 254; (4) on invalid port, return c.html(<InitResult success={false} message='Invalid gateway port: must be 1-65535'/>) with status 400; (5) run web/ tests to confirm no regression. Scope: ~5 lines in one file.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-20T12:29:26-07:00",
+    "startedAt": "2026-03-20T12:31:10-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T12:31:09-07:00"
+    "completedAt": "2026-03-20T12:32:58-07:00"
   },
-  "completedAt": "2026-03-20T12:31:09-07:00",
+  "completedAt": "2026-03-20T12:32:58-07:00",
   "attempts": 1
 }

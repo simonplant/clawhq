@@ -238,6 +238,9 @@ export function createApp(options: DashboardOptions): Hono {
       const modelProvider = body["modelProvider"] === "cloud" ? "cloud" as const : "local" as const;
       const localModel = typeof body["localModel"] === "string" ? body["localModel"] : OLLAMA_DEFAULT_MODEL;
       const gatewayPort = parseInt(typeof body["gatewayPort"] === "string" ? body["gatewayPort"] : String(GATEWAY_DEFAULT_PORT), 10);
+      if (isNaN(gatewayPort) || gatewayPort < 1 || gatewayPort > 65535) {
+        return c.html(<InitResult success={false} message="Invalid gateway port: must be 1-65535" />, 400);
+      }
       const rawDeployDir = typeof body["deployDir"] === "string" && body["deployDir"]
         ? body["deployDir"]
         : deployDir;
@@ -257,7 +260,7 @@ export function createApp(options: DashboardOptions): Hono {
         channel,
         modelProvider,
         localModel,
-        gatewayPort: isNaN(gatewayPort) ? GATEWAY_DEFAULT_PORT : gatewayPort,
+        gatewayPort,
         deployDir: resolvedDeployDir,
         airGapped,
         integrations: {},
