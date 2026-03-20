@@ -654,11 +654,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "BUG-030 fixed evolve/integrate/validate.ts but missed the parallel implementation in secure/credentials/probes.ts. Three probe URLs and one API version header need replacing. Sequence: (1) verify ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE exported from defaults.ts (should be from BUG-030); (2) BUG-043 adds ANTHROPIC_API_VERSION — sprint BUG-043 first or combine in same PR; (3) import constants in probes.ts (import path: ../../config/defaults.js); (4) replace probes.ts:76 with template using ANTHROPIC_API_BASE; (5) replace probes.ts:125 with OPENAI_API_BASE; (6) replace probes.ts:171 with TELEGRAM_API_BASE; (7) replace probes.ts:80 anthropic-version value with ANTHROPIC_API_VERSION; (8) run secure/ tests. Soft dependency on BUG-043 for the version header (can hardcode that part and defer if needed). Zero logic change."
+      "groomingNotes": "BUG-030 fixed evolve/integrate/validate.ts but missed the parallel implementation in secure/credentials/probes.ts. Three probe URLs and one API version header need replacing. Sequence: (1) verify ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE exported from defaults.ts (should be from BUG-030); (2) BUG-043 adds ANTHROPIC_API_VERSION — sprint BUG-043 first or combine in same PR; (3) import constants in probes.ts (import path: ../../config/defaults.js); (4) replace probes.ts:76 with template using ANTHROPIC_API_BASE; (5) replace probes.ts:125 with OPENAI_API_BASE; (6) replace probes.ts:171 with TELEGRAM_API_BASE; (7) replace probes.ts:80 anthropic-version value with ANTHROPIC_API_VERSION; (8) run secure/ tests. Soft dependency on BUG-043 for the version header (can hardcode that part and defer if needed). Zero logic change.",
+      "completedAt": "2026-03-19T17:57:31-07:00"
     },
     {
       "id": "BUG-046",
@@ -674,6 +675,81 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
       "groomingNotes": "Direct follow-up to BUG-041 timeout sweep. Two remaining timeout literals missed: (1) design/configure/ollama.ts:38,58 — AbortSignal.timeout(5_000). BUG-041 added OLLAMA_GENERATE_TIMEOUT_MS for the inference timeout but this shorter 5s probe timeout for tag-listing was not covered. Add OLLAMA_PROBE_TIMEOUT_MS = 5_000 to defaults.ts. (2) evolve/approval/telegram.ts:124 — { timeout: 30 } in Telegram getUpdates long-poll fetch. Add TELEGRAM_POLLING_TIMEOUT_SEC = 30 to defaults.ts. Both are standalone — no blocking dependencies. Pattern is identical to BUG-038/039/040/041. Run design/ and evolve/ tests after. Zero logic change."
+    },
+    {
+      "id": "BUG-047",
+      "title": "BOOTSTRAP_MAX_CHARS 20_000 scattered across 4 files",
+      "intent": "Bootstrap max chars has a single source of truth in config/defaults.ts. No bare 20_000 literal appears in runtime code outside that file.",
+      "description": "The constant 20_000 (bootstrap max chars limit) is defined as a local magic number in four separate files: src/design/configure/generate.ts:127, src/design/identity/index.ts:27, src/operate/doctor/checks.ts:393, and src/config/validate.ts:26. This is the same BUG-011/BUG-025 constant-scattering pattern. If the limit changes, all four files must be updated. Steps: (1) add BOOTSTRAP_MAX_CHARS = 20_000 to src/config/defaults.ts with a comment describing its purpose; (2) import and replace the literal in generate.ts, identity/index.ts, doctor/checks.ts, and validate.ts; (3) run full test suite. Scope: 5 files, ~6 lines changed. Zero logic change — pure constant extraction.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Pattern identical to BUG-011/BUG-025/BUG-031/BUG-033. Four files all use 20_000 as a magic number for bootstrap max chars. Add BOOTSTRAP_MAX_CHARS = 20_000 to src/config/defaults.ts with comment 'Maximum characters for agent bootstrap/identity content'. Import and replace in: (1) src/design/configure/generate.ts:127; (2) src/design/identity/index.ts:27; (3) src/operate/doctor/checks.ts:393; (4) src/config/validate.ts:26. Run full test suite after — these files are tested by design/, operate/, and config/ test suites. Zero risk — pure constant extraction, no logic change. No blocking dependencies — all prior constant-sweep bugs are done."
+    },
+    {
+      "id": "BUG-048",
+      "title": "Provider registry hardcodes API base URLs despite constants existing in defaults.ts",
+      "intent": "evolve/provider/registry.ts imports ANTHROPIC_API_BASE and OPENAI_API_BASE from config/defaults.ts. No literal API base URLs remain in that file.",
+      "description": "src/evolve/provider/registry.ts:20,29 hardcodes baseUrl: 'https://api.anthropic.com' and baseUrl: 'https://api.openai.com' as string literals. Both constants ANTHROPIC_API_BASE and OPENAI_API_BASE are already defined and exported from src/config/defaults.ts (added by BUG-030). The registry simply doesn't import them. This is the same pattern BUG-044 fixed for telegram.ts (TELEGRAM_API_BASE). Steps: (1) verify ANTHROPIC_API_BASE and OPENAI_API_BASE are exported from src/config/defaults.ts; (2) import both in src/evolve/provider/registry.ts; (3) replace the two hardcoded baseUrl string literals with the constants; (4) run evolve/ tests. Scope: 2 files, ~4 lines changed. Zero logic change.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "BUG-044 fixed telegram.ts (TELEGRAM_API_BASE already in defaults.ts but callers didn't import it). Same pattern for provider/registry.ts. ANTHROPIC_API_BASE = 'https://api.anthropic.com' and OPENAI_API_BASE = 'https://api.openai.com' were added to defaults.ts by BUG-030. evolve/provider/registry.ts:20,29 ignores them. Fix: (1) open evolve/provider/registry.ts; (2) add import { ANTHROPIC_API_BASE, OPENAI_API_BASE } from '../../config/defaults.js'; (3) replace hardcoded baseUrl string literals with the constants; (4) run evolve/ tests. Grep defaults.ts to confirm both constants are exported before starting. Zero logic change — pure import substitution. No blocking dependencies."
+    },
+    {
+      "id": "BUG-049",
+      "title": "Web dashboard CDN resources lack Subresource Integrity (SRI) hashes",
+      "intent": "CDN-hosted assets in web/layout.tsx must carry SRI integrity attributes. A compromised CDN cannot inject malicious code into the ClawHQ dashboard.",
+      "description": "src/web/layout.tsx lines 37 and 39 load Pico CSS from cdn.jsdelivr.net and htmx from unpkg.com without SRI integrity= attributes. If either CDN serves a malicious version of these assets, any code runs in the user's browser with access to the dashboard. This is particularly sensitive for a product whose core promise is data sovereignty and security by default. The dashboard runs on localhost:3737 but it controls agent config, credentials, and approvals. Steps: (1) compute SHA-384 integrity hash for Pico CSS v2 (documented on picocss.com); (2) compute SHA-384 integrity hash for htmx 2.0.4 (documented on htmx.org); (3) add integrity='sha384-...' crossorigin='anonymous' to both <link> and <script> elements in layout.tsx; (4) run web/ tests and verify dashboard still loads. Scope: 1 file, 2 element attribute additions. Medium effort — hash values must be looked up from official sources.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "SECURITY: This is a must-priority fix given ClawHQ's sovereignty promise. The dashboard controls agent config, approval queues, and credentials — CDN-supplied JS without SRI is a single CDN compromise away from running arbitrary code in that context. Fix requires looking up published SRI hashes (do NOT compute from a local download — use the official CDN SRI published by each project). (1) Pico CSS v2: visit https://picocss.com/docs/cdn — the CDN link section provides the integrity hash for the version in use; (2) htmx 2.0.4: the official htmx CDN reference at https://htmx.org/docs/#installing provides the integrity hash for each release; (3) update src/web/layout.tsx line 37 (<link> for Pico CSS) and line 39 (<script> for htmx) to add integrity='sha384-...' crossorigin='anonymous'; (4) run web/ tests; (5) open the dashboard in a browser to confirm assets still load. NOTE: If SRI hashes cannot be retrieved (no web access), add TODO comment and log as a known gap rather than skipping."
+    },
+    {
+      "id": "BUG-050",
+      "title": "Service image versions and ports hardcoded in build/services/definitions.ts",
+      "intent": "Backing service image tags and ports have a single source of truth in config/defaults.ts. Upgrading postgres or qdrant requires editing one file, not hunting through definitions.",
+      "description": "src/build/services/definitions.ts:15-52 hardcodes service image names and ports as string/number literals: 'postgres:16-alpine' (port 5432), 'redis:7-alpine' (port 6379), 'qdrant/qdrant:v1.12.5' (port 6333). Healthcheck configuration is also inline (interval '10s', timeout '5s', retries 5). When upgrading a service (e.g. postgres:17 or qdrant v2), the version string must be found and changed in the definitions file. Same BUG-011/BUG-025 pattern. Steps: (1) add SERVICE_POSTGRES_IMAGE, SERVICE_REDIS_IMAGE, SERVICE_QDRANT_IMAGE, SERVICE_POSTGRES_PORT, SERVICE_REDIS_PORT, SERVICE_QDRANT_PORT to src/config/defaults.ts; (2) add SERVICE_HEALTHCHECK_INTERVAL, SERVICE_HEALTHCHECK_TIMEOUT, SERVICE_HEALTHCHECK_RETRIES; (3) import and replace all literals in definitions.ts; (4) run build/services/ tests. Scope: 2 files, ~15 lines changed. Zero logic change.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Pattern identical to BUG-011/BUG-033. Files: src/build/services/definitions.ts:15-52. Constants to add to defaults.ts: SERVICE_POSTGRES_IMAGE='postgres:16-alpine', SERVICE_REDIS_IMAGE='redis:7-alpine', SERVICE_QDRANT_IMAGE='qdrant/qdrant:v1.12.5', SERVICE_POSTGRES_PORT=5432, SERVICE_REDIS_PORT=6379, SERVICE_QDRANT_PORT=6333, SERVICE_HEALTHCHECK_INTERVAL='10s', SERVICE_HEALTHCHECK_TIMEOUT='5s', SERVICE_HEALTHCHECK_RETRIES=5. Also check if qdrant port 6333 is used in healthcheck URL http://localhost:6333 — if so, use SERVICE_QDRANT_PORT in template. Import and replace all literals in definitions.ts. Run build/ tests after. Zero logic change. No blocking dependencies."
+    },
+    {
+      "id": "BUG-051",
+      "title": "Duplicate CLI port validation pattern repeated 8+ times in cli/index.ts",
+      "intent": "CLI port validation is a single reusable helper. No inline parseInt+isNaN+process.exit pattern appears in cli/index.ts. All callers use the same validated function.",
+      "description": "src/cli/index.ts repeats the same port validation pattern at 8+ sites: parseInt(opts.port, 10) followed by isNaN check and process.exit(1). The correct pattern already exists (lines 3183-3184) but is inlined everywhere instead of extracted. Key duplicate locations: lines 384, 1064, 1159, 1236, 1387, 1466, 1529, 1811. Each site duplicates the same error message and exit logic. Steps: (1) add a validatePort(portStr: string, optName: string): number helper function at the top of cli/index.ts or in src/cli/ux.ts that throws/exits with a consistent error message; (2) replace the 8+ inline validation blocks with calls to the helper; (3) run cli/ tests to confirm no regression. Scope: 1-2 files, ~30 lines removed net (replace 8 blocks of 4 lines each with single-line calls). DRY improvement — not a logic change.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-19",
+      "groomingNotes": "Large DRY improvement. The pattern at lines 3183-3184 already exists and is correct — extract it. Add validatePort(portStr: string, optName: string): number to src/cli/ux.ts (already has formatError and other CLI helpers). Implementation: function validatePort(portStr: string, optName: string): number { const port = parseInt(portStr, 10); if (isNaN(port) || port < 1 || port > 65535) { console.error(chalk.red()); process.exit(1); } return port; }. Then grep cli/index.ts for 'parseInt(opts.port' and similar patterns — replace each block (parseInt + isNaN check + process.exit) with validatePort() call. Validate that the error messages remain user-friendly. Run cli/ tests. Also review BUG-037 NaN propagation patterns — some of those may be similar but for non-port integers, don't conflate."
     }
   ]
 }

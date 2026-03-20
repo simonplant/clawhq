@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773968113",
-  "startedAt": "2026-03-19T17:55:13-07:00",
+  "sprintId": "sprint-1773968666",
+  "startedAt": "2026-03-19T18:04:26-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-045",
-    "title": "API probe URLs in secure/credentials/probes.ts not using defaults.ts constants",
-    "intent": "No hardcoded API URL literals appear in secure/credentials/probes.ts. All probe endpoints derive from constants already defined in config/defaults.ts.",
-    "description": "src/secure/credentials/probes.ts hardcodes three probe API URLs as string literals despite the constants ANTHROPIC_API_BASE, OPENAI_API_BASE, and TELEGRAM_API_BASE already being defined in src/config/defaults.ts (added by BUG-030). Locations: line 76 'https://api.anthropic.com/v1/models', line 125 'https://api.openai.com/v1/models', line 171 'https://api.telegram.org/bot{token}/getMe'. Note: src/evolve/integrate/validate.ts does the same thing (BUG-030 fixed validate.ts) but probes.ts in secure/ was missed — it is a parallel credential probe implementation with identical hardcoding. Steps: (1) import ANTHROPIC_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE from ../../config/defaults.js in probes.ts; (2) replace the three literal URL strings with template expressions using the constants; (3) also replace the anthropic-version header literal with ANTHROPIC_API_VERSION from defaults.ts (BUG-043 adds this constant); (4) run secure/ tests. Scope: 1 file, ~6 lines changed. No blocking dependencies if BUG-043 is done first (or run alongside).",
+    "id": "BUG-049",
+    "title": "Web dashboard CDN resources lack Subresource Integrity (SRI) hashes",
+    "intent": "CDN-hosted assets in web/layout.tsx must carry SRI integrity attributes. A compromised CDN cannot inject malicious code into the ClawHQ dashboard.",
+    "description": "src/web/layout.tsx lines 37 and 39 load Pico CSS from cdn.jsdelivr.net and htmx from unpkg.com without SRI integrity= attributes. If either CDN serves a malicious version of these assets, any code runs in the user's browser with access to the dashboard. This is particularly sensitive for a product whose core promise is data sovereignty and security by default. The dashboard runs on localhost:3737 but it controls agent config, credentials, and approvals. Steps: (1) compute SHA-384 integrity hash for Pico CSS v2 (documented on picocss.com); (2) compute SHA-384 integrity hash for htmx 2.0.4 (documented on htmx.org); (3) add integrity='sha384-...' crossorigin='anonymous' to both <link> and <script> elements in layout.tsx; (4) run web/ tests and verify dashboard still loads. Scope: 1 file, 2 element attribute additions. Medium effort — hash values must be looked up from official sources.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T17:55:13-07:00",
+    "startedAt": "2026-03-19T18:04:26-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T17:57:31-07:00"
+    "completedAt": "2026-03-19T18:06:25-07:00"
   },
-  "completedAt": "2026-03-19T17:57:31-07:00",
+  "completedAt": "2026-03-19T18:06:25-07:00",
   "attempts": 1
 }

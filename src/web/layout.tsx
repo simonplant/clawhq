@@ -35,8 +35,14 @@ export function Layout({
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+          integrity="sha384-L1dWfspMTHU/ApYnFiMz2QID/PlP1xCW9visvBdbEkOLkSSWsP6ZJWhPw6apiXxU"
+          crossorigin="anonymous"
         />
-        <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+        <script
+          src="https://unpkg.com/htmx.org@2.0.4"
+          integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+          crossorigin="anonymous"
+        ></script>
         <style>{`
           nav ul { list-style: none; padding: 0; display: flex; gap: 0.5rem; flex-wrap: wrap; }
           nav a { padding: 0.25rem 0.75rem; border-radius: 4px; text-decoration: none; }
