@@ -621,11 +621,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Pattern identical to BUG-026 (WhatsApp API version). Three files all use '2023-06-01' as a literal header value: secure/credentials/probes.ts:80, evolve/integrate/validate.ts:53, evolve/provider/lifecycle.ts:90. Add ANTHROPIC_API_VERSION = '2023-06-01' to src/config/defaults.ts. Import and replace in all three files. Note: BUG-030 already added ANTHROPIC_API_BASE to defaults.ts — this is the complementary version constant. Verify imports are consistent across all three files after change. Run secure/ and evolve/ tests. No blocking dependencies — BUG-030 is done."
+      "groomingNotes": "Pattern identical to BUG-026 (WhatsApp API version). Three files all use '2023-06-01' as a literal header value: secure/credentials/probes.ts:80, evolve/integrate/validate.ts:53, evolve/provider/lifecycle.ts:90. Add ANTHROPIC_API_VERSION = '2023-06-01' to src/config/defaults.ts. Import and replace in all three files. Note: BUG-030 already added ANTHROPIC_API_BASE to defaults.ts — this is the complementary version constant. Verify imports are consistent across all three files after change. Run secure/ and evolve/ tests. No blocking dependencies — BUG-030 is done.",
+      "completedAt": "2026-03-19T17:49:16-07:00"
     },
     {
       "id": "BUG-044",

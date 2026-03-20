@@ -30,7 +30,6 @@ const execFileAsync = promisify(execFile);
 // ── Constants ────────────────────────────────────────────────────────────────
 
 export const CHAIN_NAME = "CLAWHQ_FWD";
-const EXEC_TIMEOUT_MS = DOCTOR_EXEC_TIMEOUT_MS;
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -143,7 +142,7 @@ export async function verifyFirewall(options: FirewallOptions): Promise<Firewall
     // Get live rules from iptables
     const { stdout } = await execFileAsync(
       "iptables", ["-L", CHAIN_NAME, "-n", "--line-numbers"],
-      { timeout: EXEC_TIMEOUT_MS, signal: options.signal },
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal: options.signal },
     );
 
     const liveRules = parseIptablesOutput(stdout);
@@ -306,7 +305,7 @@ export async function loadAllowlist(deployDir: string): Promise<FirewallAllowEnt
 // ── Internal Helpers ────────────────────────────────────────────────────────
 
 async function iptables(args: string[], signal?: AbortSignal): Promise<void> {
-  await execFileAsync("iptables", args, { timeout: EXEC_TIMEOUT_MS, signal });
+  await execFileAsync("iptables", args, { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal });
 }
 
 async function ensureChain(signal?: AbortSignal): Promise<void> {
