@@ -1,5 +1,5 @@
 /**
- * Doctor diagnostic checks — 17 preventive checks covering all known failure modes.
+ * Doctor diagnostic checks — 18 preventive checks covering all known failure modes.
  *
  * Each check is async and independent (runs in parallel via Promise.all).
  * Checks never throw — they return a result with pass/fail + message + fix.
@@ -67,6 +67,7 @@ export async function runChecks(
     checkWorkspaceExists(deployDir),
     checkGatewayReachable(signal),
     checkDiskSpace(deployDir, signal),
+    checkAirGapActive(deployDir, signal),
   ]);
 }
 
@@ -678,5 +679,69 @@ async function checkDiskSpace(
   } catch (e) {
     console.warn(`[doctor:disk-space] Failed to check disk space:`, e);
     return ok(name, "Disk space check skipped (df unavailable)", "info");
+  }
+}
+
+/** 18. Air-gap mode: verify firewall blocks all egress (no HTTPS allowlist rules). */
+async function checkAirGapActive(deployDir: string, signal?: AbortSignal): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "air-gap-active";
+  const allowlistPath = join(deployDir, "ops", "firewall", "allowlist.yaml");
+
+  try {
+    // Check if allowlist file exists — if missing, air-gap is not configured
+    try {
+      await access(allowlistPath, constants.R_OK);
+    } catch {
+      // No allowlist file means air-gap wasn't explicitly configured
+      return ok(name, "Air-gap check skipped (no allowlist file)", "info");
+    }
+
+    // Read allowlist — empty means air-gap mode
+    const raw = await readFile(allowlistPath, "utf-8");
+    const trimmed = raw.trim();
+    const isEmptyAllowlist = !trimmed || trimmed === "[]" || trimmed === "domains: []";
+
+    if (!isEmptyAllowlist) {
+      // Not in air-gap mode — that's fine, just report status
+      return ok(name, "Not in air-gap mode (allowlist has entries)", "info");
+    }
+
+    // Air-gap config is set — verify firewall matches
+    try {
+      const { stdout } = await execFileAsync("sudo", ["iptables", "-L", "CLAWHQ_FWD", "-n"], {
+        timeout: DOCTOR_EXEC_TIMEOUT_MS,
+        signal,
+      });
+
+      // In air-gap mode there should be NO ACCEPT rules for port 443/53
+      const hasHttpsAccept = stdout.split("\n").some(
+        (l) => l.includes("ACCEPT") && (l.includes("dpt:443") || l.includes("dpt:53")),
+      );
+
+      if (hasHttpsAccept) {
+        return fail(
+          name,
+          "warning",
+          "Air-gap config set but firewall has HTTPS/DNS ACCEPT rules — egress not fully blocked",
+          "Run: clawhq up --air-gap (reapplies firewall in air-gap mode)",
+        );
+      }
+
+      return ok(name, "Air-gap mode active: config and firewall both blocking all egress");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("No chain") || msg.includes("doesn't exist")) {
+        return fail(
+          name,
+          "warning",
+          "Air-gap config set but firewall chain not found — egress is unfiltered",
+          "Run: clawhq up --air-gap",
+        );
+      }
+      return ok(name, "Air-gap firewall check skipped (requires sudo/iptables)", "info");
+    }
+  } catch (err) {
+    console.warn("[doctor:air-gap-active] Failed to check air-gap status:", err);
+    return ok(name, "Air-gap check inconclusive", "info");
   }
 }

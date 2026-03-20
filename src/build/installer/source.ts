@@ -13,7 +13,11 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { OPENCLAW_REPO_URL } from "../../config/defaults.js";
+import {
+  INSTALL_BUILD_TIMEOUT_MS,
+  INSTALL_CLONE_TIMEOUT_MS,
+  OPENCLAW_REPO_URL,
+} from "../../config/defaults.js";
 
 import type { SourceBuildOptions, SourceBuildResult } from "./types.js";
 
@@ -22,11 +26,8 @@ const execFileAsync = promisify(execFile);
 /** Docker image tag for the from-source build. */
 const SOURCE_IMAGE_TAG = "openclaw:local";
 
-/** Timeout for git clone (5 minutes). */
-const CLONE_TIMEOUT_MS = 300_000;
-
-/** Timeout for Docker build (10 minutes). */
-const BUILD_TIMEOUT_MS = 600_000;
+const CLONE_TIMEOUT_MS = INSTALL_CLONE_TIMEOUT_MS;
+const BUILD_TIMEOUT_MS = INSTALL_BUILD_TIMEOUT_MS;
 
 // ── Source Build ─────────────────────────────────────────────────────────────
 

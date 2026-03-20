@@ -13,6 +13,8 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
+
 import { applyFirewall, removeFirewall, watchAndReapply } from "./firewall.js";
 import { smokeTest, verifyHealth } from "./health.js";
 import { runPreflight } from "./preflight.js";
@@ -29,9 +31,7 @@ import type {
 
 const execFileAsync = promisify(execFile);
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const COMPOSE_TIMEOUT_MS = 120_000;
+const COMPOSE_TIMEOUT_MS = DEPLOY_COMPOSE_TIMEOUT_MS;
 
 // ── Public API ──────────────────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { GATEWAY_DEFAULT_PORT, WHATSAPP_API_BASE, WHATSAPP_API_VERSION } from "../../config/defaults.js";
+import { GATEWAY_DEFAULT_PORT, GATEWAY_RPC_TIMEOUT_MS, WHATSAPP_API_BASE, WHATSAPP_API_VERSION } from "../../config/defaults.js";
 import { GatewayClient } from "../../gateway/index.js";
 import { readEnv, setEnvValue, writeEnvAtomic } from "../../secure/credentials/env-store.js";
 
@@ -21,7 +21,6 @@ import type { ConnectOptions, ConnectResult } from "./types.js";
 
 const TELEGRAM_API = "https://api.telegram.org";
 const WHATSAPP_API = `${WHATSAPP_API_BASE}/${WHATSAPP_API_VERSION}`;
-const GATEWAY_RPC_TIMEOUT_MS = 10_000;
 
 // ── Supported Channels ──────────────────────────────────────────────────────
 

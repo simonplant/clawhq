@@ -16,6 +16,8 @@ import { promisify } from "node:util";
 
 import { stringify as yamlStringify, parse as yamlParse } from "yaml";
 
+import { DOCTOR_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
+
 import type {
   FirewallAllowEntry,
   FirewallOptions,
@@ -28,7 +30,7 @@ const execFileAsync = promisify(execFile);
 // ── Constants ────────────────────────────────────────────────────────────────
 
 export const CHAIN_NAME = "CLAWHQ_FWD";
-const EXEC_TIMEOUT_MS = 15_000;
+const EXEC_TIMEOUT_MS = DOCTOR_EXEC_TIMEOUT_MS;
 
 // ── Public API ──────────────────────────────────────────────────────────────
 

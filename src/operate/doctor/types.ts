@@ -26,7 +26,8 @@ export type DoctorCheckName =
   | "firewall-active"
   | "workspace-exists"
   | "gateway-reachable"
-  | "disk-space";
+  | "disk-space"
+  | "air-gap-active";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

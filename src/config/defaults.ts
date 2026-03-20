@@ -123,3 +123,15 @@ export const DEPLOY_SMOKE_TIMEOUT_MS = 30_000;
 
 /** Timeout for shell commands in preflight checks (ms). */
 export const PREFLIGHT_EXEC_TIMEOUT_MS = 15_000;
+
+/** Timeout for git clone operations in from-source installer (ms). */
+export const INSTALL_CLONE_TIMEOUT_MS = 300_000;
+
+/** Timeout for Docker build in from-source installer (ms). */
+export const INSTALL_BUILD_TIMEOUT_MS = 600_000;
+
+/** Timeout for docker compose up/down commands (ms). */
+export const DEPLOY_COMPOSE_TIMEOUT_MS = 120_000;
+
+/** Timeout for Ollama local inference generation (ms). */
+export const OLLAMA_GENERATE_TIMEOUT_MS = 120_000;

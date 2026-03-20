@@ -273,6 +273,7 @@ export interface ClawHQConfig {
   readonly security?: {
     readonly posture?: SecurityPosture;
     readonly egress?: "default" | "restricted" | "allowlist-only";
+    readonly airGap?: boolean;
   };
   readonly cloud?: {
     readonly enabled?: boolean;

@@ -1044,12 +1044,14 @@ program
   .option("-p, --port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
   .option("--skip-preflight", "Skip preflight checks")
   .option("--skip-firewall", "Skip egress firewall setup")
+  .option("--air-gap", "Air-gapped mode: block all egress traffic")
   .action(async (opts: {
     deployDir: string;
     token?: string;
     port: string;
     skipPreflight?: boolean;
     skipFirewall?: boolean;
+    airGap?: boolean;
   }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
 
@@ -1065,6 +1067,10 @@ program
       process.exit(1);
     }
 
+    if (opts.airGap) {
+      console.log(chalk.yellow("⚠ Air-gapped mode: all outbound network traffic will be blocked"));
+    }
+
     const ac = new AbortController();
     process.on("SIGINT", () => ac.abort());
     process.on("SIGTERM", () => ac.abort());
@@ -1078,6 +1084,7 @@ program
       gatewayPort,
       skipPreflight: opts.skipPreflight,
       skipFirewall: opts.skipFirewall,
+      airGap: opts.airGap,
       onProgress,
       signal: ac.signal,
     });
@@ -1132,12 +1139,14 @@ program
   .option("-p, --port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
   .option("--skip-preflight", "Skip preflight checks")
   .option("--skip-firewall", "Skip egress firewall setup")
+  .option("--air-gap", "Air-gapped mode: block all egress traffic")
   .action(async (opts: {
     deployDir: string;
     token?: string;
     port: string;
     skipPreflight?: boolean;
     skipFirewall?: boolean;
+    airGap?: boolean;
   }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
 
@@ -1153,6 +1162,10 @@ program
       process.exit(1);
     }
 
+    if (opts.airGap) {
+      console.log(chalk.yellow("⚠ Air-gapped mode: all outbound network traffic will be blocked"));
+    }
+
     const ac = new AbortController();
     process.on("SIGINT", () => ac.abort());
     process.on("SIGTERM", () => ac.abort());
@@ -1166,6 +1179,7 @@ program
       gatewayPort,
       skipPreflight: opts.skipPreflight,
       skipFirewall: opts.skipFirewall,
+      airGap: opts.airGap,
       onProgress,
       signal: ac.signal,
     });

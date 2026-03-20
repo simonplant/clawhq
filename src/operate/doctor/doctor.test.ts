@@ -217,9 +217,9 @@ describe("checks", { timeout: 30_000 }, () => {
     expect(check.passed).toBe(true);
   });
 
-  it("runs all 17 checks", async () => {
+  it("runs all 18 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(17);
+    expect(checks.length).toBe(18);
   });
 });
 
@@ -235,7 +235,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(17);
+    expect(report.checks.length).toBe(18);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
