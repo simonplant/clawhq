@@ -715,11 +715,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "SECURITY: This is a must-priority fix given ClawHQ's sovereignty promise. The dashboard controls agent config, approval queues, and credentials — CDN-supplied JS without SRI is a single CDN compromise away from running arbitrary code in that context. Fix requires looking up published SRI hashes (do NOT compute from a local download — use the official CDN SRI published by each project). (1) Pico CSS v2: visit https://picocss.com/docs/cdn — the CDN link section provides the integrity hash for the version in use; (2) htmx 2.0.4: the official htmx CDN reference at https://htmx.org/docs/#installing provides the integrity hash for each release; (3) update src/web/layout.tsx line 37 (<link> for Pico CSS) and line 39 (<script> for htmx) to add integrity='sha384-...' crossorigin='anonymous'; (4) run web/ tests; (5) open the dashboard in a browser to confirm assets still load. NOTE: If SRI hashes cannot be retrieved (no web access), add TODO comment and log as a known gap rather than skipping."
+      "groomingNotes": "SECURITY: This is a must-priority fix given ClawHQ's sovereignty promise. The dashboard controls agent config, approval queues, and credentials — CDN-supplied JS without SRI is a single CDN compromise away from running arbitrary code in that context. Fix requires looking up published SRI hashes (do NOT compute from a local download — use the official CDN SRI published by each project). (1) Pico CSS v2: visit https://picocss.com/docs/cdn — the CDN link section provides the integrity hash for the version in use; (2) htmx 2.0.4: the official htmx CDN reference at https://htmx.org/docs/#installing provides the integrity hash for each release; (3) update src/web/layout.tsx line 37 (<link> for Pico CSS) and line 39 (<script> for htmx) to add integrity='sha384-...' crossorigin='anonymous'; (4) run web/ tests; (5) open the dashboard in a browser to confirm assets still load. NOTE: If SRI hashes cannot be retrieved (no web access), add TODO comment and log as a known gap rather than skipping.",
+      "completedAt": "2026-03-19T18:06:25-07:00"
     },
     {
       "id": "BUG-050",
