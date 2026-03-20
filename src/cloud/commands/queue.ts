@@ -10,6 +10,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { CLOUD_COMMAND_QUEUE_MAX_HISTORY } from "../../config/defaults.js";
 import type { TrustMode } from "../../config/types.js";
 import { getCommandDisposition, isArchitecturallyBlocked } from "../trust-modes/policy.js";
 import type {
@@ -25,7 +26,7 @@ import { verifyCommandSignature } from "./verify.js";
 const QUEUE_FILE = "commands.json";
 
 /** Max history entries to keep. */
-const MAX_HISTORY = 100;
+const MAX_HISTORY = CLOUD_COMMAND_QUEUE_MAX_HISTORY;
 
 // ── Path helpers ─────────────────────────────────────────────────────────────
 

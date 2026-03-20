@@ -1,33 +1,20 @@
 {
-  "sprintId": "sprint-1774031132",
-  "startedAt": "2026-03-20T11:25:32-07:00",
+  "sprintId": "sprint-1774031897",
+  "startedAt": "2026-03-20T11:38:17-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-043",
-    "title": "Cloud provisioning engine — spin up agents on DO/AWS/GCP from CLI",
-    "intent": "One command creates a running agent on a cloud provider. The user never touches a VPS console, SSH, or cloud-init. ClawHQ handles everything from VM creation to agent deployment.",
-    "description": "Core provisioning engine in src/cloud/provisioning/. Provider-agnostic interface with DigitalOcean as first implementation, AWS and GCP to follow. Flow: user runs `clawhq deploy --provider do` → ClawHQ creates VM via provider API → injects cloud-init (Docker + clawhq bootstrap) → waits for agent health → returns URL. Uses pre-built VM snapshots for speed where providers support them. Credentials stored locally in ~/.clawhq/cloud/credentials.json (mode 0600). VM metadata tracked in ~/.clawhq/cloud/instances.json for lifecycle management.",
-    "sourceBacklog": "backlog.json",
-    "steps": [
-      "Define provider interface: ProvisionOptions, ProvisionResult, ProviderAdapter",
-      "Implement DigitalOcean adapter: create/destroy/status via DO API v2",
-      "Build cloud-init template: Docker install, clawhq install, agent bootstrap",
-      "Add instance registry: track provisioned VMs in ~/.clawhq/cloud/instances.json",
-      "Implement health polling: wait for agent to report healthy after provision",
-      "Wire CLI: clawhq deploy --provider do/aws/gcp with interactive credential setup"
-    ],
-    "acceptanceCriteria": [
-      "clawhq deploy --provider do creates a running agent on DigitalOcean",
-      "VM is provisioned, Docker installed, agent deployed, health verified — all automated",
-      "Cloud credentials stored securely (mode 0600, never in config files)",
-      "Instance lifecycle tracked: create, status, destroy from CLI",
-      "Provider interface is generic enough for AWS/GCP without rewrite"
-    ],
+    "id": "BUG-056",
+    "title": "cloud/ timeout and capacity constants not in config/defaults.ts",
+    "intent": "All cloud module timeout and capacity constants have a single source of truth in config/defaults.ts. No bare timeout literals or capacity magic numbers remain in cloud/.",
+    "description": "Two constants in the cloud module are not centralized in config/defaults.ts, continuing the timeout-sweep pattern from BUG-038 through BUG-046. (1) src/cloud/heartbeat/reporter.ts:202 uses AbortSignal.timeout(10_000) as an inline literal for the health reporter RPC timeout. (2) src/cloud/commands/queue.ts:28 defines const MAX_HISTORY = 100 as a local constant — an important capacity limit. Steps: (1) add CLOUD_HEARTBEAT_RPC_TIMEOUT_MS = 10_000 and CLOUD_COMMAND_QUEUE_MAX_HISTORY = 100 to src/config/defaults.ts with descriptive comments; (2) import and replace AbortSignal.timeout(10_000) in reporter.ts:202 with AbortSignal.timeout(CLOUD_HEARTBEAT_RPC_TIMEOUT_MS); (3) import and replace MAX_HISTORY in queue.ts:28 with CLOUD_COMMAND_QUEUE_MAX_HISTORY; (4) run cloud/ tests to confirm no regression. Scope: 3 files, ~6 lines changed. Zero logic change — pure constant extraction.",
+    "sourceBacklog": "bugs.json",
+    "steps": [],
+    "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-20T11:25:32-07:00",
+    "startedAt": "2026-03-20T11:38:17-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T11:38:15-07:00"
+    "completedAt": "2026-03-20T11:40:20-07:00"
   },
-  "completedAt": "2026-03-20T11:38:15-07:00",
+  "completedAt": "2026-03-20T11:40:20-07:00",
   "attempts": 1
 }

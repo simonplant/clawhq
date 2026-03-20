@@ -836,11 +836,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Pattern identical to BUG-038 through BUG-046 (timeout constants sweep) and BUG-047/BUG-050 (capacity constants). Two items: (1) cloud/heartbeat/reporter.ts:202 AbortSignal.timeout(10_000) — add CLOUD_HEARTBEAT_RPC_TIMEOUT_MS = 10_000 to defaults.ts (comment: 'Cloud health reporter RPC ping timeout'); (2) cloud/commands/queue.ts:28 MAX_HISTORY = 100 — add CLOUD_COMMAND_QUEUE_MAX_HISTORY = 100 to defaults.ts (comment: 'Maximum command history entries retained in cloud command queue'). Import path from defaults.ts: for cloud/ files it should be ../../config/defaults.js. No other cloud timeout constants remain unswept — the full module was audited. Run cloud/ tests after each file change. No blocking dependencies — all prior constant sweeps are done."
+      "groomingNotes": "Pattern identical to BUG-038 through BUG-046 (timeout constants sweep) and BUG-047/BUG-050 (capacity constants). Two items: (1) cloud/heartbeat/reporter.ts:202 AbortSignal.timeout(10_000) — add CLOUD_HEARTBEAT_RPC_TIMEOUT_MS = 10_000 to defaults.ts (comment: 'Cloud health reporter RPC ping timeout'); (2) cloud/commands/queue.ts:28 MAX_HISTORY = 100 — add CLOUD_COMMAND_QUEUE_MAX_HISTORY = 100 to defaults.ts (comment: 'Maximum command history entries retained in cloud command queue'). Import path from defaults.ts: for cloud/ files it should be ../../config/defaults.js. No other cloud timeout constants remain unswept — the full module was audited. Run cloud/ tests after each file change. No blocking dependencies — all prior constant sweeps are done.",
+      "completedAt": "2026-03-20T11:40:20-07:00"
     },
     {
       "id": "BUG-057",
