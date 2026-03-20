@@ -7,6 +7,7 @@
 
 import { join } from "node:path";
 
+import { ANTHROPIC_API_VERSION } from "../../config/defaults.js";
 import {
   deleteEnvValue,
   getAllEnvValues,
@@ -87,7 +88,7 @@ async function validateProvider(
     if (!key) return { ok: false, message: "ANTHROPIC_API_KEY not set" };
     const result = await probeFetch(`${def.baseUrl}/v1/models`, {
       method: "GET",
-      headers: { "x-api-key": key, "anthropic-version": "2023-06-01" },
+      headers: { "x-api-key": key, "anthropic-version": ANTHROPIC_API_VERSION },
     });
     if ("error" in result) return { ok: false, message: `API unreachable: ${result.error}` };
     if (result.response.status === 200) return { ok: true, message: "Connected to Anthropic" };

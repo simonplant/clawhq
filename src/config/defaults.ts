@@ -26,6 +26,9 @@ export const WHATSAPP_API_BASE = "https://graph.facebook.com";
 /** Base URL for the Anthropic API (no trailing slash). */
 export const ANTHROPIC_API_BASE = "https://api.anthropic.com";
 
+/** Canonical Anthropic API version string (sent as anthropic-version header). */
+export const ANTHROPIC_API_VERSION = "2023-06-01";
+
 /** Base URL for the OpenAI API (no trailing slash). */
 export const OPENAI_API_BASE = "https://api.openai.com";
 
