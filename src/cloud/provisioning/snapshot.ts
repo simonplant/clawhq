@@ -110,7 +110,9 @@ export async function buildSnapshot(options: SnapshotBuildOptions): Promise<Snap
   if (!ipAddress) {
     report("wait-install", "failed", "Builder VM has no IP address");
     // Clean up builder VM
-    await adapter.destroyVm(builderId, options.signal).catch(() => {});
+    await adapter.destroyVm(builderId, options.signal).catch((err: unknown) => {
+      console.warn(`[clawhq] WARNING: Failed to destroy builder VM ${builderId} (${options.provider}). It may still be running and incurring cost. Destroy it manually. Error: ${err instanceof Error ? err.message : String(err)}`);
+    });
     return { success: false, error: "Builder VM created but no IP address assigned" };
   }
 
@@ -123,7 +125,9 @@ export async function buildSnapshot(options: SnapshotBuildOptions): Promise<Snap
   if (!healthResult.healthy) {
     report("wait-install", "failed", healthResult.error ?? "Builder VM did not become healthy");
     // Clean up builder VM
-    await adapter.destroyVm(builderId, options.signal).catch(() => {});
+    await adapter.destroyVm(builderId, options.signal).catch((err: unknown) => {
+      console.warn(`[clawhq] WARNING: Failed to destroy builder VM ${builderId} (${options.provider}). It may still be running and incurring cost. Destroy it manually. Error: ${err instanceof Error ? err.message : String(err)}`);
+    });
     return { success: false, error: healthResult.error ?? "Builder VM did not become healthy in time" };
   }
 
@@ -141,7 +145,9 @@ export async function buildSnapshot(options: SnapshotBuildOptions): Promise<Snap
   if (!snapshotResult.success || !snapshotResult.snapshotId) {
     report("snapshot", "failed", snapshotResult.error ?? "Failed to create snapshot");
     // Clean up builder VM
-    await adapter.destroyVm(builderId, options.signal).catch(() => {});
+    await adapter.destroyVm(builderId, options.signal).catch((err: unknown) => {
+      console.warn(`[clawhq] WARNING: Failed to destroy builder VM ${builderId} (${options.provider}). It may still be running and incurring cost. Destroy it manually. Error: ${err instanceof Error ? err.message : String(err)}`);
+    });
     return { success: false, error: snapshotResult.error ?? "Failed to create snapshot" };
   }
 
