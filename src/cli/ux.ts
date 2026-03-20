@@ -84,6 +84,20 @@ export function renderError(error: unknown): string {
   return lines.join("\n");
 }
 
+// ── Port Validation ─────────────────────────────────────────────────────────
+
+/**
+ * Parse and validate a port string. Exits with an error if the value is not a valid number.
+ */
+export function validatePort(portStr: string): number {
+  const port = parseInt(portStr, 10);
+  if (isNaN(port)) {
+    console.error(chalk.red("Invalid port number"));
+    process.exit(1);
+  }
+  return port;
+}
+
 // ── First-Run Detection ─────────────────────────────────────────────────────
 
 export interface FirstRunResult {

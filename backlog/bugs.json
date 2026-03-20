@@ -738,7 +738,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Pattern identical to BUG-011/BUG-033. Files: src/build/services/definitions.ts:15-52. Constants to add to defaults.ts: SERVICE_POSTGRES_IMAGE='postgres:16-alpine', SERVICE_REDIS_IMAGE='redis:7-alpine', SERVICE_QDRANT_IMAGE='qdrant/qdrant:v1.12.5', SERVICE_POSTGRES_PORT=5432, SERVICE_REDIS_PORT=6379, SERVICE_QDRANT_PORT=6333, SERVICE_HEALTHCHECK_INTERVAL='10s', SERVICE_HEALTHCHECK_TIMEOUT='5s', SERVICE_HEALTHCHECK_RETRIES=5. Also check if qdrant port 6333 is used in healthcheck URL http://localhost:6333 — if so, use SERVICE_QDRANT_PORT in template. Import and replace all literals in definitions.ts. Run build/ tests after. Zero logic change. No blocking dependencies."
+      "groomingNotes": "Pattern identical to BUG-011/BUG-033. Files: src/build/services/definitions.ts:15-52. Constants to add to defaults.ts: SERVICE_POSTGRES_IMAGE='postgres:16-alpine', SERVICE_REDIS_IMAGE='redis:7-alpine', SERVICE_QDRANT_IMAGE='qdrant/qdrant:v1.12.5', SERVICE_POSTGRES_PORT=5432, SERVICE_REDIS_PORT=6379, SERVICE_QDRANT_PORT=6333, SERVICE_HEALTHCHECK_INTERVAL='10s', SERVICE_HEALTHCHECK_TIMEOUT='5s', SERVICE_HEALTHCHECK_RETRIES=5. Also check if qdrant port 6333 is used in healthcheck URL http://localhost:6333 — if so, use SERVICE_QDRANT_PORT in template. Import and replace all literals in definitions.ts. Run build/ tests after. Zero logic change. No blocking dependencies.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-19T18:16:14-07:00",
+      "failCount": 1
     },
     {
       "id": "BUG-051",
@@ -749,11 +752,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Large DRY improvement. The pattern at lines 3183-3184 already exists and is correct — extract it. Add validatePort(portStr: string, optName: string): number to src/cli/ux.ts (already has formatError and other CLI helpers). Implementation: function validatePort(portStr: string, optName: string): number { const port = parseInt(portStr, 10); if (isNaN(port) || port < 1 || port > 65535) { console.error(chalk.red()); process.exit(1); } return port; }. Then grep cli/index.ts for 'parseInt(opts.port' and similar patterns — replace each block (parseInt + isNaN check + process.exit) with validatePort() call. Validate that the error messages remain user-friendly. Run cli/ tests. Also review BUG-037 NaN propagation patterns — some of those may be similar but for non-port integers, don't conflate."
+      "groomingNotes": "Large DRY improvement. The pattern at lines 3183-3184 already exists and is correct — extract it. Add validatePort(portStr: string, optName: string): number to src/cli/ux.ts (already has formatError and other CLI helpers). Implementation: function validatePort(portStr: string, optName: string): number { const port = parseInt(portStr, 10); if (isNaN(port) || port < 1 || port > 65535) { console.error(chalk.red()); process.exit(1); } return port; }. Then grep cli/index.ts for 'parseInt(opts.port' and similar patterns — replace each block (parseInt + isNaN check + process.exit) with validatePort() call. Validate that the error messages remain user-friendly. Run cli/ tests. Also review BUG-037 NaN propagation patterns — some of those may be similar but for non-port integers, don't conflate.",
+      "completedAt": "2026-03-19T18:21:08-07:00"
     }
   ]
 }

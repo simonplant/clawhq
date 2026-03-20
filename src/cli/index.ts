@@ -187,7 +187,7 @@ import {
 import { formatProbeReport, runProbes } from "../secure/credentials/health.js";
 import { startDashboard } from "../web/index.js";
 
-import { renderError, warnIfNotInstalled } from "./ux.js";
+import { renderError, validatePort, warnIfNotInstalled } from "./ux.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string; description: string };
@@ -381,11 +381,7 @@ program
       process.exit(1);
     }
 
-    const gatewayPort = parseInt(opts.port, 10);
-    if (isNaN(gatewayPort)) {
-      console.error(chalk.red("Invalid port number"));
-      process.exit(1);
-    }
+    const gatewayPort = validatePort(opts.port);
     const deploySpinner = ora();
     const onDeployProgress = createProgressHandler(deploySpinner);
 
@@ -1061,11 +1057,7 @@ program
       process.exit(1);
     }
 
-    const gatewayPort = parseInt(opts.port, 10);
-    if (isNaN(gatewayPort)) {
-      console.error(chalk.red("Invalid port number"));
-      process.exit(1);
-    }
+    const gatewayPort = validatePort(opts.port);
 
     if (opts.airGap) {
       console.log(chalk.yellow("⚠ Air-gapped mode: all outbound network traffic will be blocked"));
@@ -1156,11 +1148,7 @@ program
       process.exit(1);
     }
 
-    const gatewayPort = parseInt(opts.port, 10);
-    if (isNaN(gatewayPort)) {
-      console.error(chalk.red("Invalid port number"));
-      process.exit(1);
-    }
+    const gatewayPort = validatePort(opts.port);
 
     if (opts.airGap) {
       console.log(chalk.yellow("⚠ Air-gapped mode: all outbound network traffic will be blocked"));
@@ -1233,11 +1221,7 @@ program
         process.exit(1);
       }
 
-      const gatewayPort = parseInt(opts.port, 10);
-      if (isNaN(gatewayPort)) {
-        console.error(chalk.red("Invalid port number"));
-        process.exit(1);
-      }
+      const gatewayPort = validatePort(opts.port);
 
       // Step 1: Select channel
       const channel = (opts.channel as "telegram" | "whatsapp") ?? await select({
@@ -1384,11 +1368,7 @@ service
 
     let port: number | undefined;
     if (opts.port) {
-      port = parseInt(opts.port, 10);
-      if (isNaN(port)) {
-        console.error(chalk.red("Invalid port number"));
-        process.exit(1);
-      }
+      port = validatePort(opts.port);
     }
 
     const result = await addService({
@@ -1808,11 +1788,7 @@ program
   }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
 
-    const gatewayPort = parseInt(opts.port, 10);
-    if (isNaN(gatewayPort)) {
-      console.error(chalk.red("Invalid port number"));
-      process.exit(1);
-    }
+    const gatewayPort = validatePort(opts.port);
 
     const ac = new AbortController();
     process.on("SIGINT", () => ac.abort());
@@ -3264,11 +3240,7 @@ program
   .option("-p, --port <port>", "Dashboard port", String(DASHBOARD_DEFAULT_PORT))
   .option("--host <host>", "Hostname to bind to", "localhost")
   .action(async (opts: { deployDir: string; port: string; host: string }) => {
-    const port = parseInt(opts.port, 10);
-    if (isNaN(port)) {
-      console.error(chalk.red("Invalid port number"));
-      process.exit(1);
-    }
+    const port = validatePort(opts.port);
 
     console.log(chalk.bold("\nclawhq dashboard\n"));
     console.log(chalk.dim(`Starting web dashboard on ${opts.host}:${port}…\n`));
