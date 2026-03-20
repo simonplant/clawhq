@@ -5,7 +5,7 @@
  * Uses the Ollama REST API: POST /api/generate for text completion.
  */
 
-import { OLLAMA_DEFAULT_MODEL, OLLAMA_DEFAULT_URL, OLLAMA_GENERATE_TIMEOUT_MS } from "../../config/defaults.js";
+import { OLLAMA_DEFAULT_MODEL, OLLAMA_DEFAULT_URL, OLLAMA_GENERATE_TIMEOUT_MS, OLLAMA_PROBE_TIMEOUT_MS } from "../../config/defaults.js";
 
 const DEFAULT_MODEL = OLLAMA_DEFAULT_MODEL;
 
@@ -35,7 +35,7 @@ export async function isOllamaAvailable(
   try {
     const res = await fetch(`${baseUrl}/api/tags`, {
       method: "GET",
-      signal: AbortSignal.timeout(5_000),
+      signal: AbortSignal.timeout(OLLAMA_PROBE_TIMEOUT_MS),
     });
     return res.ok;
   } catch (err) {
@@ -55,7 +55,7 @@ export async function listOllamaModels(
   try {
     const res = await fetch(`${baseUrl}/api/tags`, {
       method: "GET",
-      signal: AbortSignal.timeout(5_000),
+      signal: AbortSignal.timeout(OLLAMA_PROBE_TIMEOUT_MS),
     });
     if (!res.ok) return [];
     const data = (await res.json()) as { models?: { name: string }[] };
