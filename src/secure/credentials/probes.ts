@@ -8,7 +8,7 @@
  * an actionable fix message on failure.
  */
 
-import { ANTHROPIC_API_VERSION, CREDENTIALS_PROBE_TIMEOUT_MS } from "../../config/defaults.js";
+import { ANTHROPIC_API_VERSION, CREDENTIALS_PROBE_TIMEOUT_MS, TELEGRAM_API_BASE } from "../../config/defaults.js";
 
 import type { CredentialProbe, ProbeResult } from "./probe-types.js";
 
@@ -168,7 +168,7 @@ export const probeTelegram: CredentialProbe = async (env) => {
     return fail(integration, envKey, "Token format invalid (expected <id>:<hash>)", `Check ${envKey} — format should be 123456789:ABCdefGHI...`);
   }
 
-  const result = await probeFetch(`https://api.telegram.org/bot${token}/getMe`, {
+  const result = await probeFetch(`${TELEGRAM_API_BASE}/bot${token}/getMe`, {
     method: "GET",
   });
 

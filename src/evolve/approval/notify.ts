@@ -9,6 +9,7 @@
  * Fire-and-forget: notification failures never block the enqueue pipeline.
  */
 
+import { TELEGRAM_API_BASE } from "../../config/defaults.js";
 import type { ApprovalItem } from "./types.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -72,7 +73,7 @@ export async function sendApprovalNotification(
   };
 
   try {
-    const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
+    const url = `${TELEGRAM_API_BASE}/bot${config.botToken}/sendMessage`;
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -122,7 +123,7 @@ export async function sendResolutionConfirmation(
   ].join("\n");
 
   try {
-    const url = `https://api.telegram.org/bot${config.botToken}/editMessageText`;
+    const url = `${TELEGRAM_API_BASE}/bot${config.botToken}/editMessageText`;
     await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

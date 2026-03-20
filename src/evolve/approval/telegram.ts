@@ -10,6 +10,7 @@
 
 import type { AuditTrailConfig } from "../../secure/audit/types.js";
 
+import { TELEGRAM_API_BASE } from "../../config/defaults.js";
 import type { TelegramConfig } from "./notify.js";
 import { sendResolutionConfirmation } from "./notify.js";
 import { approve, reject, getItem } from "./queue.js";
@@ -115,7 +116,7 @@ async function getUpdates(
   offset: number,
   signal?: AbortSignal,
 ): Promise<TelegramUpdate[]> {
-  const url = `https://api.telegram.org/bot${botToken}/getUpdates`;
+  const url = `${TELEGRAM_API_BASE}/bot${botToken}/getUpdates`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -139,7 +140,7 @@ async function answerCallback(
   text: string,
 ): Promise<void> {
   try {
-    const url = `https://api.telegram.org/bot${botToken}/answerCallbackQuery`;
+    const url = `${TELEGRAM_API_BASE}/bot${botToken}/answerCallbackQuery`;
     await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
