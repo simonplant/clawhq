@@ -5,7 +5,11 @@
  * validation endpoint, and default model configuration.
  */
 
-import { OLLAMA_DEFAULT_URL } from "../../config/defaults.js";
+import {
+  ANTHROPIC_API_BASE,
+  OLLAMA_DEFAULT_URL,
+  OPENAI_API_BASE,
+} from "../../config/defaults.js";
 
 import type { ProviderDefinition } from "./types.js";
 
@@ -17,7 +21,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderDefinition> = {
     description: "Claude models via Anthropic API",
     requiresApiKey: true,
     envKey: "ANTHROPIC_API_KEY",
-    baseUrl: "https://api.anthropic.com",
+    baseUrl: ANTHROPIC_API_BASE,
     defaultModel: "claude-sonnet-4-6",
   },
   openai: {
@@ -26,7 +30,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderDefinition> = {
     description: "GPT models via OpenAI API",
     requiresApiKey: true,
     envKey: "OPENAI_API_KEY",
-    baseUrl: "https://api.openai.com",
+    baseUrl: OPENAI_API_BASE,
     defaultModel: "gpt-4o",
   },
   ollama: {
