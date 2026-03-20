@@ -204,6 +204,22 @@ describe("dashboard API endpoints", () => {
     expect(html).toContain("Blueprint selection is required");
   });
 
+  it("POST /api/init rejects invalid gateway port", async () => {
+    const app = createApp({ deployDir: testDir });
+    for (const bad of ["abc", "0", "65536", "-1"]) {
+      const formData = new FormData();
+      formData.append("blueprint", "email-manager");
+      formData.append("gatewayPort", bad);
+      const res = await app.request("/api/init", {
+        method: "POST",
+        body: formData,
+      });
+      expect(res.status).toBe(400);
+      const html = await res.text();
+      expect(html).toContain("Invalid gateway port: must be 1-65535");
+    }
+  });
+
   it("POST /api/init rejects path traversal in deployDir", async () => {
     const app = createApp({ deployDir: testDir });
     const formData = new FormData();
