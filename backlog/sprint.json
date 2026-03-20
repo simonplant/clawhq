@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773968787",
-  "startedAt": "2026-03-19T18:06:27-07:00",
+  "sprintId": "sprint-1773968942",
+  "startedAt": "2026-03-19T18:09:02-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-046",
-    "title": "Inline timeout literals in design/configure/ollama.ts and evolve/approval/telegram.ts not in defaults.ts",
-    "intent": "All AbortSignal timeout and polling interval values in design/ and evolve/ modules have a single source of truth in config/defaults.ts. No bare timeout literals remain in those files.",
-    "description": "Two files contain inline timeout values not yet centralized in config/defaults.ts, continuing the BUG-038 through BUG-041 timeout sweep. (1) src/design/configure/ollama.ts: lines 38 and 58 use AbortSignal.timeout(5_000) — an Ollama tag-listing probe timeout. OLLAMA_GENERATE_TIMEOUT_MS (120_000) was added by BUG-041 but this shorter 5_000ms probe timeout was missed. (2) src/evolve/approval/telegram.ts: line 124 uses timeout: 30 (Telegram long-polling timeout in seconds). This controls how long the bot waits for updates — a tunable value with no constant. Steps: (1) add OLLAMA_PROBE_TIMEOUT_MS = 5_000 to src/config/defaults.ts with a comment 'Ollama availability check and model listing timeout'; (2) add TELEGRAM_POLLING_TIMEOUT_SEC = 30 to src/config/defaults.ts with a comment 'Telegram long-poll getUpdates timeout in seconds'; (3) import and replace in ollama.ts (lines 38, 58) and telegram.ts (line 124); (4) run design/ and evolve/ tests. Scope: 3 files, ~6 lines changed. Pattern: BUG-038/039/040/041.",
+    "id": "BUG-047",
+    "title": "BOOTSTRAP_MAX_CHARS 20_000 scattered across 4 files",
+    "intent": "Bootstrap max chars has a single source of truth in config/defaults.ts. No bare 20_000 literal appears in runtime code outside that file.",
+    "description": "The constant 20_000 (bootstrap max chars limit) is defined as a local magic number in four separate files: src/design/configure/generate.ts:127, src/design/identity/index.ts:27, src/operate/doctor/checks.ts:393, and src/config/validate.ts:26. This is the same BUG-011/BUG-025 constant-scattering pattern. If the limit changes, all four files must be updated. Steps: (1) add BOOTSTRAP_MAX_CHARS = 20_000 to src/config/defaults.ts with a comment describing its purpose; (2) import and replace the literal in generate.ts, identity/index.ts, doctor/checks.ts, and validate.ts; (3) run full test suite. Scope: 5 files, ~6 lines changed. Zero logic change — pure constant extraction.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T18:06:27-07:00",
+    "startedAt": "2026-03-19T18:09:02-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T18:09:00-07:00"
+    "completedAt": "2026-03-19T18:11:35-07:00"
   },
-  "completedAt": "2026-03-19T18:09:00-07:00",
+  "completedAt": "2026-03-19T18:11:35-07:00",
   "attempts": 1
 }
