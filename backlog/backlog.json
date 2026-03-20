@@ -1102,6 +1102,36 @@
       ],
       "passes": true,
       "completedAt": "2026-03-19T04:34:10-07:00"
+    },
+    {
+      "id": "CQ-042",
+      "title": "clawhq demo \u2014 zero-config working agent in 60 seconds",
+      "intent": "Remove every gate between a curious person and a running agent. One command, no API keys, no Docker expertise, no messaging setup. The sovereignty story only matters to people who have experienced the product.",
+      "description": "Ship a `clawhq demo` command that spins up a fully working agent with zero configuration. Bundled Ollama model (or fallback to mock LLM), mock messaging channel rendered in a localhost web UI, pre-loaded blueprint (e.g. replace-chatgpt-plus). The user types one command, waits ~60s, and is talking to their agent in a browser. No Telegram token, no Docker Compose knowledge, no .env files. This is the command that turns ClawHQ from an architecture into a product. Scope: (1) demo blueprint with sensible defaults and no external dependencies; (2) embedded web chat UI on localhost (extend CQ-040 dashboard or standalone); (3) auto-pull smallest viable Ollama model if available, mock LLM fallback if not; (4) single-use ephemeral mode \u2014 demo data lives in a temp dir and is cleaned up on exit; (5) colorful terminal output showing what is happening at each step. Must work on a fresh machine with only Docker installed.",
+      "category": "design",
+      "priority": "must",
+      "status": "todo",
+      "readyForSprint": false,
+      "dependencies": [
+        "CQ-040"
+      ],
+      "steps": [
+        "Create demo blueprint with zero external dependencies (mock messaging, local Ollama or mock LLM)",
+        "Implement embedded web chat UI on localhost for direct agent interaction",
+        "Add Ollama auto-detection: use if available, fall back to mock LLM that echoes capabilities",
+        "Build ephemeral demo mode: temp deploy dir, auto-cleanup on exit/SIGINT",
+        "Wire clawhq demo CLI command: install \u2192 build \u2192 deploy \u2192 open browser \u2192 chat",
+        "Add progress UI with clear step-by-step terminal output"
+      ],
+      "acceptanceCriteria": [
+        "clawhq demo produces a working, interactive agent on a fresh machine with only Docker",
+        "No API keys, tokens, or manual configuration required",
+        "User is talking to the agent in their browser within 60 seconds",
+        "Demo data is ephemeral and cleaned up on exit",
+        "Works offline if Ollama is pre-installed with a model"
+      ],
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "THE PRODUCT UNLOCK. Every current path to a running agent has gates (Telegram token, Docker config, blueprint selection, credentials). Each gate loses ~80% of potential users. This command eliminates all gates for first experience. Not a toy \u2014 it runs the real platform stack in demo mode, so the user sees exactly what they would get in production. Priority: must \u2014 without this, the product has no acquisition funnel. Depends on CQ-040 (web dashboard) for the chat UI surface. Consider: could this reuse the web dashboard pages with a \"demo chat\" page added?"
     }
   ]
 }
