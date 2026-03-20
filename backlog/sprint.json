@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1773967633",
-  "startedAt": "2026-03-19T17:47:13-07:00",
+  "sprintId": "sprint-1773967758",
+  "startedAt": "2026-03-19T17:49:18-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-043",
-    "title": "Anthropic API version '2023-06-01' hardcoded in 3 files",
-    "intent": "ANTHROPIC_API_VERSION has a single source of truth in config/defaults.ts. No literal version string appears in runtime code outside that file.",
-    "description": "The Anthropic API version string '2023-06-01' is hardcoded as a literal in three separate files: src/secure/credentials/probes.ts:80 (anthropic-version header), src/evolve/integrate/validate.ts:53 (anthropic-version header), src/evolve/provider/lifecycle.ts:90 (anthropic-version header). If Anthropic updates their minimum supported API version, this must be updated in three places with no single source of truth. Same BUG-026 pattern (WhatsApp API version mismatch) — that fix added WHATSAPP_GRAPH_API_VERSION to defaults.ts. Steps: (1) add ANTHROPIC_API_VERSION = '2023-06-01' to src/config/defaults.ts; (2) import and replace the literal string in all three files; (3) run tests to confirm no regression. Scope: 4 files, ~6 lines changed. Pattern identical to BUG-026.",
+    "id": "BUG-042",
+    "title": "firewall.ts EXEC_TIMEOUT_MS not centralized in config/defaults.ts",
+    "intent": "firewall.ts must not define its own timeout constant. EXEC_TIMEOUT_MS must import DOCTOR_EXEC_TIMEOUT_MS from config/defaults.ts. No duplicate timeout literal remains in firewall.ts.",
+    "description": "src/build/launcher/firewall.ts:31 defines const EXEC_TIMEOUT_MS = 15_000 as a local constant. This was explicitly excluded from BUG-040 (which said 'Do NOT touch src/build/launcher/firewall.ts:25 — deferred to BUG-020 post-CQ-005'). CQ-005 is now done and the file stayed in build/launcher/. DOCTOR_EXEC_TIMEOUT_MS = 15_000 is already exported from src/config/defaults.ts — reuse it instead of maintaining a duplicate. Steps: (1) open src/build/launcher/firewall.ts; (2) remove the local const EXEC_TIMEOUT_MS = 15_000 at line 31; (3) add import { DOCTOR_EXEC_TIMEOUT_MS } from '../../config/defaults.js'; (4) replace EXEC_TIMEOUT_MS with DOCTOR_EXEC_TIMEOUT_MS at all usage sites in the file; (5) run build/ tests to confirm no regression. Scope: one file, ~3 lines changed. Zero logic change — pure constant consolidation.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T17:47:13-07:00",
+    "startedAt": "2026-03-19T17:49:18-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T17:49:16-07:00"
+    "completedAt": "2026-03-19T17:51:46-07:00"
   },
-  "completedAt": "2026-03-19T17:49:16-07:00",
+  "completedAt": "2026-03-19T17:51:46-07:00",
   "attempts": 1
 }
