@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
 
-import type { CloudCredentials, CloudProvider, ProviderCredential } from "./types.js";
+import type { CloudCredentials, CloudProvider, ProviderCredential, TokenValidationResult } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -99,6 +99,50 @@ export function setProviderCredential(
     },
   };
   writeCloudCredentials(deployDir, updated);
+}
+
+/**
+ * Validate a provider token before storing it.
+ * Resolves the adapter and calls validateToken() against the provider API.
+ */
+export async function validateProviderToken(
+  provider: CloudProvider,
+  token: string,
+  signal?: AbortSignal,
+): Promise<TokenValidationResult> {
+  // Lazy import to avoid circular dependency
+  const { createDigitalOceanAdapter } = await import("./providers/digitalocean.js");
+
+  switch (provider) {
+    case "digitalocean": {
+      const adapter = createDigitalOceanAdapter(token);
+      return adapter.validateToken(signal);
+    }
+    case "aws":
+      return { valid: false, error: "AWS provider is not yet implemented." };
+    case "gcp":
+      return { valid: false, error: "GCP provider is not yet implemented." };
+    default:
+      return { valid: false, error: `Unknown provider: ${provider}` };
+  }
+}
+
+/**
+ * Validate and store a provider credential.
+ * Validates the token against the provider API first, then stores it.
+ */
+export async function setProviderCredentialWithValidation(
+  deployDir: string,
+  provider: CloudProvider,
+  token: string,
+  signal?: AbortSignal,
+): Promise<TokenValidationResult> {
+  const validation = await validateProviderToken(provider, token, signal);
+  if (!validation.valid) {
+    return validation;
+  }
+  setProviderCredential(deployDir, provider, token);
+  return validation;
 }
 
 /** Remove a credential for a provider. Returns true if it existed. */

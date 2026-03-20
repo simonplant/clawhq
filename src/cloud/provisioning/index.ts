@@ -7,8 +7,15 @@
 
 // Types
 export type {
+  AddSshKeyOptions,
+  AddSshKeyResult,
   CloudCredentials,
   CloudProvider,
+  CreateFirewallOptions,
+  CreateFirewallResult,
+  CreateSnapshotOptions,
+  CreateSnapshotResult,
+  CreateVmFromSnapshotOptions,
   CreateVmOptions,
   CreateVmResult,
   DestroyOptions,
@@ -25,6 +32,8 @@ export type {
   ProvisionProgressCallback,
   ProvisionResult,
   ProvisionStepName,
+  SshKeyInfo,
+  TokenValidationResult,
 } from "./types.js";
 
 // Engine (orchestrator)
@@ -53,6 +62,8 @@ export {
   readCloudCredentials,
   removeProviderCredential,
   setProviderCredential,
+  setProviderCredentialWithValidation,
+  validateProviderToken,
 } from "./credentials.js";
 
 // Cloud-init

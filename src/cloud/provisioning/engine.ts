@@ -3,13 +3,15 @@
  *
  * Coordinates the full provisioning flow:
  * 1. Load/validate credentials
- * 2. Create VM via provider adapter
- * 3. Wait for health
- * 4. Register instance
+ * 2. Create VM via provider adapter (cloud-init or snapshot)
+ * 3. Create firewall (HTTPS + gateway port only)
+ * 4. Wait for health
+ * 5. Register instance
  *
- * Also handles destroy and status queries.
+ * Also handles destroy (with verification) and status queries (with cost).
  */
 
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { generateCloudInit } from "./cloud-init.js";
 import { getProviderCredential } from "./credentials.js";
 import { pollInstanceHealth } from "./health.js";
@@ -32,6 +34,11 @@ import type {
   ProvisionResult,
   ProvisionStepName,
 } from "./types.js";
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const DESTROY_VERIFY_ATTEMPTS = 5;
+const DESTROY_VERIFY_INTERVAL_MS = 3_000;
 
 // ── Provider Resolution ─────────────────────────────────────────────────────
 
@@ -64,10 +71,14 @@ export function resolveAdapter(
 /**
  * Provision a new cloud instance with a running ClawHQ agent.
  *
- * Full flow: credentials → create VM → wait for health → register instance.
+ * Full flow: credentials → create VM → firewall → wait for health → register instance.
+ * Supports two paths:
+ * - Cloud-init (universal): ~3 minutes, installs from scratch
+ * - Snapshot (fast): ~60 seconds, boots from pre-built golden image
  */
 export async function provision(options: ProvisionOptions): Promise<ProvisionResult> {
   const report = progress(options.onProgress);
+  const gatewayPort = options.gatewayPort ?? GATEWAY_DEFAULT_PORT;
 
   // Step 1: Resolve provider adapter (validates credentials)
   report("credentials", "running", `Validating ${options.provider} credentials…`);
@@ -79,19 +90,36 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
   }
   report("credentials", "done", `${options.provider} credentials valid`);
 
-  // Step 2: Generate cloud-init and create VM
-  report("create-vm", "running", `Creating ${options.size} VM in ${options.region}…`);
+  // Resolve cost for transparency
+  const monthlyCost = adapter.getMonthlyCost(options.size);
 
-  const userData = generateCloudInit({ name: options.name });
+  // Step 2: Create VM (cloud-init or snapshot path)
+  const costInfo = monthlyCost !== undefined ? ` ($${monthlyCost}/mo)` : "";
+  report("create-vm", "running", `Creating ${options.size}${costInfo} VM in ${options.region}…`);
 
-  const createResult = await adapter.createVm({
-    name: options.name,
-    region: options.region,
-    size: options.size,
-    userData,
-    sshKeys: options.sshKeys,
-    signal: options.signal,
-  });
+  let createResult;
+  if (options.snapshotId) {
+    // Fast path: boot from pre-built snapshot
+    createResult = await adapter.createVmFromSnapshot({
+      name: options.name,
+      region: options.region,
+      size: options.size,
+      snapshotId: options.snapshotId,
+      sshKeys: options.sshKeys,
+      signal: options.signal,
+    });
+  } else {
+    // Universal path: cloud-init bootstrap
+    const userData = generateCloudInit({ name: options.name });
+    createResult = await adapter.createVm({
+      name: options.name,
+      region: options.region,
+      size: options.size,
+      userData,
+      sshKeys: options.sshKeys,
+      signal: options.signal,
+    });
+  }
 
   if (!createResult.success || !createResult.providerInstanceId) {
     report("create-vm", "failed", createResult.error ?? "Failed to create VM");
@@ -105,14 +133,12 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
 
   let ipAddress = createResult.ipAddress;
   if (!ipAddress) {
-    // Poll the provider for the IP
     const status = await adapter.getVmStatus(createResult.providerInstanceId, options.signal);
     ipAddress = status.ipAddress;
   }
 
   if (!ipAddress) {
     report("wait-boot", "failed", "VM created but no IP address assigned");
-    // Still register it so the user can check status later
     const instance = addInstance(options.deployDir, {
       name: options.name,
       provider: options.provider,
@@ -125,13 +151,31 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
     return {
       success: false,
       instanceId: instance.id,
+      monthlyCost,
       error: "VM created but no IP address assigned yet. Check status with: clawhq deploy status",
     };
   }
 
   report("wait-boot", "done", `VM active at ${ipAddress}`);
 
-  // Step 4: Register instance (provisioning status)
+  // Step 4: Create firewall (HTTPS + gateway port only)
+  report("firewall", "running", `Creating firewall (allow ports 443, ${gatewayPort})…`);
+
+  const firewallResult = await adapter.createFirewall({
+    name: `clawhq-${options.name}`,
+    inboundPorts: [443, gatewayPort],
+    dropletIds: [createResult.providerInstanceId],
+    signal: options.signal,
+  });
+
+  if (firewallResult.success) {
+    report("firewall", "done", `Firewall created (ID: ${firewallResult.firewallId})`);
+  } else {
+    // Firewall failure is not fatal — log and continue
+    report("firewall", "failed", `Firewall creation failed: ${firewallResult.error}. Inbound traffic is unrestricted.`);
+  }
+
+  // Step 5: Register instance (provisioning status)
   report("registry", "running", "Registering instance…");
 
   const instance = addInstance(options.deployDir, {
@@ -144,7 +188,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
     status: "provisioning",
   });
 
-  // Step 5: Health check
+  // Step 6: Health check
   report("health-check", "running", "Waiting for agent to become healthy…");
 
   const healthResult = await pollInstanceHealth({
@@ -167,12 +211,13 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
     instanceId: instance.id,
     ipAddress,
     healthy: healthResult.healthy,
+    monthlyCost,
   };
 }
 
 // ── Destroy ─────────────────────────────────────────────────────────────────
 
-/** Destroy a provisioned instance. Removes from provider and registry. */
+/** Destroy a provisioned instance with verification. Removes from provider and registry. */
 export async function destroyInstance(options: DestroyOptions): Promise<DestroyResult> {
   const instance = findInstance(options.deployDir, options.instanceId);
   if (!instance) {
@@ -189,21 +234,32 @@ export async function destroyInstance(options: DestroyOptions): Promise<DestroyR
 
   const result = await adapter.destroyVm(instance.providerInstanceId, options.signal);
 
-  if (result.success) {
-    // Mark as destroyed and remove from registry
-    updateInstanceStatus(options.deployDir, options.instanceId, "destroyed");
-    removeInstance(options.deployDir, options.instanceId);
-    return { success: true, destroyed: true };
+  if (!result.success) {
+    updateInstanceStatus(options.deployDir, options.instanceId, "error");
+    return result;
   }
 
-  // Revert status on failure
-  updateInstanceStatus(options.deployDir, options.instanceId, "error");
-  return result;
+  // Verify destruction — poll until the droplet is confirmed gone
+  let verified = false;
+  for (let i = 0; i < DESTROY_VERIFY_ATTEMPTS; i++) {
+    if (options.signal?.aborted) break;
+
+    verified = await adapter.verifyDestroyed(instance.providerInstanceId, options.signal);
+    if (verified) break;
+
+    await new Promise<void>((resolve) => setTimeout(resolve, DESTROY_VERIFY_INTERVAL_MS));
+  }
+
+  // Mark as destroyed and remove from registry
+  updateInstanceStatus(options.deployDir, options.instanceId, "destroyed");
+  removeInstance(options.deployDir, options.instanceId);
+
+  return { success: true, destroyed: true };
 }
 
 // ── Status ──────────────────────────────────────────────────────────────────
 
-/** Get live status of a provisioned instance from the provider. */
+/** Get live status of a provisioned instance from the provider (includes cost). */
 export async function getInstanceStatus(options: InstanceStatusOptions): Promise<InstanceStatus> {
   const instance = findInstance(options.deployDir, options.instanceId);
   if (!instance) {
