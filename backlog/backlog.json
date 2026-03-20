@@ -1210,7 +1210,7 @@
     {
       "id": "CQ-047",
       "title": "clawhq deploy — unified cloud deployment command",
-      "intent": "clawhq deploy walks a user from zero to a cloud-deployed agent in one terminal session. No cloud console, no manual steps. Cost shown before charge. Trust mode configured automatically on success.",
+      "intent": "clawhq deploy walks a user from zero to a cloud-deployed, SSH-accessible agent in one terminal session. No cloud console, no manual steps. Cost shown before charge. Mid-flight failures auto-clean. Trust mode configured on success. SSH keypair injected at provision so the agent is permanently updatable via FEAT-005.",
       "description": "Wire the provisioning engine into a user-facing `clawhq deploy` command. Interactive flow: choose provider → enter/confirm credentials → select region → select blueprint → provision → deploy → verify → return URL. Non-interactive mode with flags for CI/automation. Shows cost estimate before confirming. Integrates with existing cloud module (trust modes, heartbeat) for post-deploy monitoring.",
       "category": "cloud",
       "priority": "must",
@@ -1236,7 +1236,7 @@
         "Destroy is clean: VM terminated, DNS removed, local state cleaned"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "All dependencies met: CQ-043 (provisioning engine DONE), CQ-044 (DO adapter DONE), CQ-048 (cloud-init DONE), FEAT-003 (Hetzner DONE), CQ-045 (AWS DONE). The deploy command skeleton exists in cli/index.ts (line 3355+) with create/destroy/status subcommands. CQ-047 must complete the interactive wizard flow, cost estimation, non-interactive flags, and post-deploy trust mode setup. Scope is well-defined: one sprint for the interactive flow + cost estimate + post-deploy monitoring hookup. ORDERING: BUG-060 (Hetzner alias fix) must ship first so all four providers are accessible in the deploy wizard. PARTIAL FAILURE: The deploy wizard must handle mid-flight failures cleanly — if provisioning fails after VM creation but before agent start, the VM must be destroyed automatically. No orphaned instances, ever.",
+      "groomingNotes": "All dependencies met: CQ-043 (provisioning engine DONE), CQ-044 (DO adapter DONE), CQ-048 (cloud-init DONE), FEAT-003 (Hetzner DONE), CQ-045 (AWS DONE). BUG-064 (firewall failure handling) must ship before this sprint — deploy wizard must never surface an insecured VM. BUG-060 (Hetzner alias fix) must ship before this sprint so all four providers are accessible. REQUIRED ADDITIONS (for FEAT-005 lifecycle): (1) SSH keypair injection at provision time — generate keypair locally, inject public key via cloud-init user-data, store private key path in deploy state file; (2) deploy state file must track: instance ID, provider, IP, SSH key path — FEAT-005 reads this to push updates; (3) if provisioning succeeds but SSH key injection fails, that is a fatal error (destroy VM, do not register instance). PARTIAL FAILURE HANDLING: if any step after VM creation fails, destroy the VM before returning error — no orphaned instances, ever. INTERACTIVE FLOW: provider → credentials → region (show latency estimate) → blueprint → cost estimate → confirm → provision → health poll → success with URL. SCOPE: one sprint for interactive flow + cost estimate + SSH keypair injection + post-deploy trust mode hookup. The deploy command skeleton exists in cli/index.ts (line 3355+) with create/destroy/status subcommands — extend these. ACCEPTANCE CHECK: after deploy, clawhq deploy status --id <id> shows running; clawhq deploy destroy --id <id> terminates cleanly; SSH key stored in ~/.clawhq/cloud/keys/ at 0600.",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-20T13:23:27-07:00",
       "failCount": 1
@@ -1381,12 +1381,18 @@
       "priority": "should",
       "category": null,
       "steps": [],
-      "acceptanceCriteria": [],
+      "acceptanceCriteria": [
+        "clawhq deploy update --id <agent-id> --config pushes updated blueprint vars to the remote agent without reprovisioning",
+        "clawhq deploy update --id <agent-id> --version pulls latest clawhq, rebuilds Docker image, and restarts the agent on the remote",
+        "clawhq deploy update --id <agent-id> --skill install <source> installs a skill on the remote agent",
+        "SSH keypair is read from the deploy state file — no manual key management by user",
+        "Update fails cleanly if agent-id not found in deploy state — helpful error shown"
+      ],
       "status": "todo",
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Gap identified during sprint grooming: CQ-047 (deploy command) covers provision/status/destroy but has no update path. CQ-037 (local updater) is done but won't reach a remote VM. The 'agent grows' pillar is broken for cloud deployments without this. SSH keypair must be injected at provision time (cloud-init in CQ-048) so this command has access. Deploy state file must track: instance ID, IP, SSH key path, provider. Three subcommands: deploy update config (push vars), deploy update version (pull + rebuild), deploy update skill (remote skill install). Depends on CQ-047 shipping first — deploy state file format must be established. Not sprint-ready until CQ-047 is done."
+      "groomingNotes": "NOT READY until CQ-047 ships — deploy state file format and SSH keypair injection are defined by CQ-047. This is the correct sequencing. DEPENDENCY CHAIN: CQ-047 must: (1) inject SSH keypair at provision time, (2) store keypair path + instance IP + provider in deploy state file at ~/.clawhq/cloud/instances.json (extended format). FEAT-005 reads that state file to know how to connect. THREE UPDATE SUBCOMMANDS: (a) deploy update config — rsync updated vars to remote /home/clawhq/.clawhq/, restart agent; (b) deploy update version — SSH in, run clawhq update, verify health; (c) deploy update skill — SSH in, run clawhq skill install <source>, verify. ALL three must be user-initiated (zero-trust) — no inbound from cloud service. READINESS GATE: mark readyForSprint when CQ-047 is done AND confirmed to include SSH keypair injection in deploy state file. Priority SHOULD is correct — this is day-2 functionality, not blocking first cloud deployment. AC is user-focused and covers all three subcommands. No AC changes needed."
     }
   ]
 }

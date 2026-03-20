@@ -3518,7 +3518,7 @@ deployCmd
   }) => {
     const provider = resolveProviderAlias(opts.provider);
     if (!provider) {
-      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner`));
+      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner (hz)`));
       process.exit(1);
     }
 
@@ -3661,7 +3661,7 @@ deployCmd
   .action(async (opts: { provider: string; token: string; deployDir: string }) => {
     const provider = resolveProviderAlias(opts.provider);
     if (!provider) {
-      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp`));
+      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner (hz)`));
       process.exit(1);
     }
 
@@ -3692,7 +3692,7 @@ snapshotCmd
   }) => {
     const provider = resolveProviderAlias(opts.provider);
     if (!provider) {
-      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner`));
+      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner (hz)`));
       process.exit(1);
     }
 
@@ -3783,6 +3783,7 @@ function resolveProviderAlias(input: string): CloudProvider | undefined {
     "digitalocean": "digitalocean",
     "do": "digitalocean",
     "hetzner": "hetzner",
+    "hz": "hetzner",
     "aws": "aws",
     "gcp": "gcp",
   };
