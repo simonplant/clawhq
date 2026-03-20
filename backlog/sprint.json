@@ -1,33 +1,20 @@
 {
-  "sprintId": "sprint-1774032345",
-  "startedAt": "2026-03-20T11:45:45-07:00",
+  "sprintId": "sprint-1774033261",
+  "startedAt": "2026-03-20T12:01:01-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-044",
-    "title": "DigitalOcean provider adapter",
-    "intent": "DigitalOcean is the fastest path to cloud deployment. Existing OpenClaw hosting on DO means the ecosystem is proven. First provider, reference implementation for the adapter interface.",
-    "description": "Implement DigitalOceanAdapter in src/cloud/provisioning/providers/digitalocean.ts. Uses DO API v2 for droplet lifecycle. Supports both cloud-init (universal) and pre-built snapshot (fast) paths. Smallest viable droplet: s-1vcpu-1gb ($6/mo). Includes SSH key injection for emergency access, firewall group creation (ports 443 + gateway only), and floating IP for stable DNS. API token stored in ~/.clawhq/cloud/credentials.json.",
+    "id": "FEAT-002",
+    "title": "clawhq demo — zero-config working agent in 60 seconds",
+    "intent": "Remove every gate between a curious person and a running agent. One command, no API keys, no Docker expertise, no messaging setup. The sovereignty story only matters to people who have experienced the product.",
+    "description": "Ship a `clawhq demo` command that spins up a fully working agent with zero configuration. Bundled Ollama model (or fallback to mock LLM), mock messaging channel rendered in a localhost web UI, pre-loaded blueprint (replace-chatgpt-plus). The user types one command, waits ~60s, and is talking to their agent in a browser. No Telegram token, no Docker Compose knowledge, no .env files. This is the command that turns ClawHQ from an architecture into a product. Scope: (1) demo blueprint with sensible defaults and no external dependencies; (2) embedded web chat UI on localhost (extend CQ-040 dashboard with /chat route or standalone); (3) auto-pull smallest viable Ollama model if available, mock LLM fallback if not; (4) single-use ephemeral mode — demo data lives in a temp dir and is cleaned up on exit; (5) colorful terminal output showing what is happening at each step. Must work on a fresh machine with only Docker installed. PHASE 2 (post-CQ-044): add --cloud flag using DO provisioning for zero-Docker path.",
     "sourceBacklog": "backlog.json",
-    "steps": [
-      "Implement DO API v2 client: droplets, SSH keys, firewalls, snapshots",
-      "Create droplet with cloud-init: Docker + clawhq + agent bootstrap script",
-      "Build pre-built snapshot workflow: create golden image, register as DO snapshot",
-      "Add DO firewall group: allow 443 (HTTPS) + gateway port, block everything else",
-      "Implement status polling: wait for droplet active + agent healthy",
-      "Add destroy with verification: terminate droplet, confirm deletion"
-    ],
-    "acceptanceCriteria": [
-      "DO droplet created and agent running within 3 minutes (cloud-init) or 60 seconds (snapshot)",
-      "Firewall restricts inbound to HTTPS + gateway port only",
-      "API token setup is interactive with validation before storage",
-      "Droplet can be destroyed cleanly from CLI",
-      "Cost is transparent: shown during provision and in status output"
-    ],
+    "steps": [],
+    "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-20T11:45:45-07:00",
+    "startedAt": "2026-03-20T12:01:01-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T11:54:53-07:00"
+    "completedAt": "2026-03-20T12:14:59-07:00"
   },
-  "completedAt": "2026-03-20T11:54:53-07:00",
+  "completedAt": "2026-03-20T12:14:59-07:00",
   "attempts": 1
 }

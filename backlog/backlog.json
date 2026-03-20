@@ -1260,7 +1260,10 @@
         "Works on Ubuntu 22.04 and Debian 12"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Depends on CQ-043 (cloud provisioning engine) which must be complete first. NOT READY until CQ-043 is done. After CQ-043 completes, mark this ready alongside CQ-044. IMPLEMENTATION NOTES: Template in src/cloud/provisioning/cloud-init.ts. The template is a function generateCloudInit(params: CloudInitParams): string that produces a cloud-init YAML user-data script. Params: blueprintName, gatewayToken, trustMode, clawhqVersion, deployDir. Script sections: (1) #cloud-config header; (2) apt: install docker.io, curl, nodejs; (3) runcmd: enable docker, install clawhq via npm, run clawhq install, inject blueprint config from params, run clawhq up, curl health endpoint back to provisioning engine. IDEMPOTENT: use if/then guards around each install step. HEALTH SIGNAL: use a simple curl with retry to the provisioning engine's callback URL — include the droplet's public IP in the signal. TESTED AGAINST: Ubuntu 22.04 LTS and Debian 12 (these are standard DO, AWS, GCP base images). POST-CQ-043 UNLOCK: when CQ-043 merges, mark this readyForSprint."
+      "groomingNotes": "Depends on CQ-043 (cloud provisioning engine) which must be complete first. NOT READY until CQ-043 is done. After CQ-043 completes, mark this ready alongside CQ-044. IMPLEMENTATION NOTES: Template in src/cloud/provisioning/cloud-init.ts. The template is a function generateCloudInit(params: CloudInitParams): string that produces a cloud-init YAML user-data script. Params: blueprintName, gatewayToken, trustMode, clawhqVersion, deployDir. Script sections: (1) #cloud-config header; (2) apt: install docker.io, curl, nodejs; (3) runcmd: enable docker, install clawhq via npm, run clawhq install, inject blueprint config from params, run clawhq up, curl health endpoint back to provisioning engine. IDEMPOTENT: use if/then guards around each install step. HEALTH SIGNAL: use a simple curl with retry to the provisioning engine's callback URL — include the droplet's public IP in the signal. TESTED AGAINST: Ubuntu 22.04 LTS and Debian 12 (these are standard DO, AWS, GCP base images). POST-CQ-043 UNLOCK: when CQ-043 merges, mark this readyForSprint.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-20T12:01:01-07:00",
+      "failCount": 1
     },
     {
       "id": "CQ-049",
@@ -1300,11 +1303,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "READY TO SPRINT — Tech Lead clearance per prior grooming. CQ-040 (web dashboard) is DONE, the only dependency. SCOPE: (1) configs/blueprints/demo.yaml — demo blueprint with zero external deps, no Telegram token, no email config, no API keys; (2) add /chat route to existing CQ-040 Hono server in src/web/ — browser chat UI for direct agent interaction via Gateway WebSocket; (3) Ollama auto-detection: use llama3:8b if available, else fallback to mock LLM returning 'I am an AI agent [model: mock]. You said: {message}'; (4) ephemeral mode: tempdir for deploy data, SIGINT cleanup handler, demo data never persists; (5) clawhq demo CLI command chains build (if needed) -> deploy (demo blueprint) -> open browser -> chat. ACCEPTANCE: clawhq demo on fresh Docker machine → user in browser chat within 60s, no prompts. PHASE 2 (post-CQ-044 only): --cloud flag for zero-Docker path. Do not implement phase 2 in this sprint."
+      "groomingNotes": "READY TO SPRINT — Tech Lead clearance per prior grooming. CQ-040 (web dashboard) is DONE, the only dependency. SCOPE: (1) configs/blueprints/demo.yaml — demo blueprint with zero external deps, no Telegram token, no email config, no API keys; (2) add /chat route to existing CQ-040 Hono server in src/web/ — browser chat UI for direct agent interaction via Gateway WebSocket; (3) Ollama auto-detection: use llama3:8b if available, else fallback to mock LLM returning 'I am an AI agent [model: mock]. You said: {message}'; (4) ephemeral mode: tempdir for deploy data, SIGINT cleanup handler, demo data never persists; (5) clawhq demo CLI command chains build (if needed) -> deploy (demo blueprint) -> open browser -> chat. ACCEPTANCE: clawhq demo on fresh Docker machine → user in browser chat within 60s, no prompts. PHASE 2 (post-CQ-044 only): --cloud flag for zero-Docker path. Do not implement phase 2 in this sprint.",
+      "completedAt": "2026-03-20T12:14:59-07:00"
     },
     {
       "id": "FEAT-003",

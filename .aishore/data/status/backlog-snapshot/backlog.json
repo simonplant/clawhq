@@ -1118,8 +1118,8 @@
       "description": "Implement DigitalOceanAdapter in src/cloud/provisioning/providers/digitalocean.ts. Uses DO API v2 for droplet lifecycle. Supports both cloud-init (universal) and pre-built snapshot (fast) paths. Smallest viable droplet: s-1vcpu-1gb ($6/mo). Includes SSH key injection for emergency access, firewall group creation (ports 443 + gateway only), and floating IP for stable DNS. API token stored in ~/.clawhq/cloud/credentials.json.",
       "category": "cloud",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-043"
       ],
@@ -1139,7 +1139,9 @@
         "Cost is transparent: shown during provision and in status output"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Depends on CQ-043 (cloud provisioning engine) which must be complete first. CQ-043 includes a reference DO implementation — CQ-044 adds production polish: pre-built snapshot workflow, floating IP, comprehensive status output, cost transparency. NOT READY until CQ-043 is done. After CQ-043 completes, mark this ready. IMPLEMENTATION NOTES: DO API v2 client in src/cloud/provisioning/providers/digitalocean.ts (CQ-043 creates this file — CQ-044 extends it). Key additions over CQ-043's reference impl: (1) snapshot creation pipeline (provision base VM, install, snapshot, destroy builder); (2) floating IP assignment for stable DNS; (3) cost display in status output — DO API returns droplet hourly cost; (4) interactive API token validation before storage (test token via GET /v2/account). TESTING: mock DO API responses; test snapshot create/use paths separately. POST-CQ-043 UNLOCK: when CQ-043 merges, mark this readyForSprint."
+      "groomingNotes": "Depends on CQ-043 (cloud provisioning engine) which must be complete first. CQ-043 includes a reference DO implementation — CQ-044 adds production polish: pre-built snapshot workflow, floating IP, comprehensive status output, cost transparency. NOT READY until CQ-043 is done. After CQ-043 completes, mark this ready. IMPLEMENTATION NOTES: DO API v2 client in src/cloud/provisioning/providers/digitalocean.ts (CQ-043 creates this file — CQ-044 extends it). Key additions over CQ-043's reference impl: (1) snapshot creation pipeline (provision base VM, install, snapshot, destroy builder); (2) floating IP assignment for stable DNS; (3) cost display in status output — DO API returns droplet hourly cost; (4) interactive API token validation before storage (test token via GET /v2/account). TESTING: mock DO API responses; test snapshot create/use paths separately. POST-CQ-043 UNLOCK: when CQ-043 merges, mark this readyForSprint.",
+      "passes": true,
+      "completedAt": "2026-03-20T11:54:53-07:00"
     },
     {
       "id": "CQ-045",
@@ -1258,7 +1260,10 @@
         "Works on Ubuntu 22.04 and Debian 12"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Depends on CQ-043 (cloud provisioning engine) which must be complete first. NOT READY until CQ-043 is done. After CQ-043 completes, mark this ready alongside CQ-044. IMPLEMENTATION NOTES: Template in src/cloud/provisioning/cloud-init.ts. The template is a function generateCloudInit(params: CloudInitParams): string that produces a cloud-init YAML user-data script. Params: blueprintName, gatewayToken, trustMode, clawhqVersion, deployDir. Script sections: (1) #cloud-config header; (2) apt: install docker.io, curl, nodejs; (3) runcmd: enable docker, install clawhq via npm, run clawhq install, inject blueprint config from params, run clawhq up, curl health endpoint back to provisioning engine. IDEMPOTENT: use if/then guards around each install step. HEALTH SIGNAL: use a simple curl with retry to the provisioning engine's callback URL — include the droplet's public IP in the signal. TESTED AGAINST: Ubuntu 22.04 LTS and Debian 12 (these are standard DO, AWS, GCP base images). POST-CQ-043 UNLOCK: when CQ-043 merges, mark this readyForSprint."
+      "groomingNotes": "Depends on CQ-043 (cloud provisioning engine) which must be complete first. NOT READY until CQ-043 is done. After CQ-043 completes, mark this ready alongside CQ-044. IMPLEMENTATION NOTES: Template in src/cloud/provisioning/cloud-init.ts. The template is a function generateCloudInit(params: CloudInitParams): string that produces a cloud-init YAML user-data script. Params: blueprintName, gatewayToken, trustMode, clawhqVersion, deployDir. Script sections: (1) #cloud-config header; (2) apt: install docker.io, curl, nodejs; (3) runcmd: enable docker, install clawhq via npm, run clawhq install, inject blueprint config from params, run clawhq up, curl health endpoint back to provisioning engine. IDEMPOTENT: use if/then guards around each install step. HEALTH SIGNAL: use a simple curl with retry to the provisioning engine's callback URL — include the droplet's public IP in the signal. TESTED AGAINST: Ubuntu 22.04 LTS and Debian 12 (these are standard DO, AWS, GCP base images). POST-CQ-043 UNLOCK: when CQ-043 merges, mark this readyForSprint.",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-20T12:01:01-07:00",
+      "failCount": 1
     },
     {
       "id": "CQ-049",
