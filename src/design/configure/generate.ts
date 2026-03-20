@@ -8,7 +8,7 @@
  * The generator never produces a config that fails validation.
  */
 
-import { BOOTSTRAP_MAX_CHARS, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import type {
   ClawHQConfig,
   ComposeConfig,
@@ -31,7 +31,6 @@ import type { WizardAnswers } from "./types.js";
 
 const DEFAULT_GATEWAY_PORT = GATEWAY_DEFAULT_PORT;
 const DOCKER_BRIDGE_GATEWAY = "172.17.0.1";
-const CONTAINER_USER = "1000:1000";
 const AGENT_NETWORK = "clawhq_net";
 
 // ── Main Entry Point ─────────────────────────────────────────────────────────
@@ -45,7 +44,7 @@ const AGENT_NETWORK = "clawhq_net";
  * - LM-03: trustedProxies includes Docker bridge
  * - LM-04: tools.exec.host = "gateway"
  * - LM-05: tools.exec.security = "full"
- * - LM-06: container user = 1000:1000
+ * - LM-06: container user = CONTAINER_USER
  * - LM-07: cap_drop ALL + no-new-privileges
  * - LM-08: identity files within bootstrapMaxChars
  * - LM-09: cron expressions use valid stepping syntax

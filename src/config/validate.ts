@@ -7,7 +7,7 @@
  * See docs/OPENCLAW-REFERENCE.md § "The 14 Configuration Landmines" for details.
  */
 
-import { BOOTSTRAP_MAX_CHARS, GATEWAY_DEFAULT_PORT } from "./defaults.js";
+import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, GATEWAY_DEFAULT_PORT } from "./defaults.js";
 import type {
   ComposeConfig,
   ComposeServiceConfig,
@@ -143,15 +143,16 @@ export function validateLM05(config: OpenClawConfig): ValidationResult {
 export function validateLM06(compose: ComposeConfig): ValidationResult {
   const service = findAgentService(compose);
   const user = service?.user;
-  const passed = user === "1000:1000" || user === "1000";
+  const expectedUid = CONTAINER_USER.split(":")[0];
+  const passed = user === CONTAINER_USER || user === expectedUid;
   return {
     rule: "LM-06",
     passed,
     severity: "error",
     message: passed
-      ? "Container user is UID 1000"
-      : `Container user is "${user ?? "not set"}" — must be "1000:1000" or mounted volumes will have permission errors`,
-    fix: 'Set "user": "1000:1000" in docker-compose.yml service',
+      ? `Container user is ${CONTAINER_USER}`
+      : `Container user is "${user ?? "not set"}" — must be "${CONTAINER_USER}" or mounted volumes will have permission errors`,
+    fix: `Set "user": "${CONTAINER_USER}" in docker-compose.yml service`,
   };
 }
 

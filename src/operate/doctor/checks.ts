@@ -17,7 +17,7 @@ import { access, constants, readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { BOOTSTRAP_MAX_CHARS, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
 
@@ -370,12 +370,13 @@ async function checkUserUid(
     );
 
     const user = inspectOut.trim();
-    if (user !== "1000:1000" && user !== "1000") {
+    const expectedUid = CONTAINER_USER.split(":")[0];
+    if (user !== CONTAINER_USER && user !== expectedUid) {
       return fail(
         name,
         "error",
-        `Container user is "${user || "root"}" — must be UID 1000 for volume permissions`,
-        'Set user: "1000:1000" in docker-compose.yml and redeploy',
+        `Container user is "${user || "root"}" — must be ${CONTAINER_USER} for volume permissions`,
+        `Set user: "${CONTAINER_USER}" in docker-compose.yml and redeploy`,
         true,
       );
     }

@@ -35,6 +35,11 @@ export const OPENAI_API_BASE = "https://api.openai.com";
 /** Base URL for the Telegram Bot API (no trailing slash). */
 export const TELEGRAM_API_BASE = "https://api.telegram.org";
 
+// ── Container identity ──────────────────────────────────────────────────────
+
+/** Container non-root user (LM-06 landmine requirement). */
+export const CONTAINER_USER = "1000:1000";
+
 // ── Repository URLs ─────────────────────────────────────────────────────────
 
 /** Canonical OpenClaw repository URL (used by from-source installer). */
