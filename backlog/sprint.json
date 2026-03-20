@@ -1,20 +1,31 @@
 {
-  "sprintId": "sprint-1774035070",
-  "startedAt": "2026-03-20T12:31:10-07:00",
+  "sprintId": "sprint-1774038207",
+  "startedAt": "2026-03-20T13:23:27-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-059",
-    "title": "Web dashboard /api/init gatewayPort input missing range validation",
-    "intent": "Web dashboard /api/init rejects invalid gateway port values with a clear error. No NaN or out-of-range port reaches the generated config.",
-    "description": "src/web/server.tsx:239 accepts a user-supplied gatewayPort from POST /api/init and parses it with parseInt, but does not validate: (1) isNaN check, (2) range check (1-65535). BUG-036 grooming notes explicitly deferred this: 'The gatewayPort input on line 239 also lacks range validation: add isNaN check (line 254 already does this — pattern already there). Focus on path traversal fix only.' This deferred item needs to be addressed. An invalid port value (NaN, 0, 65536, negative) is written directly into the generated openclaw.json config, which will either fail silently or produce an unrunnable agent config with no clear error message to the user. BUG-037 fixed CLI parseInt NaN propagation; BUG-051 added validatePort() helper to src/cli/ux.ts. Steps: (1) open src/web/server.tsx; (2) find the gatewayPort parseInt call (~line 239); (3) add isNaN check and port range validation (1-65535) matching the pattern at line 254; (4) on invalid port, return c.html(<InitResult success={false} message='Invalid gateway port: must be 1-65535'/>) with status 400; (5) run web/ tests to confirm no regression. Scope: ~5 lines in one file.",
-    "sourceBacklog": "bugs.json",
-    "steps": [],
-    "acceptanceCriteria": [],
+    "id": "CQ-046",
+    "title": "GCP provider adapter (Compute Engine + cloud-init)",
+    "intent": "GCP Compute Engine completes big-three cloud coverage. Implement GCPAdapter following the proven provider interface pattern. Users with GCP credits or existing GCP infrastructure can deploy agents with the same single clawhq deploy command.",
+    "description": "Implement GCPAdapter in src/cloud/provisioning/providers/gcp.ts. Uses Google Cloud Compute API for VM lifecycle. Launches e2-micro (free tier) or e2-small. Creates firewall rule on default network. Credentials via gcloud CLI or service account JSON. Same cloud-init bootstrap as DO/AWS.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Implement Compute Engine client: create, delete, get, set metadata",
+      "Create cloud-init startup script for Debian/Ubuntu GCE images",
+      "Build firewall rule: allow 443 + gateway port from 0.0.0.0/0",
+      "Implement machine image snapshot for fast re-provision",
+      "Wire into provider interface with credential validation"
+    ],
+    "acceptanceCriteria": [
+      "GCE instance launched and agent running within 3 minutes",
+      "Firewall rule restricts inbound to HTTPS + gateway port",
+      "Works with gcloud CLI credentials or service account key",
+      "Free tier eligible instance type used by default"
+    ],
     "scope": [],
-    "startedAt": "2026-03-20T12:31:10-07:00",
+    "startedAt": "2026-03-20T13:23:27-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T12:32:58-07:00"
+    "completedAt": "2026-03-20T13:29:36-07:00"
   },
-  "completedAt": "2026-03-20T12:32:58-07:00",
+  "completedAt": "2026-03-20T13:29:36-07:00",
   "attempts": 1
 }
