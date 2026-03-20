@@ -14,6 +14,15 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync,
 import { dirname, join } from "node:path";
 
 import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS } from "../../config/defaults.js";
+import {
+  DEPLOY_CLOUD_SUBDIR,
+  DEPLOY_ENGINE_COMPOSE_FILE,
+  DEPLOY_ENGINE_CREDENTIALS_JSON,
+  DEPLOY_ENGINE_OPENCLAW_JSON,
+  DEPLOY_ENGINE_SUBDIR,
+  DEPLOY_WORKSPACE_MEMORY_DIR,
+  DEPLOY_WORKSPACE_SUBDIR,
+} from "../../config/paths.js";
 import type { TrustMode } from "../../config/types.js";
 import type { HeartbeatResult, HeartbeatState, HealthReport } from "../types.js";
 
@@ -25,7 +34,7 @@ const HEARTBEAT_FILE = "heartbeat.json";
 
 /** Resolve heartbeat.json path for a deployment directory. */
 export function heartbeatPath(deployDir: string): string {
-  return join(deployDir, "cloud", HEARTBEAT_FILE);
+  return join(deployDir, DEPLOY_CLOUD_SUBDIR, HEARTBEAT_FILE);
 }
 
 // ── State management ─────────────────────────────────────────────────────────
@@ -102,7 +111,7 @@ function dirSizeBytes(dirPath: string): number {
  * Count integrations from credentials.json without reading credential values.
  */
 function countIntegrations(deployDir: string): number {
-  const credPath = join(deployDir, "engine", "credentials.json");
+  const credPath = join(deployDir, DEPLOY_ENGINE_SUBDIR, DEPLOY_ENGINE_CREDENTIALS_JSON);
   if (!existsSync(credPath)) return 0;
   try {
     const raw = readFileSync(credPath, "utf-8");
@@ -120,13 +129,13 @@ function countIntegrations(deployDir: string): number {
  */
 function checkContainerRunning(deployDir: string): { running: boolean; uptimeSeconds: number } {
   // Check if compose file exists as a basic proxy
-  const composePath = join(deployDir, "engine", "docker-compose.yml");
+  const composePath = join(deployDir, DEPLOY_ENGINE_SUBDIR, DEPLOY_ENGINE_COMPOSE_FILE);
   if (!existsSync(composePath)) {
     return { running: false, uptimeSeconds: -1 };
   }
   // Container state would normally be checked via Docker API;
   // for now we check if the engine directory looks active
-  const configPath = join(deployDir, "engine", "openclaw.json");
+  const configPath = join(deployDir, DEPLOY_ENGINE_SUBDIR, DEPLOY_ENGINE_OPENCLAW_JSON);
   if (!existsSync(configPath)) {
     return { running: false, uptimeSeconds: -1 };
   }
@@ -150,7 +159,7 @@ export function collectHealthReport(
   trustMode: TrustMode,
 ): HealthReport {
   const container = checkContainerRunning(deployDir);
-  const memoryDir = join(deployDir, "workspace", "memory");
+  const memoryDir = join(deployDir, DEPLOY_WORKSPACE_SUBDIR, DEPLOY_WORKSPACE_MEMORY_DIR);
 
   return {
     agentId: computeAgentId(deployDir),

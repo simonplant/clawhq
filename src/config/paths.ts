@@ -35,6 +35,29 @@ export const OPENCLAW_CONTAINER_WORKSPACE = `${OPENCLAW_CONTAINER_ROOT}/workspac
 /** OpenClaw container path for cron jobs. */
 export const OPENCLAW_CONTAINER_CRON = `${OPENCLAW_CONTAINER_ROOT}/cron`;
 
+// ── Deployment Subdirectory Names ─────────────────────────────────────────────
+
+/** Engine subdirectory within the deployment directory. */
+export const DEPLOY_ENGINE_SUBDIR = "engine";
+
+/** Workspace subdirectory within the deployment directory. */
+export const DEPLOY_WORKSPACE_SUBDIR = "workspace";
+
+/** Cloud subdirectory within the deployment directory. */
+export const DEPLOY_CLOUD_SUBDIR = "cloud";
+
+/** OpenClaw runtime config filename within the engine subdirectory. */
+export const DEPLOY_ENGINE_OPENCLAW_JSON = "openclaw.json";
+
+/** Docker Compose filename within the engine subdirectory. */
+export const DEPLOY_ENGINE_COMPOSE_FILE = "docker-compose.yml";
+
+/** Credentials filename within the engine subdirectory. */
+export const DEPLOY_ENGINE_CREDENTIALS_JSON = "credentials.json";
+
+/** Memory directory name within the workspace subdirectory. */
+export const DEPLOY_WORKSPACE_MEMORY_DIR = "memory";
+
 // ── Host-Side Paths ──────────────────────────────────────────────────────────
 
 /** Default deployment directory on the host. */
