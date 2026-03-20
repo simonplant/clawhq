@@ -1171,7 +1171,10 @@
         "Instance can be stopped/started/terminated from CLI"
       ],
       "groomedAt": "2026-03-20",
-      "groomingNotes": "Second provider. AWS SDK v3 is TypeScript-native — good fit. Key complexity: IAM permissions. The user needs ec2:RunInstances, ec2:TerminateInstances, ec2:CreateSecurityGroup, etc. Document the minimum IAM policy. Consider: should we support AWS Lightsail as a simpler alternative to raw EC2?"
+      "groomingNotes": "Second provider. AWS SDK v3 is TypeScript-native — good fit. Key complexity: IAM permissions. The user needs ec2:RunInstances, ec2:TerminateInstances, ec2:CreateSecurityGroup, etc. Document the minimum IAM policy. Consider: should we support AWS Lightsail as a simpler alternative to raw EC2?",
+      "lastFailReason": "Validator agent rejected implementation",
+      "lastFailAt": "2026-03-20T12:26:40-07:00",
+      "failCount": 1
     },
     {
       "id": "CQ-046",
@@ -1323,7 +1326,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-20",
-      "groomingNotes": "UPGRADED TO MUST — CLAUDE.md explicitly names Hetzner alongside DigitalOcean as a primary deployment target ('User's PC, Mac Mini, DigitalOcean, Hetzner — same software, different host'). Privacy Migrant is the primary persona; they prefer EU-sovereign, GDPR-compliant hosting at a lower price point. DO + Hetzner together cover the primary personas — AWS/GCP cover enterprise secondary users. CQ-043 (ProviderAdapter interface) is DONE. CQ-044 (DO adapter) should be done first as the reference implementation, but FEAT-003 can sprint in parallel since the interface is stable. IMPLEMENTATION: HetznerAdapter in src/cloud/provisioning/providers/hetzner.ts following exact same pattern as providers/digitalocean.ts. Hetzner Cloud API v1. Key endpoints: POST /servers (cx11, ubuntu-24.04, user_data=cloud-init), DELETE /servers/{id}, GET /servers/{id}. Add 'hetzner' to CloudProvider union type in types.ts. Data centers: FSN/NBG (Germany), HEL (Finland) — GDPR-compliant. TESTING: mock Hetzner API responses same as DO tests."
+      "groomingNotes": "UPGRADED TO MUST — CLAUDE.md explicitly names Hetzner alongside DigitalOcean as a primary deployment target ('User's PC, Mac Mini, DigitalOcean, Hetzner — same software, different host'). Privacy Migrant is the primary persona; they prefer EU-sovereign, GDPR-compliant hosting at a lower price point. DO + Hetzner together cover the primary personas — AWS/GCP cover enterprise secondary users. CQ-043 (ProviderAdapter interface) is DONE. CQ-044 (DO adapter) should be done first as the reference implementation, but FEAT-003 can sprint in parallel since the interface is stable. IMPLEMENTATION: HetznerAdapter in src/cloud/provisioning/providers/hetzner.ts following exact same pattern as providers/digitalocean.ts. Hetzner Cloud API v1. Key endpoints: POST /servers (cx11, ubuntu-24.04, user_data=cloud-init), DELETE /servers/{id}, GET /servers/{id}. Add 'hetzner' to CloudProvider union type in types.ts. Data centers: FSN/NBG (Germany), HEL (Finland) — GDPR-compliant. TESTING: mock Hetzner API responses same as DO tests.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-20T12:15:21-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-004",
