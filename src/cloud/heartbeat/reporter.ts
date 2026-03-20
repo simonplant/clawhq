@@ -13,6 +13,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS } from "../../config/defaults.js";
 import type { TrustMode } from "../../config/types.js";
 import type { HeartbeatResult, HeartbeatState, HealthReport } from "../types.js";
 
@@ -199,7 +200,7 @@ export async function sendHeartbeat(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(report),
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(CLOUD_HEARTBEAT_RPC_TIMEOUT_MS),
     });
 
     if (!response.ok) {

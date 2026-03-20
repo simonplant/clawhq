@@ -150,6 +150,14 @@ export const OLLAMA_PROBE_TIMEOUT_MS = 5_000;
 /** Telegram long-poll getUpdates timeout in seconds. */
 export const TELEGRAM_POLLING_TIMEOUT_SEC = 30;
 
+// ── Cloud module defaults ───────────────────────────────────────────────────
+
+/** Timeout for the cloud heartbeat health-reporter RPC (ms). */
+export const CLOUD_HEARTBEAT_RPC_TIMEOUT_MS = 10_000;
+
+/** Maximum command history entries retained in the cloud command queue. */
+export const CLOUD_COMMAND_QUEUE_MAX_HISTORY = 100;
+
 // ── Identity / bootstrap limits ─────────────────────────────────────────────
 
 /** Maximum character budget for identity bootstrap content (LM-08). */
