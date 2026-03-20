@@ -1,32 +1,20 @@
 {
-  "sprintId": "sprint-1773964186",
-  "startedAt": "2026-03-19T16:49:46-07:00",
+  "sprintId": "sprint-1773965745",
+  "startedAt": "2026-03-19T17:15:45-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-005",
-    "title": "Egress firewall (iptables CLAWHQ_FWD chain)",
-    "intent": "Enforce that no egress traffic leaves the agent container except to explicitly allowlisted domains. The privacy promise is architectural, not advisory.",
-    "description": "PRIVACY PROMISE: The egress firewall is what makes 'zero data leaves your machine by default' true, not marketing. Without it, an agent tool or skill could call out to arbitrary domains. Per-integration domain allowlist means the user's email agent can reach email APIs and nothing else. Air-gap mode is the paranoid user's kill switch. Acceptance: docker bridge traffic blocked to non-allowlisted domains; DNS and HTTPS to allowlist work; firewall reapplied after compose down; 'clawhq doctor' verifies rules are active.",
-    "sourceBacklog": "backlog.json",
-    "steps": [
-      "Create dedicated iptables chain CLAWHQ_FWD: ESTABLISHED/RELATED -> DNS -> HTTPS allowlist -> LOG + DROP",
-      "Derive per-integration domain allowlist from config",
-      "Implement air-gap mode (block all egress)",
-      "Make apply/remove idempotent",
-      "Add verification with expected vs actual rule diff",
-      "Implement auto-reapply after docker compose down"
-    ],
-    "acceptanceCriteria": [
-      "Docker bridge traffic blocked to non-allowlisted domains",
-      "DNS and HTTPS to allowlisted domains work correctly",
-      "Firewall reapplied automatically after compose down",
-      "'clawhq doctor' verifies firewall rules are active"
-    ],
+    "id": "BUG-020",
+    "title": "Post-CQ-005: silent catch blocks in new src/secure/firewall/firewall.ts",
+    "intent": "The new firewall module created by CQ-005 must not have silent catch blocks. Firewall rule failures that are silently swallowed allow a misconfigured firewall to go undetected.",
+    "description": "BUG-014 intentionally deferred the 5 silent catch blocks in src/build/launcher/firewall.ts because CQ-005 moves that code to src/secure/firewall/firewall.ts. When CQ-005 is complete, the moved firewall code must be checked for silent catches and fixed. The original 5 locations were lines 98,106,127,137,165 in the old firewall.ts — these handle iptables rule application, removal, and verification errors. Steps: (1) CQ-005 must be complete first; (2) open src/secure/firewall/firewall.ts (the new CQ-005 file); (3) search for 'catch {' and 'catch (_' patterns; (4) add console.warn() with error and context for each non-fatal catch; (5) do NOT convert non-fatal catches to throws — keep fallback behaviour; (6) run firewall tests (using EXEC_DRY=1) after. Scope: ~5 one-line additions in one file. Blocked by CQ-005.",
+    "sourceBacklog": "bugs.json",
+    "steps": [],
+    "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-19T16:49:46-07:00",
+    "startedAt": "2026-03-19T17:15:45-07:00",
     "status": "passed",
-    "completedAt": "2026-03-19T17:01:59-07:00"
+    "completedAt": "2026-03-19T17:19:23-07:00"
   },
-  "completedAt": "2026-03-19T17:01:59-07:00",
+  "completedAt": "2026-03-19T17:19:23-07:00",
   "attempts": 1
 }
