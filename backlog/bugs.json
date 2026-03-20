@@ -800,11 +800,12 @@
       "category": null,
       "steps": [],
       "acceptanceCriteria": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-19",
-      "groomingNotes": "Missed instance from BUG-033 sprint. OLLAMA_DEFAULT_MODEL = 'llama3:8b' is already in defaults.ts (added by BUG-033). evolve/provider/registry.ts:42 has defaultModel: 'llama3.2' — a different model name. Fix: (1) grep defaults.ts to confirm OLLAMA_DEFAULT_MODEL is exported; (2) open evolve/provider/registry.ts; (3) add import { OLLAMA_DEFAULT_MODEL } from '../../config/defaults.js'; (4) replace 'llama3.2' with OLLAMA_DEFAULT_MODEL; (5) run evolve/ tests. Also check web/pages/init.tsx:59 which has an HTML placeholder — that can remain as-is (presentational, not runtime). Scope: 2 files, 2 lines. Zero logic change. No blocking dependencies — BUG-033 already done."
+      "groomingNotes": "Missed instance from BUG-033 sprint. OLLAMA_DEFAULT_MODEL = 'llama3:8b' is already in defaults.ts (added by BUG-033). evolve/provider/registry.ts:42 has defaultModel: 'llama3.2' — a different model name. Fix: (1) grep defaults.ts to confirm OLLAMA_DEFAULT_MODEL is exported; (2) open evolve/provider/registry.ts; (3) add import { OLLAMA_DEFAULT_MODEL } from '../../config/defaults.js'; (4) replace 'llama3.2' with OLLAMA_DEFAULT_MODEL; (5) run evolve/ tests. Also check web/pages/init.tsx:59 which has an HTML placeholder — that can remain as-is (presentational, not runtime). Scope: 2 files, 2 lines. Zero logic change. No blocking dependencies — BUG-033 already done.",
+      "completedAt": "2026-03-19T18:35:39-07:00"
     },
     {
       "id": "BUG-055",
