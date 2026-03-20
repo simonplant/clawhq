@@ -8,7 +8,7 @@
  * an actionable fix message on failure.
  */
 
-import { CREDENTIALS_PROBE_TIMEOUT_MS } from "../../config/defaults.js";
+import { ANTHROPIC_API_VERSION, CREDENTIALS_PROBE_TIMEOUT_MS } from "../../config/defaults.js";
 
 import type { CredentialProbe, ProbeResult } from "./probe-types.js";
 
@@ -77,7 +77,7 @@ export const probeAnthropic: CredentialProbe = async (env) => {
     method: "GET",
     headers: {
       "x-api-key": key,
-      "anthropic-version": "2023-06-01",
+      "anthropic-version": ANTHROPIC_API_VERSION,
     },
   });
 
