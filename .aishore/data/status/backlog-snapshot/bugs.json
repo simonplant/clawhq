@@ -916,6 +916,99 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-20",
       "groomingNotes": "Confirmed bug: FEAT-003 (Hetzner adapter, DONE) added hetzner.ts and CloudProvider includes 'hetzner', but resolveProviderAlias() in src/cli/index.ts lines 3529-3537 has no 'hetzner' or 'hz' entry. Two error messages (lines 3378, 3520) say 'Must be one of: digitalocean (do), aws, gcp' — Hetzner omitted. Fix is surgical: add hetzner/hz to aliases map, update both error strings. No other files need changes. All acceptance criteria are directly testable. Single-sprint, sub-hour fix. ORDERING: This must run before CQ-047 (deploy command) ships — the deploy wizard will surface all providers to users, and Hetzner must be accessible."
+    },
+    {
+      "id": "BUG-061",
+      "title": "Shell injection in demo --cloud browser open: exec() interpolates chatUrl without escaping",
+      "intent": "Browser launch must never pass user-derived or network-derived strings through a shell. execFile with argument array is the only acceptable form.",
+      "description": "src/cli/index.ts line 420 calls exec(`${openCmd} ${chatUrl}`) where chatUrl is constructed from cloud provisioning output (IP address + port). The URL is passed directly to a shell via exec() string interpolation with no quoting or escaping. A malformed API response containing shell metacharacters could execute arbitrary commands on the user's machine. Fix: replace exec(string) with execFile(cmd, [chatUrl]) to use argument-list form, which does not invoke a shell.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "exec() string interpolation replaced with execFile argument array in demo --cloud browser open",
+        "Browser opens correctly in demo --cloud on Linux and macOS",
+        "No shell is invoked when launching the browser URL"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Confirmed at src/cli/index.ts:420. exec() with string interpolation is exploitable if chatUrl contains shell metacharacters — source is cloud API response (IP + port). Fix is one-line: use execFile(openCmd, [chatUrl]) instead. Steps: (1) import execFile from node:child_process, (2) replace exec string call with execFile(openCmd, [chatUrl], callback), (3) verify browser still opens on demo --cloud run. No other files need changes. Single-sprint, sub-15-minute fix. HIGH priority because this is a security issue in the demo path that most new users will hit."
+    },
+    {
+      "id": "BUG-062",
+      "title": "Provider adapters call response.json() without try-catch — crashes on malformed API responses",
+      "intent": "Provisioning must never crash with a raw JSON parse exception. All API response failures must surface as clean, actionable error messages with HTTP status and provider context.",
+      "description": "src/cloud/provisioning/providers/digitalocean.ts (lines 100, 426, 469) and hetzner.ts (line 77) call response.json() without try-catch. If the cloud API returns non-JSON (HTML error page, gateway timeout, 5xx body), the unhandled exception propagates and crashes the entire provisioning flow with an opaque JSON parse error rather than a user-readable API error. Fix: wrap response.json() calls in try-catch, re-throw as a typed ProvisionError with the raw response status and body included.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "No bare response.json() calls in any provider adapter without error handling",
+        "A malformed provider API response surfaces a readable ProvisionError with HTTP status, not a JSON parse crash"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Confirmed in digitalocean.ts:100,426,469 and hetzner.ts:77. Bare response.json() calls with no error handling. Wrap each in try-catch, re-throw as ProvisionError with HTTP status. Check AWS and GCP providers too. Scope: 4-6 call sites across 2-4 files. Single sprint, ~30 min."
+    },
+    {
+      "id": "BUG-063",
+      "title": "snapshot.ts silently swallows builder VM destroy failures — leaves orphaned instances",
+      "intent": "No cloud resource must be silently abandoned. If a builder VM cannot be destroyed, the user must be warned with enough info to clean it up manually.",
+      "description": "src/cloud/provisioning/snapshot.ts lines 113, 126, and 144 call adapter.destroyVm() with .catch(() => {}) — silently discarding any destroy error. If the cleanup of the temporary builder VM fails (API error, timeout, network failure), the user is never notified and the VM continues running, incurring cost. Fix: replace .catch(() => {}) with .catch((err) => { log a warning to stderr with the VM ID and provider so the user can manually destroy it }).",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "No .catch(() => {}) on destroyVm() calls in snapshot.ts",
+        "Builder VM destroy failure logs a warning to stderr with VM ID and provider context"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Confirmed at snapshot.ts:113,126,144. Three identical .catch(() => {}) patterns. All three are in the cleanup path after snapshot build. Fix: replace each with .catch((err) => { process.stderr.write('Warning: builder VM destroy failed: ' + err.message + ' — VM ID: ' + builderId + ' must be manually destroyed'); }). Surgical 3-line change. Single sprint."
+    },
+    {
+      "id": "BUG-064",
+      "title": "Firewall creation failure leaves provisioned VM with unrestricted inbound traffic — no abort",
+      "intent": "A provisioned agent must never reach the user in an insecure state. Firewall failure is fatal — the VM must be destroyed and the user must be told to retry.",
+      "description": "src/cloud/provisioning/engine.ts line 184: when adapter.createFirewall() fails, the engine logs a warning ('Inbound traffic is unrestricted') and continues, leaving the VM running without firewall protection. The instance is then registered as active in an insecure state. Users who see this warning may not understand that all ports are open to the internet. Fix: on firewall failure, abort provisioning, destroy the VM, and return a ProvisionError. A VM without firewall must not be registered as an active instance.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "Firewall creation failure causes provisioning to abort and destroy the VM — no active instance is registered",
+        "User receives a clear error message that firewall failed and the VM was cleaned up automatically",
+        "No VM remains running after a firewall failure — verified by checking provider console"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "PRIORITY UPGRADED FROM SHOULD TO MUST. Rationale: AD-05 (Security is architecture, not policy) and the three non-negotiables both say security hardening is automatic, not opt-in. A provisioned VM without inbound firewall is a security breach — the user asked for a sovereign, hardened agent and got an internet-exposed VM instead. This is a trust-destroying failure mode, not a cosmetic issue. No active instance must ever be registered after a firewall failure. Fix is in engine.ts:184 — on firewallResult.success === false, call adapter.destroyVm(vmId), clean up registry entry, throw ProvisionError. Error message must be explicit: firewall failed, VM destroyed, please retry. Scope: ~10 lines in engine.ts. ORDERING: Sprint before CQ-047 (deploy command) — the deploy wizard must never surface this failure mode to users."
+    },
+    {
+      "id": "BUG-065",
+      "title": "Hardcoded AWS AMI IDs in aws.ts will become stale and silently break EC2 provisioning",
+      "intent": "EC2 provisioning must work in any supported AWS region with the current Ubuntu 24.04 LTS AMI. Hardcoded AMI IDs are a time bomb — runtime lookup is required.",
+      "description": "src/cloud/provisioning/providers/aws.ts lines 37-42 contain a hardcoded map of Ubuntu 24.04 AMI IDs per AWS region (e.g. 'us-east-1': 'ami-0c7217cdde317cfec'). AWS periodically updates these AMIs and the old IDs become invalid, causing provisioning to fail with an opaque EC2 error. Only 4 of ~25 AWS regions are covered — users in other regions fall back silently to the us-east-1 AMI which may not work in their region. Fix: add a runtime AMI lookup using the AWS EC2 DescribeImages API to fetch the current Ubuntu 24.04 LTS AMI for the target region at provision time. Fall back to hardcoded values only if the API call fails, and log a warning.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "AWS provisioning resolves the current Ubuntu 24.04 LTS AMI for the target region at runtime via EC2 DescribeImages",
+        "Provisioning works in AWS regions not in the old hardcoded map",
+        "If DescribeImages fails, falls back to hardcoded map and logs a visible warning"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-20",
+      "groomingNotes": "Confirmed at aws.ts:37-42. Only 4 regions hardcoded, AMIs not versioned, no refresh mechanism. Fix: use AWS EC2 describe-images API (filter: owner=099720109477 Canonical, name=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*, latest). Cache result in memory for the provisioning session. Fall back to hardcoded map if API call fails, log warning. Scope: ~30 lines in aws.ts, no new dependencies (AWS SDK already present). Single sprint."
     }
   ]
 }

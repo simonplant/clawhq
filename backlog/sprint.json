@@ -1,36 +1,31 @@
 {
-  "sprintId": "sprint-1774039462",
-  "startedAt": "2026-03-20T13:44:22-07:00",
+  "sprintId": "sprint-1774041015",
+  "startedAt": "2026-03-20T14:10:15-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-004",
-    "title": "clawhq demo --cloud — zero-config cloud demo (phase 2)",
-    "intent": "clawhq demo --cloud gives any user a zero-Docker path to experiencing a live agent in 60 seconds. Just a DO API token. Ephemeral droplet self-destructs on exit — no orphaned instances, no ongoing cost. This is the conversion tool for the sovereignty pitch.",
-    "description": "Phase 2 of FEAT-002 demo command. After CQ-044 (DO adapter) ships, add --cloud flag to 'clawhq demo' that provisions an ephemeral DigitalOcean droplet, spins up the demo agent in the cloud, opens the browser chat UI pointing at the cloud URL, and destroys the droplet on exit. Zero Docker requirement on the user's machine — they just need a DO API token. Scope: add --cloud flag to existing demo command; provision ephemeral DO droplet using CQ-043 engine + CQ-044 adapter; inject demo blueprint + mock LLM config via cloud-init (CQ-048); open browser pointing at cloud agent URL; cleanup droplet on SIGINT/exit. Cost: minimal — cx1 droplet for ~60s demo = fractions of a cent.",
-    "sourceBacklog": "backlog.json",
+    "id": "BUG-060",
+    "title": "resolveProviderAlias() omits Hetzner — clawhq deploy create --provider hetzner silently rejected",
+    "intent": "Every provider with a working adapter must be usable from the CLI. Hetzner is a first-class provider — users choosing sovereignty on European infrastructure must not hit a broken CLI gate.",
+    "description": "FEAT-003 implemented the Hetzner Cloud provider adapter (src/cloud/provisioning/providers/hetzner.ts) and CloudProvider type includes 'hetzner'. However, the resolveProviderAlias() function in src/cli/index.ts (line 3528-3537) only maps 'digitalocean', 'do', 'aws', 'gcp' — no 'hetzner' or 'hz' alias. Consequence: clawhq deploy create --provider hetzner exits with 'Invalid provider' error even though the adapter exists and works. Two error messages (lines 3378, 3520) also show the wrong provider list, omitting Hetzner. Fix: add 'hetzner' and 'hz' to the aliases map; update both error messages to include hetzner (hz).",
+    "sourceBacklog": "bugs.json",
     "steps": [
-      "Add --cloud flag to existing clawhq demo command in src/cli/index.ts",
-      "Check for DIGITALOCEAN_TOKEN env var; prompt user if not set",
-      "Provision ephemeral DO droplet via provisioning engine (smallest size, nearest region)",
-      "Inject demo blueprint + mock LLM config via cloud-init template (CQ-048)",
-      "Poll until agent responds healthy (max 3 min timeout with progress spinner)",
-      "Open browser to cloud agent chat URL",
-      "Register SIGINT/exit handler to destroy droplet immediately on exit",
-      "Show estimated cost (fractions of a cent) before provisioning and confirm"
+      "Add hetzner and hz entries to resolveProviderAlias() aliases map in src/cli/index.ts",
+      "Update error message at line 3378 to include hetzner (hz) in provider list",
+      "Update error message at line 3520 to include hetzner (hz) in provider list",
+      "Verify clawhq deploy create --provider hetzner proceeds past alias resolution",
+      "Verify clawhq deploy credentials --provider hz stores credentials correctly"
     ],
     "acceptanceCriteria": [
-      "clawhq demo --cloud provisions a cloud agent without Docker on the users machine",
-      "Only a DIGITALOCEAN_TOKEN is required — no other setup",
-      "Cost estimate shown before provisioning; user must confirm",
-      "Browser opens automatically to live cloud chat UI within 3 minutes",
-      "SIGINT destroys the droplet immediately — no orphaned instances",
-      "Exit path destroys droplet even on crash (best-effort cleanup with user warning)"
+      "clawhq deploy create --provider hetzner does not exit with Invalid provider error",
+      "clawhq deploy create --provider hz resolves to hetzner provider",
+      "Both deploy create and deploy credentials error messages list all four providers including hetzner (hz)",
+      "No other provider aliases are broken by the change"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T13:44:22-07:00",
+    "startedAt": "2026-03-20T14:10:15-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T13:57:01-07:00"
+    "completedAt": "2026-03-20T14:13:14-07:00"
   },
-  "completedAt": "2026-03-20T13:57:01-07:00",
+  "completedAt": "2026-03-20T14:13:14-07:00",
   "attempts": 1
 }
