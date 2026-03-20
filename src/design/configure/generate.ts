@@ -8,7 +8,7 @@
  * The generator never produces a config that fails validation.
  */
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { BOOTSTRAP_MAX_CHARS, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import type {
   ClawHQConfig,
   ComposeConfig,
@@ -124,7 +124,7 @@ function buildOpenClawConfig(
     // Identity from blueprint
     identity: {
       name: bp.name,
-      bootstrapMaxChars: 20_000,
+      bootstrapMaxChars: BOOTSTRAP_MAX_CHARS,
     },
 
     // Channel config

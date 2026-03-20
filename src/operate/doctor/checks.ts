@@ -17,7 +17,7 @@ import { access, constants, readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { BOOTSTRAP_MAX_CHARS, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
 
@@ -390,7 +390,7 @@ async function checkUserUid(
 async function checkIdentitySize(deployDir: string): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "identity-size";
   const identityDir = join(deployDir, "workspace", "identity");
-  const DEFAULT_MAX_CHARS = 20_000;
+  const DEFAULT_MAX_CHARS = BOOTSTRAP_MAX_CHARS;
 
   try {
     const entries = await readdir(identityDir);

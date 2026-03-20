@@ -7,7 +7,7 @@
  * See docs/OPENCLAW-REFERENCE.md § "The 14 Configuration Landmines" for details.
  */
 
-import { GATEWAY_DEFAULT_PORT } from "./defaults.js";
+import { BOOTSTRAP_MAX_CHARS, GATEWAY_DEFAULT_PORT } from "./defaults.js";
 import type {
   ComposeConfig,
   ComposeServiceConfig,
@@ -23,7 +23,7 @@ import type {
 // ── Constants ───────────────────────────────────────────────────────────────
 
 /** Default bootstrap character limit for identity files. */
-const DEFAULT_BOOTSTRAP_MAX_CHARS = 20_000;
+const DEFAULT_BOOTSTRAP_MAX_CHARS = BOOTSTRAP_MAX_CHARS;
 
 // Cron stepping syntax regex.
 //

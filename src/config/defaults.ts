@@ -144,3 +144,8 @@ export const OLLAMA_PROBE_TIMEOUT_MS = 5_000;
 
 /** Telegram long-poll getUpdates timeout in seconds. */
 export const TELEGRAM_POLLING_TIMEOUT_SEC = 30;
+
+// ── Identity / bootstrap limits ─────────────────────────────────────────────
+
+/** Maximum character budget for identity bootstrap content (LM-08). */
+export const BOOTSTRAP_MAX_CHARS = 20_000;
