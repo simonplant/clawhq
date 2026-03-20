@@ -1,7 +1,7 @@
 /**
- * Cloud module — trust modes, heartbeat, command queue.
+ * Cloud module — trust modes, heartbeat, command queue, provisioning.
  *
- * Optional layer for remote monitoring and managed hosting.
+ * Optional layer for remote monitoring, managed hosting, and cloud provisioning.
  * Zero-trust by design: agent-initiated only, signed commands,
  * content architecturally blocked.
  */
@@ -88,3 +88,40 @@ export {
   runFleetDoctor,
   unregisterAgent,
 } from "./fleet/index.js";
+
+// Provisioning
+export type {
+  CloudCredentials,
+  CloudProvider,
+  DestroyOptions,
+  DestroyResult as ProvisionDestroyResult,
+  InstanceRegistry,
+  InstanceRegistryStatus,
+  InstanceStatus,
+  InstanceStatusOptions,
+  ProviderAdapter,
+  ProviderCredential,
+  ProvisionedInstance,
+  ProvisionOptions,
+  ProvisionProgress,
+  ProvisionProgressCallback,
+  ProvisionResult,
+  ProvisionStepName,
+} from "./provisioning/index.js";
+export {
+  cloudCredentialsPath,
+  destroyInstance,
+  findInstance,
+  findInstanceByName,
+  generateCloudInit,
+  getInstanceStatus,
+  getProviderCredential,
+  instanceRegistryPath,
+  pollInstanceHealth,
+  provision,
+  readCloudCredentials,
+  readInstanceRegistry,
+  removeProviderCredential,
+  resolveAdapter,
+  setProviderCredential,
+} from "./provisioning/index.js";
