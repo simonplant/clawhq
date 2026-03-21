@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClawHQ — Your AI agent. Your hardware. Your data.</title>
+  <meta name="description" content="ClawHQ forges purpose-built AI agents from blueprints. One command. Runs on your machine. Zero data leaves unless you choose." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="/" class="logo">
+        <span class="logo-icon">🐾</span>
+        <span class="logo-text">ClawHQ</span>
+      </a>
+      <div class="nav-links">
+        <a href="#how-it-works">How it works</a>
+        <a href="#blueprints">Blueprints</a>
+        <a href="#who">Who it's for</a>
+        <a href="#sovereignty">Why sovereign</a>
+        <a href="https://github.com/simonplant/clawhq" class="btn btn-ghost" target="_blank" rel="noopener">GitHub</a>
+        <a href="#install" class="btn btn-primary">Get started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">Open source · Local-first · Zero lock-in</div>
+      <h1 class="hero-headline">
+        Your AI agent.<br>Your hardware.<br>Your data.
+      </h1>
+      <p class="hero-sub">
+        ClawHQ forges purpose-built AI agents from blueprints — one command, runs on your machine, zero bytes leave unless you choose. <strong>WordPress for AI agents.</strong>
+      </p>
+      <div class="hero-cta">
+        <a href="#install" class="btn btn-primary btn-lg">Install ClawHQ</a>
+        <a href="#blueprints" class="btn btn-outline btn-lg">Browse blueprints</a>
+      </div>
+      <div class="hero-terminal">
+        <div class="terminal">
+          <div class="terminal-bar">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+            <span class="terminal-title">~/</span>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-line"><span class="prompt">$</span> curl -fsSL https://clawhq.com/install | sh</div>
+            <div class="terminal-line terminal-output">✓ Checking prerequisites...</div>
+            <div class="terminal-line terminal-output">✓ Downloading ClawHQ...</div>
+            <div class="terminal-line terminal-output">✓ Hardening container (cap_drop: ALL, read-only rootfs)...</div>
+            <div class="terminal-line terminal-output">✓ Forging agent from "Email Manager" blueprint...</div>
+            <div class="terminal-line terminal-output">✓ Connected to Telegram.</div>
+            <div class="terminal-line terminal-output terminal-success">✓ Agent online. Say hello.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem / Solution -->
+  <section class="compare" id="why">
+    <div class="container">
+      <h2 class="section-title">Today's choice is broken.</h2>
+      <p class="section-sub">You pick between two bad options. ClawHQ is a third way.</p>
+      <div class="compare-grid">
+        <div class="compare-card compare-bad">
+          <div class="compare-label">Big Tech AI</div>
+          <ul>
+            <li>✓ Easy to use</li>
+            <li>✓ Polished</li>
+            <li>✗ Reads your emails</li>
+            <li>✗ Trains on your data</li>
+            <li>✗ You own nothing</li>
+            <li>✗ Gone when they decide</li>
+          </ul>
+        </div>
+        <div class="compare-card compare-bad">
+          <div class="compare-label">Raw OpenClaw</div>
+          <ul>
+            <li>✓ Sovereign</li>
+            <li>✓ Powerful</li>
+            <li>✗ 13,500 tokens of config</li>
+            <li>✗ 14 silent landmines</li>
+            <li>✗ Abandoned within a month</li>
+            <li>✗ Months of DevOps expertise</li>
+          </ul>
+        </div>
+        <div class="compare-card compare-good">
+          <div class="compare-label">ClawHQ</div>
+          <ul>
+            <li>✓ Easy to use</li>
+            <li>✓ Sovereign</li>
+            <li>✓ One command to working agent</li>
+            <li>✓ Zero bytes leave by default</li>
+            <li>✓ You own it forever</li>
+            <li>✓ Grows over time</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how" id="how-it-works">
+    <div class="container">
+      <h2 class="section-title">How ClawHQ works</h2>
+      <p class="section-sub">Three layers. One command.</p>
+      <div class="layers">
+        <div class="layer layer-cloud">
+          <div class="layer-label">Cloud <span class="tag">optional</span></div>
+          <p>Managed hosting · Remote monitoring · Blueprint library</p>
+          <p class="layer-note">The product works completely without this.</p>
+        </div>
+        <div class="layer layer-blueprints">
+          <div class="layer-label">Blueprints <span class="tag tag-primary">the product</span></div>
+          <p>Complete agent designs that configure <strong>everything</strong> in OpenClaw for a specific job.</p>
+          <div class="blueprint-examples">
+            <code>"Run my emails" →</code> email tools, triage skills, morning digest, inbox-zero cron<br>
+            <code>"Assist trading" →</code> market data, research skills, alerts, risk guardrails<br>
+            <code>"Plan meals" →</code> nutrition tools, shopping skills, weekly plan, dietary prefs<br>
+            <code>"Replace Google" →</code> email + calendar + tasks + full-day orchestration
+          </div>
+        </div>
+        <div class="layer layer-platform">
+          <div class="layer-label">Platform <span class="tag">table stakes</span></div>
+          <p>Install · Harden · Launch · Ops. Identical for every agent.</p>
+          <div class="platform-commands">
+            <code>clawhq install</code>
+            <code>clawhq up</code>
+            <code>clawhq doctor</code>
+            <code>clawhq backup</code>
+            <code>clawhq update</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Blueprints -->
+  <section class="blueprints" id="blueprints">
+    <div class="container">
+      <h2 class="section-title">Pick your blueprint</h2>
+      <p class="section-sub">A blueprint configures identity, tools, skills, cron, integrations, security, autonomy, memory, models, and egress — for a specific job.</p>
+      <div class="blueprint-grid">
+        <div class="blueprint-card">
+          <div class="blueprint-icon">📧</div>
+          <h3>Email Manager</h3>
+          <p>Inbox zero without giving a cloud company your emails. Triage, draft replies, morning digest. Auto-send routine replies after approval.</p>
+          <div class="blueprint-tags">
+            <span>IMAP/SMTP</span>
+            <span>FastMail</span>
+            <span>iCloud</span>
+          </div>
+        </div>
+        <div class="blueprint-card">
+          <div class="blueprint-icon">📈</div>
+          <h3>Stock Trading Assistant</h3>
+          <p>Market data, pre-market alerts, research synthesis, risk guardrails. Never executes trades — surfaces setups and levels.</p>
+          <div class="blueprint-tags">
+            <span>Yahoo Finance</span>
+            <span>Substack</span>
+            <span>ES Futures</span>
+          </div>
+        </div>
+        <div class="blueprint-card">
+          <div class="blueprint-icon">🥗</div>
+          <h3>Meal Planner</h3>
+          <p>Weekly meal plans against clinical nutrition targets. Shopping lists, pantry tracking, dietary preferences. MASLD-aware, Mediterranean-focused.</p>
+          <div class="blueprint-tags">
+            <span>USDA data</span>
+            <span>Recipe DB</span>
+            <span>CalDAV</span>
+          </div>
+        </div>
+        <div class="blueprint-card">
+          <div class="blueprint-icon">📅</div>
+          <h3>Replace Google Assistant</h3>
+          <p>Email + calendar + tasks + daily brief. Full-day orchestration from a single Telegram message each morning.</p>
+          <div class="blueprint-tags">
+            <span>CalDAV</span>
+            <span>Tasks</span>
+            <span>Email</span>
+          </div>
+        </div>
+        <div class="blueprint-card">
+          <div class="blueprint-icon">✍️</div>
+          <h3>AI Blog Maintainer</h3>
+          <p>Research, writing ideas, editorial workflow. Publish with approval. Builds a content calendar from your existing work.</p>
+          <div class="blueprint-tags">
+            <span>Web research</span>
+            <span>Editorial</span>
+            <span>Publishing</span>
+          </div>
+        </div>
+        <div class="blueprint-card">
+          <div class="blueprint-icon">🏢</div>
+          <h3>Founder's Ops</h3>
+          <p>Inbox zero, investor updates, hiring pipeline. Never miss a follow-up. Drafts in your voice, sends with your approval.</p>
+          <div class="blueprint-tags">
+            <span>Email</span>
+            <span>Calendar</span>
+            <span>CRM</span>
+          </div>
+        </div>
+      </div>
+      <p class="blueprints-note">Community blueprints coming. Build your own with <code>clawhq evolve</code>.</p>
+    </div>
+  </section>
+
+  <!-- A Day With ClawHQ -->
+  <section class="day" id="your-day">
+    <div class="container">
+      <h2 class="section-title">A morning without surveillance</h2>
+      <div class="day-grid">
+        <div class="day-without">
+          <h3 class="day-label day-label-bad">Without ClawHQ</h3>
+          <p>You wake up and check Gmail — Google reads every email. You ask ChatGPT to draft a response — OpenAI stores it. You check Google Calendar — Google knows your schedule.</p>
+          <p class="day-kicker">By 9 AM, four companies know more about your day than your spouse does.</p>
+        </div>
+        <div class="day-with">
+          <h3 class="day-label day-label-good">With ClawHQ</h3>
+          <div class="telegram-mockup">
+            <div class="telegram-message">
+              <div class="telegram-avatar">🐾</div>
+              <div class="telegram-bubble">
+                <strong>Morning.</strong> 3 meetings today. I triaged 40 emails — 6 need you. John moved Thursday's standup, conflicts with your client call — I've drafted a reschedule for your approval. Focus block 10–12 is protected. Investor update due Friday — I've drafted an outline.
+              </div>
+            </div>
+          </div>
+          <p class="day-kicker">Zero bytes left your machine. You reply "yes" and get on with your morning.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Data Sovereignty -->
+  <section class="sovereignty" id="sovereignty">
+    <div class="container">
+      <h2 class="section-title">Your data, fully</h2>
+      <div class="sovereignty-grid">
+        <div class="sovereignty-card">
+          <div class="sovereignty-icon">🏠</div>
+          <h3>Local by default</h3>
+          <p>Ollama models run on your hardware. Cloud APIs are opt-in per task category. The agent works fully air-gapped.</p>
+        </div>
+        <div class="sovereignty-card">
+          <div class="sovereignty-icon">🔍</div>
+          <h3>Transparent</h3>
+          <p>Every tool execution logged. Every outbound call tracked. Every data touch auditable. Open source — verify every claim.</p>
+        </div>
+        <div class="sovereignty-card">
+          <div class="sovereignty-icon">📦</div>
+          <h3>Portable</h3>
+          <p><code>clawhq export</code> — take everything. Works with raw OpenClaw. No vendor lock-in, ever.</p>
+        </div>
+        <div class="sovereignty-card">
+          <div class="sovereignty-icon">🔥</div>
+          <h3>Deletable</h3>
+          <p><code>clawhq destroy</code> — cryptographic proof it's gone. Not "deleted from our servers." Provably wiped from yours.</p>
+        </div>
+        <div class="sovereignty-card">
+          <div class="sovereignty-icon">🔒</div>
+          <h3>Hardened by default</h3>
+          <p>Container runs with <code>cap_drop: ALL</code>, read-only rootfs, non-root UID 1000, egress firewall. Security is architecture, not policy.</p>
+        </div>
+        <div class="sovereignty-card">
+          <div class="sovereignty-icon">📈</div>
+          <h3>Grows over time</h3>
+          <p>Add skills, connect services, install providers — through a sandboxed, vetted, rollback-capable pipeline. Month 6 does more than day 1.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Who It's For -->
+  <section class="personas" id="who">
+    <div class="container">
+      <h2 class="section-title">Who it's for</h2>
+      <div class="personas-grid">
+        <div class="persona-card">
+          <div class="persona-icon">🔒</div>
+          <h3>Privacy Migrant</h3>
+          <p>Using ChatGPT or Google Assistant, increasingly uncomfortable. Not necessarily technical. Biggest headache: no alternative that doesn't require becoming a sysadmin.</p>
+          <div class="persona-quote">"I want a personal AI. I just don't want Google to read my emails to power it."</div>
+        </div>
+        <div class="persona-card">
+          <div class="persona-icon">🛠️</div>
+          <h3>Tinkerer</h3>
+          <p>Technical user comfortable with Docker and CLI. Got OpenClaw running, hit the wall. Biggest headache: the gap between "it's running" and "it actually works well."</p>
+          <div class="persona-quote">"I can do the DevOps. I don't want to spend my weekends configuring cron jobs."</div>
+        </div>
+        <div class="persona-card">
+          <div class="persona-icon">🗂️</div>
+          <h3>Fleet Operator</h3>
+          <p>Manages agents for multiple people or use cases. Cares about fleet-wide visibility, consistent security, and operational efficiency at scale.</p>
+          <div class="persona-quote">"I need 10 agents running identically. One dashboard. No snowflakes."</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How Your Agent Grows -->
+  <section class="growth" id="growth">
+    <div class="container">
+      <h2 class="section-title">Your agent gets smarter over time</h2>
+      <p class="section-sub">Day 1 to month 6. Every step is something you approved.</p>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-marker">W1</div>
+          <div class="timeline-body">
+            <h3>Week 1</h3>
+            <p>Baseline works. Email triage, calendar management, morning briefs. Local models handling everything — zero bytes leave.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-marker">M1</div>
+          <div class="timeline-body">
+            <h3>Month 1</h3>
+            <p>Install a Slack skill. Add OpenAI for research-only tasks. Email stays 100% local. Egress dashboard shows exactly which providers get what.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-marker">M3</div>
+          <div class="timeline-body">
+            <h3>Month 3</h3>
+            <p>Three new integrations. The agent handles routine replies in your voice. It knows your top clients are always priority. You approved everything, but you barely think about it anymore.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-marker">M6</div>
+          <div class="timeline-body">
+            <h3>Month 6</h3>
+            <p>12 skills, 6 integrations, 3 providers, 8 tools. It built itself a tool for parsing your weekly analytics. Nothing runs that you can't trace. Rollback any change in seconds.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section class="install" id="install">
+    <div class="container">
+      <h2 class="section-title">Get started in one command</h2>
+      <p class="section-sub">Linux, macOS, or WSL. Your PC, a Mac Mini, or any VPS.</p>
+      <div class="install-options">
+        <div class="install-card install-card-primary">
+          <div class="install-label">Trusted install <span class="tag tag-recommended">Recommended</span></div>
+          <div class="install-cmd">
+            <code>curl -fsSL https://clawhq.com/install | sh</code>
+            <button class="copy-btn" onclick="copyToClipboard('curl -fsSL https://clawhq.com/install | sh', this)" title="Copy">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+          </div>
+          <p class="install-note">Signed, hash-verified. Requires curl + Docker.</p>
+        </div>
+        <div class="install-card">
+          <div class="install-label">Zero-trust install</div>
+          <div class="install-cmd">
+            <code>git clone https://github.com/simonplant/clawhq<br>cd clawhq && ./install --from-source --verify</code>
+          </div>
+          <p class="install-note">Clone, audit, build from source. For the security-paranoid (no judgment — we'd do the same).</p>
+        </div>
+      </div>
+      <div class="install-after">
+        <h3>Then:</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <code>clawhq init --guided</code>
+              <p>Pick a blueprint, connect your services, customize.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <code>clawhq up</code>
+              <p>Preflight checks, hardened container, smoke test, firewall.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <span class="emoji-lg">🐾</span>
+              <p>Your agent is running. Say hello on Telegram.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="logo-icon">🐾</span>
+        <span class="logo-text">ClawHQ</span>
+        <p>Your agent. Your hardware. Your data.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <div class="footer-col-title">Product</div>
+          <a href="#blueprints">Blueprints</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="#install">Install</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Develop</div>
+          <a href="https://github.com/simonplant/clawhq" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/simonplant/clawhq/blob/main/docs/PRODUCT.md" target="_blank" rel="noopener">Product docs</a>
+          <a href="https://github.com/simonplant/clawhq/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">Architecture</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Built on</div>
+          <a href="https://openclaw.dev" target="_blank" rel="noopener">OpenClaw</a>
+          <a href="https://ollama.ai" target="_blank" rel="noopener">Ollama</a>
+        </div>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <p>Active development. Open source. MIT License.</p>
+    </div>
+  </footer>
+
+  <script>
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+        setTimeout(() => {
+          btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>
