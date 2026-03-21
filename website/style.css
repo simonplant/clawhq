@@ -743,6 +743,109 @@ code, pre {
   text-align: center;
 }
 
+/* ── Personas ────────────────────────────────────────────────── */
+.personas { padding: 100px 0; background: var(--bg-1); }
+
+.personas-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.persona-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 28px;
+}
+
+.persona-icon {
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.persona-card h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+.persona-card p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.persona-quote {
+  font-style: italic;
+  font-size: 0.875rem;
+  color: var(--accent);
+  border-left: 2px solid var(--accent);
+  padding-left: 12px;
+  line-height: 1.5;
+}
+
+/* ── Growth Timeline ─────────────────────────────────────────── */
+.growth { padding: 100px 0; }
+
+.timeline {
+  max-width: 700px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 28px;
+  padding-bottom: 40px;
+  position: relative;
+}
+
+.timeline-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: 48px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent), var(--border));
+}
+
+.timeline-marker {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.05em;
+  position: relative;
+  z-index: 1;
+}
+
+.timeline-body h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  padding-top: 10px;
+  color: var(--text);
+}
+
+.timeline-body p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .nav-links > a:not(.btn) { display: none; }
@@ -750,6 +853,7 @@ code, pre {
   .compare-grid { grid-template-columns: 1fr; max-width: 400px; }
   .blueprint-grid { grid-template-columns: 1fr; }
   .sovereignty-grid { grid-template-columns: 1fr 1fr; }
+  .personas-grid { grid-template-columns: 1fr; }
   .install-options { grid-template-columns: 1fr; }
   .day-grid { grid-template-columns: 1fr; }
   .footer-inner { flex-direction: column; gap: 32px; }
