@@ -1,0 +1,66 @@
+# content-draft skill configuration
+name: content-draft
+version: "1.0.0"
+description: "Content idea generation and first-draft writing — blog posts, social copy, newsletters; always requires approval"
+
+schedule:
+  event_driven: true         # triggered on-demand or weekly content cron
+  weekly_seed:
+    cron: "0 10 * * 0"       # Sunday 10am — weekly content seed run
+
+model:
+  provider: cloud            # writing quality requires larger model
+  preferred: "claude-sonnet"
+  fallback: "claude-haiku"
+  cloud_escalation: true
+
+dependencies:
+  tools:
+    - tavily
+    - sanitize
+    - tasks
+  skills:
+    - web-research
+
+# ALL content requires approval before publishing
+approval:
+  required: true
+  category: content_publishing
+  auto_approve: false
+  approval_stages:
+    - outline                # approve outline before writing
+    - draft                  # approve draft before polish
+    - final                  # final approval before publish
+
+boundaries:
+  network_access: true       # for research
+  file_write: true           # saves drafts to content/ directory
+  account_changes: false
+  auto_send: false
+  auto_publish: false        # NEVER publishes without approval
+
+# Content types
+content_types:
+  blog_post:
+    output_dir: content/blog/
+    min_words: 800
+    max_words: 3000
+  social_post:
+    output_dir: content/social/
+    max_chars: 280            # Twitter default; adjust per platform
+  newsletter:
+    output_dir: content/newsletters/
+    min_words: 400
+    max_words: 1200
+  thread:
+    output_dir: content/threads/
+    max_items: 20
+
+# Voice and style
+voice:
+  match_user: true           # match user's established voice
+  tone: null                 # populated from blueprint personality config
+  avoid:
+    - marketing_speak
+    - listicle_format        # unless explicitly requested
+    - fluff_padding
