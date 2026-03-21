@@ -1,0 +1,72 @@
+# email-triage skill configuration
+name: email-triage
+version: "1.0.0"
+description: "Smart inbox triage — categorize, label, archive, extract action items; runs every 15 minutes"
+
+schedule:
+  cron: "*/15 * * * *"
+  active_hours:
+    start: 6
+    end: 23
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - email
+    - tasks
+  skills: []
+
+# Triage is read + label + archive only — no sending
+approval:
+  required: false
+  category: read_only
+  auto_approve: true
+  requires_approval_for:
+    - unsubscribe_action
+    - mark_as_spam
+    - permanent_delete
+
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false
+  auto_archive: true      # archive non-actionable after classification
+  auto_label: true        # apply labels/flags
+
+# Classification categories
+categories:
+  urgent:
+    description: "Requires action today"
+    color: red
+    notify: true
+  action_required:
+    description: "Needs a reply or task created"
+    color: orange
+    notify: true
+  fyi:
+    description: "Read-only, no action needed"
+    color: blue
+    notify: false
+  newsletter:
+    description: "Newsletters and marketing"
+    color: grey
+    notify: false
+    auto_archive: true
+  receipt:
+    description: "Purchase receipts and confirmations"
+    color: green
+    notify: false
+    auto_archive: true
+
+# Action item extraction
+action_extraction:
+  enabled: true
+  create_tasks: true
+  task_tool: tasks
+  extract_deadlines: true
+  extract_commitments: true

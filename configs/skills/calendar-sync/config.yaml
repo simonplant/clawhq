@@ -1,0 +1,64 @@
+# calendar-sync skill configuration
+name: calendar-sync
+version: "1.0.0"
+description: "Proactive calendar management — conflict detection, meeting prep, agenda digests, focus block protection"
+
+schedule:
+  cron: "0 7 * * *"          # morning agenda at 7am
+  event_driven: true
+  triggers:
+    - email-digest            # new meeting invites
+    - heartbeat               # check for upcoming events
+
+# Model requirements
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+# Tools
+dependencies:
+  tools:
+    - ical
+    - email
+    - tasks
+  skills:
+    - morning-brief
+
+# Calendar changes always require approval
+approval:
+  required: true
+  category: calendar_change
+  auto_approve: false
+  auto_approve_categories:
+    - read_agenda
+    - conflict_detection
+    - reminder_notification
+  never_auto_approve:
+    - create_event
+    - delete_event
+    - modify_event
+
+# Boundaries
+boundaries:
+  network_access: false
+  file_write: true           # write prep notes to tasks
+  account_changes: false     # never changes calendar without approval
+  auto_send: false
+
+# Focus block protection
+focus_blocks:
+  enabled: true
+  protect: true              # warn before scheduling over protected blocks
+  default_blocks: []         # populated from blueprint config
+
+# Prep notes
+meeting_prep:
+  enabled: true
+  lookback_horizon: "24h"    # how far ahead to prep
+  generate_for:
+    - external_meetings
+    - recurring_1on1s
+  skip:
+    - personal
+    - blocked_time

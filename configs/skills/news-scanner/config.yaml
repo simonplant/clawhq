@@ -1,0 +1,65 @@
+# news-scanner skill configuration
+name: news-scanner
+version: "1.0.0"
+description: "Interest-based news aggregation — scan X, Substack, and web; filter hard; surface only signal"
+
+schedule:
+  cron: "0 9,17 * * *"       # twice daily: morning and evening
+  active_hours:
+    start: 6
+    end: 22
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - tavily
+    - sanitize               # mandatory for all external content
+  skills:
+    - web-research
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: true
+  file_write: true           # saves digest to memory/news-YYYY-MM-DD.md
+  account_changes: false
+  auto_send: false
+
+# Scanning sources
+sources:
+  web:
+    enabled: true
+    tool: tavily
+  x_twitter:
+    enabled: false           # enable if x tool is configured
+    tool: x
+  substack:
+    enabled: false           # enable if substack tool is configured
+    tool: substack
+
+# Interest-driven filtering
+filtering:
+  use_interest_graph: true   # filter by user's interests.json if available
+  signal_threshold: high     # only high-signal items
+  deduplication: true        # cross-source dedup
+  max_items_per_digest: 10   # cap digest length
+
+# Sanitization
+sanitization:
+  enabled: true
+  tool: sanitize
+  quarantine_on_fail: true   # skip items that fail sanitization
+
+# Output
+output:
+  format: digest
+  group_by: topic
+  include_source_links: true
+  save_to_memory: true
