@@ -1,0 +1,7 @@
+[build]
+  publish = "website"
+
+[[redirects]]
+  from = "/install"
+  to = "https://raw.githubusercontent.com/simonplant/clawhq/main/scripts/install.sh"
+  status = 302

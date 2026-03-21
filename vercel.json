@@ -1,0 +1,9 @@
+{
+  "outputDirectory": "website",
+  "rewrites": [
+    {
+      "source": "/install",
+      "destination": "https://raw.githubusercontent.com/simonplant/clawhq/main/scripts/install.sh"
+    }
+  ]
+}
