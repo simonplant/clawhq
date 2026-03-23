@@ -1,14 +1,20 @@
 # ClawHQ
 
-**WordPress for AI agents.**
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+**Curated configurations, skills, personas, and best practices for OpenClaw.**
 
 ---
 
-OpenClaw is the most powerful open-source framework for personal AI agents. It has its own control panel (the Gateway UI). It handles message routing, model calls, tool execution, sessions. It's a solid engine.
+## Why
+
+OpenClaw is the most powerful open-source framework for personal AI agents. It handles message routing, model calls, tool execution, sessions. It's a solid engine.
 
 But it's a *generic* engine. Getting OpenClaw to actually do what you want — manage your email, assist with stock trading, plan meals, maintain a blog — means wrangling ~13,500 tokens of config across 11+ files, dodging 14 silent landmines, writing custom tools, composing identity files, setting up cron jobs, configuring integrations, tuning autonomy levels, and doing ongoing SRE work. Most deployments are abandoned within a month.
 
-**ClawHQ turns generic, unsecured open-source software into your personalized digital agent — without you knowing how any of it works.** You get a Signal, Telegram, or Discord UI. We do the rest. Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically — identity, tools, skills, cron, integrations, security, autonomy, memory — through blueprints that configure a complete agent for a specific job.
+People in Asia are paying others to install OpenClaw because it's that hard. ClawHQ is the missing piece — production-ready templates and integrations that turn a generic, unsecured framework into your personalized digital agent, without you knowing how any of it works.
+
+**ClawHQ is like RightScale + WordPress templates for OpenClaw.** You get a Signal, Telegram, or Discord UI. We do the rest. Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically — identity, tools, skills, cron, integrations, security, autonomy, memory — through blueprints that configure a complete agent for a specific job.
 
 ## How It Works
 
@@ -40,9 +46,7 @@ But it's a *generic* engine. Getting OpenClaw to actually do what you want — m
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### The Platform
-
-One command installs the whole stack.
+## Quick Start
 
 ```bash
 # From trusted cache (default — signed, hash-verified)
@@ -52,62 +56,69 @@ curl -fsSL https://clawhq.com/install | sh
 git clone https://github.com/clawhq/clawhq && cd clawhq && ./install --from-source --verify
 ```
 
-Security hardening is automatic — `cap_drop ALL`, read-only rootfs, non-root UID 1000, egress firewall, identity files read-only. No opt-in required.
-
-```bash
-clawhq doctor [--fix]      # Every known failure mode, with auto-fix
-clawhq status [--watch]    # Single-pane health dashboard
-clawhq backup create       # Encrypted snapshot
-clawhq update [--check]    # Safe upstream upgrade with rollback
-clawhq creds               # Credential health probes
-clawhq audit               # Tool execution + egress audit trail
-```
-
-### Blueprints
-
-This is the product. Blueprints are complete agent designs that configure every dimension of OpenClaw for a specific job.
+Then pick a blueprint and forge your agent:
 
 ```bash
 clawhq init --guided       # Interactive: pick a use case, connect services
 clawhq init --smart        # AI-powered: describe what you want in plain language
 ```
 
-A blueprint configures:
+Security hardening is automatic — `cap_drop ALL`, read-only rootfs, non-root UID 1000, egress firewall, identity files read-only. No opt-in required.
 
-| Dimension | What It Configures | Example: "Run My Emails" |
-|---|---|---|
-| **Identity** | SOUL.md, AGENTS.md, personality, boundaries | Professional, concise, protective of time |
-| **Tools** | CLI wrappers generated and installed | `email` (himalaya), `calendar` (CalDAV) |
-| **Skills** | Autonomous capabilities | email-digest, morning-brief, auto-reply |
-| **Cron** | Scheduled jobs | Inbox check every 15min, daily digest at 8am |
-| **Integrations** | Service connections + credentials | IMAP, SMTP, CalDAV — validated live |
-| **Security** | Posture, firewall, sandbox | Hardened, egress to mail server only |
-| **Autonomy** | What agent does alone vs. asks permission | Auto-triage, flag for approval before sending |
-| **Memory** | Retention policy, tier sizes | Remember contacts and preferences, prune threads |
-| **Models** | Local vs. cloud routing per task type | Local for triage, cloud for complex drafting |
-| **Egress** | What data can leave the machine | Only mail server + calendar server |
+## What's Included
 
-**The agent evolves over time:**
+### Blueprints
+
+Production-ready agent designs in `configs/blueprints/`:
+
+| Blueprint | What It Does |
+|---|---|
+| `email-manager` | Email triage, digest, auto-reply, inbox zero |
+| `replace-google-assistant` | Email + calendar + tasks + daily brief |
+| `replace-chatgpt-plus` | Local-first ChatGPT replacement |
+| `replace-my-pa` | Full personal assistant orchestration |
+| `research-copilot` | Research workflows and synthesis |
+| `founders-ops` | Founder operations: investor updates, metrics, scheduling |
+| `family-hub` | Family coordination: meals, schedules, shopping |
+
+Each blueprint configures identity, tools, skills, cron, integrations, security, autonomy, memory, models, and egress for its use case.
+
+### Skills
+
+Reusable capabilities in `configs/skills/`:
+
+- **email-digest** — Summarize and triage incoming email
+- **morning-brief** — Daily briefing with calendar, tasks, weather
+- **schedule-guard** — Protect focus time, manage conflicts
+- **market-scan** — Market data monitoring and alerts
+- **meal-plan** — Weekly meal planning with dietary preferences
+- **investor-update** — Generate investor update drafts
+
+### Platform CLI
 
 ```bash
-clawhq skill install <name>     # Add a capability (sandboxed, vetted, rollback-ready)
-clawhq evolve                   # Manage capabilities, identity, integrations
-clawhq export                   # Portable bundle — yours forever
-clawhq destroy                  # Verified wipe — cryptographic proof it's gone
+clawhq doctor [--fix]      # Diagnostics for every known failure mode, with auto-fix
+clawhq status [--watch]    # Single-pane health dashboard
+clawhq backup create       # Encrypted snapshot
+clawhq update [--check]    # Safe upstream upgrade with rollback
+clawhq creds               # Credential health probes
+clawhq audit               # Tool execution + egress audit trail
+clawhq skill install <src> # Add a capability (sandboxed, vetted, rollback-ready)
+clawhq evolve              # Manage capabilities, identity, integrations
+clawhq export              # Portable bundle — yours forever
+clawhq destroy             # Verified wipe — cryptographic proof it's gone
 ```
 
-### Cloud
-
-Optional. The product works without it.
+### Cloud (Optional)
 
 ```bash
 clawhq cloud connect       # Link to clawhq.com
 ```
 
-- **Remote monitoring** — See agent health from your phone (status only, never content)
-- **Managed hosting** — Same platform on DigitalOcean, Hetzner, Mac Mini. Web console. Zero terminal.
-- **Blueprint library** — Community blueprints for every use case
-- **Fleet management** — Multi-agent dashboard for operators
+- Remote monitoring — see agent health from your phone (status only, never content)
+- Managed hosting — same platform on DigitalOcean, Hetzner, Mac Mini
+- Blueprint library — community blueprints for every use case
+- Fleet management — multi-agent dashboard for operators
 
 ## Deployment Options
 
@@ -130,11 +141,15 @@ Same platform. Same blueprints. Same agent. Different host.
 | **Deletable** | `clawhq destroy` — cryptographic verification of complete wipe. |
 | **Auditable** | Open source. Verify every claim. |
 
-## Why This Exists
+## Contributing
 
-OpenClaw is a powerful engine — but a generic one. Getting it to do a specific job well requires deep expertise. ClawHQ bridges that gap with blueprints: complete agent designs for specific use cases, forged into running agents with one command.
+Contributions are welcome. Share your personas, skills, and integrations with the community.
 
-ClawHQ is for people who want a personal AI agent that does a specific job — manages their email, assists with trading, plans meals, runs their schedule — on their own terms, on their own hardware, with their own data.
+- **Blueprints** — Add new agent designs to `configs/blueprints/`
+- **Skills** — Add reusable capabilities to `configs/skills/`
+- **Bug fixes and improvements** — PRs against any module welcome
+
+Please open an issue first for large changes. See the architecture docs in `docs/` for how the system fits together.
 
 ## Status
 
@@ -143,3 +158,11 @@ Active development. TypeScript CLI, tight coupling to OpenClaw's Node.js/TypeBox
 - [docs/PRODUCT.md](docs/PRODUCT.md) — Product design: problem, personas, user stories, build order
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Solution architecture: six modules, zero-trust remote admin
 - [docs/OPENCLAW-REFERENCE.md](docs/OPENCLAW-REFERENCE.md) — Engineering reference: OpenClaw internals, config landmines, integration surfaces
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
+
+```
+Copyright 2025-2026 Simon Plant
+```

@@ -7,7 +7,8 @@ Full docs: https://github.com/simonplant/aishore
 ## Setup
 
 ```bash
-.aishore/aishore init       # Detects project, scaffolds backlog/, configures validation
+.aishore/aishore init           # Interactive setup wizard
+.aishore/aishore init --yes     # Non-interactive (accept detected defaults)
 ```
 
 **Set your validation command** in `.aishore/config.yaml` — sprints won't verify without it:
@@ -32,6 +33,9 @@ The developer agent follows intent when the spec is ambiguous or steps seem wron
 ## Create Backlog Items
 
 ```bash
+# AI-populate from PRODUCT.md (non-interactive)
+.aishore/aishore backlog populate
+
 # Interactive
 .aishore/aishore backlog add
 
@@ -46,9 +50,9 @@ The developer agent follows intent when the spec is ambiguous or steps seem wron
   --ac "Returns 429 when limit exceeded" --ac-verify "curl -s -o /dev/null -w '%{http_code}' localhost:3000/api | grep 429"
 ```
 
-Key flags: `--title`, `--intent`, `--type feat|bug`, `--desc`, `--priority must|should|could|future`, `--category`, `--ac "..."`, `--ac-verify "cmd"` (must follow `--ac`), `--ready`
+Key flags: `--title`, `--intent`, `--type feat|bug`, `--desc`, `--priority must|should|could|future`, `--category`, `--step "..."` (repeatable), `--ac "..."`, `--ac-verify "cmd"` (must follow `--ac`), `--depends-on ID`, `--ready`
 
-Edit: `.aishore/aishore backlog edit <ID> --intent "..." --priority must --ready`
+Edit: `.aishore/aishore backlog edit <ID> --intent "..." --priority must --step "..." --clear-steps --ac "..." --clear-ac --ready`
 
 ## What Makes an Item Sprint-Ready
 
@@ -96,6 +100,7 @@ Grooming doesn't guarantee readiness — check with `backlog check <ID>` if item
 .aishore/aishore auto p1            # Must + should
 .aishore/aishore auto p2            # Must + should + could
 .aishore/aishore auto done --retries 2 --max-failures 3
+.aishore/aishore auto done --auto-review   # Run architecture review on completion
 ```
 
 Auto mode grooms when ready items drop below threshold, tracks failures across items, and stops after N consecutive failures (circuit breaker, default 5).

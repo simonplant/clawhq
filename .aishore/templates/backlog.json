@@ -1,0 +1,5 @@
+{
+  "description": "Feature backlog",
+  "items": [],
+  "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done."
+}

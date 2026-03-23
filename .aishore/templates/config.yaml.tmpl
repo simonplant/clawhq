@@ -1,0 +1,27 @@
+# aishore configuration
+
+project:
+  name: "$PROJECT_NAME"
+
+validation:
+  command: "$VALIDATE_CMD"
+  timeout: 120
+
+# models:
+#   primary: "claude-opus-4-6"
+#   fast: "claude-sonnet-4-6"
+
+# agent:
+#   timeout: 3600
+
+# Maturity protocol: developer runs implement → critique → harden phases.
+# Disable with --quick flag or set to false here.
+# maturity:
+#   enabled: true
+
+# notifications:
+#   on_complete: "notify-send 'aishore' \"Sprint $1: $2\""
+#   # Examples:
+#   #   Linux:  notify-send 'aishore' "Sprint $1: $2"
+#   #   macOS:  osascript -e "display notification \"Sprint $1: $2\" with title \"aishore\""
+#   #   Webhook: curl -s -X POST https://example.com/hook -d "{\"status\":\"$1\",\"item\":\"$2\"}"
