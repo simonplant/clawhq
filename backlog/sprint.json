@@ -1,34 +1,25 @@
 {
-  "sprintId": "sprint-1774366531",
-  "startedAt": "2026-03-24T08:35:31-07:00",
+  "sprintId": "sprint-1774366886",
+  "startedAt": "2026-03-24T08:41:26-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-011",
-    "title": "Create docs/CONTRIBUTING.md — how to contribute blueprints, skills, and code",
-    "intent": "A potential contributor must know exactly how to help — what's needed, what format to follow, and what the quality bar is. No CONTRIBUTING.md means no contributions.",
-    "description": "No CONTRIBUTING.md exists. The content must be written from scratch but patterns can be derived from: configs/blueprints/*.yaml (7 blueprints establishing the blueprint contribution format), configs/skills/*/SKILL.md + config.yaml (6 skills establishing the skill contribution format), docs/ARCHITECTURE.md (Architectural Decisions AD-01 through AD-05 establishing constraints contributors must respect), CLAUDE.md (Terminology table for naming conventions, Key Design Constraints for invariants). Cover three contribution types: blueprints (write a new blueprint YAML following the schema, test against landmine validator), skills (write SKILL.md + config.yaml + prompts/, follow boundary enforcement rules), and code (TypeScript conventions, branch strategy, PR process). Include a 'What's Needed' section listing the highest-impact contributions — e.g. 'we need blueprints for: stock trading, home automation, content creation' to guide contributors toward valuable work.",
-    "sourceBacklog": "backlog.json",
-    "steps": [
-      "Read configs/blueprints/email-manager.yaml as the reference blueprint format for contributors",
-      "Read configs/skills/email-digest/SKILL.md, config.yaml, and prompts/ as the reference skill format",
-      "Read docs/ARCHITECTURE.md Architectural Decisions section (AD-01 through AD-05) for constraints",
-      "Read CLAUDE.md Terminology table and Key Design Constraints for naming conventions and invariants",
-      "Compose docs/CONTRIBUTING.md with sections: Overview (three ways to contribute: blueprints, skills, code), Blueprint Contribution Guide (YAML schema, required fields, testing with landmine validator, example walkthrough), Skill Contribution Guide (SKILL.md format, config.yaml schema, prompt template patterns, boundary enforcement requirements), Code Contribution Guide (TypeScript conventions, branch strategy, PR process, testing requirements), What's Needed (list of high-impact contributions: specific blueprint ideas, skill ideas, tooling gaps), Architectural Constraints (link to AD-01 through AD-05 in ARCHITECTURE.md), Security Requirements (boundary enforcement for skills, no network unless declared, egress rules)"
-    ],
+    "id": "BUG-069",
+    "title": "Cloud provider POLL_INTERVAL_MS inconsistent: AWS uses 10s, others use 5s",
+    "intent": "All cloud providers poll at the same interval. CLOUD_POLL_INTERVAL_MS is defined once in config/defaults.ts — no inline duplicates.",
+    "description": "src/cloud/provisioning/providers/aws.ts:47 sets POLL_INTERVAL_MS = 10_000 while hetzner.ts, gcp.ts, and digitalocean.ts all use 5_000. No documented reason for AWS to poll half as frequently. All four providers define this constant inline rather than importing from config/defaults.ts. Steps: (1) add CLOUD_POLL_INTERVAL_MS = 5_000 to config/defaults.ts; (2) grep all provider files for POLL_INTERVAL_MS; (3) replace four inline constants with import from defaults; (4) run cloud/provisioning tests.",
+    "sourceBacklog": "bugs.json",
+    "steps": [],
     "acceptanceCriteria": [
-      "docs/CONTRIBUTING.md exists and covers: blueprint contribution guide, skill contribution guide, code contribution guide, what's needed, architectural constraints",
-      "Blueprint guide includes the YAML schema with required fields and a worked example",
-      "Skill guide includes SKILL.md format, config.yaml schema, and boundary enforcement rules",
-      "A 'What's Needed' section lists specific high-impact contribution opportunities",
-      "Security requirements for contributed skills are clearly stated"
+      "All four provider files import CLOUD_POLL_INTERVAL_MS from config/defaults.ts",
+      "No inline POLL_INTERVAL_MS literals remain in provider files",
+      "AWS provisioning polls at 5s matching other providers",
+      "cloud/provisioning tests pass with no regression"
     ],
-    "scope": [
-      "docs/CONTRIBUTING.md"
-    ],
-    "startedAt": "2026-03-24T08:35:31-07:00",
+    "scope": [],
+    "startedAt": "2026-03-24T08:41:26-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T08:41:24-07:00"
+    "completedAt": "2026-03-24T08:43:48-07:00"
   },
-  "completedAt": "2026-03-24T08:41:24-07:00",
+  "completedAt": "2026-03-24T08:43:48-07:00",
   "attempts": 1
 }
