@@ -9,7 +9,7 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { DIR_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import type { TrustMode } from "../../config/types.js";
 import type { DisconnectResult, SwitchModeResult, TrustModeState } from "../types.js";
 
@@ -74,7 +74,8 @@ function writeTrustModeState(deployDir: string, state: TrustModeState): void {
   const tmpPath = join(dir, tmpName);
 
   try {
-    writeFileSync(tmpPath, content);
+    writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
+    chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
   } catch (err) {
     throw new Error(
