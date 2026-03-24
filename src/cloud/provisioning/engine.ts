@@ -11,6 +11,8 @@
  * Also handles destroy (with verification) and status queries (with cost).
  */
 
+import { randomUUID } from "node:crypto";
+
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import { generateCloudInit } from "./cloud-init.js";
@@ -27,6 +29,7 @@ import {
   updateInstanceStatus,
 } from "./registry.js";
 import { generateSnapshotInit } from "./snapshot-init.js";
+import { generateSshKeypair } from "./ssh-keygen.js";
 import type {
   CloudProvider,
   DestroyOptions,
@@ -100,6 +103,10 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
   // Resolve cost for transparency
   const monthlyCost = adapter.getMonthlyCost(options.size);
 
+  // Generate SSH keypair for this instance
+  const instanceId = randomUUID();
+  const keypair = generateSshKeypair(options.deployDir, instanceId);
+
   // Step 2: Create VM (cloud-init or snapshot path)
   const costInfo = monthlyCost !== undefined ? ` ($${monthlyCost}/mo)` : "";
   report("create-vm", "running", `Creating ${options.size}${costInfo} VM in ${options.region}…`);
@@ -107,7 +114,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
   let createResult;
   if (options.snapshotId) {
     // Fast path: boot from pre-built snapshot with minimal config injection
-    const userData = generateSnapshotInit({ name: options.name });
+    const userData = generateSnapshotInit({ name: options.name, sshPublicKey: keypair.publicKey });
     createResult = await adapter.createVmFromSnapshot({
       name: options.name,
       region: options.region,
@@ -119,7 +126,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
     });
   } else {
     // Universal path: cloud-init bootstrap
-    const userData = generateCloudInit({ name: options.name });
+    const userData = generateCloudInit({ name: options.name, sshPublicKey: keypair.publicKey });
     createResult = await adapter.createVm({
       name: options.name,
       region: options.region,
@@ -149,6 +156,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
   if (!ipAddress) {
     report("wait-boot", "failed", "VM created but no IP address assigned");
     const instance = addInstance(options.deployDir, {
+      id: instanceId,
       name: options.name,
       provider: options.provider,
       providerInstanceId: createResult.providerInstanceId,
@@ -156,6 +164,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
       region: options.region,
       size: options.size,
       status: "provisioning",
+      sshKeyPath: keypair.privateKeyPath,
     });
     return {
       success: false,
@@ -205,6 +214,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
   report("registry", "running", "Registering instance…");
 
   const instance = addInstance(options.deployDir, {
+    id: instanceId,
     name: options.name,
     provider: options.provider,
     providerInstanceId: createResult.providerInstanceId,
@@ -212,6 +222,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
     region: options.region,
     size: options.size,
     status: "provisioning",
+    sshKeyPath: keypair.privateKeyPath,
   });
 
   // Step 6: Health check

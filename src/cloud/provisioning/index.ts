@@ -103,6 +103,10 @@ export {
 export { generateSnapshotInit } from "./snapshot-init.js";
 export type { SnapshotInitOptions } from "./snapshot-init.js";
 
+// SSH keypair generation
+export { generateSshKeypair, sshKeyPath } from "./ssh-keygen.js";
+export type { GeneratedKeypair } from "./ssh-keygen.js";
+
 // Deploy wizard
 export type {
   DeployWizardOptions,

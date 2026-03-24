@@ -26,6 +26,8 @@ export interface SnapshotInitOptions {
   readonly deployDir?: string;
   /** URL to POST health status to when agent is ready. */
   readonly healthCallbackUrl?: string;
+  /** SSH public key to inject into root authorized_keys. */
+  readonly sshPublicKey?: string;
 }
 
 /**
@@ -35,12 +37,13 @@ export interface SnapshotInitOptions {
  * they're already baked into the snapshot. Only injects blueprint config and starts.
  */
 export function generateSnapshotInit(options: SnapshotInitOptions): string {
-  const { name, blueprint, gatewayToken, trustMode, deployDir, healthCallbackUrl } = options;
+  const { name, blueprint, gatewayToken, trustMode, deployDir, healthCallbackUrl, sshPublicKey } = options;
 
   // Escape single quotes for safe shell embedding
   const safeName = name.replace(/'/g, "'\\''");
   const safeBlueprint = blueprint?.replace(/'/g, "'\\''") ?? "";
   const safeToken = gatewayToken?.replace(/'/g, "'\\''") ?? "";
+  const safeSshPublicKey = sshPublicKey?.replace(/'/g, "'\\''") ?? "";
   const safeDeployDir = deployDir?.replace(/'/g, "'\\''") ?? "";
   const safeCallbackUrl = healthCallbackUrl?.replace(/'/g, "'\\''") ?? "";
 
@@ -65,7 +68,14 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
-# ── 1. Configure agent (blueprint + tokens) ─────────────────────────────────
+${safeSshPublicKey ? `# ── 0. Inject SSH public key ──────────────────────────────────────────────
+
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+echo '${safeSshPublicKey}' >> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+
+` : ""}# ── 1. Configure agent (blueprint + tokens) ─────────────────────────────────
 
 ${safeBlueprint ? `clawhq init ${initArgs.join(" ")} || true` : "# No blueprint specified — using snapshot default config"}
 

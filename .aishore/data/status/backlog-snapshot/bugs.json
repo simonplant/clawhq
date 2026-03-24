@@ -69,11 +69,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "RE-GROOMED 2026-03-23 (priority bump). World-readable file containing instance data (IPs, provider IDs, and after BUG-072: SSH key paths) violates the security-by-default non-negotiable in CLAUDE.md. credentials.json uses FILE_MODE_SECRET (0600) — the registry must match. Bumped from should → must: hardening is automatic, not opt-in. Fix is 1 file, 1 line. No excuse to defer.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T18:25:46-07:00"
     },
     {
       "id": "BUG-075",
