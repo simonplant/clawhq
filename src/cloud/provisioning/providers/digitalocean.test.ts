@@ -61,7 +61,7 @@ describe("doRequest malformed JSON handling", () => {
     expect(result.valid).toBe(false);
     expect(result.error).toMatch(/DigitalOcean API returned non-JSON response/);
     // Body should be truncated to 200 chars
-    expect(result.error!.length).toBeLessThan(300);
+    expect(result.error?.length).toBeLessThan(300);
   });
 
   it("does not crash when text() also fails after json() fails", async () => {

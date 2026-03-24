@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProviderAdapter, ProvisionOptions } from "./types.js";
@@ -31,7 +32,7 @@ vi.mock("./registry.js", async () => {
     ...actual,
     addInstance: (...args: unknown[]) => {
       if (addInstanceOverride) return addInstanceOverride(...args);
-      return (actual.addInstance as Function)(...args);
+      return (actual.addInstance as (...a: unknown[]) => unknown)(...args);
     },
   };
 });

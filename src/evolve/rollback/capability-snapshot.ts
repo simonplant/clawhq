@@ -19,9 +19,10 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, 
 import { cp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+
 import type { CapabilityKind, CapabilitySnapshot, RestoreResult } from "./types.js";
 
-import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 
 import { DIR_MODE_SECRET } from "../../config/defaults.js";
+
 import { scaffoldDirs, writeInitialConfig } from "./scaffold.js";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { join } from "node:path";
 
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+
 import type { IntegrationManifest, IntegrationManifestEntry } from "./types.js";
 
 const MANIFEST_DIR = "ops/integrations";

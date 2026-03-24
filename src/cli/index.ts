@@ -24,6 +24,7 @@ import { detectLegacyInstallation, install, migrateDeployDir } from "../build/in
 import type { PrereqCheckResult } from "../build/installer/index.js";
 import { buildAllowlistFromBlueprint, deploy, restart, serializeAllowlist, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
+import type { CloudProvider, DeployUpdateProgress, ProvisionProgress, SnapshotBuildProgress } from "../cloud/index.js";
 import {
   buildSnapshot,
   connectCloud,
@@ -60,7 +61,6 @@ import {
   unregisterAgent,
   updateInstance,
 } from "../cloud/index.js";
-import type { CloudProvider, DeployUpdateProgress, ProvisionProgress, SnapshotBuildProgress } from "../cloud/index.js";
 import {
   detectSshKeys,
   estimateMonthlyCost,

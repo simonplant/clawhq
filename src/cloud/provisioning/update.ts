@@ -115,7 +115,7 @@ function buildRemoteCommand(options: DeployUpdateOptions): string | undefined {
       // Pull latest, rebuild, restart
       return "clawhq update --yes";
 
-    case "skill":
+    case "skill": {
       if (!options.skillArgs) return undefined;
       // Shell-escape each arg to prevent command injection on the remote
       const escapedArgs = options.skillArgs
@@ -124,6 +124,7 @@ function buildRemoteCommand(options: DeployUpdateOptions): string | undefined {
         .map(shellEscape)
         .join(" ");
       return `clawhq skill ${escapedArgs}`;
+    }
 
     default:
       return undefined;
@@ -144,9 +145,8 @@ interface SshExecOptions {
 /** Execute a command on a remote host via SSH. */
 function executeSsh(options: SshExecOptions): Promise<DeployUpdateResult> {
   // Build host key verification args: strict when key is known, accept-new otherwise.
-  let tmpKnownHostsPath: string | undefined;
   const hostKeyArgs = buildHostKeyArgs(options.host, options.sshHostKey);
-  tmpKnownHostsPath = hostKeyArgs.tmpKnownHostsPath;
+  const tmpKnownHostsPath = hostKeyArgs.tmpKnownHostsPath;
 
   return new Promise<DeployUpdateResult>((resolve) => {
     const args = [

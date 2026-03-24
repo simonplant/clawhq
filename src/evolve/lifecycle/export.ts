@@ -22,6 +22,7 @@ import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+
 import { emptyMaskReport, isTextFile, maskPii, mergeMaskResult } from "./mask.js";
 import type {
   ExportOptions,

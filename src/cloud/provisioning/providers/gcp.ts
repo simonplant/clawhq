@@ -146,7 +146,7 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
     try {
       parsed = JSON.parse(token) as ServiceAccountKey;
     } catch (err) {
-      throw new Error(`Invalid GCP service account JSON: ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(`Invalid GCP service account JSON: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
     }
     projectId = parsed.project_id;
     serviceAccount = parsed;

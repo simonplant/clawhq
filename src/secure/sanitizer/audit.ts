@@ -8,6 +8,7 @@ import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+
 import type { Threat } from "./detect.js";
 import { threatScore } from "./sanitize.js";
 

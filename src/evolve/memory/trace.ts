@@ -11,6 +11,7 @@ import { appendFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { DIR_MODE_SECRET } from "../../config/defaults.js";
+
 import type { DecisionTrace } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────

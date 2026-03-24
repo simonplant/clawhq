@@ -9,6 +9,8 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+
 import type {
   CloudProvider,
   InstanceRegistry,
@@ -16,7 +18,6 @@ import type {
   ProvisionedInstance,
 } from "./types.js";
 
-import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

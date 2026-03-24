@@ -11,7 +11,6 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { DIR_MODE_SECRET } from "../../config/defaults.js";
-
 import { maskPii } from "../lifecycle/mask.js";
 
 import { summarizeMemory } from "./summarize.js";
