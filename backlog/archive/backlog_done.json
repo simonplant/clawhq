@@ -1374,6 +1374,28 @@
     "completedAt": "2026-03-20T13:57:01-07:00"
   },
   {
+    "id": "FEAT-005",
+    "title": "clawhq deploy update — push config and version updates to cloud-deployed agents",
+    "intent": "A sovereign cloud agent that cannot be updated is a liability, not an asset. clawhq deploy update must let users push config changes, version upgrades, and new skills to any cloud-deployed agent without reprovisioning. The agent grows pillar must hold for cloud deployments.",
+    "description": "After clawhq deploy provisions a cloud agent, users need to push updates without reprovisioning from scratch. Three update scenarios: (1) config change — update blueprint vars or credentials without restart, (2) clawhq version upgrade — pull latest, rebuild Docker image, restart agent, (3) skill install/remove — evolve the cloud agent remotely. Implementation: SSH keypair injected at provision time (cloud-init). clawhq deploy update --id <agent-id> connects via SSH, pulls new config or runs clawhq update/skill commands on the remote. Requires deploy state file to track SSH endpoint and keypair location. Works in zero-trust mode — user initiates, no inbound from cloud service.",
+    "priority": "should",
+    "category": null,
+    "steps": [],
+    "acceptanceCriteria": [
+      "clawhq deploy update --id <agent-id> --config pushes updated blueprint vars to the remote agent without reprovisioning",
+      "clawhq deploy update --id <agent-id> --version pulls latest clawhq, rebuilds Docker image, and restarts the agent on the remote",
+      "clawhq deploy update --id <agent-id> --skill install <source> installs a skill on the remote agent",
+      "SSH keypair is read from the deploy state file — no manual key management by user",
+      "Update fails cleanly if agent-id not found in deploy state — helpful error shown"
+    ],
+    "status": "done",
+    "passes": true,
+    "readyForSprint": false,
+    "groomedAt": "2026-03-23",
+    "groomingNotes": "READY 2026-03-23. BUG-072 is complete (sprint-1774315547) — ProvisionedInstance.sshKeyPath exists and provisioning stores the keypair. BUG-073 also done. Implementation is SSH-based via child_process.execSync (no new deps). Scope: 1 new file (updater.ts) + 1 CLI edit (index.ts). Steps confirmed against types.ts — sshKeyPath at line 303, ipAddress at line 295.",
+    "completedAt": "2026-03-23T18:56:02-07:00"
+  },
+  {
     "id": "FEAT-006",
     "title": "Add skill system section to docs/ARCHITECTURE.md",
     "intent": "A contributor or evaluator reading ARCHITECTURE.md must understand the full system — the skill system is a core architectural layer that is currently undocumented there.",

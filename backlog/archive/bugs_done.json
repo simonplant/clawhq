@@ -1214,5 +1214,66 @@
     "groomingNotes": "RE-GROOMED 2026-03-23 (priority bump). World-readable file containing instance data (IPs, provider IDs, and after BUG-072: SSH key paths) violates the security-by-default non-negotiable in CLAUDE.md. credentials.json uses FILE_MODE_SECRET (0600) — the registry must match. Bumped from should → must: hardening is automatic, not opt-in. Fix is 1 file, 1 line. No excuse to defer.",
     "groomedAt": "2026-03-23",
     "completedAt": "2026-03-23T18:25:46-07:00"
+  },
+  {
+    "id": "BUG-075",
+    "title": "Cloud adapter initialization exceptions not caught in resolveAdapter() — crashes on bad credentials",
+    "intent": "A malformed stored credential produces a clear, actionable error message — never an uncaught exception stack trace.",
+    "description": "src/cloud/provisioning/engine.ts lines 62-73 call createAwsAdapter() and createGcpAdapter() which can throw exceptions during token parsing (malformed JSON, missing fields). These calls are not wrapped in try-catch. If a user's stored token is malformed, the error propagates uncaught and crashes the provisioning flow without a helpful error message. DigitalOcean and Hetzner adapters do not have this issue — only AWS and GCP. Steps: (1) Read src/cloud/provisioning/engine.ts around lines 62-73 to see resolveAdapter() implementation. (2) Read src/cloud/provisioning/providers/aws.ts createAwsAdapter() and src/cloud/provisioning/providers/gcp.ts createGcpAdapter() to understand what exceptions they throw. (3) Wrap the adapter creation calls in try-catch in resolveAdapter(). (4) On catch, throw a descriptive error: 'Failed to initialize AWS/GCP adapter: credentials may be malformed. Re-run clawhq creds to reconfigure.'",
+    "priority": "should",
+    "category": null,
+    "steps": [
+      "Read src/cloud/provisioning/engine.ts lines 62-73 — confirm createAwsAdapter() and createGcpAdapter() are called without try-catch",
+      "Read src/cloud/provisioning/providers/aws.ts createAwsAdapter() to identify what exceptions it throws and under what conditions",
+      "Read src/cloud/provisioning/providers/gcp.ts createGcpAdapter() to identify what exceptions it throws and under what conditions",
+      "Wrap createAwsAdapter() call in try-catch — on catch, throw new Error with message: 'Failed to initialize AWS adapter: credentials may be malformed. Re-run clawhq creds to reconfigure.'",
+      "Wrap createGcpAdapter() call in try-catch — on catch, throw new Error with message: 'Failed to initialize GCP adapter: service account JSON may be malformed. Re-run clawhq creds to reconfigure.'",
+      "Confirm DigitalOcean and Hetzner adapter initialization already handles errors gracefully",
+      "Run cloud/provisioning tests"
+    ],
+    "acceptanceCriteria": [
+      "Calling resolveAdapter() with a malformed AWS token throws a descriptive Error, not an uncaught exception",
+      "Calling resolveAdapter() with malformed GCP service account JSON throws a descriptive Error, not an uncaught exception",
+      "Error messages reference 'clawhq creds' as the remediation path",
+      "DigitalOcean and Hetzner adapter init behavior is unchanged"
+    ],
+    "scope": [],
+    "dependsOn": [],
+    "status": "done",
+    "passes": true,
+    "readyForSprint": false,
+    "groomingNotes": "READY. engine.ts:62-73 confirmed calling createAwsAdapter() and createGcpAdapter() without try-catch via codebase inspection. Both adapters do token parsing that can throw. Fix is local to engine.ts — 2 try-catch blocks. No new deps. Scope: 1 file (engine.ts).",
+    "groomedAt": "2026-03-23",
+    "completedAt": "2026-03-23T18:58:40-07:00"
+  },
+  {
+    "id": "BUG-076",
+    "title": "destroyInstance() leaves SSH private key on disk after instance is destroyed",
+    "intent": "A destroyed instance must leave no credentials on disk — the SSH private key file must be deleted as part of the destroy flow, not left at ~/.clawhq/cloud/keys/<id>.pem forever.",
+    "description": "src/cloud/provisioning/engine.ts destroyInstance() calls removeInstance() to clean the registry but never deletes the SSH private key file. The key is generated at src/cloud/provisioning/ssh-keygen.ts line 46 as deployDir/cloud/keys/<instanceId>.pem (mode 0600). After destroy, this file persists on disk indefinitely. The fix is in engine.ts destroyInstance(): after removeInstance() succeeds, read instance.sshKeyPath and delete the file if it exists. Use fs.rmSync with force:true so a missing file is not an error.",
+    "priority": "must",
+    "category": null,
+    "steps": [
+      "Read src/cloud/provisioning/engine.ts destroyInstance() (lines ~258-295) — confirm removeInstance() is the last call and instance.sshKeyPath is accessible before removal",
+      "Read src/cloud/provisioning/ssh-keygen.ts — confirm the key file path pattern: deployDir/cloud/keys/<instanceId>.pem",
+      "In destroyInstance(), before calling removeInstance(): capture instance.sshKeyPath (it will be gone from registry after removal)",
+      "After removeInstance() returns true: if captured sshKeyPath is set, call fs.rmSync(sshKeyPath, { force: true }) to delete the private key file",
+      "Run src/cloud/provisioning tests: registry.test.ts and ssh-keygen.test.ts — confirm no regressions"
+    ],
+    "acceptanceCriteria": [
+      "After destroyInstance() succeeds, the SSH private key file at instance.sshKeyPath no longer exists on disk",
+      "If instance.sshKeyPath was not set (older registry entries), destroy completes without error",
+      "DigitalOcean, AWS, GCP, and Hetzner destroy flows are all covered — the fix is in engine.ts (shared path), not in provider adapters"
+    ],
+    "scope": [
+      "src/cloud/provisioning/engine.ts"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "passes": true,
+    "readyForSprint": false,
+    "groomingNotes": "RE-GROOMED 2026-03-23. Elevated to must: verified destroy is a data sovereignty non-negotiable (CLAUDE.md). clawhq destroy must leave no credentials on disk — an SSH key persisting after destroy is a sovereignty violation, not just a cleanup miss. The intent field already uses must language. Security by default means cleanup is automatic. Fix is 3 lines in engine.ts — scope and steps unchanged.",
+    "groomedAt": "2026-03-23",
+    "completedAt": "2026-03-23T18:44:47-07:00"
   }
 ]
