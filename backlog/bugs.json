@@ -89,11 +89,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Two distinct gaps in same file. (1) createWriteStream without mode: unencrypted agent data world-readable during encryption window — same pattern as export.ts/BUG-106. (2) missing chmodSync after mkdirSync — same gap fixed in every bug in BUG-085..BUG-105 series. Steps follow exact proven pattern. writeFile (async) supports mode option same as writeFileSync. AC is stat-verifiable. Ready to sprint.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T22:35:14-07:00"
     },
     {
       "id": "BUG-108",
