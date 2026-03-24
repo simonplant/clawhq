@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1774322467",
-  "startedAt": "2026-03-23T20:21:07-07:00",
+  "sprintId": "sprint-1774322659",
+  "startedAt": "2026-03-23T20:24:19-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-081",
-    "title": "Integration credentials directory created without mode 0700 — engine/ dir world-listable",
-    "intent": "The engine/ directory must not be world-listable. It stores integration credentials and must be created with mode 0700 so directory contents cannot be enumerated, matching the protection applied to credentials.json itself.",
-    "description": "src/secure/credentials/credential-store.ts line 60 calls mkdirSync(dir, { recursive: true }) without a mode option, creating deployDir/engine/ with default permissions (0755). The engine/ directory contains credentials.json (integration API keys — IMAP passwords, Telegram tokens, OAuth secrets) written with mode 0600 (correct), but any user on the system can ls the engine/ directory to enumerate that integration credentials exist. Fix: add DIR_MODE_SECRET to the import from defaults.js and pass { recursive: true, mode: DIR_MODE_SECRET } to the mkdirSync call.",
+    "id": "BUG-082",
+    "title": ".env file parent directory created without mode 0700 — .env secrets world-listable",
+    "intent": "The directory containing .env files must not be world-listable. Create it with mode 0700 so secrets cannot be enumerated by other users, matching the protection applied to the .env file itself.",
+    "description": "src/secure/credentials/env-store.ts line 117 calls mkdirSync(dir, { recursive: true }) without a mode option, creating the .env file's parent directory with default permissions (0755). .env files are written with mode 0600 (correct) but any user on the system can ls the directory to enumerate that a .env file exists. Same class of vulnerability as BUG-077, BUG-078, and BUG-081. Fix: add DIR_MODE_SECRET to the import from defaults.js (line 15 already imports FILE_MODE_SECRET) and pass { recursive: true, mode: DIR_MODE_SECRET } to the mkdirSync call at line 117.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-23T20:21:07-07:00",
+    "startedAt": "2026-03-23T20:24:19-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T20:24:17-07:00"
+    "completedAt": "2026-03-23T20:27:19-07:00"
   },
-  "completedAt": "2026-03-23T20:24:17-07:00",
+  "completedAt": "2026-03-23T20:27:19-07:00",
   "attempts": 1
 }

@@ -60,11 +60,12 @@
       "acceptanceCriteria": [],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "READY. Same pattern as BUG-077, BUG-078, BUG-081. PRECISE STEPS: (1) Read env-store.ts line 15 — confirm 'import { FILE_MODE_SECRET }' from defaults.js, DIR_MODE_SECRET is NOT imported. (2) In env-store.ts line 15, add DIR_MODE_SECRET: change 'import { FILE_MODE_SECRET }' to 'import { DIR_MODE_SECRET, FILE_MODE_SECRET }'. (3) In env-store.ts line 117, change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). (4) env-store.test.ts already exists and tests file mode 0600 — add ONE new test: 'creates parent directory with mode 0700'. Pattern: mkdtempSync, define a subdirectory path (dir/engine/.env), call writeEnvAtomic with an empty EnvFile, statSync the parent dir (dir/engine/), assert mode & 0o777 === 0o700. (5) Run npm test to confirm all tests pass. AC: stat on the .env parent directory shows drwx------ (0700). File mode on .env remains 0600 unchanged.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T20:27:19-07:00"
     },
     {
       "id": "BUG-083",
