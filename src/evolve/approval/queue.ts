@@ -13,6 +13,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { DIR_MODE_SECRET } from "../../config/defaults.js";
 import { logApprovalResolution } from "../../secure/audit/logger.js";
 import type { AuditTrailConfig } from "../../secure/audit/types.js";
 
@@ -55,7 +56,7 @@ async function saveQueue(
   queue: ApprovalQueue,
 ): Promise<void> {
   const dir = join(deployDir, "workspace", "memory");
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2), { mode: 0o600 });
 }
 
