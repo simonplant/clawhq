@@ -5,11 +5,11 @@
  * via callback. On failure at any step, rollback restores the previous state.
  */
 
-import { existsSync, mkdirSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { FILE_MODE_EXEC } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_EXEC, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 import { createSnapshot, restoreSnapshot } from "./rollback.js";
 import { createStagedEntry, readStagedFiles, stageSkill } from "./stage.js";
@@ -51,8 +51,9 @@ async function saveManifest(
   manifest: SkillManifest,
 ): Promise<void> {
   const dir = join(deployDir, "workspace", "skills");
-  mkdirSync(dir, { recursive: true });
-  await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2));
+  mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(dir, DIR_MODE_SECRET);
+  await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2), { mode: FILE_MODE_SECRET });
 }
 
 function updateEntry(
