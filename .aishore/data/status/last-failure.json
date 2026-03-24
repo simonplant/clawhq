@@ -1,0 +1,9 @@
+{
+  "itemId": "FEAT-008",
+  "reason": "Implementation failed",
+  "detail": "Implementation failed",
+  "timestamp": "2026-03-23T17:47:15-07:00",
+  "agentLog": "/home/simon/dev/clawhq/.aishore/data/logs/developer-20260323T174505.log",
+  "result": {},
+  "logTail": ""
+}

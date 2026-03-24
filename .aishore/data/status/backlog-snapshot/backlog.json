@@ -121,7 +121,10 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "READY. Documentation task. All referenced source files confirmed (configs/blueprints/*.yaml, configs/skills/*/config.yaml, docs/ARCHITECTURE.md, docs/OPENCLAW-REFERENCE.md, CLAUDE.md). Steps source specific sections from existing docs — no content fabrication needed. Priority should is appropriate — power-user reference doc, not blocking first install. No dependencies."
+      "groomingNotes": "READY. Documentation task. All referenced source files confirmed (configs/blueprints/*.yaml, configs/skills/*/config.yaml, docs/ARCHITECTURE.md, docs/OPENCLAW-REFERENCE.md, CLAUDE.md). Steps source specific sections from existing docs — no content fabrication needed. Priority should is appropriate — power-user reference doc, not blocking first install. No dependencies.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-23T17:47:15-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-009",
