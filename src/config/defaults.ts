@@ -50,6 +50,9 @@ export const OPENCLAW_REPO_URL = "https://github.com/nicepkg/openclaw.git";
 /** Owner read/write only — secrets (.env, credentials.json). */
 export const FILE_MODE_SECRET = 0o600;
 
+/** Owner rwx only — directories containing secrets (keys/, cloud/). */
+export const DIR_MODE_SECRET = 0o700;
+
 /** Owner read/write, group+other read — general config files. */
 export const FILE_MODE_CONFIG = 0o644;
 

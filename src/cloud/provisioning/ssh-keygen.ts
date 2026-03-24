@@ -10,7 +10,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { FILE_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ export interface GeneratedKeypair {
 export function generateSshKeypair(deployDir: string, instanceId: string): GeneratedKeypair {
   const keysDir = join(deployDir, KEYS_DIR);
   if (!existsSync(keysDir)) {
-    mkdirSync(keysDir, { recursive: true });
+    mkdirSync(keysDir, { recursive: true, mode: DIR_MODE_SECRET });
   }
 
   const { publicKey, privateKey } = generateKeyPairSync("ed25519", {
