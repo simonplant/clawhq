@@ -16,11 +16,12 @@
         "SSH keypair is read from the deploy state file — no manual key management by user",
         "Update fails cleanly if agent-id not found in deploy state — helpful error shown"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "READY 2026-03-23. BUG-072 is complete (sprint-1774315547) — ProvisionedInstance.sshKeyPath exists and provisioning stores the keypair. BUG-073 also done. Implementation is SSH-based via child_process.execSync (no new deps). Scope: 1 new file (updater.ts) + 1 CLI edit (index.ts). Steps confirmed against types.ts — sshKeyPath at line 303, ipAddress at line 295."
+      "groomingNotes": "READY 2026-03-23. BUG-072 is complete (sprint-1774315547) — ProvisionedInstance.sshKeyPath exists and provisioning stores the keypair. BUG-073 also done. Implementation is SSH-based via child_process.execSync (no new deps). Scope: 1 new file (updater.ts) + 1 CLI edit (index.ts). Steps confirmed against types.ts — sshKeyPath at line 303, ipAddress at line 295.",
+      "completedAt": "2026-03-23T18:56:02-07:00"
     },
     {
       "id": "FEAT-008",

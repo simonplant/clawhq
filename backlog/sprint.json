@@ -1,26 +1,33 @@
 {
-  "sprintId": "sprint-1774316689",
-  "startedAt": "2026-03-23T18:44:49-07:00",
+  "sprintId": "sprint-1774317364",
+  "startedAt": "2026-03-23T18:56:04-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-005",
-    "title": "clawhq deploy update — push config and version updates to cloud-deployed agents",
-    "intent": "A sovereign cloud agent that cannot be updated is a liability, not an asset. clawhq deploy update must let users push config changes, version upgrades, and new skills to any cloud-deployed agent without reprovisioning. The agent grows pillar must hold for cloud deployments.",
-    "description": "After clawhq deploy provisions a cloud agent, users need to push updates without reprovisioning from scratch. Three update scenarios: (1) config change — update blueprint vars or credentials without restart, (2) clawhq version upgrade — pull latest, rebuild Docker image, restart agent, (3) skill install/remove — evolve the cloud agent remotely. Implementation: SSH keypair injected at provision time (cloud-init). clawhq deploy update --id <agent-id> connects via SSH, pulls new config or runs clawhq update/skill commands on the remote. Requires deploy state file to track SSH endpoint and keypair location. Works in zero-trust mode — user initiates, no inbound from cloud service.",
-    "sourceBacklog": "backlog.json",
-    "steps": [],
+    "id": "BUG-075",
+    "title": "Cloud adapter initialization exceptions not caught in resolveAdapter() — crashes on bad credentials",
+    "intent": "A malformed stored credential produces a clear, actionable error message — never an uncaught exception stack trace.",
+    "description": "src/cloud/provisioning/engine.ts lines 62-73 call createAwsAdapter() and createGcpAdapter() which can throw exceptions during token parsing (malformed JSON, missing fields). These calls are not wrapped in try-catch. If a user's stored token is malformed, the error propagates uncaught and crashes the provisioning flow without a helpful error message. DigitalOcean and Hetzner adapters do not have this issue — only AWS and GCP. Steps: (1) Read src/cloud/provisioning/engine.ts around lines 62-73 to see resolveAdapter() implementation. (2) Read src/cloud/provisioning/providers/aws.ts createAwsAdapter() and src/cloud/provisioning/providers/gcp.ts createGcpAdapter() to understand what exceptions they throw. (3) Wrap the adapter creation calls in try-catch in resolveAdapter(). (4) On catch, throw a descriptive error: 'Failed to initialize AWS/GCP adapter: credentials may be malformed. Re-run clawhq creds to reconfigure.'",
+    "sourceBacklog": "bugs.json",
+    "steps": [
+      "Read src/cloud/provisioning/engine.ts lines 62-73 — confirm createAwsAdapter() and createGcpAdapter() are called without try-catch",
+      "Read src/cloud/provisioning/providers/aws.ts createAwsAdapter() to identify what exceptions it throws and under what conditions",
+      "Read src/cloud/provisioning/providers/gcp.ts createGcpAdapter() to identify what exceptions it throws and under what conditions",
+      "Wrap createAwsAdapter() call in try-catch — on catch, throw new Error with message: 'Failed to initialize AWS adapter: credentials may be malformed. Re-run clawhq creds to reconfigure.'",
+      "Wrap createGcpAdapter() call in try-catch — on catch, throw new Error with message: 'Failed to initialize GCP adapter: service account JSON may be malformed. Re-run clawhq creds to reconfigure.'",
+      "Confirm DigitalOcean and Hetzner adapter initialization already handles errors gracefully",
+      "Run cloud/provisioning tests"
+    ],
     "acceptanceCriteria": [
-      "clawhq deploy update --id <agent-id> --config pushes updated blueprint vars to the remote agent without reprovisioning",
-      "clawhq deploy update --id <agent-id> --version pulls latest clawhq, rebuilds Docker image, and restarts the agent on the remote",
-      "clawhq deploy update --id <agent-id> --skill install <source> installs a skill on the remote agent",
-      "SSH keypair is read from the deploy state file — no manual key management by user",
-      "Update fails cleanly if agent-id not found in deploy state — helpful error shown"
+      "Calling resolveAdapter() with a malformed AWS token throws a descriptive Error, not an uncaught exception",
+      "Calling resolveAdapter() with malformed GCP service account JSON throws a descriptive Error, not an uncaught exception",
+      "Error messages reference 'clawhq creds' as the remediation path",
+      "DigitalOcean and Hetzner adapter init behavior is unchanged"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T18:44:49-07:00",
+    "startedAt": "2026-03-23T18:56:04-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T18:56:02-07:00"
+    "completedAt": "2026-03-23T18:58:40-07:00"
   },
-  "completedAt": "2026-03-23T18:56:02-07:00",
+  "completedAt": "2026-03-23T18:58:40-07:00",
   "attempts": 1
 }
