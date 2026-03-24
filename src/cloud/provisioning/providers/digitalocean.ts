@@ -97,7 +97,17 @@ export function createDigitalOceanAdapter(token: string): ProviderAdapter {
       return { ok: false, status: response.status, error: `DigitalOcean API error ${response.status}: ${text}` };
     }
 
-    const data = await response.json();
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch {
+      const text = await response.text().catch(() => "");
+      return {
+        ok: false,
+        status: response.status,
+        error: `DigitalOcean API returned non-JSON response (HTTP ${response.status}): ${text.slice(0, 200) || "(empty body)"}`,
+      };
+    }
     return { ok: true, status: response.status, data };
   }
 

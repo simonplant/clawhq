@@ -105,7 +105,13 @@ async function exchangeJwtForAccessToken(jwt: string): Promise<{ token: string; 
     return { error: `Token exchange error ${response.status}: ${text}` };
   }
 
-  const data = (await response.json()) as { access_token: string; expires_in: number };
+  let data: { access_token: string; expires_in: number };
+  try {
+    data = (await response.json()) as { access_token: string; expires_in: number };
+  } catch {
+    const text = await response.text().catch(() => "");
+    return { error: `GCP token exchange returned non-JSON response (HTTP ${response.status}): ${text.slice(0, 200) || "(empty body)"}` };
+  }
   return { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 - 60_000 };
 }
 
@@ -208,7 +214,17 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
       return { ok: false, status: response.status, error: `GCP API error ${response.status}: ${text}` };
     }
 
-    const data = await response.json();
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch {
+      const text = await response.text().catch(() => "");
+      return {
+        ok: false,
+        status: response.status,
+        error: `GCP API returned non-JSON response (HTTP ${response.status}): ${text.slice(0, 200) || "(empty body)"}`,
+      };
+    }
     return { ok: true, status: response.status, data };
   }
 
