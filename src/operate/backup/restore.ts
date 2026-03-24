@@ -214,7 +214,7 @@ export async function restoreBackup(options: BackupRestoreOptions): Promise<Back
     progress(onProgress, "apply", "running", "Restoring files to deployment directory...");
 
     // Ensure deploy directory exists
-    mkdirSync(deployDir, { recursive: true });
+    mkdirSync(deployDir, { recursive: true, mode: DIR_MODE_SECRET });
 
     // Copy extracted files to deployment directory
     // Preserve existing snapshots directory
@@ -296,7 +296,7 @@ async function applyRestore(sourceDir: string, deployDir: string): Promise<numbe
 /** Copy ops/ subdirectories except backup/ to preserve snapshot history. */
 async function copyOpsSelectively(sourceOps: string, destOps: string): Promise<void> {
   if (!existsSync(sourceOps)) return;
-  mkdirSync(destOps, { recursive: true });
+  mkdirSync(destOps, { recursive: true, mode: DIR_MODE_SECRET });
 
   const entries = await readdir(sourceOps, { withFileTypes: true });
   for (const entry of entries) {
