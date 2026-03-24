@@ -44,6 +44,12 @@ export type {
   SnapshotRegistry,
   SshKeyInfo,
   TokenValidationResult,
+  DeployUpdateOptions,
+  DeployUpdateMode,
+  DeployUpdateProgress,
+  DeployUpdateProgressCallback,
+  DeployUpdateResult,
+  DeployUpdateStepName,
 } from "./types.js";
 
 // Engine (orchestrator)
@@ -53,6 +59,9 @@ export {
   provision,
   resolveAdapter,
 } from "./engine.js";
+
+// Update (remote SSH)
+export { updateInstance } from "./update.js";
 
 // Registry
 export {

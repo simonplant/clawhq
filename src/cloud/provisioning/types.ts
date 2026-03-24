@@ -352,6 +352,46 @@ export type ProvisionStepName =
 
 export type ProvisionProgressCallback = (progress: ProvisionProgress) => void;
 
+// ── Update ──────────────────────────────────────────────────────────────────
+
+/** Options for updating a cloud-deployed agent via SSH. */
+export interface DeployUpdateOptions {
+  /** Deployment directory. */
+  readonly deployDir: string;
+  /** Instance ID from the registry. */
+  readonly instanceId: string;
+  /** Update mode. */
+  readonly mode: DeployUpdateMode;
+  /** Skill subcommand and source (required when mode is "skill"). */
+  readonly skillArgs?: string;
+  /** Optional abort signal. */
+  readonly signal?: AbortSignal;
+  /** Progress callback. */
+  readonly onProgress?: DeployUpdateProgressCallback;
+}
+
+/** Result of a deploy update operation. */
+export interface DeployUpdateResult {
+  readonly success: boolean;
+  /** Remote command output (stdout). */
+  readonly output?: string;
+  readonly error?: string;
+}
+
+/** Progress events during deploy update. */
+export interface DeployUpdateProgress {
+  readonly step: DeployUpdateStepName;
+  readonly status: "running" | "done" | "failed";
+  readonly message: string;
+}
+
+/** Steps in the deploy update flow. */
+export type DeployUpdateStepName = "resolve" | "connect" | "execute";
+
+export type DeployUpdateMode = "config" | "version" | "skill";
+
+export type DeployUpdateProgressCallback = (progress: DeployUpdateProgress) => void;
+
 // ── Snapshot Registry ────────────────────────────────────────────────────────
 
 /** A pre-built VM snapshot tracked in the snapshot registry. */

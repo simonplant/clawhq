@@ -124,6 +124,12 @@ export type {
   SnapshotRegistry,
   SshKeyInfo,
   TokenValidationResult,
+  DeployUpdateOptions,
+  DeployUpdateMode,
+  DeployUpdateProgress,
+  DeployUpdateProgressCallback,
+  DeployUpdateResult,
+  DeployUpdateStepName,
 } from "./provisioning/index.js";
 export type {
   DeployWizardOptions,
@@ -170,6 +176,7 @@ export {
   resolveAdapter,
   setProviderCredential,
   setProviderCredentialWithValidation,
+  updateInstance,
   snapshotRegistryPath,
   validateProviderToken,
 } from "./provisioning/index.js";
