@@ -6,10 +6,11 @@
  * get COPY'd into the container.
  */
 
-import { existsSync, mkdirSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import type { ToolManifest, ToolManifestEntry } from "./types.js";
 
 const MANIFEST_FILENAME = ".tool-manifest.json";
@@ -40,8 +41,9 @@ export async function saveToolManifest(
   manifest: ToolManifest,
 ): Promise<void> {
   const dir = join(deployDir, "workspace", "tools");
-  mkdirSync(dir, { recursive: true });
-  await writeFile(toolManifestPath(deployDir), JSON.stringify(manifest, null, 2) + "\n");
+  mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(dir, DIR_MODE_SECRET);
+  await writeFile(toolManifestPath(deployDir), JSON.stringify(manifest, null, 2) + "\n", { mode: FILE_MODE_SECRET });
 }
 
 /** Add or replace an entry in the manifest. */

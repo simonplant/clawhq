@@ -6,13 +6,13 @@
  * manifest, and triggers a Stage 2 rebuild so the container picks it up.
  */
 
-import { existsSync, mkdirSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { build } from "../../build/docker/build.js";
 import type { Stage1Config, Stage2Config } from "../../build/docker/types.js";
-import { FILE_MODE_EXEC } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_EXEC } from "../../config/defaults.js";
 
 import {
   loadToolManifest,
@@ -74,7 +74,8 @@ export async function installTool(
   // Generate tool script
   const content = generator();
   const toolsDir = join(deployDir, "workspace", "tools");
-  mkdirSync(toolsDir, { recursive: true });
+  mkdirSync(toolsDir, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(toolsDir, DIR_MODE_SECRET);
 
   const toolPath = join(toolsDir, name);
   await writeFile(toolPath, content, "utf-8");
