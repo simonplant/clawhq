@@ -1,29 +1,39 @@
 {
-  "sprintId": "sprint-1774368257",
-  "startedAt": "2026-03-24T09:04:17-07:00",
+  "sprintId": "sprint-1774368997",
+  "startedAt": "2026-03-24T09:16:37-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-110",
-    "title": "engine.ts: VM left running and SSH key orphaned if registry write throws after successful VM creation",
-    "intent": "A provisioning failure after VM creation must never leave the user with an untracked running VM. If the instance registry write fails, the user must receive the VM ID so they can clean it up manually — silent orphans are a security and cost risk.",
-    "description": "In src/cloud/provisioning/engine.ts around line 234, addInstance() is called without a try-catch after the VM has been created and the firewall applied. If writeInstanceRegistry() throws (disk full, permissions error), the error propagates uncaught and the provisioning function rejects. The VM is running, the firewall is in place, and the SSH private key is on disk at keypair.privateKeyPath — but no registry entry exists. clawhq deploy list will never show the instance. The user has an untracked running VM with no way to destroy it via clawhq. Fix: wrap addInstance() in try-catch; on failure, include the provider instance ID in the error message so the user can destroy it manually via the cloud console.",
-    "sourceBacklog": "bugs.json",
+    "id": "FEAT-013",
+    "title": "Slim README.md to storefront format — problem, solution, quickstart, links",
+    "intent": "The README must sell the project in 60 seconds — the current README is a product document pretending to be a landing page.",
+    "description": "The current README.md is a comprehensive product document containing architecture diagrams, deployment tables, data sovereignty matrices, CLI command listings, and blueprint dimension tables. This content belongs in docs/ files (most of which already exist in docs/ARCHITECTURE.md, docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md, or will be created by FEAT-006 through FEAT-012). After the docs/ files exist, the README must be cut to storefront format: one-sentence pitch ('WordPress for AI agents'), the problem (13,500 tokens, 14 landmines, abandoned deployments — 3 sentences max from the existing second paragraph), the solution (what ClawHQ does — 1 paragraph), quick start (install + init — 3 commands max, link to docs/QUICKSTART.md), the blueprint concept (1 paragraph + simple example, link to docs/CONFIGURATION.md), status (honest assessment), links section (all docs/ files), author section. Remove: How It Works detail, The Platform CLI listings, Blueprints dimension table, Cloud section, Deployment Options table, Data Sovereignty table, Why This Exists (fold into problem/solution). All removed content must have a home in a docs/ file.",
+    "sourceBacklog": "backlog.json",
     "steps": [
-      "Read src/cloud/provisioning/engine.ts lines 231-260 to understand the addInstance() call and surrounding flow.",
-      "Wrap the addInstance() call (line 234) in a try-catch. On catch, return a failure result that includes: the provider instance ID, the SSH key path, and instructions to destroy the VM manually via the cloud console. Do NOT clean up the SSH key or attempt to destroy the VM inside this error handler — those are separate concerns.",
-      "Write a test in engine.test.ts: mock writeFileSync (via registry) to throw on the registry write, verify the returned result has success:false and the providerInstanceId in the error message.",
-      "Run npm test -- --testPathPattern=engine.test to confirm all tests pass."
+      "Verify that docs/ARCHITECTURE.md (with FEAT-006 skill section), docs/QUICKSTART.md, docs/CONFIGURATION.md, docs/PROBLEMS.md, docs/ROADMAP.md, docs/CONTRIBUTING.md, and docs/CHANGELOG.md all exist",
+      "Keep in README.md: opening pitch ('WordPress for AI agents'), the problem paragraph (13,500 tokens, 14 landmines, abandoned deployments), the solution paragraph ('ClawHQ turns generic...')",
+      "Keep in README.md: the three-layer ASCII diagram from How It Works (Cloud/Blueprints/Platform) but remove all detail below it",
+      "Add abbreviated Quick Start: install one-liner, clawhq init --guided, clawhq up — then link to docs/QUICKSTART.md",
+      "Add one blueprint example (email-manager in 3 lines) then link to docs/CONFIGURATION.md",
+      "Add Status section with honest assessment",
+      "Add Links section listing every docs/ file with one-line description",
+      "Add Author section: Simon Plant, building AI infrastructure tools, open to roles",
+      "Remove: The Platform (CLI listings), Blueprints (dimension table, evolution commands), Cloud (managed hosting details), Deployment Options table, Data Sovereignty table, Why This Exists section",
+      "Verify all removed content exists in a docs/ file — nothing lost"
     ],
     "acceptanceCriteria": [
-      "If addInstance() throws after VM creation, provisionInstance() returns success:false with the provider instance ID and a message directing the user to destroy it manually",
-      "The SSH key path is included in the error output so the user can locate the orphaned key",
-      "Existing engine tests pass with no regression"
+      "README.md is under 150 lines (current is 300+)",
+      "README.md contains only: pitch, problem, solution, three-layer diagram, quick start (abbreviated), one blueprint example, status, links, author",
+      "Every section removed from README.md has a corresponding docs/ file containing the content",
+      "Links section includes: Architecture, Quickstart, Configuration, Problems, Roadmap, Contributing, Changelog",
+      "No content is lost — everything is in README.md or linked from it"
     ],
-    "scope": [],
-    "startedAt": "2026-03-24T09:04:17-07:00",
+    "scope": [
+      "README.md"
+    ],
+    "startedAt": "2026-03-24T09:16:37-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T09:08:21-07:00"
+    "completedAt": "2026-03-24T09:19:49-07:00"
   },
-  "completedAt": "2026-03-24T09:08:21-07:00",
+  "completedAt": "2026-03-24T09:19:49-07:00",
   "attempts": 1
 }
