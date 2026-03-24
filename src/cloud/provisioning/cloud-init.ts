@@ -134,7 +134,7 @@ fi
 # ── 6. Start agent ──────────────────────────────────────────────────────────
 
 if [ ! -f '${sentinel("up")}' ]; then
-  clawhq up ${upArgs.join(" ")} || true
+  clawhq up ${upArgs.join(" ")}
   touch '${sentinel("up")}'
 fi
 

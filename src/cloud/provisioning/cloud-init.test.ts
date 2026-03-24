@@ -26,6 +26,24 @@ describe("generateCloudInit", () => {
   });
 });
 
+// ── Cloud-init clawhq up must fail-fast ──────────────────────────────────────
+
+describe("generateCloudInit — clawhq up fail-fast", () => {
+  it("does not contain '|| true' after the clawhq up command", () => {
+    const script = generateCloudInit({
+      name: "test-vm",
+      blueprint: "email-manager",
+      gatewayToken: "tok_test",
+    });
+
+    // Split into lines and find the clawhq up line
+    const lines = script.split("\n");
+    const upLine = lines.find((l) => l.includes("clawhq up"));
+    expect(upLine).toBeDefined();
+    expect(upLine).not.toContain("|| true");
+  });
+});
+
 // ── Snapshot-init SSH injection ──────────────────────────────────────────────
 
 describe("generateSnapshotInit", () => {
