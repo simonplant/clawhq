@@ -10,7 +10,7 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { FILE_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 import type { CloudCredentials, CloudProvider, ProviderCredential, TokenValidationResult } from "./types.js";
 
@@ -50,7 +50,7 @@ function writeCloudCredentials(deployDir: string, creds: CloudCredentials): void
   const dir = dirname(path);
 
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
 
   const content = JSON.stringify(creds, null, 2) + "\n";
