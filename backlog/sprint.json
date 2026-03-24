@@ -1,25 +1,25 @@
 {
-  "sprintId": "sprint-1774366886",
-  "startedAt": "2026-03-24T08:41:26-07:00",
+  "sprintId": "sprint-1774367030",
+  "startedAt": "2026-03-24T08:43:50-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-069",
-    "title": "Cloud provider POLL_INTERVAL_MS inconsistent: AWS uses 10s, others use 5s",
-    "intent": "All cloud providers poll at the same interval. CLOUD_POLL_INTERVAL_MS is defined once in config/defaults.ts — no inline duplicates.",
-    "description": "src/cloud/provisioning/providers/aws.ts:47 sets POLL_INTERVAL_MS = 10_000 while hetzner.ts, gcp.ts, and digitalocean.ts all use 5_000. No documented reason for AWS to poll half as frequently. All four providers define this constant inline rather than importing from config/defaults.ts. Steps: (1) add CLOUD_POLL_INTERVAL_MS = 5_000 to config/defaults.ts; (2) grep all provider files for POLL_INTERVAL_MS; (3) replace four inline constants with import from defaults; (4) run cloud/provisioning tests.",
+    "id": "BUG-070",
+    "title": "Cloud provisioning timeout constants duplicated across 4 provider files — not in config/defaults.ts",
+    "intent": "All cloud provisioning timeout constants have a single source of truth in config/defaults.ts. No timeout literals appear in provider files.",
+    "description": "CLOUD_API_TIMEOUT_MS = 30_000 is duplicated identically in aws.ts:46, hetzner.ts:32, gcp.ts:46, and digitalocean.ts. CLOUD_POLL_TIMEOUT_MS and CLOUD_OPERATION_TIMEOUT_MS are also defined inline per provider. Per project convention, magic numbers belong in config/defaults.ts. Steps: (1) grep provider files for all timeout constant definitions; (2) add CLOUD_API_TIMEOUT_MS, CLOUD_POLL_TIMEOUT_MS, CLOUD_OPERATION_TIMEOUT_MS to config/defaults.ts; (3) replace all inline literals with imports; (4) run cloud/provisioning tests. Scope: 4-5 files, no logic change.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "All four provider files import CLOUD_POLL_INTERVAL_MS from config/defaults.ts",
-      "No inline POLL_INTERVAL_MS literals remain in provider files",
-      "AWS provisioning polls at 5s matching other providers",
+      "No timeout constants duplicated across provider files",
+      "CLOUD_API_TIMEOUT_MS, CLOUD_POLL_TIMEOUT_MS, CLOUD_OPERATION_TIMEOUT_MS defined once in config/defaults.ts",
+      "All provider files import timeout constants from defaults",
       "cloud/provisioning tests pass with no regression"
     ],
     "scope": [],
-    "startedAt": "2026-03-24T08:41:26-07:00",
+    "startedAt": "2026-03-24T08:43:50-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T08:43:48-07:00"
+    "completedAt": "2026-03-24T08:46:44-07:00"
   },
-  "completedAt": "2026-03-24T08:43:48-07:00",
+  "completedAt": "2026-03-24T08:46:44-07:00",
   "attempts": 1
 }
