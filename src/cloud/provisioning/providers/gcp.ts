@@ -126,10 +126,20 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
   let accessToken: string;
   let tokenExpiresAt = 0;
 
+  // Reject empty/whitespace-only tokens immediately
+  if (!token || !token.trim()) {
+    throw new Error("Invalid GCP service account JSON: token must not be empty");
+  }
+
   // Detect credential format
   if (token.trimStart().startsWith("{")) {
     // Service account JSON key
-    const parsed = JSON.parse(token) as ServiceAccountKey;
+    let parsed: ServiceAccountKey;
+    try {
+      parsed = JSON.parse(token) as ServiceAccountKey;
+    } catch (err) {
+      throw new Error(`Invalid GCP service account JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
     projectId = parsed.project_id;
     serviceAccount = parsed;
     accessToken = ""; // derived on first request
