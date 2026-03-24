@@ -30,6 +30,8 @@ export interface CloudInitOptions {
   readonly deployDir?: string;
   /** URL to POST health status to when agent is ready. */
   readonly healthCallbackUrl?: string;
+  /** SSH public key to inject into root authorized_keys. */
+  readonly sshPublicKey?: string;
 }
 
 // ── Sentinel paths ──────────────────────────────────────────────────────────
@@ -47,12 +49,13 @@ function sentinel(step: string): string {
  * Every step is guarded by sentinel files — safe to re-run on reboot.
  */
 export function generateCloudInit(options: CloudInitOptions): string {
-  const { name, blueprint, gatewayToken, trustMode, deployDir, healthCallbackUrl } = options;
+  const { name, blueprint, gatewayToken, trustMode, deployDir, healthCallbackUrl, sshPublicKey } = options;
 
   // Escape single quotes for safe shell embedding
   const safeName = name.replace(/'/g, "'\\''");
   const safeBlueprint = blueprint?.replace(/'/g, "'\\''") ?? "";
   const safeToken = gatewayToken?.replace(/'/g, "'\\''") ?? "";
+  const safeSshPublicKey = sshPublicKey?.replace(/'/g, "'\\''") ?? "";
   const safeDeployDir = deployDir?.replace(/'/g, "'\\''") ?? "";
   const safeCallbackUrl = healthCallbackUrl?.replace(/'/g, "'\\''") ?? "";
 
@@ -85,7 +88,14 @@ if [ ! -f '${sentinel("apt-update")}' ]; then
   touch '${sentinel("apt-update")}'
 fi
 
-# ── 2. Install Docker ───────────────────────────────────────────────────────
+${safeSshPublicKey ? `# ── 1b. Inject SSH public key ──────────────────────────────────────────────
+
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+echo '${safeSshPublicKey}' >> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+
+` : ""}# ── 2. Install Docker ───────────────────────────────────────────────────────
 
 if [ ! -f '${sentinel("docker")}' ]; then
   curl -fsSL https://get.docker.com | sh

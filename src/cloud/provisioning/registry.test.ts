@@ -121,6 +121,55 @@ describe("instance registry", () => {
     expect(findInstance(testDir, "bad-id")).toBeUndefined();
   });
 
+  // ── sshKeyPath persistence ─────────────────────────────────────────────────
+
+  it("persists sshKeyPath when provided", () => {
+    const inst = addInstance(testDir, {
+      name: "ssh-vm",
+      provider: "digitalocean",
+      providerInstanceId: "drop-ssh-1",
+      ipAddress: "10.0.0.20",
+      region: "nyc1",
+      size: "s-1vcpu-1gb",
+      status: "active",
+      sshKeyPath: "/home/user/.clawhq/keys/test-id.pem",
+    });
+
+    expect(inst.sshKeyPath).toBe("/home/user/.clawhq/keys/test-id.pem");
+
+    const found = findInstance(testDir, inst.id);
+    expect(found?.sshKeyPath).toBe("/home/user/.clawhq/keys/test-id.pem");
+  });
+
+  it("omits sshKeyPath when not provided (backward compat)", () => {
+    const inst = addInstance(testDir, {
+      name: "legacy-vm",
+      provider: "aws",
+      providerInstanceId: "i-legacy",
+      ipAddress: "10.0.0.21",
+      region: "us-east-1",
+      size: "t3.micro",
+      status: "active",
+    });
+
+    expect(inst.sshKeyPath).toBeUndefined();
+  });
+
+  it("uses caller-provided id when given", () => {
+    const inst = addInstance(testDir, {
+      id: "custom-uuid-12345",
+      name: "id-vm",
+      provider: "gcp",
+      providerInstanceId: "gcp-id-1",
+      ipAddress: "10.0.0.22",
+      region: "us-central1",
+      size: "e2-micro",
+      status: "active",
+    });
+
+    expect(inst.id).toBe("custom-uuid-12345");
+  });
+
   // ── AC3: All four providers confirm registry written with 0600 ───────────
 
   describe("file permissions (mode 0600)", () => {

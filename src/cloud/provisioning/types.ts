@@ -299,6 +299,8 @@ export interface ProvisionedInstance {
   readonly size: string;
   /** Current known status. */
   readonly status: InstanceRegistryStatus;
+  /** Local path to the SSH private key for this instance (mode 0600). */
+  readonly sshKeyPath?: string;
   /** ISO 8601 timestamp of provisioning. */
   readonly createdAt: string;
   /** ISO 8601 timestamp of last status update. */

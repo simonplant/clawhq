@@ -79,6 +79,7 @@ function writeInstanceRegistry(deployDir: string, registry: InstanceRegistry): v
 export function addInstance(
   deployDir: string,
   options: {
+    readonly id?: string;
     readonly name: string;
     readonly provider: CloudProvider;
     readonly providerInstanceId: string;
@@ -86,13 +87,14 @@ export function addInstance(
     readonly region: string;
     readonly size: string;
     readonly status: InstanceRegistryStatus;
+    readonly sshKeyPath?: string;
   },
 ): ProvisionedInstance {
   const registry = readInstanceRegistry(deployDir);
   const now = new Date().toISOString();
 
   const instance: ProvisionedInstance = {
-    id: randomUUID(),
+    id: options.id ?? randomUUID(),
     name: options.name,
     provider: options.provider,
     providerInstanceId: options.providerInstanceId,
@@ -100,6 +102,7 @@ export function addInstance(
     region: options.region,
     size: options.size,
     status: options.status,
+    ...(options.sshKeyPath !== undefined ? { sshKeyPath: options.sshKeyPath } : {}),
     createdAt: now,
     updatedAt: now,
   };
