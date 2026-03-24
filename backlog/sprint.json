@@ -1,34 +1,38 @@
 {
-  "sprintId": "sprint-1774312410",
-  "startedAt": "2026-03-23T17:33:30-07:00",
+  "sprintId": "sprint-1774312650",
+  "startedAt": "2026-03-23T17:37:30-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-006",
-    "title": "Add skill system section to docs/ARCHITECTURE.md",
-    "intent": "A contributor or evaluator reading ARCHITECTURE.md must understand the full system — the skill system is a core architectural layer that is currently undocumented there.",
-    "description": "docs/ARCHITECTURE.md is nearly production-ready and covers platform, blueprints, security, deployment, modules, and architectural decisions. But the skill system — a core runtime layer — has no dedicated section. Skills are documented individually in configs/skills/*/SKILL.md and configs/skills/*/config.yaml but the architectural pattern (declarative skill definition, cron trigger, prompt templates, boundary enforcement, approval gates) is never explained as a system. Add a 'Layer 3: Skills' section (or 'The Skill System') to ARCHITECTURE.md between the Blueprint and Security sections. Source content from: the 6 existing SKILL.md files (email-digest, investor-update, market-scan, meal-plan, morning-brief, schedule-guard) for the pattern, and the 6 config.yaml files for the schema (schedule, model, dependencies, approval, boundaries). The section should explain: what a skill is, the skill lifecycle (trigger → prompt → execute → boundary check → approval gate), the config.yaml schema, and how skills compose with blueprints.",
+    "id": "FEAT-007",
+    "title": "Create docs/QUICKSTART.md — install to working agent in under 10 minutes",
+    "intent": "A new user must go from nothing to a working personal AI agent using a single document — if they need to read the README, ARCHITECTURE.md, and PRODUCT.md to get started, they won't.",
+    "description": "No quickstart document exists. Content fragments are scattered across: README.md (install commands: curl one-liner and git clone, clawhq init --guided/--smart, clawhq doctor, clawhq status), docs/ARCHITECTURE.md (Install Phases: install → configure → harden → test → launch, Engine Acquisition: trusted cache vs from-source), CLAUDE.md (CLI Commands: full command listing with descriptions), and docs/PRODUCT.md (What Your Day Looks Like: before/after narrative showing the user experience). The quickstart must walk through: prerequisites (Docker, Node.js >=22, Ollama for local models), install (curl or git clone), init wizard (--guided walkthrough with expected output for each step), pick a blueprint (email-manager as the default first experience), connect integrations (IMAP/SMTP for email-manager), launch (clawhq up), verify (clawhq status, clawhq doctor), first interaction (send a message via Signal/Telegram/Discord). Include expected terminal output at each step. The email-manager blueprint is the best first experience because email is universal and the blueprint is fully defined.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Read docs/ARCHITECTURE.md to understand the current structure and find the right insertion point (after Layer 2: Blueprints, before Security Architecture)",
-      "Read configs/skills/email-digest/SKILL.md and configs/skills/email-digest/config.yaml as the reference skill implementation",
-      "Read configs/skills/morning-brief/SKILL.md and configs/skills/morning-brief/config.yaml for a second pattern example",
-      "Read at least 2 more configs/skills/*/config.yaml files to confirm the schema is consistent across skills",
-      "Add a new section to docs/ARCHITECTURE.md covering: what a skill is (declarative capability definition), skill lifecycle (trigger → prompt template → model execution → boundary enforcement → approval gate if configured), config.yaml schema reference (schedule, model, dependencies, approval, boundaries fields), how blueprints compose skills (blueprint YAML references skill names), skill isolation and boundary enforcement",
-      "Ensure the new section follows the same tone and depth as the existing Blueprint and Platform sections"
+      "Read README.md for install commands (curl, git clone), init commands (--guided, --smart), and post-install commands (doctor, status)",
+      "Read docs/ARCHITECTURE.md Install Phases section and Engine Acquisition section for the installation flow",
+      "Read docs/PRODUCT.md 'What Your Day Looks Like' section for the user experience narrative",
+      "Read CLAUDE.md CLI Commands section for the full command listing",
+      "Read configs/blueprints/email-manager.yaml to understand what the first blueprint configures",
+      "Read backlog/GAP-ANALYSIS.md for prerequisites and known gaps that affect the quickstart",
+      "Compose docs/QUICKSTART.md with sections: Prerequisites (Docker, Node.js >=22, Ollama optional), Install (curl one-liner + from-source option), Initialize (clawhq init --guided walkthrough with expected terminal output), Pick Your First Blueprint (email-manager, what it configures, why start here), Connect Integrations (IMAP/SMTP setup for email-manager), Launch (clawhq up + what to expect), Verify (clawhq status + clawhq doctor), Your First Interaction (send a test message), What's Next (links to ARCHITECTURE.md, CONFIGURATION.md)",
+      "Add expected terminal output blocks after every command",
+      "Keep under 250 lines — this is a quickstart, not a manual"
     ],
     "acceptanceCriteria": [
-      "docs/ARCHITECTURE.md contains a skill system section explaining: what skills are, the skill lifecycle, config.yaml schema, blueprint-skill composition, and boundary enforcement",
-      "The section is sourced from existing SKILL.md and config.yaml files — no invented claims",
-      "The section is positioned logically within the document (between blueprints and security, or after blueprints)",
-      "Existing content in ARCHITECTURE.md is not altered beyond the insertion"
+      "docs/QUICKSTART.md exists and covers: prerequisites, install, init, first blueprint, connect integrations, launch, verify, first interaction",
+      "Each step includes the exact command and expected terminal output",
+      "The email-manager blueprint is used as the first-run example throughout",
+      "A user following only this document can go from zero to a working agent",
+      "The document is under 250 lines"
     ],
     "scope": [
-      "docs/ARCHITECTURE.md"
+      "docs/QUICKSTART.md"
     ],
-    "startedAt": "2026-03-23T17:33:30-07:00",
+    "startedAt": "2026-03-23T17:37:30-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T17:37:28-07:00"
+    "completedAt": "2026-03-23T17:41:01-07:00"
   },
-  "completedAt": "2026-03-23T17:37:28-07:00",
+  "completedAt": "2026-03-23T17:41:01-07:00",
   "attempts": 1
 }

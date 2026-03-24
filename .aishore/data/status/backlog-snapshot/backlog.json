@@ -47,10 +47,12 @@
         "docs/ARCHITECTURE.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "READY. Documentation task with no external dependencies. All source files referenced in steps exist (docs/ARCHITECTURE.md, configs/skills/*/SKILL.md, configs/skills/*/config.yaml). Steps are specific and sequenced correctly. Scope: single file insertion. Priority must is correct — ARCHITECTURE.md is the canonical architecture doc and the skill system is a core layer."
+      "groomingNotes": "READY. Documentation task with no external dependencies. All source files referenced in steps exist (docs/ARCHITECTURE.md, configs/skills/*/SKILL.md, configs/skills/*/config.yaml). Steps are specific and sequenced correctly. Scope: single file insertion. Priority must is correct — ARCHITECTURE.md is the canonical architecture doc and the skill system is a core layer.",
+      "passes": true,
+      "completedAt": "2026-03-23T17:37:28-07:00"
     },
     {
       "id": "FEAT-007",
