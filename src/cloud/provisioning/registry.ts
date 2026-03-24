@@ -88,6 +88,7 @@ export function addInstance(
     readonly size: string;
     readonly status: InstanceRegistryStatus;
     readonly sshKeyPath?: string;
+    readonly sshHostKey?: string;
   },
 ): ProvisionedInstance {
   const registry = readInstanceRegistry(deployDir);
@@ -103,6 +104,7 @@ export function addInstance(
     size: options.size,
     status: options.status,
     ...(options.sshKeyPath !== undefined ? { sshKeyPath: options.sshKeyPath } : {}),
+    ...(options.sshHostKey !== undefined ? { sshHostKey: options.sshHostKey } : {}),
     createdAt: now,
     updatedAt: now,
   };

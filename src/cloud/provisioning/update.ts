@@ -10,7 +10,10 @@
  */
 
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { existsSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { findInstance } from "./registry.js";
 import type {
@@ -85,6 +88,7 @@ export async function updateInstance(options: DeployUpdateOptions): Promise<Depl
     host: instance.ipAddress,
     keyPath: instance.sshKeyPath,
     command: remoteCommand,
+    sshHostKey: instance.sshHostKey,
     signal: options.signal,
   });
 
@@ -132,16 +136,22 @@ interface SshExecOptions {
   readonly host: string;
   readonly keyPath: string;
   readonly command: string;
+  /** SSH host public key for host key verification. When set, StrictHostKeyChecking=yes is used. */
+  readonly sshHostKey?: string;
   readonly signal?: AbortSignal;
 }
 
 /** Execute a command on a remote host via SSH. */
 function executeSsh(options: SshExecOptions): Promise<DeployUpdateResult> {
-  return new Promise((resolve) => {
+  // Build host key verification args: strict when key is known, accept-new otherwise.
+  let tmpKnownHostsPath: string | undefined;
+  const hostKeyArgs = buildHostKeyArgs(options.host, options.sshHostKey);
+  tmpKnownHostsPath = hostKeyArgs.tmpKnownHostsPath;
+
+  return new Promise<DeployUpdateResult>((resolve) => {
     const args = [
       "-i", options.keyPath,
-      "-o", "StrictHostKeyChecking=no",
-      "-o", "UserKnownHostsFile=/dev/null",
+      ...hostKeyArgs.args,
       "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT}`,
       "-o", "BatchMode=yes",
       `${SSH_USER}@${options.host}`,
@@ -183,7 +193,47 @@ function executeSsh(options: SshExecOptions): Promise<DeployUpdateResult> {
         });
       }
     });
+  }).finally(() => {
+    if (tmpKnownHostsPath) {
+      try { unlinkSync(tmpKnownHostsPath); } catch { /* already cleaned up */ }
+    }
   });
+}
+
+/**
+ * Build SSH host key verification arguments.
+ *
+ * When `sshHostKey` is available: writes a temp known_hosts file and returns
+ * StrictHostKeyChecking=yes args — the remote must present the exact key.
+ *
+ * When absent: uses StrictHostKeyChecking=accept-new — trusts on first connect
+ * but rejects if the key changes. Logs a warning.
+ */
+function buildHostKeyArgs(
+  host: string,
+  sshHostKey?: string,
+): { args: string[]; tmpKnownHostsPath?: string } {
+  if (sshHostKey) {
+    const tmpPath = join(tmpdir(), `clawhq-known-hosts-${randomBytes(8).toString("hex")}`);
+    // known_hosts format: <host> <key-type> <key-data>
+    writeFileSync(tmpPath, `${host} ${sshHostKey}\n`, { mode: 0o600 });
+    return {
+      args: [
+        "-o", "StrictHostKeyChecking=yes",
+        "-o", `UserKnownHostsFile=${tmpPath}`,
+      ],
+      tmpKnownHostsPath: tmpPath,
+    };
+  }
+
+  // No host key on record — accept-new is safer than no (trusts first connect, rejects changes)
+  console.warn(`[update] No SSH host key on record for ${host} — using accept-new (first-connect trust). Record the host key at provision time to enable strict verification.`);
+  return {
+    args: [
+      "-o", "StrictHostKeyChecking=accept-new",
+      "-o", "UserKnownHostsFile=/dev/null",
+    ],
+  };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

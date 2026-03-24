@@ -301,6 +301,8 @@ export interface ProvisionedInstance {
   readonly status: InstanceRegistryStatus;
   /** Local path to the SSH private key for this instance (mode 0600). */
   readonly sshKeyPath?: string;
+  /** SSH host public key of the remote instance (e.g. "ssh-ed25519 AAAA…"). Used for host key verification during SSH updates. */
+  readonly sshHostKey?: string;
   /** ISO 8601 timestamp of provisioning. */
   readonly createdAt: string;
   /** ISO 8601 timestamp of last status update. */
