@@ -83,10 +83,12 @@
         "docs/QUICKSTART.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "Documentation authoring task. Content sources confirmed: README.md, docs/ARCHITECTURE.md, docs/PRODUCT.md, CLAUDE.md, configs/blueprints/email-manager.yaml. No dependencies. 250-line cap is appropriate. email-manager is the right first-run blueprint. Marking readyForSprint=true as requested by PO."
+      "groomingNotes": "Documentation authoring task. Content sources confirmed: README.md, docs/ARCHITECTURE.md, docs/PRODUCT.md, CLAUDE.md, configs/blueprints/email-manager.yaml. No dependencies. 250-line cap is appropriate. email-manager is the right first-run blueprint. Marking readyForSprint=true as requested by PO.",
+      "passes": true,
+      "completedAt": "2026-03-24T08:15:35-07:00"
     },
     {
       "id": "FEAT-008",

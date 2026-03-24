@@ -47,10 +47,12 @@
         "docs/ARCHITECTURE.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "Documentation authoring task. Content sources confirmed: 6 SKILL.md files and 6 config.yaml files in configs/skills/, docs/ARCHITECTURE.md (insertion point after blueprints, before security). Steps are implementation-ready. No code changes. No dependencies. Marking readyForSprint=true as requested by PO."
+      "groomingNotes": "Documentation authoring task. Content sources confirmed: 6 SKILL.md files and 6 config.yaml files in configs/skills/, docs/ARCHITECTURE.md (insertion point after blueprints, before security). Steps are implementation-ready. No code changes. No dependencies. Marking readyForSprint=true as requested by PO.",
+      "passes": true,
+      "completedAt": "2026-03-24T08:12:01-07:00"
     },
     {
       "id": "FEAT-007",
