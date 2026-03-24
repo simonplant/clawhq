@@ -8,6 +8,7 @@
  * Reference: https://docs.hetzner.cloud/
  */
 
+import { CLOUD_POLL_INTERVAL_MS } from "../../../config/defaults.js";
 import type {
   AddSshKeyOptions,
   AddSshKeyResult,
@@ -30,7 +31,7 @@ import type {
 const HETZNER_API_BASE = "https://api.hetzner.cloud/v1";
 const DEFAULT_IMAGE = "ubuntu-24.04";
 const API_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = 5_000;
+const POLL_INTERVAL_MS = CLOUD_POLL_INTERVAL_MS;
 const POLL_TIMEOUT_MS = 300_000;
 
 /** Hetzner CX shared-vCPU server monthly costs (EUR, Falkenstein). */
