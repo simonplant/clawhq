@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1774322659",
-  "startedAt": "2026-03-23T20:24:19-07:00",
+  "sprintId": "sprint-1774322840",
+  "startedAt": "2026-03-23T20:27:20-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-082",
-    "title": ".env file parent directory created without mode 0700 — .env secrets world-listable",
-    "intent": "The directory containing .env files must not be world-listable. Create it with mode 0700 so secrets cannot be enumerated by other users, matching the protection applied to the .env file itself.",
-    "description": "src/secure/credentials/env-store.ts line 117 calls mkdirSync(dir, { recursive: true }) without a mode option, creating the .env file's parent directory with default permissions (0755). .env files are written with mode 0600 (correct) but any user on the system can ls the directory to enumerate that a .env file exists. Same class of vulnerability as BUG-077, BUG-078, and BUG-081. Fix: add DIR_MODE_SECRET to the import from defaults.js (line 15 already imports FILE_MODE_SECRET) and pass { recursive: true, mode: DIR_MODE_SECRET } to the mkdirSync call at line 117.",
+    "id": "BUG-083",
+    "title": "Fleet registry directory (cloud/) created without mode 0700 — agent paths world-listable",
+    "intent": "The cloud/ directory must always be created with mode 0700 regardless of which code path initializes it first. fleet.json initialization must not downgrade the directory to world-listable.",
+    "description": "src/cloud/fleet/discovery.ts line 58 calls mkdirSync(dir, { recursive: true }) without a mode option, creating deployDir/cloud/ with default permissions (0755) when fleet is initialized before cloud credentials. fleet.json stores agent deployment directory paths — on a multi-user system, any user can ls the cloud/ directory to learn that fleet registration exists. BUG-078 fixes cloud/ for the credentials path but only when writeCloudCredentials() runs first; if fleet is registered before any credentials are stored, cloud/ is created at 0755 by discovery.ts. Fix: add DIR_MODE_SECRET import from defaults.js and pass { recursive: true, mode: DIR_MODE_SECRET } to mkdirSync at line 58. Note: no import from defaults.ts exists in discovery.ts currently.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-23T20:24:19-07:00",
+    "startedAt": "2026-03-23T20:27:20-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T20:27:19-07:00"
+    "completedAt": "2026-03-23T20:29:54-07:00"
   },
-  "completedAt": "2026-03-23T20:27:19-07:00",
+  "completedAt": "2026-03-23T20:29:54-07:00",
   "attempts": 1
 }
