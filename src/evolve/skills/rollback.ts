@@ -9,10 +9,11 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { cp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { DIR_MODE_SECRET } from "../../config/defaults.js";
 import type { RollbackSnapshot } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -48,7 +49,8 @@ async function saveSnapshots(
   snapshots: RollbackSnapshot[],
 ): Promise<void> {
   const dir = rollbackDir(deployDir);
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(dir, DIR_MODE_SECRET);
   await writeFile(manifestPath(deployDir), JSON.stringify(snapshots, null, 2));
 }
 
@@ -68,7 +70,8 @@ export async function createSnapshot(
   const snapshotPath = join(rollbackDir(deployDir), id);
   const skillsDir = join(deployDir, "workspace", "skills");
 
-  mkdirSync(snapshotPath, { recursive: true });
+  mkdirSync(snapshotPath, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(snapshotPath, DIR_MODE_SECRET);
 
   // Copy current skills directory (if it exists and has content)
   if (existsSync(skillsDir) && readdirSync(skillsDir).length > 0) {
