@@ -15,11 +15,12 @@
         "All provider files import timeout constants from defaults",
         "cloud/provisioning tests pass with no regression"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "STEPS ADDED. Note: description says CLOUD_API_TIMEOUT_MS but actual local names in provider files are API_TIMEOUT_MS (no CLOUD_ prefix) — steps reflect reality. GCP and DO have a 3rd timeout at 600_000 (OP_POLL_TIMEOUT_MS / SNAPSHOT_POLL_TIMEOUT_MS) — consolidated to CLOUD_OPERATION_TIMEOUT_MS. Already readyForSprint=true.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T18:16:25-07:00"
     },
     {
       "id": "BUG-072",
