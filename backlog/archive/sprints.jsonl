@@ -178,3 +178,4 @@
 {"date":"2026-03-20","sprintId":"sprint-1774041373","itemId":"BUG-064","status":"complete","attempts":1,"filesChanged":1,"linesAdded":9,"linesRemoved":2,"duration":318,"priority":"must","category":null}
 {"date":"2026-03-20","sprintId":"sprint-1774042206","itemId":"BUG-063","status":"complete","attempts":1,"filesChanged":1,"linesAdded":9,"linesRemoved":3,"duration":131,"priority":"should","category":null}
 {"date":"2026-03-20","sprintId":"sprint-1774042338","itemId":"BUG-065","status":"complete","attempts":1,"filesChanged":1,"linesAdded":4,"linesRemoved":1,"duration":319,"priority":"should","category":null}
+{"date":"2026-03-23","sprintId":"sprint-1774310283","itemId":"CQ-047","status":"complete","attempts":1,"filesChanged":4,"linesAdded":0,"linesRemoved":1,"duration":683,"priority":"must","category":"cloud","title":"clawhq deploy — unified cloud deployment command"}

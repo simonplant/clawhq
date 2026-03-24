@@ -1,24 +1,33 @@
 {
-  "sprintId": "sprint-1774042338",
-  "startedAt": "2026-03-20T14:32:18-07:00",
+  "sprintId": "sprint-1774310283",
+  "startedAt": "2026-03-23T16:58:03-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-065",
-    "title": "Hardcoded AWS AMI IDs in aws.ts will become stale and silently break EC2 provisioning",
-    "intent": "EC2 provisioning must work in any supported AWS region with the current Ubuntu 24.04 LTS AMI. Hardcoded AMI IDs are a time bomb — runtime lookup is required.",
-    "description": "src/cloud/provisioning/providers/aws.ts lines 37-42 contain a hardcoded map of Ubuntu 24.04 AMI IDs per AWS region (e.g. 'us-east-1': 'ami-0c7217cdde317cfec'). AWS periodically updates these AMIs and the old IDs become invalid, causing provisioning to fail with an opaque EC2 error. Only 4 of ~25 AWS regions are covered — users in other regions fall back silently to the us-east-1 AMI which may not work in their region. Fix: add a runtime AMI lookup using the AWS EC2 DescribeImages API to fetch the current Ubuntu 24.04 LTS AMI for the target region at provision time. Fall back to hardcoded values only if the API call fails, and log a warning.",
-    "sourceBacklog": "bugs.json",
-    "steps": [],
+    "id": "CQ-047",
+    "title": "clawhq deploy — unified cloud deployment command",
+    "intent": "clawhq deploy walks a user from zero to a cloud-deployed, SSH-accessible agent in one terminal session. No cloud console, no manual steps. Cost shown before charge. Mid-flight failures auto-clean. Trust mode configured on success. SSH keypair injected at provision so the agent is permanently updatable via FEAT-005.",
+    "description": "Wire the provisioning engine into a user-facing `clawhq deploy` command. Interactive flow: choose provider → enter/confirm credentials → select region → select blueprint → provision → deploy → verify → return URL. Non-interactive mode with flags for CI/automation. Shows cost estimate before confirming. Integrates with existing cloud module (trust modes, heartbeat) for post-deploy monitoring.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Build interactive deploy wizard: provider → credentials → region → blueprint → confirm",
+      "Add cost estimation: show monthly cost before provisioning",
+      "Implement non-interactive mode: --provider, --region, --blueprint flags",
+      "Post-deploy: auto-configure trust mode (zero-trust default), start heartbeat",
+      "Add clawhq deploy status: show all cloud-deployed agents",
+      "Add clawhq deploy destroy: teardown with confirmation"
+    ],
     "acceptanceCriteria": [
-      "AWS provisioning resolves the current Ubuntu 24.04 LTS AMI for the target region at runtime via EC2 DescribeImages",
-      "Provisioning works in AWS regions not in the old hardcoded map",
-      "If DescribeImages fails, falls back to hardcoded map and logs a visible warning"
+      "clawhq deploy walks user through cloud deployment end-to-end",
+      "Cost shown before confirmation — no surprise bills",
+      "Non-interactive mode works for automation",
+      "Post-deploy monitoring configured automatically",
+      "Destroy is clean: VM terminated, DNS removed, local state cleaned"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T14:32:18-07:00",
+    "startedAt": "2026-03-23T16:58:03-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T14:37:37-07:00"
+    "completedAt": "2026-03-23T17:09:26-07:00"
   },
-  "completedAt": "2026-03-20T14:37:37-07:00",
+  "completedAt": "2026-03-23T17:09:26-07:00",
   "attempts": 1
 }
