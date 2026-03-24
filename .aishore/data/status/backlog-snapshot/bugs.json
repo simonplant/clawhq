@@ -2,36 +2,6 @@
   "description": "Bugs and tech debt",
   "items": [
     {
-      "id": "BUG-077",
-      "title": "SSH keys directory created without mode 0700 — key filenames world-listable on multi-user systems",
-      "intent": "The SSH keys directory must not be listable by other users — mkdirSync must set mode 0700 so the directory contents are not exposed even though individual key files are mode 0600.",
-      "description": "src/cloud/provisioning/ssh-keygen.ts line 37 calls mkdirSync(keysDir, { recursive: true }) without a mode option. This creates the keys directory (deployDir/keys/) with default permissions (0755 on most Linux systems), making the directory world-readable. While individual key files are mode 0600 (correct), any user on the system can ls the keys directory to enumerate which instance IDs have keys stored. The fix is to pass { recursive: true, mode: 0o700 } to mkdirSync, matching the same protection principle used for credentials.ts. The same issue exists in registry.ts line 57 for the registry parent directory, but that directory only contains the registry file which is already 0600.",
-      "priority": "should",
-      "category": null,
-      "steps": [
-        "Read src/cloud/provisioning/ssh-keygen.ts lines 34-50 — confirm mkdirSync(keysDir, { recursive: true }) has no mode option",
-        "Change mkdirSync call to mkdirSync(keysDir, { recursive: true, mode: 0o700 }) — this ensures the directory is created owner-only even if an existing parent was 0755",
-        "Read src/cloud/provisioning/registry.ts writeInstanceRegistry() — confirm mkdirSync there also lacks a mode; add mode: 0o700 to that call as well",
-        "Run ssh-keygen.test.ts and registry.test.ts — confirm both pass and no regressions"
-      ],
-      "acceptanceCriteria": [
-        "The keys directory (deployDir/keys/) is created with mode 0700 — stat confirms no group/other read bits",
-        "The registry parent directory is created with mode 0700",
-        "Existing key file mode 0600 behavior is unchanged"
-      ],
-      "scope": [
-        "src/cloud/provisioning/ssh-keygen.ts",
-        "src/cloud/provisioning/registry.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "READY. ssh-keygen.ts:37 confirmed missing mode on mkdirSync. Two-file fix: ssh-keygen.ts (primary) + registry.ts (secondary, same pattern). No new deps. Scope: 2 files, 2 lines changed.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T19:09:11-07:00"
-    },
-    {
       "id": "BUG-078",
       "title": "Cloud credentials directory created without mode 0700 — API tokens world-listable on multi-user systems",
       "intent": "The cloud credentials directory must not be listable by other users — it stores API tokens and must be created with mode 0700 so directory contents are not exposed, matching the protection applied to credentials.ts file itself.",
@@ -55,66 +25,62 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "READY. Three-file fix, same pattern as BUG-077. Primary: credentials.ts:53 (stores API tokens — highest severity). Secondary: snapshot-registry.ts:51 (non-sensitive data, but consistent with security model). registry.ts:57 already covered by BUG-077 — do NOT double-fix. Steps: (1) Read credentials.ts:50-55, change mkdirSync to { recursive: true, mode: 0o700 }. (2) Read snapshot-registry.ts:48-53, same change. (3) Run credentials tests and snapshot-registry tests to confirm no regressions. AC: stat on deployDir/cloud/ shows drwx------ (0700), file permissions unchanged at 0600.",
+      "groomingNotes": "RE-GROOMED 2026-03-23 (attempt 2 — failure analysis). FAIL PATTERN: previous steps said 'Run credentials tests and snapshot-registry tests' but no such test files exist (only registry.test.ts, engine.test.ts, ssh-keygen.test.ts, cloud-init.test.ts, provider tests). Also: steps did not mention the import changes required — DIR_MODE_SECRET must be added to the import statement in both files before it can be used. THREE PRECISE CHANGES: (1) credentials.ts line 13: add DIR_MODE_SECRET to the existing import — change 'import { FILE_MODE_SECRET }' to 'import { DIR_MODE_SECRET, FILE_MODE_SECRET }'. (2) credentials.ts line 53: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). (3) snapshot-registry.ts has NO import from defaults.ts — add 'import { DIR_MODE_SECRET } from \"../../config/defaults.js\";' near top with other imports, then change mkdirSync(dir, { recursive: true }) at line 51 to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). TESTING: No credentials.test.ts or snapshot-registry.test.ts exist — create both following registry.test.ts pattern: mkdtempSync tmpdir, call setProviderCredential() / addSnapshot(), statSync the cloud/ dir, assert mode & 0o777 === 0o700. Then run npm test to confirm no regressions. DO NOT add mode to snapshot file writes — snapshots.json is non-sensitive, only the directory needs 0700.",
       "groomedAt": "2026-03-23",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-23T20:09:23-07:00",
       "failCount": 1
     },
     {
-      "id": "BUG-079",
-      "title": "SSH private key orphaned on disk when firewall creation fails during provisioning",
-      "intent": "When provisioning fails at the firewall step, the SSH private key written to disk must be deleted — no private key file should survive a failed provision regardless of which step failed.",
-      "description": "In src/cloud/provisioning/engine.ts, generateSshKeypair() is called at line 121 (before any API calls). If firewall creation fails at line 195-224, the engine destroys the VM and returns early at line 220-224. At this point, the instance has never been added to the registry (addInstance at line 229 has not run), so the keypair at deployDir/keys/<instanceId>.pem is orphaned — it can never be cleaned up by destroyInstance() because the registry has no record of it. Fix: on any early return after generateSshKeypair() succeeds (firewall fail, and the no-IP path at line 169-188 when IP is pending), delete the private key file with rmSync(keypair.privateKeyPath, { force: true }) before returning the error result. Alternatively, always add the instance to registry immediately after keypair generation, before the API calls.",
-      "priority": "should",
+      "id": "BUG-081",
+      "title": "Integration credentials directory created without mode 0700 — engine/ dir world-listable",
+      "intent": "The engine/ directory must not be world-listable. It stores integration credentials and must be created with mode 0700 so directory contents cannot be enumerated, matching the protection applied to credentials.json itself.",
+      "description": "src/secure/credentials/credential-store.ts line 60 calls mkdirSync(dir, { recursive: true }) without a mode option, creating deployDir/engine/ with default permissions (0755). The engine/ directory contains credentials.json (integration API keys — IMAP passwords, Telegram tokens, OAuth secrets) written with mode 0600 (correct), but any user on the system can ls the engine/ directory to enumerate that integration credentials exist. Fix: add DIR_MODE_SECRET to the import from defaults.js and pass { recursive: true, mode: DIR_MODE_SECRET } to the mkdirSync call.",
+      "priority": "must",
       "category": null,
-      "steps": [
-        "Read src/cloud/provisioning/engine.ts lines 119-230 — confirm generateSshKeypair() is called before firewall, and that firewall failure returns without deleting the key",
-        "Identify all early-return paths after keypair generation: (a) firewall fail at ~line 220-224, (b) no-IP path at ~line 169-188 (key is registered there, skip cleanup)",
-        "In the firewall failure path (~line 207-224), add rmSync(keypair.privateKeyPath, { force: true }) before both return statements that exit after VM destroy",
-        "Run provisioning engine tests to confirm no regressions — check that the key file is absent after a simulated firewall failure"
-      ],
-      "acceptanceCriteria": [
-        "After a simulated firewall creation failure, the SSH private key file at deployDir/keys/<instanceId>.pem does not exist on disk",
-        "Successful provisioning still produces the key file and records sshKeyPath in the registry",
-        "The no-IP path (instance added to registry with sshKeyPath) is unchanged — key is not deleted in that path"
-      ],
+      "steps": [],
+      "acceptanceCriteria": [],
       "scope": [],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "READY. Single-file fix (engine.ts). Firewall fail path at ~line 207-224: VM is destroyed, returns early, but keypair.privateKeyPath file written at line 121 is never cleaned up. No registry entry exists at this point so destroyInstance() can never find it. Fix: rmSync(keypair.privateKeyPath, { force: true }) before both early returns in the firewall failure block. Note: the no-IP path (lines 169-188) DOES add the instance to registry with sshKeyPath — do not add cleanup there; destroyInstance() handles it.",
+      "groomingNotes": "READY. Same pattern as BUG-077 and BUG-078. PRECISE STEPS: (1) Read credential-store.ts line 15 — note 'import { FILE_MODE_SECRET }' from defaults.js, DIR_MODE_SECRET is NOT imported. (2) In credential-store.ts line 15, add DIR_MODE_SECRET: change 'import { FILE_MODE_SECRET }' to 'import { DIR_MODE_SECRET, FILE_MODE_SECRET }'. (3) In credential-store.ts line 60, change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). (4) No credential-store.test.ts exists — create src/secure/credentials/credential-store.test.ts following registry.test.ts pattern: mkdtempSync, call writeCredentialStore() with a minimal credential store, statSync the engine/ parent dir, assert mode & 0o777 === 0o700. (5) Run npm test to confirm all tests pass. AC: stat on deployDir/engine/ shows drwx------ (0700). File mode on credentials.json remains 0600 unchanged.",
       "groomedAt": "2026-03-23"
     },
     {
-      "id": "BUG-080",
-      "title": "SSH update uses StrictHostKeyChecking=no — remote identity not verified, MITM possible",
-      "intent": "clawhq deploy update must verify the remote host's identity before executing commands — StrictHostKeyChecking=no accepts any host key, making the update channel vulnerable to MITM on the network path.",
-      "description": "src/cloud/provisioning/update.ts line 143 passes -o StrictHostKeyChecking=no and -o UserKnownHostsFile=/dev/null to ssh. This disables host key verification entirely — any host that responds on instance.ipAddress will be trusted. Since ClawHQ generates the SSH keypair and injects the public key via cloud-init, the host public key is also available at provision time via the provider API (DigitalOcean, Hetzner, AWS, GCP all surface console output or host keys). Fix: during provisioning, record the SSH host public key fingerprint in the instance registry (sshHostKey field on ProvisionedInstance). In executeSsh(), write a temporary known_hosts file with that fingerprint and pass -o StrictHostKeyChecking=yes -o UserKnownHostsFile=<tmpfile> instead. If fingerprint is unavailable in registry, fall back to accept-new (not no) and log a warning. Scope: engine.ts (capture host key at provision time), types.ts (sshHostKey field on ProvisionedInstance), update.ts (use known_hosts file).",
+      "id": "BUG-082",
+      "title": ".env file parent directory created without mode 0700 — .env secrets world-listable",
+      "intent": "The directory containing .env files must not be world-listable. Create it with mode 0700 so secrets cannot be enumerated by other users, matching the protection applied to the .env file itself.",
+      "description": "src/secure/credentials/env-store.ts line 117 calls mkdirSync(dir, { recursive: true }) without a mode option, creating the .env file's parent directory with default permissions (0755). .env files are written with mode 0600 (correct) but any user on the system can ls the directory to enumerate that a .env file exists. Same class of vulnerability as BUG-077, BUG-078, and BUG-081. Fix: add DIR_MODE_SECRET to the import from defaults.js (line 15 already imports FILE_MODE_SECRET) and pass { recursive: true, mode: DIR_MODE_SECRET } to the mkdirSync call at line 117.",
       "priority": "must",
       "category": null,
-      "steps": [
-        "Read src/cloud/provisioning/types.ts — add optional sshHostKey?: string field to ProvisionedInstance interface",
-        "Read src/cloud/provisioning/engine.ts — after createVm() returns an IP, query the provider adapter for the SSH host key fingerprint using adapter.getVmStatus() or a new method; if available, pass it to addInstance()",
-        "Read src/cloud/provisioning/registry.ts addInstance() — include sshHostKey in the instance record if provided",
-        "Read src/cloud/provisioning/update.ts executeSsh() — replace StrictHostKeyChecking=no with: if sshHostKey is present in instance record, write a temp known_hosts file and pass -o StrictHostKeyChecking=yes -o UserKnownHostsFile=<tmpfile>; if absent, use -o StrictHostKeyChecking=accept-new and log a warning",
-        "Delete the temp known_hosts file after SSH command completes (success or failure)",
-        "Run update tests — confirm StrictHostKeyChecking=no is no longer passed in any SSH invocation"
-      ],
-      "acceptanceCriteria": [
-        "When an instance has sshHostKey in its registry record, executeSsh() uses StrictHostKeyChecking=yes with a temp known_hosts file",
-        "When sshHostKey is absent, executeSsh() uses StrictHostKeyChecking=accept-new (not no) — first-connect behavior, not blind trust",
-        "StrictHostKeyChecking=no does not appear in any SSH invocation in update.ts"
-      ],
+      "steps": [],
+      "acceptanceCriteria": [],
       "scope": [],
       "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "RE-GROOMED 2026-03-23 (PO review). Priority bumped from should → must. Rationale: ClawHQ has a non-negotiable security principle — 'hardening is automatic, not opt-in'. The update channel using StrictHostKeyChecking=no accepts any host presenting on the instance IP, directly contradicting this principle and the product's positioning as sovereign infrastructure. Minimum viable fix (accept-new instead of no) is a single-line change in update.ts and is sufficient for must-grade AC: StrictHostKeyChecking=no must not appear in any SSH invocation. The full sshHostKey fingerprint capture from provider is a stretch goal — do not block the sprint on it. AC: (1) StrictHostKeyChecking=no replaced with accept-new in update.ts, (2) no regression in update tests. If provider fingerprint capture is feasible, ship it — but accept-new alone satisfies AC.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T19:06:33-07:00"
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "READY. Same pattern as BUG-077, BUG-078, BUG-081. PRECISE STEPS: (1) Read env-store.ts line 15 — confirm 'import { FILE_MODE_SECRET }' from defaults.js, DIR_MODE_SECRET is NOT imported. (2) In env-store.ts line 15, add DIR_MODE_SECRET: change 'import { FILE_MODE_SECRET }' to 'import { DIR_MODE_SECRET, FILE_MODE_SECRET }'. (3) In env-store.ts line 117, change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). (4) env-store.test.ts already exists and tests file mode 0600 — add ONE new test: 'creates parent directory with mode 0700'. Pattern: mkdtempSync, define a subdirectory path (dir/engine/.env), call writeEnvAtomic with an empty EnvFile, statSync the parent dir (dir/engine/), assert mode & 0o777 === 0o700. (5) Run npm test to confirm all tests pass. AC: stat on the .env parent directory shows drwx------ (0700). File mode on .env remains 0600 unchanged.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-083",
+      "title": "Fleet registry directory (cloud/) created without mode 0700 — agent paths world-listable",
+      "intent": "The cloud/ directory must always be created with mode 0700 regardless of which code path initializes it first. fleet.json initialization must not downgrade the directory to world-listable.",
+      "description": "src/cloud/fleet/discovery.ts line 58 calls mkdirSync(dir, { recursive: true }) without a mode option, creating deployDir/cloud/ with default permissions (0755) when fleet is initialized before cloud credentials. fleet.json stores agent deployment directory paths — on a multi-user system, any user can ls the cloud/ directory to learn that fleet registration exists. BUG-078 fixes cloud/ for the credentials path but only when writeCloudCredentials() runs first; if fleet is registered before any credentials are stored, cloud/ is created at 0755 by discovery.ts. Fix: add DIR_MODE_SECRET import from defaults.js and pass { recursive: true, mode: DIR_MODE_SECRET } to mkdirSync at line 58. Note: no import from defaults.ts exists in discovery.ts currently.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "READY. Same pattern as BUG-077, BUG-078, BUG-081, BUG-082. PRECISE STEPS: (1) Read discovery.ts lines 1-15 — confirm there is NO import from defaults.ts. (2) Add import: 'import { DIR_MODE_SECRET } from \"../../config/defaults.js\";' to the import block in discovery.ts (after the paths.js import, maintaining alphabetical order — place between config/paths.js and cloud/heartbeat/reporter.js imports is fine). (3) In discovery.ts line 58, change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). (4) No fleet/discovery.test.ts exists — do NOT create one for this bug. Run npm test to confirm no regressions. SCOPE: single file, single line change plus one import. AC: stat on deployDir/cloud/ shows drwx------ (0700) when fleet.js creates the directory before credentials.ts runs.",
+      "groomedAt": "2026-03-23"
     }
   ]
 }

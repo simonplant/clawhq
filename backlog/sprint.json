@@ -1,29 +1,20 @@
 {
-  "sprintId": "sprint-1774321763",
-  "startedAt": "2026-03-23T20:09:23-07:00",
+  "sprintId": "sprint-1774322467",
+  "startedAt": "2026-03-23T20:21:07-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-079",
-    "title": "SSH private key orphaned on disk when firewall creation fails during provisioning",
-    "intent": "When provisioning fails at the firewall step, the SSH private key written to disk must be deleted — no private key file should survive a failed provision regardless of which step failed.",
-    "description": "In src/cloud/provisioning/engine.ts, generateSshKeypair() is called at line 121 (before any API calls). If firewall creation fails at line 195-224, the engine destroys the VM and returns early at line 220-224. At this point, the instance has never been added to the registry (addInstance at line 229 has not run), so the keypair at deployDir/keys/<instanceId>.pem is orphaned — it can never be cleaned up by destroyInstance() because the registry has no record of it. Fix: on any early return after generateSshKeypair() succeeds (firewall fail, and the no-IP path at line 169-188 when IP is pending), delete the private key file with rmSync(keypair.privateKeyPath, { force: true }) before returning the error result. Alternatively, always add the instance to registry immediately after keypair generation, before the API calls.",
+    "id": "BUG-081",
+    "title": "Integration credentials directory created without mode 0700 — engine/ dir world-listable",
+    "intent": "The engine/ directory must not be world-listable. It stores integration credentials and must be created with mode 0700 so directory contents cannot be enumerated, matching the protection applied to credentials.json itself.",
+    "description": "src/secure/credentials/credential-store.ts line 60 calls mkdirSync(dir, { recursive: true }) without a mode option, creating deployDir/engine/ with default permissions (0755). The engine/ directory contains credentials.json (integration API keys — IMAP passwords, Telegram tokens, OAuth secrets) written with mode 0600 (correct), but any user on the system can ls the engine/ directory to enumerate that integration credentials exist. Fix: add DIR_MODE_SECRET to the import from defaults.js and pass { recursive: true, mode: DIR_MODE_SECRET } to the mkdirSync call.",
     "sourceBacklog": "bugs.json",
-    "steps": [
-      "Read src/cloud/provisioning/engine.ts lines 119-230 — confirm generateSshKeypair() is called before firewall, and that firewall failure returns without deleting the key",
-      "Identify all early-return paths after keypair generation: (a) firewall fail at ~line 220-224, (b) no-IP path at ~line 169-188 (key is registered there, skip cleanup)",
-      "In the firewall failure path (~line 207-224), add rmSync(keypair.privateKeyPath, { force: true }) before both return statements that exit after VM destroy",
-      "Run provisioning engine tests to confirm no regressions — check that the key file is absent after a simulated firewall failure"
-    ],
-    "acceptanceCriteria": [
-      "After a simulated firewall creation failure, the SSH private key file at deployDir/keys/<instanceId>.pem does not exist on disk",
-      "Successful provisioning still produces the key file and records sshKeyPath in the registry",
-      "The no-IP path (instance added to registry with sshKeyPath) is unchanged — key is not deleted in that path"
-    ],
+    "steps": [],
+    "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-23T20:09:23-07:00",
+    "startedAt": "2026-03-23T20:21:07-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T20:13:46-07:00"
+    "completedAt": "2026-03-23T20:24:17-07:00"
   },
-  "completedAt": "2026-03-23T20:13:46-07:00",
+  "completedAt": "2026-03-23T20:24:17-07:00",
   "attempts": 1
 }
