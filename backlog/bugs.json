@@ -2,83 +2,6 @@
   "description": "Bugs and tech debt",
   "items": [
     {
-      "id": "BUG-072",
-      "title": "Provisioning flow does not generate or store SSH keypair — FEAT-005 deploy update is undeliverable",
-      "intent": "Every provisioned cloud agent has an SSH keypair generated at provision time, stored securely, and linked in the deploy state. clawhq deploy update has a viable SSH path to every cloud agent it created.",
-      "description": "ProvisionedInstance interface (src/cloud/provisioning/types.ts) has no sshKeyPath or keypairPath field. The provisioning wizard does not generate an SSH keypair or inject it via cloud-init. Without a keypair, clawhq deploy update --id <agent-id> has no way to connect to the remote agent — FEAT-005 is architecturally undeliverable until this is resolved. Steps: (1) Add sshKeyPath: string field to ProvisionedInstance interface. (2) During provisioning wizard, generate an Ed25519 keypair (ssh-keygen or node:crypto), store private key at ~/.clawhq/keys/<agent-id>.pem (mode 0600), store public key path in ProvisionedInstance.sshKeyPath. (3) Inject public key via cloud-init user_data (authorized_keys). (4) Save sshKeyPath to deploy state file on disk. (5) Run cloud/provisioning tests. Scope: types.ts + provisioning wizard + 1-2 provider files for cloud-init injection. No logic change to existing deploy flow.",
-      "priority": "should",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-23",
-      "groomingNotes": "READY. ProvisionedInstance confirmed in types.ts:285-306 — no sshKeyPath field exists. wizard.ts confirmed no keypair generation code. cloud-init.ts has generateCloudInit function needing pubKey param. Scope: 3 files (types.ts, wizard.ts, cloud-init.ts). node:crypto is built-in — no new deps. Steps prescriptive with file locations. Unblocks FEAT-005.",
-      "completedAt": "2026-03-23T18:33:55-07:00"
-    },
-    {
-      "id": "BUG-073",
-      "title": "AWS listSshKeys() returns empty publicKey — silent data loss in SshKeyInfo interface",
-      "intent": "Every call to listSshKeys() returns structurally honest data — callers that check publicKey will not silently receive an empty string and mishandle it.",
-      "description": "aws.ts line 301 returns publicKey: '' because AWS EC2 API does not expose public key material after initial import, only fingerprints. The SshKeyInfo interface (types.ts:214-220) defines publicKey: string with no optional marker, so callers expect a real value. Steps: (1) Read src/cloud/provisioning/providers/aws.ts lines 292-310 (listSshKeys implementation). (2) Read src/cloud/provisioning/types.ts lines 214-220 (SshKeyInfo interface). (3) Make publicKey optional in SshKeyInfo interface (publicKey?: string). (4) Update the AWS adapter to omit publicKey or set it to undefined rather than empty string. (5) Check all callers of listSshKeys() for publicKey usage — grep for .publicKey in provisioning/. (6) Update any callers that assume publicKey is always truthy to handle undefined. (7) Run cloud/provisioning tests.",
-      "priority": "should",
-      "category": null,
-      "steps": [
-        "Read src/cloud/provisioning/providers/aws.ts lines 292-310 to confirm listSshKeys() returns publicKey: ''",
-        "Read src/cloud/provisioning/types.ts lines 214-220 to confirm SshKeyInfo.publicKey type and optionality",
-        "Grep for .publicKey in src/cloud/provisioning/ to find all callers that read the field",
-        "Update SshKeyInfo interface: change publicKey: string to publicKey?: string",
-        "Update aws.ts listSshKeys(): omit publicKey field or set to undefined rather than empty string",
-        "Update any caller that assumes publicKey is always truthy to handle undefined",
-        "Run existing cloud/provisioning tests — confirm no regressions"
-      ],
-      "acceptanceCriteria": [
-        "SshKeyInfo.publicKey is typed as optional (publicKey?: string) in types.ts",
-        "AWS listSshKeys() no longer returns publicKey: '' — field is omitted or undefined",
-        "DigitalOcean, GCP, Hetzner listSshKeys() implementations unchanged and return real key values",
-        "No callers of listSshKeys() assume publicKey is always a non-empty string without a guard"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "READY. aws.ts:301 confirmed returning publicKey: '' by inspection. SshKeyInfo.publicKey: string confirmed at types.ts:214-220. DigitalOcean, GCP, Hetzner all return real key values — AWS is the outlier. Fix is local to aws.ts + types.ts. No new deps. Scope: 2 files.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T18:36:45-07:00"
-    },
-    {
-      "id": "BUG-074",
-      "title": "Instance registry file written without mode 0600 — world-readable on disk",
-      "intent": "The instance registry is written with mode 0600 — only the owning user can read it.",
-      "description": "src/cloud/provisioning/registry.ts line 63 writes the instance registry file using default filesystem permissions. Unlike credentials.json which uses FILE_MODE_SECRET (0600), the registry uses no explicit mode. The registry contains provisioned instance data including IP addresses, provider IDs, and (after BUG-072) sshKeyPath. This data should be owner-read-only.",
-      "priority": "must",
-      "category": null,
-      "steps": [
-        "Read src/cloud/provisioning/registry.ts — find the file write call (around line 63)",
-        "Grep for FILE_MODE_SECRET in the codebase to find where 0600 is defined and how it is applied to credentials.json",
-        "Apply FILE_MODE_SECRET (or equivalent 0600) to the registry file write — match pattern used for credentials.json",
-        "Confirm no other registry read/write paths set a permissive mode",
-        "Run cloud/provisioning tests"
-      ],
-      "acceptanceCriteria": [
-        "Instance registry file is written with mode 0600",
-        "Mode is applied using the same constant as credentials.json — no magic number",
-        "All four provider adapters tested confirm registry is written with 0600 after provisioning"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "RE-GROOMED 2026-03-23 (priority bump). World-readable file containing instance data (IPs, provider IDs, and after BUG-072: SSH key paths) violates the security-by-default non-negotiable in CLAUDE.md. credentials.json uses FILE_MODE_SECRET (0600) — the registry must match. Bumped from should → must: hardening is automatic, not opt-in. Fix is 1 file, 1 line. No excuse to defer.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T18:25:46-07:00"
-    },
-    {
       "id": "BUG-075",
       "title": "Cloud adapter initialization exceptions not caught in resolveAdapter() — crashes on bad credentials",
       "intent": "A malformed stored credential produces a clear, actionable error message — never an uncaught exception stack trace.",
@@ -106,6 +29,65 @@
       "passes": false,
       "readyForSprint": true,
       "groomingNotes": "READY. engine.ts:62-73 confirmed calling createAwsAdapter() and createGcpAdapter() without try-catch via codebase inspection. Both adapters do token parsing that can throw. Fix is local to engine.ts — 2 try-catch blocks. No new deps. Scope: 1 file (engine.ts).",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-076",
+      "title": "destroyInstance() leaves SSH private key on disk after instance is destroyed",
+      "intent": "A destroyed instance must leave no credentials on disk — the SSH private key file must be deleted as part of the destroy flow, not left at ~/.clawhq/cloud/keys/<id>.pem forever.",
+      "description": "src/cloud/provisioning/engine.ts destroyInstance() calls removeInstance() to clean the registry but never deletes the SSH private key file. The key is generated at src/cloud/provisioning/ssh-keygen.ts line 46 as deployDir/cloud/keys/<instanceId>.pem (mode 0600). After destroy, this file persists on disk indefinitely. The fix is in engine.ts destroyInstance(): after removeInstance() succeeds, read instance.sshKeyPath and delete the file if it exists. Use fs.rmSync with force:true so a missing file is not an error.",
+      "priority": "must",
+      "category": null,
+      "steps": [
+        "Read src/cloud/provisioning/engine.ts destroyInstance() (lines ~258-295) — confirm removeInstance() is the last call and instance.sshKeyPath is accessible before removal",
+        "Read src/cloud/provisioning/ssh-keygen.ts — confirm the key file path pattern: deployDir/cloud/keys/<instanceId>.pem",
+        "In destroyInstance(), before calling removeInstance(): capture instance.sshKeyPath (it will be gone from registry after removal)",
+        "After removeInstance() returns true: if captured sshKeyPath is set, call fs.rmSync(sshKeyPath, { force: true }) to delete the private key file",
+        "Run src/cloud/provisioning tests: registry.test.ts and ssh-keygen.test.ts — confirm no regressions"
+      ],
+      "acceptanceCriteria": [
+        "After destroyInstance() succeeds, the SSH private key file at instance.sshKeyPath no longer exists on disk",
+        "If instance.sshKeyPath was not set (older registry entries), destroy completes without error",
+        "DigitalOcean, AWS, GCP, and Hetzner destroy flows are all covered — the fix is in engine.ts (shared path), not in provider adapters"
+      ],
+      "scope": [
+        "src/cloud/provisioning/engine.ts"
+      ],
+      "dependsOn": [],
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomingNotes": "RE-GROOMED 2026-03-23. Elevated to must: verified destroy is a data sovereignty non-negotiable (CLAUDE.md). clawhq destroy must leave no credentials on disk — an SSH key persisting after destroy is a sovereignty violation, not just a cleanup miss. The intent field already uses must language. Security by default means cleanup is automatic. Fix is 3 lines in engine.ts — scope and steps unchanged.",
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T18:44:47-07:00"
+    },
+    {
+      "id": "BUG-077",
+      "title": "SSH keys directory created without mode 0700 — key filenames world-listable on multi-user systems",
+      "intent": "The SSH keys directory must not be listable by other users — mkdirSync must set mode 0700 so the directory contents are not exposed even though individual key files are mode 0600.",
+      "description": "src/cloud/provisioning/ssh-keygen.ts line 37 calls mkdirSync(keysDir, { recursive: true }) without a mode option. This creates the keys directory (deployDir/keys/) with default permissions (0755 on most Linux systems), making the directory world-readable. While individual key files are mode 0600 (correct), any user on the system can ls the keys directory to enumerate which instance IDs have keys stored. The fix is to pass { recursive: true, mode: 0o700 } to mkdirSync, matching the same protection principle used for credentials.ts. The same issue exists in registry.ts line 57 for the registry parent directory, but that directory only contains the registry file which is already 0600.",
+      "priority": "should",
+      "category": null,
+      "steps": [
+        "Read src/cloud/provisioning/ssh-keygen.ts lines 34-50 — confirm mkdirSync(keysDir, { recursive: true }) has no mode option",
+        "Change mkdirSync call to mkdirSync(keysDir, { recursive: true, mode: 0o700 }) — this ensures the directory is created owner-only even if an existing parent was 0755",
+        "Read src/cloud/provisioning/registry.ts writeInstanceRegistry() — confirm mkdirSync there also lacks a mode; add mode: 0o700 to that call as well",
+        "Run ssh-keygen.test.ts and registry.test.ts — confirm both pass and no regressions"
+      ],
+      "acceptanceCriteria": [
+        "The keys directory (deployDir/keys/) is created with mode 0700 — stat confirms no group/other read bits",
+        "The registry parent directory is created with mode 0700",
+        "Existing key file mode 0600 behavior is unchanged"
+      ],
+      "scope": [
+        "src/cloud/provisioning/ssh-keygen.ts",
+        "src/cloud/provisioning/registry.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "READY. ssh-keygen.ts:37 confirmed missing mode on mkdirSync. Two-file fix: ssh-keygen.ts (primary) + registry.ts (secondary, same pattern). No new deps. Scope: 2 files, 2 lines changed.",
       "groomedAt": "2026-03-23"
     }
   ]
