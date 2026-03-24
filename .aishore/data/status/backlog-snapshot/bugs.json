@@ -55,11 +55,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). New bug identified from codebase scan — same permission pattern as BUG-085 through BUG-105 series. export.ts creates the bundle parent dir with mkdirSync (no mode) and the archive with createWriteStream (no mode). Export bundle includes workspace data, ops/audit logs, and identity files. Credentials excluded but audit data and memory are included — world-readable is a direct security exposure. Steps follow the exact proven pattern: import constants, add mode to creation call, add chmodSync after for existing installs. createWriteStream supports mode option via { mode } options object. chmodSync after pipeline ensures the file mode is set even if umask overrides. Ready to sprint.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T22:31:00-07:00"
     },
     {
       "id": "BUG-107",
