@@ -43,11 +43,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "READY. aws.ts:301 confirmed returning publicKey: '' by inspection. SshKeyInfo.publicKey: string confirmed at types.ts:214-220. DigitalOcean, GCP, Hetzner all return real key values — AWS is the outlier. Fix is local to aws.ts + types.ts. No new deps. Scope: 2 files.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T18:36:45-07:00"
     },
     {
       "id": "BUG-074",

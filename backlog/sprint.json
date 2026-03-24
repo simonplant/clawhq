@@ -1,20 +1,33 @@
 {
-  "sprintId": "sprint-1774315547",
-  "startedAt": "2026-03-23T18:25:47-07:00",
+  "sprintId": "sprint-1774316037",
+  "startedAt": "2026-03-23T18:33:57-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-072",
-    "title": "Provisioning flow does not generate or store SSH keypair — FEAT-005 deploy update is undeliverable",
-    "intent": "Every provisioned cloud agent has an SSH keypair generated at provision time, stored securely, and linked in the deploy state. clawhq deploy update has a viable SSH path to every cloud agent it created.",
-    "description": "ProvisionedInstance interface (src/cloud/provisioning/types.ts) has no sshKeyPath or keypairPath field. The provisioning wizard does not generate an SSH keypair or inject it via cloud-init. Without a keypair, clawhq deploy update --id <agent-id> has no way to connect to the remote agent — FEAT-005 is architecturally undeliverable until this is resolved. Steps: (1) Add sshKeyPath: string field to ProvisionedInstance interface. (2) During provisioning wizard, generate an Ed25519 keypair (ssh-keygen or node:crypto), store private key at ~/.clawhq/keys/<agent-id>.pem (mode 0600), store public key path in ProvisionedInstance.sshKeyPath. (3) Inject public key via cloud-init user_data (authorized_keys). (4) Save sshKeyPath to deploy state file on disk. (5) Run cloud/provisioning tests. Scope: types.ts + provisioning wizard + 1-2 provider files for cloud-init injection. No logic change to existing deploy flow.",
+    "id": "BUG-073",
+    "title": "AWS listSshKeys() returns empty publicKey — silent data loss in SshKeyInfo interface",
+    "intent": "Every call to listSshKeys() returns structurally honest data — callers that check publicKey will not silently receive an empty string and mishandle it.",
+    "description": "aws.ts line 301 returns publicKey: '' because AWS EC2 API does not expose public key material after initial import, only fingerprints. The SshKeyInfo interface (types.ts:214-220) defines publicKey: string with no optional marker, so callers expect a real value. Steps: (1) Read src/cloud/provisioning/providers/aws.ts lines 292-310 (listSshKeys implementation). (2) Read src/cloud/provisioning/types.ts lines 214-220 (SshKeyInfo interface). (3) Make publicKey optional in SshKeyInfo interface (publicKey?: string). (4) Update the AWS adapter to omit publicKey or set it to undefined rather than empty string. (5) Check all callers of listSshKeys() for publicKey usage — grep for .publicKey in provisioning/. (6) Update any callers that assume publicKey is always truthy to handle undefined. (7) Run cloud/provisioning tests.",
     "sourceBacklog": "bugs.json",
-    "steps": [],
-    "acceptanceCriteria": [],
+    "steps": [
+      "Read src/cloud/provisioning/providers/aws.ts lines 292-310 to confirm listSshKeys() returns publicKey: ''",
+      "Read src/cloud/provisioning/types.ts lines 214-220 to confirm SshKeyInfo.publicKey type and optionality",
+      "Grep for .publicKey in src/cloud/provisioning/ to find all callers that read the field",
+      "Update SshKeyInfo interface: change publicKey: string to publicKey?: string",
+      "Update aws.ts listSshKeys(): omit publicKey field or set to undefined rather than empty string",
+      "Update any caller that assumes publicKey is always truthy to handle undefined",
+      "Run existing cloud/provisioning tests — confirm no regressions"
+    ],
+    "acceptanceCriteria": [
+      "SshKeyInfo.publicKey is typed as optional (publicKey?: string) in types.ts",
+      "AWS listSshKeys() no longer returns publicKey: '' — field is omitted or undefined",
+      "DigitalOcean, GCP, Hetzner listSshKeys() implementations unchanged and return real key values",
+      "No callers of listSshKeys() assume publicKey is always a non-empty string without a guard"
+    ],
     "scope": [],
-    "startedAt": "2026-03-23T18:25:47-07:00",
+    "startedAt": "2026-03-23T18:33:57-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T18:33:55-07:00"
+    "completedAt": "2026-03-23T18:36:45-07:00"
   },
-  "completedAt": "2026-03-23T18:33:55-07:00",
+  "completedAt": "2026-03-23T18:36:45-07:00",
   "attempts": 1
 }
