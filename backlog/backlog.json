@@ -156,10 +156,12 @@
         "docs/PROBLEMS.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "Documentation authoring task. Content sources confirmed: docs/PRODUCT.md, README.md (quantified claims), docs/OPENCLAW-REFERENCE.md (sections 8, 9, 12, 15, 30), CLAUDE.md. Search-query headings are the right approach. No technical dependencies. Marking readyForSprint=true as requested by PO."
+      "groomingNotes": "Documentation authoring task. Content sources confirmed: docs/PRODUCT.md, README.md (quantified claims), docs/OPENCLAW-REFERENCE.md (sections 8, 9, 12, 15, 30), CLAUDE.md. Search-query headings are the right approach. No technical dependencies. Marking readyForSprint=true as requested by PO.",
+      "passes": true,
+      "completedAt": "2026-03-24T08:32:09-07:00"
     },
     {
       "id": "FEAT-010",
