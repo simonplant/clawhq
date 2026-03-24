@@ -10,10 +10,10 @@
  */
 
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS } from "../../config/defaults.js";
+import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS, DIR_MODE_SECRET } from "../../config/defaults.js";
 import {
   DEPLOY_CLOUD_SUBDIR,
   DEPLOY_ENGINE_COMPOSE_FILE,
@@ -60,8 +60,9 @@ function writeHeartbeatState(deployDir: string, state: HeartbeatState): void {
   const dir = dirname(path);
 
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
+  chmodSync(dir, DIR_MODE_SECRET);
 
   const content = JSON.stringify(state, null, 2) + "\n";
   const tmpName = `.heartbeat.tmp.${randomBytes(6).toString("hex")}`;
