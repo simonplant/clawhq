@@ -66,7 +66,7 @@ See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for the full blueprint schema
 
 ## Status
 
-**Active development.** 33 CLI commands, 90,000+ lines of TypeScript, 132 test files. The platform layer (install, harden, deploy, doctor, backup, update, skills) is implemented. Blueprint customization and the installer are in progress.
+**Active development.** 59 CLI commands, ~53,000 lines of TypeScript, 52 test files. The platform layer (install, harden, deploy, doctor, backup, update, skills), blueprint customization, the installer, and a web dashboard (`clawhq dashboard`) are implemented. Cloud provisioning and remote deploy updates are in progress.
 
 Core bet: people will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
 
