@@ -138,11 +138,12 @@
         "account field in successful validation shows first 8 chars plus ... not the full key ID",
         "Valid credentials still pass validation — no regression"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "Escalated to MUST. AWS access key IDs (AKIA...) exposed unmasked in account field surface in logs, status output, and any UI that displays validation results. Even though key IDs are not the secret key, AWS recommends treating them as sensitive — they identify the account and can be used in targeted attacks. This is a security invariant: credentials are never displayed unmasked (see Key Design Constraints in CLAUDE.md). Fix is trivial (~6 lines, no dependencies) and the item is already readyForSprint. Should ship in next available sprint alongside BUG-066 and BUG-067.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-24T07:59:57-07:00"
     }
   ]
 }
