@@ -1072,10 +1072,11 @@
         "Non-numeric droplet ID throws Error containing the invalid id before any API call",
         "Valid numeric IDs convert correctly and pass through — no regression"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomingNotes": "MUST — NaN from parseInt propagates into API request body. hetzner.ts:177 exact location. Add isNaN check after parseInt, throw immediately. 4 lines. No dependencies. Safe to sprint."
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomingNotes": "MUST — NaN from parseInt propagates into API request body. hetzner.ts:177 exact location. Add isNaN check after parseInt, throw immediately. 4 lines. No dependencies. Safe to sprint.",
+      "completedAt": "2026-03-23T17:18:13-07:00"
     },
     {
       "id": "BUG-069",
