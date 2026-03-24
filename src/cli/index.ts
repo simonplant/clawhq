@@ -58,8 +58,9 @@ import {
   setProviderCredential,
   switchTrustMode,
   unregisterAgent,
+  updateInstance,
 } from "../cloud/index.js";
-import type { CloudProvider, ProvisionProgress, SnapshotBuildProgress } from "../cloud/index.js";
+import type { CloudProvider, DeployUpdateProgress, ProvisionProgress, SnapshotBuildProgress } from "../cloud/index.js";
 import {
   detectSshKeys,
   estimateMonthlyCost,
@@ -3628,6 +3629,70 @@ deployCmd
   });
 
 deployCmd
+  .command("update")
+  .description("Push updates to a cloud-deployed agent via SSH")
+  .requiredOption("--id <instance-id>", "Instance ID to update")
+  .option("--config", "Push updated blueprint vars (rebuild + restart)")
+  .option("--version", "Pull latest clawhq, rebuild, and restart")
+  .option("--skill", "Run a skill command on the remote (pass subcommand as trailing args)")
+  .argument("[skill-args...]", "Skill subcommand args when using --skill (e.g. install <source>)")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("--json", "Output as JSON")
+  .action(async (skillArgs: string[], opts: {
+    id: string;
+    config?: boolean;
+    version?: boolean;
+    skill?: boolean;
+    deployDir: string;
+    json?: boolean;
+  }) => {
+    // Determine update mode
+    const modeCount = [opts.config, opts.version, opts.skill].filter(Boolean).length;
+    if (modeCount === 0) {
+      console.error(chalk.red("Specify an update mode: --config, --version, or --skill <subcommand>"));
+      process.exit(1);
+    }
+    if (modeCount > 1) {
+      console.error(chalk.red("Specify only one update mode: --config, --version, or --skill"));
+      process.exit(1);
+    }
+
+    if (opts.skill && skillArgs.length === 0) {
+      console.error(chalk.red("--skill requires a subcommand (e.g. --skill install <source>)"));
+      process.exit(1);
+    }
+
+    const mode = opts.config ? "config" as const : opts.version ? "version" as const : "skill" as const;
+
+    const spinner = ora("Updating cloud agent…");
+    if (!opts.json) spinner.start();
+
+    const onProgress = createUpdateProgressHandler(spinner, opts.json);
+
+    const result = await updateInstance({
+      deployDir: opts.deployDir,
+      instanceId: opts.id,
+      mode,
+      skillArgs: opts.skill ? skillArgs.join(" ") : undefined,
+      onProgress,
+    });
+
+    if (!opts.json) spinner.stop();
+
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else if (result.success) {
+      console.log(chalk.green(`\nUpdate complete.`));
+      if (result.output) {
+        console.log(chalk.dim(`\nRemote output:\n${result.output}`));
+      }
+    } else {
+      console.error(chalk.red(`Update failed: ${result.error}`));
+      process.exit(1);
+    }
+  });
+
+deployCmd
   .command("status")
   .description("Check status of a provisioned instance")
   .argument("<instance-id>", "Instance ID to check")
@@ -4108,6 +4173,24 @@ function resolveProviderAlias(input: string): CloudProvider | undefined {
 
 function createProvisionProgressHandler(spinner: ReturnType<typeof ora>, json?: boolean) {
   return (event: ProvisionProgress): void => {
+    if (json) return;
+    const label = chalk.dim(`[${event.step}]`);
+    switch (event.status) {
+      case "running":
+        spinner.start(`${label} ${event.message}`);
+        break;
+      case "done":
+        spinner.succeed(`${label} ${event.message}`);
+        break;
+      case "failed":
+        spinner.fail(`${label} ${event.message}`);
+        break;
+    }
+  };
+}
+
+function createUpdateProgressHandler(spinner: ReturnType<typeof ora>, json?: boolean) {
+  return (event: DeployUpdateProgress): void => {
     if (json) return;
     const label = chalk.dim(`[${event.step}]`);
     switch (event.status) {
