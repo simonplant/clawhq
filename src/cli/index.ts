@@ -60,6 +60,16 @@ import {
   unregisterAgent,
 } from "../cloud/index.js";
 import type { CloudProvider, ProvisionProgress, SnapshotBuildProgress } from "../cloud/index.js";
+import {
+  detectSshKeys,
+  estimateMonthlyCost,
+  executeDeploy,
+  getProviderCatalog,
+  getProviderInfo,
+  hasStoredCredentials,
+  storeAndValidateCredentials,
+  uploadSshKey,
+} from "../cloud/index.js";
 import { DASHBOARD_DEFAULT_PORT, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 import type { TrustMode } from "../config/types.js";
 import { validateBundle } from "../config/validate.js";
@@ -3493,7 +3503,31 @@ program
 
 // ── Deploy (Cloud Provisioning) ─────────────────────────────────────────────
 
-const deployCmd = program.command("deploy").description("Provision and manage cloud-hosted agents");
+const deployCmd = program
+  .command("deploy")
+  .description("Provision and manage cloud-hosted agents")
+  .option("-p, --provider <provider>", "Cloud provider (digitalocean, do, aws, gcp, hetzner, hz)")
+  .option("-n, --name <name>", "Instance name")
+  .option("-r, --region <region>", "VM region")
+  .option("-s, --size <size>", "VM size")
+  .option("--snapshot <id>", "Use a pre-built snapshot for sub-60s provisioning")
+  .option("--ssh-keys <keys>", "Comma-separated SSH key IDs or fingerprints")
+  .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("-y, --yes", "Skip confirmation prompts (for automation)")
+  .option("--json", "Output as JSON")
+  .action(async (opts: {
+    provider?: string;
+    name?: string;
+    region?: string;
+    size?: string;
+    snapshot?: string;
+    sshKeys?: string;
+    deployDir: string;
+    yes?: boolean;
+    json?: boolean;
+  }) => {
+    await runDeployWizard(opts);
+  });
 
 deployCmd
   .command("create")
@@ -3778,6 +3812,288 @@ snapshotCmd
   });
 
 /** Resolve provider aliases (e.g. "do" → "digitalocean"). */
+// ── Deploy wizard ─────────────────────────────────────────────────────────────
+
+async function runDeployWizard(opts: {
+  provider?: string;
+  name?: string;
+  region?: string;
+  size?: string;
+  snapshot?: string;
+  sshKeys?: string;
+  deployDir: string;
+  yes?: boolean;
+  json?: boolean;
+}): Promise<void> {
+  const { select, input: inputPrompt, password, confirm } = await import("@inquirer/prompts");
+  const isInteractive = !opts.yes || !opts.provider || !opts.name;
+
+  // ── Header ──────────────────────────────────────────────────────────────────
+
+  if (!opts.json) {
+    console.log("");
+    console.log(chalk.bold.cyan("  ╔═══════════════════════════════════════╗"));
+    console.log(chalk.bold.cyan("  ║         ClawHQ Deploy                ║"));
+    console.log(chalk.bold.cyan("  ║   Zero to cloud agent in one session ║"));
+    console.log(chalk.bold.cyan("  ╚═══════════════════════════════════════╝"));
+    console.log("");
+  }
+
+  // ── Step 1: Provider ─────────────────────────────────────────────────────────
+
+  let provider: CloudProvider;
+  if (opts.provider) {
+    const resolved = resolveProviderAlias(opts.provider);
+    if (!resolved) {
+      console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner (hz)`));
+      process.exit(1);
+    }
+    provider = resolved;
+  } else {
+    const catalog = getProviderCatalog();
+    provider = await select({
+      message: "Choose a cloud provider",
+      choices: catalog.map((p) => ({ name: p.name, value: p.value })),
+    }) as CloudProvider;
+  }
+
+  const providerInfo = getProviderInfo(provider);
+  if (!providerInfo) {
+    console.error(chalk.red(`Unknown provider: ${provider}`));
+    process.exit(1);
+  }
+
+  // ── Step 2: Credentials ──────────────────────────────────────────────────────
+
+  if (!hasStoredCredentials(opts.deployDir, provider)) {
+    // Non-interactive mode: fail if credentials missing
+    if (opts.yes) {
+      console.error(chalk.red(`No credentials found for ${providerInfo.name}. Set them first:`));
+      console.error(chalk.dim(`  clawhq deploy credentials --provider ${provider} --token <your-token>`));
+      process.exit(1);
+    }
+
+    if (!opts.json) {
+      console.log(chalk.dim(`\n  No ${providerInfo.name} credentials found.`));
+    }
+
+    const token = await password({
+      message: `${providerInfo.name} API token`,
+      mask: "*",
+    });
+
+    const spinner = ora(`Validating ${providerInfo.name} credentials…`);
+    if (!opts.json) spinner.start();
+
+    const validation = await storeAndValidateCredentials(opts.deployDir, provider, token);
+
+    if (!opts.json) spinner.stop();
+
+    if (!validation.valid) {
+      console.error(chalk.red(`\n  Invalid credentials: ${validation.error}`));
+      process.exit(1);
+    }
+
+    if (!opts.json) {
+      console.log(chalk.green(`  Credentials valid${validation.account ? ` (${validation.account})` : ""} — stored securely (mode 0600).`));
+    }
+  } else if (!opts.json) {
+    console.log(chalk.dim(`  Using stored ${providerInfo.name} credentials.`));
+  }
+
+  // ── Step 3: Region ───────────────────────────────────────────────────────────
+
+  let region: string;
+  if (opts.region) {
+    region = opts.region;
+  } else if (isInteractive) {
+    region = await select({
+      message: "Select a region",
+      choices: providerInfo.regions.map((r) => ({
+        name: `${r.slug} — ${r.label}`,
+        value: r.slug,
+      })),
+      default: providerInfo.defaultRegion,
+    });
+  } else {
+    region = providerInfo.defaultRegion;
+  }
+
+  // ── Step 4: Size ─────────────────────────────────────────────────────────────
+
+  let size: string;
+  if (opts.size) {
+    size = opts.size;
+  } else if (isInteractive) {
+    size = await select({
+      message: "Select VM size",
+      choices: providerInfo.sizes.map((s) => ({
+        name: `${s.slug} — ${s.label} — $${s.monthlyCost}/mo`,
+        value: s.slug,
+      })),
+      default: providerInfo.defaultSize,
+    });
+  } else {
+    size = providerInfo.defaultSize;
+  }
+
+  // ── Step 5: Instance name ────────────────────────────────────────────────────
+
+  let name: string;
+  if (opts.name) {
+    name = opts.name;
+  } else if (opts.yes) {
+    // Non-interactive mode: auto-generate name
+    name = `clawhq-${Date.now().toString(36)}`;
+  } else {
+    name = await inputPrompt({
+      message: "Instance name",
+      default: `clawhq-${Date.now().toString(36)}`,
+      validate: (val: string) => {
+        if (!val.trim()) return "Name is required";
+        if (!/^[a-zA-Z0-9][a-zA-Z0-9-]*$/.test(val)) return "Name must start with a letter or number and contain only letters, numbers, and hyphens";
+        return true;
+      },
+    });
+  }
+
+  // ── Step 6: SSH key detection and upload ──────────────────────────────────────
+
+  let sshKeyIds: string[] | undefined;
+  if (opts.sshKeys) {
+    sshKeyIds = opts.sshKeys.split(",").map((k) => k.trim());
+  } else if (isInteractive) {
+    const localKeys = detectSshKeys();
+    if (localKeys.length > 0) {
+      const useLocal = await confirm({
+        message: `Found SSH key: ${localKeys[0].path} (${localKeys[0].type}). Upload to ${providerInfo.name} for SSH access?`,
+        default: true,
+      });
+
+      if (useLocal) {
+        const spinner = ora(`Uploading SSH key to ${providerInfo.name}…`);
+        if (!opts.json) spinner.start();
+
+        const uploadResult = await uploadSshKey(
+          opts.deployDir,
+          provider,
+          `clawhq-${name}`,
+          localKeys[0].publicKey,
+        );
+
+        if (!opts.json) spinner.stop();
+
+        if (uploadResult.success && uploadResult.keyId) {
+          sshKeyIds = [uploadResult.keyId];
+          if (!opts.json) console.log(chalk.green(`  SSH key uploaded.`));
+        } else {
+          if (!opts.json) console.log(chalk.yellow(`  SSH key upload failed: ${uploadResult.error ?? "unknown"}. Continuing without SSH key.`));
+        }
+      }
+    } else if (!opts.json) {
+      console.log(chalk.dim("  No SSH keys found in ~/.ssh/. VM will be accessible via cloud-init credentials only."));
+    }
+  }
+
+  // ── Step 7: Cost confirmation ────────────────────────────────────────────────
+
+  const monthlyCost = estimateMonthlyCost(provider, size);
+
+  if (!opts.json) {
+    console.log("");
+    console.log(chalk.bold("  Deployment Summary"));
+    console.log(chalk.dim(`  ─────────────────────────────────────`));
+    console.log(chalk.dim(`  Provider:  `) + providerInfo.name);
+    console.log(chalk.dim(`  Region:    `) + region);
+    console.log(chalk.dim(`  Size:      `) + size);
+    console.log(chalk.dim(`  Name:      `) + name);
+    if (sshKeyIds?.length) {
+      console.log(chalk.dim(`  SSH Keys:  `) + sshKeyIds.join(", "));
+    }
+    if (monthlyCost !== undefined) {
+      console.log(chalk.dim(`  Cost:      `) + chalk.bold.green(`$${monthlyCost}/mo`));
+    }
+    console.log("");
+  }
+
+  if (!opts.yes) {
+    const proceed = await confirm({
+      message: monthlyCost !== undefined
+        ? `Provision this VM? Estimated cost: $${monthlyCost}/mo`
+        : "Provision this VM?",
+      default: true,
+    });
+    if (!proceed) {
+      console.log(chalk.dim("\n  Deploy cancelled. No charges incurred.\n"));
+      process.exit(0);
+    }
+  }
+
+  // ── Step 8: Provision ────────────────────────────────────────────────────────
+
+  const spinner = ora("Provisioning cloud instance…");
+  if (!opts.json) {
+    console.log("");
+    spinner.start();
+  }
+
+  const onProgress = createProvisionProgressHandler(spinner, opts.json);
+
+  const result = await executeDeploy({
+    provider,
+    deployDir: opts.deployDir,
+    name,
+    region,
+    size,
+    sshKeys: sshKeyIds,
+    snapshotId: opts.snapshot,
+    useSnapshot: !opts.snapshot,
+    onProgress,
+  });
+
+  if (!opts.json) spinner.stop();
+
+  // ── Output ───────────────────────────────────────────────────────────────────
+
+  if (opts.json) {
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.provision.success) process.exit(1);
+    return;
+  }
+
+  if (result.provision.success) {
+    console.log("");
+    console.log(chalk.bold.green("  Your agent is deployed!"));
+    console.log("");
+    console.log(chalk.dim(`  Instance ID:  `) + result.provision.instanceId);
+    console.log(chalk.dim(`  IP Address:   `) + result.provision.ipAddress);
+    console.log(chalk.dim(`  Healthy:      `) + (result.provision.healthy ? chalk.green("yes") : chalk.yellow("no")));
+    if (result.monthlyCost !== undefined) {
+      console.log(chalk.dim(`  Monthly cost: `) + chalk.green(`$${result.monthlyCost}/mo`));
+    }
+    console.log(chalk.dim(`  Trust mode:   `) + (result.trustModeConfigured ? "zero-trust (configured)" : "not configured"));
+    console.log(chalk.dim(`  Heartbeat:    `) + (result.heartbeatSent ? "sent" : "skipped"));
+
+    if (sshKeyIds?.length && result.provision.ipAddress) {
+      console.log("");
+      console.log(chalk.dim(`  SSH access:   `) + chalk.bold(`ssh root@${result.provision.ipAddress}`));
+    }
+
+    console.log("");
+    console.log(chalk.dim(`  Status:   clawhq deploy status ${result.provision.instanceId}`));
+    console.log(chalk.dim(`  List:     clawhq deploy list`));
+    console.log(chalk.dim(`  Destroy:  clawhq deploy destroy ${result.provision.instanceId}`));
+    console.log("");
+  } else {
+    console.error(chalk.red(`\n  Deployment failed: ${result.provision.error}`));
+    if (result.provision.instanceId) {
+      console.error(chalk.dim(`  Instance ID: ${result.provision.instanceId} (partially created)`));
+    }
+    console.error(chalk.dim("  Mid-flight failures are auto-cleaned. No orphaned resources.\n"));
+    process.exit(1);
+  }
+}
+
 function resolveProviderAlias(input: string): CloudProvider | undefined {
   const aliases: Record<string, CloudProvider> = {
     "digitalocean": "digitalocean",

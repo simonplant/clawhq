@@ -125,6 +125,25 @@ export type {
   SshKeyInfo,
   TokenValidationResult,
 } from "./provisioning/index.js";
+export type {
+  DeployWizardOptions,
+  DeployWizardResult,
+  DetectedSshKey,
+  ProviderInfo,
+  RegionInfo,
+  SizeInfo,
+} from "./provisioning/index.js";
+export {
+  detectSshKeys,
+  estimateMonthlyCost,
+  executeDeploy,
+  getProviderCatalog,
+  getProviderInfo,
+  hasStoredCredentials,
+  storeAndValidateCredentials,
+  uploadSshKey,
+} from "./provisioning/index.js";
+
 export {
   buildSnapshot,
   cloudCredentialsPath,

@@ -1214,8 +1214,8 @@
       "description": "Wire the provisioning engine into a user-facing `clawhq deploy` command. Interactive flow: choose provider → enter/confirm credentials → select region → select blueprint → provision → deploy → verify → return URL. Non-interactive mode with flags for CI/automation. Shows cost estimate before confirming. Integrates with existing cloud module (trust modes, heartbeat) for post-deploy monitoring.",
       "category": "cloud",
       "priority": "must",
-      "status": "done",
-      "readyForSprint": false,
+      "status": "todo",
+      "readyForSprint": true,
       "dependencies": [
         "CQ-043",
         "CQ-044"
@@ -1239,9 +1239,7 @@
       "groomingNotes": "All dependencies met: CQ-043 (provisioning engine DONE), CQ-044 (DO adapter DONE), CQ-048 (cloud-init DONE), FEAT-003 (Hetzner DONE), CQ-045 (AWS DONE). BUG-064 (firewall failure handling) must ship before this sprint — deploy wizard must never surface an insecured VM. BUG-060 (Hetzner alias fix) must ship before this sprint so all four providers are accessible. REQUIRED ADDITIONS (for FEAT-005 lifecycle): (1) SSH keypair injection at provision time — generate keypair locally, inject public key via cloud-init user-data, store private key path in deploy state file; (2) deploy state file must track: instance ID, provider, IP, SSH key path — FEAT-005 reads this to push updates; (3) if provisioning succeeds but SSH key injection fails, that is a fatal error (destroy VM, do not register instance). PARTIAL FAILURE HANDLING: if any step after VM creation fails, destroy the VM before returning error — no orphaned instances, ever. INTERACTIVE FLOW: provider → credentials → region (show latency estimate) → blueprint → cost estimate → confirm → provision → health poll → success with URL. SCOPE: one sprint for interactive flow + cost estimate + SSH keypair injection + post-deploy trust mode hookup. The deploy command skeleton exists in cli/index.ts (line 3355+) with create/destroy/status subcommands — extend these. ACCEPTANCE CHECK: after deploy, clawhq deploy status --id <id> shows running; clawhq deploy destroy --id <id> terminates cleanly; SSH key stored in ~/.clawhq/cloud/keys/ at 0600.",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-20T13:23:27-07:00",
-      "failCount": 1,
-      "passes": true,
-      "completedAt": "2026-03-23T17:09:26-07:00"
+      "failCount": 1
     },
     {
       "id": "CQ-048",
@@ -1417,9 +1415,7 @@
         "The section is positioned logically within the document (between blueprints and security, or after blueprints)",
         "Existing content in ARCHITECTURE.md is not altered beyond the insertion"
       ],
-      "scope": [
-        "docs/ARCHITECTURE.md"
-      ],
+      "scope": ["docs/ARCHITECTURE.md"],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": false
@@ -1449,9 +1445,7 @@
         "A user following only this document can go from zero to a working agent",
         "The document is under 250 lines"
       ],
-      "scope": [
-        "docs/QUICKSTART.md"
-      ],
+      "scope": ["docs/QUICKSTART.md"],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": false
@@ -1480,9 +1474,7 @@
         "The 14 landmine rules each have an explanation and the safe default ClawHQ enforces",
         "A user can write a custom blueprint or skill using only this document as reference"
       ],
-      "scope": [
-        "docs/CONFIGURATION.md"
-      ],
+      "scope": ["docs/CONFIGURATION.md"],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": false
@@ -1511,9 +1503,7 @@
         "Quantified claims (13,500 tokens, 14 landmines, 360KB bloat, 11+ files) are included with source attribution",
         "Problems reference specific ClawHQ features (blueprints, auto-hardening, clawhq doctor, memory management) not vague claims"
       ],
-      "scope": [
-        "docs/PROBLEMS.md"
-      ],
+      "scope": ["docs/PROBLEMS.md"],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": false
@@ -1540,9 +1530,7 @@
         "The document is under 120 lines",
         "Each roadmap item is a clear statement with enough context to understand scope"
       ],
-      "scope": [
-        "docs/ROADMAP.md"
-      ],
+      "scope": ["docs/ROADMAP.md"],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": false
@@ -1568,9 +1556,7 @@
         "A 'What's Needed' section lists specific high-impact contribution opportunities",
         "Security requirements for contributed skills are clearly stated"
       ],
-      "scope": [
-        "docs/CONTRIBUTING.md"
-      ],
+      "scope": ["docs/CONTRIBUTING.md"],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": false
@@ -1596,9 +1582,7 @@
         "Entries use Added/Changed/Fixed format consistent with Keep a Changelog convention",
         "The changelog accurately reflects what has been built — no aspirational entries"
       ],
-      "scope": [
-        "docs/CHANGELOG.md"
-      ],
+      "scope": ["docs/CHANGELOG.md"],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": false
@@ -1629,18 +1613,8 @@
         "Links section includes: Architecture, Quickstart, Configuration, Problems, Roadmap, Contributing, Changelog",
         "No content is lost — everything is in README.md or linked from it"
       ],
-      "scope": [
-        "README.md"
-      ],
-      "dependsOn": [
-        "FEAT-006",
-        "FEAT-007",
-        "FEAT-008",
-        "FEAT-009",
-        "FEAT-010",
-        "FEAT-011",
-        "FEAT-012"
-      ],
+      "scope": ["README.md"],
+      "dependsOn": ["FEAT-006", "FEAT-007", "FEAT-008", "FEAT-009", "FEAT-010", "FEAT-011", "FEAT-012"],
       "status": "todo",
       "readyForSprint": false
     },
@@ -1668,12 +1642,8 @@
         "optional_files lists docs/PRODUCT.md and docs/OPENCLAW-REFERENCE.md so they are not flagged as non-standard",
         "Portfolio section lists aishore, Easy-Markdown, and GigOS with correct GitHub URLs"
       ],
-      "scope": [
-        ".doc-standard.yaml"
-      ],
-      "dependsOn": [
-        "FEAT-013"
-      ],
+      "scope": [".doc-standard.yaml"],
+      "dependsOn": ["FEAT-013"],
       "status": "todo",
       "readyForSprint": false
     }

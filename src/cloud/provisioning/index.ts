@@ -100,6 +100,26 @@ export {
 export { generateSnapshotInit } from "./snapshot-init.js";
 export type { SnapshotInitOptions } from "./snapshot-init.js";
 
+// Deploy wizard
+export type {
+  DeployWizardOptions,
+  DeployWizardResult,
+  DetectedSshKey,
+  ProviderInfo,
+  RegionInfo,
+  SizeInfo,
+} from "./wizard.js";
+export {
+  detectSshKeys,
+  estimateMonthlyCost,
+  executeDeploy,
+  getProviderCatalog,
+  getProviderInfo,
+  hasStoredCredentials,
+  storeAndValidateCredentials,
+  uploadSshKey,
+} from "./wizard.js";
+
 // Providers
 export { createAwsAdapter } from "./providers/aws.js";
 export { createDigitalOceanAdapter } from "./providers/digitalocean.js";
