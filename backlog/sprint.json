@@ -1,33 +1,33 @@
 {
-  "sprintId": "sprint-1774328843",
-  "startedAt": "2026-03-23T22:07:23-07:00",
+  "sprintId": "sprint-1774328999",
+  "startedAt": "2026-03-23T22:09:59-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-102",
-    "title": "Capability snapshot files written without mode 0600 — credentials copies world-readable",
-    "intent": "Capability snapshot files that contain credentials.json content must be written with mode 0600 — credential copies in snapshot dirs must never be world-readable.",
-    "description": "src/evolve/rollback/capability-snapshot.ts line 121 calls writeFileSync(destPath, content, \"utf-8\") without a mode option when copying files into snapshot directories. Snapshot targets include engine/credentials.json (for 'integrations' kind) and ops/integrations/.integration-manifest.json — meaning credentials are copied into snapshot files with default permissions (0644), making them world-readable. The directory structure is correctly created with DIR_MODE_SECRET (lines 82, 102, 113) but the files themselves are unprotected. Additionally, restoreCapabilitySnapshot at line 183 calls mkdirSync(destDir, { recursive: true }) without mode when restoring snapshot content to the deployment directory, potentially re-creating parent directories with 0755. Fix: add mode FILE_MODE_SECRET to writeFileSync at line 121, chmodSync after, and add DIR_MODE_SECRET to mkdirSync at line 183, chmodSync after.",
+    "id": "BUG-103",
+    "title": "ops/roles/ directory and .role-manifest.json created without security modes — role assignments world-listable",
+    "intent": "The ops/roles/ directory and .role-manifest.json must be created with mode 0700/0600 — role assignment data must not be listable or readable by other users.",
+    "description": "src/evolve/role/manifest.ts line 79 calls mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) without mode (creates ops/roles/ at 0755). Line 80 calls writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', 'utf-8') without mode (creates .role-manifest.json at 0644). The manifest stores role definitions and integration-to-role assignments (which integrations have 'admin', 'operator', or 'reader' roles) — exposing this lets an attacker enumerate capability access control assignments. Fix: import chmodSync and DIR_MODE_SECRET, FILE_MODE_SECRET from config/defaults.js; add mode: DIR_MODE_SECRET to mkdirSync; add chmodSync after; change writeFileSync to use FILE_MODE_SECRET; add chmodSync after writeFileSync.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/evolve/rollback/capability-snapshot.ts lines 18-24 — confirm chmodSync is not in the node:fs import and FILE_MODE_SECRET is not in the defaults import",
-      "Line 18: add chmodSync to the node:fs import destructure — result: import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';",
-      "Line 24: add FILE_MODE_SECRET to the defaults import — change to: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
-      "Line 121 (in createCapabilitySnapshot, the else branch): change writeFileSync(destPath, content, 'utf-8') to writeFileSync(destPath, content, { encoding: 'utf-8', mode: FILE_MODE_SECRET }); — this protects credential and manifest files copied into snapshot dirs",
-      "After line 121: add chmodSync(destPath, FILE_MODE_SECRET); — fixes permissions on existing installs",
-      "Line 183 (in restoreCapabilitySnapshot): change mkdirSync(destDir, { recursive: true }) to mkdirSync(destDir, { recursive: true, mode: DIR_MODE_SECRET });",
-      "After line 183: add chmodSync(destDir, DIR_MODE_SECRET); — fixes permissions when restore re-creates parent dirs",
-      "Run: npm test -- --testPathPattern='capability-snapshot' and confirm all tests pass with no regressions"
+      "Read src/evolve/role/manifest.ts lines 7-9 — confirm chmodSync is not in the node:fs import and no defaults import exists",
+      "Line 7: add chmodSync to the node:fs import — change to: import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+      "After line 9 (join import): add new import line: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
+      "Line 79: change mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) to mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true, mode: DIR_MODE_SECRET });",
+      "After line 79: add chmodSync(join(deployDir, MANIFEST_DIR), DIR_MODE_SECRET);",
+      "Line 80: change writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', 'utf-8') to writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', { encoding: 'utf-8', mode: FILE_MODE_SECRET });",
+      "After line 80: add chmodSync(path, FILE_MODE_SECRET);",
+      "Run: npm test -- --testPathPattern='role' and confirm all tests pass"
     ],
     "acceptanceCriteria": [
-      "Snapshot files copied from integration targets (engine/credentials.json, .integration-manifest.json) are written with mode 0600 — stat on any file under ops/rollback/integrations/snap-*/engine/credentials.json confirms no group/other read bits",
-      "Restore operation creates destination parent directories with mode 0700 — stat on dirs recreated during restore (e.g. ops/integrations/) confirms mode 0700",
-      "All existing capability-snapshot tests pass with no regressions"
+      "The ops/roles/ directory is created with mode 0700 — stat confirms no group/other read bits",
+      ".role-manifest.json is written with mode 0600 — stat confirms no group/other read bits",
+      "All existing role manifest tests pass with no regressions"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T22:07:23-07:00",
+    "startedAt": "2026-03-23T22:09:59-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T22:09:57-07:00"
+    "completedAt": "2026-03-23T22:12:32-07:00"
   },
-  "completedAt": "2026-03-23T22:09:57-07:00",
+  "completedAt": "2026-03-23T22:12:32-07:00",
   "attempts": 1
 }

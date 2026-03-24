@@ -55,11 +55,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "PO PASS (2026-03-23). Priority must confirmed — credentials.json content copied into snapshot dirs at 0644 is a direct credential exposure. AC is outcome-focused: stat on ops/rollback/integrations/snap-*/engine/credentials.json confirms 0600. Two issues in one file (writeFileSync + mkdirSync in restore), both documented precisely by Tech Lead Pass 1. Ready to sprint.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T22:09:57-07:00"
     },
     {
       "id": "BUG-103",
