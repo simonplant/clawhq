@@ -1,23 +1,23 @@
 {
-  "sprintId": "sprint-1774327740",
-  "startedAt": "2026-03-23T21:49:00-07:00",
+  "sprintId": "sprint-1774327866",
+  "startedAt": "2026-03-23T21:51:06-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-098",
-    "title": "workspace/skills directory and .skill-manifest.json created without security modes — skill capability enumeration",
-    "intent": "workspace/skills/ and .skill-manifest.json must be created with mode 0700/0600 — the directory and manifest reveal which skills (and their vetting status) are installed, enabling targeted capability-specific attacks.",
-    "description": "src/evolve/skills/lifecycle.ts saveManifest() (lines 49-56): line 54 calls mkdirSync(dir, { recursive: true }) without mode — creates workspace/skills/ with default 0755. Line 55 calls await writeFile(manifestPath, ...) without mode option — creates .skill-manifest.json world-readable. The skill manifest stores skill name, source, install timestamp, vet result, and activation status — a capability map for the agent. FILE_MODE_EXEC is already imported from config/defaults.js; DIR_MODE_SECRET and FILE_MODE_SECRET are not.",
+    "id": "BUG-099",
+    "title": "workspace/tools directory and .tool-manifest.json created without security modes — tool capability enumeration",
+    "intent": "workspace/tools/ and .tool-manifest.json must be created with mode 0700/0600 — listing the directory or reading the manifest reveals which agent tools (email, calendar, quote) are installed, informing targeted attacks against tool-specific integrations.",
+    "description": "Two files both create workspace/tools/ without a mode: src/evolve/tools/lifecycle.ts line 77 (mkdirSync in installTool) and src/evolve/tools/manifest.ts line 43 (mkdirSync in saveToolManifest). manifest.ts line 44 also calls await writeFile without mode option — creates .tool-manifest.json world-readable. lifecycle.ts already imports FILE_MODE_EXEC from config/defaults.js. manifest.ts has no import from config/defaults.js at all.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "On a multi-user system, a user other than the agent owner cannot list workspace/skills/ to enumerate which skills are installed",
-      ".skill-manifest.json is not readable by other users — skill name, source, vet result, and activation status remain private to the agent owner"
+      "On a multi-user system, a user other than the agent owner cannot list workspace/tools/ to enumerate which agent tools (email, calendar, quote) are installed",
+      ".tool-manifest.json is not readable by other users — installed tool details remain private to the agent owner"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:49:00-07:00",
+    "startedAt": "2026-03-23T21:51:06-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:51:04-07:00"
+    "completedAt": "2026-03-23T21:53:15-07:00"
   },
-  "completedAt": "2026-03-23T21:51:04-07:00",
+  "completedAt": "2026-03-23T21:53:15-07:00",
   "attempts": 1
 }

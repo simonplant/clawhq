@@ -87,11 +87,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Two files to fix:\n\nsrc/evolve/tools/lifecycle.ts:\n- Line 15: change import to add DIR_MODE_SECRET: import { DIR_MODE_SECRET, FILE_MODE_EXEC } from '../../config/defaults.js';\n- Line 9: add chmodSync to node:fs import\n- Line 77: change mkdirSync(toolsDir, { recursive: true }) to mkdirSync(toolsDir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 77: add chmodSync(toolsDir, DIR_MODE_SECRET);\n\nsrc/evolve/tools/manifest.ts:\n- Line 9: add chmodSync to node:fs import\n- Add after line 9: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';\n- Line 43: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 43: add chmodSync(dir, DIR_MODE_SECRET);\n- Line 44: change await writeFile(toolManifestPath(deployDir), JSON.stringify(manifest, null, 2) + '\\n') to await writeFile(toolManifestPath(deployDir), JSON.stringify(manifest, null, 2) + '\\n', { mode: FILE_MODE_SECRET });\n\nRun: npm test -- --testPathPattern='tools' and confirm all pass. AC: stat workspace/tools/ shows mode 0700; stat .tool-manifest.json shows mode 0600.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:53:15-07:00"
     },
     {
       "id": "BUG-100",
