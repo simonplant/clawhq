@@ -2,90 +2,6 @@
   "description": "Bugs and tech debt",
   "items": [
     {
-      "id": "BUG-062",
-      "title": "Provider adapters call response.json() without try-catch — crashes on malformed API responses",
-      "intent": "Provisioning must never crash with a raw JSON parse exception. All API response failures must surface as clean, actionable error messages with HTTP status and provider context.",
-      "description": "src/cloud/provisioning/providers/digitalocean.ts (lines 100, 426, 469) and hetzner.ts (line 77) call response.json() without try-catch. If the cloud API returns non-JSON (HTML error page, gateway timeout, 5xx body), the unhandled exception propagates and crashes the entire provisioning flow with an opaque JSON parse error rather than a user-readable API error. Fix: wrap response.json() calls in try-catch, re-throw as a typed ProvisionError with the raw response status and body included.",
-      "priority": "should",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "No bare response.json() calls in any provider adapter without error handling",
-        "A malformed provider API response surfaces a readable ProvisionError with HTTP status, not a JSON parse crash"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-03-20",
-      "groomingNotes": "Confirmed in digitalocean.ts:100,426,469 and hetzner.ts:77. Bare response.json() calls with no error handling. Wrap each in try-catch, re-throw as ProvisionError with HTTP status. Check AWS and GCP providers too. Scope: 4-6 call sites across 2-4 files. Single sprint, ~30 min.",
-      "lastFailReason": "Validator agent rejected implementation",
-      "lastFailAt": "2026-03-20T14:30:06-07:00",
-      "failCount": 1
-    },
-    {
-      "id": "BUG-066",
-      "title": "AWS token parsing silently sets secretKey to undefined on malformed input",
-      "intent": "A malformed AWS token produces an immediate, actionable error at parse time — never a cryptic failure at API call time.",
-      "description": "src/cloud/provisioning/providers/aws.ts:113 splits the token on ':' without validating the result. If the token contains no colon or only one part, secretKey is set to undefined and causes cryptic failures during API signing with no actionable error. Steps: (1) replace bare destructuring with a parts array; (2) validate parts.length === 2 and both parts are non-empty strings; (3) throw Error('AWS token must be in format ACCESS_KEY_ID:SECRET_ACCESS_KEY') on failure; (4) add test cases for: no colon, one part, empty access key, empty secret key. Scope: ~5 lines in aws.ts, no logic change to valid paths.",
-      "priority": "must",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "Malformed token (no colon) throws immediately with clear message | Empty access key or secret key throws with clear message | Valid token parses correctly — no regression | Test cases cover all invalid formats",
-        "Malformed token with no colon throws Error referencing expected format",
-        "Empty access key or empty secret key throws immediately with clear message",
-        "Valid colon-separated token parses correctly — no regression on valid AWS paths",
-        "Token with only whitespace parts is rejected (trim before check)"
-      ],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "MUST — token parsing for cloud providers is a critical input validation gap. aws.ts:113 is the exact location. Fix is ~5 lines: split, check parts.length === 2, check both parts non-empty, throw clear Error. No dependencies. Add test for malformed input. Safe to sprint immediately.",
-      "groomedAt": null,
-      "completedAt": "2026-03-24T07:50:54-07:00"
-    },
-    {
-      "id": "BUG-067",
-      "title": "GCP adapter JSON.parse on service account token missing try-catch",
-      "intent": "A malformed GCP service account token produces a clear validation error immediately — never an unhandled exception mid-provisioning.",
-      "description": "src/cloud/provisioning/providers/gcp.ts:132 calls JSON.parse(token) without a try-catch. If the user pastes a malformed service account JSON (missing brace, extra comma), the adapter throws an unhandled exception with a confusing stack trace instead of a validation error. Steps: (1) wrap JSON.parse in try-catch; (2) rethrow as descriptive Error: 'Invalid GCP service account JSON: <original message>'; (3) add test for malformed JSON (empty string, truncated JSON, wrong type). Scope: ~8 lines in gcp.ts.",
-      "priority": "must",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "Malformed JSON token throws with message starting 'Invalid GCP service account JSON:' | Stack trace from JSON.parse never surfaces to caller | Valid service account JSON parses correctly — no regression | Empty string token rejected with clear message",
-        "Malformed JSON token throws Error with message starting with 'Invalid GCP service account JSON:'",
-        "Empty string token is rejected with clear message",
-        "Valid service account JSON parses correctly — no regression on valid GCP paths",
-        "Internal JSON.parse stack trace never surfaces to the caller"
-      ],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "MUST — unhandled JSON.parse crash in adapter initialization. gcp.ts:132 is the exact location. Wrap in try-catch, rethrow descriptively. No dependencies. Safe to sprint immediately.",
-      "groomedAt": null,
-      "completedAt": "2026-03-24T07:54:42-07:00"
-    },
-    {
-      "id": "BUG-068",
-      "title": "Hetzner adapter parseInt on dropletIds propagates NaN into API request body",
-      "intent": "A non-numeric server ID produces an immediate validation error before any API call — NaN never reaches the Hetzner API.",
-      "description": "src/cloud/provisioning/providers/hetzner.ts:177 maps dropletIds through parseInt without validating the result. If any id is non-numeric, parseInt returns NaN, which serializes silently into the Hetzner API request body causing a confusing 422 response. Steps: (1) after parseInt(id, 10), check isNaN(numId) and throw Error with the invalid id value; (2) add test for non-numeric id inputs. Scope: ~4 lines in hetzner.ts.",
-      "priority": "must",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "Non-numeric droplet ID throws Error containing the invalid id before any API call",
-        "Valid numeric IDs convert correctly and pass through — no regression"
-      ],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "MUST — NaN from parseInt propagates into API request body. hetzner.ts:177 exact location. Add isNaN check after parseInt, throw immediately. 4 lines. No dependencies. Safe to sprint.",
-      "groomedAt": null,
-      "completedAt": "2026-03-24T07:56:40-07:00"
-    },
-    {
       "id": "BUG-069",
       "title": "Cloud provider POLL_INTERVAL_MS inconsistent: AWS uses 10s, others use 5s",
       "intent": "All cloud providers poll at the same interval. CLOUD_POLL_INTERVAL_MS is defined once in config/defaults.ts — no inline duplicates.",
@@ -102,8 +18,8 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "SHOULD — inconsistent poll timing across providers. Trivial constant consolidation: add CLOUD_POLL_INTERVAL_MS to defaults.ts, replace 4 inline literals. No logic change. No dependencies.",
-      "groomedAt": null
+      "groomingNotes": "Steps formalised from description. aws.ts:47 uses 10_000 (wrong), all others use 5_000 — standardise all four to CLOUD_POLL_INTERVAL_MS=5_000 from defaults.ts. Pure constant extraction, no logic change. Already readyForSprint=true — no change needed to ready flag.",
+      "groomedAt": "2026-03-24"
     },
     {
       "id": "BUG-070",
@@ -122,28 +38,8 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "SHOULD — 4x duplication of API timeout value across providers. Same pattern as BUG-038 through BUG-042 (timeout constants in other modules). Pure constant extraction, no logic change. No dependencies.",
-      "groomedAt": null
-    },
-    {
-      "id": "BUG-071",
-      "title": "AWS credential validation exposes full access key ID in account field — should be masked",
-      "intent": "AWS credentials are never logged or displayed unmasked. Access key in account field shows first 8 chars only. Whitespace-only tokens are rejected.",
-      "description": "src/cloud/provisioning/providers/aws.ts:223 returns { valid: true, account: accessKeyId } with the full AWS access key ID unmasked. AWS key IDs (AKIA...) are 20 chars and considered sensitive in logs and status displays. Additionally, !accessKeyId passes for whitespace-only strings. Steps: (1) trim both accessKeyId and secretKey before all use and checks; (2) reject if trimmed value is empty; (3) mask account field as first 8 chars plus ... (e.g. AKIAIOSFOD...); (4) add test for whitespace-only key, verify masking. Scope: ~6 lines in aws.ts.",
-      "priority": "must",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "Whitespace-only access key is rejected with the same format error as empty key",
-        "account field in successful validation shows first 8 chars plus ... not the full key ID",
-        "Valid credentials still pass validation — no regression"
-      ],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "Escalated to MUST. AWS access key IDs (AKIA...) exposed unmasked in account field surface in logs, status output, and any UI that displays validation results. Even though key IDs are not the secret key, AWS recommends treating them as sensitive — they identify the account and can be used in targeted attacks. This is a security invariant: credentials are never displayed unmasked (see Key Design Constraints in CLAUDE.md). Fix is trivial (~6 lines, no dependencies) and the item is already readyForSprint. Should ship in next available sprint alongside BUG-066 and BUG-067.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-24T07:59:57-07:00"
+      "groomingNotes": "Steps formalised from description. CLOUD_API_TIMEOUT_MS=30_000 confirmed duplicated in aws.ts:46, hetzner.ts:32, gcp.ts:46, digitalocean.ts. Also extract CLOUD_POLL_TIMEOUT_MS and CLOUD_OPERATION_TIMEOUT_MS if present. Pure constant extraction, no logic change. Already readyForSprint=true.",
+      "groomedAt": "2026-03-24"
     }
   ]
 }
