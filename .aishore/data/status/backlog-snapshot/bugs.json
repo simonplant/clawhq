@@ -105,11 +105,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "RE-GROOMED 2026-03-23 (PO review). Priority bumped from should → must. Rationale: ClawHQ has a non-negotiable security principle — 'hardening is automatic, not opt-in'. The update channel using StrictHostKeyChecking=no accepts any host presenting on the instance IP, directly contradicting this principle and the product's positioning as sovereign infrastructure. Minimum viable fix (accept-new instead of no) is a single-line change in update.ts and is sufficient for must-grade AC: StrictHostKeyChecking=no must not appear in any SSH invocation. The full sshHostKey fingerprint capture from provider is a stretch goal — do not block the sprint on it. AC: (1) StrictHostKeyChecking=no replaced with accept-new in update.ts, (2) no regression in update tests. If provider fingerprint capture is feasible, ship it — but accept-new alone satisfies AC.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T19:06:33-07:00"
     }
   ]
 }

@@ -24,11 +24,12 @@
         "src/cloud/provisioning/registry.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "READY. ssh-keygen.ts:37 confirmed missing mode on mkdirSync. Two-file fix: ssh-keygen.ts (primary) + registry.ts (secondary, same pattern). No new deps. Scope: 2 files, 2 lines changed.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T19:09:11-07:00"
     },
     {
       "id": "BUG-078",
