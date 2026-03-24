@@ -24,11 +24,12 @@
         "src/cloud/provisioning/registry.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "READY. ssh-keygen.ts:37 confirmed missing mode on mkdirSync. Two-file fix: ssh-keygen.ts (primary) + registry.ts (secondary, same pattern). No new deps. Scope: 2 files, 2 lines changed.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T19:09:11-07:00"
     },
     {
       "id": "BUG-078",
@@ -55,7 +56,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomingNotes": "READY. Three-file fix, same pattern as BUG-077. Primary: credentials.ts:53 (stores API tokens — highest severity). Secondary: snapshot-registry.ts:51 (non-sensitive data, but consistent with security model). registry.ts:57 already covered by BUG-077 — do NOT double-fix. Steps: (1) Read credentials.ts:50-55, change mkdirSync to { recursive: true, mode: 0o700 }. (2) Read snapshot-registry.ts:48-53, same change. (3) Run credentials tests and snapshot-registry tests to confirm no regressions. AC: stat on deployDir/cloud/ shows drwx------ (0700), file permissions unchanged at 0600.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-23T20:09:23-07:00",
+      "failCount": 1
     },
     {
       "id": "BUG-079",
