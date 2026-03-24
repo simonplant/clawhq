@@ -12,7 +12,7 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { FILE_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 import type { EnvFile, EnvLine } from "./types.js";
 
@@ -114,7 +114,7 @@ export function writeEnvAtomic(filePath: string, envFile: EnvFile): void {
 
   // Ensure parent directory exists
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
 
   const content = serializeEnv(envFile);
