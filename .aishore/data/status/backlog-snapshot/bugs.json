@@ -57,11 +57,12 @@
         "src/operate/backup/restore.test.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "GROOMED 2026-03-23. Source verified at specified lines. Two mkdirSync calls in restore.ts need mode: DIR_MODE_SECRET — tempDir (line 151) and extractDir (line 196). DIR_MODE_SECRET not currently imported in restore.ts. Test approach: spy on mkdirSync to capture mode arg since a real restore requires GPG + real archives. Exports: restoreSnapshot is exported. Priority must is correct — decrypted backup contents (credentials, .env, config) land in /tmp world-readable during restore window.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:06:23-07:00"
     },
     {
       "id": "BUG-089",

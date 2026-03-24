@@ -56,7 +56,7 @@ async function saveQueue(
 ): Promise<void> {
   const dir = join(deployDir, "workspace", "memory");
   mkdirSync(dir, { recursive: true });
-  await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2));
+  await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2), { mode: 0o600 });
 }
 
 // ── Generate ID ─────────────────────────────────────────────────────────────
