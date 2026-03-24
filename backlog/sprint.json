@@ -1,24 +1,23 @@
 {
-  "sprintId": "sprint-1774327061",
-  "startedAt": "2026-03-23T21:37:41-07:00",
+  "sprintId": "sprint-1774327618",
+  "startedAt": "2026-03-23T21:46:58-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-096",
-    "title": "ops/providers directory created without mode 0700 — provider manifest world-listable on multi-user systems",
-    "intent": "ops/providers directory and .provider-manifest.json must be created with mode 0700/0600 so other local users cannot determine which cloud providers are installed",
-    "description": "src/evolve/provider/manifest.ts line 38: mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) where MANIFEST_DIR = 'ops/providers'. This directory is NOT in scaffold.ts SCAFFOLD_DIRS — it is created on first use by saveProviderManifest() without a mode option. The file written (line 39: writeFileSync(path, ...)) also has no mode option — .provider-manifest.json is world-readable. ops/providers/.provider-manifest.json stores installed cloud provider names and their capability state. On a multi-user system, any user can enumerate which cloud providers are configured. No import of DIR_MODE_SECRET or FILE_MODE_SECRET exists in manifest.ts — both must be added.",
+    "id": "BUG-097",
+    "title": "ops/integrations directory and .integration-manifest.json created without security modes — integration config world-listable",
+    "intent": "ops/integrations and .integration-manifest.json must be created with restricted permissions — the manifest reveals which integrations (IMAP, SMTP, CalDAV) are configured on the agent, giving an attacker a precise capability map.",
+    "description": "src/evolve/integrate/manifest.ts saveIntegrationManifest() (lines 35-43): line 38 calls mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) without mode — creates ops/integrations/ with default 0755. Line 39 calls writeFileSync(path, ..., 'utf-8') without mode option — creates .integration-manifest.json with default 0644. Both are wrong. The manifest stores integration state (name, enabled, version) and reveals exactly which integrations (email, calendar, tasks) are wired into the agent. No import from config/defaults.js exists today — needs DIR_MODE_SECRET and FILE_MODE_SECRET added.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "ops/providers directory is created with mode 0700 — no other local user can enumerate which cloud providers are installed",
-      ".provider-manifest.json is written with mode 0600 — file contents are not readable by other local users",
-      "All tests pass with no regressions"
+      "On a multi-user system, a user other than the agent owner cannot list files in ops/integrations/ to discover which integrations (IMAP, SMTP, CalDAV) are configured",
+      ".integration-manifest.json is not readable by other users — integration state (name, enabled, version) remains private to the agent owner"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:37:41-07:00",
+    "startedAt": "2026-03-23T21:46:58-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:39:48-07:00"
+    "completedAt": "2026-03-23T21:48:59-07:00"
   },
-  "completedAt": "2026-03-23T21:39:48-07:00",
+  "completedAt": "2026-03-23T21:48:59-07:00",
   "attempts": 1
 }

@@ -32,7 +32,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "PO PASS 2026-03-23 (post-failure review). failCount=1. The grooming notes from tech lead pass 2 are highly specific — field catalog pre-extracted, line numbers pinned, FALLBACK SCOPE in effect (blueprint YAML only, do NOT read OPENCLAW-REFERENCE.md). Most likely failure mode: implementation scope creep (tried to do skill schema or landmine rules which are explicitly excluded). AC1 says 'blueprint YAML schema, skill config.yaml schema, SKILL.md format, and all 14 landmine rules' but groomingNotes explicitly scopes to blueprint YAML only for this sprint. AC1 is MISLEADING — it describes the full doc vision, not the fallback sprint scope. Implementation agent should follow groomingNotes scope: blueprint YAML schema only. AC1–AC4 describe the right outcomes for the fallback scope. Do not change steps — tech lead pass 2 steps are correct and precise.",
+      "groomingNotes": "PO PASS 2026-03-23 (post-failure review, AC rewrite). failCount=1. AC REWRITTEN to match fallback scope — prior AC1 described the full doc vision (skill schema, 14 landmines) but groomingNotes scope is blueprint YAML only. New AC is scoped exactly to what gets built this sprint. FALLBACK SCOPE still in effect: blueprint YAML schema only — do NOT add skill schema, SKILL.md format, or landmine rules. Tech Lead Pass 2 implementation steps remain correct — do not modify them. Most likely prior failure mode: implementation read OPENCLAW-REFERENCE.md despite explicit exclusion in groomingNotes, causing scope creep.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-23T17:47:15-07:00",
       "failCount": 1
