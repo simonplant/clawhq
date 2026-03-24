@@ -1,33 +1,34 @@
 {
-  "sprintId": "sprint-1774325185",
-  "startedAt": "2026-03-23T21:06:25-07:00",
+  "sprintId": "sprint-1774325284",
+  "startedAt": "2026-03-23T21:08:04-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-090",
-    "title": "approval-queue.json written without mode 0600 — pending agent action submissions world-readable",
-    "intent": "approval-queue.json MUST be written with mode 0600 — pending action submissions can contain sensitive content (email text, message content, transaction details) and must not be world-readable.",
-    "description": "Two code paths write approval-queue.json without a file mode, leaving it world-readable (default 0644). CODE PATH 1: src/evolve/approval/queue.ts line 59 calls 'await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2))' with no mode option. CODE PATH 2: src/design/tools/approve-action.ts (the generated tool template) line 62 calls 'writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2))' with no mode option — QUEUE_FILE = join(__dirname, '..', 'memory', 'approval-queue.json'). The approval queue stores high-stakes pending action submissions: email content, message text, account changes, purchase details — whatever the agent submitted for user approval. Any user on the system can read pending action submissions. Fix for CODE PATH 1: change writeFile call to writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2), { mode: 0o600 }). Fix for CODE PATH 2: in the generated code template string, change writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2)) to writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2), { mode: 0o600 }). No import needed for either fix — 0o600 literal is sufficient.",
+    "id": "BUG-089",
+    "title": "Backup snapshots directory created without mode 0700 — backup archives world-listable",
+    "intent": "The backup snapshots directory MUST be created with mode 0700 so that backup archive existence and timestamps cannot be enumerated by other system users.",
+    "description": "src/operate/backup/backup.ts line 166 calls mkdirSync(snapsDir, { recursive: true }) without a mode option when creating ops/backup/snapshots/. This creates the snapshots directory with default permissions (0755), making it world-listable. Any user on the system can ls the snapshots directory to see that backups exist and read their timestamps and snapshot IDs. While the backup archives are GPG-encrypted, their existence and metadata should not be exposed. Fix: import DIR_MODE_SECRET from config/defaults.js (currently not imported — only BACKUP_GPG_TIMEOUT_MS is imported from defaults.js) and change mkdirSync(snapsDir, { recursive: true }) to mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }). No chmodSync needed — snapshotsDir is always fresh-created at this call site.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/evolve/approval/queue.ts lines 53-60 — confirm writeFile call has no mode option",
-      "Change 'await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2))' to 'await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2), { mode: 0o600 })' — no import needed, 0o600 literal is sufficient",
-      "Read src/design/tools/approve-action.ts lines 58-67 — confirm writeFileSync in generated template has no mode option",
-      "In the generated code template string, change 'writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2))' to 'writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2), { mode: 0o600 })' — no import needed, 0o600 literal in generated CJS code",
+      "Read src/operate/backup/backup.ts lines 16-26 — confirm DIR_MODE_SECRET is not imported from defaults.js",
+      "Read src/operate/backup/backup.ts lines 155-170 — confirm mkdirSync(snapsDir, { recursive: true }) has no mode option",
+      "Add DIR_MODE_SECRET to the existing import from ../../config/defaults.js (currently only BACKUP_GPG_TIMEOUT_MS is imported)",
+      "Change mkdirSync(snapsDir, { recursive: true }) to mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Check if src/operate/backup/backup.test.ts exists — if so, add a test that stats the snapshots directory and asserts mode & 0o777 === 0o700 after calling the backup function",
       "Run npm test -- --reporter=verbose 2>&1 | tail -20 to confirm all tests pass"
     ],
     "acceptanceCriteria": [
-      "src/evolve/approval/queue.ts writeFile call includes { mode: 0o600 } option",
-      "src/design/tools/approve-action.ts generated template writeFileSync call includes { mode: 0o600 } option",
-      "approval-queue.json is written with mode 0600 — stat confirms no group/other read bits"
+      "The ops/backup/snapshots/ directory is created with mode 0700 — stat confirms no group/other read bits",
+      "DIR_MODE_SECRET is added to the import from config/defaults.js in backup.ts",
+      "All existing backup tests continue to pass"
     ],
     "scope": [
-      "src/evolve/approval/queue.ts",
-      "src/design/tools/approve-action.ts"
+      "src/operate/backup/backup.ts",
+      "src/operate/backup/backup.test.ts"
     ],
-    "startedAt": "2026-03-23T21:06:25-07:00",
+    "startedAt": "2026-03-23T21:08:04-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:08:02-07:00"
+    "completedAt": "2026-03-23T21:09:56-07:00"
   },
-  "completedAt": "2026-03-23T21:08:02-07:00",
+  "completedAt": "2026-03-23T21:09:56-07:00",
   "attempts": 1
 }

@@ -119,11 +119,12 @@
         "src/design/tools/approve-action.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "RE-GROOMED 2026-03-23 (PO pass). Priority elevated should→must for consistency with BUG-086 (commands.json without mode 0600, must) and BUG-074 (instance registry without mode 0600, must). approval-queue.json holds pending user action submissions — email content, message text, purchase details, account changes. File contents world-readable is a must-fix, not discretionary. Tech lead grooming notes preserved; no step changes.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:08:02-07:00"
     }
   ]
 }

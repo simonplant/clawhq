@@ -89,11 +89,12 @@
         "src/operate/backup/backup.test.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "GROOMED 2026-03-23. Source verified: backup.ts line 166 confirmed mkdirSync(snapsDir, { recursive: true }) without mode. DIR_MODE_SECRET not currently imported in backup.ts. Single mkdirSync call to fix. No chmodSync needed — snapsDir is always newly created at this call site (createSnapshot creates a fresh snapshot ID each time). Check for existing backup.test.ts before writing new tests.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:09:56-07:00"
     },
     {
       "id": "BUG-090",
