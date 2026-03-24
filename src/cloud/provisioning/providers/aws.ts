@@ -15,7 +15,11 @@
 
 import { createHmac, createHash } from "node:crypto";
 
-import { CLOUD_POLL_INTERVAL_MS } from "../../../config/defaults.js";
+import {
+  CLOUD_API_TIMEOUT_MS,
+  CLOUD_POLL_INTERVAL_MS,
+  CLOUD_POLL_TIMEOUT_MS,
+} from "../../../config/defaults.js";
 import type {
   AddSshKeyOptions,
   AddSshKeyResult,
@@ -44,9 +48,6 @@ const DEFAULT_AMI_REGION: Record<string, string> = {
 };
 
 const DEFAULT_INSTANCE_TYPE = "t3.micro";
-const API_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = CLOUD_POLL_INTERVAL_MS;
-const POLL_TIMEOUT_MS = 300_000;
 
 /** EC2 instance type monthly costs (approximate, us-east-1 on-demand). */
 const SIZE_MONTHLY_COST: Record<string, number> = {
@@ -136,7 +137,7 @@ export function createAwsAdapter(token: string, region = "us-east-1"): ProviderA
         method: "POST",
         headers: signed,
         body: query,
-        signal: signal ?? AbortSignal.timeout(API_TIMEOUT_MS),
+        signal: signal ?? AbortSignal.timeout(CLOUD_API_TIMEOUT_MS),
       });
     } catch (err) {
       return { ok: false, status: 0, body: err instanceof Error ? err.message : String(err) };
@@ -206,7 +207,7 @@ export function createAwsAdapter(token: string, region = "us-east-1"): ProviderA
 
   async function pollForRunningInstance(instanceId: string, signal?: AbortSignal): Promise<string | undefined> {
     const start = Date.now();
-    while (Date.now() - start < POLL_TIMEOUT_MS) {
+    while (Date.now() - start < CLOUD_POLL_TIMEOUT_MS) {
       if (signal?.aborted) return undefined;
       const result = await ec2Request({ Action: "DescribeInstances", "InstanceId.1": instanceId }, signal);
       if (result.ok) {
@@ -214,7 +215,7 @@ export function createAwsAdapter(token: string, region = "us-east-1"): ProviderA
         const ip = extractXmlValue(result.body, "publicIp") ?? extractXmlValue(result.body, "ipAddress");
         if (state === "running" && ip) return ip;
       }
-      await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      await new Promise<void>((resolve) => setTimeout(resolve, CLOUD_POLL_INTERVAL_MS));
     }
     return undefined;
   }

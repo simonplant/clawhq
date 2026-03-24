@@ -161,6 +161,15 @@ export const CLOUD_COMMAND_QUEUE_MAX_HISTORY = 100;
 /** Polling interval for cloud provisioning status checks (ms). */
 export const CLOUD_POLL_INTERVAL_MS = 5_000;
 
+/** Timeout for cloud provider API requests (ms). */
+export const CLOUD_API_TIMEOUT_MS = 30_000;
+
+/** Timeout for polling cloud provisioning status until ready (ms). */
+export const CLOUD_POLL_TIMEOUT_MS = 300_000;
+
+/** Timeout for long-running cloud operations — snapshots, GCE ops (ms). */
+export const CLOUD_OPERATION_TIMEOUT_MS = 600_000;
+
 // ── Identity / bootstrap limits ─────────────────────────────────────────────
 
 /** Maximum character budget for identity bootstrap content (LM-08). */

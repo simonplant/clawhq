@@ -17,7 +17,12 @@
 
 import { createSign } from "node:crypto";
 
-import { CLOUD_POLL_INTERVAL_MS } from "../../../config/defaults.js";
+import {
+  CLOUD_API_TIMEOUT_MS,
+  CLOUD_OPERATION_TIMEOUT_MS,
+  CLOUD_POLL_INTERVAL_MS,
+  CLOUD_POLL_TIMEOUT_MS,
+} from "../../../config/defaults.js";
 import type {
   AddSshKeyOptions,
   AddSshKeyResult,
@@ -44,10 +49,6 @@ const COMPUTE_SCOPE = "https://www.googleapis.com/auth/compute";
 const DEFAULT_MACHINE_TYPE = "e2-micro";
 const DEFAULT_IMAGE_PROJECT = "ubuntu-os-cloud";
 const DEFAULT_IMAGE_FAMILY = "ubuntu-2404-lts-amd64";
-const API_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = CLOUD_POLL_INTERVAL_MS;
-const POLL_TIMEOUT_MS = 300_000;
-const OP_POLL_TIMEOUT_MS = 600_000;
 
 /** GCE machine type monthly costs (approximate, us-central1 on-demand). */
 const SIZE_MONTHLY_COST: Record<string, number> = {
@@ -95,7 +96,7 @@ async function exchangeJwtForAccessToken(jwt: string): Promise<{ token: string; 
         grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
         assertion: jwt,
       }),
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      signal: AbortSignal.timeout(CLOUD_API_TIMEOUT_MS),
     });
   } catch (err) {
     return { error: `Token exchange failed: ${err instanceof Error ? err.message : String(err)}` };
@@ -202,7 +203,7 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
           "Content-Type": "application/json",
         },
         body: options.body ? JSON.stringify(options.body) : undefined,
-        signal: options.signal ?? AbortSignal.timeout(API_TIMEOUT_MS),
+        signal: options.signal ?? AbortSignal.timeout(CLOUD_API_TIMEOUT_MS),
       });
     } catch (err) {
       return { ok: false, status: 0, error: `GCP API request failed: ${err instanceof Error ? err.message : String(err)}` };
@@ -232,7 +233,7 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
   /** Wait for a zone operation to complete. */
   async function waitForOperation(operationName: string, signal?: AbortSignal): Promise<boolean> {
     const start = Date.now();
-    while (Date.now() - start < OP_POLL_TIMEOUT_MS) {
+    while (Date.now() - start < CLOUD_OPERATION_TIMEOUT_MS) {
       if (signal?.aborted) return false;
       const result = await gcpRequest(
         `/projects/${projectId}/zones/${zone}/operations/${operationName}`,
@@ -242,7 +243,7 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
         const op = result.data as { status: string };
         if (op.status === "DONE") return true;
       }
-      await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      await new Promise<void>((resolve) => setTimeout(resolve, CLOUD_POLL_INTERVAL_MS));
     }
     return false;
   }
@@ -250,7 +251,7 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
   /** Wait for a global operation to complete. */
   async function waitForGlobalOperation(operationName: string, signal?: AbortSignal): Promise<boolean> {
     const start = Date.now();
-    while (Date.now() - start < OP_POLL_TIMEOUT_MS) {
+    while (Date.now() - start < CLOUD_OPERATION_TIMEOUT_MS) {
       if (signal?.aborted) return false;
       const result = await gcpRequest(
         `/projects/${projectId}/global/operations/${operationName}`,
@@ -260,14 +261,14 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
         const op = result.data as { status: string };
         if (op.status === "DONE") return true;
       }
-      await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      await new Promise<void>((resolve) => setTimeout(resolve, CLOUD_POLL_INTERVAL_MS));
     }
     return false;
   }
 
   async function pollForRunningInstance(instanceName: string, signal?: AbortSignal): Promise<string | undefined> {
     const start = Date.now();
-    while (Date.now() - start < POLL_TIMEOUT_MS) {
+    while (Date.now() - start < CLOUD_POLL_TIMEOUT_MS) {
       if (signal?.aborted) return undefined;
       const result = await gcpRequest(
         `/projects/${projectId}/zones/${zone}/instances/${instanceName}`,
@@ -281,7 +282,7 @@ export function createGcpAdapter(token: string, region = "us-central1"): Provide
         const ip = instance.networkInterfaces?.[0]?.accessConfigs?.[0]?.natIP;
         if (instance.status === "RUNNING" && ip) return ip;
       }
-      await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      await new Promise<void>((resolve) => setTimeout(resolve, CLOUD_POLL_INTERVAL_MS));
     }
     return undefined;
   }
