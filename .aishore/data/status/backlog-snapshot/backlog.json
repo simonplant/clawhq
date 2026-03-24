@@ -50,10 +50,12 @@
         "docs/CHANGELOG.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "PRIORITY RAISED: FEAT-012 was 'could' but it is a hard dependency of FEAT-013 which is 'must'. A could item blocking a must item is a priority misalignment — elevating to should so sprint ordering reflects actual dependency weight. CONTENT: Documentation authoring task with confirmed sources (GAP-ANALYSIS.md, done.json, PRODUCT.md). Phase-based organisation is correct given no semver. Steps and AC are complete. No technical dependencies. Sprint immediately — it unblocks the README storefront rewrite."
+      "groomingNotes": "PRIORITY RAISED: FEAT-012 was 'could' but it is a hard dependency of FEAT-013 which is 'must'. A could item blocking a must item is a priority misalignment — elevating to should so sprint ordering reflects actual dependency weight. CONTENT: Documentation authoring task with confirmed sources (GAP-ANALYSIS.md, done.json, PRODUCT.md). Phase-based organisation is correct given no semver. Steps and AC are complete. No technical dependencies. Sprint immediately — it unblocks the README storefront rewrite.",
+      "passes": true,
+      "completedAt": "2026-03-24T09:01:08-07:00"
     },
     {
       "id": "FEAT-013",
