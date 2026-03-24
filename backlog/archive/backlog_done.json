@@ -1464,6 +1464,41 @@
     "completedAt": "2026-03-23T17:41:01-07:00"
   },
   {
+    "id": "FEAT-008",
+    "title": "Create docs/CONFIGURATION.md — blueprint schema, skill schema, every config option",
+    "intent": "Users writing custom blueprints or skills must have a single reference document — reading 7 example YAMLs and reverse-engineering the schema is not documentation.",
+    "description": "Configuration content exists but only as examples and scattered references: configs/blueprints/*.yaml (7 blueprints establishing the blueprint schema by example), configs/skills/*/config.yaml (6 skills establishing the skill schema by example), configs/skills/*/SKILL.md (6 behavior definitions establishing the SKILL.md format by example), docs/ARCHITECTURE.md ('What a Blueprint Configures' 10-dimension table, 'The 14 Landmine Rules' table, 'What Gets Generated' directory tree), docs/OPENCLAW-REFERENCE.md (openclaw.json reference section 10, Configuration Surface Inventory section 11, The 14 Configuration Landmines section 12 with detailed explanations, Automation section 14 for cron config), CLAUDE.md (Key Design Constraints, CLI Commands). The unified document must cover: blueprint YAML schema (field-by-field, every dimension from the 10-dimension table), skill config.yaml schema (field-by-field: schedule, model, dependencies, approval, boundaries), SKILL.md authoring format, the 14 landmine rules with explanations, model routing configuration, and integration configuration patterns.",
+    "priority": "should",
+    "category": "documentation",
+    "steps": [
+      "Read configs/blueprints/email-manager.yaml and configs/blueprints/research-copilot.yaml as reference blueprints to extract the full field set",
+      "Read configs/skills/email-digest/config.yaml and configs/skills/morning-brief/config.yaml as reference skills to extract the full field set",
+      "Read configs/skills/email-digest/SKILL.md as reference for the SKILL.md authoring format",
+      "Read docs/ARCHITECTURE.md sections: 'What a Blueprint Configures' (10-dimension table), 'The 14 Landmine Rules', 'What Gets Generated'",
+      "Read docs/OPENCLAW-REFERENCE.md sections 10 (openclaw.json), 11 (Configuration Surface Inventory), 12 (14 Configuration Landmines with detailed explanations), 14 (cron/heartbeat/hooks)",
+      "Read CLAUDE.md Key Design Constraints section",
+      "Compose docs/CONFIGURATION.md with sections: Blueprint Schema (every field, type, required/optional, description, default), Skill Schema (config.yaml field-by-field + SKILL.md format guide), The 14 Landmine Rules (sourced from OPENCLAW-REFERENCE.md section 12, each rule with explanation and safe default), Model Routing (local vs cloud, per-task-type routing), Integration Patterns (how to configure IMAP, SMTP, CalDAV, etc.), Generated Directory Structure (from ARCHITECTURE.md 'What Gets Generated')",
+      "For each schema field, document: name, type, required/optional, default, description, example value"
+    ],
+    "acceptanceCriteria": [
+      "docs/CONFIGURATION.md exists and documents the full blueprint YAML schema, skill config.yaml schema, SKILL.md format, and all 14 landmine rules",
+      "Every blueprint schema field includes: name, type, required/optional, default, description",
+      "Every skill config.yaml field includes: name, type, required/optional, default, description",
+      "The 14 landmine rules each have an explanation and the safe default ClawHQ enforces",
+      "A user can write a custom blueprint or skill using only this document as reference"
+    ],
+    "scope": [
+      "docs/CONFIGURATION.md"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-24",
+    "groomingNotes": "Documentation authoring task. Content sources confirmed: 7 blueprint YAMLs, 6 skill config.yaml files, docs/ARCHITECTURE.md (10-dimension table, 14 Landmine Rules), docs/OPENCLAW-REFERENCE.md (sections 10-12, 14), CLAUDE.md. No technical dependencies. Priority SHOULD is correct — QUICKSTART (FEAT-007) is higher urgency. Marking readyForSprint=true as requested by PO.",
+    "passes": true,
+    "completedAt": "2026-03-24T08:25:56-07:00"
+  },
+  {
     "id": "FEAT-009",
     "title": "Create docs/PROBLEMS.md — why OpenClaw is hard and what ClawHQ fixes",
     "intent": "People search for problems, not solutions — this document must rank for the frustrations that drive users to ClawHQ.",
