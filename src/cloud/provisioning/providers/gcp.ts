@@ -17,6 +17,7 @@
 
 import { createSign } from "node:crypto";
 
+import { CLOUD_POLL_INTERVAL_MS } from "../../../config/defaults.js";
 import type {
   AddSshKeyOptions,
   AddSshKeyResult,
@@ -44,7 +45,7 @@ const DEFAULT_MACHINE_TYPE = "e2-micro";
 const DEFAULT_IMAGE_PROJECT = "ubuntu-os-cloud";
 const DEFAULT_IMAGE_FAMILY = "ubuntu-2404-lts-amd64";
 const API_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = 5_000;
+const POLL_INTERVAL_MS = CLOUD_POLL_INTERVAL_MS;
 const POLL_TIMEOUT_MS = 300_000;
 const OP_POLL_TIMEOUT_MS = 600_000;
 

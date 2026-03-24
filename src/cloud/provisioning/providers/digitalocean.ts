@@ -13,6 +13,7 @@
  * Reference: https://docs.digitalocean.com/reference/api/api-reference/
  */
 
+import { CLOUD_POLL_INTERVAL_MS } from "../../../config/defaults.js";
 import type {
   AddSshKeyOptions,
   AddSshKeyResult,
@@ -35,7 +36,7 @@ import type {
 const DO_API_BASE = "https://api.digitalocean.com/v2";
 const DEFAULT_IMAGE = "ubuntu-24-04-x64";
 const API_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = 5_000;
+const POLL_INTERVAL_MS = CLOUD_POLL_INTERVAL_MS;
 const POLL_TIMEOUT_MS = 300_000;
 const SNAPSHOT_POLL_TIMEOUT_MS = 600_000;
 

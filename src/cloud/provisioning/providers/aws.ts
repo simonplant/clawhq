@@ -15,6 +15,7 @@
 
 import { createHmac, createHash } from "node:crypto";
 
+import { CLOUD_POLL_INTERVAL_MS } from "../../../config/defaults.js";
 import type {
   AddSshKeyOptions,
   AddSshKeyResult,
@@ -44,7 +45,7 @@ const DEFAULT_AMI_REGION: Record<string, string> = {
 
 const DEFAULT_INSTANCE_TYPE = "t3.micro";
 const API_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = CLOUD_POLL_INTERVAL_MS;
 const POLL_TIMEOUT_MS = 300_000;
 
 /** EC2 instance type monthly costs (approximate, us-east-1 on-demand). */
