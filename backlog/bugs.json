@@ -34,11 +34,12 @@
         "account field in successful validation shows first 8 chars plus ... not the full key ID",
         "Valid credentials still pass validation — no regression"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "UPGRADED TO MUST. AWS access key IDs appearing unmasked in the account field of validateCredentials() is a direct violation of the 'Security by default' core non-negotiable and the 'Credentials secured' design constraint (credentials.json mode 0600, never in config files). If this surfaces in logs or terminal output, a user's production AWS credentials are exposed. This is not a preference — it is a security defect. Steps are correct and scope is minimal (~6 lines). Two new tests required. readyForSprint=true confirmed.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T17:44:56-07:00"
     },
     {
       "id": "BUG-072",
