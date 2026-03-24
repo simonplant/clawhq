@@ -8,7 +8,11 @@
  * Reference: https://docs.hetzner.cloud/
  */
 
-import { CLOUD_POLL_INTERVAL_MS } from "../../../config/defaults.js";
+import {
+  CLOUD_API_TIMEOUT_MS,
+  CLOUD_POLL_INTERVAL_MS,
+  CLOUD_POLL_TIMEOUT_MS,
+} from "../../../config/defaults.js";
 import type {
   AddSshKeyOptions,
   AddSshKeyResult,
@@ -30,9 +34,6 @@ import type {
 
 const HETZNER_API_BASE = "https://api.hetzner.cloud/v1";
 const DEFAULT_IMAGE = "ubuntu-24.04";
-const API_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = CLOUD_POLL_INTERVAL_MS;
-const POLL_TIMEOUT_MS = 300_000;
 
 /** Hetzner CX shared-vCPU server monthly costs (EUR, Falkenstein). */
 const SIZE_MONTHLY_COST: Record<string, number> = {
@@ -62,7 +63,7 @@ export function createHetznerAdapter(token: string): ProviderAdapter {
         method: options.method,
         headers,
         body: options.body ? JSON.stringify(options.body) : undefined,
-        signal: options.signal ?? AbortSignal.timeout(API_TIMEOUT_MS),
+        signal: options.signal ?? AbortSignal.timeout(CLOUD_API_TIMEOUT_MS),
       });
     } catch (err) {
       return { ok: false, status: 0, error: `Hetzner API request failed: ${err instanceof Error ? err.message : String(err)}` };
@@ -91,7 +92,7 @@ export function createHetznerAdapter(token: string): ProviderAdapter {
 
   async function pollForRunningServer(serverId: string, signal?: AbortSignal): Promise<string | undefined> {
     const start = Date.now();
-    while (Date.now() - start < POLL_TIMEOUT_MS) {
+    while (Date.now() - start < CLOUD_POLL_TIMEOUT_MS) {
       if (signal?.aborted) return undefined;
       const result = await hetznerRequest(`/servers/${serverId}`, { method: "GET", signal });
       if (result.ok) {
@@ -100,7 +101,7 @@ export function createHetznerAdapter(token: string): ProviderAdapter {
           return server.public_net.ipv4.ip;
         }
       }
-      await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      await new Promise<void>((resolve) => setTimeout(resolve, CLOUD_POLL_INTERVAL_MS));
     }
     return undefined;
   }

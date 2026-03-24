@@ -83,10 +83,12 @@
         "docs/CHANGELOG.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "RE-GROOMED 2026-03-23. Priority bumped from could to should: FEAT-012 is a hard dep of FEAT-013 (must priority) — a could-priority item on the critical path to a must is misaligned. Source files confirmed: backlog/archive/backlog_done.json and bugs_done.json exist with completedAt timestamps, backlog/GAP-ANALYSIS.md exists, docs/PRODUCT.md exists. Steps are clear and prescriptive. AC is user-focused and verifiable. readyForSprint=true confirmed."
+      "groomingNotes": "RE-GROOMED 2026-03-23. Priority bumped from could to should: FEAT-012 is a hard dep of FEAT-013 (must priority) — a could-priority item on the critical path to a must is misaligned. Source files confirmed: backlog/archive/backlog_done.json and bugs_done.json exist with completedAt timestamps, backlog/GAP-ANALYSIS.md exists, docs/PRODUCT.md exists. Steps are clear and prescriptive. AC is user-focused and verifiable. readyForSprint=true confirmed.",
+      "passes": true,
+      "completedAt": "2026-03-23T18:10:02-07:00"
     },
     {
       "id": "FEAT-013",

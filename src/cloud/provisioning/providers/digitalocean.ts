@@ -13,7 +13,12 @@
  * Reference: https://docs.digitalocean.com/reference/api/api-reference/
  */
 
-import { CLOUD_POLL_INTERVAL_MS } from "../../../config/defaults.js";
+import {
+  CLOUD_API_TIMEOUT_MS,
+  CLOUD_OPERATION_TIMEOUT_MS,
+  CLOUD_POLL_INTERVAL_MS,
+  CLOUD_POLL_TIMEOUT_MS,
+} from "../../../config/defaults.js";
 import type {
   AddSshKeyOptions,
   AddSshKeyResult,
@@ -35,10 +40,6 @@ import type {
 
 const DO_API_BASE = "https://api.digitalocean.com/v2";
 const DEFAULT_IMAGE = "ubuntu-24-04-x64";
-const API_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = CLOUD_POLL_INTERVAL_MS;
-const POLL_TIMEOUT_MS = 300_000;
-const SNAPSHOT_POLL_TIMEOUT_MS = 600_000;
 
 /**
  * DO droplet sizes and their monthly costs.
@@ -79,7 +80,7 @@ export function createDigitalOceanAdapter(token: string): ProviderAdapter {
         method: options.method,
         headers,
         body: options.body ? JSON.stringify(options.body) : undefined,
-        signal: options.signal ?? AbortSignal.timeout(API_TIMEOUT_MS),
+        signal: options.signal ?? AbortSignal.timeout(CLOUD_API_TIMEOUT_MS),
       });
     } catch (err) {
       return {
@@ -361,7 +362,7 @@ export function createDigitalOceanAdapter(token: string): ProviderAdapter {
         options.providerInstanceId,
         actionId,
         headers,
-        SNAPSHOT_POLL_TIMEOUT_MS,
+        CLOUD_OPERATION_TIMEOUT_MS,
         options.signal,
       );
 
@@ -420,16 +421,16 @@ async function pollForActiveDroplet(
 ): Promise<string | undefined> {
   const start = Date.now();
 
-  while (Date.now() - start < POLL_TIMEOUT_MS) {
+  while (Date.now() - start < CLOUD_POLL_TIMEOUT_MS) {
     if (signal?.aborted) return undefined;
 
-    await sleep(POLL_INTERVAL_MS, signal);
+    await sleep(CLOUD_POLL_INTERVAL_MS, signal);
 
     try {
       const response = await fetch(`${DO_API_BASE}/droplets/${dropletId}`, {
         method: "GET",
         headers,
-        signal: signal ?? AbortSignal.timeout(API_TIMEOUT_MS),
+        signal: signal ?? AbortSignal.timeout(CLOUD_API_TIMEOUT_MS),
       });
 
       if (!response.ok) continue;
@@ -463,7 +464,7 @@ async function pollForAction(
   while (Date.now() - start < timeoutMs) {
     if (signal?.aborted) return false;
 
-    await sleep(POLL_INTERVAL_MS, signal);
+    await sleep(CLOUD_POLL_INTERVAL_MS, signal);
 
     try {
       const response = await fetch(
@@ -471,7 +472,7 @@ async function pollForAction(
         {
           method: "GET",
           headers,
-          signal: signal ?? AbortSignal.timeout(API_TIMEOUT_MS),
+          signal: signal ?? AbortSignal.timeout(CLOUD_API_TIMEOUT_MS),
         },
       );
 
