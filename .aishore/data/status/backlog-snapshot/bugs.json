@@ -1033,10 +1033,11 @@
         "Valid colon-separated token parses correctly — no regression on valid AWS paths",
         "Token with only whitespace parts is rejected (trim before check)"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomingNotes": "MUST — token parsing for cloud providers is a critical input validation gap. aws.ts:113 is the exact location. Fix is ~5 lines: split, check parts.length === 2, check both parts non-empty, throw clear Error. No dependencies. Add test for malformed input. Safe to sprint immediately."
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomingNotes": "MUST — token parsing for cloud providers is a critical input validation gap. aws.ts:113 is the exact location. Fix is ~5 lines: split, check parts.length === 2, check both parts non-empty, throw clear Error. No dependencies. Add test for malformed input. Safe to sprint immediately.",
+      "completedAt": "2026-03-23T17:12:46-07:00"
     },
     {
       "id": "BUG-067",
