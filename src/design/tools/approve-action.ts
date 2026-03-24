@@ -59,7 +59,7 @@ function saveQueue(queue) {
   try {
     const dir = dirname(QUEUE_FILE);
     mkdirSync(dir, { recursive: true });
-    writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2));
+    writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2), { mode: 0o600 });
   } catch (err) {
     console.error("[approve-action] FATAL: Failed to write approval queue:", err instanceof Error ? err.message : err);
     process.exit(1);
