@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { DIR_MODE_SECRET } from "../../config/defaults.js";
+
 import {
   deleteEnvValue,
   getAllEnvValues,
@@ -205,6 +207,18 @@ describe("writeEnvAtomic", () => {
 
     writeEnvAtomic(envPath, env);
     expect(existsSync(envPath)).toBe(true);
+  });
+
+  it("creates parent directory with mode 0700", () => {
+    const dir = tmpDir();
+    const engineDir = join(dir, "engine");
+    const envPath = join(engineDir, ".env");
+    const env = parseEnv("SECRET=val\n");
+
+    writeEnvAtomic(envPath, env);
+
+    const stat = statSync(engineDir);
+    expect(stat.mode & 0o777).toBe(DIR_MODE_SECRET);
   });
 
   it("overwrites existing file atomically", () => {

@@ -42,11 +42,12 @@
       "acceptanceCriteria": [],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "READY. Same pattern as BUG-077 and BUG-078. PRECISE STEPS: (1) Read credential-store.ts line 15 — note 'import { FILE_MODE_SECRET }' from defaults.js, DIR_MODE_SECRET is NOT imported. (2) In credential-store.ts line 15, add DIR_MODE_SECRET: change 'import { FILE_MODE_SECRET }' to 'import { DIR_MODE_SECRET, FILE_MODE_SECRET }'. (3) In credential-store.ts line 60, change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). (4) No credential-store.test.ts exists — create src/secure/credentials/credential-store.test.ts following registry.test.ts pattern: mkdtempSync, call writeCredentialStore() with a minimal credential store, statSync the engine/ parent dir, assert mode & 0o777 === 0o700. (5) Run npm test to confirm all tests pass. AC: stat on deployDir/engine/ shows drwx------ (0700). File mode on credentials.json remains 0600 unchanged.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T20:24:17-07:00"
     },
     {
       "id": "BUG-082",
