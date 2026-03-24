@@ -1093,10 +1093,11 @@
         "AWS provisioning polls at 5s matching other providers",
         "cloud/provisioning tests pass with no regression"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomingNotes": "SHOULD — inconsistent poll timing across providers. Trivial constant consolidation: add CLOUD_POLL_INTERVAL_MS to defaults.ts, replace 4 inline literals. No logic change. No dependencies."
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "groomingNotes": "SHOULD — inconsistent poll timing across providers. Trivial constant consolidation: add CLOUD_POLL_INTERVAL_MS to defaults.ts, replace 4 inline literals. No logic change. No dependencies.",
+      "completedAt": "2026-03-23T17:27:30-07:00"
     },
     {
       "id": "BUG-070",
