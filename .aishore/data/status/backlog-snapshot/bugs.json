@@ -2,26 +2,6 @@
   "description": "Bugs and tech debt",
   "items": [
     {
-      "id": "BUG-070",
-      "title": "Cloud provisioning timeout constants duplicated across 4 provider files — not in config/defaults.ts",
-      "intent": "All cloud provisioning timeout constants have a single source of truth in config/defaults.ts. No timeout literals appear in provider files.",
-      "description": "CLOUD_API_TIMEOUT_MS = 30_000 is duplicated identically in aws.ts:46, hetzner.ts:32, gcp.ts:46, and digitalocean.ts. CLOUD_POLL_TIMEOUT_MS and CLOUD_OPERATION_TIMEOUT_MS are also defined inline per provider. Per project convention, magic numbers belong in config/defaults.ts. Steps: (1) grep provider files for all timeout constant definitions; (2) add CLOUD_API_TIMEOUT_MS, CLOUD_POLL_TIMEOUT_MS, CLOUD_OPERATION_TIMEOUT_MS to config/defaults.ts; (3) replace all inline literals with imports; (4) run cloud/provisioning tests. Scope: 4-5 files, no logic change.",
-      "priority": "should",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "No timeout constants duplicated across provider files",
-        "CLOUD_API_TIMEOUT_MS, CLOUD_POLL_TIMEOUT_MS, CLOUD_OPERATION_TIMEOUT_MS defined once in config/defaults.ts",
-        "All provider files import timeout constants from defaults",
-        "cloud/provisioning tests pass with no regression"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomingNotes": "STEPS ADDED. Note: description says CLOUD_API_TIMEOUT_MS but actual local names in provider files are API_TIMEOUT_MS (no CLOUD_ prefix) — steps reflect reality. GCP and DO have a 3rd timeout at 600_000 (OP_POLL_TIMEOUT_MS / SNAPSHOT_POLL_TIMEOUT_MS) — consolidated to CLOUD_OPERATION_TIMEOUT_MS. Already readyForSprint=true.",
-      "groomedAt": "2026-03-23"
-    },
-    {
       "id": "BUG-072",
       "title": "Provisioning flow does not generate or store SSH keypair — FEAT-005 deploy update is undeliverable",
       "intent": "Every provisioned cloud agent has an SSH keypair generated at provision time, stored securely, and linked in the deploy state. clawhq deploy update has a viable SSH path to every cloud agent it created.",
@@ -37,6 +17,93 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-23",
       "groomingNotes": "READY. ProvisionedInstance confirmed in types.ts:285-306 — no sshKeyPath field exists. wizard.ts confirmed no keypair generation code. cloud-init.ts has generateCloudInit function needing pubKey param. Scope: 3 files (types.ts, wizard.ts, cloud-init.ts). node:crypto is built-in — no new deps. Steps prescriptive with file locations. Unblocks FEAT-005."
+    },
+    {
+      "id": "BUG-073",
+      "title": "AWS listSshKeys() returns empty publicKey — silent data loss in SshKeyInfo interface",
+      "intent": "Every call to listSshKeys() returns structurally honest data — callers that check publicKey will not silently receive an empty string and mishandle it.",
+      "description": "aws.ts line 301 returns publicKey: '' because AWS EC2 API does not expose public key material after initial import, only fingerprints. The SshKeyInfo interface (types.ts:214-220) defines publicKey: string with no optional marker, so callers expect a real value. Steps: (1) Read src/cloud/provisioning/providers/aws.ts lines 292-310 (listSshKeys implementation). (2) Read src/cloud/provisioning/types.ts lines 214-220 (SshKeyInfo interface). (3) Make publicKey optional in SshKeyInfo interface (publicKey?: string). (4) Update the AWS adapter to omit publicKey or set it to undefined rather than empty string. (5) Check all callers of listSshKeys() for publicKey usage — grep for .publicKey in provisioning/. (6) Update any callers that assume publicKey is always truthy to handle undefined. (7) Run cloud/provisioning tests.",
+      "priority": "should",
+      "category": null,
+      "steps": [
+        "Read src/cloud/provisioning/providers/aws.ts lines 292-310 to confirm listSshKeys() returns publicKey: ''",
+        "Read src/cloud/provisioning/types.ts lines 214-220 to confirm SshKeyInfo.publicKey type and optionality",
+        "Grep for .publicKey in src/cloud/provisioning/ to find all callers that read the field",
+        "Update SshKeyInfo interface: change publicKey: string to publicKey?: string",
+        "Update aws.ts listSshKeys(): omit publicKey field or set to undefined rather than empty string",
+        "Update any caller that assumes publicKey is always truthy to handle undefined",
+        "Run existing cloud/provisioning tests — confirm no regressions"
+      ],
+      "acceptanceCriteria": [
+        "SshKeyInfo.publicKey is typed as optional (publicKey?: string) in types.ts",
+        "AWS listSshKeys() no longer returns publicKey: '' — field is omitted or undefined",
+        "DigitalOcean, GCP, Hetzner listSshKeys() implementations unchanged and return real key values",
+        "No callers of listSshKeys() assume publicKey is always a non-empty string without a guard"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "READY. aws.ts:301 confirmed returning publicKey: '' by inspection. SshKeyInfo.publicKey: string confirmed at types.ts:214-220. DigitalOcean, GCP, Hetzner all return real key values — AWS is the outlier. Fix is local to aws.ts + types.ts. No new deps. Scope: 2 files.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-074",
+      "title": "Instance registry file written without mode 0600 — world-readable on disk",
+      "intent": "The instance registry is written with mode 0600 — only the owning user can read it.",
+      "description": "src/cloud/provisioning/registry.ts line 63 writes the instance registry file using default filesystem permissions. Unlike credentials.json which uses FILE_MODE_SECRET (0600), the registry uses no explicit mode. The registry contains provisioned instance data including IP addresses, provider IDs, and (after BUG-072) sshKeyPath. This data should be owner-read-only.",
+      "priority": "must",
+      "category": null,
+      "steps": [
+        "Read src/cloud/provisioning/registry.ts — find the file write call (around line 63)",
+        "Grep for FILE_MODE_SECRET in the codebase to find where 0600 is defined and how it is applied to credentials.json",
+        "Apply FILE_MODE_SECRET (or equivalent 0600) to the registry file write — match pattern used for credentials.json",
+        "Confirm no other registry read/write paths set a permissive mode",
+        "Run cloud/provisioning tests"
+      ],
+      "acceptanceCriteria": [
+        "Instance registry file is written with mode 0600",
+        "Mode is applied using the same constant as credentials.json — no magic number",
+        "All four provider adapters tested confirm registry is written with 0600 after provisioning"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "RE-GROOMED 2026-03-23 (priority bump). World-readable file containing instance data (IPs, provider IDs, and after BUG-072: SSH key paths) violates the security-by-default non-negotiable in CLAUDE.md. credentials.json uses FILE_MODE_SECRET (0600) — the registry must match. Bumped from should → must: hardening is automatic, not opt-in. Fix is 1 file, 1 line. No excuse to defer.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-075",
+      "title": "Cloud adapter initialization exceptions not caught in resolveAdapter() — crashes on bad credentials",
+      "intent": "A malformed stored credential produces a clear, actionable error message — never an uncaught exception stack trace.",
+      "description": "src/cloud/provisioning/engine.ts lines 62-73 call createAwsAdapter() and createGcpAdapter() which can throw exceptions during token parsing (malformed JSON, missing fields). These calls are not wrapped in try-catch. If a user's stored token is malformed, the error propagates uncaught and crashes the provisioning flow without a helpful error message. DigitalOcean and Hetzner adapters do not have this issue — only AWS and GCP. Steps: (1) Read src/cloud/provisioning/engine.ts around lines 62-73 to see resolveAdapter() implementation. (2) Read src/cloud/provisioning/providers/aws.ts createAwsAdapter() and src/cloud/provisioning/providers/gcp.ts createGcpAdapter() to understand what exceptions they throw. (3) Wrap the adapter creation calls in try-catch in resolveAdapter(). (4) On catch, throw a descriptive error: 'Failed to initialize AWS/GCP adapter: credentials may be malformed. Re-run clawhq creds to reconfigure.'",
+      "priority": "should",
+      "category": null,
+      "steps": [
+        "Read src/cloud/provisioning/engine.ts lines 62-73 — confirm createAwsAdapter() and createGcpAdapter() are called without try-catch",
+        "Read src/cloud/provisioning/providers/aws.ts createAwsAdapter() to identify what exceptions it throws and under what conditions",
+        "Read src/cloud/provisioning/providers/gcp.ts createGcpAdapter() to identify what exceptions it throws and under what conditions",
+        "Wrap createAwsAdapter() call in try-catch — on catch, throw new Error with message: 'Failed to initialize AWS adapter: credentials may be malformed. Re-run clawhq creds to reconfigure.'",
+        "Wrap createGcpAdapter() call in try-catch — on catch, throw new Error with message: 'Failed to initialize GCP adapter: service account JSON may be malformed. Re-run clawhq creds to reconfigure.'",
+        "Confirm DigitalOcean and Hetzner adapter initialization already handles errors gracefully",
+        "Run cloud/provisioning tests"
+      ],
+      "acceptanceCriteria": [
+        "Calling resolveAdapter() with a malformed AWS token throws a descriptive Error, not an uncaught exception",
+        "Calling resolveAdapter() with malformed GCP service account JSON throws a descriptive Error, not an uncaught exception",
+        "Error messages reference 'clawhq creds' as the remediation path",
+        "DigitalOcean and Hetzner adapter init behavior is unchanged"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "READY. engine.ts:62-73 confirmed calling createAwsAdapter() and createGcpAdapter() without try-catch via codebase inspection. Both adapters do token parsing that can throw. Fix is local to engine.ts — 2 try-catch blocks. No new deps. Scope: 1 file (engine.ts).",
+      "groomedAt": "2026-03-23"
     }
   ]
 }

@@ -1098,6 +1098,27 @@
     "completedAt": "2026-03-23T17:27:30-07:00"
   },
   {
+    "id": "BUG-070",
+    "title": "Cloud provisioning timeout constants duplicated across 4 provider files — not in config/defaults.ts",
+    "intent": "All cloud provisioning timeout constants have a single source of truth in config/defaults.ts. No timeout literals appear in provider files.",
+    "description": "CLOUD_API_TIMEOUT_MS = 30_000 is duplicated identically in aws.ts:46, hetzner.ts:32, gcp.ts:46, and digitalocean.ts. CLOUD_POLL_TIMEOUT_MS and CLOUD_OPERATION_TIMEOUT_MS are also defined inline per provider. Per project convention, magic numbers belong in config/defaults.ts. Steps: (1) grep provider files for all timeout constant definitions; (2) add CLOUD_API_TIMEOUT_MS, CLOUD_POLL_TIMEOUT_MS, CLOUD_OPERATION_TIMEOUT_MS to config/defaults.ts; (3) replace all inline literals with imports; (4) run cloud/provisioning tests. Scope: 4-5 files, no logic change.",
+    "priority": "should",
+    "category": null,
+    "steps": [],
+    "acceptanceCriteria": [
+      "No timeout constants duplicated across provider files",
+      "CLOUD_API_TIMEOUT_MS, CLOUD_POLL_TIMEOUT_MS, CLOUD_OPERATION_TIMEOUT_MS defined once in config/defaults.ts",
+      "All provider files import timeout constants from defaults",
+      "cloud/provisioning tests pass with no regression"
+    ],
+    "status": "done",
+    "passes": true,
+    "readyForSprint": false,
+    "groomingNotes": "STEPS ADDED. Note: description says CLOUD_API_TIMEOUT_MS but actual local names in provider files are API_TIMEOUT_MS (no CLOUD_ prefix) — steps reflect reality. GCP and DO have a 3rd timeout at 600_000 (OP_POLL_TIMEOUT_MS / SNAPSHOT_POLL_TIMEOUT_MS) — consolidated to CLOUD_OPERATION_TIMEOUT_MS. Already readyForSprint=true.",
+    "groomedAt": "2026-03-23",
+    "completedAt": "2026-03-23T18:16:25-07:00"
+  },
+  {
     "id": "BUG-071",
     "title": "AWS credential validation exposes full access key ID in account field — should be masked",
     "intent": "AWS credentials are never logged or displayed unmasked. Access key in account field shows first 8 chars only. Whitespace-only tokens are rejected.",
