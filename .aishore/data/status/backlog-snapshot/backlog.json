@@ -27,7 +27,7 @@
       "title": "Create docs/CONFIGURATION.md — blueprint schema, skill schema, every config option",
       "intent": "Users writing custom blueprints or skills must have a single reference document — reading 7 example YAMLs and reverse-engineering the schema is not documentation.",
       "description": "Configuration content exists but only as examples and scattered references: configs/blueprints/*.yaml (7 blueprints establishing the blueprint schema by example), configs/skills/*/config.yaml (6 skills establishing the skill schema by example), configs/skills/*/SKILL.md (6 behavior definitions establishing the SKILL.md format by example), docs/ARCHITECTURE.md ('What a Blueprint Configures' 10-dimension table, 'The 14 Landmine Rules' table, 'What Gets Generated' directory tree), docs/OPENCLAW-REFERENCE.md (openclaw.json reference section 10, Configuration Surface Inventory section 11, The 14 Configuration Landmines section 12 with detailed explanations, Automation section 14 for cron config), CLAUDE.md (Key Design Constraints, CLI Commands). The unified document must cover: blueprint YAML schema (field-by-field, every dimension from the 10-dimension table), skill config.yaml schema (field-by-field: schedule, model, dependencies, approval, boundaries), SKILL.md authoring format, the 14 landmine rules with explanations, model routing configuration, and integration configuration patterns.",
-      "priority": "should",
+      "priority": "must",
       "category": "documentation",
       "steps": [
         "Read configs/blueprints/email-manager.yaml and configs/blueprints/research-copilot.yaml as reference blueprints to extract the full field set",
@@ -53,42 +53,10 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "RE-GROOMED after failure 2026-03-23. Previous failure likely caused by vague section references ('sections 10-12') — OPENCLAW-REFERENCE.md has no numbered sections, headings only. Steps now use exact line numbers for every read. Step 7 specifies exact document sections and their order explicitly. All source files confirmed to exist. Prior AC retained (PO-owned). failCount=1 — watch for second failure; if it fails again, scope down to blueprint schema only (split into two items).",
+      "groomingNotes": "RE-GROOMED 2026-03-23 (attempt 3 — priority bump). FEAT-012 is done. FEAT-008 is now the sole remaining blocker for FEAT-013 (must priority — project storefront README). Bumped from should → must to match the downstream dependency. failCount=1: prior failure was misread section numbers in steps (numbered vs heading-based). Steps were corrected in attempt 2 — exact heading names confirmed in groomingNotes. If this attempt fails: PO directive is to scope down to blueprint schema only and ship that. Do not add new full-scope attempts. Single-scope fallback: produce a CONFIGURATION.md covering blueprint YAML schema only (skip skill schema, landmine explanations) — this would still satisfy the linker check for FEAT-013.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-23T17:47:15-07:00",
       "failCount": 1
-    },
-    {
-      "id": "FEAT-012",
-      "title": "Create docs/CHANGELOG.md — retroactive changelog from build history",
-      "intent": "A project with no changelog looks like it was built in one shot — the changelog proves sustained development and helps evaluators gauge velocity and direction.",
-      "description": "No CHANGELOG.md exists and no version tags are in the repo. However, build history can be reconstructed from: backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' (subsystem status table with line counts showing what has shipped), docs/PRODUCT.md checkbox items showing completed features, backlog/archive/sprints.jsonl (sprint completion records with dates and item IDs), and backlog/backlog.json + bugs.json (done items with completedAt timestamps). Create a retroactive changelog organized by development phase rather than version numbers (since no versions exist yet). Phase 1: Foundation (config schema, landmine validator, gateway client, workspace generator). Phase 2: Blueprints (blueprint engine, 7 blueprints, skill system, 6 skills). Phase 3: Platform (install pipeline, security hardening, doctor/status, cron engine). Include dates where available from completedAt timestamps.",
-      "priority": "should",
-      "category": "documentation",
-      "steps": [
-        "Read backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' section for the subsystem status table",
-        "Read backlog/backlog.json done items with completedAt timestamps to establish timeline",
-        "Read backlog/archive/sprints.jsonl for sprint completion records with dates",
-        "Read docs/PRODUCT.md 'What We're Building' checkbox items for completed feature list",
-        "Compose docs/CHANGELOG.md organized by development phase: Phase 1 Foundation (with dates from completedAt), Phase 2 Blueprints, Phase 3 Platform, using Added/Changed/Fixed format within each phase",
-        "Include line counts from GAP-ANALYSIS where available to show scope of each phase"
-      ],
-      "acceptanceCriteria": [
-        "docs/CHANGELOG.md exists with retroactive entries organized by development phase",
-        "Each phase lists completed features with dates where available",
-        "Entries use Added/Changed/Fixed format consistent with Keep a Changelog convention",
-        "The changelog accurately reflects what has been built — no aspirational entries"
-      ],
-      "scope": [
-        "docs/CHANGELOG.md"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-23",
-      "groomingNotes": "RE-GROOMED 2026-03-23. Priority bumped from could to should: FEAT-012 is a hard dep of FEAT-013 (must priority) — a could-priority item on the critical path to a must is misaligned. Source files confirmed: backlog/archive/backlog_done.json and bugs_done.json exist with completedAt timestamps, backlog/GAP-ANALYSIS.md exists, docs/PRODUCT.md exists. Steps are clear and prescriptive. AC is user-focused and verifiable. readyForSprint=true confirmed.",
-      "passes": true,
-      "completedAt": "2026-03-23T18:10:02-07:00"
     },
     {
       "id": "FEAT-013",
@@ -131,7 +99,7 @@
       "status": "todo",
       "readyForSprint": false,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "GROOMED 2026-03-23. Status: NEARLY READY. Of 7 dependencies: FEAT-006 done, FEAT-007 done, FEAT-009 done, FEAT-010 done, FEAT-011 done (all per recent sprints). Remaining blockers: FEAT-008 (CONFIGURATION.md, readyForSprint=true) and FEAT-012 (CHANGELOG.md, readyForSprint=true, just bumped to should). This item auto-unblocks when both complete — do not re-evaluate until both are done. AC is tight and user-focused (line count limit, content audit, no lost content). 150-line limit is the right gate. Steps reference docs that will exist by then. Priority must is correct — this is the project storefront."
+      "groomingNotes": "RE-GROOMED 2026-03-23 (status update). FEAT-012 (CHANGELOG.md) is complete per sprint record. Sole remaining blocker: FEAT-008 (CONFIGURATION.md), now bumped to must priority this session. When FEAT-008 ships, this item auto-unblocks — mark readyForSprint=true at that point. AC is tight: 150-line limit, content audit, no lost content. Steps reference all docs that will exist by then. Priority must is correct — this is the project storefront."
     },
     {
       "id": "FEAT-014",

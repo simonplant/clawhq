@@ -1540,5 +1540,37 @@
     "groomingNotes": "READY. Documentation task. All referenced source files exist (configs/blueprints/email-manager.yaml, configs/skills/email-digest/*, docs/ARCHITECTURE.md ADs, CLAUDE.md). Needs a 'What's Needed' section with concrete blueprint ideas — developer should scan configs/ to identify gaps before writing. Steps are complete and ordered. No blocking dependencies.",
     "passes": true,
     "completedAt": "2026-03-23T17:59:21-07:00"
+  },
+  {
+    "id": "FEAT-012",
+    "title": "Create docs/CHANGELOG.md — retroactive changelog from build history",
+    "intent": "A project with no changelog looks like it was built in one shot — the changelog proves sustained development and helps evaluators gauge velocity and direction.",
+    "description": "No CHANGELOG.md exists and no version tags are in the repo. However, build history can be reconstructed from: backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' (subsystem status table with line counts showing what has shipped), docs/PRODUCT.md checkbox items showing completed features, backlog/archive/sprints.jsonl (sprint completion records with dates and item IDs), and backlog/backlog.json + bugs.json (done items with completedAt timestamps). Create a retroactive changelog organized by development phase rather than version numbers (since no versions exist yet). Phase 1: Foundation (config schema, landmine validator, gateway client, workspace generator). Phase 2: Blueprints (blueprint engine, 7 blueprints, skill system, 6 skills). Phase 3: Platform (install pipeline, security hardening, doctor/status, cron engine). Include dates where available from completedAt timestamps.",
+    "priority": "should",
+    "category": "documentation",
+    "steps": [
+      "Read backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' section for the subsystem status table",
+      "Read backlog/backlog.json done items with completedAt timestamps to establish timeline",
+      "Read backlog/archive/sprints.jsonl for sprint completion records with dates",
+      "Read docs/PRODUCT.md 'What We're Building' checkbox items for completed feature list",
+      "Compose docs/CHANGELOG.md organized by development phase: Phase 1 Foundation (with dates from completedAt), Phase 2 Blueprints, Phase 3 Platform, using Added/Changed/Fixed format within each phase",
+      "Include line counts from GAP-ANALYSIS where available to show scope of each phase"
+    ],
+    "acceptanceCriteria": [
+      "docs/CHANGELOG.md exists with retroactive entries organized by development phase",
+      "Each phase lists completed features with dates where available",
+      "Entries use Added/Changed/Fixed format consistent with Keep a Changelog convention",
+      "The changelog accurately reflects what has been built — no aspirational entries"
+    ],
+    "scope": [
+      "docs/CHANGELOG.md"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-23",
+    "groomingNotes": "RE-GROOMED 2026-03-23. Priority bumped from could to should: FEAT-012 is a hard dep of FEAT-013 (must priority) — a could-priority item on the critical path to a must is misaligned. Source files confirmed: backlog/archive/backlog_done.json and bugs_done.json exist with completedAt timestamps, backlog/GAP-ANALYSIS.md exists, docs/PRODUCT.md exists. Steps are clear and prescriptive. AC is user-focused and verifiable. readyForSprint=true confirmed.",
+    "passes": true,
+    "completedAt": "2026-03-23T18:10:02-07:00"
   }
 ]
