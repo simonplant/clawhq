@@ -1,39 +1,34 @@
 {
-  "sprintId": "sprint-1774368997",
-  "startedAt": "2026-03-24T09:16:37-07:00",
+  "sprintId": "sprint-1774369191",
+  "startedAt": "2026-03-24T09:19:51-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-013",
-    "title": "Slim README.md to storefront format — problem, solution, quickstart, links",
-    "intent": "The README must sell the project in 60 seconds — the current README is a product document pretending to be a landing page.",
-    "description": "The current README.md is a comprehensive product document containing architecture diagrams, deployment tables, data sovereignty matrices, CLI command listings, and blueprint dimension tables. This content belongs in docs/ files (most of which already exist in docs/ARCHITECTURE.md, docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md, or will be created by FEAT-006 through FEAT-012). After the docs/ files exist, the README must be cut to storefront format: one-sentence pitch ('WordPress for AI agents'), the problem (13,500 tokens, 14 landmines, abandoned deployments — 3 sentences max from the existing second paragraph), the solution (what ClawHQ does — 1 paragraph), quick start (install + init — 3 commands max, link to docs/QUICKSTART.md), the blueprint concept (1 paragraph + simple example, link to docs/CONFIGURATION.md), status (honest assessment), links section (all docs/ files), author section. Remove: How It Works detail, The Platform CLI listings, Blueprints dimension table, Cloud section, Deployment Options table, Data Sovereignty table, Why This Exists (fold into problem/solution). All removed content must have a home in a docs/ file.",
-    "sourceBacklog": "backlog.json",
+    "id": "BUG-112",
+    "title": "credentials.ts and snapshot-registry.ts create cloud/ dir without DIR_MODE_SECRET — inconsistent with registry.ts",
+    "intent": "Every file and directory under ~/.clawhq/cloud/ must be created with secure permissions. The cloud/ directory must never be world-readable — it contains credentials.json, instances.json, and snapshots.json. Permissions must be consistent across all writers.",
+    "description": "src/cloud/provisioning/credentials.ts:53 calls mkdirSync(dir, { recursive: true }) without mode. src/cloud/provisioning/snapshot-registry.ts:51 does the same. In contrast, src/cloud/provisioning/registry.ts:57 correctly passes { recursive: true, mode: DIR_MODE_SECRET }. If credentials.ts or snapshot-registry.ts runs first (e.g. user runs 'clawhq cloud connect' before first provision), it creates ~/.clawhq/cloud/ with the default umask (0755 — world-readable). Later, registry.ts cannot fix the mode because mkdirSync with recursive:true does not re-chmod existing directories. Result: other local users can list ~/.clawhq/cloud/ and enumerate its files. Additionally, snapshot-registry.ts:59 writes snapshots.json via writeFileSync(tmpPath, content) with no mode — the file will be world-readable. credentials.ts correctly uses FILE_MODE_SECRET on write. Fix: add DIR_MODE_SECRET to both mkdirSync calls; add FILE_MODE_SECRET to snapshot-registry.ts writeFileSync call.",
+    "sourceBacklog": "bugs.json",
     "steps": [
-      "Verify that docs/ARCHITECTURE.md (with FEAT-006 skill section), docs/QUICKSTART.md, docs/CONFIGURATION.md, docs/PROBLEMS.md, docs/ROADMAP.md, docs/CONTRIBUTING.md, and docs/CHANGELOG.md all exist",
-      "Keep in README.md: opening pitch ('WordPress for AI agents'), the problem paragraph (13,500 tokens, 14 landmines, abandoned deployments), the solution paragraph ('ClawHQ turns generic...')",
-      "Keep in README.md: the three-layer ASCII diagram from How It Works (Cloud/Blueprints/Platform) but remove all detail below it",
-      "Add abbreviated Quick Start: install one-liner, clawhq init --guided, clawhq up — then link to docs/QUICKSTART.md",
-      "Add one blueprint example (email-manager in 3 lines) then link to docs/CONFIGURATION.md",
-      "Add Status section with honest assessment",
-      "Add Links section listing every docs/ file with one-line description",
-      "Add Author section: Simon Plant, building AI infrastructure tools, open to roles",
-      "Remove: The Platform (CLI listings), Blueprints (dimension table, evolution commands), Cloud (managed hosting details), Deployment Options table, Data Sovereignty table, Why This Exists section",
-      "Verify all removed content exists in a docs/ file — nothing lost"
+      "Read src/cloud/provisioning/credentials.ts:50-54 and src/cloud/provisioning/snapshot-registry.ts:48-52 to confirm mkdirSync calls lack mode. Read src/cloud/provisioning/registry.ts:55-58 to confirm DIR_MODE_SECRET usage as the reference pattern.",
+      "In src/cloud/provisioning/credentials.ts, import DIR_MODE_SECRET from '../../config/defaults.js' (already imported in registry.ts — verify the export exists). Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }).",
+      "In src/cloud/provisioning/snapshot-registry.ts, import DIR_MODE_SECRET and FILE_MODE_SECRET from '../../config/defaults.js'. Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). Change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }).",
+      "Verify that registry.test.ts already covers the FILE_MODE_SECRET and DIR_MODE_SECRET assertions (it does per existing tests). Add equivalent assertions to any snapshot-registry test or credentials test if they exist — if not, note the gap in grooming notes.",
+      "Run npm test -- --testPathPattern='registry|credentials|snapshot' to confirm no regression."
     ],
     "acceptanceCriteria": [
-      "README.md is under 150 lines (current is 300+)",
-      "README.md contains only: pitch, problem, solution, three-layer diagram, quick start (abbreviated), one blueprint example, status, links, author",
-      "Every section removed from README.md has a corresponding docs/ file containing the content",
-      "Links section includes: Architecture, Quickstart, Configuration, Problems, Roadmap, Contributing, Changelog",
-      "No content is lost — everything is in README.md or linked from it"
+      "credentials.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
+      "snapshot-registry.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
+      "snapshots.json is written with FILE_MODE_SECRET (mode 0600)",
+      "All existing registry, credentials, and provisioning tests pass with no regression"
     ],
     "scope": [
-      "README.md"
+      "src/cloud/provisioning/credentials.ts",
+      "src/cloud/provisioning/snapshot-registry.ts"
     ],
-    "startedAt": "2026-03-24T09:16:37-07:00",
+    "startedAt": "2026-03-24T09:19:51-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T09:19:49-07:00"
+    "completedAt": "2026-03-24T09:22:48-07:00"
   },
-  "completedAt": "2026-03-24T09:19:49-07:00",
+  "completedAt": "2026-03-24T09:22:48-07:00",
   "attempts": 1
 }
