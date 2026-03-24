@@ -950,14 +950,15 @@
         "No bare response.json() calls in any provider adapter without error handling",
         "A malformed provider API response surfaces a readable ProvisionError with HTTP status, not a JSON parse crash"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-20",
       "groomingNotes": "Confirmed in digitalocean.ts:100,426,469 and hetzner.ts:77. Bare response.json() calls with no error handling. Wrap each in try-catch, re-throw as ProvisionError with HTTP status. Check AWS and GCP providers too. Scope: 4-6 call sites across 2-4 files. Single sprint, ~30 min.",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-20T14:30:06-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-23T17:24:23-07:00"
     },
     {
       "id": "BUG-063",
