@@ -59,11 +59,12 @@
         "Valid service account JSON parses correctly — no regression on valid GCP paths",
         "Internal JSON.parse stack trace never surfaces to the caller"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "MUST — unhandled JSON.parse crash in adapter initialization. gcp.ts:132 is the exact location. Wrap in try-catch, rethrow descriptively. No dependencies. Safe to sprint immediately.",
-      "groomedAt": null
+      "groomedAt": null,
+      "completedAt": "2026-03-24T07:54:42-07:00"
     },
     {
       "id": "BUG-068",
