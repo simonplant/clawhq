@@ -77,11 +77,12 @@
       "acceptanceCriteria": [],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "GROOMED 2026-03-23. Source verified: queue.ts writeQueueState() at line 69 calls writeFileSync(tmpPath, content) with no mode. Public function enqueueCommand() (line 87) triggers writeQueueState — use this for testing. SignedCommand type (from src/cloud/types.ts): { id: string, type: CloudCommandType, payload?: Record<string, unknown>, createdAt: string, signature: string }. CloudCommandType includes 'health-check', 'config-patch', 'update-version', etc. ACCEPTANCE CRITERIA: (1) commands.json exists with mode 0600 — stat.mode & 0o777 === 0o600, no group/other read bits. (2) chmodSync applied before renameSync ensures mode holds even when umask overrides writeFileSync mode flag. (3) New queue.test.ts: call enqueueCommand(testDir, testCommand), assert statSync(commandQueuePath(testDir)).mode & 0o777 === 0o600. IMPLEMENTATION CHANGES to queue.ts: (1) Add chmodSync to existing node:fs import at line 10. (2) Add FILE_MODE_SECRET to existing defaults.js import at line 13 (currently imports CLOUD_COMMAND_QUEUE_MAX_HISTORY). (3) Change writeFileSync at line 69 to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }). (4) Add chmodSync(tmpPath, FILE_MODE_SECRET) immediately after writeFileSync and before renameSync — ensures mode applied even if umask overrides. CREATE src/cloud/commands/queue.test.ts: mkdtempSync in beforeEach, rmSync in afterEach. Import { enqueueCommand, commandQueuePath } from './queue.js'. Build test command: { id: 'cmd-1', type: 'health-check', createdAt: new Date().toISOString(), signature: 'fake-sig' }. Call enqueueCommand(testDir, testCommand). Assert statSync(commandQueuePath(testDir)).mode & 0o777 === 0o600. Do NOT assert cloud/ dir mode (that is BUG-084 scope). Run npm test to verify no regressions.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T20:46:21-07:00"
     },
     {
       "id": "BUG-087",

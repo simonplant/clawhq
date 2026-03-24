@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1774323812",
-  "startedAt": "2026-03-23T20:43:32-07:00",
+  "sprintId": "sprint-1774323983",
+  "startedAt": "2026-03-23T20:46:23-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-086",
-    "title": "commands.json written without mode 0600 — signed command payloads world-readable",
-    "intent": "commands.json must be created with mode 0600 — it contains signed command payloads that reveal what cloud operations have been approved or rejected. World-readable on multi-user systems.",
-    "description": "src/cloud/commands/queue.ts line 69: writeFileSync(tmpPath, content) has no mode option. commands.json stores the full command queue state including pending signed commands with their payloads and command history. Signed command payloads may contain operation details, approved action arguments, and version data. Compare with credentials.ts (uses FILE_MODE_SECRET) and registry.ts (uses FILE_MODE_SECRET via chmodSync) — commands.json has no such protection. Fix: (1) Add chmodSync and FILE_MODE_SECRET import. FILE_MODE_SECRET is already in defaults.js. queue.ts already imports CLOUD_COMMAND_QUEUE_MAX_HISTORY from defaults.js — add FILE_MODE_SECRET to that import. (2) Change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }) and add chmodSync(tmpPath, FILE_MODE_SECRET) before renameSync to ensure mode is applied even if umask overrides. Test: add file mode assertion to command queue tests (check src/cloud/ for existing queue tests first).",
+    "id": "BUG-085",
+    "title": "Command queue, trust-mode switch, and heartbeat reporter create cloud/ directory without mode 0700",
+    "intent": "cloud/ directory must be created with mode 0700 by every code path that might create it first — if any of these three files runs before credentials.ts, the cloud/ dir lands at 0755 and all downstream credential writes into it are world-listable.",
+    "description": "Three files in src/cloud/ create the cloud/ subdirectory without a mode option: (1) src/cloud/commands/queue.ts line 61: mkdirSync(dir, { recursive: true }) — stores commands.json with signed command payloads. (2) src/cloud/trust-modes/switch.ts line 67: mkdirSync(dir, { recursive: true }) — stores trust-mode.json with security config. (3) src/cloud/heartbeat/reporter.ts line 63: mkdirSync(dir, { recursive: true }) — stores heartbeat.json. All three write to deployDir/cloud/. Fix for each: add DIR_MODE_SECRET to imports from config/defaults.js, change mkdirSync to pass mode: DIR_MODE_SECRET. queue.ts already imports from defaults.js (CLOUD_COMMAND_QUEUE_MAX_HISTORY) so just add DIR_MODE_SECRET to that import. switch.ts has no defaults.js import — add one. reporter.ts already imports CLOUD_HEARTBEAT_RPC_TIMEOUT_MS from defaults.js — add DIR_MODE_SECRET to that import. No new test files needed — cloud.test.ts already tests the cloud/ directory indirectly; add dir mode assertion there.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-23T20:43:32-07:00",
+    "startedAt": "2026-03-23T20:46:23-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T20:46:21-07:00"
+    "completedAt": "2026-03-23T20:50:16-07:00"
   },
-  "completedAt": "2026-03-23T20:46:21-07:00",
+  "completedAt": "2026-03-23T20:50:16-07:00",
   "attempts": 1
 }
