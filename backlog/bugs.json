@@ -52,11 +52,12 @@
         "src/cloud/provisioning/snapshot-registry.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "PRIORITY ELEVATED 2026-03-24: Elevated from 'should' to 'must'. Security non-negotiable: 'Security by default — hardening is automatic, not opt-in.' A world-readable ~/.clawhq/cloud/ directory containing credentials.json and instances.json violates this non-negotiable for any multi-user system. The race condition (credentials.ts runs before registry.ts, sets permissive mode that cannot be retroactively fixed) means current installs may already be exposed. 3-line fix. Sprint immediately.",
-      "groomedAt": "2026-03-24"
+      "groomedAt": "2026-03-24",
+      "completedAt": "2026-03-24T09:22:48-07:00"
     }
   ]
 }
