@@ -18,7 +18,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { BACKUP_RESTORE_GPG_TIMEOUT_MS, BACKUP_RESTORE_TAR_TIMEOUT_MS } from "../../config/defaults.js";
+import { BACKUP_RESTORE_GPG_TIMEOUT_MS, BACKUP_RESTORE_TAR_TIMEOUT_MS, DIR_MODE_SECRET } from "../../config/defaults.js";
 import { runDoctor } from "../doctor/doctor.js";
 import type { DoctorReport } from "../doctor/types.js";
 
@@ -148,7 +148,7 @@ export async function restoreBackup(options: BackupRestoreOptions): Promise<Back
 
   // Create isolated temp directory for restore operations
   const tempDir = join(tmpdir(), `clawhq-restore-${Date.now()}`);
-  mkdirSync(tempDir, { recursive: true });
+  mkdirSync(tempDir, { recursive: true, mode: DIR_MODE_SECRET });
 
   try {
     // ── Step 1: Verify integrity ──────────────────────────────────────
@@ -193,7 +193,7 @@ export async function restoreBackup(options: BackupRestoreOptions): Promise<Back
     progress(onProgress, "extract", "running", "Extracting archive...");
 
     const extractDir = join(tempDir, "data");
-    mkdirSync(extractDir, { recursive: true });
+    mkdirSync(extractDir, { recursive: true, mode: DIR_MODE_SECRET });
 
     await execFileAsync(
       "tar",

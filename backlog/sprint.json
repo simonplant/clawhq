@@ -1,20 +1,35 @@
 {
-  "sprintId": "sprint-1774324381",
-  "startedAt": "2026-03-23T20:53:01-07:00",
+  "sprintId": "sprint-1774324957",
+  "startedAt": "2026-03-23T21:02:37-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-087",
-    "title": "trust-mode.json and heartbeat.json written without mode 0600 — security config and health state world-readable",
-    "intent": "trust-mode.json and heartbeat.json must be created with mode 0600 — trust-mode.json reveals the agent security posture and heartbeat.json reveals agent activity patterns. Both must be protected the same way credentials.json is.",
-    "description": "src/cloud/trust-modes/switch.ts line 75: writeFileSync(tmpPath, content) has no mode option. trust-mode.json stores the agent trust mode (Paranoid/Zero-Trust/Managed) — revealing the security posture on a multi-user system allows an attacker to know whether the agent is configured to auto-approve cloud operations. src/cloud/heartbeat/reporter.ts line 71: writeFileSync(tmpPath, content) has no mode option. heartbeat.json stores health status and timing data. Both files follow the same write-to-tmp-then-rename pattern as commands.json (BUG-086) but without FILE_MODE_SECRET protection. Fix pattern is identical to BUG-086: add chmodSync import, add FILE_MODE_SECRET to existing defaults.js import, change writeFileSync to include { mode: FILE_MODE_SECRET }, and add chmodSync before renameSync. switch.ts has no existing defaults.js import — add one alongside the DIR_MODE_SECRET import added by BUG-085. reporter.ts already imports CLOUD_HEARTBEAT_RPC_TIMEOUT_MS from defaults.js — add FILE_MODE_SECRET there.",
+    "id": "BUG-088",
+    "title": "Restore temp directory created in /tmp without mode 0700 — decrypted backup contents world-readable during restore",
+    "intent": "Decrypted backup contents MUST NOT be readable by other users during restore — the temp directory in /tmp must be created with mode 0700 before any decrypted data lands in it.",
+    "description": "src/operate/backup/restore.ts line 151 calls mkdirSync(tempDir, { recursive: true }) where tempDir = join(tmpdir(), 'clawhq-restore-{timestamp}'). This creates the temp directory in /tmp with default permissions (0755), making it world-readable. The restore pipeline then decrypts the encrypted backup archive INTO this temp directory (line 174: decryptedPath = join(tempDir, 'snapshot.tar.gz')). During the decrypt and extract phases, the decrypted backup contents (including credentials.json, .env with API tokens, agent config, memory data) are temporarily readable by any user on the system. Fix: import DIR_MODE_SECRET from config/defaults.js and pass mode: DIR_MODE_SECRET to mkdirSync at line 151. Also apply the same fix to extractDir at line 196 which holds the extracted files.",
     "sourceBacklog": "bugs.json",
-    "steps": [],
-    "acceptanceCriteria": [],
-    "scope": [],
-    "startedAt": "2026-03-23T20:53:01-07:00",
+    "steps": [
+      "Read src/operate/backup/restore.ts lines 14-22 — confirm mkdirSync is imported but DIR_MODE_SECRET is not",
+      "Add DIR_MODE_SECRET to the existing import from ../../config/defaults.js at line 21",
+      "Line 151: change mkdirSync(tempDir, { recursive: true }) to mkdirSync(tempDir, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Line 196: change mkdirSync(extractDir, { recursive: true }) to mkdirSync(extractDir, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Create src/operate/backup/restore.test.ts — use vi.spyOn(fs, 'mkdirSync') to capture mode argument; verify first mkdirSync call (tempDir creation) passes mode: DIR_MODE_SECRET (0o700)",
+      "Run npm test -- --reporter=verbose 2>&1 | tail -20 to confirm all tests pass"
+    ],
+    "acceptanceCriteria": [
+      "restore.ts line 151 (tempDir) creates the temp directory with mode DIR_MODE_SECRET — stat confirms no group/other read bits",
+      "restore.ts line 196 (extractDir) creates the extract directory with mode DIR_MODE_SECRET",
+      "DIR_MODE_SECRET is imported from config/defaults.js in restore.ts",
+      "restore.test.ts exists and the mkdirSync mode test passes"
+    ],
+    "scope": [
+      "src/operate/backup/restore.ts",
+      "src/operate/backup/restore.test.ts"
+    ],
+    "startedAt": "2026-03-23T21:02:37-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T20:55:41-07:00"
+    "completedAt": "2026-03-23T21:06:23-07:00"
   },
-  "completedAt": "2026-03-23T20:55:41-07:00",
+  "completedAt": "2026-03-23T21:06:23-07:00",
   "attempts": 1
 }

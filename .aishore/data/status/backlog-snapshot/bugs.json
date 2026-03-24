@@ -6,7 +6,7 @@
       "title": "Cloud credentials directory created without mode 0700 — API tokens world-listable on multi-user systems",
       "intent": "The cloud credentials directory must not be listable by other users — it stores API tokens and must be created with mode 0700 so directory contents are not exposed, matching the protection applied to credentials.ts file itself.",
       "description": "src/cloud/provisioning/credentials.ts line 53 calls mkdirSync(dir, { recursive: true }) without a mode option when creating the cloud/ directory. This creates the directory with default permissions (0755), making it world-readable. While credentials.json is written with mode 0600 (correct), any user on the system can ls the cloud/ directory to enumerate that cloud credentials exist. Same pattern: registry.ts line 57 and snapshot-registry.ts line 51 both call mkdirSync without mode. registry.ts is already covered by BUG-077. snapshot-registry.ts stores non-sensitive data (provider, region, version, timestamp) but should be consistent. Fix: pass { recursive: true, mode: 0o700 } to all three mkdirSync calls.",
-      "priority": "should",
+      "priority": "must",
       "category": null,
       "steps": [
         "Read src/cloud/provisioning/credentials.ts lines 50-55 — confirm mkdirSync(dir, { recursive: true }) has no mode option",
@@ -25,27 +25,103 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "RE-GROOMED 2026-03-23 (attempt 3 — source verified, line numbers confirmed). ✅ DEPENDENCY CLEARED: BUG-084 shipped (sprint-1774323650, 2026-03-23). BUG-085 also shipped (sprint-1774323983). Belt-and-suspenders fix is now the full intent — no blockers remain. EXACT CHANGES REQUIRED (2 source files + 2 test files): FILE 1: src/cloud/provisioning/credentials.ts — Line 13 (verified): change 'import { FILE_MODE_SECRET }' to 'import { DIR_MODE_SECRET, FILE_MODE_SECRET }'. Line 53 (verified): change 'mkdirSync(dir, { recursive: true })' to 'mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET })'. FILE 2: src/cloud/provisioning/snapshot-registry.ts — After line 13 (last existing import): add 'import { DIR_MODE_SECRET } from \"../../config/defaults.js\";'. Line 51 (verified): change 'mkdirSync(dir, { recursive: true })' to 'mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET })'. BEFORE WRITING TESTS: Grep credentials.ts and snapshot-registry.ts for 'export' to confirm public API. If setProviderCredential / cloudCredentialsPath / addSnapshot are not exported, identify the correct exported function names before writing the test imports. FILE 3: src/cloud/provisioning/credentials.test.ts — mkdtempSync tmpdir in beforeEach, rmSync in afterEach. Test 1: call setProviderCredential(testDir, 'digitalocean', 'test-token'), statSync(join(testDir, 'cloud')).mode & 0o777 === 0o700. Test 2: statSync(cloudCredentialsPath(testDir)).mode & 0o777 === 0o600. FILE 4: src/cloud/provisioning/snapshot-registry.test.ts — call addSnapshot(testDir, snapshotRecord), statSync(join(testDir, 'cloud')).mode & 0o777 === 0o700. SnapshotRecord fields: snapshotId, provider, region, builderSize, clawhqVersion, builtAt (ISO string), name. AFTER CHANGES: run npm test -- --reporter=verbose 2>&1 | tail -20 to confirm all tests pass. DO NOT add chmodSync to snapshot-registry — snapshots.json is non-sensitive, only the directory needs 0700. Previous fail (attempt 3) was implementation failure, not spec failure — steps are correct.",
+      "groomingNotes": "RE-GROOMED 2026-03-23 (PO pass). Priority elevated should→must for consistency with BUG-081 (Integration credentials dir, same pattern, shipped as must). Cloud credentials directory stores API tokens — world-enumerable is a must-fix security exposure, not discretionary. All tech lead grooming notes preserved; no step changes.",
       "groomedAt": "2026-03-23",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-23T20:09:23-07:00",
       "failCount": 1
     },
     {
-      "id": "BUG-087",
-      "title": "trust-mode.json and heartbeat.json written without mode 0600 — security config and health state world-readable",
-      "intent": "trust-mode.json and heartbeat.json must be created with mode 0600 — trust-mode.json reveals the agent security posture and heartbeat.json reveals agent activity patterns. Both must be protected the same way credentials.json is.",
-      "description": "src/cloud/trust-modes/switch.ts line 75: writeFileSync(tmpPath, content) has no mode option. trust-mode.json stores the agent trust mode (Paranoid/Zero-Trust/Managed) — revealing the security posture on a multi-user system allows an attacker to know whether the agent is configured to auto-approve cloud operations. src/cloud/heartbeat/reporter.ts line 71: writeFileSync(tmpPath, content) has no mode option. heartbeat.json stores health status and timing data. Both files follow the same write-to-tmp-then-rename pattern as commands.json (BUG-086) but without FILE_MODE_SECRET protection. Fix pattern is identical to BUG-086: add chmodSync import, add FILE_MODE_SECRET to existing defaults.js import, change writeFileSync to include { mode: FILE_MODE_SECRET }, and add chmodSync before renameSync. switch.ts has no existing defaults.js import — add one alongside the DIR_MODE_SECRET import added by BUG-085. reporter.ts already imports CLOUD_HEARTBEAT_RPC_TIMEOUT_MS from defaults.js — add FILE_MODE_SECRET there.",
+      "id": "BUG-088",
+      "title": "Restore temp directory created in /tmp without mode 0700 — decrypted backup contents world-readable during restore",
+      "intent": "Decrypted backup contents MUST NOT be readable by other users during restore — the temp directory in /tmp must be created with mode 0700 before any decrypted data lands in it.",
+      "description": "src/operate/backup/restore.ts line 151 calls mkdirSync(tempDir, { recursive: true }) where tempDir = join(tmpdir(), 'clawhq-restore-{timestamp}'). This creates the temp directory in /tmp with default permissions (0755), making it world-readable. The restore pipeline then decrypts the encrypted backup archive INTO this temp directory (line 174: decryptedPath = join(tempDir, 'snapshot.tar.gz')). During the decrypt and extract phases, the decrypted backup contents (including credentials.json, .env with API tokens, agent config, memory data) are temporarily readable by any user on the system. Fix: import DIR_MODE_SECRET from config/defaults.js and pass mode: DIR_MODE_SECRET to mkdirSync at line 151. Also apply the same fix to extractDir at line 196 which holds the extracted files.",
       "priority": "must",
       "category": null,
-      "steps": [],
-      "acceptanceCriteria": [],
-      "scope": [],
+      "steps": [
+        "Read src/operate/backup/restore.ts lines 14-22 — confirm mkdirSync is imported but DIR_MODE_SECRET is not",
+        "Add DIR_MODE_SECRET to the existing import from ../../config/defaults.js at line 21",
+        "Line 151: change mkdirSync(tempDir, { recursive: true }) to mkdirSync(tempDir, { recursive: true, mode: DIR_MODE_SECRET })",
+        "Line 196: change mkdirSync(extractDir, { recursive: true }) to mkdirSync(extractDir, { recursive: true, mode: DIR_MODE_SECRET })",
+        "Create src/operate/backup/restore.test.ts — use vi.spyOn(fs, 'mkdirSync') to capture mode argument; verify first mkdirSync call (tempDir creation) passes mode: DIR_MODE_SECRET (0o700)",
+        "Run npm test -- --reporter=verbose 2>&1 | tail -20 to confirm all tests pass"
+      ],
+      "acceptanceCriteria": [
+        "restore.ts line 151 (tempDir) creates the temp directory with mode DIR_MODE_SECRET — stat confirms no group/other read bits",
+        "restore.ts line 196 (extractDir) creates the extract directory with mode DIR_MODE_SECRET",
+        "DIR_MODE_SECRET is imported from config/defaults.js in restore.ts",
+        "restore.test.ts exists and the mkdirSync mode test passes"
+      ],
+      "scope": [
+        "src/operate/backup/restore.ts",
+        "src/operate/backup/restore.test.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "GROOMED 2026-03-23 (Tech Lead). BUG-085 shipped (confirmed in recent_sprints — sprint-1774323983), so the DIR_MODE_SECRET import dependency is met in both switch.ts and reporter.ts. Steps verified against grooming notes: exact file paths (switch.ts line ~75, reporter.ts line ~71), exact import pattern (extend existing defaults.js import, add chmodSync to node:fs destructure), exact write pattern (mode option + chmodSync before renameSync). Steps include: grep for exported functions before writing tests — prior failure pattern on BUG-078 suggests assuming exported names without verifying causes test failures. Pattern identical to BUG-086 (commands.json, already shipped). No scope creep: only switch.ts and reporter.ts. DO NOT add chmodSync to directory creation — BUG-085 covers directories.",
+      "groomingNotes": "GROOMED 2026-03-23. Source verified at specified lines. Two mkdirSync calls in restore.ts need mode: DIR_MODE_SECRET — tempDir (line 151) and extractDir (line 196). DIR_MODE_SECRET not currently imported in restore.ts. Test approach: spy on mkdirSync to capture mode arg since a real restore requires GPG + real archives. Exports: restoreSnapshot is exported. Priority must is correct — decrypted backup contents (credentials, .env, config) land in /tmp world-readable during restore window.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-089",
+      "title": "Backup snapshots directory created without mode 0700 — backup archives world-listable",
+      "intent": "The backup snapshots directory MUST be created with mode 0700 so that backup archive existence and timestamps cannot be enumerated by other system users.",
+      "description": "src/operate/backup/backup.ts line 166 calls mkdirSync(snapsDir, { recursive: true }) without a mode option when creating ops/backup/snapshots/. This creates the snapshots directory with default permissions (0755), making it world-listable. Any user on the system can ls the snapshots directory to see that backups exist and read their timestamps and snapshot IDs. While the backup archives are GPG-encrypted, their existence and metadata should not be exposed. Fix: import DIR_MODE_SECRET from config/defaults.js (currently not imported — only BACKUP_GPG_TIMEOUT_MS is imported from defaults.js) and change mkdirSync(snapsDir, { recursive: true }) to mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }). No chmodSync needed — snapshotsDir is always fresh-created at this call site.",
+      "priority": "should",
+      "category": null,
+      "steps": [
+        "Read src/operate/backup/backup.ts lines 16-26 — confirm DIR_MODE_SECRET is not imported from defaults.js",
+        "Read src/operate/backup/backup.ts lines 155-170 — confirm mkdirSync(snapsDir, { recursive: true }) has no mode option",
+        "Add DIR_MODE_SECRET to the existing import from ../../config/defaults.js (currently only BACKUP_GPG_TIMEOUT_MS is imported)",
+        "Change mkdirSync(snapsDir, { recursive: true }) to mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET })",
+        "Check if src/operate/backup/backup.test.ts exists — if so, add a test that stats the snapshots directory and asserts mode & 0o777 === 0o700 after calling the backup function",
+        "Run npm test -- --reporter=verbose 2>&1 | tail -20 to confirm all tests pass"
+      ],
+      "acceptanceCriteria": [
+        "The ops/backup/snapshots/ directory is created with mode 0700 — stat confirms no group/other read bits",
+        "DIR_MODE_SECRET is added to the import from config/defaults.js in backup.ts",
+        "All existing backup tests continue to pass"
+      ],
+      "scope": [
+        "src/operate/backup/backup.ts",
+        "src/operate/backup/backup.test.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "GROOMED 2026-03-23. Source verified: backup.ts line 166 confirmed mkdirSync(snapsDir, { recursive: true }) without mode. DIR_MODE_SECRET not currently imported in backup.ts. Single mkdirSync call to fix. No chmodSync needed — snapsDir is always newly created at this call site (createSnapshot creates a fresh snapshot ID each time). Check for existing backup.test.ts before writing new tests.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-090",
+      "title": "approval-queue.json written without mode 0600 — pending agent action submissions world-readable",
+      "intent": "approval-queue.json MUST be written with mode 0600 — pending action submissions can contain sensitive content (email text, message content, transaction details) and must not be world-readable.",
+      "description": "Two code paths write approval-queue.json without a file mode, leaving it world-readable (default 0644). CODE PATH 1: src/evolve/approval/queue.ts line 59 calls 'await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2))' with no mode option. CODE PATH 2: src/design/tools/approve-action.ts (the generated tool template) line 62 calls 'writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2))' with no mode option — QUEUE_FILE = join(__dirname, '..', 'memory', 'approval-queue.json'). The approval queue stores high-stakes pending action submissions: email content, message text, account changes, purchase details — whatever the agent submitted for user approval. Any user on the system can read pending action submissions. Fix for CODE PATH 1: change writeFile call to writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2), { mode: 0o600 }). Fix for CODE PATH 2: in the generated code template string, change writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2)) to writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2), { mode: 0o600 }). No import needed for either fix — 0o600 literal is sufficient.",
+      "priority": "must",
+      "category": null,
+      "steps": [
+        "Read src/evolve/approval/queue.ts lines 53-60 — confirm writeFile call has no mode option",
+        "Change 'await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2))' to 'await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2), { mode: 0o600 })' — no import needed, 0o600 literal is sufficient",
+        "Read src/design/tools/approve-action.ts lines 58-67 — confirm writeFileSync in generated template has no mode option",
+        "In the generated code template string, change 'writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2))' to 'writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2), { mode: 0o600 })' — no import needed, 0o600 literal in generated CJS code",
+        "Run npm test -- --reporter=verbose 2>&1 | tail -20 to confirm all tests pass"
+      ],
+      "acceptanceCriteria": [
+        "src/evolve/approval/queue.ts writeFile call includes { mode: 0o600 } option",
+        "src/design/tools/approve-action.ts generated template writeFileSync call includes { mode: 0o600 } option",
+        "approval-queue.json is written with mode 0600 — stat confirms no group/other read bits"
+      ],
+      "scope": [
+        "src/evolve/approval/queue.ts",
+        "src/design/tools/approve-action.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "RE-GROOMED 2026-03-23 (PO pass). Priority elevated should→must for consistency with BUG-086 (commands.json without mode 0600, must) and BUG-074 (instance registry without mode 0600, must). approval-queue.json holds pending user action submissions — email content, message text, purchase details, account changes. File contents world-readable is a must-fix, not discretionary. Tech lead grooming notes preserved; no step changes.",
       "groomedAt": "2026-03-23"
     }
   ]
