@@ -1,33 +1,26 @@
 {
-  "sprintId": "sprint-1774310283",
-  "startedAt": "2026-03-23T16:58:03-07:00",
+  "sprintId": "sprint-1774310968",
+  "startedAt": "2026-03-23T17:09:28-07:00",
   "status": "completed",
   "item": {
-    "id": "CQ-047",
-    "title": "clawhq deploy — unified cloud deployment command",
-    "intent": "clawhq deploy walks a user from zero to a cloud-deployed, SSH-accessible agent in one terminal session. No cloud console, no manual steps. Cost shown before charge. Mid-flight failures auto-clean. Trust mode configured on success. SSH keypair injected at provision so the agent is permanently updatable via FEAT-005.",
-    "description": "Wire the provisioning engine into a user-facing `clawhq deploy` command. Interactive flow: choose provider → enter/confirm credentials → select region → select blueprint → provision → deploy → verify → return URL. Non-interactive mode with flags for CI/automation. Shows cost estimate before confirming. Integrates with existing cloud module (trust modes, heartbeat) for post-deploy monitoring.",
-    "sourceBacklog": "backlog.json",
-    "steps": [
-      "Build interactive deploy wizard: provider → credentials → region → blueprint → confirm",
-      "Add cost estimation: show monthly cost before provisioning",
-      "Implement non-interactive mode: --provider, --region, --blueprint flags",
-      "Post-deploy: auto-configure trust mode (zero-trust default), start heartbeat",
-      "Add clawhq deploy status: show all cloud-deployed agents",
-      "Add clawhq deploy destroy: teardown with confirmation"
-    ],
+    "id": "BUG-066",
+    "title": "AWS token parsing silently sets secretKey to undefined on malformed input",
+    "intent": "A malformed AWS token produces an immediate, actionable error at parse time — never a cryptic failure at API call time.",
+    "description": "src/cloud/provisioning/providers/aws.ts:113 splits the token on ':' without validating the result. If the token contains no colon or only one part, secretKey is set to undefined and causes cryptic failures during API signing with no actionable error. Steps: (1) replace bare destructuring with a parts array; (2) validate parts.length === 2 and both parts are non-empty strings; (3) throw Error('AWS token must be in format ACCESS_KEY_ID:SECRET_ACCESS_KEY') on failure; (4) add test cases for: no colon, one part, empty access key, empty secret key. Scope: ~5 lines in aws.ts, no logic change to valid paths.",
+    "sourceBacklog": "bugs.json",
+    "steps": [],
     "acceptanceCriteria": [
-      "clawhq deploy walks user through cloud deployment end-to-end",
-      "Cost shown before confirmation — no surprise bills",
-      "Non-interactive mode works for automation",
-      "Post-deploy monitoring configured automatically",
-      "Destroy is clean: VM terminated, DNS removed, local state cleaned"
+      "Malformed token (no colon) throws immediately with clear message | Empty access key or secret key throws with clear message | Valid token parses correctly — no regression | Test cases cover all invalid formats",
+      "Malformed token with no colon throws Error referencing expected format",
+      "Empty access key or empty secret key throws immediately with clear message",
+      "Valid colon-separated token parses correctly — no regression on valid AWS paths",
+      "Token with only whitespace parts is rejected (trim before check)"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T16:58:03-07:00",
+    "startedAt": "2026-03-23T17:09:28-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T17:09:26-07:00"
+    "completedAt": "2026-03-23T17:12:46-07:00"
   },
-  "completedAt": "2026-03-23T17:09:26-07:00",
+  "completedAt": "2026-03-23T17:12:46-07:00",
   "attempts": 1
 }
