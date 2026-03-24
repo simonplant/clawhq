@@ -1,34 +1,32 @@
 {
-  "sprintId": "sprint-1774325284",
-  "startedAt": "2026-03-23T21:08:04-07:00",
+  "sprintId": "sprint-1774325776",
+  "startedAt": "2026-03-23T21:16:16-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-089",
-    "title": "Backup snapshots directory created without mode 0700 — backup archives world-listable",
-    "intent": "The backup snapshots directory MUST be created with mode 0700 so that backup archive existence and timestamps cannot be enumerated by other system users.",
-    "description": "src/operate/backup/backup.ts line 166 calls mkdirSync(snapsDir, { recursive: true }) without a mode option when creating ops/backup/snapshots/. This creates the snapshots directory with default permissions (0755), making it world-listable. Any user on the system can ls the snapshots directory to see that backups exist and read their timestamps and snapshot IDs. While the backup archives are GPG-encrypted, their existence and metadata should not be exposed. Fix: import DIR_MODE_SECRET from config/defaults.js (currently not imported — only BACKUP_GPG_TIMEOUT_MS is imported from defaults.js) and change mkdirSync(snapsDir, { recursive: true }) to mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }). No chmodSync needed — snapshotsDir is always fresh-created at this call site.",
+    "id": "BUG-091",
+    "title": "Capability rollback snapshot directories created without mode 0700 — integration credential backups world-listable",
+    "intent": "ops/rollback/ subdirectories must be created with mode 0700 — integrations kind snapshots copy engine/credentials.json and cannot be world-listable.",
+    "description": "src/evolve/rollback/capability-snapshot.ts creates ops/rollback/{kind}/ directories without mode 0700. Three call sites: line 80 (saveSnapshots: mkdirSync(dir, { recursive: true })), line 100 (createCapabilitySnapshot: mkdirSync(snapshotDir, { recursive: true })), line 111 (target subdir: mkdirSync(destDir, { recursive: true })). The integrations kind snapshots engine/credentials.json (SNAPSHOT_TARGETS constant). World-listable rollback directory exposes that credential backups exist and reveals snapshot IDs. Fix: (1) Import DIR_MODE_SECRET from ../../config/defaults.js — no import exists there yet. (2) Apply { mode: DIR_MODE_SECRET } to all three mkdirSync calls at lines 80, 100, and 111.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/operate/backup/backup.ts lines 16-26 — confirm DIR_MODE_SECRET is not imported from defaults.js",
-      "Read src/operate/backup/backup.ts lines 155-170 — confirm mkdirSync(snapsDir, { recursive: true }) has no mode option",
-      "Add DIR_MODE_SECRET to the existing import from ../../config/defaults.js (currently only BACKUP_GPG_TIMEOUT_MS is imported)",
-      "Change mkdirSync(snapsDir, { recursive: true }) to mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET })",
-      "Check if src/operate/backup/backup.test.ts exists — if so, add a test that stats the snapshots directory and asserts mode & 0o777 === 0o700 after calling the backup function",
-      "Run npm test -- --reporter=verbose 2>&1 | tail -20 to confirm all tests pass"
+      "Read src/evolve/rollback/capability-snapshot.ts lines 1-25 — confirm no import from config/defaults.js exists",
+      "Add 'import { DIR_MODE_SECRET } from ../../config/defaults.js' after the existing type import on line 22",
+      "Read lines 74-115 — confirm three mkdirSync calls without mode at lines 80, 100, and 111",
+      "Edit line 80 (saveSnapshots): change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Edit line 100 (createCapabilitySnapshot snapshotDir): change mkdirSync(snapshotDir, { recursive: true }) to mkdirSync(snapshotDir, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Edit line 111 (target destDir): change mkdirSync(destDir, { recursive: true }) to mkdirSync(destDir, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Run npm test — confirm all tests pass (no dedicated test file for this module)"
     ],
     "acceptanceCriteria": [
-      "The ops/backup/snapshots/ directory is created with mode 0700 — stat confirms no group/other read bits",
-      "DIR_MODE_SECRET is added to the import from config/defaults.js in backup.ts",
-      "All existing backup tests continue to pass"
+      "ops/rollback/{kind}/ directories are created with mode 0700 — stat confirms no group/other read bits",
+      "Individual snapshot subdirectories are created with mode 0700",
+      "All existing tests pass with no regressions"
     ],
-    "scope": [
-      "src/operate/backup/backup.ts",
-      "src/operate/backup/backup.test.ts"
-    ],
-    "startedAt": "2026-03-23T21:08:04-07:00",
+    "scope": [],
+    "startedAt": "2026-03-23T21:16:16-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:09:56-07:00"
+    "completedAt": "2026-03-23T21:18:54-07:00"
   },
-  "completedAt": "2026-03-23T21:09:56-07:00",
+  "completedAt": "2026-03-23T21:18:54-07:00",
   "attempts": 1
 }
