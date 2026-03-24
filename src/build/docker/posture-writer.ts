@@ -6,9 +6,10 @@
  * to see what posture they're running — this makes it visible and reviewable.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import { getPostureConfig } from "./posture.js";
 import type { BuildSecurityPosture, PostureConfig } from "./types.js";
 
@@ -98,10 +99,12 @@ export function writePostureYaml(
   const dir = dirname(path);
 
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
+  chmodSync(dir, DIR_MODE_SECRET);
 
-  writeFileSync(path, content, "utf-8");
+  writeFileSync(path, content, { encoding: "utf-8", mode: FILE_MODE_SECRET });
+  chmodSync(path, FILE_MODE_SECRET);
 }
 
 /**

@@ -7,9 +7,10 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import type { CloudProvider, SnapshotRecord, SnapshotRegistry } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -48,15 +49,17 @@ function writeSnapshotRegistry(deployDir: string, registry: SnapshotRegistry): v
   const dir = dirname(path);
 
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
+  chmodSync(dir, DIR_MODE_SECRET);
 
   const content = JSON.stringify(registry, null, 2) + "\n";
   const tmpName = `.snapshots.tmp.${randomBytes(6).toString("hex")}`;
   const tmpPath = join(dir, tmpName);
 
   try {
-    writeFileSync(tmpPath, content);
+    writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
+    chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
   } catch (err) {
     throw new Error(

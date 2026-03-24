@@ -7,10 +7,10 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { DIR_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import { DEPLOY_CLOUD_SUBDIR, DEPLOY_ENGINE_OPENCLAW_JSON, DEPLOY_ENGINE_SUBDIR } from "../../config/paths.js";
 import { collectHealthReport } from "../heartbeat/reporter.js";
 import { readTrustModeState } from "../trust-modes/index.js";
@@ -64,7 +64,8 @@ function writeFleetRegistry(deployDir: string, registry: FleetRegistry): void {
   const tmpPath = join(dir, tmpName);
 
   try {
-    writeFileSync(tmpPath, content);
+    writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
+    chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
   } catch (err) {
     console.warn("[cloud] Failed to write fleet registry:", err);
