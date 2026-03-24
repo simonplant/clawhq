@@ -6,7 +6,7 @@
  */
 
 import { randomBytes, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import type {
@@ -15,6 +15,8 @@ import type {
   InstanceRegistryStatus,
   ProvisionedInstance,
 } from "./types.js";
+
+import { FILE_MODE_SECRET } from "../../config/defaults.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -60,7 +62,8 @@ function writeInstanceRegistry(deployDir: string, registry: InstanceRegistry): v
   const tmpPath = join(dir, tmpName);
 
   try {
-    writeFileSync(tmpPath, content);
+    writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
+    chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
   } catch (err) {
     throw new Error(
