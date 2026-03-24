@@ -2,61 +2,6 @@
   "description": "Bugs and tech debt",
   "items": [
     {
-      "id": "BUG-109",
-      "title": "cloud-init: clawhq up failure masked by '|| true' — VM reports ready when agent is not running",
-      "intent": "The provisioning engine must only mark an instance active when the agent is actually running. A VM that boots but fails to start its agent is worse than a provisioning failure — it is invisible.",
-      "description": "In src/cloud/provisioning/cloud-init.ts line 137, the agent start command runs as 'clawhq up || true'. The '|| true' swallows all failures from clawhq up. If the agent fails to start, the sentinel file is still touched and boot-status.json reports ready. The provisioning engine marks the instance active. Fix: remove '|| true' so clawhq up failure exits the cloud-init script non-zero.",
-      "priority": "should",
-      "category": null,
-      "steps": [
-        "Read src/cloud/provisioning/cloud-init.ts lines 134-152 to confirm the current '|| true' on clawhq up.",
-        "Remove '|| true' from line 137. Change 'clawhq up ${upArgs.join(\" \")} || true' to 'clawhq up ${upArgs.join(\" \")}'. A failed clawhq up will now exit non-zero, preventing sentinel creation and boot-status.json write.",
-        "Check that clawhq install and clawhq init commands do NOT already have '|| true' and would correctly fail-fast — confirm no regression from removing just the one instance.",
-        "In cloud-init.test.ts, add a test that parses the generated script string and asserts it does NOT contain '|| true' after the clawhq up line.",
-        "Run npm test -- --testPathPattern=cloud-init to confirm all tests pass."
-      ],
-      "acceptanceCriteria": [
-        "Generated cloud-init script does not contain '|| true' after the clawhq up command",
-        "If clawhq up exits non-zero, the sentinel file is not created and boot-status.json is not written",
-        "Existing cloud-init tests pass with no regression"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "ROOT CAUSE BUG for BUG-111. The '|| true' on clawhq up is a silent failure masker — the VM boots, cloud-init continues, sentinel is written, instance is marked active. User sees a healthy deployment; agent is dead. Trust damage is severe because the failure is invisible. FIX SCOPE: narrow — one line change in cloud-init.ts:137 plus one assertion in cloud-init.test.ts. Steps are precise. Sprint first among the three cloud provisioning bugs — BUG-111 references this bug as contributing cause. AC is correct and user-facing.",
-      "groomedAt": "2026-03-24",
-      "completedAt": "2026-03-24T09:04:16-07:00"
-    },
-    {
-      "id": "BUG-110",
-      "title": "engine.ts: VM left running and SSH key orphaned if registry write throws after successful VM creation",
-      "intent": "A provisioning failure after VM creation must never leave the user with an untracked running VM. If the instance registry write fails, the user must receive the VM ID so they can clean it up manually — silent orphans are a security and cost risk.",
-      "description": "In src/cloud/provisioning/engine.ts around line 234, addInstance() is called without a try-catch after the VM has been created and the firewall applied. If writeInstanceRegistry() throws (disk full, permissions error), the error propagates uncaught and the provisioning function rejects. The VM is running, the firewall is in place, and the SSH private key is on disk at keypair.privateKeyPath — but no registry entry exists. clawhq deploy list will never show the instance. The user has an untracked running VM with no way to destroy it via clawhq. Fix: wrap addInstance() in try-catch; on failure, include the provider instance ID in the error message so the user can destroy it manually via the cloud console.",
-      "priority": "should",
-      "category": null,
-      "steps": [
-        "Read src/cloud/provisioning/engine.ts lines 231-260 to understand the addInstance() call and surrounding flow.",
-        "Wrap the addInstance() call (line 234) in a try-catch. On catch, return a failure result that includes: the provider instance ID, the SSH key path, and instructions to destroy the VM manually via the cloud console. Do NOT clean up the SSH key or attempt to destroy the VM inside this error handler — those are separate concerns.",
-        "Write a test in engine.test.ts: mock writeFileSync (via registry) to throw on the registry write, verify the returned result has success:false and the providerInstanceId in the error message.",
-        "Run npm test -- --testPathPattern=engine.test to confirm all tests pass."
-      ],
-      "acceptanceCriteria": [
-        "If addInstance() throws after VM creation, provisionInstance() returns success:false with the provider instance ID and a message directing the user to destroy it manually",
-        "The SSH key path is included in the error output so the user can locate the orphaned key",
-        "Existing engine tests pass with no regression"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "INDEPENDENT of BUG-109/111 — this is a post-creation orphan risk. VM is running, firewall applied, SSH key on disk, but no registry entry. clawhq deploy list never shows it. User is billed for a VM they cannot manage via clawhq. Security risk: SSH key on disk with no tracked instance. FIX SCOPE: try-catch around addInstance() in engine.ts:234 + one test in engine.test.ts. The fix must NOT attempt VM cleanup or key deletion inside the error handler (those are separate concerns per the description). Error message must include providerInstanceId and SSH key path. AC is correct.",
-      "groomedAt": "2026-03-24",
-      "completedAt": "2026-03-24T09:08:21-07:00"
-    },
-    {
       "id": "BUG-111",
       "title": "health poller marks instance active on SSH timeout fallback even when agent never started",
       "intent": "An instance must only be marked active when the agent is actually reachable. The SSH port timeout fallback that returns healthy:true after 18 attempts is incorrect — SSH up does not mean agent up.",
@@ -80,6 +25,37 @@
       "passes": false,
       "readyForSprint": true,
       "groomingNotes": "SPRINT AFTER BUG-109. The health poller's SSH-open fallback returns healthy:true after 18 attempts — this conflates 'VM booted' with 'agent running'. Even with BUG-109 fixed (failed cloud-init now exits non-zero), a VM whose cloud-init silently misbehaves in other ways could still trigger this path. The fix is conceptually simple: healthy:false on timeout with a clear message and SSH debug hint. FIX SCOPE: health.ts lines 86-93 + one new test case for the timeout path in health.test.ts. AC is correct and user-facing. Note: the error message wording in AC should match step 2 exactly — sprinter should use the journalctl hint verbatim.",
+      "groomedAt": "2026-03-24"
+    },
+    {
+      "id": "BUG-112",
+      "title": "credentials.ts and snapshot-registry.ts create cloud/ dir without DIR_MODE_SECRET — inconsistent with registry.ts",
+      "intent": "Every file and directory under ~/.clawhq/cloud/ must be created with secure permissions. The cloud/ directory must never be world-readable — it contains credentials.json, instances.json, and snapshots.json. Permissions must be consistent across all writers.",
+      "description": "src/cloud/provisioning/credentials.ts:53 calls mkdirSync(dir, { recursive: true }) without mode. src/cloud/provisioning/snapshot-registry.ts:51 does the same. In contrast, src/cloud/provisioning/registry.ts:57 correctly passes { recursive: true, mode: DIR_MODE_SECRET }. If credentials.ts or snapshot-registry.ts runs first (e.g. user runs 'clawhq cloud connect' before first provision), it creates ~/.clawhq/cloud/ with the default umask (0755 — world-readable). Later, registry.ts cannot fix the mode because mkdirSync with recursive:true does not re-chmod existing directories. Result: other local users can list ~/.clawhq/cloud/ and enumerate its files. Additionally, snapshot-registry.ts:59 writes snapshots.json via writeFileSync(tmpPath, content) with no mode — the file will be world-readable. credentials.ts correctly uses FILE_MODE_SECRET on write. Fix: add DIR_MODE_SECRET to both mkdirSync calls; add FILE_MODE_SECRET to snapshot-registry.ts writeFileSync call.",
+      "priority": "must",
+      "category": null,
+      "steps": [
+        "Read src/cloud/provisioning/credentials.ts:50-54 and src/cloud/provisioning/snapshot-registry.ts:48-52 to confirm mkdirSync calls lack mode. Read src/cloud/provisioning/registry.ts:55-58 to confirm DIR_MODE_SECRET usage as the reference pattern.",
+        "In src/cloud/provisioning/credentials.ts, import DIR_MODE_SECRET from '../../config/defaults.js' (already imported in registry.ts — verify the export exists). Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }).",
+        "In src/cloud/provisioning/snapshot-registry.ts, import DIR_MODE_SECRET and FILE_MODE_SECRET from '../../config/defaults.js'. Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). Change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }).",
+        "Verify that registry.test.ts already covers the FILE_MODE_SECRET and DIR_MODE_SECRET assertions (it does per existing tests). Add equivalent assertions to any snapshot-registry test or credentials test if they exist — if not, note the gap in grooming notes.",
+        "Run npm test -- --testPathPattern='registry|credentials|snapshot' to confirm no regression."
+      ],
+      "acceptanceCriteria": [
+        "credentials.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
+        "snapshot-registry.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
+        "snapshots.json is written with FILE_MODE_SECRET (mode 0600)",
+        "All existing registry, credentials, and provisioning tests pass with no regression"
+      ],
+      "scope": [
+        "src/cloud/provisioning/credentials.ts",
+        "src/cloud/provisioning/snapshot-registry.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "PRIORITY ELEVATED 2026-03-24: Elevated from 'should' to 'must'. Security non-negotiable: 'Security by default — hardening is automatic, not opt-in.' A world-readable ~/.clawhq/cloud/ directory containing credentials.json and instances.json violates this non-negotiable for any multi-user system. The race condition (credentials.ts runs before registry.ts, sets permissive mode that cannot be retroactively fixed) means current installs may already be exposed. 3-line fix. Sprint immediately.",
       "groomedAt": "2026-03-24"
     }
   ]

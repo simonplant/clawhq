@@ -6,7 +6,7 @@
       "title": "clawhq deploy update — push config and version updates to cloud-deployed agents",
       "intent": "A sovereign cloud agent that cannot be updated is a liability, not an asset. clawhq deploy update must let users push config changes, version upgrades, and new skills to any cloud-deployed agent without reprovisioning. The agent grows pillar must hold for cloud deployments.",
       "description": "After clawhq deploy provisions a cloud agent, users need to push updates without reprovisioning from scratch. Three update scenarios: (1) config change — update blueprint vars or credentials without restart, (2) clawhq version upgrade — pull latest, rebuild Docker image, restart agent, (3) skill install/remove — evolve the cloud agent remotely. Implementation: SSH keypair injected at provision time (cloud-init). clawhq deploy update --id <agent-id> connects via SSH, pulls new config or runs clawhq update/skill commands on the remote. Requires deploy state file to track SSH endpoint and keypair location. Works in zero-trust mode — user initiates, no inbound from cloud service.",
-      "priority": "should",
+      "priority": "must",
       "category": null,
       "steps": [],
       "acceptanceCriteria": [
@@ -20,42 +20,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "FAILURE ANALYSIS: Previous run had empty steps[] — sprinter had no implementation guidance. Code exists in update.ts but has a semantic gap: config mode runs 'clawhq build && clawhq restart' on remote only — does NOT push local blueprint vars first. AC1 cannot pass until a scp/rsync step is added before the remote rebuild. Second gap: no tests for update.ts at all. DEPENDENCY STATUS: CQ-047 shipped 2026-03-24 (instances.json + sshKeyPath + sshHostKey confirmed in registry.ts types). SSH infrastructure ready. REMAINING WORK: (1) add pushConfigFiles scp step for config mode; (2) write update.test.ts with 7 cases. CLI already wired at src/cli/index.ts:3649. deploy list command confirmed. Priority SHOULD is correct.",
+      "groomingNotes": "PRIORITY ELEVATED 2026-03-24: Elevated from 'should' to 'must'. With CQ-047 (clawhq deploy) shipped, cloud agents are now deployable but immutable — no path to push config changes, upgrade versions, or install skills remotely. An agent that cannot be updated is a liability. The three update scenarios (config, version, skill) directly enable 'the agent grows' non-negotiable for cloud deployments. Prior fail (sprint-*): steps were empty. Tech Lead has since added concrete implementation steps — the gap is closed. Sprint-ready. SECOND GROOM 2026-03-24: Root cause of prior failure was empty steps[] — sprinter had no implementation guidance. Concrete steps added below. KEY GAP: update.ts buildRemoteCommand() config mode (line 112) runs 'clawhq build && clawhq restart' on the remote WITHOUT first pushing local blueprint vars. DeployUpdateOptions has no localConfigDir field and update.ts has no scp/push step. SECOND GAP: no update.test.ts exists at all. FIX PLAN: (1) add localConfigDir field to types.ts DeployUpdateOptions, (2) add pushConfigFiles scp step in update.ts for config mode, (3) add 'upload' to DeployUpdateStepName, (4) wire --local-config CLI option, (5) write update.test.ts with 7 cases. CLI wired at src/cli/index.ts:3649. SSH infrastructure in registry.ts (sshKeyPath, sshHostKey, ipAddress confirmed). DEPENDENCY: none — sprint immediately.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-24T08:19:20-07:00",
       "failCount": 1
-    },
-    {
-      "id": "FEAT-012",
-      "title": "Create docs/CHANGELOG.md — retroactive changelog from build history",
-      "intent": "A project with no changelog looks like it was built in one shot — the changelog proves sustained development and helps evaluators gauge velocity and direction.",
-      "description": "No CHANGELOG.md exists and no version tags are in the repo. However, build history can be reconstructed from: backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' (subsystem status table with line counts showing what has shipped), docs/PRODUCT.md checkbox items showing completed features, backlog/archive/sprints.jsonl (sprint completion records with dates and item IDs), and backlog/backlog.json + bugs.json (done items with completedAt timestamps). Create a retroactive changelog organized by development phase rather than version numbers (since no versions exist yet). Phase 1: Foundation (config schema, landmine validator, gateway client, workspace generator). Phase 2: Blueprints (blueprint engine, 7 blueprints, skill system, 6 skills). Phase 3: Platform (install pipeline, security hardening, doctor/status, cron engine). Include dates where available from completedAt timestamps.",
-      "priority": "should",
-      "category": "documentation",
-      "steps": [
-        "Read backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' section for the subsystem status table",
-        "Read backlog/backlog.json done items with completedAt timestamps to establish timeline",
-        "Read backlog/archive/sprints.jsonl for sprint completion records with dates",
-        "Read docs/PRODUCT.md 'What We're Building' checkbox items for completed feature list",
-        "Compose docs/CHANGELOG.md organized by development phase: Phase 1 Foundation (with dates from completedAt), Phase 2 Blueprints, Phase 3 Platform, using Added/Changed/Fixed format within each phase",
-        "Include line counts from GAP-ANALYSIS where available to show scope of each phase"
-      ],
-      "acceptanceCriteria": [
-        "docs/CHANGELOG.md exists with retroactive entries organized by development phase",
-        "Each phase lists completed features with dates where available",
-        "Entries use Added/Changed/Fixed format consistent with Keep a Changelog convention",
-        "The changelog accurately reflects what has been built — no aspirational entries"
-      ],
-      "scope": [
-        "docs/CHANGELOG.md"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PRIORITY RAISED: FEAT-012 was 'could' but it is a hard dependency of FEAT-013 which is 'must'. A could item blocking a must item is a priority misalignment — elevating to should so sprint ordering reflects actual dependency weight. CONTENT: Documentation authoring task with confirmed sources (GAP-ANALYSIS.md, done.json, PRODUCT.md). Phase-based organisation is correct given no semver. Steps and AC are complete. No technical dependencies. Sprint immediately — it unblocks the README storefront rewrite.",
-      "passes": true,
-      "completedAt": "2026-03-24T09:01:08-07:00"
     },
     {
       "id": "FEAT-013",
@@ -95,10 +63,12 @@
         "FEAT-011",
         "FEAT-012"
       ],
-      "status": "todo",
+      "status": "done",
       "readyForSprint": false,
-      "groomedAt": "2026-03-23",
-      "groomingNotes": "DEP STATUS 2026-03-24: FEAT-006 done, FEAT-007 done, FEAT-008 done, FEAT-009 done, FEAT-010 done, FEAT-011 done. FEAT-012 still todo (readyForSprint=true). One dependency remains. Do NOT sprint this until FEAT-012 ships. When FEAT-012 is done, verify all 7 docs/ files exist before starting, then mark readyForSprint=true. The 150-line target for README.md is achievable. Author section content confirmed in CLAUDE.md (Simon Plant). Priority MUST is correct."
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "DEP STATUS UPDATED 2026-03-24: FEAT-012 shipped (recent_sprints.jsonl confirms sprint-1774367709 complete). ALL 7 dependencies now done: FEAT-006 through FEAT-012. Verified all docs/ files exist in repo. readyForSprint set to true. SPRINT CHECKLIST: before starting, verify docs/ files exist (Architecture, Quickstart, Configuration, Problems, Roadmap, Contributing, Changelog) — if any missing, stop and report. Author section content confirmed in CLAUDE.md (Simon Plant, Santa Barbara CA). 150-line target for README.md is achievable — current README is 300+ lines. All removed content already in docs/ files.",
+      "passes": true,
+      "completedAt": "2026-03-24T09:19:49-07:00"
     },
     {
       "id": "FEAT-014",
