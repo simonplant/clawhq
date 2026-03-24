@@ -21,6 +21,8 @@ import { join } from "node:path";
 
 import type { CapabilityKind, CapabilitySnapshot, RestoreResult } from "./types.js";
 
+import { DIR_MODE_SECRET } from "../../config/defaults.js";
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const ROLLBACK_BASE = "ops/rollback";
@@ -77,7 +79,7 @@ async function saveSnapshots(
   snapshots: CapabilitySnapshot[],
 ): Promise<void> {
   const dir = rollbackDir(deployDir, kind);
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   await writeFile(manifestPath(deployDir, kind), JSON.stringify(snapshots, null, 2));
 }
 
@@ -97,7 +99,7 @@ export async function createCapabilitySnapshot(
 ): Promise<CapabilitySnapshot> {
   const id = `snap-${Date.now()}-${randomBytes(4).toString("hex")}`;
   const snapshotDir = join(rollbackDir(deployDir, kind), id);
-  mkdirSync(snapshotDir, { recursive: true });
+  mkdirSync(snapshotDir, { recursive: true, mode: DIR_MODE_SECRET });
 
   const targets = SNAPSHOT_TARGETS[kind];
 
@@ -108,7 +110,7 @@ export async function createCapabilitySnapshot(
     // Determine destination — preserve the relative path structure
     const destPath = join(snapshotDir, target);
     const destDir = join(destPath, "..");
-    mkdirSync(destDir, { recursive: true });
+    mkdirSync(destDir, { recursive: true, mode: DIR_MODE_SECRET });
 
     if (statSync(sourcePath).isDirectory()) {
       if (readdirSync(sourcePath).length > 0) {
