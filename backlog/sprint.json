@@ -1,24 +1,37 @@
 {
-  "sprintId": "sprint-1774312862",
-  "startedAt": "2026-03-23T17:41:02-07:00",
+  "sprintId": "sprint-1774313235",
+  "startedAt": "2026-03-23T17:47:15-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-071",
-    "title": "AWS credential validation exposes full access key ID in account field — should be masked",
-    "intent": "AWS credentials are never logged or displayed unmasked. Access key in account field shows first 8 chars only. Whitespace-only tokens are rejected.",
-    "description": "src/cloud/provisioning/providers/aws.ts:223 returns { valid: true, account: accessKeyId } with the full AWS access key ID unmasked. AWS key IDs (AKIA...) are 20 chars and considered sensitive in logs and status displays. Additionally, !accessKeyId passes for whitespace-only strings. Steps: (1) trim both accessKeyId and secretKey before all use and checks; (2) reject if trimmed value is empty; (3) mask account field as first 8 chars plus ... (e.g. AKIAIOSFOD...); (4) add test for whitespace-only key, verify masking. Scope: ~6 lines in aws.ts.",
-    "sourceBacklog": "bugs.json",
-    "steps": [],
-    "acceptanceCriteria": [
-      "Whitespace-only access key is rejected with the same format error as empty key",
-      "account field in successful validation shows first 8 chars plus ... not the full key ID",
-      "Valid credentials still pass validation — no regression"
+    "id": "FEAT-009",
+    "title": "Create docs/PROBLEMS.md — why OpenClaw is hard and what ClawHQ fixes",
+    "intent": "People search for problems, not solutions — this document must rank for the frustrations that drive users to ClawHQ.",
+    "description": "The pain point content is the richest of any doc area but scattered across 4 files: docs/PRODUCT.md ('The Problem' section: freelancers/enthusiasts abandoned within a month, too much config), README.md (second paragraph: 13,500 tokens of config, 11+ files, 14 silent landmines, most deployments abandoned), docs/OPENCLAW-REFERENCE.md (section 12: the 14 Configuration Landmines with detailed explanations of each; section 8: Memory System 360KB bloat in 3 days; section 9: Identity Drift; section 15: Threat Model showing security-by-default gaps; section 30: Production Discoveries documenting real-world failures), CLAUDE.md (Core Intent: surveillance AI vs raw framework framing). This is primarily a consolidation and narrative job. Each problem should be stated as a user would google it, with evidence from OPENCLAW-REFERENCE.md production discoveries, and a concrete explanation of how ClawHQ addresses it.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Read docs/PRODUCT.md 'The Problem' section for the core problem statement",
+      "Read README.md second paragraph for the quantified pain (13,500 tokens, 11+ files, 14 landmines, abandoned deployments)",
+      "Read docs/OPENCLAW-REFERENCE.md section 12 (14 Configuration Landmines) for detailed landmine documentation",
+      "Read docs/OPENCLAW-REFERENCE.md section 8 (Memory System: 360KB bloat), section 9 (Identity Drift), section 15 (Threat Model), section 30 (Production Discoveries)",
+      "Read CLAUDE.md Core Intent section for the surveillance-vs-sovereignty framing",
+      "Compose docs/PROBLEMS.md with one section per problem, each structured as: search-friendly heading, pain description (2-3 sentences), evidence (from OPENCLAW-REFERENCE.md production data or mark TODO), how ClawHQ addresses it (specific feature/blueprint/automation)",
+      "Cover at minimum: OpenClaw configuration is 13,500 tokens across 11+ files, 14 silent configuration landmines that break agents without warning, Memory bloats to 360KB in 3 days without management, Identity drift degrades agent quality over time, No security hardening by default (cap_drop, egress, rootfs), Most OpenClaw deployments abandoned within a month, People paying consultants to install what should be a consumer product",
+      "Write problem headings as search queries: e.g. 'OpenClaw configuration is too complex for non-developers' not 'Configuration Complexity'"
     ],
-    "scope": [],
-    "startedAt": "2026-03-23T17:41:02-07:00",
+    "acceptanceCriteria": [
+      "docs/PROBLEMS.md exists with at least 7 distinct problem sections",
+      "Each problem is stated as a user would search for it (search-friendly heading)",
+      "Each problem section includes: pain description, evidence from OPENCLAW-REFERENCE.md or real-world data, and how ClawHQ addresses it",
+      "Quantified claims (13,500 tokens, 14 landmines, 360KB bloat, 11+ files) are included with source attribution",
+      "Problems reference specific ClawHQ features (blueprints, auto-hardening, clawhq doctor, memory management) not vague claims"
+    ],
+    "scope": [
+      "docs/PROBLEMS.md"
+    ],
+    "startedAt": "2026-03-23T17:47:15-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T17:44:56-07:00"
+    "completedAt": "2026-03-23T17:51:49-07:00"
   },
-  "completedAt": "2026-03-23T17:44:56-07:00",
+  "completedAt": "2026-03-23T17:51:49-07:00",
   "attempts": 1
 }
