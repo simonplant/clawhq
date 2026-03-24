@@ -1,23 +1,23 @@
 {
-  "sprintId": "sprint-1774327618",
-  "startedAt": "2026-03-23T21:46:58-07:00",
+  "sprintId": "sprint-1774327740",
+  "startedAt": "2026-03-23T21:49:00-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-097",
-    "title": "ops/integrations directory and .integration-manifest.json created without security modes — integration config world-listable",
-    "intent": "ops/integrations and .integration-manifest.json must be created with restricted permissions — the manifest reveals which integrations (IMAP, SMTP, CalDAV) are configured on the agent, giving an attacker a precise capability map.",
-    "description": "src/evolve/integrate/manifest.ts saveIntegrationManifest() (lines 35-43): line 38 calls mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) without mode — creates ops/integrations/ with default 0755. Line 39 calls writeFileSync(path, ..., 'utf-8') without mode option — creates .integration-manifest.json with default 0644. Both are wrong. The manifest stores integration state (name, enabled, version) and reveals exactly which integrations (email, calendar, tasks) are wired into the agent. No import from config/defaults.js exists today — needs DIR_MODE_SECRET and FILE_MODE_SECRET added.",
+    "id": "BUG-098",
+    "title": "workspace/skills directory and .skill-manifest.json created without security modes — skill capability enumeration",
+    "intent": "workspace/skills/ and .skill-manifest.json must be created with mode 0700/0600 — the directory and manifest reveal which skills (and their vetting status) are installed, enabling targeted capability-specific attacks.",
+    "description": "src/evolve/skills/lifecycle.ts saveManifest() (lines 49-56): line 54 calls mkdirSync(dir, { recursive: true }) without mode — creates workspace/skills/ with default 0755. Line 55 calls await writeFile(manifestPath, ...) without mode option — creates .skill-manifest.json world-readable. The skill manifest stores skill name, source, install timestamp, vet result, and activation status — a capability map for the agent. FILE_MODE_EXEC is already imported from config/defaults.js; DIR_MODE_SECRET and FILE_MODE_SECRET are not.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "On a multi-user system, a user other than the agent owner cannot list files in ops/integrations/ to discover which integrations (IMAP, SMTP, CalDAV) are configured",
-      ".integration-manifest.json is not readable by other users — integration state (name, enabled, version) remains private to the agent owner"
+      "On a multi-user system, a user other than the agent owner cannot list workspace/skills/ to enumerate which skills are installed",
+      ".skill-manifest.json is not readable by other users — skill name, source, vet result, and activation status remain private to the agent owner"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:46:58-07:00",
+    "startedAt": "2026-03-23T21:49:00-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:48:59-07:00"
+    "completedAt": "2026-03-23T21:51:04-07:00"
   },
-  "completedAt": "2026-03-23T21:48:59-07:00",
+  "completedAt": "2026-03-23T21:51:04-07:00",
   "attempts": 1
 }

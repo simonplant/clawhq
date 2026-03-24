@@ -45,11 +45,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/integrate/manifest.ts. Precise steps:\n- Line 7: add DIR_MODE_SECRET and FILE_MODE_SECRET and chmodSync to imports — change to: import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'; and add: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';\n- Line 38: change mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) to mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true, mode: DIR_MODE_SECRET });\n- After line 38: add chmodSync(join(deployDir, MANIFEST_DIR), DIR_MODE_SECRET);\n- Line 39: change writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', 'utf-8') to writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', { encoding: 'utf-8', mode: FILE_MODE_SECRET });\n\nRun: npm test -- --testPathPattern='integrate' and confirm all pass. AC: stat ops/integrations/ shows mode 0700; stat .integration-manifest.json shows mode 0600.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:48:59-07:00"
     },
     {
       "id": "BUG-098",
