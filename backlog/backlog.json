@@ -83,10 +83,12 @@
         "docs/QUICKSTART.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "READY. Documentation task. Source content confirmed across README.md (install commands), docs/ARCHITECTURE.md (Install Phases), docs/PRODUCT.md (user experience), CLAUDE.md (CLI commands), configs/blueprints/email-manager.yaml. backlog/GAP-ANALYSIS.md referenced for prerequisites. Steps are sequenced and specific. Output constraint (under 250 lines) is clear. No blocking dependencies."
+      "groomingNotes": "READY. Documentation task. Source content confirmed across README.md (install commands), docs/ARCHITECTURE.md (Install Phases), docs/PRODUCT.md (user experience), CLAUDE.md (CLI commands), configs/blueprints/email-manager.yaml. backlog/GAP-ANALYSIS.md referenced for prerequisites. Steps are sequenced and specific. Output constraint (under 250 lines) is clear. No blocking dependencies.",
+      "passes": true,
+      "completedAt": "2026-03-23T17:41:01-07:00"
     },
     {
       "id": "FEAT-008",
