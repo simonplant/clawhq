@@ -146,11 +146,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/build/docker/posture-writer.ts. Both mkdirSync at line 101 and writeFileSync at line 104 are missing mode. No defaults import exists — must add. Note: scaffold.ts also creates security/ with DIR_MODE_SECRET, but posture-writer has an independent existsSync guard that creates the dir itself. chmodSync after mkdirSync is required to fix existing installs where scaffold may have created security/ at 0755. Use DIR_MODE_SECRET and FILE_MODE_SECRET constants, never literals.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T22:17:14-07:00"
     }
   ]
 }

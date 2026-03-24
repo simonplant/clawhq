@@ -1,31 +1,33 @@
 {
-  "sprintId": "sprint-1774329153",
-  "startedAt": "2026-03-23T22:12:33-07:00",
+  "sprintId": "sprint-1774329298",
+  "startedAt": "2026-03-23T22:14:58-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-104",
-    "title": "fleet.json written without mode 0600 — agent registry world-readable on multi-user systems",
-    "intent": "fleet.json must be written with mode 0600 — agent registry (names, paths, health) must not be readable by other users on the system.",
-    "description": "src/cloud/fleet/discovery.ts line 67 calls writeFileSync(tmpPath, content) without a mode option when writing the fleet registry atomically. The cloud/ parent directory is correctly created with DIR_MODE_SECRET (line 59), but the fleet.json file itself is written with default permissions (0644). fleet.json contains: registered agent names, deployment directories (absolute paths), and health metadata — exposing the full inventory of agents and their filesystem locations to any user on the system. Fix: add FILE_MODE_SECRET to the import from config/defaults.js; add chmodSync to the node:fs import; change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }); add chmodSync(tmpPath, FILE_MODE_SECRET) after the write.",
+    "id": "BUG-105",
+    "title": "security/ directory and posture.yaml created without secure modes — container hardening config world-readable",
+    "intent": "The security/ directory and posture.yaml must be created with mode 0700/0600 — container hardening configuration must not be readable by other users.",
+    "description": "src/build/docker/posture-writer.ts line 101 calls mkdirSync(dir, { recursive: true }) without mode when creating the security/ directory. Line 104 calls writeFileSync(path, content, 'utf-8') without mode for posture.yaml. The security/ directory stores posture.yaml which reveals: dropped capabilities, security options (seccomp, apparmor), read-only rootfs, container user, ICC disabled status, and resource limits. An attacker can use this information to identify hardening gaps and tailor exploits. Note: scaffold.ts creates security/ with DIR_MODE_SECRET, but posture-writer creates it independently if it doesn't exist (line 100 checks existsSync). Fix: add chmodSync, to fs imports; import DIR_MODE_SECRET, FILE_MODE_SECRET from config/defaults.js; add mode: DIR_MODE_SECRET to mkdirSync at line 101; chmodSync after; change writeFileSync at line 104 to use FILE_MODE_SECRET; chmodSync after.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/cloud/fleet/discovery.ts lines 10-14 — confirm chmodSync is not in node:fs import and FILE_MODE_SECRET is not in the defaults import (currently only DIR_MODE_SECRET)",
-      "Line 10: add chmodSync to the node:fs import destructure — result: import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';",
-      "Line 13: add FILE_MODE_SECRET to the defaults import — change to: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
-      "Line 67 (inside writeFleetRegistry try block): change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });",
-      "After line 67: add chmodSync(tmpPath, FILE_MODE_SECRET); — this runs before renameSync so the temp file has correct mode before atomic rename",
-      "Run: npm test -- --testPathPattern='fleet|discovery' and confirm all tests pass"
+      "Read src/build/docker/posture-writer.ts lines 9-11 — confirm chmodSync is not in node:fs import and no defaults import exists",
+      "Line 9: add chmodSync to the node:fs import — change to: import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+      "After line 10 (dirname, join import): add new import line: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
+      "Line 101 (inside writePostureYaml, the if block): change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });",
+      "After line 101: add chmodSync(dir, DIR_MODE_SECRET); — fixes permissions on existing installs where scaffold already created security/ at 0755",
+      "Line 104: change writeFileSync(path, content, 'utf-8') to writeFileSync(path, content, { encoding: 'utf-8', mode: FILE_MODE_SECRET });",
+      "After line 104: add chmodSync(path, FILE_MODE_SECRET);",
+      "Run: npm test -- --testPathPattern='posture' and confirm all tests pass"
     ],
     "acceptanceCriteria": [
-      "fleet.json is written with mode 0600 — stat on ~/.clawhq/cloud/fleet.json confirms no group/other read bits",
-      "The cloud/ parent directory remains at mode 0700 (unchanged — was already correct)",
-      "All existing fleet/discovery tests pass with no regressions"
+      "The security/ directory is created with mode 0700 when posture-writer creates it — stat confirms no group/other read bits",
+      "posture.yaml is written with mode 0600 — stat on ~/.clawhq/security/posture.yaml confirms no group/other read bits",
+      "All existing posture-writer tests pass with no regressions"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T22:12:33-07:00",
+    "startedAt": "2026-03-23T22:14:58-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T22:14:56-07:00"
+    "completedAt": "2026-03-23T22:17:14-07:00"
   },
-  "completedAt": "2026-03-23T22:14:56-07:00",
+  "completedAt": "2026-03-23T22:17:14-07:00",
   "attempts": 1
 }
