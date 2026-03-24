@@ -12,7 +12,7 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { FILE_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 import type { CredentialEntry, CredentialStore } from "./credential-store-types.js";
 
@@ -57,7 +57,7 @@ export function writeCredentialStore(deployDir: string, store: CredentialStore):
   const dir = dirname(path);
 
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
 
   const content = JSON.stringify(store, null, 2) + "\n";
