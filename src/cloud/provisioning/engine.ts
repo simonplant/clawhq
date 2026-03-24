@@ -69,9 +69,21 @@ export function resolveAdapter(
     case "hetzner":
       return { adapter: createHetznerAdapter(credential.token) };
     case "aws":
-      return { adapter: createAwsAdapter(credential.token) };
+      try {
+        return { adapter: createAwsAdapter(credential.token) };
+      } catch {
+        return {
+          error: `Failed to initialize AWS adapter: credentials may be malformed. Re-run clawhq creds to reconfigure.`,
+        };
+      }
     case "gcp":
-      return { adapter: createGcpAdapter(credential.token) };
+      try {
+        return { adapter: createGcpAdapter(credential.token) };
+      } catch {
+        return {
+          error: `Failed to initialize GCP adapter: service account JSON may be malformed. Re-run clawhq creds to reconfigure.`,
+        };
+      }
     default:
       return { error: `Unknown provider: ${provider}` };
   }
