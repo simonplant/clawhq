@@ -1,32 +1,32 @@
 {
-  "sprintId": "sprint-1774325776",
-  "startedAt": "2026-03-23T21:16:16-07:00",
+  "sprintId": "sprint-1774325936",
+  "startedAt": "2026-03-23T21:18:56-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-091",
-    "title": "Capability rollback snapshot directories created without mode 0700 — integration credential backups world-listable",
-    "intent": "ops/rollback/ subdirectories must be created with mode 0700 — integrations kind snapshots copy engine/credentials.json and cannot be world-listable.",
-    "description": "src/evolve/rollback/capability-snapshot.ts creates ops/rollback/{kind}/ directories without mode 0700. Three call sites: line 80 (saveSnapshots: mkdirSync(dir, { recursive: true })), line 100 (createCapabilitySnapshot: mkdirSync(snapshotDir, { recursive: true })), line 111 (target subdir: mkdirSync(destDir, { recursive: true })). The integrations kind snapshots engine/credentials.json (SNAPSHOT_TARGETS constant). World-listable rollback directory exposes that credential backups exist and reveals snapshot IDs. Fix: (1) Import DIR_MODE_SECRET from ../../config/defaults.js — no import exists there yet. (2) Apply { mode: DIR_MODE_SECRET } to all three mkdirSync calls at lines 80, 100, and 111.",
+    "id": "BUG-092",
+    "title": "Backup restore creates deployment root and ops/ directory without mode 0700 — restored agent data world-listable",
+    "intent": "When restore creates the deployment root or ops/ directory they must be created with mode 0700 — the restore path must not undermine scaffold hardening.",
+    "description": "src/operate/backup/restore.ts has two mkdirSync calls without mode 0700: line 217 (mkdirSync(deployDir, { recursive: true })) creates the root ~/.clawhq/ directory, and line 299 (mkdirSync(destOps, { recursive: true })) creates the ops/ subdirectory during restore. scaffold.ts (fixed by BUG-084) creates these directories with 0700, but the restore code path has independent mkdirSync calls that create them at 0755 if they do not already exist. This means a fresh restore on a new system bypasses scaffold hardening.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/evolve/rollback/capability-snapshot.ts lines 1-25 — confirm no import from config/defaults.js exists",
-      "Add 'import { DIR_MODE_SECRET } from ../../config/defaults.js' after the existing type import on line 22",
-      "Read lines 74-115 — confirm three mkdirSync calls without mode at lines 80, 100, and 111",
-      "Edit line 80 (saveSnapshots): change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET })",
-      "Edit line 100 (createCapabilitySnapshot snapshotDir): change mkdirSync(snapshotDir, { recursive: true }) to mkdirSync(snapshotDir, { recursive: true, mode: DIR_MODE_SECRET })",
-      "Edit line 111 (target destDir): change mkdirSync(destDir, { recursive: true }) to mkdirSync(destDir, { recursive: true, mode: DIR_MODE_SECRET })",
-      "Run npm test — confirm all tests pass (no dedicated test file for this module)"
+      "Read src/operate/backup/restore.ts lines 1-20 — confirm whether DIR_MODE_SECRET is already imported from config/defaults.js",
+      "Add 'import { DIR_MODE_SECRET } from ../../config/defaults.js' if not already present",
+      "Read restore.ts line 217 — confirm mkdirSync(deployDir, { recursive: true }) has no mode option",
+      "Edit line 217: change mkdirSync(deployDir, { recursive: true }) to mkdirSync(deployDir, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Read restore.ts line 299 (copyOpsSelectively function) — confirm mkdirSync(destOps, { recursive: true }) has no mode option",
+      "Edit line 299: change mkdirSync(destOps, { recursive: true }) to mkdirSync(destOps, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Run npm test — confirm all tests pass"
     ],
     "acceptanceCriteria": [
-      "ops/rollback/{kind}/ directories are created with mode 0700 — stat confirms no group/other read bits",
-      "Individual snapshot subdirectories are created with mode 0700",
+      "Restore creates deployDir with mode 0700 when directory does not already exist",
+      "Restore creates destOps (ops/ subdirectory) with mode 0700 when directory does not already exist",
       "All existing tests pass with no regressions"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:16:16-07:00",
+    "startedAt": "2026-03-23T21:18:56-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:18:54-07:00"
+    "completedAt": "2026-03-23T21:21:13-07:00"
   },
-  "completedAt": "2026-03-23T21:18:54-07:00",
+  "completedAt": "2026-03-23T21:21:13-07:00",
   "attempts": 1
 }

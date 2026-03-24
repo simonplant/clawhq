@@ -54,11 +54,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "GROOMED 2026-03-23. All three mkdirSync calls are in one file (capability-snapshot.ts). The critical path is integrations kind which snapshots engine/credentials.json per SNAPSHOT_TARGETS. Read the file to confirm line numbers before editing. DIR_MODE_SECRET is not imported — add it. Apply mode to all three calls. No dedicated test file for capability-snapshot.ts — run npm test for full suite.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:18:54-07:00"
     },
     {
       "id": "BUG-092",
