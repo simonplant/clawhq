@@ -298,7 +298,6 @@ export function createAwsAdapter(token: string, region = "us-east-1"): ProviderA
         id: n.replace(/<\/?keyName>/g, ""),
         name: n.replace(/<\/?keyName>/g, ""),
         fingerprint: fingerprints[i]?.replace(/<\/?keyFingerprint>/g, "") ?? "",
-        publicKey: "",
       }));
     },
 

@@ -216,7 +216,7 @@ export interface SshKeyInfo {
   readonly id: string;
   readonly name: string;
   readonly fingerprint: string;
-  readonly publicKey: string;
+  readonly publicKey?: string;
 }
 
 // ── Firewall ──────────────────────────────────────────────────────────────
