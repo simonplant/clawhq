@@ -25,131 +25,103 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "PO PASS (2026-03-23). Priority must confirmed — cloud credentials directory world-listable is a direct user security exposure. AC is outcome-focused (stat confirms mode). TECH LEAD PASS 3 steps are precise: import line, mkdirSync mode, chmodSync for existing installs, same pattern for snapshot-registry. Prior failure was literal vs constant — steps now mandate DIR_MODE_SECRET. AC unchanged — stat-verifiable, security-outcome focused. Ready to sprint.",
+      "groomingNotes": "PO AC FIX (2026-03-23). AC item 3 corrected: 'remain unchanged at 0600' was factually wrong — snapshots.json is currently created at 0644, not 0600. Steps 10-12 (added by Tech Lead Pass 3) introduce the fix. AC now accurately states snapshots.json is a new 0600 target, not a pre-existing one. Previous failure (failCount=1) may have been caused by the verifier checking for an 'unchanged' 0600 when the file was actually 0644. readyForSprint=true confirmed — steps and AC are now aligned.",
       "groomedAt": "2026-03-23",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-23T20:09:23-07:00",
       "failCount": 1
     },
     {
-      "id": "BUG-102",
-      "title": "Capability snapshot files written without mode 0600 — credentials copies world-readable",
-      "intent": "Capability snapshot files that contain credentials.json content must be written with mode 0600 — credential copies in snapshot dirs must never be world-readable.",
-      "description": "src/evolve/rollback/capability-snapshot.ts line 121 calls writeFileSync(destPath, content, \"utf-8\") without a mode option when copying files into snapshot directories. Snapshot targets include engine/credentials.json (for 'integrations' kind) and ops/integrations/.integration-manifest.json — meaning credentials are copied into snapshot files with default permissions (0644), making them world-readable. The directory structure is correctly created with DIR_MODE_SECRET (lines 82, 102, 113) but the files themselves are unprotected. Additionally, restoreCapabilitySnapshot at line 183 calls mkdirSync(destDir, { recursive: true }) without mode when restoring snapshot content to the deployment directory, potentially re-creating parent directories with 0755. Fix: add mode FILE_MODE_SECRET to writeFileSync at line 121, chmodSync after, and add DIR_MODE_SECRET to mkdirSync at line 183, chmodSync after.",
+      "id": "BUG-106",
+      "title": "Export bundle directory and archive file created without secure modes — agent data world-readable on multi-user systems",
+      "intent": "The export bundle output directory must be created with mode 0700 and the bundle archive must be written with mode 0600 — the export contains agent workspace, ops data, and identity files that must not be readable by other users on multi-user systems.",
+      "description": "src/evolve/lifecycle/export.ts line 238 calls mkdirSync(parentDir, { recursive: true }) without a mode option when creating the parent directory for the export bundle. This creates the directory with default permissions (0755), world-readable. Line 242 calls createWriteStream(bundlePath) without a mode option, creating the bundle archive with default permissions (typically 0644), world-readable. The export bundle contains workspace data, ops/audit traces, tool and skill configs, and identity files — sensitive agent data that other users on the system can read. Credentials and .env are excluded, but audit logs and conversation memory are included. Fix: add mode DIR_MODE_SECRET to mkdirSync on line 238 and chmodSync after for existing directories. Pass mode FILE_MODE_SECRET to createWriteStream via { mode: FILE_MODE_SECRET } options, then chmodSync the file after writing completes.",
       "priority": "must",
       "category": null,
       "steps": [
-        "Read src/evolve/rollback/capability-snapshot.ts lines 18-24 — confirm chmodSync is not in the node:fs import and FILE_MODE_SECRET is not in the defaults import",
-        "Line 18: add chmodSync to the node:fs import destructure — result: import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';",
-        "Line 24: add FILE_MODE_SECRET to the defaults import — change to: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
-        "Line 121 (in createCapabilitySnapshot, the else branch): change writeFileSync(destPath, content, 'utf-8') to writeFileSync(destPath, content, { encoding: 'utf-8', mode: FILE_MODE_SECRET }); — this protects credential and manifest files copied into snapshot dirs",
-        "After line 121: add chmodSync(destPath, FILE_MODE_SECRET); — fixes permissions on existing installs",
-        "Line 183 (in restoreCapabilitySnapshot): change mkdirSync(destDir, { recursive: true }) to mkdirSync(destDir, { recursive: true, mode: DIR_MODE_SECRET });",
-        "After line 183: add chmodSync(destDir, DIR_MODE_SECRET); — fixes permissions when restore re-creates parent dirs",
-        "Run: npm test -- --testPathPattern='capability-snapshot' and confirm all tests pass with no regressions"
+        "Read src/evolve/lifecycle/export.ts lines 1-30 — confirm DIR_MODE_SECRET and FILE_MODE_SECRET are not imported (neither from node:fs nor config/defaults.js)",
+        "Read src/evolve/lifecycle/export.ts lines 185-260 — confirm mkdirSync(parentDir, { recursive: true }) at ~line 238 has no mode option, and createWriteStream(bundlePath) at ~line 242 has no mode option",
+        "Add chmodSync to the existing node:fs import in export.ts",
+        "Add import { DIR_MODE_SECRET, FILE_MODE_SECRET } from ../../config/defaults.js to export.ts",
+        "Change mkdirSync(parentDir, { recursive: true }) to mkdirSync(parentDir, { recursive: true, mode: DIR_MODE_SECRET }) in export.ts",
+        "Add chmodSync(parentDir, DIR_MODE_SECRET) on the line immediately after mkdirSync in export.ts — fixes existing directories",
+        "Change createWriteStream(bundlePath) to createWriteStream(bundlePath, { mode: FILE_MODE_SECRET }) in export.ts",
+        "After the await pipeline(...) call completes (archive is fully written), add chmodSync(bundlePath, FILE_MODE_SECRET) to fix permissions on the archive file",
+        "Run the full test suite — confirm export/lifecycle tests pass with no regressions"
       ],
       "acceptanceCriteria": [
-        "Snapshot files copied from integration targets (engine/credentials.json, .integration-manifest.json) are written with mode 0600 — stat on any file under ops/rollback/integrations/snap-*/engine/credentials.json confirms no group/other read bits",
-        "Restore operation creates destination parent directories with mode 0700 — stat on dirs recreated during restore (e.g. ops/integrations/) confirms mode 0700",
-        "All existing capability-snapshot tests pass with no regressions"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "PO PASS (2026-03-23). Priority must confirmed — credentials.json content copied into snapshot dirs at 0644 is a direct credential exposure. AC is outcome-focused: stat on ops/rollback/integrations/snap-*/engine/credentials.json confirms 0600. Two issues in one file (writeFileSync + mkdirSync in restore), both documented precisely by Tech Lead Pass 1. Ready to sprint.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T22:09:57-07:00"
-    },
-    {
-      "id": "BUG-103",
-      "title": "ops/roles/ directory and .role-manifest.json created without security modes — role assignments world-listable",
-      "intent": "The ops/roles/ directory and .role-manifest.json must be created with mode 0700/0600 — role assignment data must not be listable or readable by other users.",
-      "description": "src/evolve/role/manifest.ts line 79 calls mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) without mode (creates ops/roles/ at 0755). Line 80 calls writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', 'utf-8') without mode (creates .role-manifest.json at 0644). The manifest stores role definitions and integration-to-role assignments (which integrations have 'admin', 'operator', or 'reader' roles) — exposing this lets an attacker enumerate capability access control assignments. Fix: import chmodSync and DIR_MODE_SECRET, FILE_MODE_SECRET from config/defaults.js; add mode: DIR_MODE_SECRET to mkdirSync; add chmodSync after; change writeFileSync to use FILE_MODE_SECRET; add chmodSync after writeFileSync.",
-      "priority": "should",
-      "category": null,
-      "steps": [
-        "Read src/evolve/role/manifest.ts lines 7-9 — confirm chmodSync is not in the node:fs import and no defaults import exists",
-        "Line 7: add chmodSync to the node:fs import — change to: import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
-        "After line 9 (join import): add new import line: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
-        "Line 79: change mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) to mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true, mode: DIR_MODE_SECRET });",
-        "After line 79: add chmodSync(join(deployDir, MANIFEST_DIR), DIR_MODE_SECRET);",
-        "Line 80: change writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', 'utf-8') to writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', { encoding: 'utf-8', mode: FILE_MODE_SECRET });",
-        "After line 80: add chmodSync(path, FILE_MODE_SECRET);",
-        "Run: npm test -- --testPathPattern='role' and confirm all tests pass"
-      ],
-      "acceptanceCriteria": [
-        "The ops/roles/ directory is created with mode 0700 — stat confirms no group/other read bits",
-        ".role-manifest.json is written with mode 0600 — stat confirms no group/other read bits",
-        "All existing role manifest tests pass with no regressions"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/role/manifest.ts. Both issues confirmed by code read — mkdirSync at line 79 (no mode) and writeFileSync at line 80 (no mode). No defaults import exists in this file — must add. No chmodSync in fs import — must add. Use DIR_MODE_SECRET and FILE_MODE_SECRET constants, never literal 0o700/0o600.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T22:12:32-07:00"
-    },
-    {
-      "id": "BUG-104",
-      "title": "fleet.json written without mode 0600 — agent registry world-readable on multi-user systems",
-      "intent": "fleet.json must be written with mode 0600 — agent registry (names, paths, health) must not be readable by other users on the system.",
-      "description": "src/cloud/fleet/discovery.ts line 67 calls writeFileSync(tmpPath, content) without a mode option when writing the fleet registry atomically. The cloud/ parent directory is correctly created with DIR_MODE_SECRET (line 59), but the fleet.json file itself is written with default permissions (0644). fleet.json contains: registered agent names, deployment directories (absolute paths), and health metadata — exposing the full inventory of agents and their filesystem locations to any user on the system. Fix: add FILE_MODE_SECRET to the import from config/defaults.js; add chmodSync to the node:fs import; change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }); add chmodSync(tmpPath, FILE_MODE_SECRET) after the write.",
-      "priority": "should",
-      "category": null,
-      "steps": [
-        "Read src/cloud/fleet/discovery.ts lines 10-14 — confirm chmodSync is not in node:fs import and FILE_MODE_SECRET is not in the defaults import (currently only DIR_MODE_SECRET)",
-        "Line 10: add chmodSync to the node:fs import destructure — result: import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';",
-        "Line 13: add FILE_MODE_SECRET to the defaults import — change to: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
-        "Line 67 (inside writeFleetRegistry try block): change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });",
-        "After line 67: add chmodSync(tmpPath, FILE_MODE_SECRET); — this runs before renameSync so the temp file has correct mode before atomic rename",
-        "Run: npm test -- --testPathPattern='fleet|discovery' and confirm all tests pass"
-      ],
-      "acceptanceCriteria": [
-        "fleet.json is written with mode 0600 — stat on ~/.clawhq/cloud/fleet.json confirms no group/other read bits",
-        "The cloud/ parent directory remains at mode 0700 (unchanged — was already correct)",
-        "All existing fleet/discovery tests pass with no regressions"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/cloud/fleet/discovery.ts. Dir creation at line 59 already has DIR_MODE_SECRET — only the file write at line 67 is missing mode. Add FILE_MODE_SECRET to the defaults import (DIR_MODE_SECRET already imported). chmodSync must go before renameSync at line 68 so the atomic rename preserves the correct mode. Use FILE_MODE_SECRET constant, never literal 0o600.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T22:14:56-07:00"
-    },
-    {
-      "id": "BUG-105",
-      "title": "security/ directory and posture.yaml created without secure modes — container hardening config world-readable",
-      "intent": "The security/ directory and posture.yaml must be created with mode 0700/0600 — container hardening configuration must not be readable by other users.",
-      "description": "src/build/docker/posture-writer.ts line 101 calls mkdirSync(dir, { recursive: true }) without mode when creating the security/ directory. Line 104 calls writeFileSync(path, content, 'utf-8') without mode for posture.yaml. The security/ directory stores posture.yaml which reveals: dropped capabilities, security options (seccomp, apparmor), read-only rootfs, container user, ICC disabled status, and resource limits. An attacker can use this information to identify hardening gaps and tailor exploits. Note: scaffold.ts creates security/ with DIR_MODE_SECRET, but posture-writer creates it independently if it doesn't exist (line 100 checks existsSync). Fix: add chmodSync, to fs imports; import DIR_MODE_SECRET, FILE_MODE_SECRET from config/defaults.js; add mode: DIR_MODE_SECRET to mkdirSync at line 101; chmodSync after; change writeFileSync at line 104 to use FILE_MODE_SECRET; chmodSync after.",
-      "priority": "should",
-      "category": null,
-      "steps": [
-        "Read src/build/docker/posture-writer.ts lines 9-11 — confirm chmodSync is not in node:fs import and no defaults import exists",
-        "Line 9: add chmodSync to the node:fs import — change to: import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
-        "After line 10 (dirname, join import): add new import line: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
-        "Line 101 (inside writePostureYaml, the if block): change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });",
-        "After line 101: add chmodSync(dir, DIR_MODE_SECRET); — fixes permissions on existing installs where scaffold already created security/ at 0755",
-        "Line 104: change writeFileSync(path, content, 'utf-8') to writeFileSync(path, content, { encoding: 'utf-8', mode: FILE_MODE_SECRET });",
-        "After line 104: add chmodSync(path, FILE_MODE_SECRET);",
-        "Run: npm test -- --testPathPattern='posture' and confirm all tests pass"
-      ],
-      "acceptanceCriteria": [
-        "The security/ directory is created with mode 0700 when posture-writer creates it — stat confirms no group/other read bits",
-        "posture.yaml is written with mode 0600 — stat on ~/.clawhq/security/posture.yaml confirms no group/other read bits",
-        "All existing posture-writer tests pass with no regressions"
+        "The export bundle parent directory is created with mode 0700 — stat confirms no group/other read or execute bits",
+        "The export bundle archive (.tar.gz) is written with mode 0600 — stat confirms no group/other read bits"
       ],
       "scope": [],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/build/docker/posture-writer.ts. Both mkdirSync at line 101 and writeFileSync at line 104 are missing mode. No defaults import exists — must add. Note: scaffold.ts also creates security/ with DIR_MODE_SECRET, but posture-writer has an independent existsSync guard that creates the dir itself. chmodSync after mkdirSync is required to fix existing installs where scaffold may have created security/ at 0755. Use DIR_MODE_SECRET and FILE_MODE_SECRET constants, never literals.",
+      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). New bug identified from codebase scan — same permission pattern as BUG-085 through BUG-105 series. export.ts creates the bundle parent dir with mkdirSync (no mode) and the archive with createWriteStream (no mode). Export bundle includes workspace data, ops/audit logs, and identity files. Credentials excluded but audit data and memory are included — world-readable is a direct security exposure. Steps follow the exact proven pattern: import constants, add mode to creation call, add chmodSync after for existing installs. createWriteStream supports mode option via { mode } options object. chmodSync after pipeline ensures the file mode is set even if umask overrides. Ready to sprint.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-107",
+      "title": "Backup: unencrypted archive created without mode 0600 and snapsDir missing chmodSync — transient exposure and existing-install gap",
+      "intent": "The unencrypted backup archive must be created with mode 0600 to eliminate world-readable exposure during the encryption window, and chmodSync must be added after mkdirSync so existing installs with 0755 snapshots directories are fixed.",
+      "description": "src/operate/backup/backup.ts has two permission gaps: (1) line 210 calls createWriteStream(archivePath) without a mode option, creating the unencrypted tar.gz with default permissions (0644 — world-readable). This file exists from archive creation through GPG encryption (Step 2) and is deleted in Step 5 Cleanup. On a multi-user system, another user can read the unencrypted archive during this window. (2) line 166 calls mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }) without a following chmodSync, so on existing installs where snapshots/ was previously created at 0755, the mode is never corrected. GPG-encrypted backup files (.tar.gz.gpg) and manifest files are created by external processes or writeFile without explicit mode. Fix: (1) change createWriteStream(archivePath) to createWriteStream(archivePath, { mode: FILE_MODE_SECRET }) and add chmodSync(archivePath, FILE_MODE_SECRET) after the pipeline completes. (2) Add chmodSync(snapsDir, DIR_MODE_SECRET) after mkdirSync. Also add explicit mode to writeFile(manifestPath) for belt-and-suspenders.",
+      "priority": "should",
+      "category": null,
+      "steps": [
+        "Read src/operate/backup/backup.ts lines 1-30 — confirm chmodSync is NOT in the node:fs import, and FILE_MODE_SECRET is NOT imported",
+        "Read src/operate/backup/backup.ts lines 155-175 — confirm mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }) exists but has NO chmodSync call after it",
+        "Read src/operate/backup/backup.ts lines 205-215 — confirm createWriteStream(archivePath) has no mode option",
+        "Read src/operate/backup/backup.ts lines 245-255 — confirm writeFile(manifestPath, ...) has no mode option",
+        "Add chmodSync to the node:fs import in backup.ts",
+        "Add FILE_MODE_SECRET to the existing import from ../../config/defaults.js in backup.ts (DIR_MODE_SECRET is already imported)",
+        "Add chmodSync(snapsDir, DIR_MODE_SECRET) on the line immediately after mkdirSync(snapsDir, ...) — fixes existing installs where snapshots/ was created at 0755",
+        "Change createWriteStream(archivePath) to createWriteStream(archivePath, { mode: FILE_MODE_SECRET }) — restricts the unencrypted archive from creation time",
+        "After the await pipeline(...) line that writes the archive, add chmodSync(archivePath, FILE_MODE_SECRET) — enforces mode even if umask overrides",
+        "Change writeFile(manifestPath, ..., 'utf-8') to writeFile(manifestPath, ..., { encoding: 'utf-8', mode: FILE_MODE_SECRET }) — manifest contains backup metadata",
+        "Run the full test suite — confirm all backup tests pass with no regressions"
+      ],
+      "acceptanceCriteria": [
+        "The snapshots/ directory is created/fixed to mode 0700 — stat confirms no group/other read bits on existing installs",
+        "The unencrypted archive (.tar.gz) is created with mode 0600 — stat on a test run confirms no group/other read bits",
+        "The backup manifest (.manifest.json) is written with mode 0600"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Two distinct gaps in same file. (1) createWriteStream without mode: unencrypted agent data world-readable during encryption window — same pattern as export.ts/BUG-106. (2) missing chmodSync after mkdirSync — same gap fixed in every bug in BUG-085..BUG-105 series. Steps follow exact proven pattern. writeFile (async) supports mode option same as writeFileSync. AC is stat-verifiable. Ready to sprint.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-108",
+      "title": "ops/security/ directory and sanitizer audit logs created without secure modes — quarantined input and injection attempts world-readable",
+      "intent": "The ops/security/ directory must be created with mode 0700 and sanitizer-audit.jsonl/sanitizer-quarantine.jsonl must be written with mode 0600 — these files record quarantined content and injection attempts that must not be readable by other users.",
+      "description": "src/secure/sanitizer/sanitizer.ts creates DEFAULT_OPS_DIR (~/.clawhq/ops/security/) on-demand via ensureDir in sanitizer/audit.ts. ensureDir calls mkdir(dir, { recursive: true }) without a mode option (line 51 of sanitizer/audit.ts), creating ops/security/ at default 0755 permissions — world-listable. The sanitizer-audit.jsonl and sanitizer-quarantine.jsonl files are written by appendFile without mode, creating them at 0644 — world-readable. ops/security/ is NOT in SCAFFOLD_DIRS_SECRET (it's a different path from the security/ root directory which is in SCAFFOLD_DIRS_SECRET). These files record security scan results including flagged PII, injection attempts, and quarantined inputs — sensitive security intelligence that other users must not read. Fix: change mkdir in sanitizer/audit.ts to pass mode DIR_MODE_SECRET, add chmodSync for existing installs, change appendFile to use mode FILE_MODE_SECRET.",
+      "priority": "must",
+      "category": null,
+      "steps": [
+        "Read src/secure/sanitizer/audit.ts lines 1-60 — confirm mkdir(dir, { recursive: true }) at ~line 51 has no mode option, appendFile at ~line 57 has no mode option, and neither chmodSync nor DIR_MODE_SECRET nor FILE_MODE_SECRET are imported",
+        "Read src/secure/sanitizer/sanitizer.ts lines 23-40 — confirm DEFAULT_OPS_DIR is ~/.clawhq/ops/security/ (NOT ~/.clawhq/security/) and that this path is not in SCAFFOLD_DIRS_SECRET",
+        "Add chmodSync to the node:fs/promises import (or add a separate sync import from node:fs) in sanitizer/audit.ts — note: appendFile is async (fs/promises), but chmodSync is sync (node:fs)",
+        "Add import { chmodSync } from 'node:fs' to sanitizer/audit.ts (separate from the fs/promises import)",
+        "Add import { DIR_MODE_SECRET, FILE_MODE_SECRET } from ../../config/defaults.js to sanitizer/audit.ts",
+        "Change mkdir(dir, { recursive: true }) to mkdir(dir, { recursive: true, mode: DIR_MODE_SECRET }) in the ensureDir function in sanitizer/audit.ts",
+        "Add chmodSync(dir, DIR_MODE_SECRET) after the await mkdir call in ensureDir — fixes existing installs where ops/security/ was created at 0755",
+        "Change appendFile(filePath, ..., 'utf-8') to appendFile(filePath, ..., { encoding: 'utf-8', mode: FILE_MODE_SECRET }) in the appendJsonl function — this sets the mode on file creation",
+        "Run the full test suite — confirm all sanitizer tests pass with no regressions"
+      ],
+      "acceptanceCriteria": [
+        "ops/security/ directory is created with mode 0700 — stat confirms no group/other read or execute bits",
+        "sanitizer-audit.jsonl and sanitizer-quarantine.jsonl are created with mode 0600 — stat confirms no group/other read bits"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). New bug identified from codebase scan. ops/security/ is distinct from the security/ root (which IS in SCAFFOLD_DIRS_SECRET). The sanitizer audit path goes to ops/security/, a directory not covered by scaffold. ensureDir creates it without mode. Contains quarantined inputs (potentially including PII and injection payloads) — must priority confirmed. Steps account for the async/sync fs API split: mkdir is async (fs/promises), chmodSync must be imported separately from node:fs. appendFile mode option sets file mode on first creation. AC is stat-verifiable. Ready to sprint.",
       "groomedAt": "2026-03-23"
     }
   ]

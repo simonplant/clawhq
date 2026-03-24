@@ -1,33 +1,33 @@
 {
-  "sprintId": "sprint-1774329298",
-  "startedAt": "2026-03-23T22:14:58-07:00",
+  "sprintId": "sprint-1774330137",
+  "startedAt": "2026-03-23T22:28:57-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-105",
-    "title": "security/ directory and posture.yaml created without secure modes — container hardening config world-readable",
-    "intent": "The security/ directory and posture.yaml must be created with mode 0700/0600 — container hardening configuration must not be readable by other users.",
-    "description": "src/build/docker/posture-writer.ts line 101 calls mkdirSync(dir, { recursive: true }) without mode when creating the security/ directory. Line 104 calls writeFileSync(path, content, 'utf-8') without mode for posture.yaml. The security/ directory stores posture.yaml which reveals: dropped capabilities, security options (seccomp, apparmor), read-only rootfs, container user, ICC disabled status, and resource limits. An attacker can use this information to identify hardening gaps and tailor exploits. Note: scaffold.ts creates security/ with DIR_MODE_SECRET, but posture-writer creates it independently if it doesn't exist (line 100 checks existsSync). Fix: add chmodSync, to fs imports; import DIR_MODE_SECRET, FILE_MODE_SECRET from config/defaults.js; add mode: DIR_MODE_SECRET to mkdirSync at line 101; chmodSync after; change writeFileSync at line 104 to use FILE_MODE_SECRET; chmodSync after.",
+    "id": "BUG-106",
+    "title": "Export bundle directory and archive file created without secure modes — agent data world-readable on multi-user systems",
+    "intent": "The export bundle output directory must be created with mode 0700 and the bundle archive must be written with mode 0600 — the export contains agent workspace, ops data, and identity files that must not be readable by other users on multi-user systems.",
+    "description": "src/evolve/lifecycle/export.ts line 238 calls mkdirSync(parentDir, { recursive: true }) without a mode option when creating the parent directory for the export bundle. This creates the directory with default permissions (0755), world-readable. Line 242 calls createWriteStream(bundlePath) without a mode option, creating the bundle archive with default permissions (typically 0644), world-readable. The export bundle contains workspace data, ops/audit traces, tool and skill configs, and identity files — sensitive agent data that other users on the system can read. Credentials and .env are excluded, but audit logs and conversation memory are included. Fix: add mode DIR_MODE_SECRET to mkdirSync on line 238 and chmodSync after for existing directories. Pass mode FILE_MODE_SECRET to createWriteStream via { mode: FILE_MODE_SECRET } options, then chmodSync the file after writing completes.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/build/docker/posture-writer.ts lines 9-11 — confirm chmodSync is not in node:fs import and no defaults import exists",
-      "Line 9: add chmodSync to the node:fs import — change to: import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
-      "After line 10 (dirname, join import): add new import line: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
-      "Line 101 (inside writePostureYaml, the if block): change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });",
-      "After line 101: add chmodSync(dir, DIR_MODE_SECRET); — fixes permissions on existing installs where scaffold already created security/ at 0755",
-      "Line 104: change writeFileSync(path, content, 'utf-8') to writeFileSync(path, content, { encoding: 'utf-8', mode: FILE_MODE_SECRET });",
-      "After line 104: add chmodSync(path, FILE_MODE_SECRET);",
-      "Run: npm test -- --testPathPattern='posture' and confirm all tests pass"
+      "Read src/evolve/lifecycle/export.ts lines 1-30 — confirm DIR_MODE_SECRET and FILE_MODE_SECRET are not imported (neither from node:fs nor config/defaults.js)",
+      "Read src/evolve/lifecycle/export.ts lines 185-260 — confirm mkdirSync(parentDir, { recursive: true }) at ~line 238 has no mode option, and createWriteStream(bundlePath) at ~line 242 has no mode option",
+      "Add chmodSync to the existing node:fs import in export.ts",
+      "Add import { DIR_MODE_SECRET, FILE_MODE_SECRET } from ../../config/defaults.js to export.ts",
+      "Change mkdirSync(parentDir, { recursive: true }) to mkdirSync(parentDir, { recursive: true, mode: DIR_MODE_SECRET }) in export.ts",
+      "Add chmodSync(parentDir, DIR_MODE_SECRET) on the line immediately after mkdirSync in export.ts — fixes existing directories",
+      "Change createWriteStream(bundlePath) to createWriteStream(bundlePath, { mode: FILE_MODE_SECRET }) in export.ts",
+      "After the await pipeline(...) call completes (archive is fully written), add chmodSync(bundlePath, FILE_MODE_SECRET) to fix permissions on the archive file",
+      "Run the full test suite — confirm export/lifecycle tests pass with no regressions"
     ],
     "acceptanceCriteria": [
-      "The security/ directory is created with mode 0700 when posture-writer creates it — stat confirms no group/other read bits",
-      "posture.yaml is written with mode 0600 — stat on ~/.clawhq/security/posture.yaml confirms no group/other read bits",
-      "All existing posture-writer tests pass with no regressions"
+      "The export bundle parent directory is created with mode 0700 — stat confirms no group/other read or execute bits",
+      "The export bundle archive (.tar.gz) is written with mode 0600 — stat confirms no group/other read bits"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T22:14:58-07:00",
+    "startedAt": "2026-03-23T22:28:57-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T22:17:14-07:00"
+    "completedAt": "2026-03-23T22:31:00-07:00"
   },
-  "completedAt": "2026-03-23T22:17:14-07:00",
+  "completedAt": "2026-03-23T22:31:00-07:00",
   "attempts": 1
 }
