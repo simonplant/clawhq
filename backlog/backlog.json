@@ -18,9 +18,9 @@
       ],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "STILL NOT READY. Readiness gate unchanged: ProvisionedInstance.sshKeyPath must exist and provisioning must generate/store the keypair. BUG-072 added 2026-03-23 to address this directly — FEAT-005 is unblocked when BUG-072 is done. Do not re-evaluate until BUG-072 status = done."
+      "groomingNotes": "READY 2026-03-23. BUG-072 is complete (sprint-1774315547) — ProvisionedInstance.sshKeyPath exists and provisioning stores the keypair. BUG-073 also done. Implementation is SSH-based via child_process.execSync (no new deps). Scope: 1 new file (updater.ts) + 1 CLI edit (index.ts). Steps confirmed against types.ts — sshKeyPath at line 303, ipAddress at line 295."
     },
     {
       "id": "FEAT-008",
@@ -53,7 +53,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "RE-GROOMED 2026-03-23 (attempt 3 — priority bump). FEAT-012 is done. FEAT-008 is now the sole remaining blocker for FEAT-013 (must priority — project storefront README). Bumped from should → must to match the downstream dependency. failCount=1: prior failure was misread section numbers in steps (numbered vs heading-based). Steps were corrected in attempt 2 — exact heading names confirmed in groomingNotes. If this attempt fails: PO directive is to scope down to blueprint schema only and ship that. Do not add new full-scope attempts. Single-scope fallback: produce a CONFIGURATION.md covering blueprint YAML schema only (skip skill schema, landmine explanations) — this would still satisfy the linker check for FEAT-013.",
+      "groomingNotes": "RE-GROOMED 2026-03-23 (attempt 3 — failure analysis). FAIL PATTERN: previous attempt misread section numbers in OPENCLAW-REFERENCE.md (sections are heading-based, not numbered). Steps now use exact heading text. CRITICAL — step 5 is where previous attempts failed: when reading docs/OPENCLAW-REFERENCE.md, do NOT use section numbers. Use Grep with patterns: 'openclaw.json', 'Configuration Surface', '14 Landmine', 'cron' to locate headings before reading. If this attempt fails again, PO directive: scope down to blueprint YAML schema only (docs/CONFIGURATION.md covering blueprint fields only — skip skill schema and landmine explanations). That fallback still satisfies FEAT-013 linker check.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-23T17:47:15-07:00",
       "failCount": 1
@@ -99,7 +99,7 @@
       "status": "todo",
       "readyForSprint": false,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "RE-GROOMED 2026-03-23 (status update). FEAT-012 (CHANGELOG.md) is complete per sprint record. Sole remaining blocker: FEAT-008 (CONFIGURATION.md), now bumped to must priority this session. When FEAT-008 ships, this item auto-unblocks — mark readyForSprint=true at that point. AC is tight: 150-line limit, content audit, no lost content. Steps reference all docs that will exist by then. Priority must is correct — this is the project storefront."
+      "groomingNotes": "RE-GROOMED 2026-03-23. Sprint record confirms: FEAT-006, FEAT-007, FEAT-009, FEAT-010, FEAT-011, FEAT-012 all complete. Sole remaining blocker: FEAT-008 (CONFIGURATION.md). When FEAT-008 ships, mark readyForSprint=true immediately — no further grooming needed. AC is tight: 150-line limit, content audit, no lost content. Priority must is correct."
     },
     {
       "id": "FEAT-014",

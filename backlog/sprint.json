@@ -1,33 +1,32 @@
 {
-  "sprintId": "sprint-1774316037",
-  "startedAt": "2026-03-23T18:33:57-07:00",
+  "sprintId": "sprint-1774316555",
+  "startedAt": "2026-03-23T18:42:35-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-073",
-    "title": "AWS listSshKeys() returns empty publicKey — silent data loss in SshKeyInfo interface",
-    "intent": "Every call to listSshKeys() returns structurally honest data — callers that check publicKey will not silently receive an empty string and mishandle it.",
-    "description": "aws.ts line 301 returns publicKey: '' because AWS EC2 API does not expose public key material after initial import, only fingerprints. The SshKeyInfo interface (types.ts:214-220) defines publicKey: string with no optional marker, so callers expect a real value. Steps: (1) Read src/cloud/provisioning/providers/aws.ts lines 292-310 (listSshKeys implementation). (2) Read src/cloud/provisioning/types.ts lines 214-220 (SshKeyInfo interface). (3) Make publicKey optional in SshKeyInfo interface (publicKey?: string). (4) Update the AWS adapter to omit publicKey or set it to undefined rather than empty string. (5) Check all callers of listSshKeys() for publicKey usage — grep for .publicKey in provisioning/. (6) Update any callers that assume publicKey is always truthy to handle undefined. (7) Run cloud/provisioning tests.",
+    "id": "BUG-076",
+    "title": "destroyInstance() leaves SSH private key on disk after instance is destroyed",
+    "intent": "A destroyed instance must leave no credentials on disk — the SSH private key file must be deleted as part of the destroy flow, not left at ~/.clawhq/cloud/keys/<id>.pem forever.",
+    "description": "src/cloud/provisioning/engine.ts destroyInstance() calls removeInstance() to clean the registry but never deletes the SSH private key file. The key is generated at src/cloud/provisioning/ssh-keygen.ts line 46 as deployDir/cloud/keys/<instanceId>.pem (mode 0600). After destroy, this file persists on disk indefinitely. The fix is in engine.ts destroyInstance(): after removeInstance() succeeds, read instance.sshKeyPath and delete the file if it exists. Use fs.rmSync with force:true so a missing file is not an error.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/cloud/provisioning/providers/aws.ts lines 292-310 to confirm listSshKeys() returns publicKey: ''",
-      "Read src/cloud/provisioning/types.ts lines 214-220 to confirm SshKeyInfo.publicKey type and optionality",
-      "Grep for .publicKey in src/cloud/provisioning/ to find all callers that read the field",
-      "Update SshKeyInfo interface: change publicKey: string to publicKey?: string",
-      "Update aws.ts listSshKeys(): omit publicKey field or set to undefined rather than empty string",
-      "Update any caller that assumes publicKey is always truthy to handle undefined",
-      "Run existing cloud/provisioning tests — confirm no regressions"
+      "Read src/cloud/provisioning/engine.ts destroyInstance() (lines ~258-295) — confirm removeInstance() is the last call and instance.sshKeyPath is accessible before removal",
+      "Read src/cloud/provisioning/ssh-keygen.ts — confirm the key file path pattern: deployDir/cloud/keys/<instanceId>.pem",
+      "In destroyInstance(), before calling removeInstance(): capture instance.sshKeyPath (it will be gone from registry after removal)",
+      "After removeInstance() returns true: if captured sshKeyPath is set, call fs.rmSync(sshKeyPath, { force: true }) to delete the private key file",
+      "Run src/cloud/provisioning tests: registry.test.ts and ssh-keygen.test.ts — confirm no regressions"
     ],
     "acceptanceCriteria": [
-      "SshKeyInfo.publicKey is typed as optional (publicKey?: string) in types.ts",
-      "AWS listSshKeys() no longer returns publicKey: '' — field is omitted or undefined",
-      "DigitalOcean, GCP, Hetzner listSshKeys() implementations unchanged and return real key values",
-      "No callers of listSshKeys() assume publicKey is always a non-empty string without a guard"
+      "After destroyInstance() succeeds, the SSH private key file at instance.sshKeyPath no longer exists on disk",
+      "If instance.sshKeyPath was not set (older registry entries), destroy completes without error",
+      "DigitalOcean, AWS, GCP, and Hetzner destroy flows are all covered — the fix is in engine.ts (shared path), not in provider adapters"
     ],
-    "scope": [],
-    "startedAt": "2026-03-23T18:33:57-07:00",
+    "scope": [
+      "src/cloud/provisioning/engine.ts"
+    ],
+    "startedAt": "2026-03-23T18:42:35-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T18:36:45-07:00"
+    "completedAt": "2026-03-23T18:44:47-07:00"
   },
-  "completedAt": "2026-03-23T18:36:45-07:00",
+  "completedAt": "2026-03-23T18:44:47-07:00",
   "attempts": 1
 }
