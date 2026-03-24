@@ -189,6 +189,8 @@ export interface DeployWizardOptions {
   readonly region: string;
   /** VM size. */
   readonly size: string;
+  /** Blueprint to configure the agent with (e.g. "email-manager"). */
+  readonly blueprint?: string;
   /** SSH key IDs/fingerprints for the VM. */
   readonly sshKeys?: readonly string[];
   /** Explicit snapshot ID to use (skips auto-detection). */
@@ -238,6 +240,7 @@ export async function executeDeploy(options: DeployWizardOptions): Promise<Deplo
     name: options.name,
     region: options.region,
     size: options.size,
+    blueprint: options.blueprint,
     sshKeys: options.sshKeys ? [...options.sshKeys] : undefined,
     snapshotId,
     signal: options.signal,

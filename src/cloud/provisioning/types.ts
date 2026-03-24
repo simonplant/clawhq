@@ -39,6 +39,8 @@ export interface ProvisionOptions {
   readonly region: string;
   /** VM size/type (provider-specific, e.g. "s-2vcpu-4gb", "t3.medium"). */
   readonly size: string;
+  /** Blueprint to configure the agent with (e.g. "email-manager"). */
+  readonly blueprint?: string;
   /** Optional SSH key IDs/fingerprints to add to the VM. */
   readonly sshKeys?: readonly string[];
   /** Use a pre-built snapshot instead of cloud-init (fast path). */
