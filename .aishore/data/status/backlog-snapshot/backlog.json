@@ -187,10 +187,12 @@
         "docs/ROADMAP.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "READY. Documentation task. Source content confirmed in docs/PRODUCT.md, backlog/GAP-ANALYSIS.md, and backlog/backlog.json (CQ-047 done 2026-03-23, FEAT-005 still todo = active work). Steps include reframing internal IDs to public-facing language — this is important, developer must not leak IDs like CQ-047. Output constraint under 120 lines is clear. No blocking dependencies."
+      "groomingNotes": "READY. Documentation task. Source content confirmed in docs/PRODUCT.md, backlog/GAP-ANALYSIS.md, and backlog/backlog.json (CQ-047 done 2026-03-23, FEAT-005 still todo = active work). Steps include reframing internal IDs to public-facing language — this is important, developer must not leak IDs like CQ-047. Output constraint under 120 lines is clear. No blocking dependencies.",
+      "passes": true,
+      "completedAt": "2026-03-23T17:54:53-07:00"
     },
     {
       "id": "FEAT-011",
