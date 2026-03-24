@@ -1,35 +1,34 @@
 {
-  "sprintId": "sprint-1774313510",
-  "startedAt": "2026-03-23T17:51:50-07:00",
+  "sprintId": "sprint-1774313695",
+  "startedAt": "2026-03-23T17:54:55-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-010",
-    "title": "Create docs/ROADMAP.md — public-facing roadmap from internal planning docs",
-    "intent": "Contributors and evaluators must see where the project is going and what's real vs aspirational — a project with no visible roadmap looks abandoned.",
-    "description": "Roadmap content is rich but entirely internal-facing: docs/PRODUCT.md ('What We're Building' with 6 modules and checkboxes, 'Build Order' with Tracks A-F, 'How the Agent Grows' vision timeline for weeks/months, 'Risks & Open Questions'), backlog/GAP-ANALYSIS.md ('GAP ANALYSIS' Gaps 1-10 documenting technical gaps, 'REMEDIATION PRIORITY' Phases 1-3 with phased delivery plan, 'AS-IS: What's Built' subsystem status table with line counts). This content needs reframing from internal planning language to public-facing roadmap. Organize as: What's Built (current state from GAP-ANALYSIS AS-IS), Now (active work from todo backlog items), Next (committed direction from PRODUCT.md Build Order), Later (vision from PRODUCT.md 'How the Agent Grows'), Known Limitations (honest constraints from GAP-ANALYSIS gaps), Risks (from PRODUCT.md 'Risks & Open Questions'). Keep under 120 lines.",
+    "id": "FEAT-011",
+    "title": "Create docs/CONTRIBUTING.md — how to contribute blueprints, skills, and code",
+    "intent": "A potential contributor must know exactly how to help — what's needed, what format to follow, and what the quality bar is. No CONTRIBUTING.md means no contributions.",
+    "description": "No CONTRIBUTING.md exists. The content must be written from scratch but patterns can be derived from: configs/blueprints/*.yaml (7 blueprints establishing the blueprint contribution format), configs/skills/*/SKILL.md + config.yaml (6 skills establishing the skill contribution format), docs/ARCHITECTURE.md (Architectural Decisions AD-01 through AD-05 establishing constraints contributors must respect), CLAUDE.md (Terminology table for naming conventions, Key Design Constraints for invariants). Cover three contribution types: blueprints (write a new blueprint YAML following the schema, test against landmine validator), skills (write SKILL.md + config.yaml + prompts/, follow boundary enforcement rules), and code (TypeScript conventions, branch strategy, PR process). Include a 'What's Needed' section listing the highest-impact contributions — e.g. 'we need blueprints for: stock trading, home automation, content creation' to guide contributors toward valuable work.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Read docs/PRODUCT.md sections: 'What We're Building' (6 modules with status), 'Build Order' (Tracks A-F), 'How the Agent Grows' (week/month timeline), 'Risks & Open Questions'",
-      "Read backlog/GAP-ANALYSIS.md sections: 'AS-IS: What's Built' (subsystem status), 'GAP ANALYSIS' (Gaps 1-10), 'REMEDIATION PRIORITY' (Phases 1-3)",
-      "Review backlog/backlog.json for remaining todo items (CQ-047, FEAT-005) to populate the 'Now' section",
-      "Compose docs/ROADMAP.md with sections: What's Built (summarize AS-IS subsystem table), Now (active backlog items), Next (Track A-C from Build Order — platform, blueprints, security), Later (Tracks D-F — operate, evolve, cloud + the 'How the Agent Grows' vision), Known Limitations (from GAP-ANALYSIS gaps: e.g. single-machine only, no Windows support, requires Docker), Risks (from PRODUCT.md — honest about what might not work)",
-      "Reframe all internal language to public-facing: 'CQ-047' becomes 'Cloud deployment command', 'Track A' becomes descriptive feature names",
-      "Keep under 120 lines — signpost, not a product spec"
+      "Read configs/blueprints/email-manager.yaml as the reference blueprint format for contributors",
+      "Read configs/skills/email-digest/SKILL.md, config.yaml, and prompts/ as the reference skill format",
+      "Read docs/ARCHITECTURE.md Architectural Decisions section (AD-01 through AD-05) for constraints",
+      "Read CLAUDE.md Terminology table and Key Design Constraints for naming conventions and invariants",
+      "Compose docs/CONTRIBUTING.md with sections: Overview (three ways to contribute: blueprints, skills, code), Blueprint Contribution Guide (YAML schema, required fields, testing with landmine validator, example walkthrough), Skill Contribution Guide (SKILL.md format, config.yaml schema, prompt template patterns, boundary enforcement requirements), Code Contribution Guide (TypeScript conventions, branch strategy, PR process, testing requirements), What's Needed (list of high-impact contributions: specific blueprint ideas, skill ideas, tooling gaps), Architectural Constraints (link to AD-01 through AD-05 in ARCHITECTURE.md), Security Requirements (boundary enforcement for skills, no network unless declared, egress rules)"
     ],
     "acceptanceCriteria": [
-      "docs/ROADMAP.md exists with sections: What's Built, Now, Next, Later, Known Limitations, Risks",
-      "Internal IDs and track names are translated to user-facing descriptions",
-      "Known Limitations is honest about real constraints",
-      "The document is under 120 lines",
-      "Each roadmap item is a clear statement with enough context to understand scope"
+      "docs/CONTRIBUTING.md exists and covers: blueprint contribution guide, skill contribution guide, code contribution guide, what's needed, architectural constraints",
+      "Blueprint guide includes the YAML schema with required fields and a worked example",
+      "Skill guide includes SKILL.md format, config.yaml schema, and boundary enforcement rules",
+      "A 'What's Needed' section lists specific high-impact contribution opportunities",
+      "Security requirements for contributed skills are clearly stated"
     ],
     "scope": [
-      "docs/ROADMAP.md"
+      "docs/CONTRIBUTING.md"
     ],
-    "startedAt": "2026-03-23T17:51:50-07:00",
+    "startedAt": "2026-03-23T17:54:55-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T17:54:53-07:00"
+    "completedAt": "2026-03-23T17:59:21-07:00"
   },
-  "completedAt": "2026-03-23T17:54:53-07:00",
+  "completedAt": "2026-03-23T17:59:21-07:00",
   "attempts": 1
 }

@@ -219,10 +219,12 @@
         "docs/CONTRIBUTING.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "READY. Documentation task. All referenced source files exist (configs/blueprints/email-manager.yaml, configs/skills/email-digest/*, docs/ARCHITECTURE.md ADs, CLAUDE.md). Needs a 'What's Needed' section with concrete blueprint ideas — developer should scan configs/ to identify gaps before writing. Steps are complete and ordered. No blocking dependencies."
+      "groomingNotes": "READY. Documentation task. All referenced source files exist (configs/blueprints/email-manager.yaml, configs/skills/email-digest/*, docs/ARCHITECTURE.md ADs, CLAUDE.md). Needs a 'What's Needed' section with concrete blueprint ideas — developer should scan configs/ to identify gaps before writing. Steps are complete and ordered. No blocking dependencies.",
+      "passes": true,
+      "completedAt": "2026-03-23T17:59:21-07:00"
     },
     {
       "id": "FEAT-012",
