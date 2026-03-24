@@ -1,25 +1,24 @@
 {
-  "sprintId": "sprint-1774326691",
-  "startedAt": "2026-03-23T21:31:31-07:00",
+  "sprintId": "sprint-1774326895",
+  "startedAt": "2026-03-23T21:34:55-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-094",
-    "title": "workspace/memory/ and tier directories created without mode 0700 — conversation history world-listable on multi-user systems",
-    "intent": "workspace/memory/ and all tier subdirectories (hot/warm/cold) must be created with mode 0700 on all code paths so no other user can list or access conversation history",
-    "description": "Two code paths create workspace/memory and its tier subdirectories (hot/warm/cold) without mode 0700. (1) scaffold.ts SCAFFOLD_DIRS array (line 32) lists 'workspace/memory' — it is created in the standard loop at line 68 via mkdirSync without mode, so the directory is created at 0755. Only 'security' and 'cloud' are in SCAFFOLD_DIRS_SECRET. (2) src/evolve/memory/lifecycle.ts line 73: mkdirSync(dir, { recursive: true }) in saveManifest() creates workspace/memory without mode. (3) src/evolve/memory/lifecycle.ts line 85: mkdirSync(join(deployDir, MEMORY_BASE, tier), { recursive: true }) in ensureTierDirs() creates hot/warm/cold without mode. workspace/memory contains conversation history, PII-masked archives, and summarized agent decisions — the most sensitive non-credential data in the deployment. Any user on a multi-user system can ls workspace/memory/ to enumerate files.",
+    "id": "BUG-095",
+    "title": "ops/audit directory created without mode 0700 — agent decision traces world-readable on multi-user systems",
+    "intent": "ops/audit directory must be created with mode 0700 at scaffold time so agent decision traces and tool-execution audit logs are not readable by other local users",
+    "description": "scaffold.ts SCAFFOLD_DIRS array (line 38) includes 'ops/audit' — created in the standard loop at line 68 with default permissions (0755). Only 'security' and 'cloud' are in SCAFFOLD_DIRS_SECRET. ops/audit holds decisions.jsonl (agent decision traces from trace.ts), tool-execution audit logs, and egress audit logs. On a multi-user system, any local user can read the audit trail to determine what the agent did, when, and what tools it called. src/evolve/memory/trace.ts line 37 also calls mkdirSync(dir, { recursive: true }) without mode — but since scaffold pre-creates ops/audit, this is a no-op that doesn't worsen permissions. Root fix is in scaffold.ts SCAFFOLD_DIRS.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "workspace/memory/ is created with mode 0700 — no other local user can list or enumerate conversation history files",
-      "workspace/memory/hot, workspace/memory/warm, and workspace/memory/cold are each created with mode 0700",
-      "File permissions on existing files within workspace/memory/ are not altered by this fix",
+      "ops/audit directory is created with mode 0700 — no other local user can read agent decision traces or tool-execution audit logs",
+      "Existing files within ops/audit are not altered by this fix",
       "All tests pass with no regressions"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:31:31-07:00",
+    "startedAt": "2026-03-23T21:34:55-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:34:54-07:00"
+    "completedAt": "2026-03-23T21:37:39-07:00"
   },
-  "completedAt": "2026-03-23T21:34:54-07:00",
+  "completedAt": "2026-03-23T21:37:39-07:00",
   "attempts": 1
 }

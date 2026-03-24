@@ -47,11 +47,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "PO PASS 2026-03-23. Added user-focused AC (array was empty). Tech lead grooming notes have precise steps — do not overwrite. AC3 clarifies scope: only directory creation mode is changed, not existing file permissions. AC4 is the regression gate.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:34:54-07:00"
     },
     {
       "id": "BUG-095",
