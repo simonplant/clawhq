@@ -86,11 +86,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/role/manifest.ts. Both issues confirmed by code read — mkdirSync at line 79 (no mode) and writeFileSync at line 80 (no mode). No defaults import exists in this file — must add. No chmodSync in fs import — must add. Use DIR_MODE_SECRET and FILE_MODE_SECRET constants, never literal 0o700/0o600.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T22:12:32-07:00"
     },
     {
       "id": "BUG-104",
