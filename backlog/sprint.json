@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1774323983",
-  "startedAt": "2026-03-23T20:46:23-07:00",
+  "sprintId": "sprint-1774324381",
+  "startedAt": "2026-03-23T20:53:01-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-085",
-    "title": "Command queue, trust-mode switch, and heartbeat reporter create cloud/ directory without mode 0700",
-    "intent": "cloud/ directory must be created with mode 0700 by every code path that might create it first — if any of these three files runs before credentials.ts, the cloud/ dir lands at 0755 and all downstream credential writes into it are world-listable.",
-    "description": "Three files in src/cloud/ create the cloud/ subdirectory without a mode option: (1) src/cloud/commands/queue.ts line 61: mkdirSync(dir, { recursive: true }) — stores commands.json with signed command payloads. (2) src/cloud/trust-modes/switch.ts line 67: mkdirSync(dir, { recursive: true }) — stores trust-mode.json with security config. (3) src/cloud/heartbeat/reporter.ts line 63: mkdirSync(dir, { recursive: true }) — stores heartbeat.json. All three write to deployDir/cloud/. Fix for each: add DIR_MODE_SECRET to imports from config/defaults.js, change mkdirSync to pass mode: DIR_MODE_SECRET. queue.ts already imports from defaults.js (CLOUD_COMMAND_QUEUE_MAX_HISTORY) so just add DIR_MODE_SECRET to that import. switch.ts has no defaults.js import — add one. reporter.ts already imports CLOUD_HEARTBEAT_RPC_TIMEOUT_MS from defaults.js — add DIR_MODE_SECRET to that import. No new test files needed — cloud.test.ts already tests the cloud/ directory indirectly; add dir mode assertion there.",
+    "id": "BUG-087",
+    "title": "trust-mode.json and heartbeat.json written without mode 0600 — security config and health state world-readable",
+    "intent": "trust-mode.json and heartbeat.json must be created with mode 0600 — trust-mode.json reveals the agent security posture and heartbeat.json reveals agent activity patterns. Both must be protected the same way credentials.json is.",
+    "description": "src/cloud/trust-modes/switch.ts line 75: writeFileSync(tmpPath, content) has no mode option. trust-mode.json stores the agent trust mode (Paranoid/Zero-Trust/Managed) — revealing the security posture on a multi-user system allows an attacker to know whether the agent is configured to auto-approve cloud operations. src/cloud/heartbeat/reporter.ts line 71: writeFileSync(tmpPath, content) has no mode option. heartbeat.json stores health status and timing data. Both files follow the same write-to-tmp-then-rename pattern as commands.json (BUG-086) but without FILE_MODE_SECRET protection. Fix pattern is identical to BUG-086: add chmodSync import, add FILE_MODE_SECRET to existing defaults.js import, change writeFileSync to include { mode: FILE_MODE_SECRET }, and add chmodSync before renameSync. switch.ts has no existing defaults.js import — add one alongside the DIR_MODE_SECRET import added by BUG-085. reporter.ts already imports CLOUD_HEARTBEAT_RPC_TIMEOUT_MS from defaults.js — add FILE_MODE_SECRET there.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-23T20:46:23-07:00",
+    "startedAt": "2026-03-23T20:53:01-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T20:50:16-07:00"
+    "completedAt": "2026-03-23T20:55:41-07:00"
   },
-  "completedAt": "2026-03-23T20:50:16-07:00",
+  "completedAt": "2026-03-23T20:55:41-07:00",
   "attempts": 1
 }
