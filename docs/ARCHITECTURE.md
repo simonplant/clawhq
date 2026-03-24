@@ -172,6 +172,110 @@ Every forged config passes 14 validation rules that prevent silent failures. See
 
 ---
 
+## The Skill System
+
+Skills are the agent's autonomous capabilities — declarative definitions that tell the agent what to do, when, and within what boundaries. Where blueprints define the complete agent design, skills are the individual units of autonomous behavior that blueprints compose.
+
+### What a Skill Is
+
+A skill is a declarative capability definition consisting of two files:
+
+- **SKILL.md** — Human-readable behavior specification: what the skill does step-by-step, its boundaries, and its prompt templates.
+- **config.yaml** — Machine-readable configuration: schedule, model requirements, tool dependencies, approval gates, and boundary flags.
+
+Skills are not code. They are instructions that the agent follows at runtime using its existing tools and model. The cron scheduler triggers the agent with "Run skill: `<name>`", the agent reads the SKILL.md for behavior, loads prompt templates from `prompts/`, and executes each step using its workspace tools.
+
+### Skill Lifecycle
+
+```
+┌──────────┐     ┌───────────────┐     ┌───────────────┐     ┌────────────┐     ┌──────────────┐
+│  Trigger  │────▶│ Prompt Template│────▶│ Model Execution│────▶│  Boundary  │────▶│  Approval    │
+│  (cron)   │     │  (SKILL.md +  │     │  (local or    │     │  Check     │     │  Gate        │
+│           │     │   prompts/)   │     │   cloud)      │     │            │     │  (if config) │
+└──────────┘     └───────────────┘     └───────────────┘     └────────────┘     └──────────────┘
+```
+
+1. **Trigger** — The cron scheduler fires based on the skill's `schedule.cron` expression, constrained by `active_hours`.
+2. **Prompt template** — The agent reads SKILL.md for the behavior steps and loads step-specific prompt templates from `prompts/`.
+3. **Model execution** — The agent executes each step using the configured model (`model.provider`, `model.minimum`). Cloud escalation is per-skill: some skills are local-only (`cloud_escalation: false`), others allow cloud for quality (`cloud_escalation: true`).
+4. **Boundary enforcement** — Every action is checked against the skill's `boundaries` flags: `network_access`, `file_write`, `account_changes`, `auto_send`. A skill with `auto_send: false` cannot send emails regardless of what the model produces.
+5. **Approval gate** — If `approval.required: true`, proposed actions (draft emails, calendar changes, meal plans) are enqueued with a category and metadata. The user reviews and approves via their messaging channel. Nothing executes without consent.
+
+### config.yaml Schema
+
+Every skill's `config.yaml` follows a consistent schema:
+
+```yaml
+name: skill-name
+version: "1.0.0"
+description: "One-line purpose"
+
+schedule:
+  cron: "*/15 * * * *"       # When to trigger (cron syntax)
+  active_hours:
+    start: 6                  # Earliest hour (24h)
+    end: 23                   # Latest hour (24h)
+
+model:
+  provider: local             # "local" (Ollama) — always the default
+  minimum: "llama3:8b"        # Minimum model capability
+  cloud_escalation: false     # Whether cloud models are allowed
+
+dependencies:
+  tools:                      # Workspace tools this skill uses
+    - email
+    - calendar
+  skills: []                  # Other skills this skill depends on
+
+approval:
+  required: true              # Whether actions need user consent
+  category: send_email        # Approval queue category
+  auto_approve: false         # Whether ops can auto-approve
+
+boundaries:
+  network_access: false       # Can the skill make external requests?
+  file_write: false           # Can the skill write to workspace files?
+  account_changes: false      # Can the skill modify account state?
+  auto_send: false            # Can the skill send messages/emails?
+```
+
+### How Blueprints Compose Skills
+
+Blueprints reference skills by name. During setup, ClawHQ installs the referenced skills into the agent's `workspace/skills/` directory and generates corresponding cron entries in `cron/jobs.json`.
+
+| Blueprint | Skills Composed | Why |
+|---|---|---|
+| **Email Manager** | email-digest, morning-brief, schedule-guard | Inbox triage + daily brief + calendar protection |
+| **Stock Trading Assist** | market-scan, morning-brief | Market monitoring + daily brief |
+| **Meal Planner** | meal-plan, morning-brief | Weekly meal plans + daily brief |
+| **Founder's Ops** | email-digest, investor-update, morning-brief, schedule-guard | Inbox + investor prep + brief + calendar |
+
+Skills are composable units — the same `morning-brief` skill works across Email Manager, Founder's Ops, and Family Hub, configured with different cron times per blueprint.
+
+### Boundary Enforcement
+
+Boundaries are architectural, not advisory. Each boundary flag in `config.yaml` maps to a runtime constraint:
+
+- **`network_access: false`** — Skill execution is restricted to local tool invocations. External API calls are blocked by the egress firewall's per-skill rules.
+- **`auto_send: false`** — Any action that would send data externally (email, message) is intercepted and routed to the approval queue instead.
+- **`file_write: false`** — Skill cannot modify workspace files. Read-only access only.
+- **`account_changes: false`** — Skill cannot modify account state (archive emails, delete events, move folders).
+
+Combined with the egress firewall (`CLAWHQ_FWD` iptables chain) and the approval queue, boundaries ensure that a skill can only do what its configuration explicitly permits. A misconfigured prompt template or unexpected model output cannot bypass these constraints.
+
+### Built-in Skills
+
+| Skill | Purpose | Schedule | Approval |
+|---|---|---|---|
+| **email-digest** | Inbox triage, categorize, draft responses | Every 15 min | Required — draft responses queued |
+| **morning-brief** | Daily briefing (email + calendar + tasks) | Once daily | Not required — read-only |
+| **market-scan** | Watchlist tracking, price alerts, news | Hourly during market | Not required — informational |
+| **meal-plan** | Weekly meal plan + shopping list | Weekly (Sunday) | Required — plan queued for review |
+| **schedule-guard** | Conflict detection, focus block protection | Every 15 min | Required — calendar changes queued |
+| **investor-update** | Weekly investor update draft | Weekly (Friday) | Required — draft queued for review |
+
+---
+
 ## Layer 1: The Platform
 
 Table stakes. Same for every agent. Handles the lifecycle that OpenClaw doesn't.
