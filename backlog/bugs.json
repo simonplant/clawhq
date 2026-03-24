@@ -25,11 +25,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "READY. engine.ts:62-73 confirmed calling createAwsAdapter() and createGcpAdapter() without try-catch via codebase inspection. Both adapters do token parsing that can throw. Fix is local to engine.ts — 2 try-catch blocks. No new deps. Scope: 1 file (engine.ts).",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T18:58:40-07:00"
     },
     {
       "id": "BUG-076",
