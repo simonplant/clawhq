@@ -91,11 +91,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "PO PASS 2026-03-23. Added user-focused AC (array was empty). Both dir and file modes are in scope for this bug — AC reflects both. Tech lead notes confirm no existing imports from config/defaults.js in manifest.ts.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:39:48-07:00"
     }
   ]
 }
