@@ -1,33 +1,33 @@
 {
-  "sprintId": "sprint-1774330137",
-  "startedAt": "2026-03-23T22:28:57-07:00",
+  "sprintId": "sprint-1774330261",
+  "startedAt": "2026-03-23T22:31:01-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-106",
-    "title": "Export bundle directory and archive file created without secure modes — agent data world-readable on multi-user systems",
-    "intent": "The export bundle output directory must be created with mode 0700 and the bundle archive must be written with mode 0600 — the export contains agent workspace, ops data, and identity files that must not be readable by other users on multi-user systems.",
-    "description": "src/evolve/lifecycle/export.ts line 238 calls mkdirSync(parentDir, { recursive: true }) without a mode option when creating the parent directory for the export bundle. This creates the directory with default permissions (0755), world-readable. Line 242 calls createWriteStream(bundlePath) without a mode option, creating the bundle archive with default permissions (typically 0644), world-readable. The export bundle contains workspace data, ops/audit traces, tool and skill configs, and identity files — sensitive agent data that other users on the system can read. Credentials and .env are excluded, but audit logs and conversation memory are included. Fix: add mode DIR_MODE_SECRET to mkdirSync on line 238 and chmodSync after for existing directories. Pass mode FILE_MODE_SECRET to createWriteStream via { mode: FILE_MODE_SECRET } options, then chmodSync the file after writing completes.",
+    "id": "BUG-108",
+    "title": "ops/security/ directory and sanitizer audit logs created without secure modes — quarantined input and injection attempts world-readable",
+    "intent": "The ops/security/ directory must be created with mode 0700 and sanitizer-audit.jsonl/sanitizer-quarantine.jsonl must be written with mode 0600 — these files record quarantined content and injection attempts that must not be readable by other users.",
+    "description": "src/secure/sanitizer/sanitizer.ts creates DEFAULT_OPS_DIR (~/.clawhq/ops/security/) on-demand via ensureDir in sanitizer/audit.ts. ensureDir calls mkdir(dir, { recursive: true }) without a mode option (line 51 of sanitizer/audit.ts), creating ops/security/ at default 0755 permissions — world-listable. The sanitizer-audit.jsonl and sanitizer-quarantine.jsonl files are written by appendFile without mode, creating them at 0644 — world-readable. ops/security/ is NOT in SCAFFOLD_DIRS_SECRET (it's a different path from the security/ root directory which is in SCAFFOLD_DIRS_SECRET). These files record security scan results including flagged PII, injection attempts, and quarantined inputs — sensitive security intelligence that other users must not read. Fix: change mkdir in sanitizer/audit.ts to pass mode DIR_MODE_SECRET, add chmodSync for existing installs, change appendFile to use mode FILE_MODE_SECRET.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/evolve/lifecycle/export.ts lines 1-30 — confirm DIR_MODE_SECRET and FILE_MODE_SECRET are not imported (neither from node:fs nor config/defaults.js)",
-      "Read src/evolve/lifecycle/export.ts lines 185-260 — confirm mkdirSync(parentDir, { recursive: true }) at ~line 238 has no mode option, and createWriteStream(bundlePath) at ~line 242 has no mode option",
-      "Add chmodSync to the existing node:fs import in export.ts",
-      "Add import { DIR_MODE_SECRET, FILE_MODE_SECRET } from ../../config/defaults.js to export.ts",
-      "Change mkdirSync(parentDir, { recursive: true }) to mkdirSync(parentDir, { recursive: true, mode: DIR_MODE_SECRET }) in export.ts",
-      "Add chmodSync(parentDir, DIR_MODE_SECRET) on the line immediately after mkdirSync in export.ts — fixes existing directories",
-      "Change createWriteStream(bundlePath) to createWriteStream(bundlePath, { mode: FILE_MODE_SECRET }) in export.ts",
-      "After the await pipeline(...) call completes (archive is fully written), add chmodSync(bundlePath, FILE_MODE_SECRET) to fix permissions on the archive file",
-      "Run the full test suite — confirm export/lifecycle tests pass with no regressions"
+      "Read src/secure/sanitizer/audit.ts lines 1-60 — confirm mkdir(dir, { recursive: true }) at ~line 51 has no mode option, appendFile at ~line 57 has no mode option, and neither chmodSync nor DIR_MODE_SECRET nor FILE_MODE_SECRET are imported",
+      "Read src/secure/sanitizer/sanitizer.ts lines 23-40 — confirm DEFAULT_OPS_DIR is ~/.clawhq/ops/security/ (NOT ~/.clawhq/security/) and that this path is not in SCAFFOLD_DIRS_SECRET",
+      "Add chmodSync to the node:fs/promises import (or add a separate sync import from node:fs) in sanitizer/audit.ts — note: appendFile is async (fs/promises), but chmodSync is sync (node:fs)",
+      "Add import { chmodSync } from 'node:fs' to sanitizer/audit.ts (separate from the fs/promises import)",
+      "Add import { DIR_MODE_SECRET, FILE_MODE_SECRET } from ../../config/defaults.js to sanitizer/audit.ts",
+      "Change mkdir(dir, { recursive: true }) to mkdir(dir, { recursive: true, mode: DIR_MODE_SECRET }) in the ensureDir function in sanitizer/audit.ts",
+      "Add chmodSync(dir, DIR_MODE_SECRET) after the await mkdir call in ensureDir — fixes existing installs where ops/security/ was created at 0755",
+      "Change appendFile(filePath, ..., 'utf-8') to appendFile(filePath, ..., { encoding: 'utf-8', mode: FILE_MODE_SECRET }) in the appendJsonl function — this sets the mode on file creation",
+      "Run the full test suite — confirm all sanitizer tests pass with no regressions"
     ],
     "acceptanceCriteria": [
-      "The export bundle parent directory is created with mode 0700 — stat confirms no group/other read or execute bits",
-      "The export bundle archive (.tar.gz) is written with mode 0600 — stat confirms no group/other read bits"
+      "ops/security/ directory is created with mode 0700 — stat confirms no group/other read or execute bits",
+      "sanitizer-audit.jsonl and sanitizer-quarantine.jsonl are created with mode 0600 — stat confirms no group/other read bits"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T22:28:57-07:00",
+    "startedAt": "2026-03-23T22:31:01-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T22:31:00-07:00"
+    "completedAt": "2026-03-23T22:32:55-07:00"
   },
-  "completedAt": "2026-03-23T22:31:00-07:00",
+  "completedAt": "2026-03-23T22:32:55-07:00",
   "attempts": 1
 }
