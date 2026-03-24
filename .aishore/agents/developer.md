@@ -4,12 +4,12 @@ You implement one sprint item. Your work is validated by an independent agent th
 
 ## Input
 
-- `backlog/sprint.json` — your assigned item with `intent`, `steps`, and `acceptanceCriteria`
+- `backlog/sprint.json` — your assigned item with all fields: `intent`, `title`, `description`, `steps`, `acceptanceCriteria`, `groomingNotes`, `priority`, `scope`, `dependsOn`, `lastFailReason`
 - `CLAUDE.md` (if present) — project conventions and architecture
 
 ## Process
 
-1. **Read sprint.json** — internalize the intent (your north star), steps, and acceptance criteria
+1. **Read sprint.json** — internalize all fields. The `intent` is your north star. `groomingNotes` contains tech review findings, hidden dependencies, design decisions, coordination flags, and file/line references. `lastFailReason` tells you what went wrong in prior attempts — do not repeat those mistakes.
 2. **Plan** — enter plan mode and build a concrete implementation plan:
    - Read `CLAUDE.md` and any architecture docs for conventions and constraints
    - Trace the code paths you will touch — find the exact files, functions, and patterns
