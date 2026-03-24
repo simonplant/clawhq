@@ -1,33 +1,36 @@
 {
-  "sprintId": "sprint-1774330261",
-  "startedAt": "2026-03-23T22:31:01-07:00",
+  "sprintId": "sprint-1774330377",
+  "startedAt": "2026-03-23T22:32:57-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-108",
-    "title": "ops/security/ directory and sanitizer audit logs created without secure modes — quarantined input and injection attempts world-readable",
-    "intent": "The ops/security/ directory must be created with mode 0700 and sanitizer-audit.jsonl/sanitizer-quarantine.jsonl must be written with mode 0600 — these files record quarantined content and injection attempts that must not be readable by other users.",
-    "description": "src/secure/sanitizer/sanitizer.ts creates DEFAULT_OPS_DIR (~/.clawhq/ops/security/) on-demand via ensureDir in sanitizer/audit.ts. ensureDir calls mkdir(dir, { recursive: true }) without a mode option (line 51 of sanitizer/audit.ts), creating ops/security/ at default 0755 permissions — world-listable. The sanitizer-audit.jsonl and sanitizer-quarantine.jsonl files are written by appendFile without mode, creating them at 0644 — world-readable. ops/security/ is NOT in SCAFFOLD_DIRS_SECRET (it's a different path from the security/ root directory which is in SCAFFOLD_DIRS_SECRET). These files record security scan results including flagged PII, injection attempts, and quarantined inputs — sensitive security intelligence that other users must not read. Fix: change mkdir in sanitizer/audit.ts to pass mode DIR_MODE_SECRET, add chmodSync for existing installs, change appendFile to use mode FILE_MODE_SECRET.",
+    "id": "BUG-107",
+    "title": "Backup: unencrypted archive created without mode 0600 and snapsDir missing chmodSync — transient exposure and existing-install gap",
+    "intent": "The unencrypted backup archive must be created with mode 0600 to eliminate world-readable exposure during the encryption window, and chmodSync must be added after mkdirSync so existing installs with 0755 snapshots directories are fixed.",
+    "description": "src/operate/backup/backup.ts has two permission gaps: (1) line 210 calls createWriteStream(archivePath) without a mode option, creating the unencrypted tar.gz with default permissions (0644 — world-readable). This file exists from archive creation through GPG encryption (Step 2) and is deleted in Step 5 Cleanup. On a multi-user system, another user can read the unencrypted archive during this window. (2) line 166 calls mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }) without a following chmodSync, so on existing installs where snapshots/ was previously created at 0755, the mode is never corrected. GPG-encrypted backup files (.tar.gz.gpg) and manifest files are created by external processes or writeFile without explicit mode. Fix: (1) change createWriteStream(archivePath) to createWriteStream(archivePath, { mode: FILE_MODE_SECRET }) and add chmodSync(archivePath, FILE_MODE_SECRET) after the pipeline completes. (2) Add chmodSync(snapsDir, DIR_MODE_SECRET) after mkdirSync. Also add explicit mode to writeFile(manifestPath) for belt-and-suspenders.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/secure/sanitizer/audit.ts lines 1-60 — confirm mkdir(dir, { recursive: true }) at ~line 51 has no mode option, appendFile at ~line 57 has no mode option, and neither chmodSync nor DIR_MODE_SECRET nor FILE_MODE_SECRET are imported",
-      "Read src/secure/sanitizer/sanitizer.ts lines 23-40 — confirm DEFAULT_OPS_DIR is ~/.clawhq/ops/security/ (NOT ~/.clawhq/security/) and that this path is not in SCAFFOLD_DIRS_SECRET",
-      "Add chmodSync to the node:fs/promises import (or add a separate sync import from node:fs) in sanitizer/audit.ts — note: appendFile is async (fs/promises), but chmodSync is sync (node:fs)",
-      "Add import { chmodSync } from 'node:fs' to sanitizer/audit.ts (separate from the fs/promises import)",
-      "Add import { DIR_MODE_SECRET, FILE_MODE_SECRET } from ../../config/defaults.js to sanitizer/audit.ts",
-      "Change mkdir(dir, { recursive: true }) to mkdir(dir, { recursive: true, mode: DIR_MODE_SECRET }) in the ensureDir function in sanitizer/audit.ts",
-      "Add chmodSync(dir, DIR_MODE_SECRET) after the await mkdir call in ensureDir — fixes existing installs where ops/security/ was created at 0755",
-      "Change appendFile(filePath, ..., 'utf-8') to appendFile(filePath, ..., { encoding: 'utf-8', mode: FILE_MODE_SECRET }) in the appendJsonl function — this sets the mode on file creation",
-      "Run the full test suite — confirm all sanitizer tests pass with no regressions"
+      "Read src/operate/backup/backup.ts lines 1-30 — confirm chmodSync is NOT in the node:fs import, and FILE_MODE_SECRET is NOT imported",
+      "Read src/operate/backup/backup.ts lines 155-175 — confirm mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }) exists but has NO chmodSync call after it",
+      "Read src/operate/backup/backup.ts lines 205-215 — confirm createWriteStream(archivePath) has no mode option",
+      "Read src/operate/backup/backup.ts lines 245-255 — confirm writeFile(manifestPath, ...) has no mode option",
+      "Add chmodSync to the node:fs import in backup.ts",
+      "Add FILE_MODE_SECRET to the existing import from ../../config/defaults.js in backup.ts (DIR_MODE_SECRET is already imported)",
+      "Add chmodSync(snapsDir, DIR_MODE_SECRET) on the line immediately after mkdirSync(snapsDir, ...) — fixes existing installs where snapshots/ was created at 0755",
+      "Change createWriteStream(archivePath) to createWriteStream(archivePath, { mode: FILE_MODE_SECRET }) — restricts the unencrypted archive from creation time",
+      "After the await pipeline(...) line that writes the archive, add chmodSync(archivePath, FILE_MODE_SECRET) — enforces mode even if umask overrides",
+      "Change writeFile(manifestPath, ..., 'utf-8') to writeFile(manifestPath, ..., { encoding: 'utf-8', mode: FILE_MODE_SECRET }) — manifest contains backup metadata",
+      "Run the full test suite — confirm all backup tests pass with no regressions"
     ],
     "acceptanceCriteria": [
-      "ops/security/ directory is created with mode 0700 — stat confirms no group/other read or execute bits",
-      "sanitizer-audit.jsonl and sanitizer-quarantine.jsonl are created with mode 0600 — stat confirms no group/other read bits"
+      "The snapshots/ directory is created/fixed to mode 0700 — stat confirms no group/other read bits on existing installs",
+      "The unencrypted archive (.tar.gz) is created with mode 0600 — stat on a test run confirms no group/other read bits",
+      "The backup manifest (.manifest.json) is written with mode 0600"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T22:31:01-07:00",
+    "startedAt": "2026-03-23T22:32:57-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T22:32:55-07:00"
+    "completedAt": "2026-03-23T22:35:14-07:00"
   },
-  "completedAt": "2026-03-23T22:32:55-07:00",
+  "completedAt": "2026-03-23T22:35:14-07:00",
   "attempts": 1
 }

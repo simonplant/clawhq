@@ -119,11 +119,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). New bug identified from codebase scan. ops/security/ is distinct from the security/ root (which IS in SCAFFOLD_DIRS_SECRET). The sanitizer audit path goes to ops/security/, a directory not covered by scaffold. ensureDir creates it without mode. Contains quarantined inputs (potentially including PII and injection payloads) — must priority confirmed. Steps account for the async/sync fs API split: mkdir is async (fs/promises), chmodSync must be imported separately from node:fs. appendFile mode option sets file mode on first creation. AC is stat-verifiable. Ready to sprint.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T22:32:55-07:00"
     }
   ]
 }

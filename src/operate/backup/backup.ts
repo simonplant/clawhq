@@ -15,14 +15,14 @@
 
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { createWriteStream, existsSync, mkdirSync, statSync } from "node:fs";
+import { chmodSync, createWriteStream, existsSync, mkdirSync, statSync } from "node:fs";
 import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 
-import { BACKUP_GPG_TIMEOUT_MS, DIR_MODE_SECRET } from "../../config/defaults.js";
+import { BACKUP_GPG_TIMEOUT_MS, DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 import type {
   BackupCreateOptions,
@@ -164,6 +164,7 @@ export async function createBackup(options: BackupCreateOptions): Promise<Backup
   const snapshotId = `snap-${Date.now()}-${randomUUID().slice(0, 8)}`;
   const snapsDir = snapshotsDir(deployDir);
   mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(snapsDir, DIR_MODE_SECRET);
 
   const archivePath = join(snapsDir, `${snapshotId}.tar.gz`);
   const encryptedPath = join(snapsDir, `${snapshotId}.tar.gz.gpg`);
@@ -207,8 +208,9 @@ export async function createBackup(options: BackupCreateOptions): Promise<Backup
 
     // Gzip and write
     const gzip = createGzip({ level: 9 });
-    const output = createWriteStream(archivePath);
+    const output = createWriteStream(archivePath, { mode: FILE_MODE_SECRET });
     await pipeline(Readable.from(tarBuf), gzip, output);
+    chmodSync(archivePath, FILE_MODE_SECRET);
 
     progress(onProgress, "archive", "done", `Archive created (${formatBytes(statSync(archivePath).size)})`);
 
@@ -247,7 +249,7 @@ export async function createBackup(options: BackupCreateOptions): Promise<Backup
       archiveSize,
     };
 
-    await writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2), { encoding: "utf-8", mode: FILE_MODE_SECRET });
 
     progress(onProgress, "integrity", "done", `SHA-256: ${sha256.slice(0, 16)}...`);
 
