@@ -1,30 +1,20 @@
 {
-  "sprintId": "sprint-1774315330",
-  "startedAt": "2026-03-23T18:22:10-07:00",
+  "sprintId": "sprint-1774315547",
+  "startedAt": "2026-03-23T18:25:47-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-074",
-    "title": "Instance registry file written without mode 0600 — world-readable on disk",
-    "intent": "The instance registry is written with mode 0600 — only the owning user can read it.",
-    "description": "src/cloud/provisioning/registry.ts line 63 writes the instance registry file using default filesystem permissions. Unlike credentials.json which uses FILE_MODE_SECRET (0600), the registry uses no explicit mode. The registry contains provisioned instance data including IP addresses, provider IDs, and (after BUG-072) sshKeyPath. This data should be owner-read-only.",
+    "id": "BUG-072",
+    "title": "Provisioning flow does not generate or store SSH keypair — FEAT-005 deploy update is undeliverable",
+    "intent": "Every provisioned cloud agent has an SSH keypair generated at provision time, stored securely, and linked in the deploy state. clawhq deploy update has a viable SSH path to every cloud agent it created.",
+    "description": "ProvisionedInstance interface (src/cloud/provisioning/types.ts) has no sshKeyPath or keypairPath field. The provisioning wizard does not generate an SSH keypair or inject it via cloud-init. Without a keypair, clawhq deploy update --id <agent-id> has no way to connect to the remote agent — FEAT-005 is architecturally undeliverable until this is resolved. Steps: (1) Add sshKeyPath: string field to ProvisionedInstance interface. (2) During provisioning wizard, generate an Ed25519 keypair (ssh-keygen or node:crypto), store private key at ~/.clawhq/keys/<agent-id>.pem (mode 0600), store public key path in ProvisionedInstance.sshKeyPath. (3) Inject public key via cloud-init user_data (authorized_keys). (4) Save sshKeyPath to deploy state file on disk. (5) Run cloud/provisioning tests. Scope: types.ts + provisioning wizard + 1-2 provider files for cloud-init injection. No logic change to existing deploy flow.",
     "sourceBacklog": "bugs.json",
-    "steps": [
-      "Read src/cloud/provisioning/registry.ts — find the file write call (around line 63)",
-      "Grep for FILE_MODE_SECRET in the codebase to find where 0600 is defined and how it is applied to credentials.json",
-      "Apply FILE_MODE_SECRET (or equivalent 0600) to the registry file write — match pattern used for credentials.json",
-      "Confirm no other registry read/write paths set a permissive mode",
-      "Run cloud/provisioning tests"
-    ],
-    "acceptanceCriteria": [
-      "Instance registry file is written with mode 0600",
-      "Mode is applied using the same constant as credentials.json — no magic number",
-      "All four provider adapters tested confirm registry is written with 0600 after provisioning"
-    ],
+    "steps": [],
+    "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-23T18:22:10-07:00",
+    "startedAt": "2026-03-23T18:25:47-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T18:25:46-07:00"
+    "completedAt": "2026-03-23T18:33:55-07:00"
   },
-  "completedAt": "2026-03-23T18:25:46-07:00",
+  "completedAt": "2026-03-23T18:33:55-07:00",
   "attempts": 1
 }
