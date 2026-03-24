@@ -1,25 +1,34 @@
 {
-  "sprintId": "sprint-1774311865",
-  "startedAt": "2026-03-23T17:24:25-07:00",
+  "sprintId": "sprint-1774312410",
+  "startedAt": "2026-03-23T17:33:30-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-069",
-    "title": "Cloud provider POLL_INTERVAL_MS inconsistent: AWS uses 10s, others use 5s",
-    "intent": "All cloud providers poll at the same interval. CLOUD_POLL_INTERVAL_MS is defined once in config/defaults.ts — no inline duplicates.",
-    "description": "src/cloud/provisioning/providers/aws.ts:47 sets POLL_INTERVAL_MS = 10_000 while hetzner.ts, gcp.ts, and digitalocean.ts all use 5_000. No documented reason for AWS to poll half as frequently. All four providers define this constant inline rather than importing from config/defaults.ts. Steps: (1) add CLOUD_POLL_INTERVAL_MS = 5_000 to config/defaults.ts; (2) grep all provider files for POLL_INTERVAL_MS; (3) replace four inline constants with import from defaults; (4) run cloud/provisioning tests.",
-    "sourceBacklog": "bugs.json",
-    "steps": [],
-    "acceptanceCriteria": [
-      "All four provider files import CLOUD_POLL_INTERVAL_MS from config/defaults.ts",
-      "No inline POLL_INTERVAL_MS literals remain in provider files",
-      "AWS provisioning polls at 5s matching other providers",
-      "cloud/provisioning tests pass with no regression"
+    "id": "FEAT-006",
+    "title": "Add skill system section to docs/ARCHITECTURE.md",
+    "intent": "A contributor or evaluator reading ARCHITECTURE.md must understand the full system — the skill system is a core architectural layer that is currently undocumented there.",
+    "description": "docs/ARCHITECTURE.md is nearly production-ready and covers platform, blueprints, security, deployment, modules, and architectural decisions. But the skill system — a core runtime layer — has no dedicated section. Skills are documented individually in configs/skills/*/SKILL.md and configs/skills/*/config.yaml but the architectural pattern (declarative skill definition, cron trigger, prompt templates, boundary enforcement, approval gates) is never explained as a system. Add a 'Layer 3: Skills' section (or 'The Skill System') to ARCHITECTURE.md between the Blueprint and Security sections. Source content from: the 6 existing SKILL.md files (email-digest, investor-update, market-scan, meal-plan, morning-brief, schedule-guard) for the pattern, and the 6 config.yaml files for the schema (schedule, model, dependencies, approval, boundaries). The section should explain: what a skill is, the skill lifecycle (trigger → prompt → execute → boundary check → approval gate), the config.yaml schema, and how skills compose with blueprints.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Read docs/ARCHITECTURE.md to understand the current structure and find the right insertion point (after Layer 2: Blueprints, before Security Architecture)",
+      "Read configs/skills/email-digest/SKILL.md and configs/skills/email-digest/config.yaml as the reference skill implementation",
+      "Read configs/skills/morning-brief/SKILL.md and configs/skills/morning-brief/config.yaml for a second pattern example",
+      "Read at least 2 more configs/skills/*/config.yaml files to confirm the schema is consistent across skills",
+      "Add a new section to docs/ARCHITECTURE.md covering: what a skill is (declarative capability definition), skill lifecycle (trigger → prompt template → model execution → boundary enforcement → approval gate if configured), config.yaml schema reference (schedule, model, dependencies, approval, boundaries fields), how blueprints compose skills (blueprint YAML references skill names), skill isolation and boundary enforcement",
+      "Ensure the new section follows the same tone and depth as the existing Blueprint and Platform sections"
     ],
-    "scope": [],
-    "startedAt": "2026-03-23T17:24:25-07:00",
+    "acceptanceCriteria": [
+      "docs/ARCHITECTURE.md contains a skill system section explaining: what skills are, the skill lifecycle, config.yaml schema, blueprint-skill composition, and boundary enforcement",
+      "The section is sourced from existing SKILL.md and config.yaml files — no invented claims",
+      "The section is positioned logically within the document (between blueprints and security, or after blueprints)",
+      "Existing content in ARCHITECTURE.md is not altered beyond the insertion"
+    ],
+    "scope": [
+      "docs/ARCHITECTURE.md"
+    ],
+    "startedAt": "2026-03-23T17:33:30-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T17:27:30-07:00"
+    "completedAt": "2026-03-23T17:37:28-07:00"
   },
-  "completedAt": "2026-03-23T17:27:30-07:00",
+  "completedAt": "2026-03-23T17:37:28-07:00",
   "attempts": 1
 }
