@@ -1,10 +1,10 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import {
   discoverFleet,
@@ -78,6 +78,18 @@ describe("fleet registry", () => {
       const registry = readFleetRegistry(deployDir);
       expect(registry.agents).toHaveLength(1);
       expect(registry.agents[0].name).toBe("test-agent");
+    });
+
+    it("creates cloud/ directory with mode 0700", () => {
+      const deployDir = mkdtempSync(join(tmpdir(), "clawhq-fleet-test-"));
+      // Do NOT pre-create cloud/ — let registerAgent create it
+      const agentDir = tmpAgentDir();
+
+      registerAgent(deployDir, "test-agent", agentDir);
+
+      const cloudDir = join(deployDir, "cloud");
+      const stat = statSync(cloudDir);
+      expect(stat.mode & 0o777).toBe(DIR_MODE_SECRET);
     });
 
     it("returns existing agent when registering duplicate path", () => {
