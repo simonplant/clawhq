@@ -78,11 +78,12 @@
       "acceptanceCriteria": [],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "READY. Same pattern as BUG-077, BUG-078, BUG-081, BUG-082. PRECISE STEPS: (1) Read discovery.ts lines 1-15 — confirm there is NO import from defaults.ts. (2) Add import: 'import { DIR_MODE_SECRET } from \"../../config/defaults.js\";' to the import block in discovery.ts (after the paths.js import, maintaining alphabetical order — place between config/paths.js and cloud/heartbeat/reporter.js imports is fine). (3) In discovery.ts line 58, change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). (4) No fleet/discovery.test.ts exists — do NOT create one for this bug. Run npm test to confirm no regressions. SCOPE: single file, single line change plus one import. AC: stat on deployDir/cloud/ shows drwx------ (0700) when fleet.js creates the directory before credentials.ts runs.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T20:29:54-07:00"
     }
   ]
 }
