@@ -22,7 +22,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 
-import { BACKUP_GPG_TIMEOUT_MS } from "../../config/defaults.js";
+import { BACKUP_GPG_TIMEOUT_MS, DIR_MODE_SECRET } from "../../config/defaults.js";
 
 import type {
   BackupCreateOptions,
@@ -163,7 +163,7 @@ export async function createBackup(options: BackupCreateOptions): Promise<Backup
 
   const snapshotId = `snap-${Date.now()}-${randomUUID().slice(0, 8)}`;
   const snapsDir = snapshotsDir(deployDir);
-  mkdirSync(snapsDir, { recursive: true });
+  mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET });
 
   const archivePath = join(snapsDir, `${snapshotId}.tar.gz`);
   const encryptedPath = join(snapsDir, `${snapshotId}.tar.gz.gpg`);
