@@ -12,6 +12,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { rmSync } from "node:fs";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
@@ -286,9 +287,17 @@ export async function destroyInstance(options: DestroyOptions): Promise<DestroyR
     await new Promise<void>((resolve) => setTimeout(resolve, DESTROY_VERIFY_INTERVAL_MS));
   }
 
+  // Capture key path before removal clears the registry entry
+  const keyPath = instance.sshKeyPath;
+
   // Mark as destroyed and remove from registry
   updateInstanceStatus(options.deployDir, options.instanceId, "destroyed");
   removeInstance(options.deployDir, options.instanceId);
+
+  // Delete SSH private key file if it exists
+  if (keyPath) {
+    rmSync(keyPath, { force: true });
+  }
 
   return { success: true, destroyed: true };
 }
