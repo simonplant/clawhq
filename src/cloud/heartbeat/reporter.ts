@@ -13,7 +13,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS, DIR_MODE_SECRET } from "../../config/defaults.js";
+import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS, DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import {
   DEPLOY_CLOUD_SUBDIR,
   DEPLOY_ENGINE_COMPOSE_FILE,
@@ -69,7 +69,8 @@ function writeHeartbeatState(deployDir: string, state: HeartbeatState): void {
   const tmpPath = join(dir, tmpName);
 
   try {
-    writeFileSync(tmpPath, content);
+    writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
+    chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
   } catch (err) {
     console.warn("[cloud] Failed to write heartbeat state:", err);

@@ -19,6 +19,7 @@ import {
 } from "./commands/verify.js";
 import {
   collectHealthReport,
+  heartbeatPath,
   readHeartbeatState,
   sendHeartbeat,
 } from "./heartbeat/index.js";
@@ -27,6 +28,7 @@ import {
   disconnectCloud,
   readTrustModeState,
   switchTrustMode,
+  trustModePath,
 } from "./trust-modes/index.js";
 import {
   getAllowedCommands,
@@ -389,6 +391,26 @@ describe("command queue", () => {
       enqueueCommand(deployDir, command);
 
       const path = commandQueuePath(deployDir);
+      const stat = statSync(path);
+      expect(stat.mode & 0o777).toBe(FILE_MODE_SECRET);
+    });
+
+    it("writes trust-mode.json with mode 0600 (FILE_MODE_SECRET)", () => {
+      const deployDir = tmpDeployDir();
+
+      switchTrustMode(deployDir, "zero-trust");
+
+      const path = trustModePath(deployDir);
+      const stat = statSync(path);
+      expect(stat.mode & 0o777).toBe(FILE_MODE_SECRET);
+    });
+
+    it("writes heartbeat.json with mode 0600 (FILE_MODE_SECRET)", async () => {
+      const deployDir = tmpDeployDir();
+
+      await sendHeartbeat(deployDir, "zero-trust");
+
+      const path = heartbeatPath(deployDir);
       const stat = statSync(path);
       expect(stat.mode & 0o777).toBe(FILE_MODE_SECRET);
     });
