@@ -1,33 +1,31 @@
 {
-  "sprintId": "sprint-1774317364",
-  "startedAt": "2026-03-23T18:56:04-07:00",
+  "sprintId": "sprint-1774317805",
+  "startedAt": "2026-03-23T19:03:25-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-075",
-    "title": "Cloud adapter initialization exceptions not caught in resolveAdapter() — crashes on bad credentials",
-    "intent": "A malformed stored credential produces a clear, actionable error message — never an uncaught exception stack trace.",
-    "description": "src/cloud/provisioning/engine.ts lines 62-73 call createAwsAdapter() and createGcpAdapter() which can throw exceptions during token parsing (malformed JSON, missing fields). These calls are not wrapped in try-catch. If a user's stored token is malformed, the error propagates uncaught and crashes the provisioning flow without a helpful error message. DigitalOcean and Hetzner adapters do not have this issue — only AWS and GCP. Steps: (1) Read src/cloud/provisioning/engine.ts around lines 62-73 to see resolveAdapter() implementation. (2) Read src/cloud/provisioning/providers/aws.ts createAwsAdapter() and src/cloud/provisioning/providers/gcp.ts createGcpAdapter() to understand what exceptions they throw. (3) Wrap the adapter creation calls in try-catch in resolveAdapter(). (4) On catch, throw a descriptive error: 'Failed to initialize AWS/GCP adapter: credentials may be malformed. Re-run clawhq creds to reconfigure.'",
+    "id": "BUG-080",
+    "title": "SSH update uses StrictHostKeyChecking=no — remote identity not verified, MITM possible",
+    "intent": "clawhq deploy update must verify the remote host's identity before executing commands — StrictHostKeyChecking=no accepts any host key, making the update channel vulnerable to MITM on the network path.",
+    "description": "src/cloud/provisioning/update.ts line 143 passes -o StrictHostKeyChecking=no and -o UserKnownHostsFile=/dev/null to ssh. This disables host key verification entirely — any host that responds on instance.ipAddress will be trusted. Since ClawHQ generates the SSH keypair and injects the public key via cloud-init, the host public key is also available at provision time via the provider API (DigitalOcean, Hetzner, AWS, GCP all surface console output or host keys). Fix: during provisioning, record the SSH host public key fingerprint in the instance registry (sshHostKey field on ProvisionedInstance). In executeSsh(), write a temporary known_hosts file with that fingerprint and pass -o StrictHostKeyChecking=yes -o UserKnownHostsFile=<tmpfile> instead. If fingerprint is unavailable in registry, fall back to accept-new (not no) and log a warning. Scope: engine.ts (capture host key at provision time), types.ts (sshHostKey field on ProvisionedInstance), update.ts (use known_hosts file).",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/cloud/provisioning/engine.ts lines 62-73 — confirm createAwsAdapter() and createGcpAdapter() are called without try-catch",
-      "Read src/cloud/provisioning/providers/aws.ts createAwsAdapter() to identify what exceptions it throws and under what conditions",
-      "Read src/cloud/provisioning/providers/gcp.ts createGcpAdapter() to identify what exceptions it throws and under what conditions",
-      "Wrap createAwsAdapter() call in try-catch — on catch, throw new Error with message: 'Failed to initialize AWS adapter: credentials may be malformed. Re-run clawhq creds to reconfigure.'",
-      "Wrap createGcpAdapter() call in try-catch — on catch, throw new Error with message: 'Failed to initialize GCP adapter: service account JSON may be malformed. Re-run clawhq creds to reconfigure.'",
-      "Confirm DigitalOcean and Hetzner adapter initialization already handles errors gracefully",
-      "Run cloud/provisioning tests"
+      "Read src/cloud/provisioning/types.ts — add optional sshHostKey?: string field to ProvisionedInstance interface",
+      "Read src/cloud/provisioning/engine.ts — after createVm() returns an IP, query the provider adapter for the SSH host key fingerprint using adapter.getVmStatus() or a new method; if available, pass it to addInstance()",
+      "Read src/cloud/provisioning/registry.ts addInstance() — include sshHostKey in the instance record if provided",
+      "Read src/cloud/provisioning/update.ts executeSsh() — replace StrictHostKeyChecking=no with: if sshHostKey is present in instance record, write a temp known_hosts file and pass -o StrictHostKeyChecking=yes -o UserKnownHostsFile=<tmpfile>; if absent, use -o StrictHostKeyChecking=accept-new and log a warning",
+      "Delete the temp known_hosts file after SSH command completes (success or failure)",
+      "Run update tests — confirm StrictHostKeyChecking=no is no longer passed in any SSH invocation"
     ],
     "acceptanceCriteria": [
-      "Calling resolveAdapter() with a malformed AWS token throws a descriptive Error, not an uncaught exception",
-      "Calling resolveAdapter() with malformed GCP service account JSON throws a descriptive Error, not an uncaught exception",
-      "Error messages reference 'clawhq creds' as the remediation path",
-      "DigitalOcean and Hetzner adapter init behavior is unchanged"
+      "When an instance has sshHostKey in its registry record, executeSsh() uses StrictHostKeyChecking=yes with a temp known_hosts file",
+      "When sshHostKey is absent, executeSsh() uses StrictHostKeyChecking=accept-new (not no) — first-connect behavior, not blind trust",
+      "StrictHostKeyChecking=no does not appear in any SSH invocation in update.ts"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T18:56:04-07:00",
+    "startedAt": "2026-03-23T19:03:25-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T18:58:40-07:00"
+    "completedAt": "2026-03-23T19:06:33-07:00"
   },
-  "completedAt": "2026-03-23T18:58:40-07:00",
+  "completedAt": "2026-03-23T19:06:33-07:00",
   "attempts": 1
 }
