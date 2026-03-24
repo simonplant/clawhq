@@ -1,24 +1,19 @@
 {
-  "sprintId": "sprint-1774364202",
-  "startedAt": "2026-03-24T07:56:42-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774364399",
+  "startedAt": "2026-03-24T07:59:59-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "BUG-071",
-    "title": "AWS credential validation exposes full access key ID in account field — should be masked",
-    "intent": "AWS credentials are never logged or displayed unmasked. Access key in account field shows first 8 chars only. Whitespace-only tokens are rejected.",
-    "description": "src/cloud/provisioning/providers/aws.ts:223 returns { valid: true, account: accessKeyId } with the full AWS access key ID unmasked. AWS key IDs (AKIA...) are 20 chars and considered sensitive in logs and status displays. Additionally, !accessKeyId passes for whitespace-only strings. Steps: (1) trim both accessKeyId and secretKey before all use and checks; (2) reject if trimmed value is empty; (3) mask account field as first 8 chars plus ... (e.g. AKIAIOSFOD...); (4) add test for whitespace-only key, verify masking. Scope: ~6 lines in aws.ts.",
+    "id": "BUG-062",
+    "title": "Provider adapters call response.json() without try-catch — crashes on malformed API responses",
+    "intent": "Provisioning must never crash with a raw JSON parse exception. All API response failures must surface as clean, actionable error messages with HTTP status and provider context.",
+    "description": "src/cloud/provisioning/providers/digitalocean.ts (lines 100, 426, 469) and hetzner.ts (line 77) call response.json() without try-catch. If the cloud API returns non-JSON (HTML error page, gateway timeout, 5xx body), the unhandled exception propagates and crashes the entire provisioning flow with an opaque JSON parse error rather than a user-readable API error. Fix: wrap response.json() calls in try-catch, re-throw as a typed ProvisionError with the raw response status and body included.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "Whitespace-only access key is rejected with the same format error as empty key",
-      "account field in successful validation shows first 8 chars plus ... not the full key ID",
-      "Valid credentials still pass validation — no regression"
+      "No bare response.json() calls in any provider adapter without error handling",
+      "A malformed provider API response surfaces a readable ProvisionError with HTTP status, not a JSON parse crash"
     ],
     "scope": [],
-    "startedAt": "2026-03-24T07:56:42-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-24T07:59:57-07:00"
-  },
-  "completedAt": "2026-03-24T07:59:57-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-24T07:59:59-07:00"
+  }
 }
