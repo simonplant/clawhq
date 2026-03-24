@@ -174,7 +174,13 @@ export function createHetznerAdapter(token: string): ProviderAdapter {
         body: {
           name: options.name,
           rules,
-          apply_to: options.dropletIds.map((id) => ({ type: "server", server: { id: parseInt(id, 10) } })),
+          apply_to: options.dropletIds.map((id) => {
+            const numId = parseInt(id, 10);
+            if (isNaN(numId)) {
+              throw new Error(`Invalid droplet ID: '${id}' is not a numeric server ID`);
+            }
+            return { type: "server", server: { id: numId } };
+          }),
         },
         signal: options.signal,
       });
