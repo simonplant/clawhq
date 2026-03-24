@@ -6,9 +6,10 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { DIR_MODE_SECRET } from "../../config/defaults.js";
 import type { TrustMode } from "../../config/types.js";
 import type { DisconnectResult, SwitchModeResult, TrustModeState } from "../types.js";
 
@@ -64,8 +65,9 @@ function writeTrustModeState(deployDir: string, state: TrustModeState): void {
   const dir = dirname(path);
 
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
+  chmodSync(dir, DIR_MODE_SECRET);
 
   const content = JSON.stringify(state, null, 2) + "\n";
   const tmpName = `.trust-mode.tmp.${randomBytes(6).toString("hex")}`;

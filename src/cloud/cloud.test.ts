@@ -1,11 +1,11 @@
 import { createSign, generateKeyPairSync } from "node:crypto";
-import { mkdirSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 
 import {
   commandQueuePath,
@@ -20,6 +20,7 @@ import {
 import {
   collectHealthReport,
   readHeartbeatState,
+  sendHeartbeat,
 } from "./heartbeat/index.js";
 import {
   connectCloud,
@@ -40,6 +41,16 @@ import type { SignedCommand } from "./types.js";
 function tmpDeployDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "clawhq-cloud-test-"));
   mkdirSync(join(dir, "cloud"), { recursive: true });
+  mkdirSync(join(dir, "engine"), { recursive: true });
+  mkdirSync(join(dir, "workspace", "memory", "hot"), { recursive: true });
+  mkdirSync(join(dir, "workspace", "memory", "warm"), { recursive: true });
+  mkdirSync(join(dir, "workspace", "memory", "cold"), { recursive: true });
+  return dir;
+}
+
+/** Deploy dir without cloud/ subdir — forces code paths to create it. */
+function tmpDeployDirNoCloud(): string {
+  const dir = mkdtempSync(join(tmpdir(), "clawhq-cloud-test-"));
   mkdirSync(join(dir, "engine"), { recursive: true });
   mkdirSync(join(dir, "workspace", "memory", "hot"), { recursive: true });
   mkdirSync(join(dir, "workspace", "memory", "warm"), { recursive: true });
@@ -496,5 +507,62 @@ describe("command queue", () => {
       expect(result.disposition).toBe("auto");
       expect(result.executed).toBe(true);
     });
+  });
+});
+
+// ── Cloud Directory Mode Tests ──────────────────────────────────────────────
+
+describe("cloud directory mode", () => {
+  it("queue.ts creates cloud/ dir with mode 0700", () => {
+    const deployDir = tmpDeployDirNoCloud();
+    const { privateKey } = generateTestKeys();
+    const command = signCommand(
+      { id: "cmd-dir-001", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+      privateKey,
+    );
+
+    enqueueCommand(deployDir, command);
+
+    const cloudDir = join(deployDir, "cloud");
+    const stat = statSync(cloudDir);
+    expect(stat.mode & 0o777).toBe(DIR_MODE_SECRET);
+  });
+
+  it("switch.ts creates cloud/ dir with mode 0700", () => {
+    const deployDir = tmpDeployDirNoCloud();
+
+    switchTrustMode(deployDir, "zero-trust");
+
+    const cloudDir = join(deployDir, "cloud");
+    const stat = statSync(cloudDir);
+    expect(stat.mode & 0o777).toBe(DIR_MODE_SECRET);
+  });
+
+  it("reporter.ts creates cloud/ dir with mode 0700", async () => {
+    const deployDir = tmpDeployDirNoCloud();
+
+    await sendHeartbeat(deployDir, "zero-trust");
+
+    const cloudDir = join(deployDir, "cloud");
+    const stat = statSync(cloudDir);
+    expect(stat.mode & 0o777).toBe(DIR_MODE_SECRET);
+  });
+
+  it("corrects existing cloud/ dir with wrong mode", () => {
+    const deployDir = tmpDeployDir();
+    const cloudDir = join(deployDir, "cloud");
+    // Widen to 0755 to simulate a pre-existing misconfigured dir
+    chmodSync(cloudDir, 0o755);
+
+    const { privateKey } = generateTestKeys();
+    const command = signCommand(
+      { id: "cmd-dir-002", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+      privateKey,
+    );
+
+    enqueueCommand(deployDir, command);
+
+    const stat = statSync(cloudDir);
+    expect(stat.mode & 0o777).toBe(DIR_MODE_SECRET);
   });
 });

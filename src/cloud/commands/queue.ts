@@ -10,7 +10,7 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { CLOUD_COMMAND_QUEUE_MAX_HISTORY, FILE_MODE_SECRET } from "../../config/defaults.js";
+import { CLOUD_COMMAND_QUEUE_MAX_HISTORY, DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import type { TrustMode } from "../../config/types.js";
 import { getCommandDisposition, isArchitecturallyBlocked } from "../trust-modes/policy.js";
 import type {
@@ -58,8 +58,9 @@ function writeQueueState(deployDir: string, state: CommandQueueState): void {
   const dir = dirname(path);
 
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
+  chmodSync(dir, DIR_MODE_SECRET);
 
   const content = JSON.stringify(state, null, 2) + "\n";
   const tmpName = `.commands.tmp.${randomBytes(6).toString("hex")}`;

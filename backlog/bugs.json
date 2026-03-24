@@ -60,11 +60,12 @@
       "acceptanceCriteria": [],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "GROOMED 2026-03-23. Source verified. ⚠️ TEST FILE CONFLICT: BUG-086 also creates src/cloud/commands/queue.test.ts. If BUG-086 runs first, queue.test.ts already exists — add dir mode assertion to it rather than creating a new file. ACCEPTANCE CRITERIA: (1) queue.ts creates cloud/ dir with mode 0700 — stat.mode & 0o777 === 0o700. (2) switch.ts creates cloud/ dir with mode 0700 — stat.mode & 0o777 === 0o700. (3) reporter.ts creates cloud/ dir with mode 0700 — stat.mode & 0o777 === 0o700. (4) At least one test verifies cloud/ dir mode for one of these three paths (queue.test.ts preferred). THREE FILE CHANGES: (1) src/cloud/commands/queue.ts line 13: add DIR_MODE_SECRET to existing defaults import — change 'import { CLOUD_COMMAND_QUEUE_MAX_HISTORY }' to 'import { CLOUD_COMMAND_QUEUE_MAX_HISTORY, DIR_MODE_SECRET }'. Line 61: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). (2) src/cloud/trust-modes/switch.ts: no existing defaults.js import — add 'import { DIR_MODE_SECRET } from \"../../config/defaults.js\";' near top with other imports. Line 67: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). (3) src/cloud/heartbeat/reporter.ts line 16: add DIR_MODE_SECRET to existing defaults import — change 'import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS }' to 'import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS, DIR_MODE_SECRET }'. Line 63: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). TEST: If queue.test.ts does not exist, create it following registry.test.ts pattern (mkdtempSync/rmSync). Look at public API in queue.ts for a function that triggers directory creation without network calls — enqueueCommand() if exported. Assert statSync(join(testDir, 'cloud')).mode & 0o777 === 0o700. NOTE: writeQueueState is private — if enqueueCommand() requires external deps, use commandQueuePath() to verify path structure instead and check dir mode separately. Run npm test to verify no regressions.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T20:50:16-07:00"
     },
     {
       "id": "BUG-086",
