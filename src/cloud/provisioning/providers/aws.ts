@@ -110,7 +110,15 @@ function signRequest(
 
 /** Create an AWS EC2 provider adapter. Token format: "ACCESS_KEY_ID:SECRET_ACCESS_KEY". */
 export function createAwsAdapter(token: string, region = "us-east-1"): ProviderAdapter {
-  const [accessKeyId, secretKey] = token.split(":");
+  const parts = token.split(":");
+  if (parts.length !== 2) {
+    throw new Error("AWS token must be in format ACCESS_KEY_ID:SECRET_ACCESS_KEY");
+  }
+  const accessKeyId = parts[0].trim();
+  const secretKey = parts[1].trim();
+  if (!accessKeyId || !secretKey) {
+    throw new Error("AWS token must be in format ACCESS_KEY_ID:SECRET_ACCESS_KEY");
+  }
 
   async function ec2Request(
     params: Record<string, string>,
