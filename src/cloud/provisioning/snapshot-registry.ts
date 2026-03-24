@@ -11,6 +11,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSy
 import { dirname, join } from "node:path";
 
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+
 import type { CloudProvider, SnapshotRecord, SnapshotRegistry } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
