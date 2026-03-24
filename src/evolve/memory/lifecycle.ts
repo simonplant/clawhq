@@ -10,6 +10,8 @@ import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { DIR_MODE_SECRET } from "../../config/defaults.js";
+
 import { maskPii } from "../lifecycle/mask.js";
 
 import { summarizeMemory } from "./summarize.js";
@@ -70,7 +72,7 @@ async function saveManifest(
   manifest: MemoryManifest,
 ): Promise<void> {
   const dir = join(deployDir, MEMORY_BASE);
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2));
 }
 
@@ -82,7 +84,7 @@ function tierDir(deployDir: string, tier: string): string {
 
 function ensureTierDirs(deployDir: string): void {
   for (const tier of Object.values(TIER_DIRS)) {
-    mkdirSync(join(deployDir, MEMORY_BASE, tier), { recursive: true });
+    mkdirSync(join(deployDir, MEMORY_BASE, tier), { recursive: true, mode: DIR_MODE_SECRET });
   }
 }
 
