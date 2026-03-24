@@ -66,11 +66,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/skills/lifecycle.ts. Precise steps:\n- Line 12: change import to add DIR_MODE_SECRET and FILE_MODE_SECRET: import { DIR_MODE_SECRET, FILE_MODE_EXEC, FILE_MODE_SECRET } from '../../config/defaults.js';\n- Line 8: add mkdirSync import — no change needed (mkdirSync already imported from node:fs)\n- Line 54: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- Add after line 54: import chmodSync from node:fs — add chmodSync to line 8 import, then add: chmodSync(dir, DIR_MODE_SECRET);\n- Line 55: change await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2)) to await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2), { mode: FILE_MODE_SECRET });\n\nNOTE: writeFile here is from node:fs/promises (line 10), not node:fs. The mode option works the same way.\n\nRun: npm test -- --testPathPattern='skills' and confirm all pass. AC: stat workspace/skills/ shows mode 0700; stat .skill-manifest.json shows mode 0600.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:51:04-07:00"
     },
     {
       "id": "BUG-099",
