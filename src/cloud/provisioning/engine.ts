@@ -152,6 +152,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
 
   if (!createResult.success || !createResult.providerInstanceId) {
     report("create-vm", "failed", createResult.error ?? "Failed to create VM");
+    rmSync(keypair.privateKeyPath, { force: true });
     return { success: false, error: createResult.error ?? "Failed to create VM" };
   }
 
@@ -207,6 +208,10 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
     report("firewall", "failed", `Firewall creation failed: ${firewallResult.error}. Destroying VM to prevent insecure instance.`);
 
     const destroyResult = await adapter.destroyVm(createResult.providerInstanceId, options.signal);
+
+    // Clean up orphaned SSH private key — instance was never registered,
+    // so destroyInstance() will never reach it.
+    rmSync(keypair.privateKeyPath, { force: true });
 
     if (!destroyResult.success) {
       return {
