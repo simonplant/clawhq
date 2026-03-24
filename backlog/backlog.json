@@ -189,10 +189,12 @@
         "docs/ROADMAP.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "Documentation authoring task. Content sources confirmed: docs/PRODUCT.md (Tracks A-F, How the Agent Grows, Risks), backlog/GAP-ANALYSIS.md (AS-IS table, Gaps 1-10, Phases 1-3), backlog/backlog.json (todo items). 120-line cap is correct. Internal IDs must be translated to user-facing language. No technical dependencies. Marking readyForSprint=true as requested by PO."
+      "groomingNotes": "Documentation authoring task. Content sources confirmed: docs/PRODUCT.md (Tracks A-F, How the Agent Grows, Risks), backlog/GAP-ANALYSIS.md (AS-IS table, Gaps 1-10, Phases 1-3), backlog/backlog.json (todo items). 120-line cap is correct. Internal IDs must be translated to user-facing language. No technical dependencies. Marking readyForSprint=true as requested by PO.",
+      "passes": true,
+      "completedAt": "2026-03-24T08:35:30-07:00"
     },
     {
       "id": "FEAT-011",
