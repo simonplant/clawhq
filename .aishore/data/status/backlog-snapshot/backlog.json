@@ -32,7 +32,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "PO PASS (2026-03-23). AC REWRITTEN — prior AC demanded skill config.yaml schema, SKILL.md format, and 14 landmine rules which the steps (blueprint-only scope, Tech Lead Pass 3) cannot produce. Root cause of failCount=1: AC and steps were misaligned, so validation always failed on skill/landmine criteria even when blueprint schema was correct. Fix: AC now matches the fallback scope exactly — blueprint YAML schema + Generated Directory Structure only. Intent narrowed accordingly. FOLLOW-UP NEEDED: skill config.yaml schema, SKILL.md format, and 14 landmine rules belong in a separate FEAT once blueprint section ships cleanly. Do not expand scope of this item again.",
+      "groomingNotes": "PO AC FIX (2026-03-23). AC rewritten to match narrowed scope — blueprint YAML schema + Generated Directory Structure only. Skills, SKILL.md format, and 14 landmine rules removed from AC and delegated to FEAT-106 (already created, readyForSprint=true). Previous failure (failCount=1) was caused by misaligned AC demanding scope the steps did not cover. Tech Lead: steps may also need trimming to remove skill/landmine reads that are no longer in scope — steps 2, 3 (skill reads), and the Skill Schema / SKILL.md / 14 Landmines / Model Routing / Integration Patterns subsections of step 7 should be removed. AC/STEPS now aligned on blueprint-only scope. readyForSprint should be set to true by Tech Lead once steps are pruned.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-23T17:47:15-07:00",
       "failCount": 1
@@ -137,7 +137,9 @@
       ],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
+      "readyForSprint": true,
+      "groomedAt": "2026-03-23",
+      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Steps added from scratch — item had no steps. Scope is append-only to docs/CONFIGURATION.md (blueprint schema section already present from FEAT-008). Steps follow read-then-write pattern: extract field sets from all 6 skill configs before writing, cross-check landmine count against two sources (OPENCLAW-REFERENCE.md s12 + ARCHITECTURE.md table). Final step validates count to prevent partial-landmine failure. AC is PO-owned and unchanged. Unblocks FEAT-013."
     }
   ]
 }
