@@ -1,34 +1,30 @@
 {
-  "sprintId": "sprint-1774367709",
-  "startedAt": "2026-03-24T08:55:09-07:00",
+  "sprintId": "sprint-1774368070",
+  "startedAt": "2026-03-24T09:01:10-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-012",
-    "title": "Create docs/CHANGELOG.md — retroactive changelog from build history",
-    "intent": "A project with no changelog looks like it was built in one shot — the changelog proves sustained development and helps evaluators gauge velocity and direction.",
-    "description": "No CHANGELOG.md exists and no version tags are in the repo. However, build history can be reconstructed from: backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' (subsystem status table with line counts showing what has shipped), docs/PRODUCT.md checkbox items showing completed features, backlog/archive/sprints.jsonl (sprint completion records with dates and item IDs), and backlog/backlog.json + bugs.json (done items with completedAt timestamps). Create a retroactive changelog organized by development phase rather than version numbers (since no versions exist yet). Phase 1: Foundation (config schema, landmine validator, gateway client, workspace generator). Phase 2: Blueprints (blueprint engine, 7 blueprints, skill system, 6 skills). Phase 3: Platform (install pipeline, security hardening, doctor/status, cron engine). Include dates where available from completedAt timestamps.",
-    "sourceBacklog": "backlog.json",
+    "id": "BUG-109",
+    "title": "cloud-init: clawhq up failure masked by '|| true' — VM reports ready when agent is not running",
+    "intent": "The provisioning engine must only mark an instance active when the agent is actually running. A VM that boots but fails to start its agent is worse than a provisioning failure — it is invisible.",
+    "description": "In src/cloud/provisioning/cloud-init.ts line 137, the agent start command runs as 'clawhq up || true'. The '|| true' swallows all failures from clawhq up. If the agent fails to start, the sentinel file is still touched and boot-status.json reports ready. The provisioning engine marks the instance active. Fix: remove '|| true' so clawhq up failure exits the cloud-init script non-zero.",
+    "sourceBacklog": "bugs.json",
     "steps": [
-      "Read backlog/GAP-ANALYSIS.md 'AS-IS: What's Built' section for the subsystem status table",
-      "Read backlog/backlog.json done items with completedAt timestamps to establish timeline",
-      "Read backlog/archive/sprints.jsonl for sprint completion records with dates",
-      "Read docs/PRODUCT.md 'What We're Building' checkbox items for completed feature list",
-      "Compose docs/CHANGELOG.md organized by development phase: Phase 1 Foundation (with dates from completedAt), Phase 2 Blueprints, Phase 3 Platform, using Added/Changed/Fixed format within each phase",
-      "Include line counts from GAP-ANALYSIS where available to show scope of each phase"
+      "Read src/cloud/provisioning/cloud-init.ts lines 134-152 to confirm the current '|| true' on clawhq up.",
+      "Remove '|| true' from line 137. Change 'clawhq up ${upArgs.join(\" \")} || true' to 'clawhq up ${upArgs.join(\" \")}'. A failed clawhq up will now exit non-zero, preventing sentinel creation and boot-status.json write.",
+      "Check that clawhq install and clawhq init commands do NOT already have '|| true' and would correctly fail-fast — confirm no regression from removing just the one instance.",
+      "In cloud-init.test.ts, add a test that parses the generated script string and asserts it does NOT contain '|| true' after the clawhq up line.",
+      "Run npm test -- --testPathPattern=cloud-init to confirm all tests pass."
     ],
     "acceptanceCriteria": [
-      "docs/CHANGELOG.md exists with retroactive entries organized by development phase",
-      "Each phase lists completed features with dates where available",
-      "Entries use Added/Changed/Fixed format consistent with Keep a Changelog convention",
-      "The changelog accurately reflects what has been built — no aspirational entries"
+      "Generated cloud-init script does not contain '|| true' after the clawhq up command",
+      "If clawhq up exits non-zero, the sentinel file is not created and boot-status.json is not written",
+      "Existing cloud-init tests pass with no regression"
     ],
-    "scope": [
-      "docs/CHANGELOG.md"
-    ],
-    "startedAt": "2026-03-24T08:55:09-07:00",
+    "scope": [],
+    "startedAt": "2026-03-24T09:01:10-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T09:01:08-07:00"
+    "completedAt": "2026-03-24T09:04:16-07:00"
   },
-  "completedAt": "2026-03-24T09:01:08-07:00",
+  "completedAt": "2026-03-24T09:04:16-07:00",
   "attempts": 1
 }
