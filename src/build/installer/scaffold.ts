@@ -34,7 +34,6 @@ const SCAFFOLD_DIRS = [
   "ops/monitor",
   "ops/backup/snapshots",
   "ops/updater/rollback",
-  "ops/audit",
   "ops/firewall",
   "cron",
 ] as const;
@@ -43,7 +42,7 @@ const SCAFFOLD_DIRS = [
  * Subdirectories that hold secrets (API tokens, trust-mode config).
  * Created with DIR_MODE_SECRET (0o700) and chmod'd to fix existing installs.
  */
-const SCAFFOLD_DIRS_SECRET = ["security", "cloud", "workspace/memory"] as const;
+const SCAFFOLD_DIRS_SECRET = ["security", "cloud", "workspace/memory", "ops/audit"] as const;
 
 // ── Scaffold ────────────────────────────────────────────────────────────────
 
