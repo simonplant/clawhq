@@ -54,11 +54,12 @@
         "src/cloud/provisioning/engine.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "RE-GROOMED 2026-03-23. Elevated to must: verified destroy is a data sovereignty non-negotiable (CLAUDE.md). clawhq destroy must leave no credentials on disk — an SSH key persisting after destroy is a sovereignty violation, not just a cleanup miss. The intent field already uses must language. Security by default means cleanup is automatic. Fix is 3 lines in engine.ts — scope and steps unchanged.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T18:44:47-07:00"
     },
     {
       "id": "BUG-077",
