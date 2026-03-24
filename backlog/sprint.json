@@ -1,23 +1,24 @@
 {
-  "sprintId": "sprint-1774364084",
-  "startedAt": "2026-03-24T07:54:44-07:00",
+  "sprintId": "sprint-1774364202",
+  "startedAt": "2026-03-24T07:56:42-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-068",
-    "title": "Hetzner adapter parseInt on dropletIds propagates NaN into API request body",
-    "intent": "A non-numeric server ID produces an immediate validation error before any API call — NaN never reaches the Hetzner API.",
-    "description": "src/cloud/provisioning/providers/hetzner.ts:177 maps dropletIds through parseInt without validating the result. If any id is non-numeric, parseInt returns NaN, which serializes silently into the Hetzner API request body causing a confusing 422 response. Steps: (1) after parseInt(id, 10), check isNaN(numId) and throw Error with the invalid id value; (2) add test for non-numeric id inputs. Scope: ~4 lines in hetzner.ts.",
+    "id": "BUG-071",
+    "title": "AWS credential validation exposes full access key ID in account field — should be masked",
+    "intent": "AWS credentials are never logged or displayed unmasked. Access key in account field shows first 8 chars only. Whitespace-only tokens are rejected.",
+    "description": "src/cloud/provisioning/providers/aws.ts:223 returns { valid: true, account: accessKeyId } with the full AWS access key ID unmasked. AWS key IDs (AKIA...) are 20 chars and considered sensitive in logs and status displays. Additionally, !accessKeyId passes for whitespace-only strings. Steps: (1) trim both accessKeyId and secretKey before all use and checks; (2) reject if trimmed value is empty; (3) mask account field as first 8 chars plus ... (e.g. AKIAIOSFOD...); (4) add test for whitespace-only key, verify masking. Scope: ~6 lines in aws.ts.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "Non-numeric droplet ID throws Error containing the invalid id before any API call",
-      "Valid numeric IDs convert correctly and pass through — no regression"
+      "Whitespace-only access key is rejected with the same format error as empty key",
+      "account field in successful validation shows first 8 chars plus ... not the full key ID",
+      "Valid credentials still pass validation — no regression"
     ],
     "scope": [],
-    "startedAt": "2026-03-24T07:54:44-07:00",
+    "startedAt": "2026-03-24T07:56:42-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T07:56:40-07:00"
+    "completedAt": "2026-03-24T07:59:57-07:00"
   },
-  "completedAt": "2026-03-24T07:56:40-07:00",
+  "completedAt": "2026-03-24T07:59:57-07:00",
   "attempts": 1
 }
