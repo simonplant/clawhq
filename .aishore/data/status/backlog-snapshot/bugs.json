@@ -84,11 +84,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "GROOMED 2026-03-23. Two isolated mkdirSync calls in restore.ts — one for the deployment root, one in copyOpsSelectively. Both need DIR_MODE_SECRET. Check whether restore.ts already imports from defaults.js before adding import. No dedicated restore test file may exist — run full suite.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:21:13-07:00"
     },
     {
       "id": "BUG-093",

@@ -1,32 +1,33 @@
 {
-  "sprintId": "sprint-1774325936",
-  "startedAt": "2026-03-23T21:18:56-07:00",
+  "sprintId": "sprint-1774326075",
+  "startedAt": "2026-03-23T21:21:15-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-092",
-    "title": "Backup restore creates deployment root and ops/ directory without mode 0700 — restored agent data world-listable",
-    "intent": "When restore creates the deployment root or ops/ directory they must be created with mode 0700 — the restore path must not undermine scaffold hardening.",
-    "description": "src/operate/backup/restore.ts has two mkdirSync calls without mode 0700: line 217 (mkdirSync(deployDir, { recursive: true })) creates the root ~/.clawhq/ directory, and line 299 (mkdirSync(destOps, { recursive: true })) creates the ops/ subdirectory during restore. scaffold.ts (fixed by BUG-084) creates these directories with 0700, but the restore code path has independent mkdirSync calls that create them at 0755 if they do not already exist. This means a fresh restore on a new system bypasses scaffold hardening.",
+    "id": "BUG-093",
+    "title": "workspace/memory/ directory created without mode 0700 — approval queue directory world-listable",
+    "intent": "workspace/memory/ must be created with mode 0700 — the directory must not be world-listable regardless of file permissions inside it.",
+    "description": "Two code paths create workspace/memory/ without mode 0700. (1) src/evolve/approval/queue.ts line 58 (saveQueue function: mkdirSync(dir, { recursive: true })). (2) src/design/tools/approve-action.ts line 61 in the generated script template (mkdirSync(dir, { recursive: true })). BUG-090 fixed approval-queue.json file permissions to 0600, but the directory remains world-listable. Fix: (1) In queue.ts, import DIR_MODE_SECRET from config/defaults.js and pass { mode: DIR_MODE_SECRET } to mkdirSync. (2) In approve-action.ts generated template string, update the mkdirSync literal to include mode: 0o700.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/operate/backup/restore.ts lines 1-20 — confirm whether DIR_MODE_SECRET is already imported from config/defaults.js",
-      "Add 'import { DIR_MODE_SECRET } from ../../config/defaults.js' if not already present",
-      "Read restore.ts line 217 — confirm mkdirSync(deployDir, { recursive: true }) has no mode option",
-      "Edit line 217: change mkdirSync(deployDir, { recursive: true }) to mkdirSync(deployDir, { recursive: true, mode: DIR_MODE_SECRET })",
-      "Read restore.ts line 299 (copyOpsSelectively function) — confirm mkdirSync(destOps, { recursive: true }) has no mode option",
-      "Edit line 299: change mkdirSync(destOps, { recursive: true }) to mkdirSync(destOps, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Read src/evolve/approval/queue.ts lines 1-20 — confirm no import from config/defaults.js exists",
+      "Add 'import { DIR_MODE_SECRET } from ../../config/defaults.js' to queue.ts imports",
+      "Read queue.ts line 58 — confirm mkdirSync(dir, { recursive: true }) has no mode option",
+      "Edit queue.ts line 58: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET })",
+      "Read src/design/tools/approve-action.ts line 61 — this is inside a template string; find mkdirSync(dir, { recursive: true }) in the generated script",
+      "Edit approve-action.ts line 61: change the template string literal mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: 0o700 }) — note: uses literal 0o700 not DIR_MODE_SECRET since this is a generated CJS script",
       "Run npm test — confirm all tests pass"
     ],
     "acceptanceCriteria": [
-      "Restore creates deployDir with mode 0700 when directory does not already exist",
-      "Restore creates destOps (ops/ subdirectory) with mode 0700 when directory does not already exist",
+      "workspace/memory/ directory is created with mode 0700 via queue.ts saveQueue path",
+      "Generated approve-action script creates workspace/memory/ with mode 0700",
+      "approval-queue.json file permissions remain unchanged at 0600",
       "All existing tests pass with no regressions"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:18:56-07:00",
+    "startedAt": "2026-03-23T21:21:15-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:21:13-07:00"
+    "completedAt": "2026-03-23T21:24:01-07:00"
   },
-  "completedAt": "2026-03-23T21:21:13-07:00",
+  "completedAt": "2026-03-23T21:24:01-07:00",
   "attempts": 1
 }
