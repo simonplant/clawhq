@@ -1,20 +1,20 @@
 {
-  "sprintId": "sprint-1774322840",
-  "startedAt": "2026-03-23T20:27:20-07:00",
+  "sprintId": "sprint-1774323650",
+  "startedAt": "2026-03-23T20:40:50-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-083",
-    "title": "Fleet registry directory (cloud/) created without mode 0700 — agent paths world-listable",
-    "intent": "The cloud/ directory must always be created with mode 0700 regardless of which code path initializes it first. fleet.json initialization must not downgrade the directory to world-listable.",
-    "description": "src/cloud/fleet/discovery.ts line 58 calls mkdirSync(dir, { recursive: true }) without a mode option, creating deployDir/cloud/ with default permissions (0755) when fleet is initialized before cloud credentials. fleet.json stores agent deployment directory paths — on a multi-user system, any user can ls the cloud/ directory to learn that fleet registration exists. BUG-078 fixes cloud/ for the credentials path but only when writeCloudCredentials() runs first; if fleet is registered before any credentials are stored, cloud/ is created at 0755 by discovery.ts. Fix: add DIR_MODE_SECRET import from defaults.js and pass { recursive: true, mode: DIR_MODE_SECRET } to mkdirSync at line 58. Note: no import from defaults.ts exists in discovery.ts currently.",
+    "id": "BUG-084",
+    "title": "scaffold.ts pre-creates cloud/ and security/ directories without mode 0700 — root cause of all cloud dir permission issues",
+    "intent": "scaffold.ts must create cloud/ and security/ with mode 0700 at install time — these dirs hold API tokens and trust-mode config. All downstream permission fixes are moot if scaffold creates these dirs world-readable first.",
+    "description": "src/build/installer/scaffold.ts scaffoldDirs() creates the full ~/.clawhq/ directory tree at install time. SCAFFOLD_DIRS includes 'security' and 'cloud' but both mkdirSync calls (line 57 for root, line 63 for subdirs) use no mode option, creating dirs at default 0755. Since mkdirSync with recursive:true does NOT change the mode of already-existing directories, all the per-file fixes (BUG-078, BUG-081, BUG-082, BUG-083) are ineffective on systems where scaffold has already run — cloud/ stays at 0755 regardless of what credentials.ts or discovery.ts pass. Fix: split SCAFFOLD_DIRS_SECRET = ['security', 'cloud'] and create those with { recursive: true, mode: DIR_MODE_SECRET }, all others with no mode. Also apply chmodSync to security/ and cloud/ after creation to fix existing installs. Import DIR_MODE_SECRET from config/defaults.js.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [],
     "scope": [],
-    "startedAt": "2026-03-23T20:27:20-07:00",
+    "startedAt": "2026-03-23T20:40:50-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T20:29:54-07:00"
+    "completedAt": "2026-03-23T20:43:31-07:00"
   },
-  "completedAt": "2026-03-23T20:29:54-07:00",
+  "completedAt": "2026-03-23T20:43:31-07:00",
   "attempts": 1
 }
