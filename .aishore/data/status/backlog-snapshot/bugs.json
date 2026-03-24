@@ -22,11 +22,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "ROOT CAUSE BUG for BUG-111. The '|| true' on clawhq up is a silent failure masker — the VM boots, cloud-init continues, sentinel is written, instance is marked active. User sees a healthy deployment; agent is dead. Trust damage is severe because the failure is invisible. FIX SCOPE: narrow — one line change in cloud-init.ts:137 plus one assertion in cloud-init.test.ts. Steps are precise. Sprint first among the three cloud provisioning bugs — BUG-111 references this bug as contributing cause. AC is correct and user-facing.",
-      "groomedAt": "2026-03-24"
+      "groomedAt": "2026-03-24",
+      "completedAt": "2026-03-24T09:04:16-07:00"
     },
     {
       "id": "BUG-110",

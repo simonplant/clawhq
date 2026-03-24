@@ -49,11 +49,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "INDEPENDENT of BUG-109/111 — this is a post-creation orphan risk. VM is running, firewall applied, SSH key on disk, but no registry entry. clawhq deploy list never shows it. User is billed for a VM they cannot manage via clawhq. Security risk: SSH key on disk with no tracked instance. FIX SCOPE: try-catch around addInstance() in engine.ts:234 + one test in engine.test.ts. The fix must NOT attempt VM cleanup or key deletion inside the error handler (those are separate concerns per the description). Error message must include providerInstanceId and SSH key path. AC is correct.",
-      "groomedAt": "2026-03-24"
+      "groomedAt": "2026-03-24",
+      "completedAt": "2026-03-24T09:08:21-07:00"
     },
     {
       "id": "BUG-111",
