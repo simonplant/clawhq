@@ -20,7 +20,10 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "DEPENDENCY MET: CQ-047 shipped 2026-03-24 (sprints.jsonl confirms). Deploy state file format and SSH keypair injection are now defined. FEAT-005 can proceed. Verify before starting: (1) ~/.clawhq/cloud/instances.json format includes SSH keypair path + instance IP + provider as specified in CQ-047 groomingNotes. (2) SSH keypair was injected at provision time via cloud-init. THREE SUBCOMMANDS remain as specified: (a) deploy update config — rsync vars, restart; (b) deploy update version — SSH in, run clawhq update, verify health; (c) deploy update skill — SSH in, run clawhq skill install. All user-initiated (zero-trust). Priority SHOULD is correct."
+      "groomingNotes": "DEPENDENCY MET: CQ-047 shipped 2026-03-24 (sprints.jsonl confirms). Deploy state file format and SSH keypair injection are now defined. FEAT-005 can proceed. Verify before starting: (1) ~/.clawhq/cloud/instances.json format includes SSH keypair path + instance IP + provider as specified in CQ-047 groomingNotes. (2) SSH keypair was injected at provision time via cloud-init. THREE SUBCOMMANDS remain as specified: (a) deploy update config — rsync vars, restart; (b) deploy update version — SSH in, run clawhq update, verify health; (c) deploy update skill — SSH in, run clawhq skill install. All user-initiated (zero-trust). Priority SHOULD is correct.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-24T08:19:20-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-006",
@@ -118,10 +121,12 @@
         "docs/CONFIGURATION.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "Documentation authoring task. Content sources confirmed: 7 blueprint YAMLs, 6 skill config.yaml files, docs/ARCHITECTURE.md (10-dimension table, 14 Landmine Rules), docs/OPENCLAW-REFERENCE.md (sections 10-12, 14), CLAUDE.md. No technical dependencies. Priority SHOULD is correct — QUICKSTART (FEAT-007) is higher urgency. Marking readyForSprint=true as requested by PO."
+      "groomingNotes": "Documentation authoring task. Content sources confirmed: 7 blueprint YAMLs, 6 skill config.yaml files, docs/ARCHITECTURE.md (10-dimension table, 14 Landmine Rules), docs/OPENCLAW-REFERENCE.md (sections 10-12, 14), CLAUDE.md. No technical dependencies. Priority SHOULD is correct — QUICKSTART (FEAT-007) is higher urgency. Marking readyForSprint=true as requested by PO.",
+      "passes": true,
+      "completedAt": "2026-03-24T08:25:56-07:00"
     },
     {
       "id": "FEAT-009",
