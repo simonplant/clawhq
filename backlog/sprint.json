@@ -1,36 +1,33 @@
 {
-  "sprintId": "sprint-1774330377",
-  "startedAt": "2026-03-23T22:32:57-07:00",
+  "sprintId": "sprint-1774362998",
+  "startedAt": "2026-03-24T07:36:38-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-107",
-    "title": "Backup: unencrypted archive created without mode 0600 and snapsDir missing chmodSync — transient exposure and existing-install gap",
-    "intent": "The unencrypted backup archive must be created with mode 0600 to eliminate world-readable exposure during the encryption window, and chmodSync must be added after mkdirSync so existing installs with 0755 snapshots directories are fixed.",
-    "description": "src/operate/backup/backup.ts has two permission gaps: (1) line 210 calls createWriteStream(archivePath) without a mode option, creating the unencrypted tar.gz with default permissions (0644 — world-readable). This file exists from archive creation through GPG encryption (Step 2) and is deleted in Step 5 Cleanup. On a multi-user system, another user can read the unencrypted archive during this window. (2) line 166 calls mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }) without a following chmodSync, so on existing installs where snapshots/ was previously created at 0755, the mode is never corrected. GPG-encrypted backup files (.tar.gz.gpg) and manifest files are created by external processes or writeFile without explicit mode. Fix: (1) change createWriteStream(archivePath) to createWriteStream(archivePath, { mode: FILE_MODE_SECRET }) and add chmodSync(archivePath, FILE_MODE_SECRET) after the pipeline completes. (2) Add chmodSync(snapsDir, DIR_MODE_SECRET) after mkdirSync. Also add explicit mode to writeFile(manifestPath) for belt-and-suspenders.",
-    "sourceBacklog": "bugs.json",
+    "id": "CQ-047",
+    "title": "clawhq deploy — unified cloud deployment command",
+    "intent": "clawhq deploy walks a user from zero to a cloud-deployed, SSH-accessible agent in one terminal session. No cloud console, no manual steps. Cost shown before charge. Mid-flight failures auto-clean. Trust mode configured on success. SSH keypair injected at provision so the agent is permanently updatable via FEAT-005.",
+    "description": "Wire the provisioning engine into a user-facing `clawhq deploy` command. Interactive flow: choose provider → enter/confirm credentials → select region → select blueprint → provision → deploy → verify → return URL. Non-interactive mode with flags for CI/automation. Shows cost estimate before confirming. Integrates with existing cloud module (trust modes, heartbeat) for post-deploy monitoring.",
+    "sourceBacklog": "backlog.json",
     "steps": [
-      "Read src/operate/backup/backup.ts lines 1-30 — confirm chmodSync is NOT in the node:fs import, and FILE_MODE_SECRET is NOT imported",
-      "Read src/operate/backup/backup.ts lines 155-175 — confirm mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }) exists but has NO chmodSync call after it",
-      "Read src/operate/backup/backup.ts lines 205-215 — confirm createWriteStream(archivePath) has no mode option",
-      "Read src/operate/backup/backup.ts lines 245-255 — confirm writeFile(manifestPath, ...) has no mode option",
-      "Add chmodSync to the node:fs import in backup.ts",
-      "Add FILE_MODE_SECRET to the existing import from ../../config/defaults.js in backup.ts (DIR_MODE_SECRET is already imported)",
-      "Add chmodSync(snapsDir, DIR_MODE_SECRET) on the line immediately after mkdirSync(snapsDir, ...) — fixes existing installs where snapshots/ was created at 0755",
-      "Change createWriteStream(archivePath) to createWriteStream(archivePath, { mode: FILE_MODE_SECRET }) — restricts the unencrypted archive from creation time",
-      "After the await pipeline(...) line that writes the archive, add chmodSync(archivePath, FILE_MODE_SECRET) — enforces mode even if umask overrides",
-      "Change writeFile(manifestPath, ..., 'utf-8') to writeFile(manifestPath, ..., { encoding: 'utf-8', mode: FILE_MODE_SECRET }) — manifest contains backup metadata",
-      "Run the full test suite — confirm all backup tests pass with no regressions"
+      "Build interactive deploy wizard: provider → credentials → region → blueprint → confirm",
+      "Add cost estimation: show monthly cost before provisioning",
+      "Implement non-interactive mode: --provider, --region, --blueprint flags",
+      "Post-deploy: auto-configure trust mode (zero-trust default), start heartbeat",
+      "Add clawhq deploy status: show all cloud-deployed agents",
+      "Add clawhq deploy destroy: teardown with confirmation"
     ],
     "acceptanceCriteria": [
-      "The snapshots/ directory is created/fixed to mode 0700 — stat confirms no group/other read bits on existing installs",
-      "The unencrypted archive (.tar.gz) is created with mode 0600 — stat on a test run confirms no group/other read bits",
-      "The backup manifest (.manifest.json) is written with mode 0600"
+      "clawhq deploy walks user through cloud deployment end-to-end",
+      "Cost shown before confirmation — no surprise bills",
+      "Non-interactive mode works for automation",
+      "Post-deploy monitoring configured automatically",
+      "Destroy is clean: VM terminated, DNS removed, local state cleaned"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T22:32:57-07:00",
+    "startedAt": "2026-03-24T07:36:38-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T22:35:14-07:00"
+    "completedAt": "2026-03-24T07:48:14-07:00"
   },
-  "completedAt": "2026-03-23T22:35:14-07:00",
+  "completedAt": "2026-03-24T07:48:14-07:00",
   "attempts": 1
 }

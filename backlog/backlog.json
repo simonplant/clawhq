@@ -8,8 +8,8 @@
       "description": "Wire the provisioning engine into a user-facing `clawhq deploy` command. Interactive flow: choose provider → enter/confirm credentials → select region → select blueprint → provision → deploy → verify → return URL. Non-interactive mode with flags for CI/automation. Shows cost estimate before confirming. Integrates with existing cloud module (trust modes, heartbeat) for post-deploy monitoring.",
       "category": "cloud",
       "priority": "must",
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "dependencies": [
         "CQ-043",
         "CQ-044"
@@ -33,7 +33,9 @@
       "groomingNotes": "RE-GROOM AFTER FIRST FAILURE (2026-03-20). Previous validator rejection — impl was attempted but did not pass. Grooming notes from 2026-03-20 remain authoritative on scope and dependencies. Additional guidance for retry: (1) The skeleton at cli/index.ts:3355+ must be extended — do not create a new command file. (2) Partial failure handling is non-negotiable — any post-VM-creation failure must trigger destroy before returning. (3) SSH keypair must be generated locally (ed25519), public key injected via cloud-init, private key written to ~/.clawhq/cloud/keys/<instance-id>.pem at mode 0600. (4) Deploy state file at ~/.clawhq/cloud/instances.json must be extended (not replaced) — existing instances must not be lost on new deploys. (5) AC check: clawhq deploy status --id <id> shows running + IP + SSH key path; clawhq deploy destroy --id <id> removes instance from state file and terminates VM. All original grooming notes still apply.",
       "lastFailReason": "Validator agent rejected implementation",
       "lastFailAt": "2026-03-20T13:23:27-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "passes": true,
+      "completedAt": "2026-03-24T07:48:14-07:00"
     },
     {
       "id": "FEAT-005",
