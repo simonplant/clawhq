@@ -231,17 +231,32 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
   // Step 5: Register instance (provisioning status)
   report("registry", "running", "Registering instance…");
 
-  const instance = addInstance(options.deployDir, {
-    id: instanceId,
-    name: options.name,
-    provider: options.provider,
-    providerInstanceId: createResult.providerInstanceId,
-    ipAddress,
-    region: options.region,
-    size: options.size,
-    status: "provisioning",
-    sshKeyPath: keypair.privateKeyPath,
-  });
+  let instance;
+  try {
+    instance = addInstance(options.deployDir, {
+      id: instanceId,
+      name: options.name,
+      provider: options.provider,
+      providerInstanceId: createResult.providerInstanceId,
+      ipAddress,
+      region: options.region,
+      size: options.size,
+      status: "provisioning",
+      sshKeyPath: keypair.privateKeyPath,
+    });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    report("registry", "failed", `Registry write failed: ${reason}`);
+    return {
+      success: false,
+      error:
+        `Instance registry write failed after VM was created. ` +
+        `The VM is still running and must be destroyed manually. ` +
+        `Provider instance ID: ${createResult.providerInstanceId} — ` +
+        `destroy it via your ${options.provider} console. ` +
+        `SSH key path: ${keypair.privateKeyPath}`,
+    };
+  }
 
   // Step 6: Health check
   report("health-check", "running", "Waiting for agent to become healthy…");

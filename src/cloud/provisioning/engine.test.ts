@@ -21,6 +21,21 @@ vi.mock("./health.js", () => ({
   pollInstanceHealth: () => Promise.resolve({ healthy: true, attempts: 1, elapsedMs: 100 }),
 }));
 
+// Registry mock — allows per-test override of addInstance to simulate write failures
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let addInstanceOverride: ((...args: any[]) => any) | undefined;
+
+vi.mock("./registry.js", async () => {
+  const actual = await vi.importActual<typeof import("./registry.js")>("./registry.js");
+  return {
+    ...actual,
+    addInstance: (...args: unknown[]) => {
+      if (addInstanceOverride) return addInstanceOverride(...args);
+      return (actual.addInstance as Function)(...args);
+    },
+  };
+});
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 let testDir: string;
@@ -30,6 +45,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  addInstanceOverride = undefined;
   rmSync(testDir, { recursive: true, force: true });
 });
 
@@ -145,5 +161,39 @@ describe("provision — SSH key cleanup on failure", () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain("Insufficient funds");
     expect(pemFilesIn(testDir)).toHaveLength(0);
+  });
+});
+
+describe("provision — registry write failure after VM creation (BUG-110)", () => {
+  it("returns success:false with provider instance ID when addInstance throws", async () => {
+    mockAdapter = makeAdapterWith();
+
+    // Simulate registry write failure (e.g. disk full, permissions error)
+    addInstanceOverride = () => {
+      throw new Error("ENOSPC: no space left on device");
+    };
+
+    const { provision } = await import("./engine.js");
+    const result = await provision(opts());
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("vm-123");
+    expect(result.error).toContain("Provider instance ID");
+    expect(result.error).toContain("destroy it via your digitalocean console");
+  });
+
+  it("includes SSH key path in the error output", async () => {
+    mockAdapter = makeAdapterWith();
+
+    addInstanceOverride = () => {
+      throw new Error("EACCES: permission denied");
+    };
+
+    const { provision } = await import("./engine.js");
+    const result = await provision(opts());
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("SSH key path:");
+    expect(result.error).toContain(".pem");
   });
 });
