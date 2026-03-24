@@ -6,6 +6,20 @@
  * ProvisionOptions drives the full flow; ProvisionResult reports the outcome.
  */
 
+// ── Errors ─────────────────────────────────────────────────────────────────
+
+/** Typed error for provider API failures — includes HTTP status and provider context. */
+export class ProvisionError extends Error {
+  constructor(
+    readonly provider: string,
+    readonly httpStatus: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ProvisionError";
+  }
+}
+
 // ── Provider Identity ───────────────────────────────────────────────────────
 
 /** Supported cloud providers. */

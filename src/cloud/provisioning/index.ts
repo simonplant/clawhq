@@ -5,6 +5,9 @@
  * AWS and GCP adapters to follow.
  */
 
+// Errors
+export { ProvisionError } from "./types.js";
+
 // Types
 export type {
   AddSshKeyOptions,
