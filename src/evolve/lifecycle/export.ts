@@ -14,13 +14,14 @@
  */
 
 import { createHash } from "node:crypto";
-import { createWriteStream, existsSync, mkdirSync, statSync } from "node:fs";
+import { chmodSync, createWriteStream, existsSync, mkdirSync, statSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join, relative } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import { emptyMaskReport, isTextFile, maskPii, mergeMaskResult } from "./mask.js";
 import type {
   ExportOptions,
@@ -235,12 +236,14 @@ export async function exportBundle(options: ExportOptions): Promise<ExportResult
 
   // Ensure parent directory exists
   const parentDir = join(bundlePath, "..");
-  mkdirSync(parentDir, { recursive: true });
+  mkdirSync(parentDir, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(parentDir, DIR_MODE_SECRET);
 
   // Gzip and write
   const gzip = createGzip({ level: 9 });
-  const output = createWriteStream(bundlePath);
+  const output = createWriteStream(bundlePath, { mode: FILE_MODE_SECRET });
   await pipeline(Readable.from(tarBuf), gzip, output);
+  chmodSync(bundlePath, FILE_MODE_SECRET);
 
   const bundleSize = statSync(bundlePath).size;
 

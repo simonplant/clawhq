@@ -1,33 +1,36 @@
 {
-  "sprintId": "sprint-1774328843",
-  "startedAt": "2026-03-23T22:07:23-07:00",
+  "sprintId": "sprint-1774330377",
+  "startedAt": "2026-03-23T22:32:57-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-102",
-    "title": "Capability snapshot files written without mode 0600 — credentials copies world-readable",
-    "intent": "Capability snapshot files that contain credentials.json content must be written with mode 0600 — credential copies in snapshot dirs must never be world-readable.",
-    "description": "src/evolve/rollback/capability-snapshot.ts line 121 calls writeFileSync(destPath, content, \"utf-8\") without a mode option when copying files into snapshot directories. Snapshot targets include engine/credentials.json (for 'integrations' kind) and ops/integrations/.integration-manifest.json — meaning credentials are copied into snapshot files with default permissions (0644), making them world-readable. The directory structure is correctly created with DIR_MODE_SECRET (lines 82, 102, 113) but the files themselves are unprotected. Additionally, restoreCapabilitySnapshot at line 183 calls mkdirSync(destDir, { recursive: true }) without mode when restoring snapshot content to the deployment directory, potentially re-creating parent directories with 0755. Fix: add mode FILE_MODE_SECRET to writeFileSync at line 121, chmodSync after, and add DIR_MODE_SECRET to mkdirSync at line 183, chmodSync after.",
+    "id": "BUG-107",
+    "title": "Backup: unencrypted archive created without mode 0600 and snapsDir missing chmodSync — transient exposure and existing-install gap",
+    "intent": "The unencrypted backup archive must be created with mode 0600 to eliminate world-readable exposure during the encryption window, and chmodSync must be added after mkdirSync so existing installs with 0755 snapshots directories are fixed.",
+    "description": "src/operate/backup/backup.ts has two permission gaps: (1) line 210 calls createWriteStream(archivePath) without a mode option, creating the unencrypted tar.gz with default permissions (0644 — world-readable). This file exists from archive creation through GPG encryption (Step 2) and is deleted in Step 5 Cleanup. On a multi-user system, another user can read the unencrypted archive during this window. (2) line 166 calls mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }) without a following chmodSync, so on existing installs where snapshots/ was previously created at 0755, the mode is never corrected. GPG-encrypted backup files (.tar.gz.gpg) and manifest files are created by external processes or writeFile without explicit mode. Fix: (1) change createWriteStream(archivePath) to createWriteStream(archivePath, { mode: FILE_MODE_SECRET }) and add chmodSync(archivePath, FILE_MODE_SECRET) after the pipeline completes. (2) Add chmodSync(snapsDir, DIR_MODE_SECRET) after mkdirSync. Also add explicit mode to writeFile(manifestPath) for belt-and-suspenders.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/evolve/rollback/capability-snapshot.ts lines 18-24 — confirm chmodSync is not in the node:fs import and FILE_MODE_SECRET is not in the defaults import",
-      "Line 18: add chmodSync to the node:fs import destructure — result: import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';",
-      "Line 24: add FILE_MODE_SECRET to the defaults import — change to: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
-      "Line 121 (in createCapabilitySnapshot, the else branch): change writeFileSync(destPath, content, 'utf-8') to writeFileSync(destPath, content, { encoding: 'utf-8', mode: FILE_MODE_SECRET }); — this protects credential and manifest files copied into snapshot dirs",
-      "After line 121: add chmodSync(destPath, FILE_MODE_SECRET); — fixes permissions on existing installs",
-      "Line 183 (in restoreCapabilitySnapshot): change mkdirSync(destDir, { recursive: true }) to mkdirSync(destDir, { recursive: true, mode: DIR_MODE_SECRET });",
-      "After line 183: add chmodSync(destDir, DIR_MODE_SECRET); — fixes permissions when restore re-creates parent dirs",
-      "Run: npm test -- --testPathPattern='capability-snapshot' and confirm all tests pass with no regressions"
+      "Read src/operate/backup/backup.ts lines 1-30 — confirm chmodSync is NOT in the node:fs import, and FILE_MODE_SECRET is NOT imported",
+      "Read src/operate/backup/backup.ts lines 155-175 — confirm mkdirSync(snapsDir, { recursive: true, mode: DIR_MODE_SECRET }) exists but has NO chmodSync call after it",
+      "Read src/operate/backup/backup.ts lines 205-215 — confirm createWriteStream(archivePath) has no mode option",
+      "Read src/operate/backup/backup.ts lines 245-255 — confirm writeFile(manifestPath, ...) has no mode option",
+      "Add chmodSync to the node:fs import in backup.ts",
+      "Add FILE_MODE_SECRET to the existing import from ../../config/defaults.js in backup.ts (DIR_MODE_SECRET is already imported)",
+      "Add chmodSync(snapsDir, DIR_MODE_SECRET) on the line immediately after mkdirSync(snapsDir, ...) — fixes existing installs where snapshots/ was created at 0755",
+      "Change createWriteStream(archivePath) to createWriteStream(archivePath, { mode: FILE_MODE_SECRET }) — restricts the unencrypted archive from creation time",
+      "After the await pipeline(...) line that writes the archive, add chmodSync(archivePath, FILE_MODE_SECRET) — enforces mode even if umask overrides",
+      "Change writeFile(manifestPath, ..., 'utf-8') to writeFile(manifestPath, ..., { encoding: 'utf-8', mode: FILE_MODE_SECRET }) — manifest contains backup metadata",
+      "Run the full test suite — confirm all backup tests pass with no regressions"
     ],
     "acceptanceCriteria": [
-      "Snapshot files copied from integration targets (engine/credentials.json, .integration-manifest.json) are written with mode 0600 — stat on any file under ops/rollback/integrations/snap-*/engine/credentials.json confirms no group/other read bits",
-      "Restore operation creates destination parent directories with mode 0700 — stat on dirs recreated during restore (e.g. ops/integrations/) confirms mode 0700",
-      "All existing capability-snapshot tests pass with no regressions"
+      "The snapshots/ directory is created/fixed to mode 0700 — stat confirms no group/other read bits on existing installs",
+      "The unencrypted archive (.tar.gz) is created with mode 0600 — stat on a test run confirms no group/other read bits",
+      "The backup manifest (.manifest.json) is written with mode 0600"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T22:07:23-07:00",
+    "startedAt": "2026-03-23T22:32:57-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T22:09:57-07:00"
+    "completedAt": "2026-03-23T22:35:14-07:00"
   },
-  "completedAt": "2026-03-23T22:09:57-07:00",
+  "completedAt": "2026-03-23T22:35:14-07:00",
   "attempts": 1
 }
