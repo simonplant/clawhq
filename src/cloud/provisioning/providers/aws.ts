@@ -228,7 +228,7 @@ export function createAwsAdapter(token: string, region = "us-east-1"): ProviderA
       }
       const result = await ec2Request({ Action: "DescribeRegions" }, signal);
       if (!result.ok) return { valid: false, error: `AWS credential validation failed: ${result.body.slice(0, 200)}` };
-      return { valid: true, account: accessKeyId };
+      return { valid: true, account: `${accessKeyId.slice(0, 8)}...` };
     },
 
     async createVm(options: CreateVmOptions): Promise<CreateVmResult> {
