@@ -1,37 +1,37 @@
 {
-  "sprintId": "sprint-1774365560",
-  "startedAt": "2026-03-24T08:19:20-07:00",
+  "sprintId": "sprint-1774365958",
+  "startedAt": "2026-03-24T08:25:58-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-008",
-    "title": "Create docs/CONFIGURATION.md — blueprint schema, skill schema, every config option",
-    "intent": "Users writing custom blueprints or skills must have a single reference document — reading 7 example YAMLs and reverse-engineering the schema is not documentation.",
-    "description": "Configuration content exists but only as examples and scattered references: configs/blueprints/*.yaml (7 blueprints establishing the blueprint schema by example), configs/skills/*/config.yaml (6 skills establishing the skill schema by example), configs/skills/*/SKILL.md (6 behavior definitions establishing the SKILL.md format by example), docs/ARCHITECTURE.md ('What a Blueprint Configures' 10-dimension table, 'The 14 Landmine Rules' table, 'What Gets Generated' directory tree), docs/OPENCLAW-REFERENCE.md (openclaw.json reference section 10, Configuration Surface Inventory section 11, The 14 Configuration Landmines section 12 with detailed explanations, Automation section 14 for cron config), CLAUDE.md (Key Design Constraints, CLI Commands). The unified document must cover: blueprint YAML schema (field-by-field, every dimension from the 10-dimension table), skill config.yaml schema (field-by-field: schedule, model, dependencies, approval, boundaries), SKILL.md authoring format, the 14 landmine rules with explanations, model routing configuration, and integration configuration patterns.",
+    "id": "FEAT-009",
+    "title": "Create docs/PROBLEMS.md — why OpenClaw is hard and what ClawHQ fixes",
+    "intent": "People search for problems, not solutions — this document must rank for the frustrations that drive users to ClawHQ.",
+    "description": "The pain point content is the richest of any doc area but scattered across 4 files: docs/PRODUCT.md ('The Problem' section: freelancers/enthusiasts abandoned within a month, too much config), README.md (second paragraph: 13,500 tokens of config, 11+ files, 14 silent landmines, most deployments abandoned), docs/OPENCLAW-REFERENCE.md (section 12: the 14 Configuration Landmines with detailed explanations of each; section 8: Memory System 360KB bloat in 3 days; section 9: Identity Drift; section 15: Threat Model showing security-by-default gaps; section 30: Production Discoveries documenting real-world failures), CLAUDE.md (Core Intent: surveillance AI vs raw framework framing). This is primarily a consolidation and narrative job. Each problem should be stated as a user would google it, with evidence from OPENCLAW-REFERENCE.md production discoveries, and a concrete explanation of how ClawHQ addresses it.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Read configs/blueprints/email-manager.yaml and configs/blueprints/research-copilot.yaml as reference blueprints to extract the full field set",
-      "Read configs/skills/email-digest/config.yaml and configs/skills/morning-brief/config.yaml as reference skills to extract the full field set",
-      "Read configs/skills/email-digest/SKILL.md as reference for the SKILL.md authoring format",
-      "Read docs/ARCHITECTURE.md sections: 'What a Blueprint Configures' (10-dimension table), 'The 14 Landmine Rules', 'What Gets Generated'",
-      "Read docs/OPENCLAW-REFERENCE.md sections 10 (openclaw.json), 11 (Configuration Surface Inventory), 12 (14 Configuration Landmines with detailed explanations), 14 (cron/heartbeat/hooks)",
-      "Read CLAUDE.md Key Design Constraints section",
-      "Compose docs/CONFIGURATION.md with sections: Blueprint Schema (every field, type, required/optional, description, default), Skill Schema (config.yaml field-by-field + SKILL.md format guide), The 14 Landmine Rules (sourced from OPENCLAW-REFERENCE.md section 12, each rule with explanation and safe default), Model Routing (local vs cloud, per-task-type routing), Integration Patterns (how to configure IMAP, SMTP, CalDAV, etc.), Generated Directory Structure (from ARCHITECTURE.md 'What Gets Generated')",
-      "For each schema field, document: name, type, required/optional, default, description, example value"
+      "Read docs/PRODUCT.md 'The Problem' section for the core problem statement",
+      "Read README.md second paragraph for the quantified pain (13,500 tokens, 11+ files, 14 landmines, abandoned deployments)",
+      "Read docs/OPENCLAW-REFERENCE.md section 12 (14 Configuration Landmines) for detailed landmine documentation",
+      "Read docs/OPENCLAW-REFERENCE.md section 8 (Memory System: 360KB bloat), section 9 (Identity Drift), section 15 (Threat Model), section 30 (Production Discoveries)",
+      "Read CLAUDE.md Core Intent section for the surveillance-vs-sovereignty framing",
+      "Compose docs/PROBLEMS.md with one section per problem, each structured as: search-friendly heading, pain description (2-3 sentences), evidence (from OPENCLAW-REFERENCE.md production data or mark TODO), how ClawHQ addresses it (specific feature/blueprint/automation)",
+      "Cover at minimum: OpenClaw configuration is 13,500 tokens across 11+ files, 14 silent configuration landmines that break agents without warning, Memory bloats to 360KB in 3 days without management, Identity drift degrades agent quality over time, No security hardening by default (cap_drop, egress, rootfs), Most OpenClaw deployments abandoned within a month, People paying consultants to install what should be a consumer product",
+      "Write problem headings as search queries: e.g. 'OpenClaw configuration is too complex for non-developers' not 'Configuration Complexity'"
     ],
     "acceptanceCriteria": [
-      "docs/CONFIGURATION.md exists and documents the full blueprint YAML schema, skill config.yaml schema, SKILL.md format, and all 14 landmine rules",
-      "Every blueprint schema field includes: name, type, required/optional, default, description",
-      "Every skill config.yaml field includes: name, type, required/optional, default, description",
-      "The 14 landmine rules each have an explanation and the safe default ClawHQ enforces",
-      "A user can write a custom blueprint or skill using only this document as reference"
+      "docs/PROBLEMS.md exists with at least 7 distinct problem sections",
+      "Each problem is stated as a user would search for it (search-friendly heading)",
+      "Each problem section includes: pain description, evidence from OPENCLAW-REFERENCE.md or real-world data, and how ClawHQ addresses it",
+      "Quantified claims (13,500 tokens, 14 landmines, 360KB bloat, 11+ files) are included with source attribution",
+      "Problems reference specific ClawHQ features (blueprints, auto-hardening, clawhq doctor, memory management) not vague claims"
     ],
     "scope": [
-      "docs/CONFIGURATION.md"
+      "docs/PROBLEMS.md"
     ],
-    "startedAt": "2026-03-24T08:19:20-07:00",
+    "startedAt": "2026-03-24T08:25:58-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T08:25:56-07:00"
+    "completedAt": "2026-03-24T08:32:09-07:00"
   },
-  "completedAt": "2026-03-24T08:25:56-07:00",
+  "completedAt": "2026-03-24T08:32:09-07:00",
   "attempts": 1
 }
