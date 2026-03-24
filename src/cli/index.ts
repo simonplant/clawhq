@@ -79,6 +79,7 @@ import type { CloudDemoProgress } from "../demo/cloud.js";
 import { runDemo } from "../demo/index.js";
 import type { DemoProgress } from "../demo/index.js";
 import {
+  allTemplatesToChoices,
   loadAllBuiltinBlueprints,
   loadBlueprint,
 } from "../design/blueprints/index.js";
@@ -3511,6 +3512,7 @@ const deployCmd = program
   .option("-n, --name <name>", "Instance name")
   .option("-r, --region <region>", "VM region")
   .option("-s, --size <size>", "VM size")
+  .option("-b, --blueprint <name>", "Blueprint to configure the agent with")
   .option("--snapshot <id>", "Use a pre-built snapshot for sub-60s provisioning")
   .option("--ssh-keys <keys>", "Comma-separated SSH key IDs or fingerprints")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
@@ -3521,6 +3523,7 @@ const deployCmd = program
     name?: string;
     region?: string;
     size?: string;
+    blueprint?: string;
     snapshot?: string;
     sshKeys?: string;
     deployDir: string;
@@ -3600,12 +3603,26 @@ deployCmd
   .description("Destroy a provisioned cloud instance")
   .argument("<instance-id>", "Instance ID to destroy")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
+  .option("-y, --yes", "Skip confirmation prompt")
   .option("--json", "Output as JSON")
-  .action(async (instanceId: string, opts: { deployDir: string; json?: boolean }) => {
+  .action(async (instanceId: string, opts: { deployDir: string; yes?: boolean; json?: boolean }) => {
     const instance = findInstance(opts.deployDir, instanceId);
     if (!instance) {
       console.error(chalk.red(`Instance not found: ${instanceId}`));
       process.exit(1);
+    }
+
+    // Confirmation prompt unless --yes or --json
+    if (!opts.yes && !opts.json) {
+      const { confirm } = await import("@inquirer/prompts");
+      const proceed = await confirm({
+        message: `Destroy instance ${instance.name} (${instance.provider}, ${instance.region})? This will terminate the VM and clean up local state.`,
+        default: false,
+      });
+      if (!proceed) {
+        console.log(chalk.dim("Destroy cancelled."));
+        return;
+      }
     }
 
     const spinner = ora(`Destroying instance ${instance.name}…`);
@@ -3622,6 +3639,7 @@ deployCmd
       console.log(JSON.stringify(result, null, 2));
     } else if (result.success) {
       console.log(chalk.green(`Instance destroyed: ${instance.name} (${instance.provider})`));
+      console.log(chalk.dim("  VM terminated, SSH key removed, local state cleaned."));
     } else {
       console.error(chalk.red(`Failed to destroy instance: ${result.error}`));
       process.exit(1);
@@ -3694,11 +3712,46 @@ deployCmd
 
 deployCmd
   .command("status")
-  .description("Check status of a provisioned instance")
-  .argument("<instance-id>", "Instance ID to check")
+  .description("Check status of provisioned instances (all if no ID given)")
+  .argument("[instance-id]", "Instance ID to check (omit to show all)")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
   .option("--json", "Output as JSON")
-  .action(async (instanceId: string, opts: { deployDir: string; json?: boolean }) => {
+  .action(async (instanceId: string | undefined, opts: { deployDir: string; json?: boolean }) => {
+    // If no instance ID given, show all deployed agents
+    if (!instanceId) {
+      const registry = readInstanceRegistry(opts.deployDir);
+
+      if (opts.json) {
+        // Fetch live status for each instance
+        const statuses = await Promise.all(
+          registry.instances.map(async (inst) => {
+            const status = await getInstanceStatus({ deployDir: opts.deployDir, instanceId: inst.id });
+            return { instance: inst, liveStatus: status };
+          }),
+        );
+        console.log(JSON.stringify(statuses, null, 2));
+      } else if (registry.instances.length === 0) {
+        console.log(chalk.dim("No cloud-deployed agents."));
+        console.log(chalk.dim("  Deploy one: clawhq deploy"));
+      } else {
+        console.log(chalk.bold("\nCloud-Deployed Agents\n"));
+        for (const inst of registry.instances) {
+          const status = await getInstanceStatus({ deployDir: opts.deployDir, instanceId: inst.id });
+          const stateColor = status.state === "active" ? chalk.green : status.state === "error" ? chalk.red : chalk.yellow;
+          console.log(`  ${chalk.bold(inst.name)} ${chalk.dim(`(${inst.id.slice(0, 8)}…)`)}`);
+          console.log(`    Provider: ${inst.provider}  Region: ${inst.region}  Size: ${inst.size}`);
+          console.log(`    IP: ${inst.ipAddress}  State: ${stateColor(status.state)}`);
+          console.log(`    Created: ${inst.createdAt}`);
+          if (status.error) {
+            console.log(`    Error: ${chalk.red(status.error)}`);
+          }
+          console.log("");
+        }
+      }
+      return;
+    }
+
+    // Single instance status
     const instance = findInstance(opts.deployDir, instanceId);
     if (!instance) {
       console.error(chalk.red(`Instance not found: ${instanceId}`));
@@ -3884,6 +3937,7 @@ async function runDeployWizard(opts: {
   name?: string;
   region?: string;
   size?: string;
+  blueprint?: string;
   snapshot?: string;
   sshKeys?: string;
   deployDir: string;
@@ -3984,7 +4038,32 @@ async function runDeployWizard(opts: {
     region = providerInfo.defaultRegion;
   }
 
-  // ── Step 4: Size ─────────────────────────────────────────────────────────────
+  // ── Step 4: Blueprint ────────────────────────────────────────────────────────
+
+  let blueprint: string | undefined;
+  if (opts.blueprint) {
+    blueprint = opts.blueprint;
+  } else if (isInteractive) {
+    const loaded = loadAllBuiltinBlueprints();
+    if (loaded.length > 0) {
+      const choices = allTemplatesToChoices(loaded);
+      blueprint = await select({
+        message: "Choose a blueprint for your agent",
+        choices: [
+          ...choices.map((c) => ({
+            name: `${c.name} — ${c.tagline}`,
+            value: c.value,
+          })),
+          { name: "Skip — configure later", value: "__skip__" },
+        ],
+      });
+      if (blueprint === "__skip__") {
+        blueprint = undefined;
+      }
+    }
+  }
+
+  // ── Step 5: Size ──────────────────────────────────────────────────────────────
 
   let size: string;
   if (opts.size) {
@@ -4002,7 +4081,7 @@ async function runDeployWizard(opts: {
     size = providerInfo.defaultSize;
   }
 
-  // ── Step 5: Instance name ────────────────────────────────────────────────────
+  // ── Step 6: Instance name ────────────────────────────────────────────────────
 
   let name: string;
   if (opts.name) {
@@ -4022,7 +4101,7 @@ async function runDeployWizard(opts: {
     });
   }
 
-  // ── Step 6: SSH key detection and upload ──────────────────────────────────────
+  // ── Step 7: SSH key detection and upload ──────────────────────────────────────
 
   let sshKeyIds: string[] | undefined;
   if (opts.sshKeys) {
@@ -4060,7 +4139,7 @@ async function runDeployWizard(opts: {
     }
   }
 
-  // ── Step 7: Cost confirmation ────────────────────────────────────────────────
+  // ── Step 8: Cost confirmation ────────────────────────────────────────────────
 
   const monthlyCost = estimateMonthlyCost(provider, size);
 
@@ -4071,6 +4150,9 @@ async function runDeployWizard(opts: {
     console.log(chalk.dim(`  Provider:  `) + providerInfo.name);
     console.log(chalk.dim(`  Region:    `) + region);
     console.log(chalk.dim(`  Size:      `) + size);
+    if (blueprint) {
+      console.log(chalk.dim(`  Blueprint: `) + blueprint);
+    }
     console.log(chalk.dim(`  Name:      `) + name);
     if (sshKeyIds?.length) {
       console.log(chalk.dim(`  SSH Keys:  `) + sshKeyIds.join(", "));
@@ -4094,7 +4176,7 @@ async function runDeployWizard(opts: {
     }
   }
 
-  // ── Step 8: Provision ────────────────────────────────────────────────────────
+  // ── Step 9: Provision ────────────────────────────────────────────────────────
 
   const spinner = ora("Provisioning cloud instance…");
   if (!opts.json) {
@@ -4110,6 +4192,7 @@ async function runDeployWizard(opts: {
     name,
     region,
     size,
+    blueprint,
     sshKeys: sshKeyIds,
     snapshotId: opts.snapshot,
     useSnapshot: !opts.snapshot,

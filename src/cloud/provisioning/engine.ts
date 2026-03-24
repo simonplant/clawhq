@@ -127,7 +127,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
   let createResult;
   if (options.snapshotId) {
     // Fast path: boot from pre-built snapshot with minimal config injection
-    const userData = generateSnapshotInit({ name: options.name, sshPublicKey: keypair.publicKey });
+    const userData = generateSnapshotInit({ name: options.name, blueprint: options.blueprint, sshPublicKey: keypair.publicKey });
     createResult = await adapter.createVmFromSnapshot({
       name: options.name,
       region: options.region,
@@ -139,7 +139,7 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
     });
   } else {
     // Universal path: cloud-init bootstrap
-    const userData = generateCloudInit({ name: options.name, sshPublicKey: keypair.publicKey });
+    const userData = generateCloudInit({ name: options.name, blueprint: options.blueprint, sshPublicKey: keypair.publicKey });
     createResult = await adapter.createVm({
       name: options.name,
       region: options.region,
