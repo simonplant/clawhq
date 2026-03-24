@@ -1,26 +1,23 @@
 {
-  "sprintId": "sprint-1774363856",
-  "startedAt": "2026-03-24T07:50:56-07:00",
+  "sprintId": "sprint-1774364084",
+  "startedAt": "2026-03-24T07:54:44-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-067",
-    "title": "GCP adapter JSON.parse on service account token missing try-catch",
-    "intent": "A malformed GCP service account token produces a clear validation error immediately — never an unhandled exception mid-provisioning.",
-    "description": "src/cloud/provisioning/providers/gcp.ts:132 calls JSON.parse(token) without a try-catch. If the user pastes a malformed service account JSON (missing brace, extra comma), the adapter throws an unhandled exception with a confusing stack trace instead of a validation error. Steps: (1) wrap JSON.parse in try-catch; (2) rethrow as descriptive Error: 'Invalid GCP service account JSON: <original message>'; (3) add test for malformed JSON (empty string, truncated JSON, wrong type). Scope: ~8 lines in gcp.ts.",
+    "id": "BUG-068",
+    "title": "Hetzner adapter parseInt on dropletIds propagates NaN into API request body",
+    "intent": "A non-numeric server ID produces an immediate validation error before any API call — NaN never reaches the Hetzner API.",
+    "description": "src/cloud/provisioning/providers/hetzner.ts:177 maps dropletIds through parseInt without validating the result. If any id is non-numeric, parseInt returns NaN, which serializes silently into the Hetzner API request body causing a confusing 422 response. Steps: (1) after parseInt(id, 10), check isNaN(numId) and throw Error with the invalid id value; (2) add test for non-numeric id inputs. Scope: ~4 lines in hetzner.ts.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "Malformed JSON token throws with message starting 'Invalid GCP service account JSON:' | Stack trace from JSON.parse never surfaces to caller | Valid service account JSON parses correctly — no regression | Empty string token rejected with clear message",
-      "Malformed JSON token throws Error with message starting with 'Invalid GCP service account JSON:'",
-      "Empty string token is rejected with clear message",
-      "Valid service account JSON parses correctly — no regression on valid GCP paths",
-      "Internal JSON.parse stack trace never surfaces to the caller"
+      "Non-numeric droplet ID throws Error containing the invalid id before any API call",
+      "Valid numeric IDs convert correctly and pass through — no regression"
     ],
     "scope": [],
-    "startedAt": "2026-03-24T07:50:56-07:00",
+    "startedAt": "2026-03-24T07:54:44-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T07:54:42-07:00"
+    "completedAt": "2026-03-24T07:56:40-07:00"
   },
-  "completedAt": "2026-03-24T07:54:42-07:00",
+  "completedAt": "2026-03-24T07:56:40-07:00",
   "attempts": 1
 }
