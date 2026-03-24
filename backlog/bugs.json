@@ -115,11 +115,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "GROOMED 2026-03-23. Two call sites: queue.ts (TypeScript, use DIR_MODE_SECRET) and approve-action.ts template string (generated CommonJS script, must use literal 0o700 not the imported constant). BUG-090 is the parent fix for this file — this closes the directory half that BUG-090 left open.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:24:01-07:00"
     }
   ]
 }
