@@ -4,9 +4,10 @@
  * Stores role definitions and assignments in ~/.clawhq/ops/roles/.role-manifest.json.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import type { RoleDefinition, RoleManifest } from "./types.js";
 
 const MANIFEST_DIR = "ops/roles";
@@ -76,8 +77,10 @@ export function loadRoleManifest(deployDir: string): RoleManifest {
 export function saveRoleManifest(deployDir: string, manifest: RoleManifest): void {
   const path = manifestPath(deployDir);
   try {
-    mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true });
-    writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+    mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true, mode: DIR_MODE_SECRET });
+    chmodSync(join(deployDir, MANIFEST_DIR), DIR_MODE_SECRET);
+    writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n", { encoding: "utf-8", mode: FILE_MODE_SECRET });
+    chmodSync(path, FILE_MODE_SECRET);
   } catch (err) {
     throw new Error(`Failed to write role manifest: ${path}`, { cause: err });
   }
