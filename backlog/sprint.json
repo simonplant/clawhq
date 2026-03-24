@@ -1,33 +1,31 @@
 {
-  "sprintId": "sprint-1774328999",
-  "startedAt": "2026-03-23T22:09:59-07:00",
+  "sprintId": "sprint-1774329153",
+  "startedAt": "2026-03-23T22:12:33-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-103",
-    "title": "ops/roles/ directory and .role-manifest.json created without security modes — role assignments world-listable",
-    "intent": "The ops/roles/ directory and .role-manifest.json must be created with mode 0700/0600 — role assignment data must not be listable or readable by other users.",
-    "description": "src/evolve/role/manifest.ts line 79 calls mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) without mode (creates ops/roles/ at 0755). Line 80 calls writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', 'utf-8') without mode (creates .role-manifest.json at 0644). The manifest stores role definitions and integration-to-role assignments (which integrations have 'admin', 'operator', or 'reader' roles) — exposing this lets an attacker enumerate capability access control assignments. Fix: import chmodSync and DIR_MODE_SECRET, FILE_MODE_SECRET from config/defaults.js; add mode: DIR_MODE_SECRET to mkdirSync; add chmodSync after; change writeFileSync to use FILE_MODE_SECRET; add chmodSync after writeFileSync.",
+    "id": "BUG-104",
+    "title": "fleet.json written without mode 0600 — agent registry world-readable on multi-user systems",
+    "intent": "fleet.json must be written with mode 0600 — agent registry (names, paths, health) must not be readable by other users on the system.",
+    "description": "src/cloud/fleet/discovery.ts line 67 calls writeFileSync(tmpPath, content) without a mode option when writing the fleet registry atomically. The cloud/ parent directory is correctly created with DIR_MODE_SECRET (line 59), but the fleet.json file itself is written with default permissions (0644). fleet.json contains: registered agent names, deployment directories (absolute paths), and health metadata — exposing the full inventory of agents and their filesystem locations to any user on the system. Fix: add FILE_MODE_SECRET to the import from config/defaults.js; add chmodSync to the node:fs import; change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }); add chmodSync(tmpPath, FILE_MODE_SECRET) after the write.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/evolve/role/manifest.ts lines 7-9 — confirm chmodSync is not in the node:fs import and no defaults import exists",
-      "Line 7: add chmodSync to the node:fs import — change to: import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
-      "After line 9 (join import): add new import line: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
-      "Line 79: change mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) to mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true, mode: DIR_MODE_SECRET });",
-      "After line 79: add chmodSync(join(deployDir, MANIFEST_DIR), DIR_MODE_SECRET);",
-      "Line 80: change writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', 'utf-8') to writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', { encoding: 'utf-8', mode: FILE_MODE_SECRET });",
-      "After line 80: add chmodSync(path, FILE_MODE_SECRET);",
-      "Run: npm test -- --testPathPattern='role' and confirm all tests pass"
+      "Read src/cloud/fleet/discovery.ts lines 10-14 — confirm chmodSync is not in node:fs import and FILE_MODE_SECRET is not in the defaults import (currently only DIR_MODE_SECRET)",
+      "Line 10: add chmodSync to the node:fs import destructure — result: import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';",
+      "Line 13: add FILE_MODE_SECRET to the defaults import — change to: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
+      "Line 67 (inside writeFleetRegistry try block): change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });",
+      "After line 67: add chmodSync(tmpPath, FILE_MODE_SECRET); — this runs before renameSync so the temp file has correct mode before atomic rename",
+      "Run: npm test -- --testPathPattern='fleet|discovery' and confirm all tests pass"
     ],
     "acceptanceCriteria": [
-      "The ops/roles/ directory is created with mode 0700 — stat confirms no group/other read bits",
-      ".role-manifest.json is written with mode 0600 — stat confirms no group/other read bits",
-      "All existing role manifest tests pass with no regressions"
+      "fleet.json is written with mode 0600 — stat on ~/.clawhq/cloud/fleet.json confirms no group/other read bits",
+      "The cloud/ parent directory remains at mode 0700 (unchanged — was already correct)",
+      "All existing fleet/discovery tests pass with no regressions"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T22:09:59-07:00",
+    "startedAt": "2026-03-23T22:12:33-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T22:12:32-07:00"
+    "completedAt": "2026-03-23T22:14:56-07:00"
   },
-  "completedAt": "2026-03-23T22:12:32-07:00",
+  "completedAt": "2026-03-23T22:14:56-07:00",
   "attempts": 1
 }
