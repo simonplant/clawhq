@@ -1,31 +1,32 @@
 {
-  "sprintId": "sprint-1774317805",
-  "startedAt": "2026-03-23T19:03:25-07:00",
+  "sprintId": "sprint-1774317995",
+  "startedAt": "2026-03-23T19:06:35-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-080",
-    "title": "SSH update uses StrictHostKeyChecking=no — remote identity not verified, MITM possible",
-    "intent": "clawhq deploy update must verify the remote host's identity before executing commands — StrictHostKeyChecking=no accepts any host key, making the update channel vulnerable to MITM on the network path.",
-    "description": "src/cloud/provisioning/update.ts line 143 passes -o StrictHostKeyChecking=no and -o UserKnownHostsFile=/dev/null to ssh. This disables host key verification entirely — any host that responds on instance.ipAddress will be trusted. Since ClawHQ generates the SSH keypair and injects the public key via cloud-init, the host public key is also available at provision time via the provider API (DigitalOcean, Hetzner, AWS, GCP all surface console output or host keys). Fix: during provisioning, record the SSH host public key fingerprint in the instance registry (sshHostKey field on ProvisionedInstance). In executeSsh(), write a temporary known_hosts file with that fingerprint and pass -o StrictHostKeyChecking=yes -o UserKnownHostsFile=<tmpfile> instead. If fingerprint is unavailable in registry, fall back to accept-new (not no) and log a warning. Scope: engine.ts (capture host key at provision time), types.ts (sshHostKey field on ProvisionedInstance), update.ts (use known_hosts file).",
+    "id": "BUG-077",
+    "title": "SSH keys directory created without mode 0700 — key filenames world-listable on multi-user systems",
+    "intent": "The SSH keys directory must not be listable by other users — mkdirSync must set mode 0700 so the directory contents are not exposed even though individual key files are mode 0600.",
+    "description": "src/cloud/provisioning/ssh-keygen.ts line 37 calls mkdirSync(keysDir, { recursive: true }) without a mode option. This creates the keys directory (deployDir/keys/) with default permissions (0755 on most Linux systems), making the directory world-readable. While individual key files are mode 0600 (correct), any user on the system can ls the keys directory to enumerate which instance IDs have keys stored. The fix is to pass { recursive: true, mode: 0o700 } to mkdirSync, matching the same protection principle used for credentials.ts. The same issue exists in registry.ts line 57 for the registry parent directory, but that directory only contains the registry file which is already 0600.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/cloud/provisioning/types.ts — add optional sshHostKey?: string field to ProvisionedInstance interface",
-      "Read src/cloud/provisioning/engine.ts — after createVm() returns an IP, query the provider adapter for the SSH host key fingerprint using adapter.getVmStatus() or a new method; if available, pass it to addInstance()",
-      "Read src/cloud/provisioning/registry.ts addInstance() — include sshHostKey in the instance record if provided",
-      "Read src/cloud/provisioning/update.ts executeSsh() — replace StrictHostKeyChecking=no with: if sshHostKey is present in instance record, write a temp known_hosts file and pass -o StrictHostKeyChecking=yes -o UserKnownHostsFile=<tmpfile>; if absent, use -o StrictHostKeyChecking=accept-new and log a warning",
-      "Delete the temp known_hosts file after SSH command completes (success or failure)",
-      "Run update tests — confirm StrictHostKeyChecking=no is no longer passed in any SSH invocation"
+      "Read src/cloud/provisioning/ssh-keygen.ts lines 34-50 — confirm mkdirSync(keysDir, { recursive: true }) has no mode option",
+      "Change mkdirSync call to mkdirSync(keysDir, { recursive: true, mode: 0o700 }) — this ensures the directory is created owner-only even if an existing parent was 0755",
+      "Read src/cloud/provisioning/registry.ts writeInstanceRegistry() — confirm mkdirSync there also lacks a mode; add mode: 0o700 to that call as well",
+      "Run ssh-keygen.test.ts and registry.test.ts — confirm both pass and no regressions"
     ],
     "acceptanceCriteria": [
-      "When an instance has sshHostKey in its registry record, executeSsh() uses StrictHostKeyChecking=yes with a temp known_hosts file",
-      "When sshHostKey is absent, executeSsh() uses StrictHostKeyChecking=accept-new (not no) — first-connect behavior, not blind trust",
-      "StrictHostKeyChecking=no does not appear in any SSH invocation in update.ts"
+      "The keys directory (deployDir/keys/) is created with mode 0700 — stat confirms no group/other read bits",
+      "The registry parent directory is created with mode 0700",
+      "Existing key file mode 0600 behavior is unchanged"
     ],
-    "scope": [],
-    "startedAt": "2026-03-23T19:03:25-07:00",
+    "scope": [
+      "src/cloud/provisioning/ssh-keygen.ts",
+      "src/cloud/provisioning/registry.ts"
+    ],
+    "startedAt": "2026-03-23T19:06:35-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T19:06:33-07:00"
+    "completedAt": "2026-03-23T19:09:11-07:00"
   },
-  "completedAt": "2026-03-23T19:06:33-07:00",
+  "completedAt": "2026-03-23T19:09:11-07:00",
   "attempts": 1
 }

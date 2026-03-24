@@ -16,7 +16,7 @@ import type {
   ProvisionedInstance,
 } from "./types.js";
 
-import { FILE_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ function writeInstanceRegistry(deployDir: string, registry: InstanceRegistry): v
   const dir = dirname(path);
 
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
 
   const content = JSON.stringify(registry, null, 2) + "\n";
