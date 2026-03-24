@@ -1,30 +1,29 @@
 {
-  "sprintId": "sprint-1774368070",
-  "startedAt": "2026-03-24T09:01:10-07:00",
+  "sprintId": "sprint-1774368257",
+  "startedAt": "2026-03-24T09:04:17-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-109",
-    "title": "cloud-init: clawhq up failure masked by '|| true' — VM reports ready when agent is not running",
-    "intent": "The provisioning engine must only mark an instance active when the agent is actually running. A VM that boots but fails to start its agent is worse than a provisioning failure — it is invisible.",
-    "description": "In src/cloud/provisioning/cloud-init.ts line 137, the agent start command runs as 'clawhq up || true'. The '|| true' swallows all failures from clawhq up. If the agent fails to start, the sentinel file is still touched and boot-status.json reports ready. The provisioning engine marks the instance active. Fix: remove '|| true' so clawhq up failure exits the cloud-init script non-zero.",
+    "id": "BUG-110",
+    "title": "engine.ts: VM left running and SSH key orphaned if registry write throws after successful VM creation",
+    "intent": "A provisioning failure after VM creation must never leave the user with an untracked running VM. If the instance registry write fails, the user must receive the VM ID so they can clean it up manually — silent orphans are a security and cost risk.",
+    "description": "In src/cloud/provisioning/engine.ts around line 234, addInstance() is called without a try-catch after the VM has been created and the firewall applied. If writeInstanceRegistry() throws (disk full, permissions error), the error propagates uncaught and the provisioning function rejects. The VM is running, the firewall is in place, and the SSH private key is on disk at keypair.privateKeyPath — but no registry entry exists. clawhq deploy list will never show the instance. The user has an untracked running VM with no way to destroy it via clawhq. Fix: wrap addInstance() in try-catch; on failure, include the provider instance ID in the error message so the user can destroy it manually via the cloud console.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/cloud/provisioning/cloud-init.ts lines 134-152 to confirm the current '|| true' on clawhq up.",
-      "Remove '|| true' from line 137. Change 'clawhq up ${upArgs.join(\" \")} || true' to 'clawhq up ${upArgs.join(\" \")}'. A failed clawhq up will now exit non-zero, preventing sentinel creation and boot-status.json write.",
-      "Check that clawhq install and clawhq init commands do NOT already have '|| true' and would correctly fail-fast — confirm no regression from removing just the one instance.",
-      "In cloud-init.test.ts, add a test that parses the generated script string and asserts it does NOT contain '|| true' after the clawhq up line.",
-      "Run npm test -- --testPathPattern=cloud-init to confirm all tests pass."
+      "Read src/cloud/provisioning/engine.ts lines 231-260 to understand the addInstance() call and surrounding flow.",
+      "Wrap the addInstance() call (line 234) in a try-catch. On catch, return a failure result that includes: the provider instance ID, the SSH key path, and instructions to destroy the VM manually via the cloud console. Do NOT clean up the SSH key or attempt to destroy the VM inside this error handler — those are separate concerns.",
+      "Write a test in engine.test.ts: mock writeFileSync (via registry) to throw on the registry write, verify the returned result has success:false and the providerInstanceId in the error message.",
+      "Run npm test -- --testPathPattern=engine.test to confirm all tests pass."
     ],
     "acceptanceCriteria": [
-      "Generated cloud-init script does not contain '|| true' after the clawhq up command",
-      "If clawhq up exits non-zero, the sentinel file is not created and boot-status.json is not written",
-      "Existing cloud-init tests pass with no regression"
+      "If addInstance() throws after VM creation, provisionInstance() returns success:false with the provider instance ID and a message directing the user to destroy it manually",
+      "The SSH key path is included in the error output so the user can locate the orphaned key",
+      "Existing engine tests pass with no regression"
     ],
     "scope": [],
-    "startedAt": "2026-03-24T09:01:10-07:00",
+    "startedAt": "2026-03-24T09:04:17-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T09:04:16-07:00"
+    "completedAt": "2026-03-24T09:08:21-07:00"
   },
-  "completedAt": "2026-03-24T09:04:16-07:00",
+  "completedAt": "2026-03-24T09:08:21-07:00",
   "attempts": 1
 }
