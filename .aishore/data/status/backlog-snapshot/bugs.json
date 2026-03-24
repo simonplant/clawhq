@@ -12,11 +12,12 @@
       "acceptanceCriteria": [],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "READY. ProvisionedInstance confirmed in types.ts:285-306 — no sshKeyPath field exists. wizard.ts confirmed no keypair generation code. cloud-init.ts has generateCloudInit function needing pubKey param. Scope: 3 files (types.ts, wizard.ts, cloud-init.ts). node:crypto is built-in — no new deps. Steps prescriptive with file locations. Unblocks FEAT-005."
+      "groomingNotes": "READY. ProvisionedInstance confirmed in types.ts:285-306 — no sshKeyPath field exists. wizard.ts confirmed no keypair generation code. cloud-init.ts has generateCloudInit function needing pubKey param. Scope: 3 files (types.ts, wizard.ts, cloud-init.ts). node:crypto is built-in — no new deps. Steps prescriptive with file locations. Unblocks FEAT-005.",
+      "completedAt": "2026-03-23T18:33:55-07:00"
     },
     {
       "id": "BUG-073",
