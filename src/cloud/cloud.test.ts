@@ -1,13 +1,14 @@
 import { createSign, generateKeyPairSync } from "node:crypto";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 
 import {
+  commandQueuePath,
   enqueueCommand,
   processNextCommand,
   readQueueState,
@@ -362,6 +363,23 @@ describe("command queue", () => {
       const state = readQueueState(deployDir);
       expect(state.pending).toHaveLength(1);
       expect(state.pending[0].id).toBe("cmd-010");
+    });
+  });
+
+  describe("file mode", () => {
+    it("writes commands.json with mode 0600 (FILE_MODE_SECRET)", () => {
+      const deployDir = tmpDeployDir();
+      const { privateKey } = generateTestKeys();
+      const command = signCommand(
+        { id: "cmd-mode-001", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+        privateKey,
+      );
+
+      enqueueCommand(deployDir, command);
+
+      const path = commandQueuePath(deployDir);
+      const stat = statSync(path);
+      expect(stat.mode & 0o777).toBe(FILE_MODE_SECRET);
     });
   });
 

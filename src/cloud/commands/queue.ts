@@ -7,10 +7,10 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { CLOUD_COMMAND_QUEUE_MAX_HISTORY } from "../../config/defaults.js";
+import { CLOUD_COMMAND_QUEUE_MAX_HISTORY, FILE_MODE_SECRET } from "../../config/defaults.js";
 import type { TrustMode } from "../../config/types.js";
 import { getCommandDisposition, isArchitecturallyBlocked } from "../trust-modes/policy.js";
 import type {
@@ -66,7 +66,8 @@ function writeQueueState(deployDir: string, state: CommandQueueState): void {
   const tmpPath = join(dir, tmpName);
 
   try {
-    writeFileSync(tmpPath, content);
+    writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
+    chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
   } catch (err) {
     throw new Error(

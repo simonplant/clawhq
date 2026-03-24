@@ -42,11 +42,12 @@
       "acceptanceCriteria": [],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "GROOMED 2026-03-23. Source verified: scaffold.ts is 103 lines. SCAFFOLD_DIRS (lines 25-42) lists 'security' and 'cloud' among 14 subdirs. All dirs created at line 63 with mkdirSync(dir, { recursive: true }) — no mode. Root dir created at line 57 same way. Node.js mkdirSync with recursive:true does not change mode on existing dirs, so downstream per-file fixes (BUG-078, etc.) are moot if scaffold has already run. ACCEPTANCE CRITERIA: (1) scaffoldDirs() creates cloud/ and security/ with mode 0700 — stat.mode & 0o777 === 0o700. (2) All other scaffold dirs (e.g. engine, workspace, ops) are NOT created at 0700 — they use default 0755. (3) chmodSync is applied to cloud/ and security/ after creation so existing installs that already have these dirs at 0755 are corrected on next scaffoldDirs() run. (4) New scaffold.test.ts: call scaffoldDirs(mkdtempSync tmpDir), assert cloud/ at 0700, security/ at 0700, engine at 0755. IMPLEMENTATION: (1) Add 'import { DIR_MODE_SECRET } from \"../../config/defaults.js\";' to scaffold.ts (no existing defaults import). (2) Create two typed subsets of SCAFFOLD_DIRS: SCAFFOLD_DIRS_SECRET = ['security', 'cloud'] and SCAFFOLD_DIRS_NORMAL = all others. (3) Create secret dirs with { recursive: true, mode: DIR_MODE_SECRET }, normal dirs with { recursive: true }. (4) Add chmodSync for security/ and cloud/ after creation to handle existing installs. (5) Verify with statSync assertions in a new scaffold.test.ts: mkdtempSync temp, call scaffoldDirs(temp), statSync(join(temp, 'cloud')).mode & 0o777 === 0o700, statSync(join(temp, 'security')).mode & 0o777 === 0o700. ALSO check that a normal dir (e.g. 'engine') does NOT have 0700 — should be 0755. Run npm test to verify no regressions.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T20:43:31-07:00"
     },
     {
       "id": "BUG-085",
