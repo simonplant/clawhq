@@ -1,33 +1,25 @@
 {
-  "sprintId": "sprint-1774326075",
-  "startedAt": "2026-03-23T21:21:15-07:00",
+  "sprintId": "sprint-1774326691",
+  "startedAt": "2026-03-23T21:31:31-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-093",
-    "title": "workspace/memory/ directory created without mode 0700 — approval queue directory world-listable",
-    "intent": "workspace/memory/ must be created with mode 0700 — the directory must not be world-listable regardless of file permissions inside it.",
-    "description": "Two code paths create workspace/memory/ without mode 0700. (1) src/evolve/approval/queue.ts line 58 (saveQueue function: mkdirSync(dir, { recursive: true })). (2) src/design/tools/approve-action.ts line 61 in the generated script template (mkdirSync(dir, { recursive: true })). BUG-090 fixed approval-queue.json file permissions to 0600, but the directory remains world-listable. Fix: (1) In queue.ts, import DIR_MODE_SECRET from config/defaults.js and pass { mode: DIR_MODE_SECRET } to mkdirSync. (2) In approve-action.ts generated template string, update the mkdirSync literal to include mode: 0o700.",
+    "id": "BUG-094",
+    "title": "workspace/memory/ and tier directories created without mode 0700 — conversation history world-listable on multi-user systems",
+    "intent": "workspace/memory/ and all tier subdirectories (hot/warm/cold) must be created with mode 0700 on all code paths so no other user can list or access conversation history",
+    "description": "Two code paths create workspace/memory and its tier subdirectories (hot/warm/cold) without mode 0700. (1) scaffold.ts SCAFFOLD_DIRS array (line 32) lists 'workspace/memory' — it is created in the standard loop at line 68 via mkdirSync without mode, so the directory is created at 0755. Only 'security' and 'cloud' are in SCAFFOLD_DIRS_SECRET. (2) src/evolve/memory/lifecycle.ts line 73: mkdirSync(dir, { recursive: true }) in saveManifest() creates workspace/memory without mode. (3) src/evolve/memory/lifecycle.ts line 85: mkdirSync(join(deployDir, MEMORY_BASE, tier), { recursive: true }) in ensureTierDirs() creates hot/warm/cold without mode. workspace/memory contains conversation history, PII-masked archives, and summarized agent decisions — the most sensitive non-credential data in the deployment. Any user on a multi-user system can ls workspace/memory/ to enumerate files.",
     "sourceBacklog": "bugs.json",
-    "steps": [
-      "Read src/evolve/approval/queue.ts lines 1-20 — confirm no import from config/defaults.js exists",
-      "Add 'import { DIR_MODE_SECRET } from ../../config/defaults.js' to queue.ts imports",
-      "Read queue.ts line 58 — confirm mkdirSync(dir, { recursive: true }) has no mode option",
-      "Edit queue.ts line 58: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET })",
-      "Read src/design/tools/approve-action.ts line 61 — this is inside a template string; find mkdirSync(dir, { recursive: true }) in the generated script",
-      "Edit approve-action.ts line 61: change the template string literal mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: 0o700 }) — note: uses literal 0o700 not DIR_MODE_SECRET since this is a generated CJS script",
-      "Run npm test — confirm all tests pass"
-    ],
+    "steps": [],
     "acceptanceCriteria": [
-      "workspace/memory/ directory is created with mode 0700 via queue.ts saveQueue path",
-      "Generated approve-action script creates workspace/memory/ with mode 0700",
-      "approval-queue.json file permissions remain unchanged at 0600",
-      "All existing tests pass with no regressions"
+      "workspace/memory/ is created with mode 0700 — no other local user can list or enumerate conversation history files",
+      "workspace/memory/hot, workspace/memory/warm, and workspace/memory/cold are each created with mode 0700",
+      "File permissions on existing files within workspace/memory/ are not altered by this fix",
+      "All tests pass with no regressions"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:21:15-07:00",
+    "startedAt": "2026-03-23T21:31:31-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:24:01-07:00"
+    "completedAt": "2026-03-23T21:34:54-07:00"
   },
-  "completedAt": "2026-03-23T21:24:01-07:00",
+  "completedAt": "2026-03-23T21:34:54-07:00",
   "attempts": 1
 }
