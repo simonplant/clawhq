@@ -4,9 +4,10 @@
  * Stores integration state in ~/.clawhq/ops/integrations/.integration-manifest.json.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import type { IntegrationManifest, IntegrationManifestEntry } from "./types.js";
 
 const MANIFEST_DIR = "ops/integrations";
@@ -35,8 +36,9 @@ export function loadIntegrationManifest(deployDir: string): IntegrationManifest 
 export function saveIntegrationManifest(deployDir: string, manifest: IntegrationManifest): void {
   const path = manifestPath(deployDir);
   try {
-    mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true });
-    writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+    mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true, mode: DIR_MODE_SECRET });
+    chmodSync(join(deployDir, MANIFEST_DIR), DIR_MODE_SECRET);
+    writeFileSync(path, JSON.stringify(manifest, null, 2) + "\n", { mode: FILE_MODE_SECRET });
   } catch (err) {
     throw new Error(`Failed to write integration manifest: ${path}`, { cause: err });
   }

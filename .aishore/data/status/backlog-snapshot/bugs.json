@@ -25,76 +25,110 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "RE-GROOMED PO PASS 2026-03-23. AC3 was incorrect: it claimed snapshots.json would remain at 0600, but tech lead confirmed snapshots.json is written without mode today (line 59: writeFileSync without options) — it is NOT at 0600. Removed that incorrect AC3 and replaced with a correct, scoped version covering credentials.json only. Tech lead precise steps in groomingNotes (pass 3) supersede the original steps array — implementation should follow groomingNotes. failCount=1: original steps used 0o700 literal rather than DIR_MODE_SECRET constant; tech lead re-groomed with correct import pattern.",
+      "groomingNotes": "TECH LEAD PASS 3 (2026-03-23). failCount=1 — prior attempt used 0o700 literal instead of DIR_MODE_SECRET constant. Precise implementation steps:\n\ncredentials.ts (src/cloud/provisioning/credentials.ts):\n- Line 13: add DIR_MODE_SECRET to the import — change to: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';\n- Line 53: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 53: add chmodSync(dir, DIR_MODE_SECRET); (chmodSync already imported on line 10)\n\nsnapshot-registry.ts (src/cloud/provisioning/snapshot-registry.ts):\n- Line 10: add chmodSync to the node:fs import destructure\n- Add after line 10: import { DIR_MODE_SECRET } from '../../config/defaults.js';\n- Line 51: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 51: add chmodSync(dir, DIR_MODE_SECRET);\n\nRun: npm test -- --testPathPattern='credentials|snapshot-registry' and confirm all pass. Both files in src/cloud/provisioning/.",
       "groomedAt": "2026-03-23",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-23T20:09:23-07:00",
       "failCount": 1
     },
     {
-      "id": "BUG-094",
-      "title": "workspace/memory/ and tier directories created without mode 0700 — conversation history world-listable on multi-user systems",
-      "intent": "workspace/memory/ and all tier subdirectories (hot/warm/cold) must be created with mode 0700 on all code paths so no other user can list or access conversation history",
-      "description": "Two code paths create workspace/memory and its tier subdirectories (hot/warm/cold) without mode 0700. (1) scaffold.ts SCAFFOLD_DIRS array (line 32) lists 'workspace/memory' — it is created in the standard loop at line 68 via mkdirSync without mode, so the directory is created at 0755. Only 'security' and 'cloud' are in SCAFFOLD_DIRS_SECRET. (2) src/evolve/memory/lifecycle.ts line 73: mkdirSync(dir, { recursive: true }) in saveManifest() creates workspace/memory without mode. (3) src/evolve/memory/lifecycle.ts line 85: mkdirSync(join(deployDir, MEMORY_BASE, tier), { recursive: true }) in ensureTierDirs() creates hot/warm/cold without mode. workspace/memory contains conversation history, PII-masked archives, and summarized agent decisions — the most sensitive non-credential data in the deployment. Any user on a multi-user system can ls workspace/memory/ to enumerate files.",
+      "id": "BUG-097",
+      "title": "ops/integrations directory and .integration-manifest.json created without security modes — integration config world-listable",
+      "intent": "ops/integrations and .integration-manifest.json must be created with restricted permissions — the manifest reveals which integrations (IMAP, SMTP, CalDAV) are configured on the agent, giving an attacker a precise capability map.",
+      "description": "src/evolve/integrate/manifest.ts saveIntegrationManifest() (lines 35-43): line 38 calls mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) without mode — creates ops/integrations/ with default 0755. Line 39 calls writeFileSync(path, ..., 'utf-8') without mode option — creates .integration-manifest.json with default 0644. Both are wrong. The manifest stores integration state (name, enabled, version) and reveals exactly which integrations (email, calendar, tasks) are wired into the agent. No import from config/defaults.js exists today — needs DIR_MODE_SECRET and FILE_MODE_SECRET added.",
       "priority": "must",
       "category": null,
       "steps": [],
       "acceptanceCriteria": [
-        "workspace/memory/ is created with mode 0700 — no other local user can list or enumerate conversation history files",
-        "workspace/memory/hot, workspace/memory/warm, and workspace/memory/cold are each created with mode 0700",
-        "File permissions on existing files within workspace/memory/ are not altered by this fix",
-        "All tests pass with no regressions"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "PO PASS 2026-03-23. Added user-focused AC (array was empty). Tech lead grooming notes have precise steps — do not overwrite. AC3 clarifies scope: only directory creation mode is changed, not existing file permissions. AC4 is the regression gate.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T21:34:54-07:00"
-    },
-    {
-      "id": "BUG-095",
-      "title": "ops/audit directory created without mode 0700 — agent decision traces world-readable on multi-user systems",
-      "intent": "ops/audit directory must be created with mode 0700 at scaffold time so agent decision traces and tool-execution audit logs are not readable by other local users",
-      "description": "scaffold.ts SCAFFOLD_DIRS array (line 38) includes 'ops/audit' — created in the standard loop at line 68 with default permissions (0755). Only 'security' and 'cloud' are in SCAFFOLD_DIRS_SECRET. ops/audit holds decisions.jsonl (agent decision traces from trace.ts), tool-execution audit logs, and egress audit logs. On a multi-user system, any local user can read the audit trail to determine what the agent did, when, and what tools it called. src/evolve/memory/trace.ts line 37 also calls mkdirSync(dir, { recursive: true }) without mode — but since scaffold pre-creates ops/audit, this is a no-op that doesn't worsen permissions. Root fix is in scaffold.ts SCAFFOLD_DIRS.",
-      "priority": "should",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "ops/audit directory is created with mode 0700 — no other local user can read agent decision traces or tool-execution audit logs",
-        "Existing files within ops/audit are not altered by this fix",
-        "All tests pass with no regressions"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "PO PASS 2026-03-23. Added user-focused AC (array was empty). Root fix is scaffold.ts only — tech lead notes explicitly say do NOT edit trace.ts. AC scope is tight: directory permissions only.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T21:37:39-07:00"
-    },
-    {
-      "id": "BUG-096",
-      "title": "ops/providers directory created without mode 0700 — provider manifest world-listable on multi-user systems",
-      "intent": "ops/providers directory and .provider-manifest.json must be created with mode 0700/0600 so other local users cannot determine which cloud providers are installed",
-      "description": "src/evolve/provider/manifest.ts line 38: mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) where MANIFEST_DIR = 'ops/providers'. This directory is NOT in scaffold.ts SCAFFOLD_DIRS — it is created on first use by saveProviderManifest() without a mode option. The file written (line 39: writeFileSync(path, ...)) also has no mode option — .provider-manifest.json is world-readable. ops/providers/.provider-manifest.json stores installed cloud provider names and their capability state. On a multi-user system, any user can enumerate which cloud providers are configured. No import of DIR_MODE_SECRET or FILE_MODE_SECRET exists in manifest.ts — both must be added.",
-      "priority": "should",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "ops/providers directory is created with mode 0700 — no other local user can enumerate which cloud providers are installed",
-        ".provider-manifest.json is written with mode 0600 — file contents are not readable by other local users",
-        "All tests pass with no regressions"
+        "On a multi-user system, a user other than the agent owner cannot list files in ops/integrations/ to discover which integrations (IMAP, SMTP, CalDAV) are configured",
+        ".integration-manifest.json is not readable by other users — integration state (name, enabled, version) remains private to the agent owner"
       ],
       "scope": [],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "PO PASS 2026-03-23. Added user-focused AC (array was empty). Both dir and file modes are in scope for this bug — AC reflects both. Tech lead notes confirm no existing imports from config/defaults.js in manifest.ts.",
+      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/integrate/manifest.ts. Precise steps:\n- Line 7: add DIR_MODE_SECRET and FILE_MODE_SECRET and chmodSync to imports — change to: import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'; and add: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';\n- Line 38: change mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true }) to mkdirSync(join(deployDir, MANIFEST_DIR), { recursive: true, mode: DIR_MODE_SECRET });\n- After line 38: add chmodSync(join(deployDir, MANIFEST_DIR), DIR_MODE_SECRET);\n- Line 39: change writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', 'utf-8') to writeFileSync(path, JSON.stringify(manifest, null, 2) + '\\n', { encoding: 'utf-8', mode: FILE_MODE_SECRET });\n\nRun: npm test -- --testPathPattern='integrate' and confirm all pass. AC: stat ops/integrations/ shows mode 0700; stat .integration-manifest.json shows mode 0600.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-098",
+      "title": "workspace/skills directory and .skill-manifest.json created without security modes — skill capability enumeration",
+      "intent": "workspace/skills/ and .skill-manifest.json must be created with mode 0700/0600 — the directory and manifest reveal which skills (and their vetting status) are installed, enabling targeted capability-specific attacks.",
+      "description": "src/evolve/skills/lifecycle.ts saveManifest() (lines 49-56): line 54 calls mkdirSync(dir, { recursive: true }) without mode — creates workspace/skills/ with default 0755. Line 55 calls await writeFile(manifestPath, ...) without mode option — creates .skill-manifest.json world-readable. The skill manifest stores skill name, source, install timestamp, vet result, and activation status — a capability map for the agent. FILE_MODE_EXEC is already imported from config/defaults.js; DIR_MODE_SECRET and FILE_MODE_SECRET are not.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "On a multi-user system, a user other than the agent owner cannot list workspace/skills/ to enumerate which skills are installed",
+        ".skill-manifest.json is not readable by other users — skill name, source, vet result, and activation status remain private to the agent owner"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/skills/lifecycle.ts. Precise steps:\n- Line 12: change import to add DIR_MODE_SECRET and FILE_MODE_SECRET: import { DIR_MODE_SECRET, FILE_MODE_EXEC, FILE_MODE_SECRET } from '../../config/defaults.js';\n- Line 8: add mkdirSync import — no change needed (mkdirSync already imported from node:fs)\n- Line 54: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- Add after line 54: import chmodSync from node:fs — add chmodSync to line 8 import, then add: chmodSync(dir, DIR_MODE_SECRET);\n- Line 55: change await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2)) to await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2), { mode: FILE_MODE_SECRET });\n\nNOTE: writeFile here is from node:fs/promises (line 10), not node:fs. The mode option works the same way.\n\nRun: npm test -- --testPathPattern='skills' and confirm all pass. AC: stat workspace/skills/ shows mode 0700; stat .skill-manifest.json shows mode 0600.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-099",
+      "title": "workspace/tools directory and .tool-manifest.json created without security modes — tool capability enumeration",
+      "intent": "workspace/tools/ and .tool-manifest.json must be created with mode 0700/0600 — listing the directory or reading the manifest reveals which agent tools (email, calendar, quote) are installed, informing targeted attacks against tool-specific integrations.",
+      "description": "Two files both create workspace/tools/ without a mode: src/evolve/tools/lifecycle.ts line 77 (mkdirSync in installTool) and src/evolve/tools/manifest.ts line 43 (mkdirSync in saveToolManifest). manifest.ts line 44 also calls await writeFile without mode option — creates .tool-manifest.json world-readable. lifecycle.ts already imports FILE_MODE_EXEC from config/defaults.js. manifest.ts has no import from config/defaults.js at all.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "On a multi-user system, a user other than the agent owner cannot list workspace/tools/ to enumerate which agent tools (email, calendar, quote) are installed",
+        ".tool-manifest.json is not readable by other users — installed tool details remain private to the agent owner"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Two files to fix:\n\nsrc/evolve/tools/lifecycle.ts:\n- Line 15: change import to add DIR_MODE_SECRET: import { DIR_MODE_SECRET, FILE_MODE_EXEC } from '../../config/defaults.js';\n- Line 9: add chmodSync to node:fs import\n- Line 77: change mkdirSync(toolsDir, { recursive: true }) to mkdirSync(toolsDir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 77: add chmodSync(toolsDir, DIR_MODE_SECRET);\n\nsrc/evolve/tools/manifest.ts:\n- Line 9: add chmodSync to node:fs import\n- Add after line 9: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';\n- Line 43: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 43: add chmodSync(dir, DIR_MODE_SECRET);\n- Line 44: change await writeFile(toolManifestPath(deployDir), JSON.stringify(manifest, null, 2) + '\\n') to await writeFile(toolManifestPath(deployDir), JSON.stringify(manifest, null, 2) + '\\n', { mode: FILE_MODE_SECRET });\n\nRun: npm test -- --testPathPattern='tools' and confirm all pass. AC: stat workspace/tools/ shows mode 0700; stat .tool-manifest.json shows mode 0600.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-100",
+      "title": "ops/rollback/skills snapshot directories created without mode 0700 — skill snapshots world-listable",
+      "intent": "ops/rollback/skills/ and per-snapshot directories must be created with mode 0700 — they contain copies of skill scripts that were active before an install; enumerating them reveals skill history and previous capability state.",
+      "description": "src/evolve/skills/rollback.ts has two mkdirSync calls without mode: line 51 in saveSnapshots() creates ops/rollback/skills/ with default 0755; line 71 in createSnapshot() creates the per-snapshot directory (e.g. ops/rollback/skills/snap-1234abcd) with default 0755. The per-snapshot directory gets cp'd with the entire workspace/skills/ tree. No import from config/defaults.js exists today.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "On a multi-user system, a user other than the agent owner cannot list ops/rollback/skills/ to discover skill installation history",
+        "Per-snapshot directories (ops/rollback/skills/snap-*) are not listable by other users — previous skill state and rollback contents remain private"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/skills/rollback.ts. Precise steps:\n- Line 12: add chmodSync to node:fs import — change to: import { existsSync, mkdirSync, readdirSync, chmodSync } from 'node:fs';\n- Add after line 12: import { DIR_MODE_SECRET } from '../../config/defaults.js';\n- Line 51 (in saveSnapshots): change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 51: add chmodSync(dir, DIR_MODE_SECRET);\n- Line 71 (in createSnapshot): change mkdirSync(snapshotPath, { recursive: true }) to mkdirSync(snapshotPath, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 71: add chmodSync(snapshotPath, DIR_MODE_SECRET);\n\nRun: npm test -- --testPathPattern='rollback|skills' and confirm all pass. AC: stat ops/rollback/skills/ shows mode 0700; stat ops/rollback/skills/snap-*/ shows mode 0700.",
+      "groomedAt": "2026-03-23"
+    },
+    {
+      "id": "BUG-101",
+      "title": "ops/audit directory re-created by trace.ts without mode 0700 — decision trace log world-readable",
+      "intent": "trace.ts must create ops/audit/ with mode 0700 when it does not exist — scaffold.ts was fixed by BUG-095, but trace.ts independently creates this directory and would produce it world-readable if called before scaffold, or if the directory was removed.",
+      "description": "src/evolve/memory/trace.ts logDecision() line 37 calls mkdirSync(dir, { recursive: true }) without mode. TRACE_DIR='ops/audit' so this creates ops/audit/ with default 0755. BUG-095 fixed scaffold.ts to create ops/audit with 0700 at install time, but trace.ts is an independent call path — it creates the directory if it doesn't exist, and does so without the secure mode. No import from config/defaults.js exists in trace.ts today.",
+      "priority": "should",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "On a multi-user system, a user other than the agent owner cannot list ops/audit/ when the directory is first created by trace.ts rather than scaffold",
+        "ops/audit/ has mode 0700 regardless of which code path creates it — decision traces are never world-listable even if scaffold has not yet run"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/memory/trace.ts. Precise steps:\n- Line 9: add chmodSync to node:fs import — change to: import { chmodSync, existsSync, mkdirSync } from 'node:fs';\n- Add after line 9: import { DIR_MODE_SECRET } from '../../config/defaults.js';\n- Line 37: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 37: add chmodSync(dir, DIR_MODE_SECRET);\n\nNote: decisions.jsonl is written with appendFile (node:fs/promises) — appendFile does not take a mode option; file mode is set at creation time by the OS using umask. Since ops/audit is now created with 0700, the files inside will be accessible only to owner regardless. No change to appendFile needed.\n\nRun: npm test -- --testPathPattern='trace|memory' and confirm all pass. AC: stat ops/audit/ shows mode 0700 when created by trace.ts (not scaffold).",
       "groomedAt": "2026-03-23"
     }
   ]
