@@ -2,7 +2,7 @@
 
 > Where the project is, where it's going, and what's honest aspiration vs shipped reality.
 
-**Updated:** 2026-03-23
+**Updated:** 2026-03-24
 
 ---
 
@@ -28,8 +28,8 @@ ClawHQ has a working CLI with 33 commands, 90,000+ lines of TypeScript, and 132 
 Active development focus:
 
 - **Cloud deployment updates** — push config changes, version upgrades, and new skills to cloud-deployed agents without reprovisioning
-- **Configuration reference** — unified schema documentation for blueprints, skills, and all config options
-- **Public documentation** — roadmap, contributing guide, and changelog to support contributors and evaluators
+- **Documentation suite** — contributing guide and changelog to support contributors and evaluators
+- **README overhaul** — slim the README to storefront format, with detailed content moved to dedicated docs
 
 ---
 
