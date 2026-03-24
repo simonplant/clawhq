@@ -15,13 +15,13 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { cp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { CapabilityKind, CapabilitySnapshot, RestoreResult } from "./types.js";
 
-import { DIR_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -118,7 +118,8 @@ export async function createCapabilitySnapshot(
       }
     } else {
       const content = readFileSync(sourcePath, "utf-8");
-      writeFileSync(destPath, content, "utf-8");
+      writeFileSync(destPath, content, { encoding: "utf-8", mode: FILE_MODE_SECRET });
+      chmodSync(destPath, FILE_MODE_SECRET);
     }
   }
 
@@ -180,7 +181,8 @@ export async function restoreCapabilitySnapshot(
     // Restore from snapshot (if the snapshot has this file/dir)
     if (existsSync(snapshotPath)) {
       const destDir = join(currentPath, "..");
-      mkdirSync(destDir, { recursive: true });
+      mkdirSync(destDir, { recursive: true, mode: DIR_MODE_SECRET });
+      chmodSync(destDir, DIR_MODE_SECRET);
       await cp(snapshotPath, currentPath, { recursive: true });
     }
   }

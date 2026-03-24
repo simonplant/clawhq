@@ -32,7 +32,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-23",
-      "groomingNotes": "PO PASS 2026-03-23 (post-failure review, AC rewrite). failCount=1. AC REWRITTEN to match fallback scope — prior AC1 described the full doc vision (skill schema, 14 landmines) but groomingNotes scope is blueprint YAML only. New AC is scoped exactly to what gets built this sprint. FALLBACK SCOPE still in effect: blueprint YAML schema only — do NOT add skill schema, SKILL.md format, or landmine rules. Tech Lead Pass 2 implementation steps remain correct — do not modify them. Most likely prior failure mode: implementation read OPENCLAW-REFERENCE.md despite explicit exclusion in groomingNotes, causing scope creep.",
+      "groomingNotes": "PO PASS (2026-03-23). AC REWRITTEN — prior AC demanded skill config.yaml schema, SKILL.md format, and 14 landmine rules which the steps (blueprint-only scope, Tech Lead Pass 3) cannot produce. Root cause of failCount=1: AC and steps were misaligned, so validation always failed on skill/landmine criteria even when blueprint schema was correct. Fix: AC now matches the fallback scope exactly — blueprint YAML schema + Generated Directory Structure only. Intent narrowed accordingly. FOLLOW-UP NEEDED: skill config.yaml schema, SKILL.md format, and 14 landmine rules belong in a separate FEAT once blueprint section ships cleanly. Do not expand scope of this item again.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-23T17:47:15-07:00",
       "failCount": 1
@@ -114,6 +114,30 @@
       "readyForSprint": false,
       "groomedAt": "2026-03-23",
       "groomingNotes": "GROOMED 2026-03-23. Blocked by FEAT-013 (must, not yet started). Steps are prescriptive and complete — no ambiguity on what to produce. AC is entirely objective (valid YAML, specific fields, specific URLs). Priority could is correct: this is a cross-repo consistency mechanism, not user-facing. When FEAT-013 ships, this can be picked up immediately — single file, no logic, fast sprint."
+    },
+    {
+      "id": "FEAT-106",
+      "title": "Extend docs/CONFIGURATION.md — skill config.yaml schema, SKILL.md format, 14 landmine rules",
+      "intent": "Users writing custom skills and troubleshooting config errors must have a complete reference — the skill schema, SKILL.md authoring format, and 14 landmine rules must be documented in CONFIGURATION.md alongside the blueprint schema.",
+      "description": "docs/CONFIGURATION.md was scoped to blueprint YAML schema only (FEAT-008 fallback). This item extends it with the three remaining sections: skill config.yaml schema (field-by-field: schedule, model, dependencies, approval, boundaries), SKILL.md authoring format (the behavior definition format used in configs/skills/*/SKILL.md), and the 14 configuration landmines (each with explanation and the safe default ClawHQ enforces). Source material: configs/skills/*/config.yaml (6 examples), configs/skills/*/SKILL.md (6 examples), docs/OPENCLAW-REFERENCE.md sections 10-12 (Configuration Surface Inventory, 14 Landmines), docs/ARCHITECTURE.md ('The 14 Landmine Rules' table). This completes the original FEAT-008 intent — a user can write a custom blueprint OR skill using only CONFIGURATION.md.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "docs/CONFIGURATION.md contains a Skill Config Schema section documenting every field in configs/skills/*/config.yaml: schedule, model, dependencies, approval, boundaries — each with name, type, required/optional, default, description",
+        "docs/CONFIGURATION.md contains a SKILL.md Authoring Format section documenting the structure and required fields of configs/skills/*/SKILL.md files",
+        "docs/CONFIGURATION.md contains a Configuration Landmines section listing all 14 rules, each with: the landmine name, what goes wrong if violated, and the safe default ClawHQ enforces",
+        "A user can write a custom skill using only docs/CONFIGURATION.md — no other source file needed"
+      ],
+      "scope": [
+        "docs/CONFIGURATION.md"
+      ],
+      "dependsOn": [
+        "FEAT-008"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
     }
   ]
 }

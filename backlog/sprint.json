@@ -1,23 +1,33 @@
 {
-  "sprintId": "sprint-1774328146",
-  "startedAt": "2026-03-23T21:55:46-07:00",
+  "sprintId": "sprint-1774328843",
+  "startedAt": "2026-03-23T22:07:23-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-101",
-    "title": "ops/audit directory re-created by trace.ts without mode 0700 — decision trace log world-readable",
-    "intent": "trace.ts must create ops/audit/ with mode 0700 when it does not exist — scaffold.ts was fixed by BUG-095, but trace.ts independently creates this directory and would produce it world-readable if called before scaffold, or if the directory was removed.",
-    "description": "src/evolve/memory/trace.ts logDecision() line 37 calls mkdirSync(dir, { recursive: true }) without mode. TRACE_DIR='ops/audit' so this creates ops/audit/ with default 0755. BUG-095 fixed scaffold.ts to create ops/audit with 0700 at install time, but trace.ts is an independent call path — it creates the directory if it doesn't exist, and does so without the secure mode. No import from config/defaults.js exists in trace.ts today.",
+    "id": "BUG-102",
+    "title": "Capability snapshot files written without mode 0600 — credentials copies world-readable",
+    "intent": "Capability snapshot files that contain credentials.json content must be written with mode 0600 — credential copies in snapshot dirs must never be world-readable.",
+    "description": "src/evolve/rollback/capability-snapshot.ts line 121 calls writeFileSync(destPath, content, \"utf-8\") without a mode option when copying files into snapshot directories. Snapshot targets include engine/credentials.json (for 'integrations' kind) and ops/integrations/.integration-manifest.json — meaning credentials are copied into snapshot files with default permissions (0644), making them world-readable. The directory structure is correctly created with DIR_MODE_SECRET (lines 82, 102, 113) but the files themselves are unprotected. Additionally, restoreCapabilitySnapshot at line 183 calls mkdirSync(destDir, { recursive: true }) without mode when restoring snapshot content to the deployment directory, potentially re-creating parent directories with 0755. Fix: add mode FILE_MODE_SECRET to writeFileSync at line 121, chmodSync after, and add DIR_MODE_SECRET to mkdirSync at line 183, chmodSync after.",
     "sourceBacklog": "bugs.json",
-    "steps": [],
+    "steps": [
+      "Read src/evolve/rollback/capability-snapshot.ts lines 18-24 — confirm chmodSync is not in the node:fs import and FILE_MODE_SECRET is not in the defaults import",
+      "Line 18: add chmodSync to the node:fs import destructure — result: import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';",
+      "Line 24: add FILE_MODE_SECRET to the defaults import — change to: import { DIR_MODE_SECRET, FILE_MODE_SECRET } from '../../config/defaults.js';",
+      "Line 121 (in createCapabilitySnapshot, the else branch): change writeFileSync(destPath, content, 'utf-8') to writeFileSync(destPath, content, { encoding: 'utf-8', mode: FILE_MODE_SECRET }); — this protects credential and manifest files copied into snapshot dirs",
+      "After line 121: add chmodSync(destPath, FILE_MODE_SECRET); — fixes permissions on existing installs",
+      "Line 183 (in restoreCapabilitySnapshot): change mkdirSync(destDir, { recursive: true }) to mkdirSync(destDir, { recursive: true, mode: DIR_MODE_SECRET });",
+      "After line 183: add chmodSync(destDir, DIR_MODE_SECRET); — fixes permissions when restore re-creates parent dirs",
+      "Run: npm test -- --testPathPattern='capability-snapshot' and confirm all tests pass with no regressions"
+    ],
     "acceptanceCriteria": [
-      "On a multi-user system, a user other than the agent owner cannot list ops/audit/ when the directory is first created by trace.ts rather than scaffold",
-      "ops/audit/ has mode 0700 regardless of which code path creates it — decision traces are never world-listable even if scaffold has not yet run"
+      "Snapshot files copied from integration targets (engine/credentials.json, .integration-manifest.json) are written with mode 0600 — stat on any file under ops/rollback/integrations/snap-*/engine/credentials.json confirms no group/other read bits",
+      "Restore operation creates destination parent directories with mode 0700 — stat on dirs recreated during restore (e.g. ops/integrations/) confirms mode 0700",
+      "All existing capability-snapshot tests pass with no regressions"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:55:46-07:00",
+    "startedAt": "2026-03-23T22:07:23-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:58:23-07:00"
+    "completedAt": "2026-03-23T22:09:57-07:00"
   },
-  "completedAt": "2026-03-23T21:58:23-07:00",
+  "completedAt": "2026-03-23T22:09:57-07:00",
   "attempts": 1
 }
