@@ -108,11 +108,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/skills/rollback.ts. Precise steps:\n- Line 12: add chmodSync to node:fs import — change to: import { existsSync, mkdirSync, readdirSync, chmodSync } from 'node:fs';\n- Add after line 12: import { DIR_MODE_SECRET } from '../../config/defaults.js';\n- Line 51 (in saveSnapshots): change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 51: add chmodSync(dir, DIR_MODE_SECRET);\n- Line 71 (in createSnapshot): change mkdirSync(snapshotPath, { recursive: true }) to mkdirSync(snapshotPath, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 71: add chmodSync(snapshotPath, DIR_MODE_SECRET);\n\nRun: npm test -- --testPathPattern='rollback|skills' and confirm all pass. AC: stat ops/rollback/skills/ shows mode 0700; stat ops/rollback/skills/snap-*/ shows mode 0700.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:55:44-07:00"
     },
     {
       "id": "BUG-101",

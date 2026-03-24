@@ -1,23 +1,23 @@
 {
-  "sprintId": "sprint-1774327866",
-  "startedAt": "2026-03-23T21:51:06-07:00",
+  "sprintId": "sprint-1774327996",
+  "startedAt": "2026-03-23T21:53:16-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-099",
-    "title": "workspace/tools directory and .tool-manifest.json created without security modes — tool capability enumeration",
-    "intent": "workspace/tools/ and .tool-manifest.json must be created with mode 0700/0600 — listing the directory or reading the manifest reveals which agent tools (email, calendar, quote) are installed, informing targeted attacks against tool-specific integrations.",
-    "description": "Two files both create workspace/tools/ without a mode: src/evolve/tools/lifecycle.ts line 77 (mkdirSync in installTool) and src/evolve/tools/manifest.ts line 43 (mkdirSync in saveToolManifest). manifest.ts line 44 also calls await writeFile without mode option — creates .tool-manifest.json world-readable. lifecycle.ts already imports FILE_MODE_EXEC from config/defaults.js. manifest.ts has no import from config/defaults.js at all.",
+    "id": "BUG-100",
+    "title": "ops/rollback/skills snapshot directories created without mode 0700 — skill snapshots world-listable",
+    "intent": "ops/rollback/skills/ and per-snapshot directories must be created with mode 0700 — they contain copies of skill scripts that were active before an install; enumerating them reveals skill history and previous capability state.",
+    "description": "src/evolve/skills/rollback.ts has two mkdirSync calls without mode: line 51 in saveSnapshots() creates ops/rollback/skills/ with default 0755; line 71 in createSnapshot() creates the per-snapshot directory (e.g. ops/rollback/skills/snap-1234abcd) with default 0755. The per-snapshot directory gets cp'd with the entire workspace/skills/ tree. No import from config/defaults.js exists today.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "On a multi-user system, a user other than the agent owner cannot list workspace/tools/ to enumerate which agent tools (email, calendar, quote) are installed",
-      ".tool-manifest.json is not readable by other users — installed tool details remain private to the agent owner"
+      "On a multi-user system, a user other than the agent owner cannot list ops/rollback/skills/ to discover skill installation history",
+      "Per-snapshot directories (ops/rollback/skills/snap-*) are not listable by other users — previous skill state and rollback contents remain private"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:51:06-07:00",
+    "startedAt": "2026-03-23T21:53:16-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:53:15-07:00"
+    "completedAt": "2026-03-23T21:55:44-07:00"
   },
-  "completedAt": "2026-03-23T21:53:15-07:00",
+  "completedAt": "2026-03-23T21:55:44-07:00",
   "attempts": 1
 }
