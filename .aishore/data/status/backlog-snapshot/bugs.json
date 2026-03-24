@@ -115,11 +115,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/cloud/fleet/discovery.ts. Dir creation at line 59 already has DIR_MODE_SECRET — only the file write at line 67 is missing mode. Add FILE_MODE_SECRET to the defaults import (DIR_MODE_SECRET already imported). chmodSync must go before renameSync at line 68 so the atomic rename preserves the correct mode. Use FILE_MODE_SECRET constant, never literal 0o600.",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T22:14:56-07:00"
     },
     {
       "id": "BUG-105",
