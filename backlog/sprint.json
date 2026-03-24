@@ -1,38 +1,24 @@
 {
-  "sprintId": "sprint-1774312650",
-  "startedAt": "2026-03-23T17:37:30-07:00",
+  "sprintId": "sprint-1774312862",
+  "startedAt": "2026-03-23T17:41:02-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-007",
-    "title": "Create docs/QUICKSTART.md — install to working agent in under 10 minutes",
-    "intent": "A new user must go from nothing to a working personal AI agent using a single document — if they need to read the README, ARCHITECTURE.md, and PRODUCT.md to get started, they won't.",
-    "description": "No quickstart document exists. Content fragments are scattered across: README.md (install commands: curl one-liner and git clone, clawhq init --guided/--smart, clawhq doctor, clawhq status), docs/ARCHITECTURE.md (Install Phases: install → configure → harden → test → launch, Engine Acquisition: trusted cache vs from-source), CLAUDE.md (CLI Commands: full command listing with descriptions), and docs/PRODUCT.md (What Your Day Looks Like: before/after narrative showing the user experience). The quickstart must walk through: prerequisites (Docker, Node.js >=22, Ollama for local models), install (curl or git clone), init wizard (--guided walkthrough with expected output for each step), pick a blueprint (email-manager as the default first experience), connect integrations (IMAP/SMTP for email-manager), launch (clawhq up), verify (clawhq status, clawhq doctor), first interaction (send a message via Signal/Telegram/Discord). Include expected terminal output at each step. The email-manager blueprint is the best first experience because email is universal and the blueprint is fully defined.",
-    "sourceBacklog": "backlog.json",
-    "steps": [
-      "Read README.md for install commands (curl, git clone), init commands (--guided, --smart), and post-install commands (doctor, status)",
-      "Read docs/ARCHITECTURE.md Install Phases section and Engine Acquisition section for the installation flow",
-      "Read docs/PRODUCT.md 'What Your Day Looks Like' section for the user experience narrative",
-      "Read CLAUDE.md CLI Commands section for the full command listing",
-      "Read configs/blueprints/email-manager.yaml to understand what the first blueprint configures",
-      "Read backlog/GAP-ANALYSIS.md for prerequisites and known gaps that affect the quickstart",
-      "Compose docs/QUICKSTART.md with sections: Prerequisites (Docker, Node.js >=22, Ollama optional), Install (curl one-liner + from-source option), Initialize (clawhq init --guided walkthrough with expected terminal output), Pick Your First Blueprint (email-manager, what it configures, why start here), Connect Integrations (IMAP/SMTP setup for email-manager), Launch (clawhq up + what to expect), Verify (clawhq status + clawhq doctor), Your First Interaction (send a test message), What's Next (links to ARCHITECTURE.md, CONFIGURATION.md)",
-      "Add expected terminal output blocks after every command",
-      "Keep under 250 lines — this is a quickstart, not a manual"
-    ],
+    "id": "BUG-071",
+    "title": "AWS credential validation exposes full access key ID in account field — should be masked",
+    "intent": "AWS credentials are never logged or displayed unmasked. Access key in account field shows first 8 chars only. Whitespace-only tokens are rejected.",
+    "description": "src/cloud/provisioning/providers/aws.ts:223 returns { valid: true, account: accessKeyId } with the full AWS access key ID unmasked. AWS key IDs (AKIA...) are 20 chars and considered sensitive in logs and status displays. Additionally, !accessKeyId passes for whitespace-only strings. Steps: (1) trim both accessKeyId and secretKey before all use and checks; (2) reject if trimmed value is empty; (3) mask account field as first 8 chars plus ... (e.g. AKIAIOSFOD...); (4) add test for whitespace-only key, verify masking. Scope: ~6 lines in aws.ts.",
+    "sourceBacklog": "bugs.json",
+    "steps": [],
     "acceptanceCriteria": [
-      "docs/QUICKSTART.md exists and covers: prerequisites, install, init, first blueprint, connect integrations, launch, verify, first interaction",
-      "Each step includes the exact command and expected terminal output",
-      "The email-manager blueprint is used as the first-run example throughout",
-      "A user following only this document can go from zero to a working agent",
-      "The document is under 250 lines"
+      "Whitespace-only access key is rejected with the same format error as empty key",
+      "account field in successful validation shows first 8 chars plus ... not the full key ID",
+      "Valid credentials still pass validation — no regression"
     ],
-    "scope": [
-      "docs/QUICKSTART.md"
-    ],
-    "startedAt": "2026-03-23T17:37:30-07:00",
+    "scope": [],
+    "startedAt": "2026-03-23T17:41:02-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T17:41:01-07:00"
+    "completedAt": "2026-03-23T17:44:56-07:00"
   },
-  "completedAt": "2026-03-23T17:41:01-07:00",
+  "completedAt": "2026-03-23T17:44:56-07:00",
   "attempts": 1
 }
