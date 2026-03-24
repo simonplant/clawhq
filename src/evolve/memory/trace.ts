@@ -6,10 +6,11 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { appendFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { DIR_MODE_SECRET } from "../../config/defaults.js";
 import type { DecisionTrace } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -34,7 +35,8 @@ export async function logDecision(
   decision: Omit<DecisionTrace, "id" | "timestamp">,
 ): Promise<DecisionTrace> {
   const dir = join(deployDir, TRACE_DIR);
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(dir, DIR_MODE_SECRET);
 
   const entry: DecisionTrace = {
     id: randomUUID(),

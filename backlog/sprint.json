@@ -1,23 +1,23 @@
 {
-  "sprintId": "sprint-1774327996",
-  "startedAt": "2026-03-23T21:53:16-07:00",
+  "sprintId": "sprint-1774328146",
+  "startedAt": "2026-03-23T21:55:46-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-100",
-    "title": "ops/rollback/skills snapshot directories created without mode 0700 — skill snapshots world-listable",
-    "intent": "ops/rollback/skills/ and per-snapshot directories must be created with mode 0700 — they contain copies of skill scripts that were active before an install; enumerating them reveals skill history and previous capability state.",
-    "description": "src/evolve/skills/rollback.ts has two mkdirSync calls without mode: line 51 in saveSnapshots() creates ops/rollback/skills/ with default 0755; line 71 in createSnapshot() creates the per-snapshot directory (e.g. ops/rollback/skills/snap-1234abcd) with default 0755. The per-snapshot directory gets cp'd with the entire workspace/skills/ tree. No import from config/defaults.js exists today.",
+    "id": "BUG-101",
+    "title": "ops/audit directory re-created by trace.ts without mode 0700 — decision trace log world-readable",
+    "intent": "trace.ts must create ops/audit/ with mode 0700 when it does not exist — scaffold.ts was fixed by BUG-095, but trace.ts independently creates this directory and would produce it world-readable if called before scaffold, or if the directory was removed.",
+    "description": "src/evolve/memory/trace.ts logDecision() line 37 calls mkdirSync(dir, { recursive: true }) without mode. TRACE_DIR='ops/audit' so this creates ops/audit/ with default 0755. BUG-095 fixed scaffold.ts to create ops/audit with 0700 at install time, but trace.ts is an independent call path — it creates the directory if it doesn't exist, and does so without the secure mode. No import from config/defaults.js exists in trace.ts today.",
     "sourceBacklog": "bugs.json",
     "steps": [],
     "acceptanceCriteria": [
-      "On a multi-user system, a user other than the agent owner cannot list ops/rollback/skills/ to discover skill installation history",
-      "Per-snapshot directories (ops/rollback/skills/snap-*) are not listable by other users — previous skill state and rollback contents remain private"
+      "On a multi-user system, a user other than the agent owner cannot list ops/audit/ when the directory is first created by trace.ts rather than scaffold",
+      "ops/audit/ has mode 0700 regardless of which code path creates it — decision traces are never world-listable even if scaffold has not yet run"
     ],
     "scope": [],
-    "startedAt": "2026-03-23T21:53:16-07:00",
+    "startedAt": "2026-03-23T21:55:46-07:00",
     "status": "passed",
-    "completedAt": "2026-03-23T21:55:44-07:00"
+    "completedAt": "2026-03-23T21:58:23-07:00"
   },
-  "completedAt": "2026-03-23T21:55:44-07:00",
+  "completedAt": "2026-03-23T21:58:23-07:00",
   "attempts": 1
 }

@@ -129,11 +129,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "TECH LEAD PASS 1 (2026-03-23). Single file: src/evolve/memory/trace.ts. Precise steps:\n- Line 9: add chmodSync to node:fs import — change to: import { chmodSync, existsSync, mkdirSync } from 'node:fs';\n- Add after line 9: import { DIR_MODE_SECRET } from '../../config/defaults.js';\n- Line 37: change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });\n- After line 37: add chmodSync(dir, DIR_MODE_SECRET);\n\nNote: decisions.jsonl is written with appendFile (node:fs/promises) — appendFile does not take a mode option; file mode is set at creation time by the OS using umask. Since ops/audit is now created with 0700, the files inside will be accessible only to owner regardless. No change to appendFile needed.\n\nRun: npm test -- --testPathPattern='trace|memory' and confirm all pass. AC: stat ops/audit/ shows mode 0700 when created by trace.ts (not scaffold).",
-      "groomedAt": "2026-03-23"
+      "groomedAt": "2026-03-23",
+      "completedAt": "2026-03-23T21:58:23-07:00"
     }
   ]
 }
