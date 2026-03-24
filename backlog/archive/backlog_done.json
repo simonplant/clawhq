@@ -1055,31 +1055,6 @@
     "completedAt": "2026-03-19T17:35:00-07:00"
   },
   {
-    "id": "FEAT-001",
-    "title": "clawhq blueprint list + preview commands",
-    "intent": "clawhq blueprint list and preview must let users evaluate every available blueprint before committing to init. Users must never choose a blueprint blind.",
-    "description": "HIGH VALUE: Gate for informed blueprint selection. Without clawhq blueprint list/preview, users run init blind — they can't evaluate options before committing. Pairs tightly with CQ-009 (loader already does the heavy lifting). Build immediately after CQ-009. Acceptance: 'clawhq blueprint list' shows all available blueprints with one-line descriptions; 'clawhq blueprint preview email-manager' renders full design (identity, tools, skills, cron, integrations, security posture, egress domains). No net-new logic — thin CLI surface over CQ-009.",
-    "category": "design",
-    "priority": "must",
-    "status": "done",
-    "readyForSprint": false,
-    "dependencies": [
-      "CQ-009"
-    ],
-    "steps": [
-      "Implement 'clawhq blueprint list' showing available blueprints with one-line descriptions",
-      "Implement 'clawhq blueprint preview <name>' showing full blueprint design",
-      "Display: identity, tools, skills, cron, integrations, security posture, egress domains in preview"
-    ],
-    "acceptanceCriteria": [
-      "'clawhq blueprint list' shows all available blueprints with one-line descriptions",
-      "'clawhq blueprint preview email-manager' renders full design",
-      "Preview shows identity, tools, skills, cron, integrations, security posture, egress domains"
-    ],
-    "passes": true,
-    "completedAt": "2026-03-19T04:34:10-07:00"
-  },
-  {
     "id": "CQ-043",
     "title": "Cloud provisioning engine — spin up agents on DO/AWS/GCP from CLI",
     "intent": "One command creates a running agent on a cloud provider. The user never touches a VPS console, SSH, or cloud-init. ClawHQ handles everything from VM creation to agent deployment.",
@@ -1307,6 +1282,31 @@
     "completedAt": "2026-03-20T13:44:21-07:00"
   },
   {
+    "id": "FEAT-001",
+    "title": "clawhq blueprint list + preview commands",
+    "intent": "clawhq blueprint list and preview must let users evaluate every available blueprint before committing to init. Users must never choose a blueprint blind.",
+    "description": "HIGH VALUE: Gate for informed blueprint selection. Without clawhq blueprint list/preview, users run init blind — they can't evaluate options before committing. Pairs tightly with CQ-009 (loader already does the heavy lifting). Build immediately after CQ-009. Acceptance: 'clawhq blueprint list' shows all available blueprints with one-line descriptions; 'clawhq blueprint preview email-manager' renders full design (identity, tools, skills, cron, integrations, security posture, egress domains). No net-new logic — thin CLI surface over CQ-009.",
+    "category": "design",
+    "priority": "must",
+    "status": "done",
+    "readyForSprint": false,
+    "dependencies": [
+      "CQ-009"
+    ],
+    "steps": [
+      "Implement 'clawhq blueprint list' showing available blueprints with one-line descriptions",
+      "Implement 'clawhq blueprint preview <name>' showing full blueprint design",
+      "Display: identity, tools, skills, cron, integrations, security posture, egress domains in preview"
+    ],
+    "acceptanceCriteria": [
+      "'clawhq blueprint list' shows all available blueprints with one-line descriptions",
+      "'clawhq blueprint preview email-manager' renders full design",
+      "Preview shows identity, tools, skills, cron, integrations, security posture, egress domains"
+    ],
+    "passes": true,
+    "completedAt": "2026-03-19T04:34:10-07:00"
+  },
+  {
     "id": "FEAT-002",
     "title": "clawhq demo — zero-config working agent in 60 seconds",
     "intent": "Remove every gate between a curious person and a running agent. One command, no API keys, no Docker expertise, no messaging setup. The sovereignty story only matters to people who have experienced the product.",
@@ -1372,5 +1372,173 @@
     "groomingNotes": "All three blocking dependencies are DONE: FEAT-002 (base demo command), CQ-044 (DO adapter), CQ-048 (cloud-init bootstrap). The existing clawhq demo command in cli/index.ts provides the structure to extend with --cloud flag. Implementation: detect --cloud flag, provision ephemeral DO droplet via CQ-043 engine + CQ-044 adapter, inject demo blueprint via CQ-048 cloud-init, open browser to cloud agent URL, destroy droplet on SIGINT/exit. SIGINT handler pattern already used elsewhere in the codebase. Scope is one sprint. ORDERING: Ship after CQ-047 (deploy command) — the deploy wizard establishes the interactive UX pattern for cloud provisioning that this command should mirror. Sharing patterns avoids drift. PERFORMANCE NOTE: Without CQ-049 (snapshots), provisioning takes ~3 minutes — AC correctly says 'within 3 minutes'. CQ-049 later brings this to sub-60s. Do not over-promise 60 seconds in the demo UX until CQ-049 ships.",
     "groomedAt": "2026-03-20",
     "completedAt": "2026-03-20T13:57:01-07:00"
+  },
+  {
+    "id": "FEAT-006",
+    "title": "Add skill system section to docs/ARCHITECTURE.md",
+    "intent": "A contributor or evaluator reading ARCHITECTURE.md must understand the full system — the skill system is a core architectural layer that is currently undocumented there.",
+    "description": "docs/ARCHITECTURE.md is nearly production-ready and covers platform, blueprints, security, deployment, modules, and architectural decisions. But the skill system — a core runtime layer — has no dedicated section. Skills are documented individually in configs/skills/*/SKILL.md and configs/skills/*/config.yaml but the architectural pattern (declarative skill definition, cron trigger, prompt templates, boundary enforcement, approval gates) is never explained as a system. Add a 'Layer 3: Skills' section (or 'The Skill System') to ARCHITECTURE.md between the Blueprint and Security sections. Source content from: the 6 existing SKILL.md files (email-digest, investor-update, market-scan, meal-plan, morning-brief, schedule-guard) for the pattern, and the 6 config.yaml files for the schema (schedule, model, dependencies, approval, boundaries). The section should explain: what a skill is, the skill lifecycle (trigger → prompt → execute → boundary check → approval gate), the config.yaml schema, and how skills compose with blueprints.",
+    "priority": "must",
+    "category": "documentation",
+    "steps": [
+      "Read docs/ARCHITECTURE.md to understand the current structure and find the right insertion point (after Layer 2: Blueprints, before Security Architecture)",
+      "Read configs/skills/email-digest/SKILL.md and configs/skills/email-digest/config.yaml as the reference skill implementation",
+      "Read configs/skills/morning-brief/SKILL.md and configs/skills/morning-brief/config.yaml for a second pattern example",
+      "Read at least 2 more configs/skills/*/config.yaml files to confirm the schema is consistent across skills",
+      "Add a new section to docs/ARCHITECTURE.md covering: what a skill is (declarative capability definition), skill lifecycle (trigger → prompt template → model execution → boundary enforcement → approval gate if configured), config.yaml schema reference (schedule, model, dependencies, approval, boundaries fields), how blueprints compose skills (blueprint YAML references skill names), skill isolation and boundary enforcement",
+      "Ensure the new section follows the same tone and depth as the existing Blueprint and Platform sections"
+    ],
+    "acceptanceCriteria": [
+      "docs/ARCHITECTURE.md contains a skill system section explaining: what skills are, the skill lifecycle, config.yaml schema, blueprint-skill composition, and boundary enforcement",
+      "The section is sourced from existing SKILL.md and config.yaml files — no invented claims",
+      "The section is positioned logically within the document (between blueprints and security, or after blueprints)",
+      "Existing content in ARCHITECTURE.md is not altered beyond the insertion"
+    ],
+    "scope": [
+      "docs/ARCHITECTURE.md"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-23",
+    "groomingNotes": "READY. Documentation task with no external dependencies. All source files referenced in steps exist (docs/ARCHITECTURE.md, configs/skills/*/SKILL.md, configs/skills/*/config.yaml). Steps are specific and sequenced correctly. Scope: single file insertion. Priority must is correct — ARCHITECTURE.md is the canonical architecture doc and the skill system is a core layer.",
+    "passes": true,
+    "completedAt": "2026-03-23T17:37:28-07:00"
+  },
+  {
+    "id": "FEAT-007",
+    "title": "Create docs/QUICKSTART.md — install to working agent in under 10 minutes",
+    "intent": "A new user must go from nothing to a working personal AI agent using a single document — if they need to read the README, ARCHITECTURE.md, and PRODUCT.md to get started, they won't.",
+    "description": "No quickstart document exists. Content fragments are scattered across: README.md (install commands: curl one-liner and git clone, clawhq init --guided/--smart, clawhq doctor, clawhq status), docs/ARCHITECTURE.md (Install Phases: install → configure → harden → test → launch, Engine Acquisition: trusted cache vs from-source), CLAUDE.md (CLI Commands: full command listing with descriptions), and docs/PRODUCT.md (What Your Day Looks Like: before/after narrative showing the user experience). The quickstart must walk through: prerequisites (Docker, Node.js >=22, Ollama for local models), install (curl or git clone), init wizard (--guided walkthrough with expected output for each step), pick a blueprint (email-manager as the default first experience), connect integrations (IMAP/SMTP for email-manager), launch (clawhq up), verify (clawhq status, clawhq doctor), first interaction (send a message via Signal/Telegram/Discord). Include expected terminal output at each step. The email-manager blueprint is the best first experience because email is universal and the blueprint is fully defined.",
+    "priority": "must",
+    "category": "documentation",
+    "steps": [
+      "Read README.md for install commands (curl, git clone), init commands (--guided, --smart), and post-install commands (doctor, status)",
+      "Read docs/ARCHITECTURE.md Install Phases section and Engine Acquisition section for the installation flow",
+      "Read docs/PRODUCT.md 'What Your Day Looks Like' section for the user experience narrative",
+      "Read CLAUDE.md CLI Commands section for the full command listing",
+      "Read configs/blueprints/email-manager.yaml to understand what the first blueprint configures",
+      "Read backlog/GAP-ANALYSIS.md for prerequisites and known gaps that affect the quickstart",
+      "Compose docs/QUICKSTART.md with sections: Prerequisites (Docker, Node.js >=22, Ollama optional), Install (curl one-liner + from-source option), Initialize (clawhq init --guided walkthrough with expected terminal output), Pick Your First Blueprint (email-manager, what it configures, why start here), Connect Integrations (IMAP/SMTP setup for email-manager), Launch (clawhq up + what to expect), Verify (clawhq status + clawhq doctor), Your First Interaction (send a test message), What's Next (links to ARCHITECTURE.md, CONFIGURATION.md)",
+      "Add expected terminal output blocks after every command",
+      "Keep under 250 lines — this is a quickstart, not a manual"
+    ],
+    "acceptanceCriteria": [
+      "docs/QUICKSTART.md exists and covers: prerequisites, install, init, first blueprint, connect integrations, launch, verify, first interaction",
+      "Each step includes the exact command and expected terminal output",
+      "The email-manager blueprint is used as the first-run example throughout",
+      "A user following only this document can go from zero to a working agent",
+      "The document is under 250 lines"
+    ],
+    "scope": [
+      "docs/QUICKSTART.md"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-23",
+    "groomingNotes": "READY. Documentation task. Source content confirmed across README.md (install commands), docs/ARCHITECTURE.md (Install Phases), docs/PRODUCT.md (user experience), CLAUDE.md (CLI commands), configs/blueprints/email-manager.yaml. backlog/GAP-ANALYSIS.md referenced for prerequisites. Steps are sequenced and specific. Output constraint (under 250 lines) is clear. No blocking dependencies.",
+    "passes": true,
+    "completedAt": "2026-03-23T17:41:01-07:00"
+  },
+  {
+    "id": "FEAT-009",
+    "title": "Create docs/PROBLEMS.md — why OpenClaw is hard and what ClawHQ fixes",
+    "intent": "People search for problems, not solutions — this document must rank for the frustrations that drive users to ClawHQ.",
+    "description": "The pain point content is the richest of any doc area but scattered across 4 files: docs/PRODUCT.md ('The Problem' section: freelancers/enthusiasts abandoned within a month, too much config), README.md (second paragraph: 13,500 tokens of config, 11+ files, 14 silent landmines, most deployments abandoned), docs/OPENCLAW-REFERENCE.md (section 12: the 14 Configuration Landmines with detailed explanations of each; section 8: Memory System 360KB bloat in 3 days; section 9: Identity Drift; section 15: Threat Model showing security-by-default gaps; section 30: Production Discoveries documenting real-world failures), CLAUDE.md (Core Intent: surveillance AI vs raw framework framing). This is primarily a consolidation and narrative job. Each problem should be stated as a user would google it, with evidence from OPENCLAW-REFERENCE.md production discoveries, and a concrete explanation of how ClawHQ addresses it.",
+    "priority": "should",
+    "category": "documentation",
+    "steps": [
+      "Read docs/PRODUCT.md 'The Problem' section for the core problem statement",
+      "Read README.md second paragraph for the quantified pain (13,500 tokens, 11+ files, 14 landmines, abandoned deployments)",
+      "Read docs/OPENCLAW-REFERENCE.md section 12 (14 Configuration Landmines) for detailed landmine documentation",
+      "Read docs/OPENCLAW-REFERENCE.md section 8 (Memory System: 360KB bloat), section 9 (Identity Drift), section 15 (Threat Model), section 30 (Production Discoveries)",
+      "Read CLAUDE.md Core Intent section for the surveillance-vs-sovereignty framing",
+      "Compose docs/PROBLEMS.md with one section per problem, each structured as: search-friendly heading, pain description (2-3 sentences), evidence (from OPENCLAW-REFERENCE.md production data or mark TODO), how ClawHQ addresses it (specific feature/blueprint/automation)",
+      "Cover at minimum: OpenClaw configuration is 13,500 tokens across 11+ files, 14 silent configuration landmines that break agents without warning, Memory bloats to 360KB in 3 days without management, Identity drift degrades agent quality over time, No security hardening by default (cap_drop, egress, rootfs), Most OpenClaw deployments abandoned within a month, People paying consultants to install what should be a consumer product",
+      "Write problem headings as search queries: e.g. 'OpenClaw configuration is too complex for non-developers' not 'Configuration Complexity'"
+    ],
+    "acceptanceCriteria": [
+      "docs/PROBLEMS.md exists with at least 7 distinct problem sections",
+      "Each problem is stated as a user would search for it (search-friendly heading)",
+      "Each problem section includes: pain description, evidence from OPENCLAW-REFERENCE.md or real-world data, and how ClawHQ addresses it",
+      "Quantified claims (13,500 tokens, 14 landmines, 360KB bloat, 11+ files) are included with source attribution",
+      "Problems reference specific ClawHQ features (blueprints, auto-hardening, clawhq doctor, memory management) not vague claims"
+    ],
+    "scope": [
+      "docs/PROBLEMS.md"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-23",
+    "groomingNotes": "READY. Documentation task. Source content confirmed in docs/PRODUCT.md, README.md, docs/OPENCLAW-REFERENCE.md (sections 8, 9, 12, 15, 30), CLAUDE.md. Steps are well-sequenced — reads sources then structures output with search-friendly headings. No dependencies. Priority should is correct.",
+    "passes": true,
+    "completedAt": "2026-03-23T17:51:49-07:00"
+  },
+  {
+    "id": "FEAT-010",
+    "title": "Create docs/ROADMAP.md — public-facing roadmap from internal planning docs",
+    "intent": "Contributors and evaluators must see where the project is going and what's real vs aspirational — a project with no visible roadmap looks abandoned.",
+    "description": "Roadmap content is rich but entirely internal-facing: docs/PRODUCT.md ('What We're Building' with 6 modules and checkboxes, 'Build Order' with Tracks A-F, 'How the Agent Grows' vision timeline for weeks/months, 'Risks & Open Questions'), backlog/GAP-ANALYSIS.md ('GAP ANALYSIS' Gaps 1-10 documenting technical gaps, 'REMEDIATION PRIORITY' Phases 1-3 with phased delivery plan, 'AS-IS: What's Built' subsystem status table with line counts). This content needs reframing from internal planning language to public-facing roadmap. Organize as: What's Built (current state from GAP-ANALYSIS AS-IS), Now (active work from todo backlog items), Next (committed direction from PRODUCT.md Build Order), Later (vision from PRODUCT.md 'How the Agent Grows'), Known Limitations (honest constraints from GAP-ANALYSIS gaps), Risks (from PRODUCT.md 'Risks & Open Questions'). Keep under 120 lines.",
+    "priority": "should",
+    "category": "documentation",
+    "steps": [
+      "Read docs/PRODUCT.md sections: 'What We're Building' (6 modules with status), 'Build Order' (Tracks A-F), 'How the Agent Grows' (week/month timeline), 'Risks & Open Questions'",
+      "Read backlog/GAP-ANALYSIS.md sections: 'AS-IS: What's Built' (subsystem status), 'GAP ANALYSIS' (Gaps 1-10), 'REMEDIATION PRIORITY' (Phases 1-3)",
+      "Review backlog/backlog.json for remaining todo items (CQ-047, FEAT-005) to populate the 'Now' section",
+      "Compose docs/ROADMAP.md with sections: What's Built (summarize AS-IS subsystem table), Now (active backlog items), Next (Track A-C from Build Order — platform, blueprints, security), Later (Tracks D-F — operate, evolve, cloud + the 'How the Agent Grows' vision), Known Limitations (from GAP-ANALYSIS gaps: e.g. single-machine only, no Windows support, requires Docker), Risks (from PRODUCT.md — honest about what might not work)",
+      "Reframe all internal language to public-facing: 'CQ-047' becomes 'Cloud deployment command', 'Track A' becomes descriptive feature names",
+      "Keep under 120 lines — signpost, not a product spec"
+    ],
+    "acceptanceCriteria": [
+      "docs/ROADMAP.md exists with sections: What's Built, Now, Next, Later, Known Limitations, Risks",
+      "Internal IDs and track names are translated to user-facing descriptions",
+      "Known Limitations is honest about real constraints",
+      "The document is under 120 lines",
+      "Each roadmap item is a clear statement with enough context to understand scope"
+    ],
+    "scope": [
+      "docs/ROADMAP.md"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-23",
+    "groomingNotes": "READY. Documentation task. Source content confirmed in docs/PRODUCT.md, backlog/GAP-ANALYSIS.md, and backlog/backlog.json (CQ-047 done 2026-03-23, FEAT-005 still todo = active work). Steps include reframing internal IDs to public-facing language — this is important, developer must not leak IDs like CQ-047. Output constraint under 120 lines is clear. No blocking dependencies.",
+    "passes": true,
+    "completedAt": "2026-03-23T17:54:53-07:00"
+  },
+  {
+    "id": "FEAT-011",
+    "title": "Create docs/CONTRIBUTING.md — how to contribute blueprints, skills, and code",
+    "intent": "A potential contributor must know exactly how to help — what's needed, what format to follow, and what the quality bar is. No CONTRIBUTING.md means no contributions.",
+    "description": "No CONTRIBUTING.md exists. The content must be written from scratch but patterns can be derived from: configs/blueprints/*.yaml (7 blueprints establishing the blueprint contribution format), configs/skills/*/SKILL.md + config.yaml (6 skills establishing the skill contribution format), docs/ARCHITECTURE.md (Architectural Decisions AD-01 through AD-05 establishing constraints contributors must respect), CLAUDE.md (Terminology table for naming conventions, Key Design Constraints for invariants). Cover three contribution types: blueprints (write a new blueprint YAML following the schema, test against landmine validator), skills (write SKILL.md + config.yaml + prompts/, follow boundary enforcement rules), and code (TypeScript conventions, branch strategy, PR process). Include a 'What's Needed' section listing the highest-impact contributions — e.g. 'we need blueprints for: stock trading, home automation, content creation' to guide contributors toward valuable work.",
+    "priority": "should",
+    "category": "documentation",
+    "steps": [
+      "Read configs/blueprints/email-manager.yaml as the reference blueprint format for contributors",
+      "Read configs/skills/email-digest/SKILL.md, config.yaml, and prompts/ as the reference skill format",
+      "Read docs/ARCHITECTURE.md Architectural Decisions section (AD-01 through AD-05) for constraints",
+      "Read CLAUDE.md Terminology table and Key Design Constraints for naming conventions and invariants",
+      "Compose docs/CONTRIBUTING.md with sections: Overview (three ways to contribute: blueprints, skills, code), Blueprint Contribution Guide (YAML schema, required fields, testing with landmine validator, example walkthrough), Skill Contribution Guide (SKILL.md format, config.yaml schema, prompt template patterns, boundary enforcement requirements), Code Contribution Guide (TypeScript conventions, branch strategy, PR process, testing requirements), What's Needed (list of high-impact contributions: specific blueprint ideas, skill ideas, tooling gaps), Architectural Constraints (link to AD-01 through AD-05 in ARCHITECTURE.md), Security Requirements (boundary enforcement for skills, no network unless declared, egress rules)"
+    ],
+    "acceptanceCriteria": [
+      "docs/CONTRIBUTING.md exists and covers: blueprint contribution guide, skill contribution guide, code contribution guide, what's needed, architectural constraints",
+      "Blueprint guide includes the YAML schema with required fields and a worked example",
+      "Skill guide includes SKILL.md format, config.yaml schema, and boundary enforcement rules",
+      "A 'What's Needed' section lists specific high-impact contribution opportunities",
+      "Security requirements for contributed skills are clearly stated"
+    ],
+    "scope": [
+      "docs/CONTRIBUTING.md"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-23",
+    "groomingNotes": "READY. Documentation task. All referenced source files exist (configs/blueprints/email-manager.yaml, configs/skills/email-digest/*, docs/ARCHITECTURE.md ADs, CLAUDE.md). Needs a 'What's Needed' section with concrete blueprint ideas — developer should scan configs/ to identify gaps before writing. Steps are complete and ordered. No blocking dependencies.",
+    "passes": true,
+    "completedAt": "2026-03-23T17:59:21-07:00"
   }
 ]

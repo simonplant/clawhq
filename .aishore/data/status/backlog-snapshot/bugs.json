@@ -22,26 +22,6 @@
       "groomedAt": "2026-03-23"
     },
     {
-      "id": "BUG-071",
-      "title": "AWS credential validation exposes full access key ID in account field — should be masked",
-      "intent": "AWS credentials are never logged or displayed unmasked. Access key in account field shows first 8 chars only. Whitespace-only tokens are rejected.",
-      "description": "src/cloud/provisioning/providers/aws.ts:223 returns { valid: true, account: accessKeyId } with the full AWS access key ID unmasked. AWS key IDs (AKIA...) are 20 chars and considered sensitive in logs and status displays. Additionally, !accessKeyId passes for whitespace-only strings. Steps: (1) trim both accessKeyId and secretKey before all use and checks; (2) reject if trimmed value is empty; (3) mask account field as first 8 chars plus ... (e.g. AKIAIOSFOD...); (4) add test for whitespace-only key, verify masking. Scope: ~6 lines in aws.ts.",
-      "priority": "must",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "Whitespace-only access key is rejected with the same format error as empty key",
-        "account field in successful validation shows first 8 chars plus ... not the full key ID",
-        "Valid credentials still pass validation — no regression"
-      ],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "UPGRADED TO MUST. AWS access key IDs appearing unmasked in the account field of validateCredentials() is a direct violation of the 'Security by default' core non-negotiable and the 'Credentials secured' design constraint (credentials.json mode 0600, never in config files). If this surfaces in logs or terminal output, a user's production AWS credentials are exposed. This is not a preference — it is a security defect. Steps are correct and scope is minimal (~6 lines). Two new tests required. readyForSprint=true confirmed.",
-      "groomedAt": "2026-03-23",
-      "completedAt": "2026-03-23T17:44:56-07:00"
-    },
-    {
       "id": "BUG-072",
       "title": "Provisioning flow does not generate or store SSH keypair — FEAT-005 deploy update is undeliverable",
       "intent": "Every provisioned cloud agent has an SSH keypair generated at provision time, stored securely, and linked in the deploy state. clawhq deploy update has a viable SSH path to every cloud agent it created.",
@@ -54,7 +34,9 @@
       "dependsOn": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
+      "readyForSprint": true,
+      "groomedAt": "2026-03-23",
+      "groomingNotes": "READY. ProvisionedInstance confirmed in types.ts:285-306 — no sshKeyPath field exists. wizard.ts confirmed no keypair generation code. cloud-init.ts has generateCloudInit function needing pubKey param. Scope: 3 files (types.ts, wizard.ts, cloud-init.ts). node:crypto is built-in — no new deps. Steps prescriptive with file locations. Unblocks FEAT-005."
     }
   ]
 }
