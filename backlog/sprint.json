@@ -1,23 +1,34 @@
 {
-  "sprintId": "sprint-1774364399",
-  "startedAt": "2026-03-24T07:59:59-07:00",
+  "sprintId": "sprint-1774364985",
+  "startedAt": "2026-03-24T08:09:45-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-062",
-    "title": "Provider adapters call response.json() without try-catch — crashes on malformed API responses",
-    "intent": "Provisioning must never crash with a raw JSON parse exception. All API response failures must surface as clean, actionable error messages with HTTP status and provider context.",
-    "description": "src/cloud/provisioning/providers/digitalocean.ts (lines 100, 426, 469) and hetzner.ts (line 77) call response.json() without try-catch. If the cloud API returns non-JSON (HTML error page, gateway timeout, 5xx body), the unhandled exception propagates and crashes the entire provisioning flow with an opaque JSON parse error rather than a user-readable API error. Fix: wrap response.json() calls in try-catch, re-throw as a typed ProvisionError with the raw response status and body included.",
-    "sourceBacklog": "bugs.json",
-    "steps": [],
-    "acceptanceCriteria": [
-      "No bare response.json() calls in any provider adapter without error handling",
-      "A malformed provider API response surfaces a readable ProvisionError with HTTP status, not a JSON parse crash"
+    "id": "FEAT-006",
+    "title": "Add skill system section to docs/ARCHITECTURE.md",
+    "intent": "A contributor or evaluator reading ARCHITECTURE.md must understand the full system — the skill system is a core architectural layer that is currently undocumented there.",
+    "description": "docs/ARCHITECTURE.md is nearly production-ready and covers platform, blueprints, security, deployment, modules, and architectural decisions. But the skill system — a core runtime layer — has no dedicated section. Skills are documented individually in configs/skills/*/SKILL.md and configs/skills/*/config.yaml but the architectural pattern (declarative skill definition, cron trigger, prompt templates, boundary enforcement, approval gates) is never explained as a system. Add a 'Layer 3: Skills' section (or 'The Skill System') to ARCHITECTURE.md between the Blueprint and Security sections. Source content from: the 6 existing SKILL.md files (email-digest, investor-update, market-scan, meal-plan, morning-brief, schedule-guard) for the pattern, and the 6 config.yaml files for the schema (schedule, model, dependencies, approval, boundaries). The section should explain: what a skill is, the skill lifecycle (trigger → prompt → execute → boundary check → approval gate), the config.yaml schema, and how skills compose with blueprints.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Read docs/ARCHITECTURE.md to understand the current structure and find the right insertion point (after Layer 2: Blueprints, before Security Architecture)",
+      "Read configs/skills/email-digest/SKILL.md and configs/skills/email-digest/config.yaml as the reference skill implementation",
+      "Read configs/skills/morning-brief/SKILL.md and configs/skills/morning-brief/config.yaml for a second pattern example",
+      "Read at least 2 more configs/skills/*/config.yaml files to confirm the schema is consistent across skills",
+      "Add a new section to docs/ARCHITECTURE.md covering: what a skill is (declarative capability definition), skill lifecycle (trigger → prompt template → model execution → boundary enforcement → approval gate if configured), config.yaml schema reference (schedule, model, dependencies, approval, boundaries fields), how blueprints compose skills (blueprint YAML references skill names), skill isolation and boundary enforcement",
+      "Ensure the new section follows the same tone and depth as the existing Blueprint and Platform sections"
     ],
-    "scope": [],
-    "startedAt": "2026-03-24T07:59:59-07:00",
+    "acceptanceCriteria": [
+      "docs/ARCHITECTURE.md contains a skill system section explaining: what skills are, the skill lifecycle, config.yaml schema, blueprint-skill composition, and boundary enforcement",
+      "The section is sourced from existing SKILL.md and config.yaml files — no invented claims",
+      "The section is positioned logically within the document (between blueprints and security, or after blueprints)",
+      "Existing content in ARCHITECTURE.md is not altered beyond the insertion"
+    ],
+    "scope": [
+      "docs/ARCHITECTURE.md"
+    ],
+    "startedAt": "2026-03-24T08:09:45-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T08:06:12-07:00"
+    "completedAt": "2026-03-24T08:12:01-07:00"
   },
-  "completedAt": "2026-03-24T08:06:12-07:00",
+  "completedAt": "2026-03-24T08:12:01-07:00",
   "attempts": 1
 }
