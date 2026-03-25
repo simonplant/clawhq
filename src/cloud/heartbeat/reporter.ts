@@ -10,7 +10,7 @@
  */
 
 import { createHash, randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS, DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
@@ -154,11 +154,20 @@ function checkContainerRunning(deployDir: string): { running: boolean; uptimeSec
 }
 
 /**
- * Get disk usage percentage for the deploy directory.
+ * Get disk usage percentage for the deploy directory's filesystem.
+ * Uses Node.js statfsSync (available since Node 18.15).
+ * Returns -1 if the filesystem query fails.
  */
-function getDiskUsagePercent(_deployDir: string): number {
-  // Would use statvfs in production; return 0 as placeholder
-  return 0;
+function getDiskUsagePercent(deployDir: string): number {
+  try {
+    const stats = statfsSync(deployDir);
+    const totalBlocks = stats.blocks;
+    if (totalBlocks === 0) return -1;
+    const usedBlocks = totalBlocks - stats.bavail;
+    return Math.round((usedBlocks / totalBlocks) * 1000) / 10;
+  } catch {
+    return -1;
+  }
 }
 
 /**
