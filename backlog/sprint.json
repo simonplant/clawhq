@@ -1,25 +1,35 @@
 {
-  "sprintId": "sprint-1774410693",
-  "startedAt": "2026-03-24T20:51:33-07:00",
+  "sprintId": "sprint-1774411174",
+  "startedAt": "2026-03-24T20:59:34-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-114",
-    "title": "Tool server connections default to admin-only since OpenClaw v0.8.7 — blueprints with tools are invisible to users",
-    "intent": "Every blueprint that exposes tools must generate explicit access grants so tools are visible to users. The v0.8.7 default (no grants = admin-only) silently breaks all existing blueprints on upgrade.",
-    "description": "OpenClaw v0.8.7 changed the default access model for tool server and terminal connections: when no explicit access grants are set, connections are now private (admin-only). Previously they were visible to all users. ClawHQ's config generator (src/design/configure/generate.ts) does not set explicit access grants for blueprint tools, meaning any agent running on v0.8.7+ will have tools invisible to non-admin users. Fix: the config generator must emit explicit access grants for all tools a blueprint defines. This should also be added as a doctor check — detect v0.8.7+ and verify tool access grants are present.",
+    "id": "BUG-115",
+    "title": "clawhq build CLI command is a stub — prints 'not implemented' instead of calling build()",
+    "intent": "A user who runs clawhq build must get a Docker image built. The build() function exists and works (quickstart calls it), but the CLI command exits with 'Not yet implemented'.",
+    "description": "src/cli/index.ts lines 1264-1271: the 'build' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. The actual build() function in src/build/docker/index.ts is fully implemented — two-stage Docker build with change detection and manifests. clawhq quickstart calls build() directly and it works. The CLI command just never got wired up. This is the most critical stub in the codebase because 'clawhq build' is step 3 in the documented user journey (install → init → build → up).",
     "sourceBacklog": "bugs.json",
-    "steps": [],
-    "acceptanceCriteria": [
-      "Config generator emits explicit access grants for all tools defined in a blueprint",
-      "An agent forged from any blueprint on OpenClaw v0.8.7+ has tools visible to the configured user",
-      "clawhq doctor detects missing tool access grants and reports a warning with fix suggestion",
-      "Existing config generation tests pass with no regression"
+    "steps": [
+      "Read src/build/docker/index.ts to understand the build() function signature and required parameters",
+      "Read how clawhq quickstart calls build() to understand the expected invocation",
+      "Replace the stub in src/cli/index.ts lines 1267-1270 with a real call to build(), passing deployDir and appropriate options",
+      "Add progress reporting (ora spinner) consistent with other CLI commands",
+      "Test: run clawhq build after clawhq install + clawhq init and verify Docker image is built",
+      "Run npm test to confirm no regression"
     ],
-    "scope": [],
-    "startedAt": "2026-03-24T20:51:33-07:00",
+    "acceptanceCriteria": [
+      "clawhq build calls the real build() function from src/build/docker/index.ts",
+      "Build output shows progress (Dockerfile generation, Docker build, manifest write)",
+      "clawhq build fails with actionable error if prerequisites are missing (no Docker, no config)",
+      "The documented user journey install → init → build → up works end-to-end"
+    ],
+    "scope": [
+      "src/cli/index.ts",
+      "src/build/docker/index.ts"
+    ],
+    "startedAt": "2026-03-24T20:59:34-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T20:59:32-07:00"
+    "completedAt": "2026-03-24T21:04:37-07:00"
   },
-  "completedAt": "2026-03-24T20:59:32-07:00",
+  "completedAt": "2026-03-24T21:04:37-07:00",
   "attempts": 1
 }

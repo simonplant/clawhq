@@ -113,10 +113,12 @@
         "src/build/docker/index.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. The build() function IS implemented and tested — quickstart uses it. The CLI command is the only broken link. This is a 30-minute fix but blocks the entire documented user journey."
+      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. The build() function IS implemented and tested — quickstart uses it. The CLI command is the only broken link. This is a 30-minute fix but blocks the entire documented user journey.",
+      "passes": true,
+      "completedAt": "2026-03-24T21:04:37-07:00"
     },
     {
       "id": "BUG-116",
