@@ -37,12 +37,13 @@ sync_request() {
 }
 
 cmd_overdue() {
-  python3 -c "
-import json, subprocess, sys
+  TODOIST_TOKEN="$TOKEN" python3 -c "
+import json, os, subprocess
 from datetime import datetime, timezone
 
+token = os.environ['TODOIST_TOKEN']
 result = subprocess.run(
-    ['curl', '-sS', '-H', 'Authorization: Bearer $TOKEN', 'https://api.todoist.com/rest/v2/tasks'],
+    ['curl', '-sS', '-H', f'Authorization: Bearer {token}', 'https://api.todoist.com/rest/v2/tasks'],
     capture_output=True, text=True
 )
 tasks = json.loads(result.stdout)
@@ -56,17 +57,18 @@ for t in tasks:
             if isinstance(due_date, datetime):
                 due_date = due_date.replace(tzinfo=timezone.utc)
         if due_date.date() < now.date() if hasattr(due_date, 'date') else True:
-            print(f"OVERDUE: {t['content']} (due: {due['date']})")
+            print(f'OVERDUE: {t[\"content\"]} (due: {due[\"date\"]})')
 "
 }
 
 cmd_due_today() {
-  python3 -c "
-import json, subprocess
+  TODOIST_TOKEN="$TOKEN" python3 -c "
+import json, os, subprocess
 from datetime import date
 
+token = os.environ['TODOIST_TOKEN']
 result = subprocess.run(
-    ['curl', '-sS', '-H', 'Authorization: Bearer $TOKEN', 'https://api.todoist.com/rest/v2/tasks'],
+    ['curl', '-sS', '-H', f'Authorization: Bearer {token}', 'https://api.todoist.com/rest/v2/tasks'],
     capture_output=True, text=True
 )
 tasks = json.loads(result.stdout)
@@ -74,29 +76,31 @@ today = date.today().isoformat()
 for t in tasks:
     due = t.get('due')
     if due and due.get('date', '').startswith(today):
-        print(f"{t['content']} (due: {due['date']})")
+        print(f'{t[\"content\"]} (due: {due[\"date\"]})')
 "
 }
 
 cmd_due_soon() {
   local days="\${1:-3}"
-  python3 -c "
-import json, subprocess
+  TODOIST_TOKEN="$TOKEN" DUE_DAYS="$days" python3 -c "
+import json, os, subprocess
 from datetime import date, timedelta
 
+token = os.environ['TODOIST_TOKEN']
+days = int(os.environ['DUE_DAYS'])
 result = subprocess.run(
-    ['curl', '-sS', '-H', 'Authorization: Bearer $TOKEN', 'https://api.todoist.com/rest/v2/tasks'],
+    ['curl', '-sS', '-H', f'Authorization: Bearer {token}', 'https://api.todoist.com/rest/v2/tasks'],
     capture_output=True, text=True
 )
 tasks = json.loads(result.stdout)
-cutoff = (date.today() + timedelta(days=$days)).isoformat()
+cutoff = (date.today() + timedelta(days=days)).isoformat()
 today = date.today().isoformat()
 for t in tasks:
     due = t.get('due')
     if due and due.get('date'):
         d = due['date'][:10]
         if today <= d <= cutoff:
-            print(f"{t['content']} (due: {due['date']})")
+            print(f'{t[\"content\"]} (due: {due[\"date\"]})')
 "
 }
 

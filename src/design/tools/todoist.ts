@@ -44,9 +44,9 @@ cmd_add() {
   local project="\${2:-}"
   local body
   if [ -n "$project" ]; then
-    body=$(printf '{"content":"%s","project_id":"%s"}' "$content" "$project")
+    body=$(jq -n --arg c "$content" --arg p "$project" '{content: $c, project_id: $p}')
   else
-    body=$(printf '{"content":"%s"}' "$content")
+    body=$(jq -n --arg c "$content" '{content: $c}')
   fi
   curl -sS -X POST -H "$auth_header" -H "Content-Type: application/json" -d "$body" "$API/tasks"
 }

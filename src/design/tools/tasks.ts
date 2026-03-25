@@ -41,11 +41,11 @@ cmd_list() {
   if [ "$status" = "all" ]; then
     cat "$TASKS_FILE"
   else
-    python3 -c "
-import json, sys
-tasks = json.load(open('$TASKS_FILE'))
+    TASKS_FILE="$TASKS_FILE" FILTER_STATUS="$status" python3 -c "
+import json, os, sys
+tasks = json.load(open(os.environ['TASKS_FILE']))
 for t in tasks:
-    if t.get('status') == '$status':
+    if t.get('status') == os.environ['FILTER_STATUS']:
         print(json.dumps(t))
 "
   fi
@@ -56,55 +56,69 @@ cmd_add() {
   local priority="\${2:-medium}"
   local id
   id="$(gen_id)"
-  python3 -c "
-import json
-tasks = json.load(open('$TASKS_FILE'))
-tasks.append({'id': '$id', 'title': '''$title''', 'priority': '$priority', 'status': 'pending', 'created': '$(now_iso)'})
-json.dump(tasks, open('$TASKS_FILE', 'w'), indent=2)
-print('Added: $title (id: $id)')
+  local created
+  created="$(now_iso)"
+  TASKS_FILE="$TASKS_FILE" TASK_ID="$id" TASK_TITLE="$title" TASK_PRIORITY="$priority" TASK_CREATED="$created" python3 -c "
+import json, os
+tf = os.environ['TASKS_FILE']
+tasks = json.load(open(tf))
+tasks.append({
+    'id': os.environ['TASK_ID'],
+    'title': os.environ['TASK_TITLE'],
+    'priority': os.environ['TASK_PRIORITY'],
+    'status': 'pending',
+    'created': os.environ['TASK_CREATED']
+})
+json.dump(tasks, open(tf, 'w'), indent=2)
+print(f'Added: {os.environ[\"TASK_TITLE\"]} (id: {os.environ[\"TASK_ID\"]})')
 "
 }
 
 cmd_done() {
   local id="$1"
-  python3 -c "
-import json, sys
-tasks = json.load(open('$TASKS_FILE'))
+  TASKS_FILE="$TASKS_FILE" TASK_ID="$id" python3 -c "
+import json, os, sys
+tf = os.environ['TASKS_FILE']
+tid = os.environ['TASK_ID']
+tasks = json.load(open(tf))
 found = False
 for t in tasks:
-    if t['id'] == '$id':
+    if t['id'] == tid:
         t['status'] = 'done'
         found = True
-        print(f'Done: {t["title"]}')
+        print(f'Done: {t[\"title\"]}')
 if not found:
-    print('Task not found: $id', file=sys.stderr)
+    print(f'Task not found: {tid}', file=sys.stderr)
     sys.exit(1)
-json.dump(tasks, open('$TASKS_FILE', 'w'), indent=2)
+json.dump(tasks, open(tf, 'w'), indent=2)
 "
 }
 
 cmd_remove() {
   local id="$1"
-  python3 -c "
-import json, sys
-tasks = json.load(open('$TASKS_FILE'))
-new_tasks = [t for t in tasks if t['id'] != '$id']
+  TASKS_FILE="$TASKS_FILE" TASK_ID="$id" python3 -c "
+import json, os, sys
+tf = os.environ['TASKS_FILE']
+tid = os.environ['TASK_ID']
+tasks = json.load(open(tf))
+new_tasks = [t for t in tasks if t['id'] != tid]
 if len(new_tasks) == len(tasks):
-    print('Task not found: $id', file=sys.stderr)
+    print(f'Task not found: {tid}', file=sys.stderr)
     sys.exit(1)
-json.dump(new_tasks, open('$TASKS_FILE', 'w'), indent=2)
-print('Removed task: $id')
+json.dump(new_tasks, open(tf, 'w'), indent=2)
+print(f'Removed task: {tid}')
 "
 }
 
 cmd_clear() {
   local only_done="\${1:-}"
   if [ "$only_done" = "--done" ]; then
-    python3 -c "
-import json
-tasks = json.load(open('$TASKS_FILE'))
+    TASKS_FILE="$TASKS_FILE" python3 -c "
+import json, os
+tf = os.environ['TASKS_FILE']
+tasks = json.load(open(tf))
 tasks = [t for t in tasks if t.get('status') != 'done']
-json.dump(tasks, open('$TASKS_FILE', 'w'), indent=2)
+json.dump(tasks, open(tf, 'w'), indent=2)
 print('Cleared completed tasks')
 "
   else
@@ -114,9 +128,9 @@ print('Cleared completed tasks')
 }
 
 cmd_count() {
-  python3 -c "
-import json
-tasks = json.load(open('$TASKS_FILE'))
+  TASKS_FILE="$TASKS_FILE" python3 -c "
+import json, os
+tasks = json.load(open(os.environ['TASKS_FILE']))
 pending = sum(1 for t in tasks if t.get('status') == 'pending')
 print(pending)
 "
