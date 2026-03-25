@@ -17,47 +17,238 @@
       "acceptanceCriteria": [
         "pollInstanceHealth() returns healthy:false when SSH is reachable but port 3737 never opens, regardless of number of attempts",
         "The error message in the result includes the SSH access hint for debugging",
-        "Existing health tests pass with no regression"
+        "health.test.ts exists with tests covering: SSH+port both open = healthy:true, SSH open + port closed after timeout = healthy:false with error, neither open = healthy:false",
+        "All health and provisioning tests pass with no regression"
       ],
       "scope": [],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "SPRINT AFTER BUG-109. The health poller's SSH-open fallback returns healthy:true after 18 attempts — this conflates 'VM booted' with 'agent running'. Even with BUG-109 fixed (failed cloud-init now exits non-zero), a VM whose cloud-init silently misbehaves in other ways could still trigger this path. The fix is conceptually simple: healthy:false on timeout with a clear message and SSH debug hint. FIX SCOPE: health.ts lines 86-93 + one new test case for the timeout path in health.test.ts. AC is correct and user-facing. Note: the error message wording in AC should match step 2 exactly — sprinter should use the journalctl hint verbatim.",
-      "groomedAt": "2026-03-24"
+      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'should' confirmed. User trust violation — provisioning reports success when agent never started. BUG-109 dependency shipped 2026-03-24, so this is unblocked. AC1 (healthy:false on port 3737 timeout) and AC2 (SSH debug hint) are the correct user outcomes — operator must know how to diagnose a failed cloud-init without reading source code. health.test.ts must be created (Tech Lead confirmed it does not exist). Sprint immediately — health check correctness is a prerequisite for user trust in cloud deployments. Steps owned by Tech Lead — do not modify.",
+      "groomedAt": "2026-03-24",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-24T09:30:58-07:00",
+      "failCount": 1
     },
     {
-      "id": "BUG-112",
-      "title": "credentials.ts and snapshot-registry.ts create cloud/ dir without DIR_MODE_SECRET — inconsistent with registry.ts",
-      "intent": "Every file and directory under ~/.clawhq/cloud/ must be created with secure permissions. The cloud/ directory must never be world-readable — it contains credentials.json, instances.json, and snapshots.json. Permissions must be consistent across all writers.",
-      "description": "src/cloud/provisioning/credentials.ts:53 calls mkdirSync(dir, { recursive: true }) without mode. src/cloud/provisioning/snapshot-registry.ts:51 does the same. In contrast, src/cloud/provisioning/registry.ts:57 correctly passes { recursive: true, mode: DIR_MODE_SECRET }. If credentials.ts or snapshot-registry.ts runs first (e.g. user runs 'clawhq cloud connect' before first provision), it creates ~/.clawhq/cloud/ with the default umask (0755 — world-readable). Later, registry.ts cannot fix the mode because mkdirSync with recursive:true does not re-chmod existing directories. Result: other local users can list ~/.clawhq/cloud/ and enumerate its files. Additionally, snapshot-registry.ts:59 writes snapshots.json via writeFileSync(tmpPath, content) with no mode — the file will be world-readable. credentials.ts correctly uses FILE_MODE_SECRET on write. Fix: add DIR_MODE_SECRET to both mkdirSync calls; add FILE_MODE_SECRET to snapshot-registry.ts writeFileSync call.",
+      "id": "BUG-113",
+      "title": "SSH host key never collected at provision time — deploy update uses accept-new on every connection",
+      "intent": "Every deploy update SSH connection must verify the remote host key against the key collected at provision time. accept-new must never be used for a known instance.",
+      "description": "In engine.ts, addInstance() is called without sshHostKey. The ProvisionedInstance type has a sshHostKey field and the registry supports it, but nothing collects the host key after provisioning. As a result, all deploy update SSH connections hit the buildHostKeyArgs() fallback in update.ts (lines 212-237) which uses StrictHostKeyChecking=accept-new with UserKnownHostsFile=/dev/null. This means: (1) the host key is trusted blindly on first connect, (2) the key is never stored, (3) every subsequent deploy update re-trusts blindly again. A MITM attacker who intercepts any deploy update connection can inject commands into the remote agent. Fix: after provisioning health check passes, run ssh-keyscan -t ed25519 <ipAddress> to collect the host public key, then store it in the registry. Note: registry currently only has updateInstanceStatus() — a new updateInstanceField() or extension is needed to write sshHostKey to an existing instance record.",
       "priority": "must",
       "category": null,
       "steps": [
-        "Read src/cloud/provisioning/credentials.ts:50-54 and src/cloud/provisioning/snapshot-registry.ts:48-52 to confirm mkdirSync calls lack mode. Read src/cloud/provisioning/registry.ts:55-58 to confirm DIR_MODE_SECRET usage as the reference pattern.",
-        "In src/cloud/provisioning/credentials.ts, import DIR_MODE_SECRET from '../../config/defaults.js' (already imported in registry.ts — verify the export exists). Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }).",
-        "In src/cloud/provisioning/snapshot-registry.ts, import DIR_MODE_SECRET and FILE_MODE_SECRET from '../../config/defaults.js'. Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). Change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }).",
-        "Verify that registry.test.ts already covers the FILE_MODE_SECRET and DIR_MODE_SECRET assertions (it does per existing tests). Add equivalent assertions to any snapshot-registry test or credentials test if they exist — if not, note the gap in grooming notes.",
-        "Run npm test -- --testPathPattern='registry|credentials|snapshot' to confirm no regression."
+        "Read src/cloud/provisioning/engine.ts — find both addInstance() calls (lines ~172 and ~236) and the post-health-check block (line ~269)",
+        "Read src/cloud/provisioning/registry.ts — understand updateInstanceStatus() and how to extend it to support writing sshHostKey",
+        "Add a function to collect host key: spawn ssh-keyscan -t ed25519 <ipAddress>, parse output, return key string",
+        "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function",
+        "If ssh-keyscan fails, log warning and continue — sshHostKey remains unset, accept-new fallback applies only in that case",
+        "Add tests covering: successful key collection and storage, ssh-keyscan failure graceful degradation, update.ts strict mode when key is present",
+        "Run npm test to confirm all tests pass"
       ],
       "acceptanceCriteria": [
-        "credentials.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
-        "snapshot-registry.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
-        "snapshots.json is written with FILE_MODE_SECRET (mode 0600)",
-        "All existing registry, credentials, and provisioning tests pass with no regression"
+        "After a successful provision, the instance record in instances.json has a non-empty sshHostKey field",
+        "A subsequent clawhq deploy update connection to that instance uses StrictHostKeyChecking=yes (not accept-new)",
+        "If ssh-keyscan fails at provision time, provisioning still completes and a warning is logged — sshHostKey remains unset and accept-new fallback applies only in that case",
+        "Existing deploy update and provisioning tests pass with no regression"
       ],
-      "scope": [
-        "src/cloud/provisioning/credentials.ts",
-        "src/cloud/provisioning/snapshot-registry.ts"
-      ],
+      "scope": [],
       "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "PRIORITY ELEVATED 2026-03-24: Elevated from 'should' to 'must'. Security non-negotiable: 'Security by default — hardening is automatic, not opt-in.' A world-readable ~/.clawhq/cloud/ directory containing credentials.json and instances.json violates this non-negotiable for any multi-user system. The race condition (credentials.ts runs before registry.ts, sets permissive mode that cannot be retroactively fixed) means current installs may already be exposed. 3-line fix. Sprint immediately.",
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): BUMPED to 'must'. Security-by-default is a non-negotiable: 'hardening is automatic, not opt-in'. accept-new on every SSH connection for every deploy update is the opposite of that — it trusts blindly, never stores, and a MITM attacker who intercepts any deploy update can inject commands into the remote agent. This is not a theoretical threat model; it is the default behavior right now for all users of clawhq deploy update. Prior note said 'should' because MITM requires active attacker — but cloud agents communicate over the internet and deploy update is the primary management channel. Violates security-by-default before cloud features stabilise. Must ship before cloud GA. AC4 (regression tests pass) confirmed. Steps populated by Tech Lead — do not modify.",
       "groomedAt": "2026-03-24",
-      "completedAt": "2026-03-24T09:22:48-07:00"
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-24T09:31:10-07:00",
+      "failCount": 1
+    },
+    {
+      "id": "BUG-114",
+      "title": "Tool server connections default to admin-only since OpenClaw v0.8.7 — blueprints with tools are invisible to users",
+      "intent": "Every blueprint that exposes tools must generate explicit access grants so tools are visible to users. The v0.8.7 default (no grants = admin-only) silently breaks all existing blueprints on upgrade.",
+      "description": "OpenClaw v0.8.7 changed the default access model for tool server and terminal connections: when no explicit access grants are set, connections are now private (admin-only). Previously they were visible to all users. ClawHQ's config generator (src/design/configure/generate.ts) does not set explicit access grants for blueprint tools, meaning any agent running on v0.8.7+ will have tools invisible to non-admin users. Fix: the config generator must emit explicit access grants for all tools a blueprint defines. This should also be added as a doctor check — detect v0.8.7+ and verify tool access grants are present.",
+      "priority": "must",
+      "category": null,
+      "steps": [],
+      "acceptanceCriteria": [
+        "Config generator emits explicit access grants for all tools defined in a blueprint",
+        "An agent forged from any blueprint on OpenClaw v0.8.7+ has tools visible to the configured user",
+        "clawhq doctor detects missing tool access grants and reports a warning with fix suggestion",
+        "Existing config generation tests pass with no regression"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'must' confirmed — silent breaking change on v0.8.7 upgrade makes every blueprint's tools invisible to non-admin users. No user workaround exists; tools simply don't appear. DESIGN DECISION REQUIRED before sprint: what principal format does OpenClaw v0.8.7+ expect in the tools.allow field? (user IDs, emails, roles?) — Tech Lead must resolve this before implementation can proceed. Groomnig note: FEAT-017 doctor check must NOT duplicate the access grant check logic — BUG-114 owns the fix, FEAT-017 reuses it. Sprint BUG-114 first. Steps are empty — Tech Lead to populate after design decision is made."
+    },
+    {
+      "id": "BUG-115",
+      "title": "clawhq build CLI command is a stub — prints 'not implemented' instead of calling build()",
+      "intent": "A user who runs clawhq build must get a Docker image built. The build() function exists and works (quickstart calls it), but the CLI command exits with 'Not yet implemented'.",
+      "description": "src/cli/index.ts lines 1264-1271: the 'build' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. The actual build() function in src/build/docker/index.ts is fully implemented — two-stage Docker build with change detection and manifests. clawhq quickstart calls build() directly and it works. The CLI command just never got wired up. This is the most critical stub in the codebase because 'clawhq build' is step 3 in the documented user journey (install → init → build → up).",
+      "priority": "must",
+      "category": "stub",
+      "steps": [
+        "Read src/build/docker/index.ts to understand the build() function signature and required parameters",
+        "Read how clawhq quickstart calls build() to understand the expected invocation",
+        "Replace the stub in src/cli/index.ts lines 1267-1270 with a real call to build(), passing deployDir and appropriate options",
+        "Add progress reporting (ora spinner) consistent with other CLI commands",
+        "Test: run clawhq build after clawhq install + clawhq init and verify Docker image is built",
+        "Run npm test to confirm no regression"
+      ],
+      "acceptanceCriteria": [
+        "clawhq build calls the real build() function from src/build/docker/index.ts",
+        "Build output shows progress (Dockerfile generation, Docker build, manifest write)",
+        "clawhq build fails with actionable error if prerequisites are missing (no Docker, no config)",
+        "The documented user journey install → init → build → up works end-to-end"
+      ],
+      "scope": ["src/cli/index.ts", "src/build/docker/index.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. The build() function IS implemented and tested — quickstart uses it. The CLI command is the only broken link. This is a 30-minute fix but blocks the entire documented user journey."
+    },
+    {
+      "id": "BUG-116",
+      "title": "clawhq skill update CLI command is a stub — prints 'not implemented' instead of updating skills",
+      "intent": "Users who install skills must be able to update them. clawhq skill install and clawhq skill remove work, but clawhq skill update prints 'not implemented'.",
+      "description": "src/cli/index.ts lines 2316-2323: the 'skill update' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. Users can install and remove skills but cannot update them to newer versions. This breaks the 'agent grows' non-negotiable — if you can't update skills, the agent's capabilities stagnate.",
+      "priority": "should",
+      "category": "stub",
+      "steps": [
+        "Determine update semantics: re-install from source (overwrite), or diff-and-patch?",
+        "Read src/evolve/skills/lifecycle.ts to understand installSkill() and removeSkill() — update may be remove + reinstall with rollback",
+        "Implement updateSkill() in lifecycle.ts — simplest correct approach is snapshot current, remove, reinstall from source, rollback on failure",
+        "Wire CLI command to call updateSkill()",
+        "Add tests covering: successful update, update failure with rollback, skill not found",
+        "Run npm test to confirm no regression"
+      ],
+      "acceptanceCriteria": [
+        "clawhq skill update <name> updates an installed skill to the latest version from its source",
+        "If update fails, the previous version is restored (rollback)",
+        "clawhq skill update (no name) updates all installed skills",
+        "Existing skill install/remove tests pass with no regression"
+      ],
+      "scope": ["src/cli/index.ts", "src/evolve/skills/lifecycle.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Skill install and remove are fully implemented with rollback support. Update is likely remove+reinstall with the existing rollback mechanism. Design decision: does 'update' mean re-fetch from original source, or accept a new source?"
+    },
+    {
+      "id": "BUG-117",
+      "title": "clawhq evolve CLI command is a stub — prints 'not implemented' instead of managing capabilities",
+      "intent": "clawhq evolve is the top-level command for the 'agent grows' pillar. It must orchestrate the sub-systems (skills, tools, integrations, memory) into a coherent capability management experience.",
+      "description": "src/cli/index.ts lines 2358-2365: the 'evolve' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. All sub-systems exist as separate commands (clawhq skill, clawhq tool, clawhq integrate, clawhq memory) but the top-level 'evolve' command that ties them together is a stub. This may be a UX question: should 'clawhq evolve' be an interactive dashboard showing current capabilities with options to add/remove, or should it just list sub-commands?",
+      "priority": "could",
+      "category": "stub",
+      "steps": [
+        "Decide UX: interactive capability dashboard vs sub-command listing vs guided wizard",
+        "If dashboard: show current skills, tools, integrations, memory status in a single view with action prompts",
+        "If sub-command listing: print available evolve sub-commands with descriptions",
+        "Implement chosen approach in CLI handler",
+        "Run npm test to confirm no regression"
+      ],
+      "acceptanceCriteria": [
+        "clawhq evolve does not print 'not implemented'",
+        "clawhq evolve provides a useful entry point for capability management",
+        "All existing sub-commands (skill, tool, integrate, memory) continue to work independently"
+      ],
+      "scope": ["src/cli/index.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Lower priority — all sub-commands work independently. The 'evolve' command is a UX convenience, not a blocker. Design decision needed before implementation."
+    },
+    {
+      "id": "BUG-118",
+      "title": "Email notification channel returns hardcoded failure — never sends email",
+      "intent": "The monitor notification system must be able to alert operators via email. Email is the most universal notification channel and the only one that works when Telegram/webhooks are unreachable.",
+      "description": "src/operate/monitor/notify.ts lines 52-55: dispatchToChannel() for the 'email' case returns { channel: 'email', success: false, error: 'Email channel not yet implemented' }. Comment says 'In production, this would be replaced with SMTP transport.' Telegram and webhook channels are fully implemented. Email is the missing third leg. Users who configure email notifications get silent failures.",
+      "priority": "should",
+      "category": "stub",
+      "steps": [
+        "Decide transport: nodemailer dependency vs raw SMTP via net/tls module vs external service (SES, SendGrid)",
+        "Implement sendEmail() — connect to configured SMTP server, send alert email with subject and body",
+        "Add SMTP configuration fields to monitor config (host, port, from, to, auth)",
+        "Replace the hardcoded failure return with a real sendEmail() call",
+        "Add tests: successful send (mock SMTP server), connection failure, auth failure",
+        "Run npm test to confirm no regression"
+      ],
+      "acceptanceCriteria": [
+        "clawhq monitor with email channel configured sends real email alerts via SMTP",
+        "Email contains: alert severity, check name, failure details, agent identifier",
+        "Connection failures are reported as channel errors, not silent failures",
+        "Existing Telegram and webhook notification tests pass with no regression"
+      ],
+      "scope": ["src/operate/monitor/notify.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Design decision: adding nodemailer as a dependency vs raw SMTP. nodemailer is battle-tested but adds a dependency; raw SMTP is complex. Consider: does the sovereign/local-first ethos require avoiding SaaS email services?"
+    },
+    {
+      "id": "BUG-119",
+      "title": "Heartbeat disk usage always reports 0% — getDiskUsagePercent() is a placeholder",
+      "intent": "Cloud heartbeat must report real disk usage so operators can act before an agent fills its disk and crashes.",
+      "description": "src/cloud/heartbeat/reporter.ts lines 151-153: getDiskUsagePercent() takes deployDir but ignores it (prefixed with _), returns hardcoded 0. Comment says 'Would use statvfs in production; return 0 as placeholder'. This means cloud monitoring dashboards always show 0% disk usage regardless of actual state. An agent could fill its disk and the heartbeat would still report 0%.",
+      "priority": "should",
+      "category": "stub",
+      "steps": [
+        "Implement getDiskUsagePercent() using Node.js fs.statfs() (available since Node 18.15) or child_process df command",
+        "Calculate percentage: (total - available) / total * 100",
+        "Handle errors gracefully — return -1 or null if statfs fails, don't crash the heartbeat",
+        "Add tests: real filesystem check returns >0%, error handling on invalid path",
+        "Run npm test to confirm no regression"
+      ],
+      "acceptanceCriteria": [
+        "getDiskUsagePercent() returns the actual disk usage percentage for the deploy directory's filesystem",
+        "Cloud heartbeat reports include real disk usage data",
+        "If the filesystem query fails, the heartbeat still sends (with disk usage omitted or -1), not crashes"
+      ],
+      "scope": ["src/cloud/heartbeat/reporter.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Node.js fs.statfs() is the right approach — no child_process needed. Small, self-contained fix."
+    },
+    {
+      "id": "BUG-120",
+      "title": "Heartbeat container check uses file existence as proxy — never queries Docker, uptime always 0",
+      "intent": "Cloud heartbeat must report whether the agent container is actually running and for how long. File existence does not mean the container is up.",
+      "description": "src/cloud/heartbeat/reporter.ts lines 132-146: checkContainerRunning() checks if compose file and config file exist on disk, returns running:true if both present. It never queries Docker. uptimeSeconds always returns 0 (hardcoded). Comment says 'Container state would normally be checked via Docker API; for now we check if the engine directory looks active'. This means: (1) a stopped container with files on disk is reported as running, (2) uptime is always 0 so operators can't tell how long an agent has been up, (3) a container restart is invisible to monitoring.",
+      "priority": "should",
+      "category": "stub",
+      "steps": [
+        "Read src/operate/doctor/checks.ts to find the real Docker container health check (it exists there)",
+        "Reuse or extract the Docker check logic — docker inspect or docker compose ps to get container state and start time",
+        "Calculate uptimeSeconds from container start time",
+        "Replace file-existence check with real Docker query",
+        "Fall back to file-existence check if Docker socket is unreachable (graceful degradation)",
+        "Add tests: container running returns real state, container stopped returns running:false, Docker unavailable falls back gracefully",
+        "Run npm test to confirm no regression"
+      ],
+      "acceptanceCriteria": [
+        "checkContainerRunning() queries Docker for actual container state",
+        "uptimeSeconds reflects real container uptime, not hardcoded 0",
+        "A stopped container is reported as running:false even if config files exist on disk",
+        "If Docker socket is unreachable, function degrades gracefully (returns running:false with error, does not crash heartbeat)"
+      ],
+      "scope": ["src/cloud/heartbeat/reporter.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Doctor module already has real Docker health checks — this is about reusing that logic in the heartbeat reporter. Coordinate with doctor checks to avoid duplication."
     }
   ]
 }
