@@ -1,37 +1,34 @@
 {
-  "sprintId": "sprint-1774419127",
-  "startedAt": "2026-03-24T23:12:07-07:00",
+  "sprintId": "sprint-1774419243",
+  "startedAt": "2026-03-24T23:14:03-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-014",
-    "title": "Add .doc-standard.yaml schema file for doc structure enforcement",
-    "intent": "The repo must declare its doc standard version and structure so automated checks can validate compliance — undeclared standards are unenforceable.",
-    "description": "Part of a cross-repo documentation standard shared with aishore, GigOS, and other portfolio repos. The .doc-standard.yaml declares: schema version, project metadata (name: ClawHQ, tagline: WordPress for AI agents, category: infrastructure), required files list matching the docs/ structure, cross-repo links to sibling projects (aishore, Easy-Markdown, GigOS), and author info for consistency enforcement across the portfolio. This file enables a future GitHub Action to validate doc structure compliance on PR. Note: ClawHQ has additional docs not in the standard (docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md) — these should be listed in an optional_files section so the validator doesn't flag them as non-standard.",
+    "id": "FEAT-020",
+    "title": "Integration tests for prerequisite detection — test against real Docker, Node, Ollama binaries",
+    "intent": "Prerequisite detection (Docker version, Node version, Ollama availability) is tested with mocked child_process.execFile. If the output format of 'docker --version' changes, or if our version parsing regex is wrong, we won't know until a user hits it.",
+    "description": "src/build/installer/prereqs.test.ts mocks the entire node:child_process module. The mock provides helpers like succeedsWith() and fails() to simulate command output. The real execFile() is never called. This means: (1) version parsing regexes are tested against hardcoded strings, not real binary output, (2) error handling for 'command not found' is simulated, not real, (3) Docker socket permissions, PATH issues, and platform differences are invisible. This item adds integration tests that run real binaries when available and skip gracefully when not.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create .doc-standard.yaml at repo root",
-      "Set schema_version to '1.0'",
-      "Set project name to 'ClawHQ', tagline to 'WordPress for AI agents', category to 'infrastructure'",
-      "List required_files: README.md, docs/ARCHITECTURE.md, docs/QUICKSTART.md, docs/CONFIGURATION.md, docs/PROBLEMS.md, docs/ROADMAP.md, docs/CONTRIBUTING.md, docs/CHANGELOG.md",
-      "Add optional_files: docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md (repo-specific docs not in the standard)",
-      "Add portfolio section with sibling repos: aishore (complementary), Easy-Markdown (related), GigOS (related)",
-      "Add author section: name Simon Plant, location Santa Barbara CA, status 'Building AI infrastructure tools. Open to roles.'",
-      "Verify the file is valid YAML"
+      "Add integration test file: src/build/installer/prereqs.integration.test.ts",
+      "Test: if Docker is available, run the real version check and verify parsing succeeds",
+      "Test: if Node is available (it always is in CI), run the real version check",
+      "Test: if Ollama is available, run the real availability check",
+      "Skip tests gracefully when binaries are not installed (not failures)",
+      "Run on CI where Docker is available (GitHub Actions ubuntu-latest has Docker)"
     ],
     "acceptanceCriteria": [
-      ".doc-standard.yaml exists at repo root and is valid YAML",
-      "File declares schema_version, project metadata, required_files, optional_files, portfolio siblings, and author info",
-      "required_files matches the docs/ structure created by FEAT-006 through FEAT-012",
-      "optional_files lists docs/PRODUCT.md and docs/OPENCLAW-REFERENCE.md so they are not flagged as non-standard",
-      "Portfolio section lists aishore, Easy-Markdown, and GigOS with correct GitHub URLs"
+      "Integration tests run real prerequisite checks against installed binaries",
+      "Version parsing succeeds against real Docker and Node output",
+      "Tests skip gracefully on machines where Docker or Ollama is not installed",
+      "Existing mock-based unit tests remain unchanged"
     ],
     "scope": [
-      ".doc-standard.yaml"
+      "src/build/installer/prereqs.ts"
     ],
-    "startedAt": "2026-03-24T23:12:07-07:00",
+    "startedAt": "2026-03-24T23:14:03-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T23:14:01-07:00"
+    "completedAt": "2026-03-24T23:17:05-07:00"
   },
-  "completedAt": "2026-03-24T23:14:01-07:00",
+  "completedAt": "2026-03-24T23:17:05-07:00",
   "attempts": 1
 }
