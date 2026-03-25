@@ -119,10 +119,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'should' confirmed — doctor is the hero feature. BLOCKING PREREQUISITE: OpenClaw version detection does not exist anywhere in the codebase. If version detection cannot be implemented, checks must run unconditionally (with advisory note in output) — this is the correct fallback per AC4. Do NOT block the entire item on version detection; run unconditionally if needed. COORDINATION REQUIRED: AC2 (tool access grant check) must reuse BUG-114's check logic — do not duplicate. Sprint BUG-114 first, then this. Steps populated by Tech Lead — do not modify."
+      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'should' confirmed — doctor is the hero feature. BLOCKING PREREQUISITE: OpenClaw version detection does not exist anywhere in the codebase. If version detection cannot be implemented, checks must run unconditionally (with advisory note in output) — this is the correct fallback per AC4. Do NOT block the entire item on version detection; run unconditionally if needed. COORDINATION REQUIRED: AC2 (tool access grant check) must reuse BUG-114's check logic — do not duplicate. Sprint BUG-114 first, then this. Steps populated by Tech Lead — do not modify.",
+      "passes": true,
+      "completedAt": "2026-03-24T22:08:50-07:00"
     },
     {
       "id": "FEAT-018",

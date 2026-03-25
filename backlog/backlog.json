@@ -190,10 +190,12 @@
         "src/cloud/provisioning/providers/"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. 4 provider files, 4 test files, all with mocked fetch. The mocks were likely written from API docs, not recorded from real responses — drift is probable. Contract tests are the right middle ground between full mocks and expensive live tests."
+      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. 4 provider files, 4 test files, all with mocked fetch. The mocks were likely written from API docs, not recorded from real responses — drift is probable. Contract tests are the right middle ground between full mocks and expensive live tests.",
+      "passes": true,
+      "completedAt": "2026-03-24T22:19:55-07:00"
     },
     {
       "id": "FEAT-020",
