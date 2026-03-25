@@ -61,8 +61,8 @@
       "groomingNotes": "PO GROOM 2026-03-24 (pass 2): BUMPED to 'must'. Security-by-default is a non-negotiable: 'hardening is automatic, not opt-in'. accept-new on every SSH connection for every deploy update is the opposite of that — it trusts blindly, never stores, and a MITM attacker who intercepts any deploy update can inject commands into the remote agent. This is not a theoretical threat model; it is the default behavior right now for all users of clawhq deploy update. Prior note said 'should' because MITM requires active attacker — but cloud agents communicate over the internet and deploy update is the primary management channel. Violates security-by-default before cloud features stabilise. Must ship before cloud GA. AC4 (regression tests pass) confirmed. Steps populated by Tech Lead — do not modify.",
       "groomedAt": "2026-03-24",
       "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-03-24T09:31:10-07:00",
-      "failCount": 1
+      "lastFailAt": "2026-03-24T20:51:33-07:00",
+      "failCount": 2
     },
     {
       "id": "BUG-114",
