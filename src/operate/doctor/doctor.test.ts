@@ -11,7 +11,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
 
-import { runChecks } from "./checks.js";
+import { compareVersions, detectOpenClawVersion, runChecks } from "./checks.js";
 import { runDoctor, runDoctorWithFix } from "./doctor.js";
 import { runFixes } from "./fix.js";
 import { formatDoctorJson, formatDoctorTable, formatFixTable } from "./format.js";
@@ -245,7 +245,7 @@ describe("checks", { timeout: 30_000 }, () => {
 
   it("runs all 19 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(19);
+    expect(checks.length).toBe(21);
   });
 });
 
@@ -261,7 +261,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(19);
+    expect(report.checks.length).toBe(21);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -369,6 +369,229 @@ describe("auto-fix", { timeout: 30_000 }, () => {
 
     expect(fixReport.fixes.length).toBe(0);
     expect(fixReport.fixed).toBe(0);
+  });
+});
+
+// ── Version Detection Tests ─────────────────────────────────────────────────
+
+describe("compareVersions", () => {
+  it("returns 0 for equal versions", () => {
+    expect(compareVersions("0.8.7", "0.8.7")).toBe(0);
+  });
+
+  it("returns negative when a < b", () => {
+    expect(compareVersions("0.8.6", "0.8.7")).toBeLessThan(0);
+    expect(compareVersions("0.7.10", "0.8.0")).toBeLessThan(0);
+  });
+
+  it("returns positive when a > b", () => {
+    expect(compareVersions("0.8.10", "0.8.7")).toBeGreaterThan(0);
+    expect(compareVersions("1.0.0", "0.9.9")).toBeGreaterThan(0);
+  });
+});
+
+describe("detectOpenClawVersion", { timeout: 30_000 }, () => {
+  it("parses version from docker-compose image tag", async () => {
+    const compose = `
+services:
+  openclaw:
+    image: openclaw:v0.8.9
+    user: "1000:1000"
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    const version = await detectOpenClawVersion(testDir);
+    expect(version).toBe("0.8.9");
+  });
+
+  it("parses version without v prefix", async () => {
+    const compose = `
+services:
+  openclaw:
+    image: openclaw:0.8.7
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    const version = await detectOpenClawVersion(testDir);
+    expect(version).toBe("0.8.7");
+  });
+
+  it("parses version from namespaced image", async () => {
+    const compose = `
+services:
+  openclaw:
+    image: ghcr.io/nicepkg/openclaw:v0.8.10
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    const version = await detectOpenClawVersion(testDir);
+    expect(version).toBe("0.8.10");
+  });
+
+  it("returns null when image tag has no version", async () => {
+    const compose = `
+services:
+  openclaw:
+    image: openclaw:custom
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    const version = await detectOpenClawVersion(testDir);
+    expect(version).toBeNull();
+  });
+
+  it("returns null when compose file is missing", async () => {
+    const version = await detectOpenClawVersion(join(testDir, "nonexistent"));
+    expect(version).toBeNull();
+  });
+});
+
+// ── Upgrade Check Tests ────────────────────────────────────────────────────
+
+describe("upgrade checks", { timeout: 30_000 }, () => {
+  it("migration-state returns info when no container running", async () => {
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "migration-state");
+    // With no container, should skip gracefully
+    expect(check.severity).toBe("info");
+  });
+
+  it("underscore-tool-methods passes with clean tool scripts", async () => {
+    await writeValidConfig();
+    await writeValidCompose();
+    await writeValidEnv();
+    // Write a tool script with no underscore methods
+    await writeFile(
+      join(testDir, "workspace", "tools", "email.sh"),
+      '#!/bin/bash\nfunction send_email() {\n  echo "sending"\n}\n',
+    );
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "underscore-tool-methods");
+    expect(check.passed).toBe(true);
+  });
+
+  it("underscore-tool-methods warns on underscore-prefixed functions in bash", async () => {
+    await writeValidConfig();
+    await writeValidCompose();
+    await writeValidEnv();
+    await writeFile(
+      join(testDir, "workspace", "tools", "helper.sh"),
+      '#!/bin/bash\nfunction _internal_helper() {\n  echo "hidden"\n}\n',
+    );
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "underscore-tool-methods");
+    expect(check.passed).toBe(false);
+    expect(check.severity).toBe("warning");
+    expect(check.message).toContain("_internal_helper");
+  });
+
+  it("underscore-tool-methods warns on underscore-prefixed functions in python", async () => {
+    await writeValidConfig();
+    await writeValidCompose();
+    await writeValidEnv();
+    await writeFile(
+      join(testDir, "workspace", "tools", "helper.py"),
+      'def _private_method():\n    pass\n',
+    );
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "underscore-tool-methods");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("_private_method");
+  });
+
+  it("underscore-tool-methods skipped when version < 0.8.10", async () => {
+    // Write compose with v0.8.7 tag
+    const compose = `
+services:
+  openclaw:
+    image: openclaw:v0.8.7
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+    volumes:
+      - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    await writeValidConfig();
+    await writeValidEnv();
+    // Write a tool with underscore method — should be skipped due to version
+    await writeFile(
+      join(testDir, "workspace", "tools", "helper.sh"),
+      '#!/bin/bash\nfunction _hidden() { echo "hi"; }\n',
+    );
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "underscore-tool-methods");
+    expect(check.passed).toBe(true);
+    expect(check.severity).toBe("info");
+    expect(check.message).toContain("skipped");
+  });
+
+  it("tool-access-grants skipped when version < 0.8.7", async () => {
+    // Write compose with v0.8.6 tag
+    const compose = `
+services:
+  openclaw:
+    image: openclaw:v0.8.6
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+    volumes:
+      - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    // Config without access grants — should still pass because version < 0.8.7
+    await writeFile(
+      join(testDir, "engine", "openclaw.json"),
+      JSON.stringify({
+        dangerouslyDisableDeviceAuth: true,
+        allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`],
+        trustedProxies: ["172.17.0.1"],
+        tools: { exec: { host: "gateway", security: "full" } },
+      }),
+    );
+    await writeValidEnv();
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "tool-access-grants");
+    expect(check.passed).toBe(true);
+    expect(check.severity).toBe("info");
+    expect(check.message).toContain("skipped");
+  });
+
+  it("tool-access-grants includes advisory note when version unknown", async () => {
+    await writeValidCompose(); // uses "openclaw:custom" — no version
+    await writeFile(
+      join(testDir, "engine", "openclaw.json"),
+      JSON.stringify({
+        dangerouslyDisableDeviceAuth: true,
+        allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`],
+        trustedProxies: ["172.17.0.1"],
+        tools: { exec: { host: "gateway", security: "full" } },
+      }),
+    );
+    await writeValidEnv();
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "tool-access-grants");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("version unknown");
+  });
+
+  it("underscore-tool-methods includes advisory note when version unknown", async () => {
+    await writeValidCompose(); // uses "openclaw:custom" — no version
+    await writeValidConfig();
+    await writeValidEnv();
+    await writeFile(
+      join(testDir, "workspace", "tools", "helper.sh"),
+      '#!/bin/bash\nfunction _hidden() { echo "hi"; }\n',
+    );
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "underscore-tool-methods");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("version unknown");
+  });
+
+  it("runs all 21 checks", async () => {
+    const checks = await runChecks(testDir);
+    expect(checks.length).toBe(21);
   });
 });
 

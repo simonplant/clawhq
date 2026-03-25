@@ -1,5 +1,5 @@
 /**
- * Doctor diagnostic checks — 19 preventive checks covering all known failure modes.
+ * Doctor diagnostic checks — 21 preventive checks covering all known failure modes.
  *
  * Each check is async and independent (runs in parallel via Promise.all).
  * Checks never throw — they return a result with pass/fail + message + fix.
@@ -10,10 +10,11 @@
  *   - Docker runtime (docker-running, container-running, cap-drop, no-new-privileges, user-uid)
  *   - Agent health (identity-size, cron-syntax, env-vars, workspace-exists, gateway-reachable)
  *   - Infrastructure (firewall-active, disk-space)
+ *   - Upgrade (migration-state, tool-access-grants, underscore-tool-methods)
  */
 
 import { execFile } from "node:child_process";
-import { access, constants, readdir, readFile, stat } from "node:fs/promises";
+import { access, constants, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -39,16 +40,83 @@ function fail(
   return { name, passed: false, severity, message, fix, fixable };
 }
 
+// ── Version Detection ───────────────────────────────────────────────────────
+
+/**
+ * Compare two semver-style version strings.
+ * Returns negative if a < b, 0 if equal, positive if a > b.
+ */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] ?? 0;
+    const nb = pb[i] ?? 0;
+    if (na !== nb) return na - nb;
+  }
+  return 0;
+}
+
+/**
+ * Detect the running OpenClaw version.
+ *
+ * Strategy:
+ * 1. Parse the Docker image tag from docker-compose.yml (works offline)
+ * 2. Fall back to `docker exec` to read package.json (requires running container)
+ *
+ * Returns a semver string (e.g. "0.8.7") or null if version is unknown.
+ */
+export async function detectOpenClawVersion(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  // Strategy 1: Parse image tag from docker-compose.yml
+  try {
+    const composePath = join(deployDir, "engine", "docker-compose.yml");
+    const compose = await readFile(composePath, "utf-8");
+    // Match image: openclaw:vX.Y.Z, openclaw:X.Y.Z, or openclaw/openclaw:vX.Y.Z
+    const imageMatch = compose.match(/image:\s*[\w./]*openclaw[^:\s]*:v?(\d+\.\d+\.\d+)/i);
+    if (imageMatch?.[1]) {
+      return imageMatch[1];
+    }
+  } catch {
+    // Compose file not readable — try fallback
+  }
+
+  // Strategy 2: docker exec to read package.json version from running container
+  try {
+    const { stdout } = await execFileAsync(
+      "docker",
+      [
+        "compose", "-f", join(deployDir, "engine", "docker-compose.yml"),
+        "exec", "-T", "openclaw", "cat", "/app/package.json",
+      ],
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
+    );
+    const pkg = JSON.parse(stdout) as { version?: string };
+    if (pkg.version) {
+      return pkg.version;
+    }
+  } catch {
+    // Container not running or package.json not at expected path
+  }
+
+  return null;
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Run all 19 diagnostic checks. Every check runs even if earlier ones fail,
+ * Run all 21 diagnostic checks. Every check runs even if earlier ones fail,
  * so the user gets a complete picture in one pass.
  */
 export async function runChecks(
   deployDir: string,
   signal?: AbortSignal,
 ): Promise<DoctorCheckResult[]> {
+  // Detect OpenClaw version first — used by upgrade-related checks
+  const version = await detectOpenClawVersion(deployDir, signal);
+
   return Promise.all([
     checkConfigExists(deployDir),
     checkConfigValid(deployDir),
@@ -68,7 +136,9 @@ export async function runChecks(
     checkGatewayReachable(signal),
     checkDiskSpace(deployDir, signal),
     checkAirGapActive(deployDir, signal),
-    checkToolAccessGrants(deployDir),
+    checkToolAccessGrants(deployDir, version),
+    checkMigrationState(deployDir, signal),
+    checkUnderscoreToolMethods(deployDir, version),
   ]);
 }
 
@@ -685,8 +755,14 @@ async function checkDiskSpace(
 }
 
 /** 19. Tool access grants present (OpenClaw v0.8.7+ defaults to admin-only). */
-async function checkToolAccessGrants(deployDir: string): Promise<DoctorCheckResult> {
+async function checkToolAccessGrants(deployDir: string, version: string | null): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "tool-access-grants";
+
+  // Version-gate: only relevant for v0.8.7+
+  if (version && compareVersions(version, "0.8.7") < 0) {
+    return ok(name, `Tool access grants check skipped (OpenClaw ${version} < 0.8.7)`, "info");
+  }
+
   const configPath = join(deployDir, "engine", "openclaw.json");
   try {
     const raw = await readFile(configPath, "utf-8");
@@ -695,10 +771,13 @@ async function checkToolAccessGrants(deployDir: string): Promise<DoctorCheckResu
     const accessGrants = tools?.["accessGrants"] as unknown[] | undefined;
 
     if (!Array.isArray(accessGrants) || accessGrants.length === 0) {
+      const versionNote = version
+        ? ""
+        : " (Note: OpenClaw version unknown — running check unconditionally)";
       return fail(
         name,
         "warning",
-        "Missing tools.accessGrants — tools are invisible to non-admin users on OpenClaw v0.8.7+",
+        `Missing tools.accessGrants — tools are invisible to non-admin users on OpenClaw v0.8.7+${versionNote}`,
         'Add tools.accessGrants: [{"type":"user","value":"*"}] to openclaw.json or re-run: clawhq init --guided',
         true,
       );
@@ -710,6 +789,155 @@ async function checkToolAccessGrants(deployDir: string): Promise<DoctorCheckResu
       return fail(name, "warning", "Config file not found — cannot check tool access grants", "Run: clawhq init --guided");
     }
     return fail(name, "warning", `Cannot check tool access grants: ${msg}`);
+  }
+}
+
+/** 20. Database migrations completed successfully after upgrade. */
+async function checkMigrationState(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "migration-state";
+
+  try {
+    // Get container ID
+    const { stdout } = await execFileAsync(
+      "docker",
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q"],
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
+    );
+    const containerId = stdout.trim().split("\n")[0];
+    if (!containerId) {
+      return ok(name, "Migration check skipped — no container running", "info");
+    }
+
+    // Check recent container logs for migration failure patterns
+    // docker logs sends stdout and stderr separately — check both
+    const { stdout: logs, stderr: errLogs } = await execFileAsync(
+      "docker",
+      ["logs", "--tail", "200", containerId],
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
+    );
+    const allLogs = logs + "\n" + errLogs;
+
+    const migrationFailurePatterns = [
+      /migration.*fail/i,
+      /migration.*error/i,
+      /database.*migration.*incomplete/i,
+      /schema.*migration.*failed/i,
+      /typeorm.*migration.*error/i,
+      /prisma.*migration.*error/i,
+      /knex.*migration.*error/i,
+      /sequelize.*migration.*error/i,
+    ];
+
+    const failedLines: string[] = [];
+    for (const line of allLogs.split("\n")) {
+      for (const pattern of migrationFailurePatterns) {
+        if (pattern.test(line)) {
+          failedLines.push(line.trim());
+          break;
+        }
+      }
+    }
+
+    if (failedLines.length > 0) {
+      return fail(
+        name,
+        "error",
+        `Database migration failure detected in container logs: ${failedLines[0]}${failedLines.length > 1 ? ` (+${failedLines.length - 1} more)` : ""}`,
+        "Check database connectivity and re-run migrations. Restart with: clawhq restart",
+      );
+    }
+
+    return ok(name, "No migration failures detected in container logs");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // stderr from docker logs goes to stderr, not stdout — handle both
+    if (msg.includes("No such container") || msg.includes("ENOENT")) {
+      return ok(name, "Migration check skipped — container not available", "info");
+    }
+    return ok(name, "Migration check skipped — cannot read container logs", "info");
+  }
+}
+
+/** 21. Detect tools with underscore-prefixed methods (hidden on OpenClaw v0.8.10+). */
+async function checkUnderscoreToolMethods(
+  deployDir: string,
+  version: string | null,
+): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "underscore-tool-methods";
+
+  // Version-gate: only relevant for v0.8.10+
+  if (version && compareVersions(version, "0.8.10") < 0) {
+    return ok(name, `Underscore tool methods check skipped (OpenClaw ${version} < 0.8.10)`, "info");
+  }
+
+  const toolsDir = join(deployDir, "workspace", "tools");
+
+  try {
+    const entries = await readdir(toolsDir);
+    const toolFiles = entries.filter(
+      (f) => f.endsWith(".sh") || f.endsWith(".py") || f.endsWith(".ts") || f.endsWith(".js"),
+    );
+
+    if (toolFiles.length === 0) {
+      return ok(name, "No tool scripts found", "info");
+    }
+
+    // Patterns that match underscore-prefixed function/method declarations
+    const underscorePatterns = [
+      /^(?:function\s+|export\s+(?:async\s+)?function\s+)(_\w+)/m,  // bash/JS/TS function _foo
+      /^def\s+(_\w+)\s*\(/m,                                         // python def _foo(
+      /^\s*(?:async\s+)?(_\w+)\s*\(\)\s*\{/m,                       // bash _foo() {
+    ];
+
+    const toolsWithUnderscore: Array<{ file: string; methods: string[] }> = [];
+
+    for (const file of toolFiles) {
+      try {
+        const content = await readFile(join(toolsDir, file), "utf-8");
+        const methods: string[] = [];
+
+        for (const line of content.split("\n")) {
+          for (const pattern of underscorePatterns) {
+            const match = pattern.exec(line);
+            if (match?.[1]) {
+              methods.push(match[1]);
+            }
+          }
+        }
+
+        if (methods.length > 0) {
+          toolsWithUnderscore.push({ file, methods });
+        }
+      } catch {
+        // Skip unreadable files
+      }
+    }
+
+    if (toolsWithUnderscore.length > 0) {
+      const details = toolsWithUnderscore
+        .map((t) => `${t.file}: ${t.methods.join(", ")}`)
+        .join("; ");
+      const versionNote = version
+        ? ""
+        : " (Note: OpenClaw version unknown — running check unconditionally)";
+      return fail(
+        name,
+        "warning",
+        `Found underscore-prefixed methods no longer LLM-visible on v0.8.10+: ${details}${versionNote}`,
+        "Rename underscore-prefixed methods to remove the leading underscore, or remove them if no longer needed",
+      );
+    }
+
+    return ok(name, `All ${toolFiles.length} tool script(s) have no underscore-prefixed methods`, "warning");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("ENOENT")) {
+      return ok(name, "Tools directory not found — skipping underscore method check", "info");
+    }
+    return fail(name, "warning", `Cannot check tool methods: ${msg}`);
   }
 }
 

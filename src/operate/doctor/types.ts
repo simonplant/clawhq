@@ -28,7 +28,9 @@ export type DoctorCheckName =
   | "gateway-reachable"
   | "disk-space"
   | "air-gap-active"
-  | "tool-access-grants";
+  | "tool-access-grants"
+  | "migration-state"
+  | "underscore-tool-methods";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 
