@@ -97,6 +97,26 @@ describe("manifest", () => {
     expect(manifest.version).toBe(1);
     expect(manifest.tools).toHaveLength(0);
   });
+
+  it("throws on unsupported manifest version", async () => {
+    writeFileSync(
+      join(deployDir, "workspace", "tools", ".tool-manifest.json"),
+      JSON.stringify({ version: 2, tools: [] }),
+    );
+    await expect(loadToolManifest(deployDir)).rejects.toThrow(
+      /Unsupported tool manifest version 2 \(expected 1\)/,
+    );
+  });
+
+  it("throws on missing version field", async () => {
+    writeFileSync(
+      join(deployDir, "workspace", "tools", ".tool-manifest.json"),
+      JSON.stringify({ tools: [] }),
+    );
+    await expect(loadToolManifest(deployDir)).rejects.toThrow(
+      /Unsupported tool manifest version undefined \(expected 1\)/,
+    );
+  });
 });
 
 describe("upsertEntry", () => {

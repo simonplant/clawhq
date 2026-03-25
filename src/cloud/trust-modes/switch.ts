@@ -41,9 +41,10 @@ export function readTrustModeState(deployDir: string): TrustModeState {
       changedAt: new Date().toISOString(),
     };
   }
+  let parsed: Record<string, unknown>;
   try {
     const raw = readFileSync(path, "utf-8");
-    return JSON.parse(raw) as TrustModeState;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     console.warn("[cloud] Failed to read trust mode state:", err);
     return {
@@ -53,6 +54,13 @@ export function readTrustModeState(deployDir: string): TrustModeState {
       changedAt: new Date().toISOString(),
     };
   }
+  if (parsed.version !== 1) {
+    throw new Error(
+      `Unsupported trust mode state version ${String(parsed.version)} (expected 1). ` +
+      `The state file at ${path} may have been created by a newer version of ClawHQ.`,
+    );
+  }
+  return parsed as unknown as TrustModeState;
 }
 
 // ── Write ────────────────────────────────────────────────────────────────────

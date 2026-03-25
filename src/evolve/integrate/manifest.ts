@@ -24,13 +24,21 @@ export function loadIntegrationManifest(deployDir: string): IntegrationManifest 
   if (!existsSync(path)) {
     return { version: 1, integrations: [] };
   }
+  let parsed: Record<string, unknown>;
   try {
     const raw = readFileSync(path, "utf-8");
-    return JSON.parse(raw) as IntegrationManifest;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     console.warn("[evolve] Failed to read integration manifest:", err);
     return { version: 1, integrations: [] };
   }
+  if (parsed.version !== 1) {
+    throw new Error(
+      `Unsupported integration manifest version ${String(parsed.version)} (expected 1). ` +
+      `The manifest at ${path} may have been created by a newer version of ClawHQ.`,
+    );
+  }
+  return parsed as unknown as IntegrationManifest;
 }
 
 /** Save the integration manifest atomically. */

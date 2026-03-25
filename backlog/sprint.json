@@ -1,34 +1,32 @@
 {
-  "sprintId": "sprint-1774415332",
-  "startedAt": "2026-03-24T22:08:52-07:00",
+  "sprintId": "sprint-1774416777",
+  "startedAt": "2026-03-24T22:32:57-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-019",
-    "title": "Integration tests for cloud provider APIs — replace fetch mocks with contract tests",
-    "intent": "Cloud provider API integrations (DigitalOcean, Hetzner, GCP, AWS) are tested entirely against mocked fetch responses. If a provider changes their API response format, ClawHQ will break silently. Contract tests must verify our code handles real API shapes.",
-    "description": "10 test files mock globalThis.fetch to simulate cloud provider API responses. The mocks return hardcoded JSON that may not match the real API. Four providers are implemented: DigitalOcean (src/cloud/provisioning/providers/digitalocean.ts), Hetzner (hetzner.ts), GCP (gcp.ts), AWS (aws.ts). Each has a test file with fetch mocked. No test ever hits a real API or validates against a real response schema. This item adds contract tests: (1) record real API responses (sanitized) as fixtures, (2) validate our parsing logic against those fixtures, (3) optionally run live API tests when credentials are available (CI secret). This does NOT remove unit test mocks — it adds a second layer of validation.",
+    "id": "FEAT-107",
+    "title": "Add manifest version checking on all JSON manifest reads across evolve/cloud",
+    "intent": "Prevent silent data corruption when manifest formats change. Every manifest read must validate the version field and fail clearly on unsupported versions.",
+    "description": "Code review found that multiple modules write manifest files with version: 1 but never validate version on read. If the manifest format changes in a future version, old code will parse new manifests incorrectly — either silently producing wrong data or crashing with confusing errors. Affects skill manifests, export manifests, destruction proofs, and cloud state files.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Record real API responses from each provider (sanitized — no real IPs, keys, or account IDs)",
-      "Create fixture files: test/fixtures/providers/{digitalocean,hetzner,gcp,aws}/*.json",
-      "Write contract tests that parse real API response shapes through our provider code",
-      "Add optional live API test mode: if CLAWHQ_TEST_DO_TOKEN is set, run against real DigitalOcean API (create+destroy a $4 droplet)",
-      "Add npm run test:contract script",
-      "Document how to run live tests safely in CONTRIBUTING.md"
+      "Identify all manifest read locations across evolve/ and cloud/ modules",
+      "Add version validation to each manifest reader (reject if version !== expected)",
+      "Add descriptive error messages mentioning the expected vs actual version",
+      "Add tests for version mismatch on skill, export, destruction, and cloud manifests"
     ],
     "acceptanceCriteria": [
-      "Contract tests validate provider code against real API response shapes (recorded fixtures)",
-      "Tests catch response format changes that would break parsing (field renames, type changes, new required fields)",
-      "Live API tests run when provider credentials are available, skip gracefully when not",
-      "Existing unit tests with mocks continue to pass unchanged"
+      "All manifest read functions validate the version field before parsing",
+      "Unsupported manifest versions produce a clear error message",
+      "Tests cover version mismatch scenarios for each manifest type"
     ],
     "scope": [
-      "src/cloud/provisioning/providers/"
+      "src/evolve/**",
+      "src/cloud/**"
     ],
-    "startedAt": "2026-03-24T22:08:52-07:00",
+    "startedAt": "2026-03-24T22:32:57-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T22:19:55-07:00"
+    "completedAt": "2026-03-24T22:40:45-07:00"
   },
-  "completedAt": "2026-03-24T22:19:55-07:00",
+  "completedAt": "2026-03-24T22:40:45-07:00",
   "attempts": 1
 }

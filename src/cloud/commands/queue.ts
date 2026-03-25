@@ -73,13 +73,21 @@ export function readQueueState(deployDir: string): CommandQueueState {
   if (!existsSync(path)) {
     return { version: 1, pending: [], history: [] };
   }
+  let parsed: Record<string, unknown>;
   try {
     const raw = readFileSync(path, "utf-8");
-    return JSON.parse(raw) as CommandQueueState;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     console.warn("[cloud] Failed to read command queue state:", err);
     return { version: 1, pending: [], history: [] };
   }
+  if (parsed.version !== 1) {
+    throw new Error(
+      `Unsupported command queue state version ${String(parsed.version)} (expected 1). ` +
+      `The state file at ${path} may have been created by a newer version of ClawHQ.`,
+    );
+  }
+  return parsed as unknown as CommandQueueState;
 }
 
 /** Write command queue state atomically. */

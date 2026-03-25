@@ -45,13 +45,21 @@ export function readHeartbeatState(deployDir: string): HeartbeatState {
   if (!existsSync(path)) {
     return { version: 1, consecutiveFailures: 0 };
   }
+  let parsed: Record<string, unknown>;
   try {
     const raw = readFileSync(path, "utf-8");
-    return JSON.parse(raw) as HeartbeatState;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     console.warn("[cloud] Failed to read heartbeat state:", err);
     return { version: 1, consecutiveFailures: 0 };
   }
+  if (parsed.version !== 1) {
+    throw new Error(
+      `Unsupported heartbeat state version ${String(parsed.version)} (expected 1). ` +
+      `The state file at ${path} may have been created by a newer version of ClawHQ.`,
+    );
+  }
+  return parsed as unknown as HeartbeatState;
 }
 
 /** Write heartbeat state atomically. */

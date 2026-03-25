@@ -891,3 +891,79 @@ describe("command handler dispatch", () => {
     expect(handlerCalled).toBe(false);
   });
 });
+
+// ── Manifest Version Validation ─────────────────────────────────────────────
+
+describe("manifest version validation", () => {
+  describe("trust mode state", () => {
+    it("throws on unsupported version", () => {
+      const deployDir = tmpDeployDir();
+      writeFileSync(
+        join(deployDir, "cloud", "trust-mode.json"),
+        JSON.stringify({ version: 2, mode: "paranoid", connected: false, changedAt: "2026-01-01T00:00:00Z" }),
+      );
+      expect(() => readTrustModeState(deployDir)).toThrow(
+        /Unsupported trust mode state version 2 \(expected 1\)/,
+      );
+    });
+
+    it("throws on missing version field", () => {
+      const deployDir = tmpDeployDir();
+      writeFileSync(
+        join(deployDir, "cloud", "trust-mode.json"),
+        JSON.stringify({ mode: "paranoid", connected: false, changedAt: "2026-01-01T00:00:00Z" }),
+      );
+      expect(() => readTrustModeState(deployDir)).toThrow(
+        /Unsupported trust mode state version undefined \(expected 1\)/,
+      );
+    });
+  });
+
+  describe("heartbeat state", () => {
+    it("throws on unsupported version", () => {
+      const deployDir = tmpDeployDir();
+      writeFileSync(
+        join(deployDir, "cloud", "heartbeat.json"),
+        JSON.stringify({ version: 99, consecutiveFailures: 0 }),
+      );
+      expect(() => readHeartbeatState(deployDir)).toThrow(
+        /Unsupported heartbeat state version 99 \(expected 1\)/,
+      );
+    });
+
+    it("throws on missing version field", () => {
+      const deployDir = tmpDeployDir();
+      writeFileSync(
+        join(deployDir, "cloud", "heartbeat.json"),
+        JSON.stringify({ consecutiveFailures: 0 }),
+      );
+      expect(() => readHeartbeatState(deployDir)).toThrow(
+        /Unsupported heartbeat state version undefined \(expected 1\)/,
+      );
+    });
+  });
+
+  describe("command queue state", () => {
+    it("throws on unsupported version", () => {
+      const deployDir = tmpDeployDir();
+      writeFileSync(
+        join(deployDir, "cloud", "commands.json"),
+        JSON.stringify({ version: 3, pending: [], history: [] }),
+      );
+      expect(() => readQueueState(deployDir)).toThrow(
+        /Unsupported command queue state version 3 \(expected 1\)/,
+      );
+    });
+
+    it("throws on missing version field", () => {
+      const deployDir = tmpDeployDir();
+      writeFileSync(
+        join(deployDir, "cloud", "commands.json"),
+        JSON.stringify({ pending: [], history: [] }),
+      );
+      expect(() => readQueueState(deployDir)).toThrow(
+        /Unsupported command queue state version undefined \(expected 1\)/,
+      );
+    });
+  });
+});
