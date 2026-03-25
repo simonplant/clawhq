@@ -2458,10 +2458,99 @@ program
   .command("evolve")
   .description("Manage agent capabilities")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (opts: { deployDir: string }) => {
+  .option("--json", "Output as JSON")
+  .action(async (opts: { deployDir: string; json?: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+
+    // Gather capability status from all sub-systems
+    const [skillsResult, toolsResult, memoryResult] = await Promise.all([
+      listSkills({ deployDir: opts.deployDir }).catch(() => null),
+      listTools({ deployDir: opts.deployDir }).catch(() => null),
+      getMemoryStatus({ deployDir: opts.deployDir }).catch(() => null),
+    ]);
+    // listIntegrations is synchronous
+    let integrationsResult: { integrations: readonly { name: string; validated: boolean }[]; total: number } | null;
+    try {
+      integrationsResult = listIntegrations({ deployDir: opts.deployDir });
+    } catch {
+      integrationsResult = null;
+    }
+
+    if (opts.json) {
+      console.log(
+        JSON.stringify(
+          {
+            skills: skillsResult
+              ? { total: skillsResult.total, active: skillsResult.active, names: skillsResult.skills.map((s) => s.name) }
+              : null,
+            tools: toolsResult
+              ? { total: toolsResult.total, names: toolsResult.tools.map((t) => t.name) }
+              : null,
+            integrations: integrationsResult
+              ? { total: integrationsResult.total, names: integrationsResult.integrations.map((i) => i.name) }
+              : null,
+            memory: memoryResult
+              ? { totalEntries: memoryResult.totalEntries, totalSizeBytes: memoryResult.totalSizeBytes }
+              : null,
+          },
+          null,
+          2,
+        ),
+      );
+      return;
+    }
+
+    const lines: string[] = [];
+    lines.push(chalk.bold("\n🔧 Agent Capabilities\n"));
+
+    // Skills
+    if (skillsResult) {
+      const count = `${skillsResult.active}/${skillsResult.total} active`;
+      const names = skillsResult.skills.map((s) => s.name).join(", ") || "none";
+      lines.push(`  ${chalk.cyan("Skills")}         ${count}`);
+      if (skillsResult.total > 0) lines.push(`                   ${chalk.dim(names)}`);
+    } else {
+      lines.push(`  ${chalk.cyan("Skills")}         ${chalk.dim("unavailable")}`);
+    }
+
+    // Tools
+    if (toolsResult) {
+      const names = toolsResult.tools.map((t) => t.name).join(", ") || "none";
+      lines.push(`  ${chalk.cyan("Tools")}          ${toolsResult.total} installed`);
+      if (toolsResult.total > 0) lines.push(`                   ${chalk.dim(names)}`);
+    } else {
+      lines.push(`  ${chalk.cyan("Tools")}          ${chalk.dim("unavailable")}`);
+    }
+
+    // Integrations
+    if (integrationsResult) {
+      const validated = integrationsResult.integrations.filter((i) => i.validated).length;
+      const names = integrationsResult.integrations.map((i) => i.name).join(", ") || "none";
+      lines.push(`  ${chalk.cyan("Integrations")}   ${integrationsResult.total} connected (${validated} validated)`);
+      if (integrationsResult.total > 0) lines.push(`                   ${chalk.dim(names)}`);
+    } else {
+      lines.push(`  ${chalk.cyan("Integrations")}   ${chalk.dim("unavailable")}`);
+    }
+
+    // Memory
+    if (memoryResult) {
+      const kb = (memoryResult.totalSizeBytes / 1024).toFixed(1);
+      lines.push(`  ${chalk.cyan("Memory")}         ${memoryResult.totalEntries} entries (${kb} KB)`);
+    } else {
+      lines.push(`  ${chalk.cyan("Memory")}         ${chalk.dim("unavailable")}`);
+    }
+
+    lines.push("");
+    lines.push(chalk.bold("  Commands"));
+    lines.push(`    ${chalk.white("clawhq skill list/install/update/remove")}  Manage skills`);
+    lines.push(`    ${chalk.white("clawhq tool list/install/remove")}          Manage tools`);
+    lines.push(`    ${chalk.white("clawhq integrate list/add/remove/test")}    Manage integrations`);
+    lines.push(`    ${chalk.white("clawhq memory status/run/preferences")}     Manage memory`);
+    lines.push(`    ${chalk.white("clawhq export")}                            Export agent bundle`);
+    lines.push(`    ${chalk.white("clawhq destroy")}                           Verified destruction`);
+    lines.push("");
+
+    console.log(lines.join("\n"));
   });
 
 // ── Memory Commands ────────────────────────────────────────────────────────

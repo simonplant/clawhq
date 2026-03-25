@@ -177,10 +177,12 @@
         "src/cli/index.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Lower priority — all sub-commands work independently. The 'evolve' command is a UX convenience, not a blocker. Design decision needed before implementation."
+      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Lower priority — all sub-commands work independently. The 'evolve' command is a UX convenience, not a blocker. Design decision needed before implementation.",
+      "passes": true,
+      "completedAt": "2026-03-24T23:24:28-07:00"
     },
     {
       "id": "BUG-118",

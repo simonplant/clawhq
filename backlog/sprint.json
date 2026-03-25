@@ -1,34 +1,32 @@
 {
-  "sprintId": "sprint-1774419243",
-  "startedAt": "2026-03-24T23:14:03-07:00",
+  "sprintId": "sprint-1774419605",
+  "startedAt": "2026-03-24T23:20:05-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-020",
-    "title": "Integration tests for prerequisite detection — test against real Docker, Node, Ollama binaries",
-    "intent": "Prerequisite detection (Docker version, Node version, Ollama availability) is tested with mocked child_process.execFile. If the output format of 'docker --version' changes, or if our version parsing regex is wrong, we won't know until a user hits it.",
-    "description": "src/build/installer/prereqs.test.ts mocks the entire node:child_process module. The mock provides helpers like succeedsWith() and fails() to simulate command output. The real execFile() is never called. This means: (1) version parsing regexes are tested against hardcoded strings, not real binary output, (2) error handling for 'command not found' is simulated, not real, (3) Docker socket permissions, PATH issues, and platform differences are invisible. This item adds integration tests that run real binaries when available and skip gracefully when not.",
-    "sourceBacklog": "backlog.json",
+    "id": "BUG-117",
+    "title": "clawhq evolve CLI command is a stub — prints 'not implemented' instead of managing capabilities",
+    "intent": "clawhq evolve is the top-level command for the 'agent grows' pillar. It must orchestrate the sub-systems (skills, tools, integrations, memory) into a coherent capability management experience.",
+    "description": "src/cli/index.ts lines 2358-2365: the 'evolve' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. All sub-systems exist as separate commands (clawhq skill, clawhq tool, clawhq integrate, clawhq memory) but the top-level 'evolve' command that ties them together is a stub. This may be a UX question: should 'clawhq evolve' be an interactive dashboard showing current capabilities with options to add/remove, or should it just list sub-commands?",
+    "sourceBacklog": "bugs.json",
     "steps": [
-      "Add integration test file: src/build/installer/prereqs.integration.test.ts",
-      "Test: if Docker is available, run the real version check and verify parsing succeeds",
-      "Test: if Node is available (it always is in CI), run the real version check",
-      "Test: if Ollama is available, run the real availability check",
-      "Skip tests gracefully when binaries are not installed (not failures)",
-      "Run on CI where Docker is available (GitHub Actions ubuntu-latest has Docker)"
+      "Decide UX: interactive capability dashboard vs sub-command listing vs guided wizard",
+      "If dashboard: show current skills, tools, integrations, memory status in a single view with action prompts",
+      "If sub-command listing: print available evolve sub-commands with descriptions",
+      "Implement chosen approach in CLI handler",
+      "Run npm test to confirm no regression"
     ],
     "acceptanceCriteria": [
-      "Integration tests run real prerequisite checks against installed binaries",
-      "Version parsing succeeds against real Docker and Node output",
-      "Tests skip gracefully on machines where Docker or Ollama is not installed",
-      "Existing mock-based unit tests remain unchanged"
+      "clawhq evolve does not print 'not implemented'",
+      "clawhq evolve provides a useful entry point for capability management",
+      "All existing sub-commands (skill, tool, integrate, memory) continue to work independently"
     ],
     "scope": [
-      "src/build/installer/prereqs.ts"
+      "src/cli/index.ts"
     ],
-    "startedAt": "2026-03-24T23:14:03-07:00",
+    "startedAt": "2026-03-24T23:20:05-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T23:17:05-07:00"
+    "completedAt": "2026-03-24T23:24:28-07:00"
   },
-  "completedAt": "2026-03-24T23:17:05-07:00",
+  "completedAt": "2026-03-24T23:24:28-07:00",
   "attempts": 1
 }
