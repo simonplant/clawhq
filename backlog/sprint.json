@@ -1,32 +1,30 @@
 {
-  "sprintId": "sprint-1774418286",
-  "startedAt": "2026-03-24T22:58:06-07:00",
+  "sprintId": "sprint-1774418631",
+  "startedAt": "2026-03-24T23:03:51-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-119",
-    "title": "Heartbeat disk usage always reports 0% — getDiskUsagePercent() is a placeholder",
-    "intent": "Cloud heartbeat must report real disk usage so operators can act before an agent fills its disk and crashes.",
-    "description": "src/cloud/heartbeat/reporter.ts lines 151-153: getDiskUsagePercent() takes deployDir but ignores it (prefixed with _), returns hardcoded 0. Comment says 'Would use statvfs in production; return 0 as placeholder'. This means cloud monitoring dashboards always show 0% disk usage regardless of actual state. An agent could fill its disk and the heartbeat would still report 0%.",
+    "id": "BUG-126",
+    "title": "Firewall rulesMatch() ignores destination — rules to different IPs on same port match as equal",
+    "intent": "Firewall verification must compare all rule fields including destination. Missing destination comparison means rules allowing traffic to unintended IPs go undetected.",
+    "description": "Code review found that src/build/launcher/firewall.ts rulesMatch() only compares target, protocol, and dport — not the destination IP/domain. Two rules with different destinations but same port are considered equivalent, so verifyFirewall() may report correct state when rules are actually wrong.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Implement getDiskUsagePercent() using Node.js fs.statfs() (available since Node 18.15) or child_process df command",
-      "Calculate percentage: (total - available) / total * 100",
-      "Handle errors gracefully — return -1 or null if statfs fails, don't crash the heartbeat",
-      "Add tests: real filesystem check returns >0%, error handling on invalid path",
-      "Run npm test to confirm no regression"
+      "Add destination field to rulesMatch() comparison",
+      "Update FirewallRuleDescriptor type if destination is not already included",
+      "Add test cases for same-port-different-destination scenarios"
     ],
     "acceptanceCriteria": [
-      "getDiskUsagePercent() returns the actual disk usage percentage for the deploy directory's filesystem",
-      "Cloud heartbeat reports include real disk usage data",
-      "If the filesystem query fails, the heartbeat still sends (with disk usage omitted or -1), not crashes"
+      "rulesMatch() compares target, protocol, dport, AND destination",
+      "verifyFirewall() correctly detects when a rule exists with wrong destination",
+      "Existing tests updated to cover destination field comparison"
     ],
     "scope": [
-      "src/cloud/heartbeat/reporter.ts"
+      "src/build/launcher/firewall.ts"
     ],
-    "startedAt": "2026-03-24T22:58:06-07:00",
+    "startedAt": "2026-03-24T23:03:51-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T23:01:37-07:00"
+    "completedAt": "2026-03-24T23:07:25-07:00"
   },
-  "completedAt": "2026-03-24T23:01:37-07:00",
+  "completedAt": "2026-03-24T23:07:25-07:00",
   "attempts": 1
 }

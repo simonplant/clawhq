@@ -342,7 +342,7 @@ export interface FirewallRuleDescriptor {
 }
 
 /** Parse iptables -L output into rule descriptors. */
-function parseIptablesOutput(stdout: string): FirewallRuleDescriptor[] {
+export function parseIptablesOutput(stdout: string): FirewallRuleDescriptor[] {
   const rules: FirewallRuleDescriptor[] = [];
   const lines = stdout.split("\n");
 
@@ -386,7 +386,7 @@ function extractDport(parts: string[]): string {
 }
 
 /** Build expected rule descriptors from allowlist. */
-function buildExpectedRules(
+export function buildExpectedRules(
   allowlist: readonly FirewallAllowEntry[],
   airGap: boolean,
 ): FirewallRuleDescriptor[] {
@@ -450,6 +450,6 @@ function buildExpectedRules(
 }
 
 /** Compare two rule descriptors for equivalence. */
-function rulesMatch(a: FirewallRuleDescriptor, b: FirewallRuleDescriptor): boolean {
-  return a.target === b.target && a.protocol === b.protocol && a.dport === b.dport;
+export function rulesMatch(a: FirewallRuleDescriptor, b: FirewallRuleDescriptor): boolean {
+  return a.target === b.target && a.protocol === b.protocol && a.destination === b.destination && a.dport === b.dport;
 }
