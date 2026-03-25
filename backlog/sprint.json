@@ -1,31 +1,33 @@
 {
-  "sprintId": "sprint-1774412635",
-  "startedAt": "2026-03-24T21:23:55-07:00",
+  "sprintId": "sprint-1774413252",
+  "startedAt": "2026-03-24T21:34:12-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-122",
-    "title": "Skill vetting bypass via comment-wrapped payloads and weak encoded-payload severity",
-    "intent": "Ensure no malicious skill can pass vetting by hiding code in comments or encoding. Vetting must use language-aware parsing, not line-by-line heuristics.",
-    "description": "Code review found two issues in src/evolve/skills/vet.ts: (1) Comment detection uses simple line-start heuristics that miss multi-line comments, here-docs, and Python triple-quoted strings. (2) Encoded payloads (base64, hex) are flagged as medium severity but buildSummary() only rejects critical/high, so obfuscated malicious code passes vetting.",
+    "id": "BUG-123",
+    "title": "Web dashboard security gaps — path traversal, missing CSRF, wrong HTTP status codes, no rate limiting",
+    "intent": "Harden the web dashboard against common web attacks. Path traversal must be airtight, state-changing endpoints must have CSRF protection, errors must return correct HTTP status codes, and resource-intensive endpoints must be rate-limited.",
+    "description": "Code review found four issues in src/web/server.tsx: (1) Path traversal check uses startsWith which passes /home/user-evil for /home/user. (2) POST endpoints for deploy/restart/shutdown/init have no CSRF token validation. (3) Error responses return HTTP 200 instead of 4xx/5xx. (4) /api/logs endpoint accepts unbounded line count with no rate limiting.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Replace line-by-line comment detection with proper language-aware parsing",
-      "Bump encoded_payload and obfuscation_patterns severity from medium to high",
-      "Add test cases for comment-wrapped payloads, here-docs, and triple-quoted strings"
+      "Fix path traversal: use path.relative() or check resolved path has / after home dir",
+      "Add CSRF token generation and validation middleware for all POST routes",
+      "Return proper HTTP status codes (500 for server errors, 400 for bad input)",
+      "Cap /api/logs line count at a reasonable maximum and add rate limiting",
+      "Add tests for path traversal edge cases and CSRF rejection"
     ],
     "acceptanceCriteria": [
-      "Skill vetting uses language-aware comment parsing, not line-start heuristics",
-      "Encoded payload and obfuscation pattern findings are classified as high severity",
-      "Skills containing base64-encoded shell commands are rejected by vetting",
-      "Skills hiding payloads in multi-line comments or here-docs are detected"
+      "Path traversal check uses path.relative() or validates next char is /",
+      "All POST endpoints validate a CSRF token",
+      "Error responses return appropriate HTTP 4xx/5xx status codes",
+      "/api/logs endpoint has a maximum line count (e.g. 10000) and basic rate limiting"
     ],
     "scope": [
-      "src/evolve/skills/vet.ts"
+      "src/web/**"
     ],
-    "startedAt": "2026-03-24T21:23:55-07:00",
+    "startedAt": "2026-03-24T21:34:12-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T21:34:11-07:00"
+    "completedAt": "2026-03-24T21:43:01-07:00"
   },
-  "completedAt": "2026-03-24T21:34:11-07:00",
+  "completedAt": "2026-03-24T21:43:01-07:00",
   "attempts": 1
 }

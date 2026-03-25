@@ -5,9 +5,9 @@
 import type { StatusSnapshot } from "../../operate/status/index.js";
 import { Layout } from "../layout.js";
 
-export function HomePage({ status }: { status: StatusSnapshot }) {
+export function HomePage({ status, csrfToken }: { status: StatusSnapshot; csrfToken?: string }) {
   return (
-    <Layout title="Home" activePath="/">
+    <Layout title="Home" activePath="/" csrfToken={csrfToken}>
       <hgroup>
         <h1>Agent Overview</h1>
         <p>Current status at {new Date(status.timestamp).toLocaleString()}</p>

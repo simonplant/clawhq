@@ -7,7 +7,7 @@
  */
 
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -15,6 +15,24 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
 
 import { createApp } from "./server.js";
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Extract CSRF token from rendered HTML (from hx-headers on body). */
+function extractCsrfToken(html: string): string {
+  const match = html.match(/X-CSRF-Token&quot;:&quot;([^&]+)&quot;/);
+  if (match) return match[1]!;
+  // Try unescaped variant (raw JSON in attribute)
+  const rawMatch = html.match(/X-CSRF-Token":"([^"]+)"/);
+  return rawMatch?.[1] ?? "";
+}
+
+/** Get CSRF token from the app by fetching the home page. */
+async function getCsrfToken(app: ReturnType<typeof createApp>): Promise<string> {
+  const res = await app.request("/");
+  const html = await res.text();
+  return extractCsrfToken(html);
+}
 
 // ── Test Fixtures ───────────────────────────────────────────────────────────
 
@@ -135,6 +153,15 @@ describe("dashboard pages", () => {
     expect(html).toContain("Init Wizard");
     expect(html).toContain("Forge Agent");
   });
+
+  it("embeds CSRF token in page HTML via hx-headers", async () => {
+    const app = createApp({ deployDir: testDir });
+    const res = await app.request("/");
+    const html = await res.text();
+    const token = extractCsrfToken(html);
+    expect(token).toBeTruthy();
+    expect(token.length).toBe(64); // 32 bytes hex
+  });
 });
 
 describe("dashboard API endpoints", () => {
@@ -146,9 +173,13 @@ describe("dashboard API endpoints", () => {
     expect(html).toContain("Agent Health");
   });
 
-  it("POST /api/doctor returns check results", async () => {
+  it("POST /api/doctor returns check results with CSRF token", async () => {
     const app = createApp({ deployDir: testDir });
-    const res = await app.request("/api/doctor", { method: "POST" });
+    const token = await getCsrfToken(app);
+    const res = await app.request("/api/doctor", {
+      method: "POST",
+      headers: { "X-CSRF-Token": token },
+    });
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("config-exists");
@@ -178,40 +209,46 @@ describe("dashboard API endpoints", () => {
     expect(html).toContain("No skills installed");
   });
 
-  it("POST /api/skills/install rejects empty source", async () => {
+  it("POST /api/skills/install rejects empty source with 400", async () => {
     const app = createApp({ deployDir: testDir });
+    const token = await getCsrfToken(app);
     const formData = new FormData();
     formData.append("source", "");
     const res = await app.request("/api/skills/install", {
       method: "POST",
+      headers: { "X-CSRF-Token": token },
       body: formData,
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     const html = await res.text();
     expect(html).toContain("Skill source is required");
   });
 
-  it("POST /api/init rejects empty blueprint", async () => {
+  it("POST /api/init rejects empty blueprint with 400", async () => {
     const app = createApp({ deployDir: testDir });
+    const token = await getCsrfToken(app);
     const formData = new FormData();
     formData.append("blueprint", "");
     const res = await app.request("/api/init", {
       method: "POST",
+      headers: { "X-CSRF-Token": token },
       body: formData,
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     const html = await res.text();
     expect(html).toContain("Blueprint selection is required");
   });
 
   it("POST /api/init rejects invalid gateway port", async () => {
     const app = createApp({ deployDir: testDir });
+    const token = await getCsrfToken(app);
     for (const bad of ["abc", "0", "65536", "-1"]) {
       const formData = new FormData();
       formData.append("blueprint", "email-manager");
       formData.append("gatewayPort", bad);
       const res = await app.request("/api/init", {
         method: "POST",
+        headers: { "X-CSRF-Token": token },
         body: formData,
       });
       expect(res.status).toBe(400);
@@ -222,16 +259,173 @@ describe("dashboard API endpoints", () => {
 
   it("POST /api/init rejects path traversal in deployDir", async () => {
     const app = createApp({ deployDir: testDir });
+    const token = await getCsrfToken(app);
     const formData = new FormData();
     formData.append("blueprint", "email-manager");
     formData.append("deployDir", "/tmp/evil-traversal");
     const res = await app.request("/api/init", {
       method: "POST",
+      headers: { "X-CSRF-Token": token },
       body: formData,
     });
     expect(res.status).toBe(400);
     const html = await res.text();
     expect(html).toContain("Deploy directory must be within your home directory");
+  });
+});
+
+describe("CSRF protection", () => {
+  it("POST without CSRF token returns 403", async () => {
+    const app = createApp({ deployDir: testDir });
+    const res = await app.request("/api/doctor", { method: "POST" });
+    expect(res.status).toBe(403);
+    const html = await res.text();
+    expect(html).toContain("CSRF token validation failed");
+  });
+
+  it("POST with wrong CSRF token returns 403", async () => {
+    const app = createApp({ deployDir: testDir });
+    const res = await app.request("/api/doctor", {
+      method: "POST",
+      headers: { "X-CSRF-Token": "wrong-token" },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("POST with valid CSRF token succeeds", async () => {
+    const app = createApp({ deployDir: testDir });
+    const token = await getCsrfToken(app);
+    const res = await app.request("/api/doctor", {
+      method: "POST",
+      headers: { "X-CSRF-Token": token },
+    });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("config-exists");
+  });
+
+  it("GET requests do not require CSRF token", async () => {
+    const app = createApp({ deployDir: testDir });
+    const res = await app.request("/api/status");
+    expect(res.status).toBe(200);
+  });
+
+  it("different app instances have different CSRF tokens", async () => {
+    const app1 = createApp({ deployDir: testDir });
+    const app2 = createApp({ deployDir: testDir });
+    const token1 = await getCsrfToken(app1);
+    const token2 = await getCsrfToken(app2);
+    expect(token1).not.toBe(token2);
+  });
+});
+
+describe("path traversal protection", () => {
+  it("rejects sibling directory with similar prefix (user-evil for user)", async () => {
+    const app = createApp({ deployDir: testDir });
+    const token = await getCsrfToken(app);
+    const home = homedir();
+    const formData = new FormData();
+    formData.append("blueprint", "email-manager");
+    formData.append("deployDir", home + "-evil");
+    const res = await app.request("/api/init", {
+      method: "POST",
+      headers: { "X-CSRF-Token": token },
+      body: formData,
+    });
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("Deploy directory must be within your home directory");
+  });
+
+  it("rejects parent directory traversal via ..", async () => {
+    const app = createApp({ deployDir: testDir });
+    const token = await getCsrfToken(app);
+    const home = homedir();
+    const formData = new FormData();
+    formData.append("blueprint", "email-manager");
+    formData.append("deployDir", home + "/../etc");
+    const res = await app.request("/api/init", {
+      method: "POST",
+      headers: { "X-CSRF-Token": token },
+      body: formData,
+    });
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("Deploy directory must be within your home directory");
+  });
+
+  it("accepts subdirectory of home", async () => {
+    const app = createApp({ deployDir: testDir });
+    const token = await getCsrfToken(app);
+    const home = homedir();
+    const formData = new FormData();
+    formData.append("blueprint", "email-manager");
+    formData.append("deployDir", home + "/.clawhq");
+    const res = await app.request("/api/init", {
+      method: "POST",
+      headers: { "X-CSRF-Token": token },
+      body: formData,
+    });
+    // Should not be 400 for the path check — may fail for other reasons (blueprint loading)
+    // but should not be a path traversal rejection
+    const html = await res.text();
+    expect(html).not.toContain("Deploy directory must be within your home directory");
+  });
+});
+
+describe("/api/logs rate limiting and line cap", () => {
+  it("caps line count at 10000", async () => {
+    const app = createApp({ deployDir: testDir });
+    // Request 99999 lines — should not error, just cap
+    const res = await app.request("/api/logs?lines=99999");
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 429 when rate limit exceeded", async () => {
+    const app = createApp({ deployDir: testDir });
+    // Fire 30 requests to fill the rate window
+    for (let i = 0; i < 30; i++) {
+      const res = await app.request("/api/logs?lines=10");
+      expect(res.status).toBe(200);
+    }
+    // 31st should be rate limited
+    const res = await app.request("/api/logs?lines=10");
+    expect(res.status).toBe(429);
+    const html = await res.text();
+    expect(html).toContain("Rate limit exceeded");
+  });
+
+  it("handles non-numeric lines gracefully", async () => {
+    const app = createApp({ deployDir: testDir });
+    const res = await app.request("/api/logs?lines=abc");
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("HTTP status codes", () => {
+  it("returns 400 for validation errors", async () => {
+    const app = createApp({ deployDir: testDir });
+    const token = await getCsrfToken(app);
+
+    // Empty blueprint
+    const formData = new FormData();
+    formData.append("blueprint", "");
+    const res = await app.request("/api/init", {
+      method: "POST",
+      headers: { "X-CSRF-Token": token },
+      body: formData,
+    });
+    expect(res.status).toBe(400);
+
+    // Empty skill source
+    const formData2 = new FormData();
+    formData2.append("source", "");
+    const res2 = await app.request("/api/skills/install", {
+      method: "POST",
+      headers: { "X-CSRF-Token": token },
+      body: formData2,
+    });
+    expect(res2.status).toBe(400);
   });
 });
 

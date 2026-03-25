@@ -20,10 +20,12 @@ const NAV_ITEMS = [
 export function Layout({
   title,
   activePath,
+  csrfToken,
   children,
 }: {
   title: string;
   activePath: string;
+  csrfToken?: string;
   children: Child;
 }) {
   return (
@@ -61,7 +63,7 @@ export function Layout({
           .htmx-request.htmx-indicator { display: inline; }
         `}</style>
       </head>
-      <body>
+      <body hx-headers={csrfToken ? JSON.stringify({ "X-CSRF-Token": csrfToken }) : undefined}>
         <header class="container">
           <nav>
             <ul>
