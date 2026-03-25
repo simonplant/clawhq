@@ -190,10 +190,12 @@
         "src/cloud/provisioning/providers/"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. 4 provider files, 4 test files, all with mocked fetch. The mocks were likely written from API docs, not recorded from real responses — drift is probable. Contract tests are the right middle ground between full mocks and expensive live tests."
+      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. 4 provider files, 4 test files, all with mocked fetch. The mocks were likely written from API docs, not recorded from real responses — drift is probable. Contract tests are the right middle ground between full mocks and expensive live tests.",
+      "passes": true,
+      "completedAt": "2026-03-24T22:19:55-07:00"
     },
     {
       "id": "FEAT-020",
@@ -255,7 +257,10 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. engine.test.ts is the most heavily mocked test file in the codebase (4 modules mocked, 15+ vi.fn() calls). The test verifies that the engine calls the right mocks in the right order — it does not verify that the engine produces correct state. gateway/client.test.ts already demonstrates the pattern of testing against a local server."
+      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. engine.test.ts is the most heavily mocked test file in the codebase (4 modules mocked, 15+ vi.fn() calls). The test verifies that the engine calls the right mocks in the right order — it does not verify that the engine produces correct state. gateway/client.test.ts already demonstrates the pattern of testing against a local server.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-24T22:29:10-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-022",
@@ -314,7 +319,10 @@
       "dependsOn": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": true
+      "readyForSprint": true,
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-24T22:32:57-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-107",
