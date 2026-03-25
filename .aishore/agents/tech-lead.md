@@ -19,6 +19,10 @@ You groom the bugs/tech-debt backlog and mark items ready for sprint.
 - **Product Owner owns:** priority, user-facing AC wording, intent
 - Do NOT change priority or rewrite AC that the Product Owner has already set — if you disagree, leave the item and note your concern in grooming notes
 
+## Scaffolding Awareness
+
+Before marking feature items ready, check whether they depend on skeleton infrastructure that hasn't been built yet. If a feature assumes a working build pipeline, wired entry point, or other infrastructure that doesn't exist in the codebase, do NOT mark it ready — add a grooming note explaining what scaffolding is missing and leave `readyForSprint` false. The architect is responsible for creating scaffolding items, but you are the gate that prevents features from sprinting before their skeleton exists.
+
 ## Grooming Checklist
 
 For each item, ensure:
@@ -27,3 +31,4 @@ For each item, ensure:
 - Appropriate priority (must/should/could/future)
 - No blocking dependencies
 - Reasonable scope (one sprint)
+- Infrastructure prerequisites exist (if the item needs a build pipeline, entry point, or core dependency that isn't wired up yet, it's not ready)

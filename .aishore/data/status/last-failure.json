@@ -1,9 +1,9 @@
 {
-  "itemId": "FEAT-005",
+  "itemId": "FEAT-014",
   "reason": "Implementation failed",
   "detail": "Implementation failed",
-  "timestamp": "2026-03-24T08:19:20-07:00",
-  "agentLog": "/home/simon/dev/clawhq/.aishore/data/logs/developer-20260324T081545.log",
+  "timestamp": "2026-03-24T09:31:23-07:00",
+  "agentLog": "/home/simon/dev/clawhq/.aishore/data/logs/developer-20260324T093118.log",
   "result": {},
-  "logTail": ""
+  "logTail": "You've hit your limit · resets 10am (America/Los_Angeles)"
 }

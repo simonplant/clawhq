@@ -106,7 +106,10 @@
         "clawhq build fails with actionable error if prerequisites are missing (no Docker, no config)",
         "The documented user journey install → init → build → up works end-to-end"
       ],
-      "scope": ["src/cli/index.ts", "src/build/docker/index.ts"],
+      "scope": [
+        "src/cli/index.ts",
+        "src/build/docker/index.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
@@ -134,7 +137,10 @@
         "clawhq skill update (no name) updates all installed skills",
         "Existing skill install/remove tests pass with no regression"
       ],
-      "scope": ["src/cli/index.ts", "src/evolve/skills/lifecycle.ts"],
+      "scope": [
+        "src/cli/index.ts",
+        "src/evolve/skills/lifecycle.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
@@ -160,7 +166,9 @@
         "clawhq evolve provides a useful entry point for capability management",
         "All existing sub-commands (skill, tool, integrate, memory) continue to work independently"
       ],
-      "scope": ["src/cli/index.ts"],
+      "scope": [
+        "src/cli/index.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
@@ -188,7 +196,9 @@
         "Connection failures are reported as channel errors, not silent failures",
         "Existing Telegram and webhook notification tests pass with no regression"
       ],
-      "scope": ["src/operate/monitor/notify.ts"],
+      "scope": [
+        "src/operate/monitor/notify.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
@@ -214,7 +224,9 @@
         "Cloud heartbeat reports include real disk usage data",
         "If the filesystem query fails, the heartbeat still sends (with disk usage omitted or -1), not crashes"
       ],
-      "scope": ["src/cloud/heartbeat/reporter.ts"],
+      "scope": [
+        "src/cloud/heartbeat/reporter.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
@@ -243,12 +255,199 @@
         "A stopped container is reported as running:false even if config files exist on disk",
         "If Docker socket is unreachable, function degrades gracefully (returns running:false with error, does not crash heartbeat)"
       ],
-      "scope": ["src/cloud/heartbeat/reporter.ts"],
+      "scope": [
+        "src/cloud/heartbeat/reporter.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-24",
       "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Doctor module already has real Docker health checks — this is about reusing that logic in the heartbeat reporter. Coordinate with doctor checks to avoid duplication."
+    },
+    {
+      "id": "BUG-121",
+      "title": "Shell injection in generated bash tool wrappers — user-controlled vars interpolated without safe quoting",
+      "intent": "Eliminate command injection risk in all generated tool scripts. Every variable must be safely quoted or the tool generation must switch to a safer language.",
+      "description": "Code review found that generated bash scripts in src/design/tools/ (email.ts, todoist.ts, ical.ts, etc.) interpolate user-controlled variables like $local_body and $local_id into shell commands without proper quoting. An attacker-controlled value containing shell metacharacters can break escaping and execute arbitrary commands inside the agent container.",
+      "priority": "must",
+      "category": "Security",
+      "steps": [
+        "Audit all tool generators in src/design/tools/ for unquoted variable expansions",
+        "Apply safe quoting (double-quote all variable refs) or switch to Python with shlex",
+        "Add tests that generate tools with metacharacter-laden inputs and verify no injection"
+      ],
+      "acceptanceCriteria": [
+        "All generated tool scripts use proper shell quoting for every variable expansion",
+        "No unquoted variable interpolation exists in any tool generator output",
+        "Alternatively, tool generation switches to Python with shlex for safe argument handling"
+      ],
+      "scope": [
+        "src/design/tools/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "BUG-122",
+      "title": "Skill vetting bypass via comment-wrapped payloads and weak encoded-payload severity",
+      "intent": "Ensure no malicious skill can pass vetting by hiding code in comments or encoding. Vetting must use language-aware parsing, not line-by-line heuristics.",
+      "description": "Code review found two issues in src/evolve/skills/vet.ts: (1) Comment detection uses simple line-start heuristics that miss multi-line comments, here-docs, and Python triple-quoted strings. (2) Encoded payloads (base64, hex) are flagged as medium severity but buildSummary() only rejects critical/high, so obfuscated malicious code passes vetting.",
+      "priority": "must",
+      "category": "Security",
+      "steps": [
+        "Replace line-by-line comment detection with proper language-aware parsing",
+        "Bump encoded_payload and obfuscation_patterns severity from medium to high",
+        "Add test cases for comment-wrapped payloads, here-docs, and triple-quoted strings"
+      ],
+      "acceptanceCriteria": [
+        "Skill vetting uses language-aware comment parsing, not line-start heuristics",
+        "Encoded payload and obfuscation pattern findings are classified as high severity",
+        "Skills containing base64-encoded shell commands are rejected by vetting",
+        "Skills hiding payloads in multi-line comments or here-docs are detected"
+      ],
+      "scope": [
+        "src/evolve/skills/vet.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "BUG-123",
+      "title": "Web dashboard security gaps — path traversal, missing CSRF, wrong HTTP status codes, no rate limiting",
+      "intent": "Harden the web dashboard against common web attacks. Path traversal must be airtight, state-changing endpoints must have CSRF protection, errors must return correct HTTP status codes, and resource-intensive endpoints must be rate-limited.",
+      "description": "Code review found four issues in src/web/server.tsx: (1) Path traversal check uses startsWith which passes /home/user-evil for /home/user. (2) POST endpoints for deploy/restart/shutdown/init have no CSRF token validation. (3) Error responses return HTTP 200 instead of 4xx/5xx. (4) /api/logs endpoint accepts unbounded line count with no rate limiting.",
+      "priority": "must",
+      "category": "Security",
+      "steps": [
+        "Fix path traversal: use path.relative() or check resolved path has / after home dir",
+        "Add CSRF token generation and validation middleware for all POST routes",
+        "Return proper HTTP status codes (500 for server errors, 400 for bad input)",
+        "Cap /api/logs line count at a reasonable maximum and add rate limiting",
+        "Add tests for path traversal edge cases and CSRF rejection"
+      ],
+      "acceptanceCriteria": [
+        "Path traversal check uses path.relative() or validates next char is /",
+        "All POST endpoints validate a CSRF token",
+        "Error responses return appropriate HTTP 4xx/5xx status codes",
+        "/api/logs endpoint has a maximum line count (e.g. 10000) and basic rate limiting"
+      ],
+      "scope": [
+        "src/web/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "BUG-124",
+      "title": "Cloud command queue has no replay protection — signed commands accepted without timestamp validation",
+      "intent": "Prevent replay attacks on the cloud command queue. Every command must be validated for freshness before execution.",
+      "description": "Code review found that src/cloud/commands/verify.ts verifies command signatures but never validates the createdAt timestamp against current time. A valid intercepted command can be replayed indefinitely. Additionally, the command queue in queue.ts marks commands as executed without actually dispatching to handlers.",
+      "priority": "must",
+      "category": "Security",
+      "steps": [
+        "Add max-age validation to verifyCommandSignature() using createdAt timestamp",
+        "Add nonce tracking to detect exact replays within the validity window",
+        "Wire command queue to actual handler dispatch or document integration pattern",
+        "Add tests for expired commands and replayed commands"
+      ],
+      "acceptanceCriteria": [
+        "Command verification rejects commands older than a configurable max age (e.g. 5 minutes)",
+        "Replayed commands are detected and rejected with a clear error",
+        "Command queue either dispatches to actual handlers or documents the integration pattern"
+      ],
+      "scope": [
+        "src/cloud/commands/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "BUG-125",
+      "title": "Doctor auto-fix uses regex-based YAML patching — can corrupt docker-compose files",
+      "intent": "Doctor auto-fix must never corrupt configuration files. YAML patching must use a proper parser, not regex string manipulation.",
+      "description": "Code review found that src/operate/doctor/fix.ts uses naive regex like /(services:\\s*\\n\\s+\\w+:\\s*\\n)/ to locate service blocks and insert cap_drop/security_opt. This breaks on service names with underscores, inconsistent indentation, or multi-service compose files. Failed patches silently leave config broken.",
+      "priority": "must",
+      "category": "Reliability",
+      "steps": [
+        "Replace regex-based YAML patching in fix.ts with js-yaml parse/serialize",
+        "Add validation that output YAML is syntactically correct before writing",
+        "Add backup of original file before patching",
+        "Add tests with underscore names, multi-service files, and unusual indentation"
+      ],
+      "acceptanceCriteria": [
+        "Doctor auto-fix uses a proper YAML parser (e.g. js-yaml) instead of regex",
+        "Patched docker-compose files are valid YAML after auto-fix",
+        "Auto-fix works correctly with underscore service names and multi-service files",
+        "Auto-fix creates a backup before modifying compose files"
+      ],
+      "scope": [
+        "src/operate/doctor/fix.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "BUG-126",
+      "title": "Firewall rulesMatch() ignores destination — rules to different IPs on same port match as equal",
+      "intent": "Firewall verification must compare all rule fields including destination. Missing destination comparison means rules allowing traffic to unintended IPs go undetected.",
+      "description": "Code review found that src/build/launcher/firewall.ts rulesMatch() only compares target, protocol, and dport — not the destination IP/domain. Two rules with different destinations but same port are considered equivalent, so verifyFirewall() may report correct state when rules are actually wrong.",
+      "priority": "should",
+      "category": "Security",
+      "steps": [
+        "Add destination field to rulesMatch() comparison",
+        "Update FirewallRuleDescriptor type if destination is not already included",
+        "Add test cases for same-port-different-destination scenarios"
+      ],
+      "acceptanceCriteria": [
+        "rulesMatch() compares target, protocol, dport, AND destination",
+        "verifyFirewall() correctly detects when a rule exists with wrong destination",
+        "Existing tests updated to cover destination field comparison"
+      ],
+      "scope": [
+        "src/build/launcher/firewall.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "BUG-127",
+      "title": "Cron expressions not validated — invalid expressions like 99 99 99 99 99 accepted silently",
+      "intent": "All cron expressions must be validated before use. Invalid cron schedules must be caught at config generation time, not at runtime when jobs silently fail to run.",
+      "description": "Code review found that src/design/configure/generate.ts normalizeCronExpr() tries to fix step syntax but never validates the expression. Invalid fields (minute > 59, hour > 23, etc.) pass through. Additionally, src/operate/doctor/checks.ts cron-syntax check only looks for step patterns, not field count or value ranges.",
+      "priority": "should",
+      "category": "Reliability",
+      "steps": [
+        "Add a cron validation function (use cron-parser library or manual range checks)",
+        "Integrate validation into normalizeCronExpr() in generate.ts",
+        "Update doctor cron-syntax check to validate field count and ranges",
+        "Add tests for boundary values and invalid expressions"
+      ],
+      "acceptanceCriteria": [
+        "Cron expressions are validated for correct field count (5 fields)",
+        "Field value ranges are validated (minute 0-59, hour 0-23, etc.)",
+        "Invalid cron expressions produce clear error messages at config generation time",
+        "Doctor cron-syntax check validates field ranges, not just step patterns"
+      ],
+      "scope": [
+        "src/design/configure/generate.ts",
+        "src/operate/doctor/checks.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
     }
   ]
 }

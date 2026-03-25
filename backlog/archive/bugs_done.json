@@ -2023,5 +2023,37 @@
     "groomingNotes": "INDEPENDENT of BUG-109/111 — this is a post-creation orphan risk. VM is running, firewall applied, SSH key on disk, but no registry entry. clawhq deploy list never shows it. User is billed for a VM they cannot manage via clawhq. Security risk: SSH key on disk with no tracked instance. FIX SCOPE: try-catch around addInstance() in engine.ts:234 + one test in engine.test.ts. The fix must NOT attempt VM cleanup or key deletion inside the error handler (those are separate concerns per the description). Error message must include providerInstanceId and SSH key path. AC is correct.",
     "groomedAt": "2026-03-24",
     "completedAt": "2026-03-24T09:08:21-07:00"
+  },
+  {
+    "id": "BUG-112",
+    "title": "credentials.ts and snapshot-registry.ts create cloud/ dir without DIR_MODE_SECRET — inconsistent with registry.ts",
+    "intent": "Every file and directory under ~/.clawhq/cloud/ must be created with secure permissions. The cloud/ directory must never be world-readable — it contains credentials.json, instances.json, and snapshots.json. Permissions must be consistent across all writers.",
+    "description": "src/cloud/provisioning/credentials.ts:53 calls mkdirSync(dir, { recursive: true }) without mode. src/cloud/provisioning/snapshot-registry.ts:51 does the same. In contrast, src/cloud/provisioning/registry.ts:57 correctly passes { recursive: true, mode: DIR_MODE_SECRET }. If credentials.ts or snapshot-registry.ts runs first (e.g. user runs 'clawhq cloud connect' before first provision), it creates ~/.clawhq/cloud/ with the default umask (0755 — world-readable). Later, registry.ts cannot fix the mode because mkdirSync with recursive:true does not re-chmod existing directories. Result: other local users can list ~/.clawhq/cloud/ and enumerate its files. Additionally, snapshot-registry.ts:59 writes snapshots.json via writeFileSync(tmpPath, content) with no mode — the file will be world-readable. credentials.ts correctly uses FILE_MODE_SECRET on write. Fix: add DIR_MODE_SECRET to both mkdirSync calls; add FILE_MODE_SECRET to snapshot-registry.ts writeFileSync call.",
+    "priority": "must",
+    "category": null,
+    "steps": [
+      "Read src/cloud/provisioning/credentials.ts:50-54 and src/cloud/provisioning/snapshot-registry.ts:48-52 to confirm mkdirSync calls lack mode. Read src/cloud/provisioning/registry.ts:55-58 to confirm DIR_MODE_SECRET usage as the reference pattern.",
+      "In src/cloud/provisioning/credentials.ts, import DIR_MODE_SECRET from '../../config/defaults.js' (already imported in registry.ts — verify the export exists). Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }).",
+      "In src/cloud/provisioning/snapshot-registry.ts, import DIR_MODE_SECRET and FILE_MODE_SECRET from '../../config/defaults.js'. Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). Change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }).",
+      "Verify that registry.test.ts already covers the FILE_MODE_SECRET and DIR_MODE_SECRET assertions (it does per existing tests). Add equivalent assertions to any snapshot-registry test or credentials test if they exist — if not, note the gap in grooming notes.",
+      "Run npm test -- --testPathPattern='registry|credentials|snapshot' to confirm no regression."
+    ],
+    "acceptanceCriteria": [
+      "credentials.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
+      "snapshot-registry.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
+      "snapshots.json is written with FILE_MODE_SECRET (mode 0600)",
+      "All existing registry, credentials, and provisioning tests pass with no regression"
+    ],
+    "scope": [
+      "src/cloud/provisioning/credentials.ts",
+      "src/cloud/provisioning/snapshot-registry.ts"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "passes": true,
+    "readyForSprint": false,
+    "groomingNotes": "PRIORITY ELEVATED 2026-03-24: Elevated from 'should' to 'must'. Security non-negotiable: 'Security by default — hardening is automatic, not opt-in.' A world-readable ~/.clawhq/cloud/ directory containing credentials.json and instances.json violates this non-negotiable for any multi-user system. The race condition (credentials.ts runs before registry.ts, sets permissive mode that cannot be retroactively fixed) means current installs may already be exposed. 3-line fix. Sprint immediately.",
+    "groomedAt": "2026-03-24",
+    "completedAt": "2026-03-24T09:22:48-07:00"
   }
 ]

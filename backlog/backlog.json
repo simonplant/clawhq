@@ -146,8 +146,12 @@
         "Test is separate from unit tests (does not run on npm test) because it requires Docker",
         "Every failure found during initial run is filed as a backlog item"
       ],
-      "scope": ["test/e2e/"],
-      "dependsOn": ["BUG-115"],
+      "scope": [
+        "test/e2e/"
+      ],
+      "dependsOn": [
+        "BUG-115"
+      ],
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-24",
@@ -174,7 +178,9 @@
         "Live API tests run when provider credentials are available, skip gracefully when not",
         "Existing unit tests with mocks continue to pass unchanged"
       ],
-      "scope": ["src/cloud/provisioning/providers/"],
+      "scope": [
+        "src/cloud/provisioning/providers/"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
@@ -202,7 +208,9 @@
         "Tests skip gracefully on machines where Docker or Ollama is not installed",
         "Existing mock-based unit tests remain unchanged"
       ],
-      "scope": ["src/build/installer/prereqs.ts"],
+      "scope": [
+        "src/build/installer/prereqs.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
@@ -232,7 +240,9 @@
         "Health polling is tested against a real local HTTP server, not mocked",
         "All existing engine unit tests continue to pass"
       ],
-      "scope": ["src/cloud/provisioning/"],
+      "scope": [
+        "src/cloud/provisioning/"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
@@ -261,12 +271,69 @@
         "Tests skip gracefully when no credentials are provided — not failures",
         "Existing mock-based unit tests remain unchanged"
       ],
-      "scope": ["src/secure/credentials/probes.ts"],
+      "scope": [
+        "src/secure/credentials/probes.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-24",
       "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. Lower priority — probe API calls are simple HTTP and unlikely to break. But Ollama probe can run for free locally, making it a quick win for at least one provider."
+    },
+    {
+      "id": "FEAT-106",
+      "title": "Reduce process.exit() usage in CLI — return exit codes or throw for testability",
+      "intent": "Make CLI command handlers testable and allow proper cleanup. Commands should throw or return exit codes instead of calling process.exit() directly.",
+      "description": "Code review found 107+ direct process.exit() calls in src/cli/index.ts. This prevents testing error paths, blocks defer/cleanup handlers, and makes graceful shutdown impossible. Commands should throw errors or return codes, with a single top-level handler calling process.exit().",
+      "priority": "should",
+      "category": "Code Quality",
+      "steps": [
+        "Create a CommandError class that carries an exit code",
+        "Replace process.exit() calls with throw CommandError in command handlers",
+        "Add try/finally blocks around spinner usage to ensure cleanup",
+        "Wire top-level parseAsync catch to extract exit codes from CommandError",
+        "Add unit tests for error paths in key commands (deploy, destroy, scan)"
+      ],
+      "acceptanceCriteria": [
+        "Command handlers throw errors or return exit codes instead of calling process.exit()",
+        "A single top-level error handler in the CLI entry point calls process.exit()",
+        "Spinners are properly stopped in error paths via try/finally",
+        "At least 3 command handlers have unit tests covering error paths"
+      ],
+      "scope": [
+        "src/cli/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-107",
+      "title": "Add manifest version checking on all JSON manifest reads across evolve/cloud",
+      "intent": "Prevent silent data corruption when manifest formats change. Every manifest read must validate the version field and fail clearly on unsupported versions.",
+      "description": "Code review found that multiple modules write manifest files with version: 1 but never validate version on read. If the manifest format changes in a future version, old code will parse new manifests incorrectly — either silently producing wrong data or crashing with confusing errors. Affects skill manifests, export manifests, destruction proofs, and cloud state files.",
+      "priority": "should",
+      "category": "Reliability",
+      "steps": [
+        "Identify all manifest read locations across evolve/ and cloud/ modules",
+        "Add version validation to each manifest reader (reject if version !== expected)",
+        "Add descriptive error messages mentioning the expected vs actual version",
+        "Add tests for version mismatch on skill, export, destruction, and cloud manifests"
+      ],
+      "acceptanceCriteria": [
+        "All manifest read functions validate the version field before parsing",
+        "Unsupported manifest versions produce a clear error message",
+        "Tests cover version mismatch scenarios for each manifest type"
+      ],
+      "scope": [
+        "src/evolve/**",
+        "src/cloud/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
     }
   ]
 }

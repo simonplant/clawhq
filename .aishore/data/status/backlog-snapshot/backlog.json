@@ -26,51 +26,6 @@
       "failCount": 1
     },
     {
-      "id": "FEAT-013",
-      "title": "Slim README.md to storefront format — problem, solution, quickstart, links",
-      "intent": "The README must sell the project in 60 seconds — the current README is a product document pretending to be a landing page.",
-      "description": "The current README.md is a comprehensive product document containing architecture diagrams, deployment tables, data sovereignty matrices, CLI command listings, and blueprint dimension tables. This content belongs in docs/ files (most of which already exist in docs/ARCHITECTURE.md, docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md, or will be created by FEAT-006 through FEAT-012). After the docs/ files exist, the README must be cut to storefront format: one-sentence pitch ('WordPress for AI agents'), the problem (13,500 tokens, 14 landmines, abandoned deployments — 3 sentences max from the existing second paragraph), the solution (what ClawHQ does — 1 paragraph), quick start (install + init — 3 commands max, link to docs/QUICKSTART.md), the blueprint concept (1 paragraph + simple example, link to docs/CONFIGURATION.md), status (honest assessment), links section (all docs/ files), author section. Remove: How It Works detail, The Platform CLI listings, Blueprints dimension table, Cloud section, Deployment Options table, Data Sovereignty table, Why This Exists (fold into problem/solution). All removed content must have a home in a docs/ file.",
-      "priority": "must",
-      "category": "documentation",
-      "steps": [
-        "Verify that docs/ARCHITECTURE.md (with FEAT-006 skill section), docs/QUICKSTART.md, docs/CONFIGURATION.md, docs/PROBLEMS.md, docs/ROADMAP.md, docs/CONTRIBUTING.md, and docs/CHANGELOG.md all exist",
-        "Keep in README.md: opening pitch ('WordPress for AI agents'), the problem paragraph (13,500 tokens, 14 landmines, abandoned deployments), the solution paragraph ('ClawHQ turns generic...')",
-        "Keep in README.md: the three-layer ASCII diagram from How It Works (Cloud/Blueprints/Platform) but remove all detail below it",
-        "Add abbreviated Quick Start: install one-liner, clawhq init --guided, clawhq up — then link to docs/QUICKSTART.md",
-        "Add one blueprint example (email-manager in 3 lines) then link to docs/CONFIGURATION.md",
-        "Add Status section with honest assessment",
-        "Add Links section listing every docs/ file with one-line description",
-        "Add Author section: Simon Plant, building AI infrastructure tools, open to roles",
-        "Remove: The Platform (CLI listings), Blueprints (dimension table, evolution commands), Cloud (managed hosting details), Deployment Options table, Data Sovereignty table, Why This Exists section",
-        "Verify all removed content exists in a docs/ file — nothing lost"
-      ],
-      "acceptanceCriteria": [
-        "README.md is under 150 lines (current is 300+)",
-        "README.md contains only: pitch, problem, solution, three-layer diagram, quick start (abbreviated), one blueprint example, status, links, author",
-        "Every section removed from README.md has a corresponding docs/ file containing the content",
-        "Links section includes: Architecture, Quickstart, Configuration, Problems, Roadmap, Contributing, Changelog",
-        "No content is lost — everything is in README.md or linked from it"
-      ],
-      "scope": [
-        "README.md"
-      ],
-      "dependsOn": [
-        "FEAT-006",
-        "FEAT-007",
-        "FEAT-008",
-        "FEAT-009",
-        "FEAT-010",
-        "FEAT-011",
-        "FEAT-012"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "DEP STATUS UPDATED 2026-03-24: FEAT-012 shipped (recent_sprints.jsonl confirms sprint-1774367709 complete). ALL 7 dependencies now done: FEAT-006 through FEAT-012. Verified all docs/ files exist in repo. readyForSprint set to true. SPRINT CHECKLIST: before starting, verify docs/ files exist (Architecture, Quickstart, Configuration, Problems, Roadmap, Contributing, Changelog) — if any missing, stop and report. Author section content confirmed in CLAUDE.md (Simon Plant, Santa Barbara CA). 150-line target for README.md is achievable — current README is 300+ lines. All removed content already in docs/ files.",
-      "passes": true,
-      "completedAt": "2026-03-24T09:19:49-07:00"
-    },
-    {
       "id": "FEAT-014",
       "title": "Add .doc-standard.yaml schema file for doc structure enforcement",
       "intent": "The repo must declare its doc standard version and structure so automated checks can validate compliance — undeclared standards are unenforceable.",
@@ -101,9 +56,9 @@
         "FEAT-013"
       ],
       "status": "todo",
-      "readyForSprint": false,
-      "groomedAt": null,
-      "groomingNotes": null
+      "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "Dependency FEAT-013 confirmed complete (slim README shipped 2026-03-24). All required docs in docs/ verified: ARCHITECTURE.md, QUICKSTART.md, CONFIGURATION.md, PROBLEMS.md, ROADMAP.md, CONTRIBUTING.md, CHANGELOG.md. Optional docs confirmed: PRODUCT.md, OPENCLAW-REFERENCE.md. .doc-standard.yaml does not yet exist — creation is the entire scope. Steps are clear and implementable in one session. No blocking dependencies. Ready to sprint."
     }
   ]
 }

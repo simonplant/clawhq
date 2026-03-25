@@ -25,38 +25,30 @@
       "passes": false,
       "readyForSprint": true,
       "groomingNotes": "SPRINT AFTER BUG-109. The health poller's SSH-open fallback returns healthy:true after 18 attempts — this conflates 'VM booted' with 'agent running'. Even with BUG-109 fixed (failed cloud-init now exits non-zero), a VM whose cloud-init silently misbehaves in other ways could still trigger this path. The fix is conceptually simple: healthy:false on timeout with a clear message and SSH debug hint. FIX SCOPE: health.ts lines 86-93 + one new test case for the timeout path in health.test.ts. AC is correct and user-facing. Note: the error message wording in AC should match step 2 exactly — sprinter should use the journalctl hint verbatim.",
-      "groomedAt": "2026-03-24"
+      "groomedAt": "2026-03-24",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-24T09:30:58-07:00",
+      "failCount": 1
     },
     {
-      "id": "BUG-112",
-      "title": "credentials.ts and snapshot-registry.ts create cloud/ dir without DIR_MODE_SECRET — inconsistent with registry.ts",
-      "intent": "Every file and directory under ~/.clawhq/cloud/ must be created with secure permissions. The cloud/ directory must never be world-readable — it contains credentials.json, instances.json, and snapshots.json. Permissions must be consistent across all writers.",
-      "description": "src/cloud/provisioning/credentials.ts:53 calls mkdirSync(dir, { recursive: true }) without mode. src/cloud/provisioning/snapshot-registry.ts:51 does the same. In contrast, src/cloud/provisioning/registry.ts:57 correctly passes { recursive: true, mode: DIR_MODE_SECRET }. If credentials.ts or snapshot-registry.ts runs first (e.g. user runs 'clawhq cloud connect' before first provision), it creates ~/.clawhq/cloud/ with the default umask (0755 — world-readable). Later, registry.ts cannot fix the mode because mkdirSync with recursive:true does not re-chmod existing directories. Result: other local users can list ~/.clawhq/cloud/ and enumerate its files. Additionally, snapshot-registry.ts:59 writes snapshots.json via writeFileSync(tmpPath, content) with no mode — the file will be world-readable. credentials.ts correctly uses FILE_MODE_SECRET on write. Fix: add DIR_MODE_SECRET to both mkdirSync calls; add FILE_MODE_SECRET to snapshot-registry.ts writeFileSync call.",
-      "priority": "must",
+      "id": "BUG-113",
+      "title": "SSH host key never collected at provision time — deploy update uses accept-new on every connection",
+      "intent": "Every deploy update SSH connection must verify the remote host key against the key collected at provision time. accept-new must never be used for a known instance.",
+      "description": "In engine.ts, addInstance() is called without sshHostKey. The ProvisionedInstance type has a sshHostKey field and the registry supports it, but nothing collects the host key after provisioning. As a result, all deploy update SSH connections hit the buildHostKeyArgs() fallback in update.ts (lines 224-231) which uses StrictHostKeyChecking=accept-new with UserKnownHostsFile=/dev/null. This means: (1) the host key is trusted blindly on first connect, (2) the key is never stored, (3) every subsequent deploy update re-trusts blindly again. A MITM attacker who intercepts any deploy update connection can inject commands into the remote agent. Fix: after provisioning health check passes, run ssh-keyscan -t ed25519 <ipAddress> to collect the host public key, then store it in the registry via a new updateInstanceField() call.",
+      "priority": "should",
       "category": null,
-      "steps": [
-        "Read src/cloud/provisioning/credentials.ts:50-54 and src/cloud/provisioning/snapshot-registry.ts:48-52 to confirm mkdirSync calls lack mode. Read src/cloud/provisioning/registry.ts:55-58 to confirm DIR_MODE_SECRET usage as the reference pattern.",
-        "In src/cloud/provisioning/credentials.ts, import DIR_MODE_SECRET from '../../config/defaults.js' (already imported in registry.ts — verify the export exists). Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }).",
-        "In src/cloud/provisioning/snapshot-registry.ts, import DIR_MODE_SECRET and FILE_MODE_SECRET from '../../config/defaults.js'. Change mkdirSync(dir, { recursive: true }) to mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET }). Change writeFileSync(tmpPath, content) to writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET }).",
-        "Verify that registry.test.ts already covers the FILE_MODE_SECRET and DIR_MODE_SECRET assertions (it does per existing tests). Add equivalent assertions to any snapshot-registry test or credentials test if they exist — if not, note the gap in grooming notes.",
-        "Run npm test -- --testPathPattern='registry|credentials|snapshot' to confirm no regression."
-      ],
-      "acceptanceCriteria": [
-        "credentials.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
-        "snapshot-registry.ts creates ~/.clawhq/cloud/ with DIR_MODE_SECRET when the directory does not exist",
-        "snapshots.json is written with FILE_MODE_SECRET (mode 0600)",
-        "All existing registry, credentials, and provisioning tests pass with no regression"
-      ],
-      "scope": [
-        "src/cloud/provisioning/credentials.ts",
-        "src/cloud/provisioning/snapshot-registry.ts"
-      ],
+      "steps": [],
+      "acceptanceCriteria": [],
+      "scope": [],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "PRIORITY ELEVATED 2026-03-24: Elevated from 'should' to 'must'. Security non-negotiable: 'Security by default — hardening is automatic, not opt-in.' A world-readable ~/.clawhq/cloud/ directory containing credentials.json and instances.json violates this non-negotiable for any multi-user system. The race condition (credentials.ts runs before registry.ts, sets permissive mode that cannot be retroactively fixed) means current installs may already be exposed. 3-line fix. Sprint immediately.",
-      "groomedAt": "2026-03-24"
+      "groomingNotes": "SCOPE: engine.ts (after health check) + registry.ts (new helper to patch sshHostKey) + update.ts (no change needed — already reads sshHostKey from registry). STEPS: (1) In registry.ts, add updateInstanceSshHostKey(deployDir, instanceId, sshHostKey) — reads registry, patches the matching instance's sshHostKey field, writes atomically. (2) In engine.ts, after healthResult.healthy is true, run ssh-keyscan -t ed25519 <ipAddress> via execFile with a 10s timeout. Parse output to extract the key. On success, call updateInstanceSshHostKey(). On ssh-keyscan failure, log a warning but do not fail provisioning. (3) Write a test: provision succeeds → ssh-keyscan is called → sshHostKey is stored in registry. (4) Verify update.ts buildHostKeyArgs() strict path is exercised when sshHostKey is set (existing logic is correct). AC: (1) After successful provision, ProvisionedInstance.sshHostKey is set in instances.json. (2) A subsequent deploy update SSH call uses StrictHostKeyChecking=yes. (3) If ssh-keyscan fails at provision time, a warning is logged but provisioning still succeeds (sshHostKey remains unset). DEPENDENCY: none — sprint immediately. NOTE: update.ts already has the strict verification path — only the collection step is missing.",
+      "groomedAt": "2026-03-24",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-24T09:31:10-07:00",
+      "failCount": 1
     }
   ]
 }
