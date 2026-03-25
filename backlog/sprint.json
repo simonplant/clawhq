@@ -1,30 +1,33 @@
 {
-  "sprintId": "sprint-1774418631",
-  "startedAt": "2026-03-24T23:03:51-07:00",
+  "sprintId": "sprint-1774418847",
+  "startedAt": "2026-03-24T23:07:27-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-126",
-    "title": "Firewall rulesMatch() ignores destination — rules to different IPs on same port match as equal",
-    "intent": "Firewall verification must compare all rule fields including destination. Missing destination comparison means rules allowing traffic to unintended IPs go undetected.",
-    "description": "Code review found that src/build/launcher/firewall.ts rulesMatch() only compares target, protocol, and dport — not the destination IP/domain. Two rules with different destinations but same port are considered equivalent, so verifyFirewall() may report correct state when rules are actually wrong.",
+    "id": "BUG-127",
+    "title": "Cron expressions not validated — invalid expressions like 99 99 99 99 99 accepted silently",
+    "intent": "All cron expressions must be validated before use. Invalid cron schedules must be caught at config generation time, not at runtime when jobs silently fail to run.",
+    "description": "Code review found that src/design/configure/generate.ts normalizeCronExpr() tries to fix step syntax but never validates the expression. Invalid fields (minute > 59, hour > 23, etc.) pass through. Additionally, src/operate/doctor/checks.ts cron-syntax check only looks for step patterns, not field count or value ranges.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Add destination field to rulesMatch() comparison",
-      "Update FirewallRuleDescriptor type if destination is not already included",
-      "Add test cases for same-port-different-destination scenarios"
+      "Add a cron validation function (use cron-parser library or manual range checks)",
+      "Integrate validation into normalizeCronExpr() in generate.ts",
+      "Update doctor cron-syntax check to validate field count and ranges",
+      "Add tests for boundary values and invalid expressions"
     ],
     "acceptanceCriteria": [
-      "rulesMatch() compares target, protocol, dport, AND destination",
-      "verifyFirewall() correctly detects when a rule exists with wrong destination",
-      "Existing tests updated to cover destination field comparison"
+      "Cron expressions are validated for correct field count (5 fields)",
+      "Field value ranges are validated (minute 0-59, hour 0-23, etc.)",
+      "Invalid cron expressions produce clear error messages at config generation time",
+      "Doctor cron-syntax check validates field ranges, not just step patterns"
     ],
     "scope": [
-      "src/build/launcher/firewall.ts"
+      "src/design/configure/generate.ts",
+      "src/operate/doctor/checks.ts"
     ],
-    "startedAt": "2026-03-24T23:03:51-07:00",
+    "startedAt": "2026-03-24T23:07:27-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T23:07:25-07:00"
+    "completedAt": "2026-03-24T23:12:05-07:00"
   },
-  "completedAt": "2026-03-24T23:07:25-07:00",
+  "completedAt": "2026-03-24T23:12:05-07:00",
   "attempts": 1
 }

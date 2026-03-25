@@ -504,11 +504,82 @@ async function checkIdentitySize(deployDir: string): Promise<DoctorCheckResult> 
   }
 }
 
-/** 12. Cron jobs use valid stepping syntax. */
+/** Valid ranges for each cron field position. */
+const CRON_FIELD_RANGES: ReadonlyArray<{ name: string; min: number; max: number }> = [
+  { name: "minute", min: 0, max: 59 },
+  { name: "hour", min: 0, max: 23 },
+  { name: "day-of-month", min: 1, max: 31 },
+  { name: "month", min: 1, max: 12 },
+  { name: "day-of-week", min: 0, max: 7 },
+];
+
+/**
+ * Validate a single cron field part against its allowed range.
+ * Returns an error message or null if valid.
+ */
+function validateCronFieldPart(
+  part: string,
+  range: { name: string; min: number; max: number },
+): string | null {
+  if (part === "*") return null;
+
+  const wildcardStep = part.match(/^\*\/(\d+)$/);
+  if (wildcardStep) {
+    const step = parseInt(wildcardStep[1]!, 10);
+    if (step === 0) return `${range.name}: step value cannot be 0`;
+    return null;
+  }
+
+  const rangeMatch = part.match(/^(\d+)-(\d+)(?:\/(\d+))?$/);
+  if (rangeMatch) {
+    const lo = parseInt(rangeMatch[1]!, 10);
+    const hi = parseInt(rangeMatch[2]!, 10);
+    if (lo < range.min || lo > range.max)
+      return `${range.name}: value ${lo} out of range ${range.min}-${range.max}`;
+    if (hi < range.min || hi > range.max)
+      return `${range.name}: value ${hi} out of range ${range.min}-${range.max}`;
+    if (rangeMatch[3] !== undefined) {
+      const step = parseInt(rangeMatch[3], 10);
+      if (step === 0) return `${range.name}: step value cannot be 0`;
+    }
+    return null;
+  }
+
+  if (/^\d+$/.test(part)) {
+    const num = parseInt(part, 10);
+    if (num < range.min || num > range.max)
+      return `${range.name}: value ${num} out of range ${range.min}-${range.max}`;
+    return null;
+  }
+
+  return `${range.name}: invalid syntax "${part}"`;
+}
+
+/**
+ * Validate a cron expression for correct field count and value ranges.
+ * Returns an array of error strings (empty if valid).
+ */
+function validateCronExpr(expr: string): string[] {
+  const fields = expr.trim().split(/\s+/);
+  if (fields.length !== 5) {
+    return [`expected 5 fields, got ${fields.length}`];
+  }
+  const errors: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const field = fields[i]!;
+    const range = CRON_FIELD_RANGES[i]!;
+    for (const part of field.split(",")) {
+      const err = validateCronFieldPart(part, range);
+      if (err) errors.push(err);
+    }
+  }
+  return errors;
+}
+
+/** 12. Cron jobs use valid syntax — field count, value ranges, and stepping. */
 async function checkCronSyntax(deployDir: string): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "cron-syntax";
   const cronPath = join(deployDir, "cron", "jobs.json");
-  const INVALID_STEP = /^(\d+)\/(\d+)$/;
 
   try {
     const raw = await readFile(cronPath, "utf-8");
@@ -517,12 +588,9 @@ async function checkCronSyntax(deployDir: string): Promise<DoctorCheckResult> {
     const invalid: string[] = [];
     for (const job of jobs) {
       if (job.kind !== "cron" || !job.expr) continue;
-      const fields = job.expr.trim().split(/\s+/);
-      for (const field of fields) {
-        if (INVALID_STEP.test(field)) {
-          invalid.push(`${job.id} (field "${field}")`);
-          break;
-        }
+      const errors = validateCronExpr(job.expr);
+      if (errors.length > 0) {
+        invalid.push(`${job.id}: ${errors.join(", ")}`);
       }
     }
 
@@ -530,8 +598,8 @@ async function checkCronSyntax(deployDir: string): Promise<DoctorCheckResult> {
       return fail(
         name,
         "error",
-        `Invalid cron stepping in: ${invalid.join(", ")} — jobs will silently not run`,
-        'Use "start-end/step" instead of bare "N/step" (e.g. "3-58/15" not "5/15")',
+        `Invalid cron expression(s): ${invalid.join("; ")} — jobs will silently not run`,
+        "Fix cron expressions: use 5 fields with valid ranges (minute 0-59, hour 0-23, day 1-31, month 1-12, weekday 0-7)",
       );
     }
     return ok(name, `All ${jobs.length} cron job(s) have valid syntax`);

@@ -204,6 +204,33 @@ describe("checks", { timeout: 30_000 }, () => {
     expect(check.message).toContain("silently not run");
   });
 
+  it("cron-syntax fails with wrong field count", async () => {
+    const jobs = [{ id: "bad", kind: "cron", expr: "* * *", task: "Test", enabled: true }];
+    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(jobs));
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "cron-syntax");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("expected 5 fields");
+  });
+
+  it("cron-syntax fails with out-of-range field values", async () => {
+    const jobs = [{ id: "bad", kind: "cron", expr: "99 99 99 99 99", task: "Test", enabled: true }];
+    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(jobs));
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "cron-syntax");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("out of range");
+  });
+
+  it("cron-syntax fails with minute > 59", async () => {
+    const jobs = [{ id: "bad", kind: "cron", expr: "60 * * * *", task: "Test", enabled: true }];
+    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(jobs));
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "cron-syntax");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("minute");
+  });
+
   it("workspace-exists passes with complete structure", async () => {
     const checks = await runChecks(testDir);
     const check = findCheck(checks, "workspace-exists");
