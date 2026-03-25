@@ -1,1 +1,31 @@
-{"sprintId": null, "status": "idle", "item": null}
+{
+  "sprintId": "sprint-1774410136",
+  "startedAt": "2026-03-24T20:42:16-07:00",
+  "status": "completed",
+  "item": {
+    "id": "FEAT-005",
+    "title": "clawhq deploy update — push config and version updates to cloud-deployed agents",
+    "intent": "A sovereign cloud agent that cannot be updated is a liability, not an asset. clawhq deploy update must let users push config changes, version upgrades, and new skills to any cloud-deployed agent without reprovisioning. The agent grows pillar must hold for cloud deployments.",
+    "description": "After clawhq deploy provisions a cloud agent, users need to push updates without reprovisioning from scratch. Three update scenarios: (1) config change — update blueprint vars or credentials without restart, (2) clawhq version upgrade — pull latest, rebuild Docker image, restart agent, (3) skill install/remove — evolve the cloud agent remotely. NOTE: Implementation is ~90% complete — update.ts has full SSH execution engine with 3 modes, shell escaping, timeouts, abort signals. ssh-keygen.ts generates Ed25519 keypairs. cloud-init.ts/snapshot-init.ts inject SSH keys. CLI wired at clawhq deploy update. Remaining work: test coverage for update.ts (zero tests exist) and AC5 error message fix (should name state file path per PO groom notes).",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Write tests for src/cloud/provisioning/update.ts covering: successful config/version/skill update, SSH connection failure, timeout, instance not found, shell escaping correctness",
+      "Fix AC5 error message at update.ts line ~50 to include ~/.clawhq/cloud/instances.json path alongside 'run clawhq deploy list'",
+      "Add integration test: mock SSH provider, verify correct remote commands sent for each mode (config: clawhq build && clawhq restart, version: clawhq update --yes, skill: clawhq skill <args>)",
+      "Run npm test to confirm all tests pass"
+    ],
+    "acceptanceCriteria": [
+      "clawhq deploy update --id <agent-id> --config pushes updated blueprint vars to the remote agent without reprovisioning",
+      "clawhq deploy update --id <agent-id> --version pulls latest clawhq, rebuilds Docker image, and restarts the agent on the remote",
+      "clawhq deploy update --id <agent-id> --skill install <source> installs a skill on the remote agent",
+      "SSH keypair is read from the deploy state file — no manual key management by user",
+      "Update fails cleanly if agent-id not found in deploy state — helpful error shown"
+    ],
+    "scope": [],
+    "startedAt": "2026-03-24T20:42:16-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-24T20:46:57-07:00"
+  },
+  "completedAt": "2026-03-24T20:46:57-07:00",
+  "attempts": 1
+}

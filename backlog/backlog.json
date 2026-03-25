@@ -21,14 +21,15 @@
         "SSH keypair is read from the deploy state file — no manual key management by user",
         "Update fails cleanly if agent-id not found in deploy state — helpful error shown"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
       "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'must' confirmed. Feature failed once — re-scoped correctly to 'tests + AC5 fix', not rebuild. TECH NOTE: zero tests for shellEscape() is a risk — shell escaping is a security boundary and untested means it could silently pass malformed commands to the remote agent. AC5 error UX (naming the state file path) is a usability requirement, not a nice-to-have — user must know where to look when an agent ID is not found. Sprint-ready as re-scoped. Steps owned by Tech Lead — do not modify.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-24T08:19:20-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-24T20:46:57-07:00"
     },
     {
       "id": "FEAT-014",

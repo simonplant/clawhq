@@ -15,7 +15,7 @@ import { existsSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { findInstance } from "./registry.js";
+import { findInstance, instanceRegistryPath } from "./registry.js";
 import type {
   DeployUpdateOptions,
   DeployUpdateProgressCallback,
@@ -47,7 +47,8 @@ export async function updateInstance(options: DeployUpdateOptions): Promise<Depl
 
   const instance = findInstance(options.deployDir, options.instanceId);
   if (!instance) {
-    const msg = `Instance not found: ${options.instanceId}. Run "clawhq deploy list" to see provisioned instances.`;
+    const stateFile = instanceRegistryPath(options.deployDir);
+    const msg = `Instance not found: ${options.instanceId}. Check ${stateFile} or run "clawhq deploy list" to see provisioned instances.`;
     report("resolve", "failed", msg);
     return { success: false, error: msg };
   }
