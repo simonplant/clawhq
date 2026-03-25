@@ -7,7 +7,7 @@
  */
 
 // Lifecycle pipeline
-export { installSkill, loadManifest, removeSkill } from "./lifecycle.js";
+export { installSkill, loadManifest, removeSkill, updateAllSkills, updateSkill } from "./lifecycle.js";
 
 // Vetting
 export { vetSkill } from "./vet.js";
@@ -39,6 +39,7 @@ export type {
   SkillProgressCallback,
   SkillStatus,
   SkillStepStatus,
+  SkillUpdateResult,
   VetFinding,
   VetFindingCategory,
   VetReport,

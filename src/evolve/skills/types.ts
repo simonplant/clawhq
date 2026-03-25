@@ -143,6 +143,14 @@ export interface SkillInstallResult {
 
 // ── List Options ─────────────────────────────────────────────────────────────
 
+/** Result of a single skill update. */
+export interface SkillUpdateResult {
+  readonly success: boolean;
+  readonly skillName: string;
+  readonly status: "updated" | "rolled-back" | "not-found" | "failed";
+  readonly error?: string;
+}
+
 /** Options for listing installed skills. */
 export interface SkillListOptions {
   readonly deployDir: string;
