@@ -345,9 +345,10 @@
         "src/web/**"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-24T21:43:01-07:00"
     },
     {
       "id": "BUG-124",

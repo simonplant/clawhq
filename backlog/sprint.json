@@ -1,33 +1,27 @@
 {
-  "sprintId": "sprint-1774413252",
-  "startedAt": "2026-03-24T21:34:12-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774413782",
+  "startedAt": "2026-03-24T21:43:02-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "BUG-123",
-    "title": "Web dashboard security gaps — path traversal, missing CSRF, wrong HTTP status codes, no rate limiting",
-    "intent": "Harden the web dashboard against common web attacks. Path traversal must be airtight, state-changing endpoints must have CSRF protection, errors must return correct HTTP status codes, and resource-intensive endpoints must be rate-limited.",
-    "description": "Code review found four issues in src/web/server.tsx: (1) Path traversal check uses startsWith which passes /home/user-evil for /home/user. (2) POST endpoints for deploy/restart/shutdown/init have no CSRF token validation. (3) Error responses return HTTP 200 instead of 4xx/5xx. (4) /api/logs endpoint accepts unbounded line count with no rate limiting.",
+    "id": "BUG-124",
+    "title": "Cloud command queue has no replay protection — signed commands accepted without timestamp validation",
+    "intent": "Prevent replay attacks on the cloud command queue. Every command must be validated for freshness before execution.",
+    "description": "Code review found that src/cloud/commands/verify.ts verifies command signatures but never validates the createdAt timestamp against current time. A valid intercepted command can be replayed indefinitely. Additionally, the command queue in queue.ts marks commands as executed without actually dispatching to handlers.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Fix path traversal: use path.relative() or check resolved path has / after home dir",
-      "Add CSRF token generation and validation middleware for all POST routes",
-      "Return proper HTTP status codes (500 for server errors, 400 for bad input)",
-      "Cap /api/logs line count at a reasonable maximum and add rate limiting",
-      "Add tests for path traversal edge cases and CSRF rejection"
+      "Add max-age validation to verifyCommandSignature() using createdAt timestamp",
+      "Add nonce tracking to detect exact replays within the validity window",
+      "Wire command queue to actual handler dispatch or document integration pattern",
+      "Add tests for expired commands and replayed commands"
     ],
     "acceptanceCriteria": [
-      "Path traversal check uses path.relative() or validates next char is /",
-      "All POST endpoints validate a CSRF token",
-      "Error responses return appropriate HTTP 4xx/5xx status codes",
-      "/api/logs endpoint has a maximum line count (e.g. 10000) and basic rate limiting"
+      "Command verification rejects commands older than a configurable max age (e.g. 5 minutes)",
+      "Replayed commands are detected and rejected with a clear error",
+      "Command queue either dispatches to actual handlers or documents the integration pattern"
     ],
     "scope": [
-      "src/web/**"
+      "src/cloud/commands/**"
     ],
-    "startedAt": "2026-03-24T21:34:12-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-24T21:43:01-07:00"
-  },
-  "completedAt": "2026-03-24T21:43:01-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-24T21:43:02-07:00"
+  }
 }

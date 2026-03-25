@@ -60,6 +60,12 @@ function tmpDeployDirNoCloud(): string {
   return dir;
 }
 
+/** Fixed "now" for tests using createdAt "2026-03-19T10:00:00Z" — 1 minute after. */
+const TEST_NOW = Date.parse("2026-03-19T10:01:00Z");
+
+/** Verify options that pin "now" so old test timestamps don't expire. */
+const TEST_VERIFY = { verify: { now: TEST_NOW } } as const;
+
 function generateTestKeys(): { publicKey: string; privateKey: string } {
   const { publicKey, privateKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048,
@@ -298,7 +304,7 @@ describe("command signature verification", () => {
       privateKey,
     );
 
-    const result = verifyCommandSignature(command, publicKey);
+    const result = verifyCommandSignature(command, publicKey, { now: TEST_NOW });
     expect(result.valid).toBe(true);
   });
 
@@ -315,7 +321,7 @@ describe("command signature verification", () => {
 
     // Tamper with the command
     const tampered = { ...command, type: "shell-access" as const };
-    const result = verifyCommandSignature(tampered, publicKey);
+    const result = verifyCommandSignature(tampered, publicKey, { now: TEST_NOW });
     expect(result.valid).toBe(false);
     expect(result.reason).toContain("tampered");
   });
@@ -329,7 +335,7 @@ describe("command signature verification", () => {
       signature: "",
     };
 
-    const result = verifyCommandSignature(command, publicKey);
+    const result = verifyCommandSignature(command, publicKey, { now: TEST_NOW });
     expect(result.valid).toBe(false);
     expect(result.reason).toContain("Missing signature");
   });
@@ -346,7 +352,7 @@ describe("command signature verification", () => {
       privateKey,
     );
 
-    const result = verifyCommandSignature(command, publicKey);
+    const result = verifyCommandSignature(command, publicKey, { now: TEST_NOW });
     expect(result.valid).toBe(true);
   });
 });
@@ -426,7 +432,7 @@ describe("command queue", () => {
       );
 
       enqueueCommand(deployDir, command);
-      const result = processNextCommand(deployDir, "managed", publicKey);
+      const result = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
 
       expect(result).toBeDefined();
       if (!result) throw new Error("Expected result to be defined");
@@ -444,7 +450,7 @@ describe("command queue", () => {
       );
 
       enqueueCommand(deployDir, command);
-      const result = processNextCommand(deployDir, "paranoid", publicKey);
+      const result = processNextCommand(deployDir, "paranoid", publicKey, TEST_VERIFY);
 
       expect(result).toBeDefined();
       if (!result) throw new Error("Expected result to be defined");
@@ -461,7 +467,7 @@ describe("command queue", () => {
       );
 
       enqueueCommand(deployDir, command);
-      const result = processNextCommand(deployDir, "managed", publicKey);
+      const result = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
 
       expect(result).toBeDefined();
       if (!result) throw new Error("Expected result to be defined");
@@ -481,7 +487,7 @@ describe("command queue", () => {
       );
 
       enqueueCommand(deployDir, command);
-      const result = processNextCommand(deployDir, "managed", publicKey);
+      const result = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
 
       expect(result).toBeDefined();
       if (!result) throw new Error("Expected result to be defined");
@@ -505,7 +511,7 @@ describe("command queue", () => {
       );
 
       enqueueCommand(deployDir, command);
-      const result = processNextCommand(deployDir, "zero-trust", publicKey);
+      const result = processNextCommand(deployDir, "zero-trust", publicKey, TEST_VERIFY);
 
       expect(result).toBeDefined();
       if (!result) throw new Error("Expected result to be defined");
@@ -522,7 +528,7 @@ describe("command queue", () => {
       );
 
       enqueueCommand(deployDir, command);
-      const result = processNextCommand(deployDir, "managed", publicKey);
+      const result = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
 
       expect(result).toBeDefined();
       if (!result) throw new Error("Expected result to be defined");
@@ -586,5 +592,302 @@ describe("cloud directory mode", () => {
 
     const stat = statSync(cloudDir);
     expect(stat.mode & 0o777).toBe(DIR_MODE_SECRET);
+  });
+});
+
+// ── Replay Protection Tests ─────────────────────────────────────────────────
+
+describe("replay protection", () => {
+  describe("freshness validation", () => {
+    it("rejects expired commands (older than max age)", () => {
+      const { publicKey, privateKey } = generateTestKeys();
+      const command = signCommand(
+        { id: "cmd-exp-001", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+        privateKey,
+      );
+
+      // Verify with "now" set 10 minutes after createdAt (exceeds 5-min default)
+      const tenMinLater = Date.parse("2026-03-19T10:10:00Z");
+      const result = verifyCommandSignature(command, publicKey, { now: tenMinLater });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain("Command expired");
+    });
+
+    it("accepts commands within max age", () => {
+      const { publicKey, privateKey } = generateTestKeys();
+      const command = signCommand(
+        { id: "cmd-exp-002", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+        privateKey,
+      );
+
+      // Verify with "now" set 2 minutes after createdAt (within 5-min default)
+      const twoMinLater = Date.parse("2026-03-19T10:02:00Z");
+      const result = verifyCommandSignature(command, publicKey, { now: twoMinLater });
+      expect(result.valid).toBe(true);
+    });
+
+    it("supports configurable max age", () => {
+      const { publicKey, privateKey } = generateTestKeys();
+      const command = signCommand(
+        { id: "cmd-exp-003", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+        privateKey,
+      );
+
+      // 3 minutes later, with a 2-minute max age — should expire
+      const threeMinLater = Date.parse("2026-03-19T10:03:00Z");
+      const result = verifyCommandSignature(command, publicKey, {
+        now: threeMinLater,
+        maxAgeMs: 2 * 60 * 1_000,
+      });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain("Command expired");
+    });
+
+    it("rejects commands with future timestamps beyond clock skew tolerance", () => {
+      const { publicKey, privateKey } = generateTestKeys();
+      const command = signCommand(
+        { id: "cmd-exp-004", type: "health-check", createdAt: "2026-03-19T10:05:00Z" },
+        privateKey,
+      );
+
+      // "now" is 2 minutes before createdAt — beyond 30s clock skew tolerance
+      const twoMinBefore = Date.parse("2026-03-19T10:03:00Z");
+      const result = verifyCommandSignature(command, publicKey, { now: twoMinBefore });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain("future");
+    });
+
+    it("tolerates minor clock skew (within 30 seconds)", () => {
+      const { publicKey, privateKey } = generateTestKeys();
+      const command = signCommand(
+        { id: "cmd-exp-005", type: "health-check", createdAt: "2026-03-19T10:00:20Z" },
+        privateKey,
+      );
+
+      // "now" is 20 seconds before createdAt — within 30s tolerance
+      const result = verifyCommandSignature(command, publicKey, {
+        now: Date.parse("2026-03-19T10:00:00Z"),
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it("rejects commands with invalid createdAt timestamp", () => {
+      const { publicKey } = generateTestKeys();
+      const command: SignedCommand = {
+        id: "cmd-exp-006",
+        type: "health-check",
+        createdAt: "not-a-date",
+        signature: "dGVzdA==",
+      };
+
+      const result = verifyCommandSignature(command, publicKey);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain("Invalid createdAt");
+    });
+
+    it("rejects expired commands in processNextCommand", () => {
+      const deployDir = tmpDeployDir();
+      const { publicKey, privateKey } = generateTestKeys();
+      const command = signCommand(
+        { id: "cmd-exp-010", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+        privateKey,
+      );
+
+      enqueueCommand(deployDir, command);
+      // Process with "now" 10 minutes later — command should be rejected as expired
+      const result = processNextCommand(deployDir, "managed", publicKey, {
+        verify: { now: Date.parse("2026-03-19T10:10:00Z") },
+      });
+
+      expect(result).toBeDefined();
+      if (!result) throw new Error("Expected result to be defined");
+      expect(result.executed).toBe(false);
+      expect(result.error).toContain("Command expired");
+    });
+  });
+
+  describe("nonce tracking (duplicate command ID rejection)", () => {
+    it("rejects a replayed command with the same ID", () => {
+      const deployDir = tmpDeployDir();
+      const { publicKey, privateKey } = generateTestKeys();
+      const command = signCommand(
+        { id: "cmd-replay-001", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+        privateKey,
+      );
+
+      // Process the command the first time
+      enqueueCommand(deployDir, command);
+      const result1 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
+      expect(result1).toBeDefined();
+      expect(result1!.executed).toBe(true);
+
+      // Enqueue the same command again (replay attack)
+      enqueueCommand(deployDir, command);
+      const result2 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
+      expect(result2).toBeDefined();
+      expect(result2!.executed).toBe(false);
+      expect(result2!.error).toContain("Replayed command rejected");
+      expect(result2!.error).toContain("duplicate command ID");
+    });
+
+    it("allows different commands with unique IDs", () => {
+      const deployDir = tmpDeployDir();
+      const { publicKey, privateKey } = generateTestKeys();
+
+      const cmd1 = signCommand(
+        { id: "cmd-replay-002a", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+        privateKey,
+      );
+      const cmd2 = signCommand(
+        { id: "cmd-replay-002b", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+        privateKey,
+      );
+
+      enqueueCommand(deployDir, cmd1);
+      const result1 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
+      expect(result1!.executed).toBe(true);
+
+      enqueueCommand(deployDir, cmd2);
+      const result2 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
+      expect(result2!.executed).toBe(true);
+    });
+
+    it("detects replays even for blocked commands", () => {
+      const deployDir = tmpDeployDir();
+      const { publicKey, privateKey } = generateTestKeys();
+      const command = signCommand(
+        { id: "cmd-replay-003", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+        privateKey,
+      );
+
+      // First attempt blocked by paranoid mode
+      enqueueCommand(deployDir, command);
+      const result1 = processNextCommand(deployDir, "paranoid", publicKey, TEST_VERIFY);
+      expect(result1!.disposition).toBe("blocked");
+
+      // Second attempt with same ID — replay detected before trust mode check
+      enqueueCommand(deployDir, command);
+      const result2 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
+      expect(result2!.executed).toBe(false);
+      expect(result2!.error).toContain("Replayed command rejected");
+    });
+  });
+});
+
+// ── Handler Dispatch Tests ──────────────────────────────────────────────────
+
+describe("command handler dispatch", () => {
+  it("dispatches to registered handler on allowed command", () => {
+    const deployDir = tmpDeployDir();
+    const { publicKey, privateKey } = generateTestKeys();
+    const command = signCommand(
+      { id: "cmd-hnd-001", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+      privateKey,
+    );
+
+    let handlerCalled = false;
+    const handlers = {
+      "health-check": () => {
+        handlerCalled = true;
+        return { success: true };
+      },
+    };
+
+    enqueueCommand(deployDir, command);
+    const result = processNextCommand(deployDir, "managed", publicKey, {
+      ...TEST_VERIFY,
+      handlers,
+    });
+
+    expect(handlerCalled).toBe(true);
+    expect(result!.executed).toBe(true);
+  });
+
+  it("reports handler failure without crashing", () => {
+    const deployDir = tmpDeployDir();
+    const { publicKey, privateKey } = generateTestKeys();
+    const command = signCommand(
+      { id: "cmd-hnd-002", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+      privateKey,
+    );
+
+    const handlers = {
+      "health-check": () => ({ success: false, error: "disk full" }),
+    };
+
+    enqueueCommand(deployDir, command);
+    const result = processNextCommand(deployDir, "managed", publicKey, {
+      ...TEST_VERIFY,
+      handlers,
+    });
+
+    expect(result!.executed).toBe(false);
+    expect(result!.error).toContain("Handler failed");
+    expect(result!.error).toContain("disk full");
+  });
+
+  it("catches handler exceptions", () => {
+    const deployDir = tmpDeployDir();
+    const { publicKey, privateKey } = generateTestKeys();
+    const command = signCommand(
+      { id: "cmd-hnd-003", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+      privateKey,
+    );
+
+    const handlers = {
+      "health-check": () => {
+        throw new Error("unexpected failure");
+      },
+    };
+
+    enqueueCommand(deployDir, command);
+    const result = processNextCommand(deployDir, "managed", publicKey, {
+      ...TEST_VERIFY,
+      handlers,
+    });
+
+    expect(result!.executed).toBe(false);
+    expect(result!.error).toContain("Handler error");
+    expect(result!.error).toContain("unexpected failure");
+  });
+
+  it("executes without handler when none registered (backward compatible)", () => {
+    const deployDir = tmpDeployDir();
+    const { publicKey, privateKey } = generateTestKeys();
+    const command = signCommand(
+      { id: "cmd-hnd-004", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+      privateKey,
+    );
+
+    enqueueCommand(deployDir, command);
+    const result = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
+
+    expect(result!.executed).toBe(true);
+    expect(result!.disposition).toBe("allowed");
+  });
+
+  it("does not dispatch handler for blocked commands", () => {
+    const deployDir = tmpDeployDir();
+    const { publicKey, privateKey } = generateTestKeys();
+    const command = signCommand(
+      { id: "cmd-hnd-005", type: "health-check", createdAt: "2026-03-19T10:00:00Z" },
+      privateKey,
+    );
+
+    let handlerCalled = false;
+    const handlers = {
+      "health-check": () => {
+        handlerCalled = true;
+        return { success: true };
+      },
+    };
+
+    enqueueCommand(deployDir, command);
+    processNextCommand(deployDir, "paranoid", publicKey, {
+      ...TEST_VERIFY,
+      handlers,
+    });
+
+    expect(handlerCalled).toBe(false);
   });
 });

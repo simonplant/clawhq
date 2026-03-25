@@ -161,6 +161,9 @@ export const CLOUD_HEARTBEAT_RPC_TIMEOUT_MS = 10_000;
 /** Maximum command history entries retained in the cloud command queue. */
 export const CLOUD_COMMAND_QUEUE_MAX_HISTORY = 100;
 
+/** Maximum age (ms) for a cloud command before it is rejected as stale. Default: 5 minutes. */
+export const CLOUD_COMMAND_MAX_AGE_MS = 5 * 60 * 1_000;
+
 /** Polling interval for cloud provisioning status checks (ms). */
 export const CLOUD_POLL_INTERVAL_MS = 5_000;
 

@@ -1,13 +1,26 @@
 /**
- * Command signature verification.
+ * Command signature and freshness verification.
  *
  * Every command from the cloud is signed with Ed25519. The agent verifies
  * against a pinned public key before executing. Tampered commands are rejected.
+ * Commands are also validated for freshness — stale commands beyond a
+ * configurable max age are rejected to prevent replay attacks.
  */
 
 import { createVerify } from "node:crypto";
 
+import { CLOUD_COMMAND_MAX_AGE_MS } from "../../config/defaults.js";
 import type { SignedCommand, VerifyResult } from "../types.js";
+
+// ── Options ─────────────────────────────────────────────────────────────────
+
+/** Options for command verification. */
+export interface VerifyCommandOptions {
+  /** Maximum command age in milliseconds. Defaults to CLOUD_COMMAND_MAX_AGE_MS (5 min). */
+  readonly maxAgeMs?: number;
+  /** Current time override for testing. Defaults to Date.now(). */
+  readonly now?: number;
+}
 
 // ── Signature format ─────────────────────────────────────────────────────────
 
@@ -27,14 +40,18 @@ export function buildSignatureMessage(command: SignedCommand): string {
 // ── Verification ─────────────────────────────────────────────────────────────
 
 /**
- * Verify a command's Ed25519 signature against a pinned public key.
+ * Verify a command's Ed25519 signature and freshness against a pinned public key.
  *
- * Returns { valid: true } if the signature is valid, or { valid: false, reason }
- * if verification fails.
+ * Returns { valid: true } if the signature is valid and the command is fresh,
+ * or { valid: false, reason } if verification fails.
+ *
+ * Freshness check: rejects commands whose createdAt timestamp is older than
+ * maxAgeMs (default 5 minutes) to prevent replay attacks.
  */
 export function verifyCommandSignature(
   command: SignedCommand,
   publicKeyPem: string,
+  options?: VerifyCommandOptions,
 ): VerifyResult {
   if (!command.signature) {
     return { valid: false, reason: "Missing signature" };
@@ -44,6 +61,32 @@ export function verifyCommandSignature(
     return { valid: false, reason: "Incomplete command fields" };
   }
 
+  // ── Freshness check ────────────────────────────────────────────────────
+  const maxAgeMs = options?.maxAgeMs ?? CLOUD_COMMAND_MAX_AGE_MS;
+  const now = options?.now ?? Date.now();
+  const createdAtMs = Date.parse(command.createdAt);
+
+  if (Number.isNaN(createdAtMs)) {
+    return { valid: false, reason: "Invalid createdAt timestamp" };
+  }
+
+  const ageMs = now - createdAtMs;
+  if (ageMs > maxAgeMs) {
+    return {
+      valid: false,
+      reason: `Command expired: age ${Math.round(ageMs / 1_000)}s exceeds max ${Math.round(maxAgeMs / 1_000)}s`,
+    };
+  }
+
+  if (ageMs < -30_000) {
+    // Allow up to 30s clock skew into the future, reject beyond that
+    return {
+      valid: false,
+      reason: "Command timestamp is in the future",
+    };
+  }
+
+  // ── Signature check ────────────────────────────────────────────────────
   try {
     const message = buildSignatureMessage(command);
     const verify = createVerify("SHA256");

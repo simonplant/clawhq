@@ -4,6 +4,10 @@
  * The cloud puts commands in a queue. The agent fetches on its schedule,
  * verifies the signature, and executes or rejects based on trust mode policy.
  * Pull model — the cloud never pushes. No open ports, no SSH, no reverse tunnels.
+ *
+ * Replay protection: commands are checked for freshness (max age) and duplicate
+ * nonces (command IDs). A replayed command within the validity window is detected
+ * and rejected via the history log.
  */
 
 import { randomBytes } from "node:crypto";
@@ -14,11 +18,13 @@ import { CLOUD_COMMAND_QUEUE_MAX_HISTORY, DIR_MODE_SECRET, FILE_MODE_SECRET } fr
 import type { TrustMode } from "../../config/types.js";
 import { getCommandDisposition, isArchitecturallyBlocked } from "../trust-modes/policy.js";
 import type {
+  CloudCommandType,
   CommandQueueState,
   CommandResult,
   SignedCommand,
 } from "../types.js";
 
+import type { VerifyCommandOptions } from "./verify.js";
 import { verifyCommandSignature } from "./verify.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -27,6 +33,30 @@ const QUEUE_FILE = "commands.json";
 
 /** Max history entries to keep. */
 const MAX_HISTORY = CLOUD_COMMAND_QUEUE_MAX_HISTORY;
+
+// ── Handler types ───────────────────────────────────────────────────────────
+
+/**
+ * Handler for a specific cloud command type.
+ *
+ * Receives the command and returns a result or throws on failure.
+ * Handlers are registered via CommandHandlerRegistry and dispatched by
+ * processNextCommand when a command is allowed/auto-approved.
+ */
+export type CommandHandler = (
+  command: SignedCommand,
+) => CommandHandlerResult;
+
+/** Result from a command handler. */
+export interface CommandHandlerResult {
+  readonly success: boolean;
+  readonly error?: string;
+}
+
+/** Registry mapping command types to their handlers. */
+export type CommandHandlerRegistry = Partial<
+  Record<CloudCommandType, CommandHandler>
+>;
 
 // ── Path helpers ─────────────────────────────────────────────────────────────
 
@@ -78,6 +108,19 @@ function writeQueueState(deployDir: string, state: CommandQueueState): void {
   }
 }
 
+// ── Nonce tracking ──────────────────────────────────────────────────────────
+
+/**
+ * Check whether a command ID has already been seen in the queue history.
+ * This detects exact replays within the history window.
+ */
+function isReplayedCommand(
+  commandId: string,
+  history: readonly CommandResult[],
+): boolean {
+  return history.some((entry) => entry.commandId === commandId);
+}
+
 // ── Queue operations ─────────────────────────────────────────────────────────
 
 /**
@@ -98,12 +141,22 @@ export function enqueueCommand(
   writeQueueState(deployDir, updated);
 }
 
+/** Options for processing commands. */
+export interface ProcessCommandOptions {
+  /** Verification options (maxAgeMs, now). */
+  readonly verify?: VerifyCommandOptions;
+  /** Handler registry for dispatching allowed commands. */
+  readonly handlers?: CommandHandlerRegistry;
+}
+
 /**
  * Process the next pending command.
  *
- * 1. Verify signature against pinned public key
- * 2. Check trust mode policy
- * 3. Execute if allowed, reject if blocked or tampered
+ * 1. Check architectural blocks (AD-05)
+ * 2. Check for replayed commands (nonce tracking)
+ * 3. Verify signature + freshness against pinned public key
+ * 4. Check trust mode policy
+ * 5. Dispatch to handler if registered, or mark as executed
  *
  * Returns the command result, or undefined if the queue is empty.
  */
@@ -111,6 +164,7 @@ export function processNextCommand(
   deployDir: string,
   trustMode: TrustMode,
   publicKeyPem: string,
+  options?: ProcessCommandOptions,
 ): CommandResult | undefined {
   const state = readQueueState(deployDir);
 
@@ -136,8 +190,26 @@ export function processNextCommand(
     return result;
   }
 
-  // Step 2: Verify signature
-  const verification = verifyCommandSignature(command, publicKeyPem);
+  // Step 2: Check for replayed commands (nonce tracking)
+  if (isReplayedCommand(command.id, state.history)) {
+    const result: CommandResult = {
+      commandId: command.id,
+      type: command.type,
+      disposition: "blocked",
+      executed: false,
+      error: "Replayed command rejected: duplicate command ID",
+      timestamp: now,
+    };
+    appendResult(deployDir, remaining, state.history, result);
+    return result;
+  }
+
+  // Step 3: Verify signature + freshness
+  const verification = verifyCommandSignature(
+    command,
+    publicKeyPem,
+    options?.verify,
+  );
   if (!verification.valid) {
     const result: CommandResult = {
       commandId: command.id,
@@ -151,7 +223,7 @@ export function processNextCommand(
     return result;
   }
 
-  // Step 3: Check trust mode policy
+  // Step 4: Check trust mode policy
   const disposition = getCommandDisposition(command.type, trustMode);
 
   if (disposition === "blocked") {
@@ -181,7 +253,37 @@ export function processNextCommand(
     return result;
   }
 
-  // disposition is "allowed" or "auto" — execute
+  // Step 5: disposition is "allowed" or "auto" — dispatch to handler
+  const handler = options?.handlers?.[command.type];
+  if (handler) {
+    try {
+      const handlerResult = handler(command);
+      if (!handlerResult.success) {
+        const result: CommandResult = {
+          commandId: command.id,
+          type: command.type,
+          disposition,
+          executed: false,
+          error: `Handler failed: ${handlerResult.error ?? "unknown error"}`,
+          timestamp: now,
+        };
+        appendResult(deployDir, remaining, state.history, result);
+        return result;
+      }
+    } catch (err) {
+      const result: CommandResult = {
+        commandId: command.id,
+        type: command.type,
+        disposition,
+        executed: false,
+        error: `Handler error: ${err instanceof Error ? err.message : String(err)}`,
+        timestamp: now,
+      };
+      appendResult(deployDir, remaining, state.history, result);
+      return result;
+    }
+  }
+
   const result: CommandResult = {
     commandId: command.id,
     type: command.type,
@@ -203,11 +305,12 @@ export function processAllCommands(
   deployDir: string,
   trustMode: TrustMode,
   publicKeyPem: string,
+  options?: ProcessCommandOptions,
 ): readonly CommandResult[] {
   const results: CommandResult[] = [];
   const seen = new Set<string>();
 
-  let result = processNextCommand(deployDir, trustMode, publicKeyPem);
+  let result = processNextCommand(deployDir, trustMode, publicKeyPem, options);
 
   while (result) {
     results.push(result);
@@ -217,7 +320,7 @@ export function processAllCommands(
     // Check if there are more pending commands
     const state = readQueueState(deployDir);
     if (state.pending.length === 0) break;
-    result = processNextCommand(deployDir, trustMode, publicKeyPem);
+    result = processNextCommand(deployDir, trustMode, publicKeyPem, options);
   }
 
   return results;
