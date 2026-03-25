@@ -6,9 +6,13 @@
  * the monitor loop.
  */
 
+import * as net from "node:net";
+import * as tls from "node:tls";
+
 import { TELEGRAM_API_BASE } from "../../config/defaults.js";
 
 import type {
+  EmailNotificationChannel,
   NotificationChannel,
   NotifyResult,
   TelegramNotificationChannel,
@@ -50,9 +54,7 @@ async function dispatchToChannel(
     case "webhook":
       return sendWebhook(channel, subject, body);
     case "email":
-      // Email uses a simple HTTPS POST to avoid requiring nodemailer dependency.
-      // In production, this would be replaced with SMTP transport.
-      return { channel: "email", success: false, error: "Email channel not yet implemented" };
+      return sendEmail(channel, subject, body);
   }
 }
 
@@ -118,6 +120,240 @@ async function sendWebhook(
   } catch (err) {
     return { channel: "webhook", success: false, error: String(err) };
   }
+}
+
+// ── Email (SMTP) ────────────────────────────────────────────────────────
+
+/** SMTP connection timeout in ms. */
+const SMTP_TIMEOUT_MS = 15_000;
+
+async function sendEmail(
+  config: EmailNotificationChannel,
+  subject: string,
+  body: string,
+): Promise<NotifyResult> {
+  try {
+    await smtpSend({
+      host: config.smtpHost,
+      port: config.smtpPort,
+      user: config.smtpUser,
+      pass: config.smtpPass,
+      from: config.from,
+      to: config.to,
+      subject,
+      body,
+    });
+    return { channel: "email", success: true };
+  } catch (err) {
+    return { channel: "email", success: false, error: String(err) };
+  }
+}
+
+interface SmtpParams {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+}
+
+/**
+ * Minimal SMTP client using Node.js built-in net/tls modules.
+ * Supports implicit TLS (port 465) and plain/STARTTLS (other ports).
+ * STARTTLS is attempted but gracefully skipped if the server rejects it.
+ */
+async function smtpSend(params: SmtpParams): Promise<void> {
+  const { host, port, user, pass, from, to, subject, body } = params;
+  const useImplicitTls = port === 465;
+
+  return new Promise<void>((resolve, reject) => {
+    let socket: net.Socket | tls.TLSSocket;
+    let settled = false;
+    let buffer = "";
+
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        socket?.destroy();
+        reject(new Error(`SMTP connection to ${host}:${port} timed out`));
+      }
+    }, SMTP_TIMEOUT_MS);
+
+    const fail = (err: unknown) => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timeout);
+        socket?.destroy();
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
+    };
+
+    const finish = () => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timeout);
+        socket.destroy();
+        resolve();
+      }
+    };
+
+    /** Build the command sequence for the mail transaction. */
+    const buildMailCommands = (): Array<{ cmd: string; expect: number }> => {
+      const cmds: Array<{ cmd: string; expect: number }> = [];
+      if (user && pass) {
+        cmds.push({ cmd: `AUTH LOGIN\r\n`, expect: 334 });
+        cmds.push({ cmd: `${Buffer.from(user).toString("base64")}\r\n`, expect: 334 });
+        cmds.push({ cmd: `${Buffer.from(pass).toString("base64")}\r\n`, expect: 235 });
+      }
+      cmds.push({ cmd: `MAIL FROM:<${from}>\r\n`, expect: 250 });
+      cmds.push({ cmd: `RCPT TO:<${to}>\r\n`, expect: 250 });
+      cmds.push({ cmd: `DATA\r\n`, expect: 354 });
+
+      const date = new Date().toUTCString();
+      // SMTP dot-stuffing: lines starting with '.' get an extra '.' prepended (RFC 5321 §4.5.2)
+      const escapedBody = body.replace(/^\./gm, "..");
+      const message = [
+        `From: ${from}`,
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        `Date: ${date}`,
+        `MIME-Version: 1.0`,
+        `Content-Type: text/plain; charset=UTF-8`,
+        ``,
+        escapedBody,
+        `.`,
+        ``,
+      ].join("\r\n");
+      cmds.push({ cmd: message, expect: 250 });
+      cmds.push({ cmd: `QUIT\r\n`, expect: 221 });
+      return cmds;
+    };
+
+    // State machine phases
+    type Phase = "greeting" | "ehlo" | "starttls" | "ehlo2" | "mail";
+    let phase: Phase = "greeting";
+    let mailCommands: Array<{ cmd: string; expect: number }> = [];
+    let mailStep = 0;
+
+    const processLine = (line: string) => {
+      const code = parseInt(line.substring(0, 3), 10);
+      // Multi-line responses have '-' at position 3; wait for final line
+      if (line.length > 3 && line[3] === "-") return;
+
+      switch (phase) {
+        case "greeting":
+          if (code !== 220) {
+            fail(new Error(`SMTP greeting failed: ${line.trim()}`));
+            return;
+          }
+          phase = "ehlo";
+          socket.write(`EHLO clawhq\r\n`);
+          return;
+
+        case "ehlo":
+          if (code !== 250) {
+            fail(new Error(`SMTP EHLO rejected: ${line.trim()}`));
+            return;
+          }
+          if (!useImplicitTls) {
+            // Attempt STARTTLS
+            phase = "starttls";
+            socket.write(`STARTTLS\r\n`);
+          } else {
+            // Already on TLS, proceed to mail commands
+            phase = "mail";
+            mailCommands = buildMailCommands();
+            mailStep = 0;
+            sendMailNext();
+          }
+          return;
+
+        case "starttls":
+          if (code === 220) {
+            // Server supports STARTTLS — upgrade
+            const rawSocket = socket as net.Socket;
+            const tlsSocket = tls.connect({ socket: rawSocket, host }, () => {
+              socket = tlsSocket;
+              phase = "ehlo2";
+              socket.write(`EHLO clawhq\r\n`);
+            });
+            tlsSocket.on("error", fail);
+            tlsSocket.on("data", onData);
+          } else {
+            // Server rejected STARTTLS — continue on plain connection
+            phase = "mail";
+            mailCommands = buildMailCommands();
+            mailStep = 0;
+            sendMailNext();
+          }
+          return;
+
+        case "ehlo2":
+          if (code !== 250) {
+            fail(new Error(`SMTP EHLO after STARTTLS rejected: ${line.trim()}`));
+            return;
+          }
+          phase = "mail";
+          mailCommands = buildMailCommands();
+          mailStep = 0;
+          sendMailNext();
+          return;
+
+        case "mail": {
+          const expected = mailCommands[mailStep - 1];
+          if (!expected) {
+            finish();
+            return;
+          }
+          if (code !== expected.expect) {
+            fail(new Error(`SMTP error: expected ${expected.expect}, got ${code} — ${line.trim()}`));
+            return;
+          }
+          if (mailStep >= mailCommands.length) {
+            finish();
+            return;
+          }
+          sendMailNext();
+          return;
+        }
+      }
+    };
+
+    const sendMailNext = () => {
+      if (mailStep >= mailCommands.length) {
+        return;
+      }
+      const cmd = mailCommands[mailStep];
+      mailStep++;
+      socket.write(cmd.cmd);
+    };
+
+    const onData = (data: Buffer) => {
+      buffer += data.toString();
+      let idx: number;
+      while ((idx = buffer.indexOf("\r\n")) !== -1) {
+        const line = buffer.substring(0, idx + 2);
+        buffer = buffer.substring(idx + 2);
+        processLine(line);
+      }
+    };
+
+    if (useImplicitTls) {
+      socket = tls.connect({ host, port }, () => {
+        // Wait for greeting
+      });
+    } else {
+      socket = net.connect({ host, port });
+    }
+
+    socket.setTimeout(SMTP_TIMEOUT_MS);
+    socket.on("timeout", () => fail(new Error(`SMTP socket timeout to ${host}:${port}`)));
+    socket.on("error", fail);
+    socket.on("data", onData);
+  });
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
