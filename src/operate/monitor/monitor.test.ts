@@ -2,10 +2,13 @@
  * Tests for monitor daemon — alerts, recovery, digest, notifications.
  */
 
-import { describe, expect, it } from "vitest";
+import * as net from "node:net";
+
+import { afterEach, describe, expect, it } from "vitest";
 
 import { analyzeHealth } from "./alerts.js";
 import { buildDigest, formatDigestMessage } from "./digest.js";
+import { sendNotification } from "./notify.js";
 import {
   formatDigestTable,
   formatMonitorEvent,
@@ -363,5 +366,180 @@ describe("types", () => {
     };
     expect(sample.cpuPercent).toBe(50);
     expect(sample.memoryMb).toBe(2048);
+  });
+});
+
+// ── Email Notification Tests ───────────────────────────────────────────
+
+/**
+ * Creates a minimal mock SMTP server that records received messages.
+ * Returns the server, the port it listens on, and the received data.
+ */
+function createMockSmtpServer(options?: {
+  rejectAuth?: boolean;
+}): Promise<{ server: net.Server; port: number; received: string[] }> {
+  return new Promise((resolve) => {
+    const received: string[] = [];
+    const server = net.createServer((socket) => {
+      let inData = false;
+      let dataBuffer = "";
+      let awaitingAuthCreds = 0; // 1 = waiting for username, 2 = waiting for password
+
+      socket.write("220 mock-smtp ready\r\n");
+
+      socket.on("data", (data) => {
+        const lines = data.toString();
+
+        if (inData) {
+          dataBuffer += lines;
+          if (dataBuffer.includes("\r\n.\r\n")) {
+            received.push(dataBuffer.replace(/\r\n\.\r\n$/, ""));
+            inData = false;
+            socket.write("250 OK message accepted\r\n");
+          }
+          return;
+        }
+
+        for (const line of lines.split("\r\n").filter(Boolean)) {
+          if (awaitingAuthCreds > 0) {
+            // Consume base64 auth credential lines
+            if (awaitingAuthCreds === 1) {
+              // Got username, ask for password
+              awaitingAuthCreds = 2;
+              socket.write("334 UGFzc3dvcmQ6\r\n");
+            } else {
+              // Got password
+              awaitingAuthCreds = 0;
+              socket.write("235 Authentication successful\r\n");
+            }
+          } else if (line.startsWith("EHLO")) {
+            socket.write("250-mock-smtp\r\n250 OK\r\n");
+          } else if (line.startsWith("STARTTLS")) {
+            socket.write("502 STARTTLS not supported\r\n");
+          } else if (line.startsWith("AUTH LOGIN")) {
+            if (options?.rejectAuth) {
+              socket.write("535 Authentication failed\r\n");
+            } else {
+              awaitingAuthCreds = 1;
+              socket.write("334 VXNlcm5hbWU6\r\n");
+            }
+          } else if (line.startsWith("MAIL FROM:")) {
+            socket.write("250 OK\r\n");
+          } else if (line.startsWith("RCPT TO:")) {
+            socket.write("250 OK\r\n");
+          } else if (line === "DATA") {
+            inData = true;
+            dataBuffer = "";
+            socket.write("354 Start mail input\r\n");
+          } else if (line === "QUIT") {
+            socket.write("221 Bye\r\n");
+            socket.end();
+          }
+        }
+      });
+    });
+
+    server.listen(0, "127.0.0.1", () => {
+      const addr = server.address() as net.AddressInfo;
+      resolve({ server, port: addr.port, received });
+    });
+  });
+}
+
+describe("sendNotification — email channel", () => {
+  const servers: net.Server[] = [];
+
+  afterEach(() => {
+    for (const s of servers) {
+      s.close();
+    }
+    servers.length = 0;
+  });
+
+  it("sends email via SMTP successfully", async () => {
+    const { server, port, received } = await createMockSmtpServer();
+    servers.push(server);
+
+    const results = await sendNotification(
+      [
+        {
+          type: "email",
+          enabled: true,
+          smtpHost: "127.0.0.1",
+          smtpPort: port,
+          smtpUser: "testuser",
+          smtpPass: "testpass",
+          from: "monitor@clawhq.local",
+          to: "admin@example.com",
+        },
+      ],
+      "Alert: container-down",
+      "Container is not running — agent claw-1 — severity: critical",
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].channel).toBe("email");
+    expect(results[0].success).toBe(true);
+    expect(results[0].error).toBeUndefined();
+
+    // Verify the email was received with correct content
+    expect(received).toHaveLength(1);
+    expect(received[0]).toContain("Subject: Alert: container-down");
+    expect(received[0]).toContain("From: monitor@clawhq.local");
+    expect(received[0]).toContain("To: admin@example.com");
+    expect(received[0]).toContain("severity: critical");
+  });
+
+  it("reports connection failure as channel error", async () => {
+    const results = await sendNotification(
+      [
+        {
+          type: "email",
+          enabled: true,
+          smtpHost: "127.0.0.1",
+          smtpPort: 19999, // nothing listening
+          smtpUser: "user",
+          smtpPass: "pass",
+          from: "monitor@clawhq.local",
+          to: "admin@example.com",
+        },
+      ],
+      "Alert: disk-critical",
+      "Disk usage at 95%",
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].channel).toBe("email");
+    expect(results[0].success).toBe(false);
+    expect(results[0].error).toBeDefined();
+    expect(results[0].error).toMatch(/ECONNREFUSED|timed out|error/i);
+  });
+
+  it("reports auth failure as channel error", async () => {
+    const { server, port } = await createMockSmtpServer({ rejectAuth: true });
+    servers.push(server);
+
+    const results = await sendNotification(
+      [
+        {
+          type: "email",
+          enabled: true,
+          smtpHost: "127.0.0.1",
+          smtpPort: port,
+          smtpUser: "baduser",
+          smtpPass: "badpass",
+          from: "monitor@clawhq.local",
+          to: "admin@example.com",
+        },
+      ],
+      "Alert: gateway-unreachable",
+      "Gateway is not responding",
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].channel).toBe("email");
+    expect(results[0].success).toBe(false);
+    expect(results[0].error).toBeDefined();
+    expect(results[0].error).toMatch(/535|auth|failed/i);
   });
 });
