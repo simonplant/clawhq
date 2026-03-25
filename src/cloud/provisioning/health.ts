@@ -80,15 +80,16 @@ export async function pollInstanceHealth(options: HealthPollOptions): Promise<He
         };
       }
 
-      // SSH is up but dashboard isn't yet — cloud-init still running
-      // After 3 minutes of SSH being up, consider it provisioned
-      // (cloud-init may still be running but VM is functional)
+      // SSH is up but dashboard isn't — agent has not started
       if (attempts > 18) {
-        // ~3 minutes of polling at 10s intervals after SSH came up
         return {
-          healthy: true,
+          healthy: false,
           attempts,
           elapsedMs: Date.now() - start,
+          error:
+            "Agent did not become reachable on port 3737 within the expected window. " +
+            "SSH is accessible — connect with clawhq deploy update or check cloud-init logs: " +
+            "journalctl -u cloud-init",
         };
       }
     }
