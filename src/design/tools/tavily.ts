@@ -27,25 +27,29 @@ USAGE
 cmd_search() {
   local query="$1"
   local depth="\${2:-basic}"
+  local payload
+  payload=$(jq -n --arg key "$KEY" --arg q "$query" --arg d "$depth" '{
+    api_key: $key,
+    query: $q,
+    search_depth: $d,
+    include_answer: true,
+    max_results: 5
+  }')
   curl -sS -X POST "$API/search" \\
     -H "Content-Type: application/json" \\
-    -d "{
-      \\"api_key\\": \\"$KEY\\",
-      \\"query\\": \\"$query\\",
-      \\"search_depth\\": \\"$depth\\",
-      \\"include_answer\\": true,
-      \\"max_results\\": 5
-    }"
+    -d "$payload"
 }
 
 cmd_extract() {
   local url="$1"
+  local payload
+  payload=$(jq -n --arg key "$KEY" --arg u "$url" '{
+    api_key: $key,
+    urls: [$u]
+  }')
   curl -sS -X POST "$API/extract" \\
     -H "Content-Type: application/json" \\
-    -d "{
-      \\"api_key\\": \\"$KEY\\",
-      \\"urls\\": [\\"$url\\"]
-    }"
+    -d "$payload"
 }
 
 case "\${1:-}" in

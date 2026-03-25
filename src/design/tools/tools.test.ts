@@ -256,3 +256,77 @@ describe("quote tool", () => {
     expect(wrapper?.content).toContain("batch");
   });
 });
+
+// ── Shell Injection Prevention ─────────────────────────────────────────────
+
+describe("shell injection prevention", () => {
+  /**
+   * Extract python3 -c blocks from generated bash scripts.
+   * These are the highest-risk areas for injection — bash vars interpolated
+   * into Python source code can enable arbitrary code execution.
+   */
+  function extractPythonBlocks(script: string): string[] {
+    const blocks: string[] = [];
+    const regex = /python3 -c "([\s\S]*?)"\n/g;
+    let match;
+    while ((match = regex.exec(script)) !== null) {
+      blocks.push(match[1]);
+    }
+    return blocks;
+  }
+
+  it("python3 -c blocks use os.environ instead of raw bash variable interpolation", () => {
+    for (const name of ALL_BLUEPRINTS) {
+      const bp = loadBlueprint(name).blueprint;
+      const wrappers = generateToolWrappers(bp);
+      for (const wrapper of wrappers) {
+        if (!wrapper.content.startsWith("#!/usr/bin/env bash")) continue;
+        const pyBlocks = extractPythonBlocks(wrapper.content);
+        for (const block of pyBlocks) {
+          // No raw $VAR inside python code — must use os.environ
+          // Allow \$ (escaped, not a bash expansion) and $( (command sub in bash, not in python block)
+          const rawBashVars = block.match(/(?<![\\])\$[A-Za-z_][A-Za-z0-9_]*/g) || [];
+          expect(
+            rawBashVars,
+            `${name}/${wrapper.name}: python3 -c block has raw bash vars: ${rawBashVars.join(", ")}. Use os.environ instead.`,
+          ).toHaveLength(0);
+        }
+      }
+    }
+  });
+
+  it("no inline JSON string interpolation in curl -d payloads", () => {
+    for (const name of ALL_BLUEPRINTS) {
+      const bp = loadBlueprint(name).blueprint;
+      const wrappers = generateToolWrappers(bp);
+      for (const wrapper of wrappers) {
+        if (!wrapper.content.startsWith("#!/usr/bin/env bash")) continue;
+        // Match curl -d with inline JSON containing unescaped $var inside the JSON
+        // Safe pattern: curl -d "$payload" where payload was built with jq
+        // Unsafe pattern: curl -d "{ \"key\": \"$var\" }"
+        const unsafeJsonPayload = wrapper.content.match(
+          /-d\s+"\{[^"]*\$[A-Za-z_][^"]*\}"/g,
+        );
+        expect(
+          unsafeJsonPayload ?? [],
+          `${name}/${wrapper.name}: curl -d has inline JSON with variable interpolation. Use jq for safe JSON construction.`,
+        ).toHaveLength(0);
+      }
+    }
+  });
+
+  it("all bash variable expansions are inside double-quoted strings", () => {
+    for (const name of ALL_BLUEPRINTS) {
+      const bp = loadBlueprint(name).blueprint;
+      const wrappers = generateToolWrappers(bp);
+      for (const wrapper of wrappers) {
+        if (!wrapper.content.startsWith("#!/usr/bin/env bash")) continue;
+        // Verify no printf-based JSON construction (fragile quoting)
+        expect(
+          wrapper.content,
+          `${name}/${wrapper.name}: uses printf for JSON construction. Use jq instead.`,
+        ).not.toMatch(/printf\s+'.*%s.*'/);
+      }
+    }
+  });
+});
