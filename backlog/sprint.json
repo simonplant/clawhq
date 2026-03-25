@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774418286",
   "startedAt": "2026-03-24T22:58:06-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "BUG-119",
     "title": "Heartbeat disk usage always reports 0% — getDiskUsagePercent() is a placeholder",
@@ -23,6 +23,10 @@
     "scope": [
       "src/cloud/heartbeat/reporter.ts"
     ],
-    "startedAt": "2026-03-24T22:58:06-07:00"
-  }
+    "startedAt": "2026-03-24T22:58:06-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-24T23:01:37-07:00"
+  },
+  "completedAt": "2026-03-24T23:01:37-07:00",
+  "attempts": 1
 }
