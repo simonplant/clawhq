@@ -1,32 +1,30 @@
 {
-  "sprintId": "sprint-1774416777",
-  "startedAt": "2026-03-24T22:32:57-07:00",
+  "sprintId": "sprint-1774417247",
+  "startedAt": "2026-03-24T22:40:47-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-107",
-    "title": "Add manifest version checking on all JSON manifest reads across evolve/cloud",
-    "intent": "Prevent silent data corruption when manifest formats change. Every manifest read must validate the version field and fail clearly on unsupported versions.",
-    "description": "Code review found that multiple modules write manifest files with version: 1 but never validate version on read. If the manifest format changes in a future version, old code will parse new manifests incorrectly — either silently producing wrong data or crashing with confusing errors. Affects skill manifests, export manifests, destruction proofs, and cloud state files.",
-    "sourceBacklog": "backlog.json",
+    "id": "BUG-111",
+    "title": "health poller marks instance active on SSH timeout fallback even when agent never started",
+    "intent": "An instance must only be marked active when the agent is actually reachable. The SSH port timeout fallback that returns healthy:true after 18 attempts is incorrect — SSH up does not mean agent up.",
+    "description": "In src/cloud/provisioning/health.ts lines 86-93, after 18 poll attempts (~3 minutes) where SSH is open but the dashboard port (3737) is not, pollInstanceHealth() returns healthy:true with the comment 'cloud-init may still be running but VM is functional'. This is wrong: SSH being up means the VM booted, not that the agent is running. With the clawhq up failure masking bug (BUG-109), this fallback causes the provisioning engine to mark instances active even when the agent never started. Even with BUG-109 fixed, the fallback allows a VM with a failed cloud-init to be reported as healthy. Fix: change the fallback to return healthy:false with a clear error — if port 3737 is not open after 3 minutes, the agent has not started.",
+    "sourceBacklog": "bugs.json",
     "steps": [
-      "Identify all manifest read locations across evolve/ and cloud/ modules",
-      "Add version validation to each manifest reader (reject if version !== expected)",
-      "Add descriptive error messages mentioning the expected vs actual version",
-      "Add tests for version mismatch on skill, export, destruction, and cloud manifests"
+      "Read src/cloud/provisioning/health.ts lines 52-105 to understand the current polling logic.",
+      "At lines 86-93, change the fallback: instead of returning healthy:true, return healthy:false with error 'Agent did not become reachable on port 3737 within the expected window. SSH is accessible — connect with clawhq deploy update or check cloud-init logs: journalctl -u cloud-init'.",
+      "Verify that the tests in health.test.ts (if they exist) cover the timeout path — if not, add a test for: SSH open + dashboard never opens + 19+ poll attempts = healthy:false with expected error message.",
+      "Run npm test -- --testPathPattern=health to confirm all tests pass."
     ],
     "acceptanceCriteria": [
-      "All manifest read functions validate the version field before parsing",
-      "Unsupported manifest versions produce a clear error message",
-      "Tests cover version mismatch scenarios for each manifest type"
+      "pollInstanceHealth() returns healthy:false when SSH is reachable but port 3737 never opens, regardless of number of attempts",
+      "The error message in the result includes the SSH access hint for debugging",
+      "health.test.ts exists with tests covering: SSH+port both open = healthy:true, SSH open + port closed after timeout = healthy:false with error, neither open = healthy:false",
+      "All health and provisioning tests pass with no regression"
     ],
-    "scope": [
-      "src/evolve/**",
-      "src/cloud/**"
-    ],
-    "startedAt": "2026-03-24T22:32:57-07:00",
+    "scope": [],
+    "startedAt": "2026-03-24T22:40:47-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T22:40:45-07:00"
+    "completedAt": "2026-03-24T22:44:06-07:00"
   },
-  "completedAt": "2026-03-24T22:40:45-07:00",
+  "completedAt": "2026-03-24T22:44:06-07:00",
   "attempts": 1
 }

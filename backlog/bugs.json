@@ -22,14 +22,15 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'should' confirmed. User trust violation — provisioning reports success when agent never started. BUG-109 dependency shipped 2026-03-24, so this is unblocked. AC1 (healthy:false on port 3737 timeout) and AC2 (SSH debug hint) are the correct user outcomes — operator must know how to diagnose a failed cloud-init without reading source code. health.test.ts must be created (Tech Lead confirmed it does not exist). Sprint immediately — health check correctness is a prerequisite for user trust in cloud deployments. Steps owned by Tech Lead — do not modify.",
       "groomedAt": "2026-03-24",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-24T09:30:58-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "completedAt": "2026-03-24T22:44:06-07:00"
     },
     {
       "id": "BUG-113",
