@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774413782",
   "startedAt": "2026-03-24T21:43:02-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "BUG-124",
     "title": "Cloud command queue has no replay protection — signed commands accepted without timestamp validation",
@@ -22,6 +22,10 @@
     "scope": [
       "src/cloud/commands/**"
     ],
-    "startedAt": "2026-03-24T21:43:02-07:00"
-  }
+    "startedAt": "2026-03-24T21:43:02-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-24T21:52:03-07:00"
+  },
+  "completedAt": "2026-03-24T21:52:03-07:00",
+  "attempts": 1
 }
