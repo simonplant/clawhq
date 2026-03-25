@@ -304,7 +304,7 @@
       "id": "FEAT-106",
       "title": "Reduce process.exit() usage in CLI — return exit codes or throw for testability",
       "intent": "Make CLI command handlers testable and allow proper cleanup. Commands should throw or return exit codes instead of calling process.exit() directly.",
-      "description": "Code review found 107+ direct process.exit() calls in src/cli/index.ts. This prevents testing error paths, blocks defer/cleanup handlers, and makes graceful shutdown impossible. Commands should throw errors or return codes, with a single top-level handler calling process.exit().",
+      "description": "Architecture review found 192 direct process.exit() calls (updated from initial 107+ estimate). This prevents testing error paths, blocks defer/cleanup handlers, and makes graceful shutdown impossible. Commands should throw errors or return codes, with a single top-level handler calling process.exit().",
       "priority": "should",
       "category": "Code Quality",
       "steps": [
@@ -327,6 +327,8 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24: Priority 'should' confirmed. User-facing value is indirect but real: process.exit() in command handlers prevents proper cleanup (spinners left running, temp files not deleted, partial state on disk). It also makes error paths untestable, which means error messages shown to users are untested. The intent should be clarified — this is not code quality for its own sake; it is about users seeing correct error messages and not being left with a broken spinner. AC item 'at least 3 command handlers' is too vague — Tech Lead should target the highest-risk commands (deploy, destroy, scan) where partial state is most dangerous. Steps look correct. Sprint after must-priority items are clear.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-24T22:32:57-07:00",
       "failCount": 1
@@ -357,7 +359,40 @@
       "status": "done",
       "passes": true,
       "readyForSprint": false,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24: Priority 'should' confirmed. Silent data corruption on manifest version mismatch is a reliability risk that compounds over time — as ClawHQ evolves, old manifests will accumulate in the wild. The first user who upgrades ClawHQ and has an old skill manifest will get a silent wrong result or a confusing crash. Version validation is cheap to add and expensive to retrofit later. AC is correct and complete. Tech Lead note: manifest types are spread across evolve/ and cloud/ — identify all read locations before implementing to avoid partial coverage. Sprint after must-priority items are clear.",
       "completedAt": "2026-03-24T22:40:45-07:00"
+    },
+    {
+      "id": "FEAT-108",
+      "title": "Decompose CLI index.ts — 4,320 lines into per-command modules",
+      "intent": "A 4,320-line CLI file is unmaintainable, untestable, and blocks parallel development. Each command should live in its own module so changes to one command don't risk breaking others.",
+      "description": "Architecture review found src/cli/index.ts is 4,320 lines containing all command definitions, option parsing, and handler logic in a single file. This creates: (1) merge conflicts when multiple features touch CLI simultaneously, (2) impossible to unit test individual commands in isolation, (3) no clear ownership boundary between modules. Decomposition strategy: extract each command (or command group) into src/cli/commands/<name>.ts, with index.ts reduced to a thin registration layer that imports and wires commands to Commander.js. This pairs with FEAT-106 (process.exit cleanup) — decompose first, then refactor error handling per-command.",
+      "priority": "should",
+      "category": "Code Quality",
+      "steps": [
+        "Audit src/cli/index.ts — catalog all commands and their line ranges",
+        "Create src/cli/commands/ directory",
+        "Extract each command group into its own file (e.g., deploy.ts, doctor.ts, blueprint.ts, skill.ts, cloud.ts)",
+        "Each command file exports a function that takes the Commander program and registers its commands",
+        "Reduce index.ts to imports + command registration + top-level error handler",
+        "Run npm test to confirm no regression",
+        "Run npm run build to confirm compilation succeeds"
+      ],
+      "acceptanceCriteria": [
+        "src/cli/index.ts is under 500 lines — purely command registration and top-level error handling",
+        "Each command group lives in src/cli/commands/<name>.ts",
+        "All existing CLI commands work identically — no user-visible behavior change",
+        "npm test and npm run build pass with no regression"
+      ],
+      "scope": [
+        "src/cli/**"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "ARCHITECT REVIEW 2026-03-24: Critical finding — 4,320 lines is the largest file in the codebase. Pairs with FEAT-106 (process.exit cleanup). Decompose first, then FEAT-106 becomes per-command refactoring instead of a 4K-line surgery. Priority 'should' — not blocking users directly but blocking developer velocity on every CLI change."
     }
   ]
 }

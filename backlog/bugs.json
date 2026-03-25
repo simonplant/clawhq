@@ -304,6 +304,8 @@
       "status": "done",
       "passes": true,
       "readyForSprint": false,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. Security-by-default non-negotiable: generated bash tool wrappers are code ClawHQ writes on behalf of users, and shell injection in that generated code is an architectural trust failure, not an implementation detail.",
       "completedAt": "2026-03-24T21:23:53-07:00"
     },
     {
@@ -331,6 +333,8 @@
       "status": "done",
       "passes": true,
       "readyForSprint": false,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. The 'agent grows' pillar is only as trustworthy as the vetting pipeline. Skills must not smuggle payloads past vetting via comments or base64 encoding.",
       "completedAt": "2026-03-24T21:34:11-07:00"
     },
     {
@@ -360,6 +364,8 @@
       "status": "done",
       "passes": true,
       "readyForSprint": false,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. Four distinct security gaps on the management interface. Path traversal, CSRF, wrong HTTP status codes, and unbounded /api/logs.",
       "completedAt": "2026-03-24T21:43:01-07:00"
     },
     {
@@ -387,6 +393,8 @@
       "status": "done",
       "passes": true,
       "readyForSprint": false,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. Cloud command queue replay attacks — signatures without freshness validation. Both timestamp validation and nonce tracking required.",
       "completedAt": "2026-03-24T21:52:03-07:00"
     },
     {
@@ -415,6 +423,8 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. Doctor auto-fix with regex YAML patching can silently corrupt compose files. Must use proper YAML parser, validate output, and create backup before writing.",
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-03-24T21:54:33-07:00",
       "failCount": 1
@@ -443,6 +453,8 @@
       "status": "done",
       "passes": true,
       "readyForSprint": false,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24: Priority 'should' confirmed. Firewall rulesMatch() destination omission — security-by-default means verification must be complete, not approximate.",
       "completedAt": "2026-03-24T23:07:25-07:00"
     },
     {
@@ -472,6 +484,8 @@
       "status": "done",
       "passes": true,
       "readyForSprint": false,
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "PO GROOM 2026-03-24: Priority 'should' confirmed. Cron expressions must be validated at config generation time — invalid schedules silently break agent autonomy.",
       "completedAt": "2026-03-24T23:12:05-07:00"
     }
   ]
