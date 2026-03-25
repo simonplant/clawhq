@@ -90,11 +90,13 @@ function buildOpenClawConfig(
     trustedProxies: [DOCKER_BRIDGE_GATEWAY],
 
     // LM-04 + LM-05: Tool execution on gateway with full security
+    // accessGrants: OpenClaw v0.8.7+ defaults to admin-only without explicit grants
     tools: {
       exec: {
         host: "gateway",
         security: "full",
       },
+      accessGrants: [{ type: "user", value: "*" }],
     },
 
     // LM-14: Filesystem access — workspace only by default

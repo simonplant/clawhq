@@ -64,6 +64,14 @@ describe("generateBundle", () => {
     expect(bundle.openclawConfig.tools?.exec.security).toBe("full");
   });
 
+  it("sets explicit tool access grants for v0.8.7+ compatibility", () => {
+    const bundle = generateBundle(makeAnswers());
+    const grants = bundle.openclawConfig.tools?.accessGrants;
+    expect(grants).toBeDefined();
+    expect(grants!.length).toBeGreaterThan(0);
+    expect(grants![0]).toEqual({ type: "user", value: "*" });
+  });
+
   it("sets LM-06: container user to 1000:1000", () => {
     const bundle = generateBundle(makeAnswers());
     const svc = bundle.composeConfig.services?.["openclaw"];

@@ -56,6 +56,7 @@ const fixers: Partial<Record<DoctorCheckName, Fixer>> = {
   "cap-drop": fixCapDrop,
   "no-new-privileges": fixNoNewPrivileges,
   "user-uid": fixUserUid,
+  "tool-access-grants": fixToolAccessGrants,
 };
 
 /** Fix .env file permissions to 0600. */
@@ -192,6 +193,35 @@ async function fixUserUid(deployDir: string): Promise<FixResult> {
     }
     return null;
   });
+}
+
+/** Fix missing tool access grants in openclaw.json (OpenClaw v0.8.7+). */
+async function fixToolAccessGrants(deployDir: string): Promise<FixResult> {
+  const name: DoctorCheckName = "tool-access-grants";
+  const configPath = join(deployDir, "engine", "openclaw.json");
+
+  try {
+    const raw = await readFile(configPath, "utf-8");
+    const config = JSON.parse(raw) as Record<string, unknown>;
+
+    let tools = config["tools"] as Record<string, unknown> | undefined;
+    if (!tools) {
+      tools = {};
+      config["tools"] = tools;
+    }
+
+    const existing = tools["accessGrants"] as unknown[] | undefined;
+    if (Array.isArray(existing) && existing.length > 0) {
+      return { name, success: true, message: "Tool access grants already set" };
+    }
+
+    tools["accessGrants"] = [{ type: "user", value: "*" }];
+    await writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+    return { name, success: true, message: 'Added tools.accessGrants: [{"type":"user","value":"*"}]' };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { name, success: false, message: `Failed to fix tool access grants: ${msg}` };
+  }
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
