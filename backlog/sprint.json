@@ -1,31 +1,26 @@
 {
-  "sprintId": "sprint-1774413782",
-  "startedAt": "2026-03-24T21:43:02-07:00",
+  "sprintId": "sprint-1774414473",
+  "startedAt": "2026-03-24T21:54:33-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-124",
-    "title": "Cloud command queue has no replay protection — signed commands accepted without timestamp validation",
-    "intent": "Prevent replay attacks on the cloud command queue. Every command must be validated for freshness before execution.",
-    "description": "Code review found that src/cloud/commands/verify.ts verifies command signatures but never validates the createdAt timestamp against current time. A valid intercepted command can be replayed indefinitely. Additionally, the command queue in queue.ts marks commands as executed without actually dispatching to handlers.",
-    "sourceBacklog": "bugs.json",
-    "steps": [
-      "Add max-age validation to verifyCommandSignature() using createdAt timestamp",
-      "Add nonce tracking to detect exact replays within the validity window",
-      "Wire command queue to actual handler dispatch or document integration pattern",
-      "Add tests for expired commands and replayed commands"
-    ],
+    "id": "FEAT-016",
+    "title": "Config surface update for OpenClaw v0.8.6–v0.8.10 environment variables",
+    "intent": "ClawHQ must track OpenClaw's config surface so the config generator, validator, and reference docs stay current. Ten new env vars were added or fixed across v0.8.6–v0.8.10 — they need to be in our schema and docs.",
+    "description": "OpenClaw v0.8.6–v0.8.10 introduced or fixed the following environment variables: WEBSOCKET_EVENT_CALLER_TIMEOUT (configurable WS timeout, was hardcoded 60s), VECTOR_DB=mariadb-vector (new vector DB backend), OPENID_END_SESSION_ENDPOINT (custom OIDC logout), USER_PERMISSIONS_ACCESS_GRANTS_ALLOW_USERS (disable individual sharing), DEFAULT_GROUP_SHARE_PERMISSION, ENABLE_AUDIT_STDOUT (was broken, now works), WEB_SEARCH_DOMAIN_FILTER_LIST (was broken, now works), REPORTING_ENDPOINTS (CSP reporting), OAUTH_UPDATE_NAME_ON_LOGIN, OAUTH_UPDATE_EMAIL_ON_LOGIN. Update: (1) src/config/schema.ts to include new fields, (2) docs/OPENCLAW-REFERENCE.md config inventory section, (3) config generator to set sensible defaults where appropriate (especially WEBSOCKET_EVENT_CALLER_TIMEOUT and ENABLE_AUDIT_STDOUT). Also add a minimum version note to OPENCLAW-REFERENCE.md — ClawHQ now assumes v0.8.6+ baseline.",
+    "sourceBacklog": "backlog.json",
+    "steps": [],
     "acceptanceCriteria": [
-      "Command verification rejects commands older than a configurable max age (e.g. 5 minutes)",
-      "Replayed commands are detected and rejected with a clear error",
-      "Command queue either dispatches to actual handlers or documents the integration pattern"
+      "src/config/types.ts includes type definitions for all 10 new environment variables",
+      "docs/OPENCLAW-REFERENCE.md config inventory lists the new variables with version introduced",
+      "Config generator sets WEBSOCKET_EVENT_CALLER_TIMEOUT and ENABLE_AUDIT_STDOUT defaults for new agents",
+      "OPENCLAW-REFERENCE.md states minimum OpenClaw version as v0.8.6",
+      "Existing config validation tests pass with no regression"
     ],
-    "scope": [
-      "src/cloud/commands/**"
-    ],
-    "startedAt": "2026-03-24T21:43:02-07:00",
+    "scope": [],
+    "startedAt": "2026-03-24T21:54:33-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T21:52:03-07:00"
+    "completedAt": "2026-03-24T22:00:41-07:00"
   },
-  "completedAt": "2026-03-24T21:52:03-07:00",
+  "completedAt": "2026-03-24T22:00:41-07:00",
   "attempts": 1
 }
