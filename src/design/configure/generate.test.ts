@@ -4,7 +4,7 @@ import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
 import { loadBlueprint } from "../blueprints/loader.js";
 
-import { generateBundle } from "./generate.js";
+import { generateBundle, validateCronExpr } from "./generate.js";
 import type { WizardAnswers } from "./types.js";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -186,6 +186,28 @@ describe("generateBundle", () => {
     }
   });
 
+  it("rejects cron expressions with out-of-range values at generation time", () => {
+    const loaded = loadBlueprint("family-hub");
+    // Inject an invalid heartbeat cron into the blueprint
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, heartbeat: "99 99 99 99 99" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    expect(() => generateBundle(answers)).toThrow(/Invalid cron expression/);
+  });
+
+  it("rejects cron expressions with minute > 59", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, heartbeat: "60 * * * *" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    expect(() => generateBundle(answers)).toThrow(/minute.*out of range/);
+  });
+
+  it("rejects morning brief with hour > 23", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, morning_brief: "25:00" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    expect(() => generateBundle(answers)).toThrow(/Invalid morning brief time/);
+  });
+
   it("passes full validation for every built-in blueprint", () => {
     const blueprintNames = [
       "email-manager",
@@ -208,5 +230,75 @@ describe("generateBundle", () => {
 
       expect(report.valid, `Blueprint "${name}" should pass validation`).toBe(true);
     }
+  });
+});
+
+describe("validateCronExpr", () => {
+  it("accepts valid 5-field expressions", () => {
+    expect(validateCronExpr("0 7 * * *")).toHaveLength(0);
+    expect(validateCronExpr("*/15 * * * *")).toHaveLength(0);
+    expect(validateCronExpr("0-59/10 5-23 * * *")).toHaveLength(0);
+    expect(validateCronExpr("0 0 1 1 0")).toHaveLength(0);
+    expect(validateCronExpr("59 23 31 12 7")).toHaveLength(0);
+  });
+
+  it("rejects wrong field count", () => {
+    expect(validateCronExpr("* * *")).not.toHaveLength(0);
+    expect(validateCronExpr("* * * * * *")).not.toHaveLength(0);
+    expect(validateCronExpr("*")).not.toHaveLength(0);
+  });
+
+  it("rejects minute > 59", () => {
+    const errors = validateCronExpr("60 * * * *");
+    expect(errors.some((e) => e.includes("minute"))).toBe(true);
+  });
+
+  it("rejects hour > 23", () => {
+    const errors = validateCronExpr("0 24 * * *");
+    expect(errors.some((e) => e.includes("hour"))).toBe(true);
+  });
+
+  it("rejects day-of-month > 31", () => {
+    const errors = validateCronExpr("0 0 32 * *");
+    expect(errors.some((e) => e.includes("day-of-month"))).toBe(true);
+  });
+
+  it("rejects day-of-month 0", () => {
+    const errors = validateCronExpr("0 0 0 * *");
+    expect(errors.some((e) => e.includes("day-of-month"))).toBe(true);
+  });
+
+  it("rejects month > 12", () => {
+    const errors = validateCronExpr("0 0 * 13 *");
+    expect(errors.some((e) => e.includes("month"))).toBe(true);
+  });
+
+  it("rejects month 0", () => {
+    const errors = validateCronExpr("0 0 * 0 *");
+    expect(errors.some((e) => e.includes("month"))).toBe(true);
+  });
+
+  it("rejects day-of-week > 7", () => {
+    const errors = validateCronExpr("0 0 * * 8");
+    expect(errors.some((e) => e.includes("day-of-week"))).toBe(true);
+  });
+
+  it("accepts comma-separated lists", () => {
+    expect(validateCronExpr("0,15,30,45 * * * *")).toHaveLength(0);
+  });
+
+  it("rejects out-of-range values in lists", () => {
+    const errors = validateCronExpr("0,60 * * * *");
+    expect(errors.some((e) => e.includes("minute"))).toBe(true);
+  });
+
+  it("rejects all-invalid expression like 99 99 99 99 99", () => {
+    const errors = validateCronExpr("99 99 99 99 99");
+    expect(errors.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("accepts boundary values at limits", () => {
+    expect(validateCronExpr("0 0 1 1 0")).toHaveLength(0);
+    expect(validateCronExpr("59 23 31 12 7")).toHaveLength(0);
   });
 });

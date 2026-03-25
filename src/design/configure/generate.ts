@@ -442,6 +442,87 @@ function buildClawHQConfig(answers: WizardAnswers): ClawHQConfig {
   };
 }
 
+// ── Cron Validation ──────────────────────────────────────────────────────────
+
+/** Valid ranges for each cron field position. */
+const CRON_FIELD_RANGES: Array<{ name: string; min: number; max: number }> = [
+  { name: "minute", min: 0, max: 59 },
+  { name: "hour", min: 0, max: 23 },
+  { name: "day-of-month", min: 1, max: 31 },
+  { name: "month", min: 1, max: 12 },
+  { name: "day-of-week", min: 0, max: 7 },
+];
+
+/**
+ * Validate a single cron field value against its allowed range.
+ * Returns an error message or null if valid.
+ */
+function validateCronFieldPart(
+  part: string,
+  range: { name: string; min: number; max: number },
+): string | null {
+  // Wildcard — always valid
+  if (part === "*") return null;
+
+  // Step on wildcard: */N
+  const wildcardStep = part.match(/^\*\/(\d+)$/);
+  if (wildcardStep) {
+    const step = parseInt(wildcardStep[1]!, 10);
+    if (step === 0) return `${range.name}: step value cannot be 0 in "${part}"`;
+    return null;
+  }
+
+  // Range with optional step: N-M or N-M/S
+  const rangeMatch = part.match(/^(\d+)-(\d+)(?:\/(\d+))?$/);
+  if (rangeMatch) {
+    const lo = parseInt(rangeMatch[1]!, 10);
+    const hi = parseInt(rangeMatch[2]!, 10);
+    if (lo < range.min || lo > range.max)
+      return `${range.name}: value ${lo} out of range ${range.min}-${range.max}`;
+    if (hi < range.min || hi > range.max)
+      return `${range.name}: value ${hi} out of range ${range.min}-${range.max}`;
+    if (rangeMatch[3] !== undefined) {
+      const step = parseInt(rangeMatch[3], 10);
+      if (step === 0) return `${range.name}: step value cannot be 0 in "${part}"`;
+    }
+    return null;
+  }
+
+  // Plain number
+  const num = parseInt(part, 10);
+  if (/^\d+$/.test(part)) {
+    if (num < range.min || num > range.max)
+      return `${range.name}: value ${num} out of range ${range.min}-${range.max}`;
+    return null;
+  }
+
+  return `${range.name}: invalid syntax "${part}"`;
+}
+
+/**
+ * Validate a complete 5-field cron expression.
+ * Returns an array of error messages (empty if valid).
+ */
+export function validateCronExpr(expr: string): string[] {
+  const fields = expr.trim().split(/\s+/);
+  if (fields.length !== 5) {
+    return [`Expected 5 fields, got ${fields.length}: "${expr}"`];
+  }
+
+  const errors: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const field = fields[i]!;
+    const range = CRON_FIELD_RANGES[i]!;
+
+    // Each field can be a comma-separated list
+    for (const part of field.split(",")) {
+      const err = validateCronFieldPart(part, range);
+      if (err) errors.push(err);
+    }
+  }
+  return errors;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // Normalize blueprint cron expressions to valid OpenClaw format.
@@ -450,41 +531,62 @@ function buildClawHQConfig(answers: WizardAnswers): ClawHQConfig {
 // - "star/15 waking" -> five-field cron (strip "waking" qualifier)
 // - "star/30 waking" -> five-field cron
 // - Bare "N/step" → "0-59/step" (LM-09 fix)
+//
+// Validates field count and value ranges after normalization.
+// Throws on invalid expressions so they are caught at config generation time.
 function normalizeCronExpr(blueprintExpr: string): string | null {
   // Strip "waking" qualifier — active hours handled separately
   const cleaned = blueprintExpr.replace(/\s+waking$/i, "").trim();
   if (!cleaned) return null;
 
+  let expr: string;
+
   // If it looks like a shorthand (e.g. "*/15"), expand to 5-field cron
   if (/^\*\/\d+$/.test(cleaned)) {
-    return `${cleaned} * * * *`;
+    expr = `${cleaned} * * * *`;
+  } else if (cleaned.split(/\s+/).length === 5) {
+    // If it's already 5 fields, fix any bare N/step (LM-09)
+    expr = cleaned.split(/\s+/).map(fixCronField).join(" ");
+  } else if (/^\d+$/.test(cleaned)) {
+    // Single number — treat as minutes past the hour
+    expr = `${cleaned} * * * *`;
+  } else {
+    return null;
   }
 
-  // If it's already 5 fields, fix any bare N/step (LM-09)
-  const fields = cleaned.split(/\s+/);
-  if (fields.length === 5) {
-    return fields.map(fixCronField).join(" ");
+  // Validate field ranges
+  const errors = validateCronExpr(expr);
+  if (errors.length > 0) {
+    throw new Error(
+      `Invalid cron expression "${blueprintExpr}": ${errors.join("; ")}`,
+    );
   }
 
-  // Single number — treat as minutes past the hour
-  if (/^\d+$/.test(cleaned)) {
-    return `${cleaned} * * * *`;
-  }
-
-  return null;
+  return expr;
 }
 
 /**
  * Normalize morning brief time to a valid 5-field cron expression.
  *
  * "07:00" → "0 7 * * *"
+ *
+ * Validates that hour and minute are within range.
  */
 function normalizeMorningBrief(timeStr: string): string {
   const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
   if (match && match[1] !== undefined && match[2] !== undefined) {
     const hour = parseInt(match[1], 10);
     const minute = parseInt(match[2], 10);
-    return `${minute} ${hour} * * *`;
+    const expr = `${minute} ${hour} * * *`;
+
+    const errors = validateCronExpr(expr);
+    if (errors.length > 0) {
+      throw new Error(
+        `Invalid morning brief time "${timeStr}": ${errors.join("; ")}`,
+      );
+    }
+
+    return expr;
   }
   // Fallback: 7am
   return "0 7 * * *";
