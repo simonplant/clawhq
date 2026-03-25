@@ -18,9 +18,9 @@ import { Command } from "commander";
 import ora from "ora";
 import { stringify as yamlStringify } from "yaml";
 
-import { build } from "../build/docker/index.js";
+import { build, DEFAULT_POSTURE, readCurrentPosture } from "../build/docker/index.js";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../build/docker/index.js";
-import { detectLegacyInstallation, install, migrateDeployDir } from "../build/installer/index.js";
+import { checkDocker, detectLegacyInstallation, install, migrateDeployDir } from "../build/installer/index.js";
 import type { PrereqCheckResult } from "../build/installer/index.js";
 import { buildAllowlistFromBlueprint, deploy, restart, serializeAllowlist, shutdown } from "../build/launcher/index.js";
 import type { DeployProgress } from "../build/launcher/index.js";
@@ -1264,10 +1264,71 @@ program
   .command("build")
   .description("Two-stage Docker build with change detection and manifests")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (opts: { deployDir: string }) => {
+  .option("--no-cache", "Force rebuild without cache")
+  .action(async (opts: { deployDir: string; cache: boolean }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+
+    const spinner = ora();
+
+    // Check Docker is available
+    spinner.start("Checking Docker…");
+    const dockerCheck = await checkDocker();
+    if (!dockerCheck.ok) {
+      spinner.fail("Docker is not available");
+      console.error(chalk.red(`  ${dockerCheck.detail}`));
+      console.log(chalk.dim("\n  Install Docker and ensure the daemon is running."));
+      console.log(chalk.dim("  Then re-run: clawhq build"));
+      process.exit(1);
+    }
+    spinner.succeed("Docker available");
+
+    // Read security posture from deploy dir (or use default)
+    const posture: BuildSecurityPosture = readCurrentPosture(opts.deployDir) ?? DEFAULT_POSTURE;
+
+    const stage1: Stage1Config = {
+      baseImage: "node:24-slim",
+      aptPackages: [],
+    };
+    const stage2: Stage2Config = {
+      binaries: [],
+      workspaceTools: [],
+      skills: [],
+    };
+
+    spinner.start("Generating Dockerfile…");
+
+    try {
+      const result = await build({
+        deployDir: opts.deployDir,
+        stage1,
+        stage2,
+        posture,
+        noCache: !opts.cache,
+      });
+
+      if (!result.success) {
+        spinner.fail("Docker build failed");
+        console.error(chalk.red(`  ${result.error}`));
+        console.log(chalk.dim("\n  Fix the issue and re-run: clawhq build"));
+        process.exit(1);
+      }
+
+      const cacheInfo = result.cacheHit.stage1 && result.cacheHit.stage2
+        ? " (cached)"
+        : "";
+      spinner.succeed(`Docker image built${cacheInfo}`);
+
+      if (result.manifest) {
+        console.log(chalk.dim(`  Image:    ${result.manifest.imageTag}`));
+        console.log(chalk.dim(`  Posture:  ${result.manifest.posture}`));
+        console.log(chalk.dim(`  Manifest: written`));
+      }
+    } catch (error) {
+      spinner.fail("Build failed");
+      console.error(renderError(error));
+      console.log(chalk.dim("\n  Fix the issue and re-run: clawhq build"));
+      process.exit(1);
+    }
   });
 
 // ── Deploy Commands ─────────────────────────────────────────────────────────
