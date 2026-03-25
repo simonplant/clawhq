@@ -47,6 +47,7 @@ async function writeValidConfig(): Promise<void> {
     trustedProxies: ["172.17.0.1"],
     tools: {
       exec: { host: "gateway", security: "full" },
+      accessGrants: [{ type: "user", value: "*" }],
     },
     fs: { workspaceOnly: true },
   };
@@ -217,9 +218,34 @@ describe("checks", { timeout: 30_000 }, () => {
     expect(check.passed).toBe(true);
   });
 
-  it("runs all 18 checks", async () => {
+  it("tool-access-grants fails when accessGrants missing", async () => {
+    await writeFile(
+      join(testDir, "engine", "openclaw.json"),
+      JSON.stringify({
+        dangerouslyDisableDeviceAuth: true,
+        allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`],
+        trustedProxies: ["172.17.0.1"],
+        tools: { exec: { host: "gateway", security: "full" } },
+      }),
+    );
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(18);
+    const check = findCheck(checks, "tool-access-grants");
+    expect(check.passed).toBe(false);
+    expect(check.severity).toBe("warning");
+    expect(check.message).toContain("invisible");
+    expect(check.fixable).toBe(true);
+  });
+
+  it("tool-access-grants passes when accessGrants present", async () => {
+    await writeValidConfig();
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "tool-access-grants");
+    expect(check.passed).toBe(true);
+  });
+
+  it("runs all 19 checks", async () => {
+    const checks = await runChecks(testDir);
+    expect(checks.length).toBe(19);
   });
 });
 
@@ -235,7 +261,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(18);
+    expect(report.checks.length).toBe(19);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -301,6 +327,34 @@ describe("auto-fix", { timeout: 30_000 }, () => {
 
     const secretsCheck = findCheck(report.checks, "secrets-perms");
     expect(secretsCheck.passed).toBe(true);
+  });
+
+  it("fixes missing tool access grants", async () => {
+    // Write config without accessGrants
+    await writeFile(
+      join(testDir, "engine", "openclaw.json"),
+      JSON.stringify({
+        dangerouslyDisableDeviceAuth: true,
+        allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`],
+        trustedProxies: ["172.17.0.1"],
+        tools: { exec: { host: "gateway", security: "full" } },
+      }),
+    );
+
+    const checks = await runChecks(testDir);
+    const fixReport = await runFixes(testDir, checks);
+
+    const grantsFix = fixReport.fixes.find((f) => f.name === "tool-access-grants");
+    expect(grantsFix).toBeDefined();
+    expect(grantsFix?.success).toBe(true);
+
+    // Verify the fix was applied
+    const raw = await import("node:fs/promises").then((fs) =>
+      fs.readFile(join(testDir, "engine", "openclaw.json"), "utf-8"),
+    );
+    const config = JSON.parse(raw) as Record<string, unknown>;
+    const tools = config["tools"] as Record<string, unknown>;
+    expect(tools["accessGrants"]).toEqual([{ type: "user", value: "*" }]);
   });
 
   it("returns empty report when no fixable issues", async () => {

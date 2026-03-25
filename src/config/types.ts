@@ -21,12 +21,25 @@ export interface ToolExecConfig {
   readonly safeBins?: readonly string[];
 }
 
+/**
+ * Explicit access grant for tool server connections.
+ *
+ * OpenClaw v0.8.7+ defaults tool server connections to admin-only when no
+ * explicit grants are set. Each grant specifies a principal type and value.
+ * Use `{ type: "user", value: "*" }` to grant access to all users.
+ */
+export interface ToolAccessGrant {
+  readonly type: "user" | "role";
+  readonly value: string;
+}
+
 /** Tool configuration. */
 export interface ToolsConfig {
   readonly profile?: "coding" | "messaging" | "custom";
   readonly allow?: readonly string[];
   readonly deny?: readonly string[];
   readonly exec: ToolExecConfig;
+  readonly accessGrants?: readonly ToolAccessGrant[];
 }
 
 /** Gateway server configuration. */
