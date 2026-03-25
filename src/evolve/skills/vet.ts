@@ -19,6 +19,195 @@ import type {
   VetSummary,
 } from "./types.js";
 
+// ── Language-Aware Comment Parsing ──────────────────────────────────────────
+
+type SourceLanguage = "bash" | "python" | "javascript" | "unknown";
+
+function detectLanguage(filename: string): SourceLanguage {
+  if (/\.(sh|bash)$/i.test(filename)) return "bash";
+  if (/\.py$/i.test(filename)) return "python";
+  if (/\.(js|ts|mjs|cjs)$/i.test(filename)) return "javascript";
+  return "unknown";
+}
+
+/**
+ * Strip comments from source code using language-aware parsing.
+ * Returns content with comment characters replaced by spaces (line structure preserved).
+ * Strings, here-docs, and triple-quoted strings are NOT stripped — they contain
+ * potentially executable content that must be scanned.
+ */
+function stripComments(content: string, filename: string): string {
+  const lang = detectLanguage(filename);
+  if (lang === "unknown") return content;
+
+  const out = content.split("");
+  const len = content.length;
+  let i = 0;
+
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let inMultiComment = false;
+  let inTripleDouble = false;
+  let inTripleSingle = false;
+  let heredocDelim: string | null = null;
+
+  function blankToEol(): void {
+    while (i < len && content[i] !== "\n") {
+      out[i] = " ";
+      i++;
+    }
+  }
+
+  while (i < len) {
+    const c = content[i];
+
+    // ── Heredoc content (bash): preserve everything ──
+    if (heredocDelim !== null) {
+      if (i === 0 || content[i - 1] === "\n") {
+        const lineEnd = content.indexOf("\n", i);
+        const line = content.slice(i, lineEnd === -1 ? len : lineEnd).trim();
+        if (line === heredocDelim) heredocDelim = null;
+      }
+      i++;
+      continue;
+    }
+
+    // ── Multi-line comment (JS): blank content ──
+    if (inMultiComment) {
+      if (c === "\n") {
+        i++;
+        continue;
+      }
+      out[i] = " ";
+      if (c === "*" && i + 1 < len && content[i + 1] === "/") {
+        out[i + 1] = " ";
+        inMultiComment = false;
+        i += 2;
+        continue;
+      }
+      i++;
+      continue;
+    }
+
+    // ── Triple-quoted strings (Python): preserve content ──
+    if (inTripleDouble) {
+      if (i + 2 < len && content[i] === '"' && content[i + 1] === '"' && content[i + 2] === '"') {
+        inTripleDouble = false;
+        i += 3;
+        continue;
+      }
+      i++;
+      continue;
+    }
+    if (inTripleSingle) {
+      if (i + 2 < len && content[i] === "'" && content[i + 1] === "'" && content[i + 2] === "'") {
+        inTripleSingle = false;
+        i += 3;
+        continue;
+      }
+      i++;
+      continue;
+    }
+
+    // ── Single-quoted strings ──
+    if (inSingleQuote) {
+      if (c === "'") {
+        inSingleQuote = false;
+      } else if (c === "\\" && lang !== "bash" && i + 1 < len) {
+        i += 2;
+        continue;
+      }
+      i++;
+      continue;
+    }
+
+    // ── Double-quoted strings ──
+    if (inDoubleQuote) {
+      if (c === '"') {
+        inDoubleQuote = false;
+      } else if (c === "\\" && i + 1 < len) {
+        i += 2;
+        continue;
+      }
+      i++;
+      continue;
+    }
+
+    // ── Not in any string or comment — detect starts ──
+
+    // Triple quotes (Python only)
+    if (lang === "python" && i + 2 < len) {
+      if (content[i] === '"' && content[i + 1] === '"' && content[i + 2] === '"') {
+        inTripleDouble = true;
+        i += 3;
+        continue;
+      }
+      if (content[i] === "'" && content[i + 1] === "'" && content[i + 2] === "'") {
+        inTripleSingle = true;
+        i += 3;
+        continue;
+      }
+    }
+
+    // Template literals (JS) — advance through without comment detection
+    if (lang === "javascript" && c === "`") {
+      i++;
+      while (i < len && content[i] !== "`") {
+        if (content[i] === "\\") i++;
+        i++;
+      }
+      if (i < len) i++;
+      continue;
+    }
+
+    // String starts
+    if (c === '"') {
+      inDoubleQuote = true;
+      i++;
+      continue;
+    }
+    if (c === "'") {
+      inSingleQuote = true;
+      i++;
+      continue;
+    }
+
+    // Multi-line comment start (JS)
+    if (lang === "javascript" && c === "/" && i + 1 < len && content[i + 1] === "*") {
+      out[i] = " ";
+      out[i + 1] = " ";
+      inMultiComment = true;
+      i += 2;
+      continue;
+    }
+
+    // Single-line comment: // (JS) or # (bash/python)
+    if (lang === "javascript" && c === "/" && i + 1 < len && content[i + 1] === "/") {
+      blankToEol();
+      continue;
+    }
+    if ((lang === "bash" || lang === "python") && c === "#") {
+      blankToEol();
+      continue;
+    }
+
+    // Heredoc start (bash)
+    if (lang === "bash" && c === "<" && i + 1 < len && content[i + 1] === "<") {
+      const rest = content.slice(i);
+      const hdMatch = rest.match(/^<<-?\s*\\?['"]?([A-Za-z_]\w*)['"]?/);
+      if (hdMatch) {
+        heredocDelim = hdMatch[1];
+        while (i < len && content[i] !== "\n") i++;
+        continue;
+      }
+    }
+
+    i++;
+  }
+
+  return out.join("");
+}
+
 // ── URL Trap Patterns ────────────────────────────────────────────────────────
 
 /**
@@ -116,6 +305,14 @@ const OBFUSCATION_PATTERNS: Array<{ pattern: RegExp; detail: string }> = [
     pattern: /atob\s*\(|Buffer\.from\s*\([^)]*,\s*['"]base64['"]\)/g,
     detail: "Base64 decoding — potentially obfuscated payload",
   },
+  {
+    pattern: /\bbase64\s+(-d|--decode)\b/g,
+    detail: "Base64 decode via CLI — potentially obfuscated payload execution",
+  },
+  {
+    pattern: /\bbase64\.b64decode\b/g,
+    detail: "Python base64.b64decode — potentially obfuscated payload",
+  },
 ];
 
 // ── Vetting Engine ───────────────────────────────────────────────────────────
@@ -131,9 +328,9 @@ function severityForCategory(category: VetFindingCategory): VetSeverity {
       return "critical";
     case "shell_execution":
     case "file_access":
+    case "encoded_payload":
       return "high";
     case "injection_pattern":
-    case "encoded_payload":
     case "suspicious_domain":
       return "medium";
     default:
@@ -146,16 +343,15 @@ function scanFile(
   content: string,
 ): VetFinding[] {
   const findings: VetFinding[] = [];
-  const lines = content.split("\n");
+  const stripped = stripComments(content, file);
+  const lines = stripped.split("\n");
 
   for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
     const line = lines[lineIdx];
     const lineNum = lineIdx + 1;
 
-    // Skip comment-only lines (basic heuristic)
-    const trimmed = line.trim();
-    if (trimmed.startsWith("#") && !trimmed.includes("$(") && !trimmed.includes("`")) continue;
-    if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) continue;
+    // Skip empty/whitespace-only lines (may have been comment-stripped)
+    if (line.trim() === "") continue;
 
     // URL trap detection
     for (const { pattern, detail } of URL_TRAP_PATTERNS) {
