@@ -1,0 +1,17 @@
+{
+  "account": {
+    "droplet_limit": 25,
+    "floating_ip_limit": 5,
+    "volume_limit": 100,
+    "email": "user@example.com",
+    "name": "Example User",
+    "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "email_verified": true,
+    "status": "active",
+    "status_message": "",
+    "team": {
+      "uuid": "f1e2d3c4-b5a6-7890-abcd-ef1234567890",
+      "name": "Example Team"
+    }
+  }
+}

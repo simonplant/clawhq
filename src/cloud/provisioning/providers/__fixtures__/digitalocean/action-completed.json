@@ -1,0 +1,19 @@
+{
+  "action": {
+    "id": 1857934999,
+    "status": "completed",
+    "type": "snapshot",
+    "started_at": "2026-03-24T10:10:00Z",
+    "completed_at": "2026-03-24T10:12:30Z",
+    "resource_id": 412275827,
+    "resource_type": "droplet",
+    "region": {
+      "name": "New York 3",
+      "slug": "nyc3",
+      "features": ["backups", "ipv6", "metadata"],
+      "available": true,
+      "sizes": ["s-1vcpu-512mb-10gb", "s-1vcpu-1gb"]
+    },
+    "region_slug": "nyc3"
+  }
+}

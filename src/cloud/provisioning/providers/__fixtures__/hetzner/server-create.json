@@ -1,0 +1,115 @@
+{
+  "server": {
+    "id": 54321098,
+    "name": "clawhq-test-agent",
+    "status": "initializing",
+    "public_net": {
+      "ipv4": {
+        "ip": "203.0.113.50",
+        "blocked": false,
+        "dns_ptr": "static.203.0.113.50.example.hetzner.cloud"
+      },
+      "ipv6": {
+        "ip": "2001:db8::/64",
+        "blocked": false,
+        "dns_ptr": []
+      },
+      "floating_ips": [],
+      "firewalls": []
+    },
+    "private_net": [],
+    "server_type": {
+      "id": 1,
+      "name": "cx22",
+      "description": "CX22",
+      "cores": 2,
+      "memory": 4.0,
+      "disk": 40,
+      "deprecated": false,
+      "prices": [
+        {
+          "location": "fsn1",
+          "price_hourly": {
+            "net": "0.0065",
+            "gross": "0.0077"
+          },
+          "price_monthly": {
+            "net": "3.79",
+            "gross": "4.51"
+          }
+        }
+      ],
+      "storage_type": "local",
+      "cpu_type": "shared",
+      "architecture": "x86"
+    },
+    "datacenter": {
+      "id": 1,
+      "name": "fsn1-dc14",
+      "description": "Falkenstein 1 DC14",
+      "location": {
+        "id": 1,
+        "name": "fsn1",
+        "description": "Falkenstein DC Park 1",
+        "country": "DE",
+        "city": "Falkenstein",
+        "latitude": 50.47612,
+        "longitude": 12.37026,
+        "network_zone": "eu-central"
+      },
+      "server_types": {
+        "supported": [1, 3, 5],
+        "available": [1, 3, 5]
+      }
+    },
+    "image": {
+      "id": 167890123,
+      "type": "system",
+      "status": "available",
+      "name": "ubuntu-24.04",
+      "description": "Ubuntu 24.04",
+      "os_flavor": "ubuntu",
+      "os_version": "24.04",
+      "architecture": "x86",
+      "rapid_deploy": true
+    },
+    "iso": null,
+    "rescue_enabled": false,
+    "locked": false,
+    "backup_window": null,
+    "outgoing_traffic": null,
+    "ingoing_traffic": null,
+    "included_traffic": 21990232555520,
+    "protection": {
+      "delete": false,
+      "rebuild": false
+    },
+    "labels": {
+      "managed_by": "clawhq"
+    },
+    "volumes": [],
+    "load_balancers": [],
+    "primary_disk_size": 40,
+    "created": "2026-03-24T10:00:00+00:00"
+  },
+  "action": {
+    "id": 987654321,
+    "command": "create_server",
+    "status": "running",
+    "progress": 0,
+    "started": "2026-03-24T10:00:00+00:00",
+    "finished": null,
+    "resources": [
+      {
+        "id": 54321098,
+        "type": "server"
+      }
+    ],
+    "error": {
+      "code": "",
+      "message": ""
+    }
+  },
+  "next_actions": [],
+  "root_password": null
+}

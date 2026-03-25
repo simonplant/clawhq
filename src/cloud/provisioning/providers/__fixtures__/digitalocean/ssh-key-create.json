@@ -1,0 +1,8 @@
+{
+  "ssh_key": {
+    "id": 38972451,
+    "fingerprint": "SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKeyDataHere clawhq@example.com",
+    "name": "clawhq-deploy-key"
+  }
+}

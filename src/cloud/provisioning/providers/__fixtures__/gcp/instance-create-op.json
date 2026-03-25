@@ -1,0 +1,15 @@
+{
+  "kind": "compute#operation",
+  "id": "1234567890123456789",
+  "name": "operation-1711267200000-61a2b3c4d5e6f-7890abcd-ef123456",
+  "zone": "https://compute.googleapis.com/compute/v1/projects/example-project-123/zones/us-central1-a",
+  "operationType": "insert",
+  "targetLink": "https://compute.googleapis.com/compute/v1/projects/example-project-123/zones/us-central1-a/instances/clawhq-test-agent",
+  "targetId": "9876543210987654321",
+  "status": "RUNNING",
+  "user": "service-account@example-project-123.iam.gserviceaccount.com",
+  "progress": 0,
+  "insertTime": "2026-03-24T10:00:00.000-07:00",
+  "startTime": "2026-03-24T10:00:01.000-07:00",
+  "selfLink": "https://compute.googleapis.com/compute/v1/projects/example-project-123/zones/us-central1-a/operations/operation-1711267200000-61a2b3c4d5e6f-7890abcd-ef123456"
+}

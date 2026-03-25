@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
+    "test:contract": "vitest run --config vitest.contract.config.ts",
     "lint": "eslint src/",
     "postinstall": "rm -rf node_modules/@emnapi node_modules/@tybys node_modules/tslib",
     "prepublishOnly": "npm run build && npm run lint && npm run test",
