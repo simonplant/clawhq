@@ -176,6 +176,14 @@ export const CLOUD_POLL_TIMEOUT_MS = 300_000;
 /** Timeout for long-running cloud operations — snapshots, GCE ops (ms). */
 export const CLOUD_OPERATION_TIMEOUT_MS = 600_000;
 
+// ── OpenClaw environment variable defaults (v0.8.6+) ────────────────────────
+
+/** Default WebSocket event caller timeout in milliseconds (was hardcoded 60s). */
+export const WEBSOCKET_EVENT_CALLER_TIMEOUT_MS = 60_000;
+
+/** Default for ENABLE_AUDIT_STDOUT — enable audit logging to stdout. */
+export const ENABLE_AUDIT_STDOUT = "true";
+
 // ── Identity / bootstrap limits ─────────────────────────────────────────────
 
 /** Maximum character budget for identity bootstrap content (LM-08). */

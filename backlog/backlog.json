@@ -86,10 +86,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'should' confirmed. OpenClaw v0.8.6+ is the declared baseline — ClawHQ's config generator must be current or it produces incorrect configs for the baseline version. WEBSOCKET_EVENT_CALLER_TIMEOUT and ENABLE_AUDIT_STDOUT are the highest-value defaults: ENABLE_AUDIT_STDOUT was broken before v0.8.6 and should now default to true for new agents (doctor is the hero feature; audit visibility supports it). Steps are empty — Tech Lead to populate. OPENCLAW-REFERENCE.md minimum version note is required for engineering clarity, not optional."
+      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'should' confirmed. OpenClaw v0.8.6+ is the declared baseline — ClawHQ's config generator must be current or it produces incorrect configs for the baseline version. WEBSOCKET_EVENT_CALLER_TIMEOUT and ENABLE_AUDIT_STDOUT are the highest-value defaults: ENABLE_AUDIT_STDOUT was broken before v0.8.6 and should now default to true for new agents (doctor is the hero feature; audit visibility supports it). Steps are empty — Tech Lead to populate. OPENCLAW-REFERENCE.md minimum version note is required for engineering clarity, not optional.",
+      "passes": true,
+      "completedAt": "2026-03-24T22:00:41-07:00"
     },
     {
       "id": "FEAT-017",
