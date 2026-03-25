@@ -80,10 +80,12 @@
       ],
       "scope": [],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'must' confirmed — silent breaking change on v0.8.7 upgrade makes every blueprint's tools invisible to non-admin users. No user workaround exists; tools simply don't appear. DESIGN DECISION REQUIRED before sprint: what principal format does OpenClaw v0.8.7+ expect in the tools.allow field? (user IDs, emails, roles?) — Tech Lead must resolve this before implementation can proceed. Groomnig note: FEAT-017 doctor check must NOT duplicate the access grant check logic — BUG-114 owns the fix, FEAT-017 reuses it. Sprint BUG-114 first. Steps are empty — Tech Lead to populate after design decision is made."
+      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'must' confirmed — silent breaking change on v0.8.7 upgrade makes every blueprint's tools invisible to non-admin users. No user workaround exists; tools simply don't appear. DESIGN DECISION REQUIRED before sprint: what principal format does OpenClaw v0.8.7+ expect in the tools.allow field? (user IDs, emails, roles?) — Tech Lead must resolve this before implementation can proceed. Groomnig note: FEAT-017 doctor check must NOT duplicate the access grant check logic — BUG-114 owns the fix, FEAT-017 reuses it. Sprint BUG-114 first. Steps are empty — Tech Lead to populate after design decision is made.",
+      "passes": true,
+      "completedAt": "2026-03-24T20:59:32-07:00"
     },
     {
       "id": "BUG-115",
