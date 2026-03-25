@@ -19,6 +19,7 @@ import type {
   SkillManifest,
   SkillManifestEntry,
   SkillProgressCallback,
+  SkillUpdateResult,
 } from "./types.js";
 import { vetSkill } from "./vet.js";
 
@@ -255,4 +256,81 @@ export async function removeSkill(
   await saveManifest(deployDir, updated);
 
   return { success: true };
+}
+
+/**
+ * Update an installed skill by removing and reinstalling from its original source.
+ *
+ * 1. Snapshot current state for rollback
+ * 2. Remove the existing skill
+ * 3. Reinstall from the original source
+ * 4. On failure, restore from snapshot
+ */
+export async function updateSkill(
+  deployDir: string,
+  skillName: string,
+  onProgress?: SkillProgressCallback,
+): Promise<SkillUpdateResult> {
+  const manifest = await loadManifest(deployDir);
+  const entry = manifest.skills.find((s) => s.name === skillName);
+
+  if (!entry) {
+    return { success: false, skillName, status: "not-found", error: `Skill "${skillName}" not found.` };
+  }
+
+  const { source } = entry;
+
+  // ── Step 0: Snapshot for rollback ──────────────────────────────────────
+  const snapshot = await createSnapshot(deployDir, `pre-update: ${skillName}`);
+
+  // ── Step 1: Remove current version ─────────────────────────────────────
+  const removeResult = await removeSkill(deployDir, skillName);
+  if (!removeResult.success) {
+    await restoreSnapshot(deployDir, snapshot.id);
+    return {
+      success: false,
+      skillName,
+      status: "rolled-back",
+      error: `Failed to remove old version: ${removeResult.error}`,
+    };
+  }
+
+  // ── Step 2: Reinstall from original source ─────────────────────────────
+  const installResult = await installSkill({
+    deployDir,
+    source,
+    autoApprove: true,
+    onProgress,
+  });
+
+  if (!installResult.success) {
+    // Restore the pre-update snapshot (brings back the old version)
+    await restoreSnapshot(deployDir, snapshot.id);
+    return {
+      success: false,
+      skillName,
+      status: "rolled-back",
+      error: `Reinstall failed: ${installResult.error}`,
+    };
+  }
+
+  return { success: true, skillName, status: "updated" };
+}
+
+/**
+ * Update all installed skills. Returns per-skill results.
+ */
+export async function updateAllSkills(
+  deployDir: string,
+  onProgress?: SkillProgressCallback,
+): Promise<SkillUpdateResult[]> {
+  const manifest = await loadManifest(deployDir);
+  const results: SkillUpdateResult[] = [];
+
+  for (const entry of manifest.skills) {
+    const result = await updateSkill(deployDir, entry.name, onProgress);
+    results.push(result);
+  }
+
+  return results;
 }

@@ -163,6 +163,8 @@ import {
   installSkill,
   listSkills,
   removeSkill,
+  updateAllSkills,
+  updateSkill,
 } from "../evolve/skills/index.js";
 import type { SkillProgress } from "../evolve/skills/index.js";
 import {
@@ -2378,10 +2380,47 @@ skill
   .description("Update installed skills")
   .argument("[name]", "Skill name (all if omitted)")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
-  .action(async (_name: string | undefined, opts: { deployDir: string }) => {
+  .action(async (name: string | undefined, opts: { deployDir: string }) => {
     if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-    console.log(chalk.yellow("Not yet implemented. Coming soon."));
-    process.exit(1);
+    const spinner = ora();
+
+    if (name) {
+      // Update a single skill
+      const result = await updateSkill(opts.deployDir, name, createSkillProgressHandler(spinner));
+      spinner.stop();
+      if (result.success) {
+        console.log(chalk.green(`Skill "${name}" updated.`));
+      } else if (result.status === "not-found") {
+        console.log(chalk.red(`Skill "${name}" not found.`));
+        process.exit(1);
+      } else {
+        console.log(chalk.red(`Failed to update skill "${name}": ${result.error}`));
+        if (result.status === "rolled-back") {
+          console.log(chalk.yellow("Previous version has been restored."));
+        }
+        process.exit(1);
+      }
+    } else {
+      // Update all installed skills
+      const results = await updateAllSkills(opts.deployDir, createSkillProgressHandler(spinner));
+      spinner.stop();
+      if (results.length === 0) {
+        console.log(chalk.yellow("No skills installed."));
+        return;
+      }
+      let hasFailure = false;
+      for (const result of results) {
+        if (result.success) {
+          console.log(chalk.green(`  ✓ ${result.skillName} updated`));
+        } else {
+          hasFailure = true;
+          console.log(chalk.red(`  ✗ ${result.skillName}: ${result.error}`));
+        }
+      }
+      if (hasFailure) {
+        process.exit(1);
+      }
+    }
   });
 
 skill
