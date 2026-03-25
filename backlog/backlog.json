@@ -295,7 +295,10 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. Lower priority — probe API calls are simple HTTP and unlikely to break. But Ollama probe can run for free locally, making it a quick win for at least one provider."
+      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. Lower priority — probe API calls are simple HTTP and unlikely to break. But Ollama probe can run for free locally, making it a quick win for at least one provider.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-03-24T23:20:05-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-106",
