@@ -147,10 +147,12 @@
         "src/evolve/skills/lifecycle.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Skill install and remove are fully implemented with rollback support. Update is likely remove+reinstall with the existing rollback mechanism. Design decision: does 'update' mean re-fetch from original source, or accept a new source?"
+      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Skill install and remove are fully implemented with rollback support. Update is likely remove+reinstall with the existing rollback mechanism. Design decision: does 'update' mean re-fetch from original source, or accept a new source?",
+      "passes": true,
+      "completedAt": "2026-03-24T22:49:33-07:00"
     },
     {
       "id": "BUG-117",

@@ -1,30 +1,35 @@
 {
-  "sprintId": "sprint-1774417247",
-  "startedAt": "2026-03-24T22:40:47-07:00",
+  "sprintId": "sprint-1774417447",
+  "startedAt": "2026-03-24T22:44:07-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-111",
-    "title": "health poller marks instance active on SSH timeout fallback even when agent never started",
-    "intent": "An instance must only be marked active when the agent is actually reachable. The SSH port timeout fallback that returns healthy:true after 18 attempts is incorrect — SSH up does not mean agent up.",
-    "description": "In src/cloud/provisioning/health.ts lines 86-93, after 18 poll attempts (~3 minutes) where SSH is open but the dashboard port (3737) is not, pollInstanceHealth() returns healthy:true with the comment 'cloud-init may still be running but VM is functional'. This is wrong: SSH being up means the VM booted, not that the agent is running. With the clawhq up failure masking bug (BUG-109), this fallback causes the provisioning engine to mark instances active even when the agent never started. Even with BUG-109 fixed, the fallback allows a VM with a failed cloud-init to be reported as healthy. Fix: change the fallback to return healthy:false with a clear error — if port 3737 is not open after 3 minutes, the agent has not started.",
+    "id": "BUG-116",
+    "title": "clawhq skill update CLI command is a stub — prints 'not implemented' instead of updating skills",
+    "intent": "Users who install skills must be able to update them. clawhq skill install and clawhq skill remove work, but clawhq skill update prints 'not implemented'.",
+    "description": "src/cli/index.ts lines 2316-2323: the 'skill update' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. Users can install and remove skills but cannot update them to newer versions. This breaks the 'agent grows' non-negotiable — if you can't update skills, the agent's capabilities stagnate.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/cloud/provisioning/health.ts lines 52-105 to understand the current polling logic.",
-      "At lines 86-93, change the fallback: instead of returning healthy:true, return healthy:false with error 'Agent did not become reachable on port 3737 within the expected window. SSH is accessible — connect with clawhq deploy update or check cloud-init logs: journalctl -u cloud-init'.",
-      "Verify that the tests in health.test.ts (if they exist) cover the timeout path — if not, add a test for: SSH open + dashboard never opens + 19+ poll attempts = healthy:false with expected error message.",
-      "Run npm test -- --testPathPattern=health to confirm all tests pass."
+      "Determine update semantics: re-install from source (overwrite), or diff-and-patch?",
+      "Read src/evolve/skills/lifecycle.ts to understand installSkill() and removeSkill() — update may be remove + reinstall with rollback",
+      "Implement updateSkill() in lifecycle.ts — simplest correct approach is snapshot current, remove, reinstall from source, rollback on failure",
+      "Wire CLI command to call updateSkill()",
+      "Add tests covering: successful update, update failure with rollback, skill not found",
+      "Run npm test to confirm no regression"
     ],
     "acceptanceCriteria": [
-      "pollInstanceHealth() returns healthy:false when SSH is reachable but port 3737 never opens, regardless of number of attempts",
-      "The error message in the result includes the SSH access hint for debugging",
-      "health.test.ts exists with tests covering: SSH+port both open = healthy:true, SSH open + port closed after timeout = healthy:false with error, neither open = healthy:false",
-      "All health and provisioning tests pass with no regression"
+      "clawhq skill update <name> updates an installed skill to the latest version from its source",
+      "If update fails, the previous version is restored (rollback)",
+      "clawhq skill update (no name) updates all installed skills",
+      "Existing skill install/remove tests pass with no regression"
     ],
-    "scope": [],
-    "startedAt": "2026-03-24T22:40:47-07:00",
+    "scope": [
+      "src/cli/index.ts",
+      "src/evolve/skills/lifecycle.ts"
+    ],
+    "startedAt": "2026-03-24T22:44:07-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T22:44:06-07:00"
+    "completedAt": "2026-03-24T22:49:33-07:00"
   },
-  "completedAt": "2026-03-24T22:44:06-07:00",
+  "completedAt": "2026-03-24T22:49:33-07:00",
   "attempts": 1
 }
