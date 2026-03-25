@@ -27,13 +27,21 @@ export async function loadToolManifest(deployDir: string): Promise<ToolManifest>
   if (!existsSync(path)) {
     return { version: 1, tools: [] };
   }
+  let parsed: Record<string, unknown>;
   try {
     const raw = await readFile(path, "utf-8");
-    return JSON.parse(raw) as ToolManifest;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     console.warn("[evolve] Failed to read tool manifest:", err);
     return { version: 1, tools: [] };
   }
+  if (parsed.version !== 1) {
+    throw new Error(
+      `Unsupported tool manifest version ${String(parsed.version)} (expected 1). ` +
+      `The manifest at ${path} may have been created by a newer version of ClawHQ.`,
+    );
+  }
+  return parsed as unknown as ToolManifest;
 }
 
 /** Save the tool manifest to disk. */

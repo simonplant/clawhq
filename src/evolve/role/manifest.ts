@@ -52,14 +52,21 @@ export function loadRoleManifest(deployDir: string): RoleManifest {
   if (!existsSync(path)) {
     return { version: 1, roles: [...BUILTIN_ROLES], assignments: {} };
   }
-  let manifest: RoleManifest;
+  let parsed: Record<string, unknown>;
   try {
     const raw = readFileSync(path, "utf-8");
-    manifest = JSON.parse(raw) as RoleManifest;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     console.warn("[evolve] Failed to read role manifest:", err);
     return { version: 1, roles: [...BUILTIN_ROLES], assignments: {} };
   }
+  if (parsed.version !== 1) {
+    throw new Error(
+      `Unsupported role manifest version ${String(parsed.version)} (expected 1). ` +
+      `The manifest at ${path} may have been created by a newer version of ClawHQ.`,
+    );
+  }
+  const manifest = parsed as unknown as RoleManifest;
 
   // Ensure built-in roles are always present
   const existingNames = new Set(manifest.roles.map((r) => r.name));

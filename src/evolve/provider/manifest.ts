@@ -24,13 +24,21 @@ export function loadProviderManifest(deployDir: string): ProviderManifest {
   if (!existsSync(path)) {
     return { version: 1, providers: [] };
   }
+  let parsed: Record<string, unknown>;
   try {
     const raw = readFileSync(path, "utf-8");
-    return JSON.parse(raw) as ProviderManifest;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     console.warn("[evolve] Failed to read provider manifest:", err);
     return { version: 1, providers: [] };
   }
+  if (parsed.version !== 1) {
+    throw new Error(
+      `Unsupported provider manifest version ${String(parsed.version)} (expected 1). ` +
+      `The manifest at ${path} may have been created by a newer version of ClawHQ.`,
+    );
+  }
+  return parsed as unknown as ProviderManifest;
 }
 
 /** Save the provider manifest. */

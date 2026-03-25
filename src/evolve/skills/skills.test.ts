@@ -493,3 +493,39 @@ describe("listSkills", () => {
     expect(output).toContain("No skills installed");
   });
 });
+
+// ── Manifest Version Validation ─────────────────────────────────────────────
+
+describe("manifest version validation", () => {
+  it("throws on unsupported manifest version", async () => {
+    const manifestDir = join(deployDir, "workspace", "skills");
+    writeFileSync(
+      join(manifestDir, ".skill-manifest.json"),
+      JSON.stringify({ version: 2, skills: [] }),
+    );
+    await expect(loadManifest(deployDir)).rejects.toThrow(
+      /Unsupported skill manifest version 2 \(expected 1\)/,
+    );
+  });
+
+  it("throws on missing version field", async () => {
+    const manifestDir = join(deployDir, "workspace", "skills");
+    writeFileSync(
+      join(manifestDir, ".skill-manifest.json"),
+      JSON.stringify({ skills: [] }),
+    );
+    await expect(loadManifest(deployDir)).rejects.toThrow(
+      /Unsupported skill manifest version undefined \(expected 1\)/,
+    );
+  });
+
+  it("accepts version 1 manifest", async () => {
+    const manifestDir = join(deployDir, "workspace", "skills");
+    writeFileSync(
+      join(manifestDir, ".skill-manifest.json"),
+      JSON.stringify({ version: 1, skills: [] }),
+    );
+    const manifest = await loadManifest(deployDir);
+    expect(manifest.version).toBe(1);
+  });
+});

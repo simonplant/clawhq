@@ -37,13 +37,21 @@ export async function loadManifest(deployDir: string): Promise<SkillManifest> {
   if (!existsSync(path)) {
     return { version: 1, skills: [] };
   }
+  let parsed: Record<string, unknown>;
   try {
     const raw = await readFile(path, "utf-8");
-    return JSON.parse(raw) as SkillManifest;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     console.warn("[evolve] Failed to read skill manifest:", err);
     return { version: 1, skills: [] };
   }
+  if (parsed.version !== 1) {
+    throw new Error(
+      `Unsupported skill manifest version ${String(parsed.version)} (expected 1). ` +
+      `The manifest at ${path} may have been created by a newer version of ClawHQ.`,
+    );
+  }
+  return parsed as unknown as SkillManifest;
 }
 
 async function saveManifest(
