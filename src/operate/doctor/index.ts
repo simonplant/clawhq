@@ -1,7 +1,7 @@
 /**
  * Doctor diagnostics module.
  *
- * Preventive diagnostics (17 checks) with auto-fix capability.
+ * Preventive diagnostics (21 checks) with auto-fix capability.
  * The hero feature — catches every known failure mode before it hits the user.
  */
 
@@ -9,7 +9,7 @@
 export { runDoctor, runDoctorWithFix } from "./doctor.js";
 
 // Checks (for targeted use)
-export { runChecks } from "./checks.js";
+export { compareVersions, detectOpenClawVersion, runChecks } from "./checks.js";
 
 // Auto-fix
 export { runFixes } from "./fix.js";
