@@ -1,0 +1,36 @@
+schema_version: "1.0"
+
+project:
+  name: ClawHQ
+  tagline: WordPress for AI agents
+  category: infrastructure
+
+required_files:
+  - README.md
+  - docs/ARCHITECTURE.md
+  - docs/QUICKSTART.md
+  - docs/CONFIGURATION.md
+  - docs/PROBLEMS.md
+  - docs/ROADMAP.md
+  - docs/CONTRIBUTING.md
+  - docs/CHANGELOG.md
+
+optional_files:
+  - docs/PRODUCT.md
+  - docs/OPENCLAW-REFERENCE.md
+
+portfolio:
+  - name: aishore
+    relationship: complementary
+    url: https://github.com/simonplant/aishore
+  - name: Easy-Markdown
+    relationship: related
+    url: https://github.com/simonplant/Easy-Markdown
+  - name: GigOS
+    relationship: related
+    url: https://github.com/simonplant/GigOS
+
+author:
+  name: Simon Plant
+  location: Santa Barbara, CA
+  status: "Building AI infrastructure tools. Open to roles."

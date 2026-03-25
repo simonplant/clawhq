@@ -1,33 +1,37 @@
 {
-  "sprintId": "sprint-1774418847",
-  "startedAt": "2026-03-24T23:07:27-07:00",
+  "sprintId": "sprint-1774419127",
+  "startedAt": "2026-03-24T23:12:07-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-127",
-    "title": "Cron expressions not validated — invalid expressions like 99 99 99 99 99 accepted silently",
-    "intent": "All cron expressions must be validated before use. Invalid cron schedules must be caught at config generation time, not at runtime when jobs silently fail to run.",
-    "description": "Code review found that src/design/configure/generate.ts normalizeCronExpr() tries to fix step syntax but never validates the expression. Invalid fields (minute > 59, hour > 23, etc.) pass through. Additionally, src/operate/doctor/checks.ts cron-syntax check only looks for step patterns, not field count or value ranges.",
-    "sourceBacklog": "bugs.json",
+    "id": "FEAT-014",
+    "title": "Add .doc-standard.yaml schema file for doc structure enforcement",
+    "intent": "The repo must declare its doc standard version and structure so automated checks can validate compliance — undeclared standards are unenforceable.",
+    "description": "Part of a cross-repo documentation standard shared with aishore, GigOS, and other portfolio repos. The .doc-standard.yaml declares: schema version, project metadata (name: ClawHQ, tagline: WordPress for AI agents, category: infrastructure), required files list matching the docs/ structure, cross-repo links to sibling projects (aishore, Easy-Markdown, GigOS), and author info for consistency enforcement across the portfolio. This file enables a future GitHub Action to validate doc structure compliance on PR. Note: ClawHQ has additional docs not in the standard (docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md) — these should be listed in an optional_files section so the validator doesn't flag them as non-standard.",
+    "sourceBacklog": "backlog.json",
     "steps": [
-      "Add a cron validation function (use cron-parser library or manual range checks)",
-      "Integrate validation into normalizeCronExpr() in generate.ts",
-      "Update doctor cron-syntax check to validate field count and ranges",
-      "Add tests for boundary values and invalid expressions"
+      "Create .doc-standard.yaml at repo root",
+      "Set schema_version to '1.0'",
+      "Set project name to 'ClawHQ', tagline to 'WordPress for AI agents', category to 'infrastructure'",
+      "List required_files: README.md, docs/ARCHITECTURE.md, docs/QUICKSTART.md, docs/CONFIGURATION.md, docs/PROBLEMS.md, docs/ROADMAP.md, docs/CONTRIBUTING.md, docs/CHANGELOG.md",
+      "Add optional_files: docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md (repo-specific docs not in the standard)",
+      "Add portfolio section with sibling repos: aishore (complementary), Easy-Markdown (related), GigOS (related)",
+      "Add author section: name Simon Plant, location Santa Barbara CA, status 'Building AI infrastructure tools. Open to roles.'",
+      "Verify the file is valid YAML"
     ],
     "acceptanceCriteria": [
-      "Cron expressions are validated for correct field count (5 fields)",
-      "Field value ranges are validated (minute 0-59, hour 0-23, etc.)",
-      "Invalid cron expressions produce clear error messages at config generation time",
-      "Doctor cron-syntax check validates field ranges, not just step patterns"
+      ".doc-standard.yaml exists at repo root and is valid YAML",
+      "File declares schema_version, project metadata, required_files, optional_files, portfolio siblings, and author info",
+      "required_files matches the docs/ structure created by FEAT-006 through FEAT-012",
+      "optional_files lists docs/PRODUCT.md and docs/OPENCLAW-REFERENCE.md so they are not flagged as non-standard",
+      "Portfolio section lists aishore, Easy-Markdown, and GigOS with correct GitHub URLs"
     ],
     "scope": [
-      "src/design/configure/generate.ts",
-      "src/operate/doctor/checks.ts"
+      ".doc-standard.yaml"
     ],
-    "startedAt": "2026-03-24T23:07:27-07:00",
+    "startedAt": "2026-03-24T23:12:07-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T23:12:05-07:00"
+    "completedAt": "2026-03-24T23:14:01-07:00"
   },
-  "completedAt": "2026-03-24T23:12:05-07:00",
+  "completedAt": "2026-03-24T23:14:01-07:00",
   "attempts": 1
 }
