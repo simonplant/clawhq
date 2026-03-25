@@ -1,26 +1,35 @@
 {
-  "sprintId": "sprint-1774414473",
-  "startedAt": "2026-03-24T21:54:33-07:00",
+  "sprintId": "sprint-1774414842",
+  "startedAt": "2026-03-24T22:00:42-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-016",
-    "title": "Config surface update for OpenClaw v0.8.6–v0.8.10 environment variables",
-    "intent": "ClawHQ must track OpenClaw's config surface so the config generator, validator, and reference docs stay current. Ten new env vars were added or fixed across v0.8.6–v0.8.10 — they need to be in our schema and docs.",
-    "description": "OpenClaw v0.8.6–v0.8.10 introduced or fixed the following environment variables: WEBSOCKET_EVENT_CALLER_TIMEOUT (configurable WS timeout, was hardcoded 60s), VECTOR_DB=mariadb-vector (new vector DB backend), OPENID_END_SESSION_ENDPOINT (custom OIDC logout), USER_PERMISSIONS_ACCESS_GRANTS_ALLOW_USERS (disable individual sharing), DEFAULT_GROUP_SHARE_PERMISSION, ENABLE_AUDIT_STDOUT (was broken, now works), WEB_SEARCH_DOMAIN_FILTER_LIST (was broken, now works), REPORTING_ENDPOINTS (CSP reporting), OAUTH_UPDATE_NAME_ON_LOGIN, OAUTH_UPDATE_EMAIL_ON_LOGIN. Update: (1) src/config/schema.ts to include new fields, (2) docs/OPENCLAW-REFERENCE.md config inventory section, (3) config generator to set sensible defaults where appropriate (especially WEBSOCKET_EVENT_CALLER_TIMEOUT and ENABLE_AUDIT_STDOUT). Also add a minimum version note to OPENCLAW-REFERENCE.md — ClawHQ now assumes v0.8.6+ baseline.",
+    "id": "FEAT-017",
+    "title": "Doctor checks for OpenClaw v0.8.6+ upgrade issues — migration state, tool access grants, underscore tool methods",
+    "intent": "clawhq doctor must detect upgrade-related issues introduced by OpenClaw v0.8.6–v0.8.10 so users upgrading existing agents don't hit silent failures.",
+    "description": "Three new doctor checks needed: (1) Post-upgrade migration verification — verify database migrations completed (they previously failed silently). (2) Tool access grants — detect tools without explicit access grants and warn that they are admin-only on v0.8.7+ (related to BUG-114 but doctor check is independently useful for existing agents). (3) Underscore tool methods — detect tools with underscore-prefixed public methods that are no longer exposed to the LLM on v0.8.10+. CRITICAL PREREQUISITE: No OpenClaw version detection mechanism exists anywhere in the codebase. Version-gating requires implementing a version query first (options: docker exec to read package.json, parse image tag from docker-compose, or add Gateway RPC version endpoint). Without this, checks must either run unconditionally or this item is blocked.",
     "sourceBacklog": "backlog.json",
-    "steps": [],
+    "steps": [
+      "Implement OpenClaw version detection — determine running version via docker exec, image tag parsing, or Gateway RPC (no mechanism currently exists)",
+      "Add version detection to doctor infrastructure (src/operate/doctor/) so checks can query it",
+      "Add check: database migration verification (run unconditionally — safe on all versions)",
+      "Add check: tool access grants missing (version-gate to v0.8.7+ if version detection works, otherwise run unconditionally with note in output)",
+      "Add check: underscore tool methods (version-gate to v0.8.10+ if version detection works, otherwise run unconditionally with note in output)",
+      "Coordinate with BUG-114 AC3 — reuse the same tool access grant check logic, don't duplicate",
+      "Add tests for all 3 checks and version-gating logic",
+      "Run npm test to confirm all tests pass"
+    ],
     "acceptanceCriteria": [
-      "src/config/types.ts includes type definitions for all 10 new environment variables",
-      "docs/OPENCLAW-REFERENCE.md config inventory lists the new variables with version introduced",
-      "Config generator sets WEBSOCKET_EVENT_CALLER_TIMEOUT and ENABLE_AUDIT_STDOUT defaults for new agents",
-      "OPENCLAW-REFERENCE.md states minimum OpenClaw version as v0.8.6",
-      "Existing config validation tests pass with no regression"
+      "clawhq doctor checks that database migrations completed successfully",
+      "clawhq doctor warns if any tool server connections lack explicit access grants",
+      "clawhq doctor warns if any installed tools have underscore-prefixed methods that were previously LLM-visible",
+      "Checks are version-gated when OpenClaw version is detectable; run unconditionally with advisory note when version is unknown",
+      "Existing doctor tests pass with no regression"
     ],
     "scope": [],
-    "startedAt": "2026-03-24T21:54:33-07:00",
+    "startedAt": "2026-03-24T22:00:42-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T22:00:41-07:00"
+    "completedAt": "2026-03-24T22:08:50-07:00"
   },
-  "completedAt": "2026-03-24T22:00:41-07:00",
+  "completedAt": "2026-03-24T22:08:50-07:00",
   "attempts": 1
 }
