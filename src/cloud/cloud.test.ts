@@ -268,6 +268,20 @@ describe("heartbeat", () => {
       expect(report.timestamp).toBeDefined();
     });
 
+    it("reports real disk usage percentage (not hardcoded 0)", () => {
+      const deployDir = tmpDeployDir();
+      const report = collectHealthReport(deployDir, "zero-trust");
+      // Any real filesystem will have some usage
+      expect(report.diskUsagePercent).toBeGreaterThan(0);
+      expect(report.diskUsagePercent).toBeLessThanOrEqual(100);
+    });
+
+    it("returns -1 for disk usage when path does not exist", () => {
+      const deployDir = "/tmp/clawhq-nonexistent-" + Date.now();
+      const report = collectHealthReport(deployDir, "zero-trust");
+      expect(report.diskUsagePercent).toBe(-1);
+    });
+
     it("reports integration count without exposing credentials", () => {
       const deployDir = tmpDeployDir();
       writeFileSync(

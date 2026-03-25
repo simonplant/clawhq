@@ -1,34 +1,28 @@
 {
-  "sprintId": "sprint-1774417775",
-  "startedAt": "2026-03-24T22:49:35-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774418286",
+  "startedAt": "2026-03-24T22:58:06-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "BUG-118",
-    "title": "Email notification channel returns hardcoded failure — never sends email",
-    "intent": "The monitor notification system must be able to alert operators via email. Email is the most universal notification channel and the only one that works when Telegram/webhooks are unreachable.",
-    "description": "src/operate/monitor/notify.ts lines 52-55: dispatchToChannel() for the 'email' case returns { channel: 'email', success: false, error: 'Email channel not yet implemented' }. Comment says 'In production, this would be replaced with SMTP transport.' Telegram and webhook channels are fully implemented. Email is the missing third leg. Users who configure email notifications get silent failures.",
+    "id": "BUG-119",
+    "title": "Heartbeat disk usage always reports 0% — getDiskUsagePercent() is a placeholder",
+    "intent": "Cloud heartbeat must report real disk usage so operators can act before an agent fills its disk and crashes.",
+    "description": "src/cloud/heartbeat/reporter.ts lines 151-153: getDiskUsagePercent() takes deployDir but ignores it (prefixed with _), returns hardcoded 0. Comment says 'Would use statvfs in production; return 0 as placeholder'. This means cloud monitoring dashboards always show 0% disk usage regardless of actual state. An agent could fill its disk and the heartbeat would still report 0%.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Decide transport: nodemailer dependency vs raw SMTP via net/tls module vs external service (SES, SendGrid)",
-      "Implement sendEmail() — connect to configured SMTP server, send alert email with subject and body",
-      "Add SMTP configuration fields to monitor config (host, port, from, to, auth)",
-      "Replace the hardcoded failure return with a real sendEmail() call",
-      "Add tests: successful send (mock SMTP server), connection failure, auth failure",
+      "Implement getDiskUsagePercent() using Node.js fs.statfs() (available since Node 18.15) or child_process df command",
+      "Calculate percentage: (total - available) / total * 100",
+      "Handle errors gracefully — return -1 or null if statfs fails, don't crash the heartbeat",
+      "Add tests: real filesystem check returns >0%, error handling on invalid path",
       "Run npm test to confirm no regression"
     ],
     "acceptanceCriteria": [
-      "clawhq monitor with email channel configured sends real email alerts via SMTP",
-      "Email contains: alert severity, check name, failure details, agent identifier",
-      "Connection failures are reported as channel errors, not silent failures",
-      "Existing Telegram and webhook notification tests pass with no regression"
+      "getDiskUsagePercent() returns the actual disk usage percentage for the deploy directory's filesystem",
+      "Cloud heartbeat reports include real disk usage data",
+      "If the filesystem query fails, the heartbeat still sends (with disk usage omitted or -1), not crashes"
     ],
     "scope": [
-      "src/operate/monitor/notify.ts"
+      "src/cloud/heartbeat/reporter.ts"
     ],
-    "startedAt": "2026-03-24T22:49:35-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-24T22:58:04-07:00"
-  },
-  "completedAt": "2026-03-24T22:58:04-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-24T22:58:06-07:00"
+  }
 }
