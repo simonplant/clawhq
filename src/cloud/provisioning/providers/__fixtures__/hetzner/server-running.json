@@ -1,0 +1,69 @@
+{
+  "server": {
+    "id": 54321098,
+    "name": "clawhq-test-agent",
+    "status": "running",
+    "public_net": {
+      "ipv4": {
+        "ip": "203.0.113.50",
+        "blocked": false,
+        "dns_ptr": "static.203.0.113.50.example.hetzner.cloud"
+      },
+      "ipv6": {
+        "ip": "2001:db8::/64",
+        "blocked": false,
+        "dns_ptr": []
+      },
+      "floating_ips": [],
+      "firewalls": [
+        {
+          "id": 12345,
+          "status": "applied"
+        }
+      ]
+    },
+    "private_net": [],
+    "server_type": {
+      "id": 1,
+      "name": "cx22",
+      "description": "CX22",
+      "cores": 2,
+      "memory": 4.0,
+      "disk": 40,
+      "deprecated": false,
+      "storage_type": "local",
+      "cpu_type": "shared",
+      "architecture": "x86"
+    },
+    "datacenter": {
+      "id": 1,
+      "name": "fsn1-dc14",
+      "description": "Falkenstein 1 DC14",
+      "location": {
+        "id": 1,
+        "name": "fsn1",
+        "description": "Falkenstein DC Park 1",
+        "country": "DE",
+        "city": "Falkenstein",
+        "latitude": 50.47612,
+        "longitude": 12.37026,
+        "network_zone": "eu-central"
+      }
+    },
+    "image": {
+      "id": 167890123,
+      "type": "system",
+      "status": "available",
+      "name": "ubuntu-24.04",
+      "description": "Ubuntu 24.04",
+      "os_flavor": "ubuntu",
+      "os_version": "24.04"
+    },
+    "labels": {
+      "managed_by": "clawhq"
+    },
+    "volumes": [],
+    "load_balancers": [],
+    "created": "2026-03-24T10:00:00+00:00"
+  }
+}

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CreateImageResponse xmlns="http://ec2.amazonaws.com/doc/2016-11-15/">
+    <requestId>c4d5e6f7-a8b9-0123-abcd-ef1234567890</requestId>
+    <imageId>ami-0fedcba9876543210</imageId>
+</CreateImageResponse>

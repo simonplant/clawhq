@@ -1,0 +1,40 @@
+{
+  "firewall": {
+    "id": 12345,
+    "name": "clawhq-test-agent",
+    "labels": {},
+    "created": "2026-03-24T10:05:00+00:00",
+    "rules": [
+      {
+        "direction": "in",
+        "protocol": "tcp",
+        "port": "443",
+        "source_ips": ["0.0.0.0/0", "::/0"],
+        "destination_ips": []
+      },
+      {
+        "direction": "in",
+        "protocol": "tcp",
+        "port": "18789",
+        "source_ips": ["0.0.0.0/0", "::/0"],
+        "destination_ips": []
+      }
+    ],
+    "applied_to": [
+      {
+        "type": "server",
+        "server": {
+          "id": 54321098
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": 987654322,
+      "command": "set_firewall_rules",
+      "status": "running",
+      "progress": 0
+    }
+  ]
+}

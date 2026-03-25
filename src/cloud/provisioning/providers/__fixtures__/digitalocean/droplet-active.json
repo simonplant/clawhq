@@ -1,0 +1,72 @@
+{
+  "droplet": {
+    "id": 412275827,
+    "name": "clawhq-test-agent",
+    "memory": 2048,
+    "vcpus": 2,
+    "disk": 60,
+    "locked": false,
+    "status": "active",
+    "kernel": null,
+    "created_at": "2026-03-24T10:00:00Z",
+    "features": ["monitoring"],
+    "backup_ids": [],
+    "next_backup_window": null,
+    "snapshot_ids": [],
+    "image": {
+      "id": 129211873,
+      "name": "24.04 (LTS) x64",
+      "distribution": "Ubuntu",
+      "slug": "ubuntu-24-04-x64",
+      "public": true,
+      "regions": ["nyc1", "nyc3", "sfo3", "ams3", "fra1"],
+      "created_at": "2026-02-15T00:00:00Z",
+      "min_disk_size": 10,
+      "type": "base",
+      "size_gigabytes": 1.2,
+      "description": "Ubuntu 24.04 (LTS) x64",
+      "tags": [],
+      "status": "available"
+    },
+    "volume_ids": [],
+    "size": {
+      "slug": "s-2vcpu-2gb",
+      "memory": 2048,
+      "vcpus": 2,
+      "disk": 60,
+      "transfer": 3.0,
+      "price_monthly": 18.0,
+      "price_hourly": 0.02679,
+      "regions": ["nyc1", "nyc3", "sfo3"],
+      "available": true,
+      "description": "Basic"
+    },
+    "size_slug": "s-2vcpu-2gb",
+    "networks": {
+      "v4": [
+        {
+          "ip_address": "203.0.113.42",
+          "netmask": "255.255.240.0",
+          "gateway": "203.0.113.1",
+          "type": "public"
+        },
+        {
+          "ip_address": "10.132.0.2",
+          "netmask": "255.255.0.0",
+          "gateway": "10.132.0.1",
+          "type": "private"
+        }
+      ],
+      "v6": []
+    },
+    "region": {
+      "name": "New York 3",
+      "slug": "nyc3",
+      "features": ["backups", "ipv6", "metadata", "install_agent", "storage", "image_transfer"],
+      "available": true,
+      "sizes": ["s-1vcpu-512mb-10gb", "s-1vcpu-1gb", "s-2vcpu-2gb"]
+    },
+    "tags": ["clawhq"],
+    "vpc_uuid": "a1b2c3d4-0000-0000-0000-000000000001"
+  }
+}

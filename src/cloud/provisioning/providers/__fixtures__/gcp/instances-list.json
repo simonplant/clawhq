@@ -1,0 +1,5 @@
+{
+  "id": "projects/example-project-123/zones/us-central1-a/instances",
+  "kind": "compute#instanceList",
+  "selfLink": "https://compute.googleapis.com/compute/v1/projects/example-project-123/zones/us-central1-a/instances"
+}

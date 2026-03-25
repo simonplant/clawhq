@@ -1,0 +1,20 @@
+{
+  "ssh_keys": [
+    {
+      "id": 38972451,
+      "fingerprint": "SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8",
+      "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKeyDataHere clawhq@example.com",
+      "name": "clawhq-deploy-key"
+    },
+    {
+      "id": 38972452,
+      "fingerprint": "SHA256:kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8nThbg6",
+      "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... user@laptop",
+      "name": "personal-laptop"
+    }
+  ],
+  "links": {},
+  "meta": {
+    "total": 2
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "kind": "compute#instance",
+  "id": "9876543210987654321",
+  "creationTimestamp": "2026-03-24T10:00:00.000-07:00",
+  "name": "clawhq-test-agent",
+  "description": "",
+  "tags": {
+    "items": ["clawhq"],
+    "fingerprint": "abc123def456"
+  },
+  "machineType": "https://compute.googleapis.com/compute/v1/projects/example-project-123/zones/us-central1-a/machineTypes/e2-micro",
+  "status": "RUNNING",
+  "zone": "https://compute.googleapis.com/compute/v1/projects/example-project-123/zones/us-central1-a",
+  "canIpForward": false,
+  "networkInterfaces": [
+    {
+      "kind": "compute#networkInterface",
+      "network": "https://compute.googleapis.com/compute/v1/projects/example-project-123/global/networks/default",
+      "subnetwork": "https://compute.googleapis.com/compute/v1/projects/example-project-123/regions/us-central1/subnetworks/default",
+      "networkIP": "10.128.0.2",
+      "name": "nic0",
+      "accessConfigs": [
+        {
+          "kind": "compute#accessConfig",
+          "type": "ONE_TO_ONE_NAT",
+          "name": "External NAT",
+          "natIP": "203.0.113.75",
+          "networkTier": "STANDARD"
+        }
+      ],
+      "fingerprint": "def789abc012",
+      "stackType": "IPV4_ONLY"
+    }
+  ],
+  "disks": [
+    {
+      "kind": "compute#attachedDisk",
+      "type": "PERSISTENT",
+      "mode": "READ_WRITE",
+      "source": "https://compute.googleapis.com/compute/v1/projects/example-project-123/zones/us-central1-a/disks/clawhq-test-agent",
+      "index": 0,
+      "boot": true,
+      "autoDelete": true,
+      "diskSizeGb": "20",
+      "interface": "SCSI"
+    }
+  ],
+  "metadata": {
+    "kind": "compute#metadata",
+    "fingerprint": "ghi345jkl678",
+    "items": [
+      {
+        "key": "startup-script",
+        "value": "#!/bin/bash\necho 'ClawHQ cloud-init'"
+      }
+    ]
+  },
+  "scheduling": {
+    "onHostMaintenance": "MIGRATE",
+    "automaticRestart": true,
+    "preemptible": false
+  },
+  "cpuPlatform": "Intel Broadwell",
+  "labels": {
+    "managed_by": "clawhq"
+  },
+  "labelFingerprint": "mno901pqr234",
+  "startRestricted": false,
+  "deletionProtection": false,
+  "fingerprint": "stu567vwx890",
+  "lastStartTimestamp": "2026-03-24T10:00:05.000-07:00",
+  "selfLink": "https://compute.googleapis.com/compute/v1/projects/example-project-123/zones/us-central1-a/instances/clawhq-test-agent"
+}

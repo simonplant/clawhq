@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AuthorizeSecurityGroupIngressResponse xmlns="http://ec2.amazonaws.com/doc/2016-11-15/">
+    <requestId>b3c4d5e6-f7a8-9012-abcd-ef1234567890</requestId>
+    <return>true</return>
+    <securityGroupRuleSet>
+        <item>
+            <groupId>sg-0abcdef1234567890</groupId>
+            <groupOwnerId>123456789012</groupOwnerId>
+            <isEgress>false</isEgress>
+            <ipProtocol>tcp</ipProtocol>
+            <fromPort>443</fromPort>
+            <toPort>443</toPort>
+            <cidrIpv4>0.0.0.0/0</cidrIpv4>
+            <securityGroupRuleId>sgr-0abcdef1234567890</securityGroupRuleId>
+        </item>
+    </securityGroupRuleSet>
+</AuthorizeSecurityGroupIngressResponse>

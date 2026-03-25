@@ -1,0 +1,30 @@
+{
+  "image": {
+    "id": 98765432,
+    "type": "snapshot",
+    "status": "creating",
+    "description": "clawhq-golden-2026-03-24",
+    "name": null,
+    "os_flavor": "ubuntu",
+    "os_version": "24.04",
+    "architecture": "x86",
+    "rapid_deploy": false,
+    "created": "2026-03-24T10:10:00+00:00",
+    "created_from": {
+      "id": 54321098,
+      "name": "clawhq-test-agent"
+    },
+    "disk_size": 40,
+    "image_size": null,
+    "labels": {},
+    "protection": {
+      "delete": false
+    }
+  },
+  "action": {
+    "id": 987654323,
+    "command": "create_image",
+    "status": "running",
+    "progress": 0
+  }
+}
