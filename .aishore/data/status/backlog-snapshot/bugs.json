@@ -289,9 +289,10 @@
         "src/design/tools/**"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-24T21:23:53-07:00"
     },
     {
       "id": "BUG-122",

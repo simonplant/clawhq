@@ -1,30 +1,31 @@
 {
-  "sprintId": "sprint-1774412107",
-  "startedAt": "2026-03-24T21:15:07-07:00",
+  "sprintId": "sprint-1774412635",
+  "startedAt": "2026-03-24T21:23:55-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-121",
-    "title": "Shell injection in generated bash tool wrappers — user-controlled vars interpolated without safe quoting",
-    "intent": "Eliminate command injection risk in all generated tool scripts. Every variable must be safely quoted or the tool generation must switch to a safer language.",
-    "description": "Code review found that generated bash scripts in src/design/tools/ (email.ts, todoist.ts, ical.ts, etc.) interpolate user-controlled variables like $local_body and $local_id into shell commands without proper quoting. An attacker-controlled value containing shell metacharacters can break escaping and execute arbitrary commands inside the agent container.",
+    "id": "BUG-122",
+    "title": "Skill vetting bypass via comment-wrapped payloads and weak encoded-payload severity",
+    "intent": "Ensure no malicious skill can pass vetting by hiding code in comments or encoding. Vetting must use language-aware parsing, not line-by-line heuristics.",
+    "description": "Code review found two issues in src/evolve/skills/vet.ts: (1) Comment detection uses simple line-start heuristics that miss multi-line comments, here-docs, and Python triple-quoted strings. (2) Encoded payloads (base64, hex) are flagged as medium severity but buildSummary() only rejects critical/high, so obfuscated malicious code passes vetting.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Audit all tool generators in src/design/tools/ for unquoted variable expansions",
-      "Apply safe quoting (double-quote all variable refs) or switch to Python with shlex",
-      "Add tests that generate tools with metacharacter-laden inputs and verify no injection"
+      "Replace line-by-line comment detection with proper language-aware parsing",
+      "Bump encoded_payload and obfuscation_patterns severity from medium to high",
+      "Add test cases for comment-wrapped payloads, here-docs, and triple-quoted strings"
     ],
     "acceptanceCriteria": [
-      "All generated tool scripts use proper shell quoting for every variable expansion",
-      "No unquoted variable interpolation exists in any tool generator output",
-      "Alternatively, tool generation switches to Python with shlex for safe argument handling"
+      "Skill vetting uses language-aware comment parsing, not line-start heuristics",
+      "Encoded payload and obfuscation pattern findings are classified as high severity",
+      "Skills containing base64-encoded shell commands are rejected by vetting",
+      "Skills hiding payloads in multi-line comments or here-docs are detected"
     ],
     "scope": [
-      "src/design/tools/**"
+      "src/evolve/skills/vet.ts"
     ],
-    "startedAt": "2026-03-24T21:15:07-07:00",
+    "startedAt": "2026-03-24T21:23:55-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T21:23:53-07:00"
+    "completedAt": "2026-03-24T21:34:11-07:00"
   },
-  "completedAt": "2026-03-24T21:23:53-07:00",
+  "completedAt": "2026-03-24T21:34:11-07:00",
   "attempts": 1
 }
