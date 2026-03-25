@@ -5,9 +5,9 @@
 import type { SkillManifestEntry } from "../../evolve/skills/index.js";
 import { Layout } from "../layout.js";
 
-export function SkillsPage({ skills }: { skills: readonly SkillManifestEntry[] }) {
+export function SkillsPage({ skills, csrfToken }: { skills: readonly SkillManifestEntry[]; csrfToken?: string }) {
   return (
-    <Layout title="Skills" activePath="/skills">
+    <Layout title="Skills" activePath="/skills" csrfToken={csrfToken}>
       <hgroup>
         <h1>Installed Skills</h1>
         <p>{skills.length} skill(s) installed</p>

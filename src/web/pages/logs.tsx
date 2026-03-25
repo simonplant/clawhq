@@ -4,9 +4,9 @@
 
 import { Layout } from "../layout.js";
 
-export function LogsPage({ output, lineCount }: { output: string; lineCount: number }) {
+export function LogsPage({ output, lineCount, csrfToken }: { output: string; lineCount: number; csrfToken?: string }) {
   return (
-    <Layout title="Logs" activePath="/logs">
+    <Layout title="Logs" activePath="/logs" csrfToken={csrfToken}>
       <hgroup>
         <h1>Agent Logs</h1>
         <p>{lineCount} lines</p>

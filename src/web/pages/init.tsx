@@ -10,9 +10,9 @@ import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import type { Blueprint } from "../../design/blueprints/types.js";
 import { Layout } from "../layout.js";
 
-export function InitPage({ blueprints }: { blueprints: readonly Blueprint[] }) {
+export function InitPage({ blueprints, csrfToken }: { blueprints: readonly Blueprint[]; csrfToken?: string }) {
   return (
-    <Layout title="Init Wizard" activePath="/init">
+    <Layout title="Init Wizard" activePath="/init" csrfToken={csrfToken}>
       <hgroup>
         <h1>Init Wizard</h1>
         <p>Set up a new agent from a blueprint — same as <code>clawhq init --guided</code></p>

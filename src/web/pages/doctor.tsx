@@ -5,9 +5,9 @@
 import type { DoctorReport } from "../../operate/doctor/index.js";
 import { Layout } from "../layout.js";
 
-export function DoctorPage({ report }: { report: DoctorReport }) {
+export function DoctorPage({ report, csrfToken }: { report: DoctorReport; csrfToken?: string }) {
   return (
-    <Layout title="Doctor" activePath="/doctor">
+    <Layout title="Doctor" activePath="/doctor" csrfToken={csrfToken}>
       <hgroup>
         <h1>Doctor Diagnostics</h1>
         <p>

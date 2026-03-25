@@ -5,11 +5,11 @@
 import type { StatusSnapshot } from "../../operate/status/index.js";
 import { Layout } from "../layout.js";
 
-export function DeployPage({ status }: { status: StatusSnapshot }) {
+export function DeployPage({ status, csrfToken }: { status: StatusSnapshot; csrfToken?: string }) {
   const isRunning = status.container?.running ?? false;
 
   return (
-    <Layout title="Deploy" activePath="/deploy">
+    <Layout title="Deploy" activePath="/deploy" csrfToken={csrfToken}>
       <hgroup>
         <h1>Deploy Controls</h1>
         <p>Agent is {isRunning

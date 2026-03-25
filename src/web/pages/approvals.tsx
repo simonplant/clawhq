@@ -5,11 +5,11 @@
 import type { ApprovalItem } from "../../evolve/approval/index.js";
 import { Layout } from "../layout.js";
 
-export function ApprovalsPage({ items }: { items: readonly ApprovalItem[] }) {
+export function ApprovalsPage({ items, csrfToken }: { items: readonly ApprovalItem[]; csrfToken?: string }) {
   const pendingCount = items.filter((i) => i.status === "pending").length;
 
   return (
-    <Layout title="Approvals" activePath="/approvals">
+    <Layout title="Approvals" activePath="/approvals" csrfToken={csrfToken}>
       <hgroup>
         <h1>Approval Queue</h1>
         <p>
