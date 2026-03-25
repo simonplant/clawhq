@@ -1,35 +1,34 @@
 {
-  "sprintId": "sprint-1774417447",
-  "startedAt": "2026-03-24T22:44:07-07:00",
+  "sprintId": "sprint-1774417775",
+  "startedAt": "2026-03-24T22:49:35-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-116",
-    "title": "clawhq skill update CLI command is a stub — prints 'not implemented' instead of updating skills",
-    "intent": "Users who install skills must be able to update them. clawhq skill install and clawhq skill remove work, but clawhq skill update prints 'not implemented'.",
-    "description": "src/cli/index.ts lines 2316-2323: the 'skill update' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. Users can install and remove skills but cannot update them to newer versions. This breaks the 'agent grows' non-negotiable — if you can't update skills, the agent's capabilities stagnate.",
+    "id": "BUG-118",
+    "title": "Email notification channel returns hardcoded failure — never sends email",
+    "intent": "The monitor notification system must be able to alert operators via email. Email is the most universal notification channel and the only one that works when Telegram/webhooks are unreachable.",
+    "description": "src/operate/monitor/notify.ts lines 52-55: dispatchToChannel() for the 'email' case returns { channel: 'email', success: false, error: 'Email channel not yet implemented' }. Comment says 'In production, this would be replaced with SMTP transport.' Telegram and webhook channels are fully implemented. Email is the missing third leg. Users who configure email notifications get silent failures.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Determine update semantics: re-install from source (overwrite), or diff-and-patch?",
-      "Read src/evolve/skills/lifecycle.ts to understand installSkill() and removeSkill() — update may be remove + reinstall with rollback",
-      "Implement updateSkill() in lifecycle.ts — simplest correct approach is snapshot current, remove, reinstall from source, rollback on failure",
-      "Wire CLI command to call updateSkill()",
-      "Add tests covering: successful update, update failure with rollback, skill not found",
+      "Decide transport: nodemailer dependency vs raw SMTP via net/tls module vs external service (SES, SendGrid)",
+      "Implement sendEmail() — connect to configured SMTP server, send alert email with subject and body",
+      "Add SMTP configuration fields to monitor config (host, port, from, to, auth)",
+      "Replace the hardcoded failure return with a real sendEmail() call",
+      "Add tests: successful send (mock SMTP server), connection failure, auth failure",
       "Run npm test to confirm no regression"
     ],
     "acceptanceCriteria": [
-      "clawhq skill update <name> updates an installed skill to the latest version from its source",
-      "If update fails, the previous version is restored (rollback)",
-      "clawhq skill update (no name) updates all installed skills",
-      "Existing skill install/remove tests pass with no regression"
+      "clawhq monitor with email channel configured sends real email alerts via SMTP",
+      "Email contains: alert severity, check name, failure details, agent identifier",
+      "Connection failures are reported as channel errors, not silent failures",
+      "Existing Telegram and webhook notification tests pass with no regression"
     ],
     "scope": [
-      "src/cli/index.ts",
-      "src/evolve/skills/lifecycle.ts"
+      "src/operate/monitor/notify.ts"
     ],
-    "startedAt": "2026-03-24T22:44:07-07:00",
+    "startedAt": "2026-03-24T22:49:35-07:00",
     "status": "passed",
-    "completedAt": "2026-03-24T22:49:33-07:00"
+    "completedAt": "2026-03-24T22:58:04-07:00"
   },
-  "completedAt": "2026-03-24T22:49:33-07:00",
+  "completedAt": "2026-03-24T22:58:04-07:00",
   "attempts": 1
 }
