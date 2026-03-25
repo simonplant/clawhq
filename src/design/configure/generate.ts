@@ -8,7 +8,13 @@
  * The generator never produces a config that fails validation.
  */
 
-import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import {
+  BOOTSTRAP_MAX_CHARS,
+  CONTAINER_USER,
+  ENABLE_AUDIT_STDOUT,
+  GATEWAY_DEFAULT_PORT,
+  WEBSOCKET_EVENT_CALLER_TIMEOUT_MS,
+} from "../../config/defaults.js";
 import type {
   ClawHQConfig,
   ComposeConfig,
@@ -246,6 +252,10 @@ function buildEnvVars(answers: WizardAnswers): Record<string, string> {
     // Gateway token (generated placeholder — user supplies real value)
     GATEWAY_TOKEN: generateToken(),
     GATEWAY_PORT: String(answers.gatewayPort || DEFAULT_GATEWAY_PORT),
+
+    // OpenClaw v0.8.6+ environment variable defaults
+    WEBSOCKET_EVENT_CALLER_TIMEOUT: String(WEBSOCKET_EVENT_CALLER_TIMEOUT_MS),
+    ENABLE_AUDIT_STDOUT,
   };
 
   // Flatten integration credentials into env vars

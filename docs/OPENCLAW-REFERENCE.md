@@ -3,7 +3,9 @@
 > The single source of truth for what OpenClaw is, how it works, and how to configure, personalize, and secure it.
 > Extracted from running a production OpenClaw agent for months. Engineering companion to `PRODUCT.md` and `ARCHITECTURE.md`.
 
-**Updated:** 2026-03-20
+**Updated:** 2026-03-24 · **Minimum OpenClaw version:** v0.8.6
+
+> **Version baseline:** ClawHQ assumes OpenClaw v0.8.6 or later. Earlier versions are missing environment variables and fixes that ClawHQ depends on (see [Environment Variables Added in v0.8.6–v0.8.10](#environment-variables-added-in-v086v0810)).
 
 ---
 
@@ -707,6 +709,23 @@ The gateway picks up the change via its dynamic config watcher — no second res
 | Secrets | 2+ | 2 | 0 | 0 |
 | Environment | 4 | 0 | 2 | 2 |
 | **TOTAL** | **~200+** | **~31** | **~81** | **~97** |
+
+### Environment Variables Added in v0.8.6–v0.8.10
+
+The following environment variables were introduced or fixed across OpenClaw v0.8.6–v0.8.10. They are set in `.env` and take precedence over config file values.
+
+| Variable | Purpose | Version | Notes |
+|---|---|---|---|
+| `WEBSOCKET_EVENT_CALLER_TIMEOUT` | WebSocket event caller timeout (ms) | v0.8.6 | Was hardcoded 60s; now configurable. ClawHQ default: 60000 |
+| `VECTOR_DB` | Vector database backend selection | v0.8.7 | New option `mariadb-vector` added alongside existing backends |
+| `OPENID_END_SESSION_ENDPOINT` | Custom OIDC logout endpoint URL | v0.8.7 | Overrides auto-discovered OIDC end-session endpoint |
+| `USER_PERMISSIONS_ACCESS_GRANTS_ALLOW_USERS` | Enable/disable per-user sharing | v0.8.8 | Set `false` to disable individual access grants |
+| `DEFAULT_GROUP_SHARE_PERMISSION` | Default permission for group shares | v0.8.8 | Values: `read`, `write`, `admin` |
+| `ENABLE_AUDIT_STDOUT` | Audit log output to stdout | v0.8.6 (fixed v0.8.9) | Was broken until v0.8.9. ClawHQ default: `true` |
+| `WEB_SEARCH_DOMAIN_FILTER_LIST` | Domain filter for web search | v0.8.6 (fixed v0.8.9) | Comma-separated. Was broken until v0.8.9 |
+| `REPORTING_ENDPOINTS` | CSP violation reporting endpoint | v0.8.9 | Receives Content-Security-Policy reports from Gateway UI |
+| `OAUTH_UPDATE_NAME_ON_LOGIN` | Sync display name from OAuth provider | v0.8.10 | Set `true` to update name on each login |
+| `OAUTH_UPDATE_EMAIL_ON_LOGIN` | Sync email from OAuth provider | v0.8.10 | Set `true` to update email on each login |
 
 ### Config Management Meta-Capabilities
 
