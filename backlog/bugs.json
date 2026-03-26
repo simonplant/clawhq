@@ -487,6 +487,37 @@
       "groomedAt": "2026-03-24",
       "groomingNotes": "PO GROOM 2026-03-24: Priority 'should' confirmed. Cron expressions must be validated at config generation time — invalid schedules silently break agent autonomy.",
       "completedAt": "2026-03-24T23:12:05-07:00"
+    },
+    {
+      "id": "BUG-128",
+      "title": "Security scanner alert: potential real secrets in git history — sk-ant-, ghp_, AKIA, private keys",
+      "intent": "Git history may contain real API keys and tokens. If any are live, they must be rotated immediately and history scrubbed. False positives must be confirmed as false.",
+      "description": "Automated security scanner flagged 131x sk-ant- matches, 7x ghp_ (GitHub PATs), 16x AKIA (AWS keys), 5x sk- patterns, 1x Slack token, 6x private key headers in clawhq git history. Also 1x sk-ant- each in simonplant-com, simonplant.com, easy-markdown, and 2x in toolkit. Most are likely false positives from test fixtures (scanner.test.ts, probes.test.ts, patterns.ts) but git history matches need human review. Ref: GitHub issue #5.",
+      "priority": "must",
+      "category": "Security",
+      "steps": [
+        "Run git log -p --all -S 'sk-ant-' to find actual commits containing Anthropic key patterns — distinguish test fixtures from real keys",
+        "Run git log -p --all -S 'ghp_' to find GitHub PAT commits — check if tokens are real (40+ hex chars after prefix)",
+        "Run git log -p --all -S 'AKIA' to find AWS key commits — check for real 20-char key IDs",
+        "Run git log -p --all -S 'PRIVATE KEY' to find private key header commits",
+        "For any confirmed real secrets: rotate immediately (GitHub Settings, AWS Console, Anthropic Console)",
+        "Use git filter-repo or BFG Repo-Cleaner to scrub confirmed secrets from history",
+        "Verify scrub succeeded: re-run scanner, confirm zero real matches",
+        "Close GitHub issue #5 with findings summary"
+      ],
+      "acceptanceCriteria": [
+        "All git history matches reviewed and classified as real or false positive",
+        "Any confirmed real secrets rotated at the source (API dashboard, console)",
+        "Git history scrubbed of confirmed secrets using git filter-repo or BFG",
+        "Re-scan confirms zero real secret matches in git history",
+        "GitHub issue #5 closed with summary of findings and actions taken"
+      ],
+      "scope": [],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-26",
+      "groomingNotes": "From GitHub issue #5 (real-clawdius-maximus / security scanner). Priority 'must' — potential live secrets in git history is a security incident until confirmed false positive. Note: git history scrubbing (git filter-repo/BFG) is destructive and requires force-push — sprint should confirm findings first, then scrub with user approval. Scanner also noted simonplant-com and other repos have matches — those are out of scope for this item."
     }
   ]
 }

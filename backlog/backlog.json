@@ -393,6 +393,44 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-24",
       "groomingNotes": "ARCHITECT REVIEW 2026-03-24: Critical finding — 4,320 lines is the largest file in the codebase. Pairs with FEAT-106 (process.exit cleanup). Decompose first, then FEAT-106 becomes per-command refactoring instead of a 4K-line surgery. Priority 'should' — not blocking users directly but blocking developer velocity on every CLI change."
+    },
+    {
+      "id": "FEAT-109",
+      "title": "1Password integration — agent-accessible credential vault via service account tokens",
+      "intent": "Agents need credential access for email, logins, API calls. Hardcoded env vars have no rotation or audit. 1Password service accounts give scoped read-only access with full audit trail — aligned with data sovereignty and security-by-default.",
+      "description": "Integrate 1Password service account model into agent runtime. Architecture: user's 1Password account has an Agent Vault with only the credentials the agent needs. Agent gets a service account token (OP_SERVICE_ACCOUNT_TOKEN) injected as Docker secret. op CLI or Python SDK installed in container. Helper utility claw-secret wraps credential fetch with logging. Security model: read-only, fetch-at-use (never persisted), never in LLM context, scoped vault, full audit, instant revoke, quarterly rotation. Each agent requests its own service account token programmatically. Ref: GitHub issue #8, 1Password AI agent docs.",
+      "priority": "should",
+      "category": "Security",
+      "steps": [
+        "Add op CLI or 1Password Python SDK to the Docker build stage (src/build/docker/)",
+        "Add OP_SERVICE_ACCOUNT_TOKEN to credential store (src/secure/credentials/) with Docker secret injection",
+        "Create claw-secret helper utility that wraps op read with logging and never exposes credentials to stdout/LLM context",
+        "Add credential probe for 1Password service account token validity (src/secure/credentials/probes.ts)",
+        "Add blueprint configuration for 1Password vault name and credential mapping",
+        "Add doctor check: 1Password service account token valid, vault accessible, op CLI installed",
+        "Add documentation: setup guide, security best practices, audit procedures",
+        "Add tests for credential fetch, token validation, error handling (vault not found, token revoked, op not installed)"
+      ],
+      "acceptanceCriteria": [
+        "op CLI or Python SDK available in agent container after clawhq build",
+        "Service account token injected via Docker secrets, never in env vars or config files",
+        "claw-secret utility fetches credentials with audit logging",
+        "Credentials never appear in LLM context, agent memory files, or logs",
+        "clawhq doctor checks 1Password connectivity and token validity",
+        "Blueprint supports 1Password vault configuration",
+        "Tests cover: successful fetch, revoked token, missing op CLI, vault not found"
+      ],
+      "scope": [
+        "src/build/docker/",
+        "src/secure/credentials/",
+        "src/operate/doctor/",
+        "src/design/blueprints/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-26",
+      "groomingNotes": "From GitHub issue #8 (real-clawdius-maximus). User confirmed: agents request their own service account token programmatically. Priority 'should' — core credential access pattern needed for any agent that interacts with external services. Aligns with security-by-default (no hardcoded keys) and data sovereignty (user controls vault, instant revoke)."
     }
   ]
 }
