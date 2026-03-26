@@ -2,8 +2,7 @@ aishore - AI Sprint Runner (v__VERSION__)
 Copyright (C) 2025-2026 Simon Plant. Licensed under Apache-2.0. See LICENSE.
 
 Usage: .aishore/aishore <command> [options]
-       .aishore/aishore auto <scope> [--parallel N] [--limit N] [--retries N] [--max-failures N] [--timeout N] [--no-merge] [--pr] [--refine] [--quick] [--warm-retry] [--category <name>] [--auto-review] [--no-summary] [--dry-run]
-       .aishore/aishore run [<count>|<ID>] [--limit N] [--timeout N] [--dry-run] [--no-merge] [--pr] [--retries N] [--refine] [--quick] [--warm-retry] [--category <name>] [--no-summary]
+       .aishore/aishore run [<count>|<ID>|<scope>] [--parallel N] [--limit N] [--retries N] [--max-failures N] [--timeout N] [--no-merge] [--pr] [--category <name>] [--auto-review] [--no-summary] [--dry-run]
 
 Commands:
   backlog list      List all items (features + bugs)
@@ -20,33 +19,30 @@ Commands:
     --priority <p>  must, should, could, or future (default: should)
     --category "."  Category
     --ready         Mark as ready for sprint
-    --ac "text"     Add acceptance criterion (repeatable)
+    --ac "text"     Acceptance criterion (repeatable, replaces all AC)
     --ac-verify "cmd"  Attach verify command to preceding --ac
-    --step "text"   Add implementation step (repeatable, ordered)
-    --scope "glob"  Add scope glob (repeatable)
-    --depends-on ID Add dependency on another item (repeatable)
+    --steps "text"  Implementation step (repeatable, replaces all steps)
+    --scope "glob"  Scope glob (repeatable, replaces all scope)
+    --depends-on ID Dependency (repeatable, replaces all deps)
   backlog show <ID> Show full detail of one item
   backlog edit <ID> Update fields on an item
     --title, --intent, --desc, --priority, --status, --category, --ready, --no-ready,
     --groomed-at [date], --groomed-notes "...",
-    --step "text"   Append implementation step (repeatable), --clear-steps to reset,
-    --remove-step N Remove step by 1-based index,
-    --scope "glob"  Add scope glob (repeatable), --clear-scope to reset,
-    --ac "text", --ac-verify "cmd"  Append testable acceptance criteria, --clear-ac to reset,
-    --remove-ac N   Remove acceptance criterion by 1-based index,
-    --depends-on ID  Add dependency (repeatable), --clear-depends-on to reset
+    --steps "text"  Set implementation steps (repeatable, replaces all steps),
+    --scope "glob"  Set scope globs (repeatable, replaces all scope),
+    --ac "text", --ac-verify "cmd"  Set acceptance criteria (repeatable, replaces all AC),
+    --depends-on ID  Set dependencies (repeatable, replaces all deps)
   backlog check <ID> Check readiness gates (title, intent, steps, AC, step length)
     --all           Audit every non-done item and print a summary table
   backlog rm <ID>   Remove an item (with confirmation)
     --force         Skip confirmation
   backlog history   List recent completed sprint items (last 20)
-  backlog sync      Detect items completed outside aishore (by scope vs git history)
-    --dry-run       Show candidates only, make no changes
-    --auto          Mark all flagged items done without prompting
   backlog populate  Use AI to populate backlog from PRODUCT.md (non-interactive)
     --preview       Show proposed items without modifying backlog
 
-  auto <scope>      Autonomous mode — drive backlog to completion
+  run [count]       Run N sprints (default: 1, feature branches, push/pull)
+  run <ID>          Run specific item by ID (e.g., TEST-006)
+  run <scope>       Drain backlog by scope — enables auto-grooming & circuit breaker
     done            Drain entire backlog
     p0              Complete all P0 (must) items
     p1              Complete all P0+P1 (must + should) items
@@ -58,29 +54,10 @@ Commands:
     --timeout N     Kill agent after N minutes (default: 0 = no limit)
     --no-merge      Keep feature branches for PR review
     --pr            Create GitHub PR (implies --no-merge, requires gh CLI)
-    --refine        Refine spec on exhausted retries and try once more
-    --quick         Skip maturity protocol (fast iteration)
-    --warm-retry    Continue existing session on retry (retains prior context)
     --category <name>  Only run items matching this category
     --auto-review   Run architecture review automatically after completion
     --no-summary    Suppress end-of-session summary table
-    --dry-run       Preview first item without running
-
-  run [count]       Run N sprints (default: 1, feature branches, push/pull)
-  run <ID>          Run specific item by ID (e.g., TEST-006)
-    --dry-run       Preview what would happen without running agents
-    --timeout N     Kill agent after N minutes (default: 0 = no limit)
-    --no-merge      Keep feature branches for PR review (push, don't merge)
-    --pr            Create GitHub PR (implies --no-merge, requires gh CLI)
-    --retries N     Allow up to N retry attempts on validation failure
-    --refine        Refine spec on exhausted retries and try once more
-    --quick         Skip maturity protocol (fast iteration)
-    --warm-retry    Continue existing session on retry (retains prior context)
-    --category <name>  Only run items matching this category
-    --auto-review   Run architecture review after completion
-    --limit N       Cap session at N successful items then exit cleanly
-    --no-summary    Suppress end-of-session summary table
-    --parallel N    Run up to N items concurrently in worktrees (1-4, default: 1)
+    --dry-run       Preview without running agents
 
   groom             Groom bugs/tech debt (Tech Lead mode)
     --backlog       Groom features instead (Product Owner mode)
@@ -101,7 +78,6 @@ Commands:
   update            Update from upstream (--dry-run to check, --force to override)
   clean             Archive and remove done items (--dry-run to preview, --no-archive to skip)
   config check      Validate config.yaml and print effective settings with sources
-  diagnose          Show extended diagnostics from last sprint failure
   checksums         Regenerate checksums.sha256 for update verification
   init              Setup wizard — checks prerequisites, configures project
     -y, --yes       Accept all detected defaults (non-interactive)
@@ -109,17 +85,17 @@ Commands:
   help, -h, --help         Show this help
 
 Examples:
-  .aishore/aishore auto done            # Drain entire backlog autonomously
-  .aishore/aishore auto done --parallel 2  # Run 2 items concurrently
-  .aishore/aishore auto p1 --retries 2  # Complete must + should, with retries
-  .aishore/aishore run FEAT-001         # Run specific item
-  .aishore/aishore run --no-merge 3     # Keep branches for PR review
-  .aishore/aishore run --pr FEAT-001    # Create GitHub PR for review
-  .aishore/aishore auto done --timeout 5   # Kill agents running longer than 5 min
-  .aishore/aishore auto done --category documentation  # Only documentation items
-  .aishore/aishore groom --backlog      # Groom features
-  .aishore/aishore groom --architect   # Detect missing scaffolding, add skeleton items
-  .aishore/aishore update --dry-run     # Check for updates
+  .aishore/aishore run done                # Drain entire backlog
+  .aishore/aishore run done --parallel 2   # Run 2 items concurrently
+  .aishore/aishore run p1 --retries 2      # Complete must + should, with retries
+  .aishore/aishore run FEAT-001            # Run specific item
+  .aishore/aishore run --no-merge 3        # Keep branches for PR review
+  .aishore/aishore run --pr FEAT-001       # Create GitHub PR for review
+  .aishore/aishore run done --timeout 5    # Kill agents running longer than 5 min
+  .aishore/aishore run done --category documentation  # Only documentation items
+  .aishore/aishore groom --backlog         # Groom features
+  .aishore/aishore groom --architect       # Detect missing scaffolding, add skeleton items
+  .aishore/aishore update --dry-run        # Check for updates
 
 Files:
   backlog/backlog.json    Your feature backlog (user content)

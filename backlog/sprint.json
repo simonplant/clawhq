@@ -1,35 +1,29 @@
 {
-  "sprintId": "sprint-1774548813",
-  "startedAt": "2026-03-26T11:13:33-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774552988",
+  "startedAt": "2026-03-26T12:23:08-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "BUG-128",
-    "title": "Security scanner alert: potential real secrets in git history — sk-ant-, ghp_, AKIA, private keys",
-    "intent": "Git history may contain real API keys and tokens. If any are live, they must be rotated immediately and history scrubbed. False positives must be confirmed as false.",
-    "description": "Automated security scanner flagged 131x sk-ant- matches, 7x ghp_ (GitHub PATs), 16x AKIA (AWS keys), 5x sk- patterns, 1x Slack token, 6x private key headers in clawhq git history. Also 1x sk-ant- each in simonplant-com, simonplant.com, easy-markdown, and 2x in toolkit. Most are likely false positives from test fixtures (scanner.test.ts, probes.test.ts, patterns.ts) but git history matches need human review. Ref: GitHub issue #5.",
+    "id": "BUG-113",
+    "title": "SSH host key never collected at provision time — deploy update uses accept-new on every connection",
+    "intent": "Every deploy update SSH connection must verify the remote host key against the key collected at provision time. accept-new must never be used for a known instance.",
+    "description": "In engine.ts, addInstance() is called without sshHostKey. The ProvisionedInstance type has a sshHostKey field and the registry supports it, but nothing collects the host key after provisioning. As a result, all deploy update SSH connections hit the buildHostKeyArgs() fallback in update.ts (lines 212-237) which uses StrictHostKeyChecking=accept-new with UserKnownHostsFile=/dev/null. This means: (1) the host key is trusted blindly on first connect, (2) the key is never stored, (3) every subsequent deploy update re-trusts blindly again. A MITM attacker who intercepts any deploy update connection can inject commands into the remote agent. Fix: after provisioning health check passes, run ssh-keyscan -t ed25519 <ipAddress> to collect the host public key, then store it in the registry. Note: registry currently only has updateInstanceStatus() — a new updateInstanceField() or extension is needed to write sshHostKey to an existing instance record.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Run git log -p --all -S 'sk-ant-' to find actual commits containing Anthropic key patterns — distinguish test fixtures from real keys",
-      "Run git log -p --all -S 'ghp_' to find GitHub PAT commits — check if tokens are real (40+ hex chars after prefix)",
-      "Run git log -p --all -S 'AKIA' to find AWS key commits — check for real 20-char key IDs",
-      "Run git log -p --all -S 'PRIVATE KEY' to find private key header commits",
-      "For any confirmed real secrets: rotate immediately (GitHub Settings, AWS Console, Anthropic Console)",
-      "Use git filter-repo or BFG Repo-Cleaner to scrub confirmed secrets from history",
-      "Verify scrub succeeded: re-run scanner, confirm zero real matches",
-      "Close GitHub issue #5 with findings summary"
+      "Read src/cloud/provisioning/engine.ts — find both addInstance() calls (lines ~172 and ~236) and the post-health-check block (line ~269)",
+      "Read src/cloud/provisioning/registry.ts — understand updateInstanceStatus() and how to extend it to support writing sshHostKey",
+      "Add a function to collect host key: spawn ssh-keyscan -t ed25519 <ipAddress>, parse output, return key string",
+      "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function",
+      "If ssh-keyscan fails, log warning and continue — sshHostKey remains unset, accept-new fallback applies only in that case",
+      "Add tests covering: successful key collection and storage, ssh-keyscan failure graceful degradation, update.ts strict mode when key is present",
+      "Run npm test to confirm all tests pass"
     ],
     "acceptanceCriteria": [
-      "All git history matches reviewed and classified as real or false positive",
-      "Any confirmed real secrets rotated at the source (API dashboard, console)",
-      "Git history scrubbed of confirmed secrets using git filter-repo or BFG",
-      "Re-scan confirms zero real secret matches in git history",
-      "GitHub issue #5 closed with summary of findings and actions taken"
+      "After a successful provision, the instance record in instances.json has a non-empty sshHostKey field",
+      "A subsequent clawhq deploy update connection to that instance uses StrictHostKeyChecking=yes (not accept-new)",
+      "If ssh-keyscan fails at provision time, provisioning still completes and a warning is logged — sshHostKey remains unset and accept-new fallback applies only in that case",
+      "Existing deploy update and provisioning tests pass with no regression"
     ],
     "scope": [],
-    "startedAt": "2026-03-26T11:13:33-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-26T11:17:01-07:00"
-  },
-  "completedAt": "2026-03-26T11:17:01-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-26T12:23:08-07:00"
+  }
 }
