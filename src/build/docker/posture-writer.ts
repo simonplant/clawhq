@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 import { getPostureConfig } from "./posture.js";
+
 import type { BuildSecurityPosture, PostureConfig } from "./types.js";
 
 // ── Constants ───────────────────────────────────────────────────────────────

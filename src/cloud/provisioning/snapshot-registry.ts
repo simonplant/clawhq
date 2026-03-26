@@ -52,6 +52,7 @@ function writeSnapshotRegistry(deployDir: string, registry: SnapshotRegistry): v
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
+  chmodSync(dir, DIR_MODE_SECRET);
 
   const content = JSON.stringify(registry, null, 2) + "\n";
   const tmpName = `.snapshots.tmp.${randomBytes(6).toString("hex")}`;

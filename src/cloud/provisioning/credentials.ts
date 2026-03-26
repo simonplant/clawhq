@@ -52,6 +52,7 @@ function writeCloudCredentials(deployDir: string, creds: CloudCredentials): void
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   }
+  chmodSync(dir, DIR_MODE_SECRET);
 
   const content = JSON.stringify(creds, null, 2) + "\n";
   const tmpName = `.credentials.tmp.${randomBytes(6).toString("hex")}`;
