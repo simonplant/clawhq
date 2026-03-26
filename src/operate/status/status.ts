@@ -129,8 +129,7 @@ async function getContainerStatus(
       health: svc.Health ?? "none",
       startedAt: svc.RunningFor ?? svc.Status ?? "unknown",
     };
-  } catch (e) {
-    console.warn(`[status] Failed to get container status:`, e);
+  } catch {
     return null;
   }
 }
@@ -163,8 +162,7 @@ async function getConfigStatus(
 
   try {
     await access(configPath, constants.R_OK);
-  } catch (e) {
-    console.warn(`[status] Failed to access config file:`, e);
+  } catch {
     return { valid: false, errors: ["Config file not found"] };
   }
 
@@ -216,8 +214,7 @@ async function getDiskUsage(
     if (isNaN(totalMb) || isNaN(freeMb) || isNaN(usedPercent)) return null;
 
     return { totalMb, freeMb, usedPercent };
-  } catch (e) {
-    console.warn(`[status] Failed to get disk usage:`, e);
+  } catch {
     return null;
   }
 }

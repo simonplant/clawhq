@@ -161,6 +161,7 @@ describe("formatProbeReport", () => {
       results: [],
       passed: 0,
       failed: 0,
+      skipped: 0,
       healthy: false,
     };
 
@@ -174,6 +175,7 @@ describe("formatProbeReport", () => {
       results: [passResult],
       passed: 1,
       failed: 0,
+      skipped: 0,
       healthy: true,
     };
 
@@ -190,6 +192,7 @@ describe("formatProbeReport", () => {
       results: [failResult],
       passed: 0,
       failed: 1,
+      skipped: 0,
       healthy: false,
     };
 
@@ -197,7 +200,7 @@ describe("formatProbeReport", () => {
     expect(output).toContain("✘ FAIL");
     expect(output).toContain("Key rejected (401)");
     expect(output).toContain("→ Regenerate your key");
-    expect(output).toContain("0 passed, 1 failed out of 1");
+    expect(output).toContain("1 failed out of 1");
   });
 
   it("formats unconfigured integrations with skip marker", () => {
@@ -205,7 +208,8 @@ describe("formatProbeReport", () => {
       timestamp: new Date().toISOString(),
       results: [missingResult],
       passed: 0,
-      failed: 1,
+      failed: 0,
+      skipped: 1,
       healthy: false,
     };
 
@@ -218,7 +222,8 @@ describe("formatProbeReport", () => {
       timestamp: new Date().toISOString(),
       results: [passResult, failResult, missingResult],
       passed: 1,
-      failed: 2,
+      failed: 1,
+      skipped: 1,
       healthy: false,
     };
 
@@ -226,7 +231,7 @@ describe("formatProbeReport", () => {
     expect(output).toContain("✔ pass");
     expect(output).toContain("✘ FAIL");
     expect(output).toContain("- skip");
-    expect(output).toContain("1 passed, 2 failed out of 3");
+    expect(output).toContain("1 passed, 1 failed, 1 skipped out of 3");
   });
 
   it("pluralizes correctly for multiple credentials", () => {
@@ -235,6 +240,7 @@ describe("formatProbeReport", () => {
       results: [passResult, { ...passResult, integration: "Other", envKey: "OTHER_KEY" }],
       passed: 2,
       failed: 0,
+      skipped: 0,
       healthy: true,
     };
 

@@ -170,7 +170,6 @@ async function parseActivityFile(filePath: string): Promise<ParseResult> {
     }
     activities = parsed as GoogleAssistantActivity[];
   } catch (err) {
-    console.warn("[evolve] Failed to parse Google activity JSON:", err);
     return {
       success: false,
       source: "google-assistant",
@@ -225,7 +224,6 @@ async function parseRoutineFile(filePath: string): Promise<ParsedRoutine[]> {
   try {
     raw = await readFile(filePath, { encoding: "utf-8" });
   } catch (err) {
-    console.warn("[evolve] Failed to read routine file:", filePath, err);
     return [];
   }
 
@@ -249,7 +247,6 @@ async function parseRoutineFile(filePath: string): Promise<ParsedRoutine[]> {
         source: "google-assistant" as const,
       }));
   } catch (err) {
-    console.warn("[evolve] Failed to parse routine JSON:", filePath, err);
     return [];
   }
 }
@@ -269,7 +266,6 @@ async function findFiles(
   try {
     entries = await readdir(dir);
   } catch (err) {
-    console.warn("[evolve] Failed to read directory:", dir, err);
     return [];
   }
 
@@ -301,7 +297,6 @@ async function findRoutineFiles(
   try {
     entries = await readdir(dir);
   } catch (err) {
-    console.warn("[evolve] Failed to read directory:", dir, err);
     return [];
   }
 
@@ -313,8 +308,7 @@ async function findRoutineFiles(
     if (entryStat.isDirectory()) {
       if (ROUTINE_DIR_NAMES.includes(entry)) {
         // This is a routines directory — grab all JSON files
-        const routineEntries = await readdir(fullPath).catch((err) => {
-          console.warn("[evolve] Failed to read routines directory:", fullPath, err);
+        const routineEntries = await readdir(fullPath).catch(() => {
           return [] as string[];
         });
         for (const re of routineEntries) {

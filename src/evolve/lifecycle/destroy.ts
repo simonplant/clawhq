@@ -73,7 +73,7 @@ async function secureWipe(filePath: string): Promise<void> {
       await writeFile(filePath, Buffer.alloc(stat.size));
     }
   } catch (err) {
-    console.warn("[evolve] Failed to secure-wipe file:", filePath, err);
+    // Secure-wipe failure — continue with normal unlink
   }
 }
 
@@ -124,7 +124,7 @@ export async function destroyAgent(options: DestroyOptions): Promise<DestroyResu
       });
       totalBytes += stat.size;
     } catch (err) {
-      console.warn("[evolve] Failed to hash file before destroy:", filePath, err);
+      // Hash failure — file will still be destroyed, just without proof
     }
   }
 

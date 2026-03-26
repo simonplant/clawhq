@@ -216,7 +216,6 @@ async function getImageDigest(tag: string): Promise<string | undefined> {
     ]);
     return stdout.trim() || undefined;
   } catch (e) {
-    console.warn(`[installer:source] Failed to get image ID for tag:`, e);
     return undefined;
   }
 }

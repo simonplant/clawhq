@@ -181,7 +181,6 @@ function parsePreferencesResponse(
         confidence: normalizeConfidence(String(item.confidence)),
       }));
   } catch (err) {
-    console.warn("[evolve] Failed to parse LLM preference output:", err);
     return [];
   }
 }

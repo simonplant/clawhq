@@ -32,7 +32,6 @@ export async function loadToolManifest(deployDir: string): Promise<ToolManifest>
     const raw = await readFile(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
-    console.warn("[evolve] Failed to read tool manifest:", err);
     return { version: 1, tools: [] };
   }
   if (parsed.version !== 1) {

@@ -164,7 +164,6 @@ async function getImageInfo(tag: string): Promise<ImageInfo> {
       ],
     };
   } catch (e) {
-    console.warn(`[docker:build] Failed to inspect image ${tag}:`, e);
     return {
       id: "unknown",
       hash: "unknown",

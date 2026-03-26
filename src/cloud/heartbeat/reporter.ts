@@ -49,8 +49,7 @@ export function readHeartbeatState(deployDir: string): HeartbeatState {
   try {
     const raw = readFileSync(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    console.warn("[cloud] Failed to read heartbeat state:", err);
+  } catch {
     return { version: 1, consecutiveFailures: 0 };
   }
   if (parsed.version !== 1) {
@@ -80,8 +79,8 @@ function writeHeartbeatState(deployDir: string, state: HeartbeatState): void {
     writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
     chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
-  } catch (err) {
-    console.warn("[cloud] Failed to write heartbeat state:", err);
+  } catch {
+    // Write failed — heartbeat state is best-effort
   }
 }
 
@@ -111,8 +110,8 @@ function dirSizeBytes(dirPath: string): number {
         total += dirSizeBytes(fullPath);
       }
     }
-  } catch (err) {
-    console.warn(`[heartbeat] dirSizeBytes failed for ${dirPath}:`, err);
+  } catch {
+    // Best-effort size calculation
   }
   return total;
 }
@@ -127,8 +126,7 @@ function countIntegrations(deployDir: string): number {
     const raw = readFileSync(credPath, "utf-8");
     const store = JSON.parse(raw) as { credentials?: readonly unknown[] };
     return store.credentials?.length ?? 0;
-  } catch (err) {
-    console.warn(`[heartbeat] countIntegrations failed for ${credPath}:`, err);
+  } catch {
     return 0;
   }
 }

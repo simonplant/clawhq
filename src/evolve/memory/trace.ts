@@ -68,7 +68,6 @@ export async function readTraces(
       .filter((line) => line.trim().length > 0)
       .map((line) => JSON.parse(line) as DecisionTrace);
   } catch (err) {
-    console.warn("[evolve] Failed to read decision traces:", err);
     return [];
   }
 }

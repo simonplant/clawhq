@@ -44,8 +44,7 @@ export function readFleetRegistry(deployDir: string): FleetRegistry {
   try {
     const raw = readFileSync(path, "utf-8");
     return JSON.parse(raw) as FleetRegistry;
-  } catch (err) {
-    console.warn("[cloud] Failed to read fleet registry:", err);
+  } catch {
     return { version: 1, agents: [] };
   }
 }
@@ -67,8 +66,8 @@ function writeFleetRegistry(deployDir: string, registry: FleetRegistry): void {
     writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
     chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
-  } catch (err) {
-    console.warn("[cloud] Failed to write fleet registry:", err);
+  } catch {
+    // Write failed — fleet registry is best-effort
   }
 }
 

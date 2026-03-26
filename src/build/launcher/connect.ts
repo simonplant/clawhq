@@ -150,7 +150,6 @@ export function updateChannelConfig(deployDir: string, channel: ChannelName): vo
   try {
     config = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
-    console.warn("[connect] Failed to parse openclaw.json:", err);
     throw new Error("Failed to parse openclaw.json — file may be corrupted", { cause: err });
   }
 

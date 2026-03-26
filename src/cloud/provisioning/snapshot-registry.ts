@@ -36,8 +36,7 @@ export function readSnapshotRegistry(deployDir: string): SnapshotRegistry {
   try {
     const raw = readFileSync(path, "utf-8");
     return JSON.parse(raw) as SnapshotRegistry;
-  } catch (err) {
-    console.warn("[provisioning] Failed to read snapshot registry:", err);
+  } catch {
     return { version: 1, snapshots: [] };
   }
 }

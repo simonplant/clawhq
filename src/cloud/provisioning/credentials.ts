@@ -36,8 +36,7 @@ export function readCloudCredentials(deployDir: string): CloudCredentials {
   try {
     const raw = readFileSync(path, "utf-8");
     return JSON.parse(raw) as CloudCredentials;
-  } catch (err) {
-    console.warn("[provisioning] Failed to read cloud credentials:", err);
+  } catch {
     return { version: 1, providers: {} };
   }
 }

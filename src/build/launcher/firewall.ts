@@ -108,7 +108,6 @@ export async function removeFirewall(signal?: AbortSignal): Promise<FirewallResu
     try {
       await iptables(["-D", "FORWARD", "-j", CHAIN_NAME], signal);
     } catch (e) {
-      console.warn(`[firewall:remove] Failed to detach chain from FORWARD:`, e);
       // Not attached — that's fine
     }
 
@@ -117,7 +116,6 @@ export async function removeFirewall(signal?: AbortSignal): Promise<FirewallResu
       await iptables(["-F", CHAIN_NAME], signal);
       await iptables(["-X", CHAIN_NAME], signal);
     } catch (e) {
-      console.warn(`[firewall:remove] Failed to flush/delete chain:`, e);
       // Chain doesn't exist — that's fine
     }
 
@@ -214,7 +212,7 @@ export function watchAndReapply(
           if (!signal.aborted) {
             applyFirewall(options).then(
               (result) => onReapply?.(result),
-              (err) => console.warn("[firewall:watch] Reapply failed:", err),
+              () => { /* reapply failed — non-fatal */ },
             );
           }
         }, 2_000);
@@ -222,10 +220,8 @@ export function watchAndReapply(
     });
   }
 
-  proc.on("error", (err) => {
-    if (!signal.aborted) {
-      console.warn("[firewall:watch] Docker events stream failed:", err);
-    }
+  proc.on("error", () => {
+    // Docker events stream failed — non-fatal
   });
 
   return controller;
@@ -296,7 +292,6 @@ export async function loadAllowlist(deployDir: string): Promise<FirewallAllowEnt
 
     return entries;
   } catch (e) {
-    console.warn(`[firewall:allowlist] Failed to load allowlist file:`, e);
     // No allowlist file or invalid YAML — return empty (default: block all non-DNS egress)
     return [];
   }
@@ -313,7 +308,6 @@ async function ensureChain(signal?: AbortSignal): Promise<void> {
     // Try to create the chain
     await iptables(["-N", CHAIN_NAME], signal);
   } catch (e) {
-    console.warn(`[firewall:ensure-chain] Chain already exists, flushing:`, e);
     // Chain already exists — flush it
     await iptables(["-F", CHAIN_NAME], signal);
   }
@@ -324,7 +318,6 @@ async function attachToForward(signal?: AbortSignal): Promise<void> {
     // Check if already attached
     await iptables(["-C", "FORWARD", "-j", CHAIN_NAME], signal);
   } catch (e) {
-    console.warn(`[firewall:attach] Chain not yet attached to FORWARD, adding:`, e);
     // Not attached — add it
     await iptables(["-I", "FORWARD", "-j", CHAIN_NAME], signal);
   }

@@ -343,7 +343,6 @@ async function mergeCronJobs(
       existingJobs = parsed as CronJobDefinition[];
     }
   } catch (err) {
-    console.warn("[evolve] Failed to read existing cron jobs, starting fresh:", err);
   }
 
   // Don't duplicate jobs by ID

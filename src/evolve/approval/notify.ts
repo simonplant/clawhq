@@ -136,7 +136,6 @@ export async function sendResolutionConfirmation(
       }),
     });
   } catch (err) {
-    console.warn("[evolve] Failed to edit Telegram confirmation message:", err);
   }
 }
 

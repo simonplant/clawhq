@@ -31,6 +31,8 @@ export interface ProbeReport {
   readonly passed: number;
   /** Number of probes that failed. */
   readonly failed: number;
+  /** Number of probes skipped (not configured). */
+  readonly skipped: number;
   /** True when all probes passed. */
   readonly healthy: boolean;
 }

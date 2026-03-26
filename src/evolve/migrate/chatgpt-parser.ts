@@ -100,7 +100,6 @@ export async function parseChatGPTExport(
     }
     conversations = parsed as ChatGPTConversation[];
   } catch (err) {
-    console.warn("[evolve] Failed to parse ChatGPT export JSON:", err);
     return {
       success: false,
       source: "chatgpt",

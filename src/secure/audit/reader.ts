@@ -38,8 +38,7 @@ async function readJsonl<T>(filePath: string): Promise<T[]> {
       .split("\n")
       .filter((line) => line.length > 0)
       .map((line) => JSON.parse(line) as T);
-  } catch (err) {
-    console.warn(`[secure/audit] Failed to read audit log ${filePath}`, err);
+  } catch {
     return [];
   }
 }

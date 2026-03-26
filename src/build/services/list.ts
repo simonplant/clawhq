@@ -23,7 +23,6 @@ export function listServices(options: ServiceListOptions): ServiceListResult {
   try {
     composeRaw = readFileSync(composePath, "utf-8");
   } catch (e) {
-    console.warn(`[services:list] Failed to read docker-compose.yml:`, e);
     return { services: [] };
   }
 
@@ -31,7 +30,6 @@ export function listServices(options: ServiceListOptions): ServiceListResult {
   try {
     compose = yamlParse(composeRaw) as Record<string, unknown>;
   } catch (e) {
-    console.warn(`[services:list] Failed to parse docker-compose.yml:`, e);
     return { services: [] };
   }
 

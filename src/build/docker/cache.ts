@@ -66,7 +66,6 @@ export async function checkCache(
     previousStage1Hash = manifest.stage1Hash;
     previousStage2Hash = manifest.stage2Hash;
   } catch (e) {
-    console.warn(`[docker:cache] Failed to read previous manifest:`, e);
     // No previous manifest — treat as changed
   }
 

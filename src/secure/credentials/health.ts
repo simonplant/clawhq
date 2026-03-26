@@ -46,13 +46,15 @@ export async function runProbes(options: RunProbesOptions): Promise<ProbeReport>
     : results.filter((r) => r.message !== "Not configured");
 
   const passed = filtered.filter((r) => r.ok).length;
-  const failed = filtered.filter((r) => !r.ok).length;
+  const skipped = filtered.filter((r) => !r.ok && r.message === "Not configured").length;
+  const failed = filtered.filter((r) => !r.ok && r.message !== "Not configured").length;
 
   return {
     timestamp: new Date().toISOString(),
     results: filtered,
     passed,
     failed,
+    skipped,
     healthy: failed === 0 && filtered.length > 0,
   };
 }
@@ -112,11 +114,15 @@ export function formatProbeReport(report: ProbeReport): string {
   const lines = [header, separator, ...rows];
 
   // Summary line
-  const { passed, failed } = report;
+  const { passed, failed, skipped } = report;
   const total = report.results.length;
+  const parts: string[] = [];
+  if (passed > 0) parts.push(`${passed} passed`);
+  if (failed > 0) parts.push(`${failed} failed`);
+  if (skipped > 0) parts.push(`${skipped} skipped`);
   const summary = report.healthy
     ? `\n✔ All ${total} credential${total === 1 ? "" : "s"} healthy`
-    : `\n${passed} passed, ${failed} failed out of ${total}`;
+    : `\n${parts.join(", ")} out of ${total}`;
   lines.push(summary);
 
   return lines.join("\n");

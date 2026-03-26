@@ -103,7 +103,6 @@ export async function startApprovalBot(opts: ApprovalBotOptions): Promise<void> 
       }
     } catch (err) {
       if (signal?.aborted) break;
-      console.warn("[evolve] Telegram polling error:", err);
       await sleep(5000, signal);
     }
   }
@@ -150,7 +149,6 @@ async function answerCallback(
       }),
     });
   } catch (err) {
-    console.warn("[evolve] Failed to answer Telegram callback:", err);
   }
 }
 
