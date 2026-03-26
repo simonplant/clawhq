@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774548813",
   "startedAt": "2026-03-26T11:13:33-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "BUG-128",
     "title": "Security scanner alert: potential real secrets in git history — sk-ant-, ghp_, AKIA, private keys",
@@ -26,6 +26,10 @@
       "GitHub issue #5 closed with summary of findings and actions taken"
     ],
     "scope": [],
-    "startedAt": "2026-03-26T11:13:33-07:00"
-  }
+    "startedAt": "2026-03-26T11:13:33-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-26T11:17:01-07:00"
+  },
+  "completedAt": "2026-03-26T11:17:01-07:00",
+  "attempts": 1
 }

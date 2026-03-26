@@ -519,7 +519,7 @@
       "readyForSprint": false,
       "groomedAt": "2026-03-26",
       "groomingNotes": "From GitHub issue #5 (real-clawdius-maximus / security scanner). Priority 'must' — potential live secrets in git history is a security incident until confirmed false positive. Note: git history scrubbing (git filter-repo/BFG) is destructive and requires force-push — sprint should confirm findings first, then scrub with user approval. Scanner also noted simonplant-com and other repos have matches — those are out of scope for this item.",
-      "completedAt": "2026-03-26T11:30:00-07:00"
+      "completedAt": "2026-03-26T11:17:01-07:00"
     }
   ]
 }
