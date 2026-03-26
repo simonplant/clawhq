@@ -6,7 +6,7 @@
  * Probes never throw — they return a result object.
  */
 
-import { ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION, OLLAMA_DEFAULT_URL, OPENAI_API_BASE, TELEGRAM_API_BASE, WHATSAPP_API_BASE, WHATSAPP_API_VERSION } from "../../config/defaults.js";
+import { ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION, OLLAMA_DEFAULT_URL, ONEPASSWORD_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE, WHATSAPP_API_BASE, WHATSAPP_API_VERSION } from "../../config/defaults.js";
 
 import { getIntegrationDef } from "./registry.js";
 
@@ -120,6 +120,23 @@ const validators: Record<string, Validator> = {
     if ("error" in result) return { ok: false, message: `API unreachable: ${result.error}` };
     if (result.response.status === 200) return { ok: true, message: "Connected to WhatsApp Business API" };
     if (result.response.status === 401) return { ok: false, message: "Access token rejected (401)" };
+    return { ok: false, message: `Unexpected status ${result.response.status}` };
+  },
+
+  onepassword: async (env) => {
+    const token = env["OP_SERVICE_ACCOUNT_TOKEN"];
+    if (!token) return { ok: false, message: "OP_SERVICE_ACCOUNT_TOKEN not set" };
+    if (!token.startsWith("ops_")) return { ok: false, message: "OP_SERVICE_ACCOUNT_TOKEN format invalid (expected ops_... prefix)" };
+
+    const result = await probeFetch(`${ONEPASSWORD_API_BASE}/api/v1/auditevents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ limit: 1 }),
+    });
+    if ("error" in result) return { ok: false, message: `1Password API unreachable: ${result.error}` };
+    if (result.response.status === 200) return { ok: true, message: "Connected to 1Password vault" };
+    if (result.response.status === 401) return { ok: false, message: "Service account token rejected (401)" };
+    if (result.response.status === 403) return { ok: false, message: "Service account lacks vault access (403)" };
     return { ok: false, message: `Unexpected status ${result.response.status}` };
   },
 };
