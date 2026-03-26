@@ -35,6 +35,9 @@ export const OPENAI_API_BASE = "https://api.openai.com";
 /** Base URL for the Telegram Bot API (no trailing slash). */
 export const TELEGRAM_API_BASE = "https://api.telegram.org";
 
+/** Base URL for the 1Password Events API (no trailing slash). */
+export const ONEPASSWORD_API_BASE = "https://events.1password.com";
+
 // ── Container identity ──────────────────────────────────────────────────────
 
 /** Container non-root user (LM-06 landmine requirement). */

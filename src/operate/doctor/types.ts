@@ -30,7 +30,8 @@ export type DoctorCheckName =
   | "air-gap-active"
   | "tool-access-grants"
   | "migration-state"
-  | "underscore-tool-methods";
+  | "underscore-tool-methods"
+  | "onepassword-setup";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

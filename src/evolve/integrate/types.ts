@@ -27,7 +27,7 @@ export interface IntegrationDefinition {
 }
 
 /** Category of an integration. */
-export type IntegrationCategory = "communication" | "ai" | "data" | "productivity";
+export type IntegrationCategory = "communication" | "ai" | "data" | "productivity" | "security";
 
 /** An environment variable required by an integration. */
 export interface IntegrationEnvKey {

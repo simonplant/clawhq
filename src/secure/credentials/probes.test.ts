@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { probeAnthropic, probeOpenAI, probeTelegram } from "./probes.js";
+import { probe1Password, probeAnthropic, probeOpenAI, probeTelegram } from "./probes.js";
 
 // ── Fetch Mock ───────────────────────────────────────────────────────────────
 
@@ -200,5 +200,71 @@ describe("probeTelegram", () => {
 
     const [url] = fetchMock.mock.calls[0];
     expect(url).toBe("https://api.telegram.org/bot123:ABC/getMe");
+  });
+});
+
+// ── 1Password Probe ─────────────────────────────────────────────────────────
+
+describe("probe1Password", () => {
+  it("returns missing when token is absent", async () => {
+    const result = await probe1Password({});
+    expect(result.ok).toBe(false);
+    expect(result.message).toBe("Not configured");
+    expect(result.envKey).toBe("OP_SERVICE_ACCOUNT_TOKEN");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid token format", async () => {
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "bad-token" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("format invalid");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("passes with valid token and 200 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { items: [] }));
+
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_test123abc" });
+    expect(result.ok).toBe(true);
+    expect(result.message).toBe("Valid");
+    expect(result.integration).toBe("1Password");
+  });
+
+  it("fails with 401 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(401));
+
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_expired" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("401");
+    expect(result.fix).toContain("Regenerate");
+  });
+
+  it("fails with 403 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(403));
+
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_noaccess" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("403");
+    expect(result.fix).toContain("vault");
+  });
+
+  it("handles network errors gracefully", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_test123abc" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("unreachable");
+    expect(result.fix).toContain("network");
+  });
+
+  it("sends correct authorization header", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { items: [] }));
+
+    await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_mytoken" });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://events.1password.com/api/v1/auditevents");
+    const headers = init?.headers as Record<string, string>;
+    expect(headers["Authorization"]).toBe("Bearer ops_mytoken");
   });
 });

@@ -139,6 +139,7 @@ export async function runChecks(
     checkToolAccessGrants(deployDir, version),
     checkMigrationState(deployDir, signal),
     checkUnderscoreToolMethods(deployDir, version),
+    check1PasswordSetup(deployDir),
   ]);
 }
 
@@ -1070,5 +1071,51 @@ async function checkAirGapActive(deployDir: string, signal?: AbortSignal): Promi
   } catch (err) {
     console.warn("[doctor:air-gap-active] Failed to check air-gap status:", err);
     return ok(name, "Air-gap check inconclusive", "info");
+  }
+}
+
+// ── 22. 1Password Setup ──────────────────────────────────────────────────────
+
+/** Check 1Password service account token is configured when the integration is active. */
+async function check1PasswordSetup(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "onepassword-setup";
+
+  try {
+    // Check if 1Password integration is configured by looking for the token in .env
+    const envPath = join(deployDir, "engine", ".env");
+    let envContent: string;
+    try {
+      envContent = await readFile(envPath, "utf-8");
+    } catch {
+      // No .env file — 1Password not configured, that's fine
+      return ok(name, "1Password not configured (no .env file)", "info");
+    }
+
+    const hasToken = envContent.split("\n").some(
+      (line) => line.startsWith("OP_SERVICE_ACCOUNT_TOKEN=") && line.split("=")[1]?.trim(),
+    );
+
+    if (!hasToken) {
+      // Token not present — 1Password not configured, skip silently
+      return ok(name, "1Password not configured", "info");
+    }
+
+    // Token is set — validate it's not obviously broken
+    const tokenLine = envContent.split("\n").find((l) => l.startsWith("OP_SERVICE_ACCOUNT_TOKEN="));
+    const token = tokenLine?.split("=").slice(1).join("=").trim() ?? "";
+
+    if (!token.startsWith("ops_")) {
+      return fail(
+        name,
+        "warning",
+        "OP_SERVICE_ACCOUNT_TOKEN has invalid format (expected ops_... prefix)",
+        "Regenerate service account token at https://my.1password.com/developer-tools/infrastructure-secrets/serviceaccount",
+      );
+    }
+
+    return ok(name, "1Password service account token configured");
+  } catch (err) {
+    console.warn("[doctor:onepassword-setup] Failed to check 1Password setup:", err);
+    return ok(name, "1Password check inconclusive", "info");
   }
 }

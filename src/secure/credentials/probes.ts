@@ -8,7 +8,7 @@
  * an actionable fix message on failure.
  */
 
-import { ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION, CREDENTIALS_PROBE_TIMEOUT_MS, OPENAI_API_BASE, TELEGRAM_API_BASE } from "../../config/defaults.js";
+import { ANTHROPIC_API_BASE, ANTHROPIC_API_VERSION, CREDENTIALS_PROBE_TIMEOUT_MS, ONEPASSWORD_API_BASE, OPENAI_API_BASE, TELEGRAM_API_BASE } from "../../config/defaults.js";
 
 import type { CredentialProbe, ProbeResult } from "./probe-types.js";
 
@@ -197,6 +197,56 @@ export const probeTelegram: CredentialProbe = async (env) => {
   return fail(integration, envKey, `Unexpected status ${response.status}`, "Check your bot token via @BotFather on Telegram");
 };
 
+// ── 1Password Probe ─────────────────────────────────────────────────────────
+
+/**
+ * Validate a 1Password service account token by calling the API introspect endpoint.
+ *
+ * Token format: starts with `ops_` (service account tokens).
+ */
+export const probe1Password: CredentialProbe = async (env) => {
+  const integration = "1Password";
+  const envKey = "OP_SERVICE_ACCOUNT_TOKEN";
+  const token = env[envKey];
+
+  if (!token) {
+    return missing(integration, envKey, `Set ${envKey} in your .env file. Create a service account at https://my.1password.com/developer-tools/infrastructure-secrets/serviceaccount`);
+  }
+
+  if (!token.startsWith("ops_")) {
+    return fail(integration, envKey, "Token format invalid (expected ops_... prefix)", `Check ${envKey} — service account tokens start with ops_`);
+  }
+
+  const result = await probeFetch(`${ONEPASSWORD_API_BASE}/api/v1/auditevents`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ limit: 1 }),
+  });
+
+  if ("error" in result) {
+    return fail(integration, envKey, `API unreachable: ${result.error}`, "Check your network connection or try again later");
+  }
+
+  const { response } = result;
+
+  if (response.status === 200) {
+    return pass(integration, envKey, "Valid");
+  }
+
+  if (response.status === 401) {
+    return fail(integration, envKey, "Token rejected (401 Unauthorized)", `Regenerate ${envKey} in 1Password developer settings`);
+  }
+
+  if (response.status === 403) {
+    return fail(integration, envKey, "Token forbidden (403) — check vault permissions", "Ensure the service account has access to the target vault");
+  }
+
+  return fail(integration, envKey, `Unexpected status ${response.status}`, "Check your 1Password service account status");
+};
+
 // ── Probe Registry ───────────────────────────────────────────────────────────
 
 /**
@@ -209,4 +259,5 @@ export const builtinProbes: readonly CredentialProbe[] = [
   probeAnthropic,
   probeOpenAI,
   probeTelegram,
+  probe1Password,
 ];

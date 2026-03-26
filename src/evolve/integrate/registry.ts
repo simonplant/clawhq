@@ -102,6 +102,17 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
     ],
     egressDomains: ["graph.facebook.com"],
   },
+  onepassword: {
+    name: "onepassword",
+    label: "1Password Vault",
+    description: "Secret retrieval from 1Password vault via service account — read-only, fetch-at-use, never in LLM context",
+    category: "security",
+    envKeys: [
+      { key: "OP_SERVICE_ACCOUNT_TOKEN", label: "1Password service account token", secret: true },
+      { key: "OP_VAULT", label: "1Password vault name or ID (optional)", secret: false, defaultValue: "" },
+    ],
+    egressDomains: ["my.1password.com", "events.1password.com"],
+  },
 };
 
 /** List all known integration names. */
