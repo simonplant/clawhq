@@ -29,7 +29,6 @@ export function loadIntegrationManifest(deployDir: string): IntegrationManifest 
     const raw = readFileSync(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
-    console.warn("[evolve] Failed to read integration manifest:", err);
     return { version: 1, integrations: [] };
   }
   if (parsed.version !== 1) {

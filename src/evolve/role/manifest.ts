@@ -57,7 +57,6 @@ export function loadRoleManifest(deployDir: string): RoleManifest {
     const raw = readFileSync(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
-    console.warn("[evolve] Failed to read role manifest:", err);
     return { version: 1, roles: [...BUILTIN_ROLES], assignments: {} };
   }
   if (parsed.version !== 1) {

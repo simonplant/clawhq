@@ -90,7 +90,6 @@ async function checkImages(
   try {
     await access(manifestFile, constants.R_OK);
   } catch (e) {
-    console.warn(`[preflight:images] Failed to access build manifest:`, e);
     return {
       name,
       passed: false,
@@ -110,7 +109,6 @@ async function checkImages(
     });
     return { name, passed: true, message: `Image ${tag} is available` };
   } catch (e) {
-    console.warn(`[preflight:images] Failed to inspect Docker image:`, e);
     return {
       name,
       passed: false,
@@ -204,7 +202,6 @@ async function checkPorts(signal?: AbortSignal): Promise<PreflightCheckResult> {
 
     return { name, passed: true, message: `Port ${GATEWAY_PORT} is available` };
   } catch (e) {
-    console.warn(`[preflight:ports] ss command failed, falling back to lsof:`, e);
     // ss not available (macOS) — try lsof
     try {
       await execFileAsync("lsof", ["-i", `:${GATEWAY_PORT}`, "-sTCP:LISTEN"], {
@@ -219,7 +216,6 @@ async function checkPorts(signal?: AbortSignal): Promise<PreflightCheckResult> {
         fix: `Stop the process using port ${GATEWAY_PORT} or change the gateway port in openclaw.json`,
       };
     } catch (e) {
-      console.warn(`[preflight:ports] lsof check failed (port likely free):`, e);
       // lsof exits non-zero when port is free
       return { name, passed: true, message: `Port ${GATEWAY_PORT} is available` };
     }

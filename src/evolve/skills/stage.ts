@@ -172,7 +172,7 @@ export async function readStagedFiles(
       const content = await readFile(join(stagingDir, file), "utf-8");
       results.push({ file, content });
     } catch (err) {
-      console.warn("[evolve] Skipping unreadable staged file:", file, err);
+      // Unreadable staged file — skip it
     }
   }
 

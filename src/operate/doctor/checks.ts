@@ -152,8 +152,7 @@ async function checkConfigExists(deployDir: string): Promise<DoctorCheckResult> 
   try {
     await access(configPath, constants.R_OK);
     return ok(name, "Config file exists");
-  } catch (e) {
-    console.warn(`[doctor:config-exists] Failed to access config file:`, e);
+  } catch {
     return fail(name, "error", "Config file not found at engine/openclaw.json", "Run: clawhq init --guided");
   }
 }
@@ -214,8 +213,7 @@ async function checkComposeExists(deployDir: string): Promise<DoctorCheckResult>
   try {
     await access(composePath, constants.R_OK);
     return ok(name, "Compose file exists");
-  } catch (e) {
-    console.warn(`[doctor:compose-exists] Failed to access compose file:`, e);
+  } catch {
     return fail(name, "error", "docker-compose.yml not found at engine/docker-compose.yml", "Run: clawhq init --guided");
   }
 }
@@ -318,8 +316,7 @@ async function checkContainerRunning(
       try {
         const svc = JSON.parse(line) as { State?: string };
         return svc.State === "running";
-      } catch (e) {
-        console.warn(`[doctor:container-running] Failed to parse container JSON:`, e);
+      } catch {
         return false;
       }
     });
@@ -328,8 +325,7 @@ async function checkContainerRunning(
       return fail(name, "warning", "Agent container is not running", "Run: clawhq up");
     }
     return ok(name, `Agent container is running (${running.length} service(s))`, "warning");
-  } catch (e) {
-    console.warn(`[doctor:container-running] Failed to check container status:`, e);
+  } catch {
     return fail(name, "warning", "Cannot check container status — Docker may not be running", "Run: clawhq up");
   }
 }
@@ -369,8 +365,7 @@ async function checkCapDrop(
       );
     }
     return ok(name, "Container has cap_drop: ALL");
-  } catch (e) {
-    console.warn(`[doctor:cap-drop] Failed to inspect container caps:`, e);
+  } catch {
     return fail(name, "info", "Cannot inspect container caps — container may not be running");
   }
 }
@@ -412,8 +407,7 @@ async function checkNoNewPrivileges(
       );
     }
     return ok(name, "Container has no-new-privileges");
-  } catch (e) {
-    console.warn(`[doctor:no-new-privileges] Failed to inspect container security opts:`, e);
+  } catch {
     return fail(name, "info", "Cannot inspect container security opts — container may not be running");
   }
 }
@@ -453,8 +447,7 @@ async function checkUserUid(
       );
     }
     return ok(name, "Container runs as UID 1000");
-  } catch (e) {
-    console.warn(`[doctor:user-uid] Failed to inspect container user:`, e);
+  } catch {
     return fail(name, "info", "Cannot inspect container user — container may not be running");
   }
 }
@@ -483,8 +476,8 @@ async function checkIdentitySize(deployDir: string): Promise<DoctorCheckResult> 
       if (config.identity?.bootstrapMaxChars) {
         maxChars = config.identity.bootstrapMaxChars;
       }
-    } catch (e) {
-      console.warn(`[doctor:identity-size] Failed to read bootstrapMaxChars from config, using default:`, e);
+    } catch {
+      // Use default bootstrapMaxChars
     }
 
     if (totalSize > maxChars) {
@@ -624,8 +617,7 @@ async function checkEnvVars(deployDir: string): Promise<DoctorCheckResult> {
     let envContent: string;
     try {
       envContent = await readFile(envPath, "utf-8");
-    } catch (e) {
-      console.warn(`[doctor:env-vars] Failed to read .env file:`, e);
+    } catch {
       return fail(name, "error", ".env file not found", "Run: clawhq init --guided");
     }
 
@@ -641,8 +633,7 @@ async function checkEnvVars(deployDir: string): Promise<DoctorCheckResult> {
     let composeContent: string;
     try {
       composeContent = await readFile(composePath, "utf-8");
-    } catch (e) {
-      console.warn(`[doctor:env-vars] Failed to read docker-compose.yml:`, e);
+    } catch {
       return fail(name, "warning", "docker-compose.yml not found — cannot check env var references");
     }
 
@@ -734,8 +725,7 @@ async function checkWorkspaceExists(deployDir: string): Promise<DoctorCheckResul
 
   try {
     await access(workspaceDir, constants.R_OK);
-  } catch (e) {
-    console.warn(`[doctor:workspace-exists] Failed to access workspace directory:`, e);
+  } catch {
     return fail(name, "error", "Workspace directory not found", "Run: clawhq init --guided");
   }
 
@@ -743,8 +733,7 @@ async function checkWorkspaceExists(deployDir: string): Promise<DoctorCheckResul
   for (const dir of requiredDirs) {
     try {
       await access(join(workspaceDir, dir), constants.R_OK);
-    } catch (e) {
-      console.warn(`[doctor:workspace-exists] Failed to access workspace/${dir}:`, e);
+    } catch {
       missing.push(dir);
     }
   }
@@ -771,8 +760,7 @@ async function checkGatewayReachable(signal?: AbortSignal): Promise<DoctorCheckR
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     return ok(name, `Gateway is reachable on localhost:${GATEWAY_DEFAULT_PORT}`);
-  } catch (e) {
-    console.warn(`[doctor:gateway-reachable] Failed to reach gateway:`, e);
+  } catch {
     return fail(
       name,
       "info",
@@ -817,8 +805,7 @@ async function checkDiskSpace(
       );
     }
     return ok(name, `${availMb}MB free disk space`);
-  } catch (e) {
-    console.warn(`[doctor:disk-space] Failed to check disk space:`, e);
+  } catch {
     return ok(name, "Disk space check skipped (df unavailable)", "info");
   }
 }
@@ -1068,8 +1055,7 @@ async function checkAirGapActive(deployDir: string, signal?: AbortSignal): Promi
       }
       return ok(name, "Air-gap firewall check skipped (requires sudo/iptables)", "info");
     }
-  } catch (err) {
-    console.warn("[doctor:air-gap-active] Failed to check air-gap status:", err);
+  } catch {
     return ok(name, "Air-gap check inconclusive", "info");
   }
 }
@@ -1114,8 +1100,7 @@ async function check1PasswordSetup(deployDir: string): Promise<DoctorCheckResult
     }
 
     return ok(name, "1Password service account token configured");
-  } catch (err) {
-    console.warn("[doctor:onepassword-setup] Failed to check 1Password setup:", err);
+  } catch {
     return ok(name, "1Password check inconclusive", "info");
   }
 }

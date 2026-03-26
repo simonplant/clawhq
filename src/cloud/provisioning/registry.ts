@@ -41,8 +41,7 @@ export function readInstanceRegistry(deployDir: string): InstanceRegistry {
   try {
     const raw = readFileSync(path, "utf-8");
     return JSON.parse(raw) as InstanceRegistry;
-  } catch (err) {
-    console.warn("[provisioning] Failed to read instance registry:", err);
+  } catch {
     return { version: 1, instances: [] };
   }
 }

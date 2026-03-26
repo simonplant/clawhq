@@ -62,7 +62,6 @@ export async function readManifest(
     const raw = await readFile(manifestPath(deployDir), "utf-8");
     return JSON.parse(raw) as BuildManifest;
   } catch (e) {
-    console.warn(`[docker:manifest] Failed to read build manifest:`, e);
     return null;
   }
 }

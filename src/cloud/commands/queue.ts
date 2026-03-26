@@ -77,8 +77,7 @@ export function readQueueState(deployDir: string): CommandQueueState {
   try {
     const raw = readFileSync(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    console.warn("[cloud] Failed to read command queue state:", err);
+  } catch {
     return { version: 1, pending: [], history: [] };
   }
   if (parsed.version !== 1) {

@@ -233,7 +233,6 @@ async function getInstalledSkillNames(deployDir: string): Promise<string[]> {
       .filter((s) => s.status === "active")
       .map((s) => s.name);
   } catch (err) {
-    console.warn("[evolve] Failed to read skill manifest:", err);
     return [];
   }
 }

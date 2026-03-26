@@ -147,7 +147,8 @@ async function readLogs(
     if (signal?.aborted) {
       return { success: true, lineCount: 0 };
     }
-    const message = err instanceof Error ? err.message : String(err);
-    return { success: false, error: `Failed to read logs: ${message}` };
+    const stderr = (err as { stderr?: string }).stderr?.trim();
+    const reason = stderr || (err instanceof Error ? err.message : String(err));
+    return { success: false, error: `Failed to read logs: ${reason}` };
   }
 }

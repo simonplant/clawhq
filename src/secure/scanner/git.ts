@@ -34,8 +34,7 @@ export async function scanGitHistory(
   // Check if this is a git repo
   try {
     await exec("git", ["rev-parse", "--git-dir"], { cwd: repoDir, signal });
-  } catch (err) {
-    console.warn(`[secure/scanner] Not a git repo, skipping history scan: ${repoDir}`, err);
+  } catch {
     return { findings: [], commitsScanned: 0 };
   }
 
@@ -48,8 +47,7 @@ export async function scanGitHistory(
       { cwd: repoDir, signal, maxBuffer: 10 * 1024 * 1024 },
     );
     stdout = result.stdout;
-  } catch (err) {
-    console.warn(`[secure/scanner] Failed to read git log in ${repoDir}`, err);
+  } catch {
     return { findings: [], commitsScanned: 0 };
   }
 
@@ -68,8 +66,7 @@ export async function scanGitHistory(
 
       const commitFindings = parseDiffForSecrets(diff.stdout, commit);
       findings.push(...commitFindings);
-    } catch (err) {
-      console.warn(`[secure/scanner] Failed to diff commit ${commit}`, err);
+    } catch {
       continue;
     }
   }

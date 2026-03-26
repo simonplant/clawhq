@@ -43,7 +43,6 @@ export async function loadManifest(deployDir: string): Promise<SkillManifest> {
     const raw = await readFile(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
-    console.warn("[evolve] Failed to read skill manifest:", err);
     return { version: 1, skills: [] };
   }
   if (parsed.version !== 1) {
@@ -206,7 +205,6 @@ export async function installSkill(
       try {
         await chmod(join(stageResult.stagingDir, file), FILE_MODE_EXEC);
       } catch (err) {
-        console.warn("[evolve] Failed to set executable permission on", file, err);
       }
     }
   }

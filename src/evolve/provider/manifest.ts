@@ -29,7 +29,6 @@ export function loadProviderManifest(deployDir: string): ProviderManifest {
     const raw = readFileSync(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
-    console.warn("[evolve] Failed to read provider manifest:", err);
     return { version: 1, providers: [] };
   }
   if (parsed.version !== 1) {
