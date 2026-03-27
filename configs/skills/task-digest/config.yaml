@@ -1,0 +1,50 @@
+# task-digest skill configuration
+name: task-digest
+version: "1.0.0"
+description: "Daily task prioritization digest — surfaces overdue, due today, and high-priority items with context"
+
+schedule:
+  cron: "0 8 * * *"          # morning digest
+  additional:
+    - cron: "0 13 * * *"     # midday check-in (Mon-Fri)
+      weekdays_only: true
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - tasks
+    - ical
+  skills:
+    - morning-brief
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false
+
+# Digest configuration
+digest:
+  max_items: 10
+  sections:
+    - overdue
+    - due_today
+    - high_priority
+    - in_progress
+  include_calendar_context: true    # show meetings that affect task time
+  smart_prioritization: true        # reorder based on deadlines + importance
+  flag_blockers: true               # call out tasks waiting on dependencies
+
+# Notification thresholds
+notifications:
+  overdue_count_threshold: 3        # notify if >3 overdue tasks
+  deadline_warning_hours: 24        # warn on tasks due within 24h

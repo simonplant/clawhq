@@ -1,0 +1,62 @@
+# auto-reply skill configuration
+name: auto-reply
+version: "1.0.0"
+description: "Autonomous email replies in the user's voice — approval gates on all non-routine messages"
+
+# Schedule: triggered by email-digest or on-demand; no independent cron
+schedule:
+  event_driven: true
+  trigger: email-digest
+
+# Model requirements
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: true
+  cloud_escalation_categories:
+    - sensitive_replies
+    - long_form_responses
+
+# Tools this skill depends on
+dependencies:
+  tools:
+    - email
+    - contacts
+  skills:
+    - email-digest
+
+# All replies require approval unless explicitly marked routine
+approval:
+  required: true
+  category: send_email
+  auto_approve: false
+  auto_approve_categories:
+    - meeting_confirmations
+    - read_receipts
+    - unsubscribe_confirmations
+  never_auto_approve:
+    - first_contact
+    - flagged_senders
+    - external_domains_not_in_contacts
+
+# Boundaries
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false
+
+# Reply constraints
+reply_constraints:
+  max_draft_queue: 20
+  voice_fidelity: high      # match user's tone/style closely
+  fact_check: strict        # never fabricate details in replies
+  calendar_aware: true      # check calendar before confirming meeting times
+  signature_handling: auto  # use the account's default signature
+
+# Customization (set per blueprint)
+customization:
+  voice_profile: null          # populated from blueprint personality config
+  auto_reply_comfort: medium   # none | routine-only | medium | high
+  blocked_senders: []
+  always_flag_domains: []

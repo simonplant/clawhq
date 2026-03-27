@@ -1,0 +1,48 @@
+# web-research skill configuration
+name: web-research
+version: "1.0.0"
+description: "On-demand and scheduled web research — query Tavily, compile findings, cite sources, deliver summaries"
+
+schedule:
+  event_driven: true         # triggered on-demand or by other skills
+  batch_window: "5min"       # batch rapid queries to reduce API calls
+
+model:
+  provider: cloud            # research benefits from larger context
+  preferred: "claude-sonnet"
+  fallback: "llama3:8b"
+  cloud_escalation: true
+
+dependencies:
+  tools:
+    - tavily
+    - sanitize               # ALL external content runs through ClawWall
+    - tasks
+  skills: []
+
+approval:
+  required: false
+  category: read_only
+  auto_approve: true
+
+boundaries:
+  network_access: true       # required — queries external search API
+  file_write: true           # saves research to memory/research-*.md
+  account_changes: false
+  auto_send: false
+
+# Research constraints
+research:
+  max_queries_per_session: 10
+  max_depth: 3               # follow-up queries per topic
+  citation_required: true    # always cite sources
+  sanitize_all: true         # mandatory — every result through sanitize
+  save_findings: true        # persist to memory/research-*.md
+  budget_aware: true         # respect Tavily cost limits
+
+# Output format
+output:
+  format: structured_summary
+  include_citations: true
+  confidence_score: true     # flag low-confidence findings
+  flag_contradictions: true  # surface conflicting sources
