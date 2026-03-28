@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Today you choose between **surveillance AI** (polished, easy, you own nothing) and **raw framework** (sovereign, powerful, requires months of expertise). Nobody makes the sovereign option usable. ClawHQ closes that gap.
 
-**Core bet:** People will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
+**Market reality:** 2M+ people already chose sovereign AI — OpenClaw has 250K+ GitHub stars, 2M+ monthly active users, and 42,000+ exposed instances. The demand is proven. But most of those users are struggling: 9+ CVEs in the first 2 months, 20-36% of ClawHub skills found malicious, 14 silent config landmines, and most deployments abandoned within a month. 10+ hosting providers (Blink, xCloud, AWS Lightsail, DigitalOcean, etc.) are selling managed OpenClaw at $22-45/mo — but they deploy default-config agents with no lifecycle management. Nobody makes the sovereign option secure, correctly configured, and operationally viable. ClawHQ closes that gap.
 
-**What ClawHQ is:** A deployment tool, a configuration tool, and a personalization tool for sovereign AI agents. It deploys OpenClaw, configures it correctly, and makes the agent personal — identity, personality, capabilities, all compiled from high-level intent into flat runtime config. The user trusts ClawHQ with their agent. That trust is earned through integrity: open source, local-first, no data exfiltration, no dark patterns.
+**What ClawHQ is:** The sovereign operations platform for OpenClaw. It deploys, configures correctly, and personalizes agents — compiling blueprints into hardened, running systems. Identity, personality, capabilities, security, all compiled from high-level intent into flat runtime config. The user trusts ClawHQ with their agent. That trust is earned through integrity: open source, local-first, no data exfiltration, no dark patterns.
 
-**The window is short.** Big-tech AI will absorb memory, tools, and personality features. The gap between surveillance AI and sovereign AI won't stay this wide. ClawHQ's role is to evolve the open-source option fast enough that sovereign digital agency becomes a real choice for normal people, not just infrastructure engineers.
+**The window is closing.** Not because big-tech AI will absorb features — because 10+ hosting providers are capturing the OpenClaw ecosystem right now. Every day ClawHQ is invisible, competitors commoditize deployment and capture mindshare. ClawHQ's role is to own the sovereignty layer — the one position no hosting provider can occupy — before the ecosystem consolidates around convenience-first platforms that treat security and lifecycle as afterthoughts.
 
 **Three non-negotiables:**
 1. **Data sovereignty** — local-first, zero bytes leave unless you choose, portable export, verified destroy
@@ -38,7 +38,7 @@ See `docs/ARCHITECTURE.md` for the full solution architecture.
 **Three layers:**
 - **Platform** (table stakes) — Install, harden, launch, ops. Same for every agent.
 - **Blueprints** (THE PRODUCT) — Complete agent designs for specific jobs. ClawHQ compiles a blueprint into flat OpenClaw runtime config. No intermediate concepts survive compilation. The runtime is dumb by design; ClawHQ makes it smart.
-- **Cloud** (the business) — Managed hosting, remote monitoring, blueprint library. Optional.
+- **Cloud** (optional infrastructure) — Remote monitoring, blueprint library. Managed hosting explicitly deprioritized — 10+ funded competitors already own that market. The self-hosted sovereignty position is the business.
 
 **Six modules** (`design → build → secure → operate → evolve → cloud`):
 

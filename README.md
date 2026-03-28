@@ -8,11 +8,11 @@
 
 ## The Problem
 
-The big 4 AI companies are building personal agents that know everything about you — emails, calendar, tasks, health, finances. They store it on their servers. They train on it. You have zero sovereignty.
+OpenClaw is the fastest-growing open-source project in GitHub history — 250K+ stars, 2M+ monthly active users, and a security crisis: 42,000+ exposed instances, 9+ CVEs in the first 2 months, and 20-36% of community skills on ClawHub found malicious. Microsoft, Cisco, and Nvidia have all published security guidance. The creator joined OpenAI in February 2026 and the project moved to a foundation.
 
-OpenClaw is the escape hatch — the most powerful open-source agent framework, running in a Docker container you control. But it's nearly impossible to operate: ~13,500 tokens of config across 11+ files, 14 silent landmines, and most deployments abandoned within a month.
+The demand for sovereign AI is proven. But OpenClaw is nearly impossible to operate correctly: ~13,500 tokens of config across 11+ files, 14 silent landmines, memory that bloats to 360KB in 3 days, and most deployments abandoned within a month. 1,000+ people queued outside Tencent HQ just for installation help.
 
-Today you choose between **surveillance AI** (polished, easy, you own nothing) or **raw framework** (sovereign, powerful, months of expertise). Nobody makes the sovereign option usable.
+10+ hosting providers (Blink, xCloud, AWS Lightsail, DigitalOcean, Hostinger, and others) now sell managed OpenClaw at $22-45/mo — but they deploy default-config agents on a VPS with no lifecycle management, no landmine prevention, and no architectural security. They solve convenience. Nobody solves sovereignty.
 
 ## The Solution
 
@@ -65,15 +65,23 @@ cron: inbox check every 15 min, daily digest at 8am
 
 See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for the full blueprint schema and all available options.
 
+## Why Not Just Use a Hosting Provider?
+
+Hosting providers deploy OpenClaw on a VPS with default or lightly-hardened config. ClawHQ operates at a different layer:
+
+- **Blueprints** — purpose-built agent designs that configure 10 dimensions simultaneously (identity, tools, skills, cron, security, egress, autonomy, memory, models, integrations). Not "OpenClaw on a VPS" — a fully designed system for a specific job.
+- **14-landmine prevention** — the config generator makes it impossible to ship a broken config. Every hosting provider ships default config and hopes for the best.
+- **Security by architecture** — content access architecturally blocked (no code path, not a policy flag). Egress firewall per integration. Identity files read-only. No hosting provider does architectural security.
+- **Lifecycle management** — doctor, backup, update, skill vetting, memory management, credential health probes. Hosting providers offer infrastructure. ClawHQ offers operations.
+- **Agent evolution** — the agent at month 6 does more than at day 1, through a validated, sandboxed, rollback-capable pipeline. No hosting provider touches this.
+
 ## Status
 
-**Active development.** Built with AI-assisted development (Claude Code).
+**Active development.** Built with AI-assisted development (Claude Code). The market is large and contested — 10+ hosting providers are capturing the OpenClaw ecosystem. ClawHQ competes on architectural depth and sovereignty, not hosting convenience.
 
 **Working:** Blueprint engine with 7 use-case blueprints, config generation with 14-landmine prevention, full deploy pipeline with container security hardening, diagnostics + auto-fix (`clawhq doctor`), skill system with sandboxed vetting, encrypted backup/restore, credential health probes, memory lifecycle, cloud provisioning (4 providers), trust modes, audit trail.
 
 **In progress:** Agent runtime integration (wiring subsystems to the running agent), web dashboard UI, distro installer (`curl | sh`).
-
-Core bet: people will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
 
 ## Documentation
 
