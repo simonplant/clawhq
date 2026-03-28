@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**WordPress for AI agents.** Curated blueprints that turn OpenClaw into a purpose-built personal agent — without a PhD in DevOps.
+**Templating engine for AI agents.** Curated blueprints that turn OpenClaw into a purpose-built personal agent — without a PhD in DevOps.
 
 ---
 
