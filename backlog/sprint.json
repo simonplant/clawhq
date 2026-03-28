@@ -1,45 +1,35 @@
 {
-  "sprintId": "sprint-1774686161",
-  "startedAt": "2026-03-28T01:22:41-07:00",
+  "sprintId": "sprint-1774721357",
+  "startedAt": "2026-03-28T11:09:17-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-121",
-    "title": "Blueprint Specification — publish human-readable spec as a community standard",
-    "intent": "The blueprint format must be documented as a standalone specification so third parties can create compatible blueprints without reading ClawHQ source code. This is the standards capture play and the primary defense against foundation absorption.",
-    "description": "ClawHQ's blueprint format exists only as TypeScript types in the compiler. It can't travel without source code. A competing format from the OpenClaw foundation could split the ecosystem. Publishing the spec creates the strongest possible long-term moat: if the format is adopted, ClawHQ is the reference implementation by definition. The spec is also the foundation absorption defense — if OpenClaw ships guided config, they'd need to be compatible with an adopted spec. Scope: complete YAML schema documentation covering all blueprint sections (identity, personality, tools, skills, cron, security, autonomy, memory, integrations, model routing, egress). Include validation rules, security constraints, and worked examples for each section.",
+    "id": "FEAT-108",
+    "title": "Decompose CLI index.ts — 4,320 lines into per-command modules",
+    "intent": "A 4,320-line CLI file is unmaintainable, untestable, and blocks parallel development. Each command should live in its own module so changes to one command don't risk breaking others.",
+    "description": "Architecture review found src/cli/index.ts is 4,320 lines containing all command definitions, option parsing, and handler logic in a single file. This creates: (1) merge conflicts when multiple features touch CLI simultaneously, (2) impossible to unit test individual commands in isolation, (3) no clear ownership boundary between modules. Decomposition strategy: extract each command (or command group) into src/cli/commands/<name>.ts, with index.ts reduced to a thin registration layer that imports and wires commands to Commander.js.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Extract the current blueprint schema from src/design/blueprints/ and src/config/schema.ts",
-      "Document each top-level section: metadata, identity, personality (7 dimensions), tools, skills, cron, security_posture, autonomy, memory, integrations, model_routing, egress",
-      "Document validation rules: required fields, value ranges (personality 1-5), cross-field constraints",
-      "Document security constraints: which fields are read-only at runtime, credential handling rules",
-      "Include 3 worked examples: minimal blueprint, medium (email manager), full (replace-my-pa)",
-      "Add versioning scheme (semver for the spec itself)",
-      "Publish as docs/BLUEPRINT-SPEC.md alongside the repo",
-      "Add clawhq blueprint validate command that checks a YAML file against the spec"
+      "Audit src/cli/index.ts — catalog all commands and their line ranges",
+      "Create src/cli/commands/ directory",
+      "Extract each command group into its own file (e.g., deploy.ts, doctor.ts, blueprint.ts, skill.ts, cloud.ts)",
+      "Each command file exports a function that takes the Commander program and registers its commands",
+      "Reduce index.ts to imports + command registration + top-level error handler",
+      "Run npm test to confirm no regression",
+      "Run npm run build to confirm compilation succeeds"
     ],
     "acceptanceCriteria": [
-      "docs/BLUEPRINT-SPEC.md is a standalone, human-readable specification",
-      "A developer can create a valid blueprint from the spec alone, without reading ClawHQ source",
-      "All 7 existing blueprints validate against the documented spec",
-      "Spec includes validation rules, security constraints, and 3+ worked examples",
-      "clawhq blueprint validate checks any YAML file against the spec and reports errors"
+      "src/cli/index.ts is under 500 lines — purely command registration and top-level error handling",
+      "Each command group lives in src/cli/commands/<name>.ts",
+      "All existing CLI commands work identically — no user-visible behavior change",
+      "npm test and npm run build pass with no regression"
     ],
     "scope": [
-      "docs/BLUEPRINT-SPEC.md",
-      "src/design/blueprints/",
-      "src/config/schema.ts",
-      "src/cli/"
+      "src/cli/**"
     ],
-<<<<<<< HEAD
-    "startedAt": "2026-03-28T01:22:41-07:00"
-  }
-=======
-    "startedAt": "2026-03-28T01:22:41-07:00",
+    "startedAt": "2026-03-28T11:09:17-07:00",
     "status": "passed",
-    "completedAt": "2026-03-28T01:33:40-07:00"
+    "completedAt": "2026-03-28T11:26:57-07:00"
   },
-  "completedAt": "2026-03-28T01:33:40-07:00",
+  "completedAt": "2026-03-28T11:26:57-07:00",
   "attempts": 1
->>>>>>> 7bff4d9 (feat(FEAT-121): All AC met. Intent fulfilled. Blueprint spec is a standalone 1028-line document covering all 12 required sections + 1 optional, with validation rules, security constraints, 3 worked examples, semver versioning, and a working `clawhq blueprint validate` CLI command. All 7 built-in blueprints validate cleanly via the CLI.)
 }
