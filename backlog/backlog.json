@@ -114,43 +114,6 @@
       "failCount": 2
     },
     {
-      "id": "FEAT-121",
-      "title": "Blueprint Specification — publish human-readable spec as a community standard",
-      "intent": "The blueprint format must be documented as a standalone specification so third parties can create compatible blueprints without reading ClawHQ source code. This is the standards capture play and the primary defense against foundation absorption.",
-      "description": "ClawHQ's blueprint format exists only as TypeScript types in the compiler. It can't travel without source code. A competing format from the OpenClaw foundation could split the ecosystem. Publishing the spec creates the strongest possible long-term moat: if the format is adopted, ClawHQ is the reference implementation by definition. The spec is also the foundation absorption defense — if OpenClaw ships guided config, they'd need to be compatible with an adopted spec. Scope: complete YAML schema documentation covering all blueprint sections (identity, personality, tools, skills, cron, security, autonomy, memory, integrations, model routing, egress). Include validation rules, security constraints, and worked examples for each section.",
-      "priority": "must",
-      "category": "standards",
-      "steps": [
-        "Extract the current blueprint schema from src/design/blueprints/ and src/config/schema.ts",
-        "Document each top-level section: metadata, identity, personality (7 dimensions), tools, skills, cron, security_posture, autonomy, memory, integrations, model_routing, egress",
-        "Document validation rules: required fields, value ranges (personality 1-5), cross-field constraints",
-        "Document security constraints: which fields are read-only at runtime, credential handling rules",
-        "Include 3 worked examples: minimal blueprint, medium (email manager), full (replace-my-pa)",
-        "Add versioning scheme (semver for the spec itself)",
-        "Publish as docs/BLUEPRINT-SPEC.md alongside the repo",
-        "Add clawhq blueprint validate command that checks a YAML file against the spec"
-      ],
-      "acceptanceCriteria": [
-        "docs/BLUEPRINT-SPEC.md is a standalone, human-readable specification",
-        "A developer can create a valid blueprint from the spec alone, without reading ClawHQ source",
-        "All 7 existing blueprints validate against the documented spec",
-        "Spec includes validation rules, security constraints, and 3+ worked examples",
-        "clawhq blueprint validate checks any YAML file against the spec and reports errors"
-      ],
-      "scope": [
-        "docs/BLUEPRINT-SPEC.md",
-        "src/design/blueprints/",
-        "src/config/schema.ts",
-        "src/cli/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Highest-leverage documentation work. Standards capture play AND foundation absorption defense. Estimate ~1 week for rigorous spec (not a weekend — the compiler touches identity, security, tools, skills, cron, autonomy, memory, integrations). The validate command is the proof it's a real spec, not just documentation. Can be split: spec doc first, validate command second.",
-      "passes": true,
-      "completedAt": "2026-03-28T01:33:40-07:00"
-    },
-    {
       "id": "FEAT-111",
       "title": "ClawWall content sanitization tool — prompt injection defense for all inbound external content",
       "intent": "Every agent that reads external content (email, web, social media, RSS) must have a sanitization layer that filters prompt injection attacks before content reaches the LLM. This is not optional — it is a security-by-default requirement.",
