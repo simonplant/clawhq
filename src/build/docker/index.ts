@@ -24,6 +24,10 @@ export {
 export { generateCompose } from "./compose.js";
 export type { ComposeOutput } from "./compose.js";
 
+// Instance identity (multi-instance isolation, FEAT-110)
+export { getInstanceNames } from "./instance.js";
+export type { InstanceNames } from "./instance.js";
+
 // Security postures
 export { DEFAULT_POSTURE, getPostureConfig, POSTURE_LEVELS } from "./posture.js";
 
