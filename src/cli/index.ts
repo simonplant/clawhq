@@ -9,14 +9,15 @@
  * Commands grouped by lifecycle phase for --help display only.
  */
 
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
-import { stringify as yamlStringify } from "yaml";
+import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
 import { build, DEFAULT_POSTURE, readCurrentPosture } from "../build/docker/index.js";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../build/docker/index.js";
@@ -82,6 +83,7 @@ import {
   allTemplatesToChoices,
   loadAllBuiltinBlueprints,
   loadBlueprint,
+  validateBlueprint,
 } from "../design/blueprints/index.js";
 import type { Blueprint } from "../design/blueprints/index.js";
 import {
@@ -1259,6 +1261,67 @@ function printBlueprintPreview(bp: Blueprint): void {
 
   console.log("");
 }
+
+blueprint
+  .command("validate")
+  .description("Validate a blueprint YAML file against the specification")
+  .argument("<file>", "Path to blueprint YAML file")
+  .action(async (file: string) => {
+    const resolved = resolve(file);
+    if (!existsSync(resolved)) {
+      console.error(chalk.red(`\n  ✘ File not found: ${resolved}\n`));
+      process.exit(1);
+    }
+
+    const stat = statSync(resolved);
+    if (stat.size > 256 * 1024) {
+      console.error(chalk.red(`\n  ✘ File exceeds 256 KB limit (${stat.size} bytes)\n`));
+      process.exit(1);
+    }
+
+    const content = readFileSync(resolved, "utf-8");
+    let parsed: unknown;
+    try {
+      parsed = yamlParse(content);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(chalk.red(`\n  ✘ YAML parse error: ${msg}\n`));
+      process.exit(1);
+    }
+
+    if (parsed === null || parsed === undefined || typeof parsed !== "object" || Array.isArray(parsed)) {
+      console.error(chalk.red("\n  ✘ Blueprint must be a YAML mapping (object), not a scalar or array\n"));
+      process.exit(1);
+    }
+
+    const report = validateBlueprint(parsed as Record<string, unknown>);
+    const passed = report.results.filter((r) => r.passed).length;
+
+    console.log(`\nValidating: ${chalk.bold(file)}\n`);
+    console.log(`  ${chalk.green("✓")} ${passed} checks passed`);
+
+    if (report.warnings.length > 0) {
+      console.log(`  ${chalk.yellow("⚠")} ${report.warnings.length} warning${report.warnings.length === 1 ? "" : "s"}`);
+      for (const w of report.warnings) {
+        console.log(`    ${chalk.dim("-")} ${chalk.yellow(w.check)}: ${w.message}`);
+      }
+    }
+
+    if (report.errors.length > 0) {
+      console.log(`  ${chalk.red("✘")} ${report.errors.length} error${report.errors.length === 1 ? "" : "s"}`);
+      for (const e of report.errors) {
+        console.log(`    ${chalk.dim("-")} ${chalk.red(e.check)}: ${e.message}`);
+      }
+      console.log(chalk.red(`\nBlueprint is invalid (${report.errors.length} error${report.errors.length === 1 ? "" : "s"}).\n`));
+      process.exit(1);
+    }
+
+    if (report.warnings.length > 0) {
+      console.log(chalk.green(`\nBlueprint is valid`) + chalk.dim(` (${report.warnings.length} warning${report.warnings.length === 1 ? "" : "s"}).\n`));
+    } else {
+      console.log(chalk.green(`\nBlueprint is valid.\n`));
+    }
+  });
 
 // ── Build Commands ──────────────────────────────────────────────────────────
 
