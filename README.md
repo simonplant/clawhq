@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**Your AI doesn't know you.** ClawHQ forges sovereign AI agents from blueprints — persistent, personalized, running on your hardware. Without a PhD in DevOps.
+**Your AI doesn't know you.** ClawHQ deploys, configures, and personalizes sovereign AI agents — persistent, personal, running on your hardware. No PhD in DevOps required.
 
 ---
 
@@ -16,7 +16,7 @@ Today you choose between **surveillance AI** (polished, easy, you own nothing) o
 
 ## The Solution
 
-ClawHQ is an agent platform for OpenClaw. It forges purpose-built agents from **blueprints** — complete operational designs that configure every dimension of the agent for a specific job. Choose a blueprint, customize it, and ClawHQ forges a hardened, running agent. You get a Signal, Telegram, or Discord UI. We do the rest.
+ClawHQ deploys, configures, and personalizes OpenClaw agents. It compiles **blueprints** — complete operational designs — into hardened, running agents. Choose a blueprint, customize it, and ClawHQ does the rest. You get a Signal, Telegram, or Discord UI. Your data stays on your machine.
 
 Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically — identity, tools, skills, cron, integrations, security, autonomy, memory.
 

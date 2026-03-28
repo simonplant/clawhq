@@ -18,7 +18,9 @@ Today you choose between **surveillance AI** (polished, easy, you own nothing) o
 
 ## The Solution
 
-ClawHQ is an agent platform for OpenClaw. It forges purpose-built agents from blueprints — complete operational designs that configure every dimension of the agent for a specific job. Choose a blueprint, customize it, and ClawHQ forges a hardened, running agent. One command.
+ClawHQ deploys, configures, and personalizes OpenClaw agents. Three things, done well: get the engine running (deployment), make it correct (configuration), and make it yours (personalization). It compiles blueprints — complete operational designs — into hardened, running agents.
+
+The window for sovereign AI is short. Big-tech agents will absorb memory, tools, and personality features. ClawHQ's job is to evolve the open-source option fast enough that sovereign digital agency becomes a real choice — built with the trust and integrity that people need to hand their digital life to a tool.
 
 - "Run my emails" → email tools, triage skills, inbox-check cron, morning digest, auto-reply with approval gates
 - "Help with stock trading" → market data tools, research skills, pre-market alerts, portfolio monitoring, risk guardrails
