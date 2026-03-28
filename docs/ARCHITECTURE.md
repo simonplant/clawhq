@@ -87,14 +87,19 @@ A blueprint is a complete agent design — a YAML file that specifies every dime
 
 ### Compile-Time vs. Runtime
 
-Personality composition is a compile-time problem, not a runtime problem.
+Agent composition is a compile-time problem, not a runtime problem.
 
-OpenClaw doesn't need to understand capabilities, personas, or composition. It needs a `config.yaml`, a `SOUL.md`, tool configs, and skill definitions. Full stop. Everything above that is ClawHQ's job — take high-level intent, compile it to flat runtime config.
+OpenClaw is a secure container that runs an LLM with tools. It doesn't need to understand capabilities, personas, or composition. It needs a `config.yaml`, a `SOUL.md`, tool configs, and skill definitions. Full stop. Everything above that is ClawHQ's job — take high-level intent, compile it to flat runtime config.
+
+This separation serves all three non-negotiables:
+- **Data sovereignty:** The entire compilation happens locally. No blueprint, persona, or capability data leaves the machine.
+- **Security by default:** The compiler bakes in container hardening, egress rules, and landmine prevention. The user never has to think about it.
+- **The agent grows:** New capabilities are added through the compiler's validated pipeline — dependency resolution, conflict detection, coherence checking — not by hand-editing config files.
 
 ```
 ┌─────────────────────────────────────┐
-│         ClawHQ Studio (UX)          │  ← User touches this
-│  Wizard · Sliders · Preview · Chat  │
+│      ClawHQ UX (current: CLI)       │  ← User touches this
+│  Wizard · Sliders · Preview         │     (Studio: planned)
 ├─────────────────────────────────────┤
 │      ClawHQ Compiler (Build)        │  ← Capabilities, personas, composition
 │  Blueprint + Catalog → Runtime Cfg  │
@@ -108,7 +113,7 @@ No intermediate concepts survive compilation. A user who hand-configures OpenCla
 
 ### Entity Model
 
-Three primitive entities, two catalog entities (planned), one composition entity:
+The entities that compose an agent. Three primitives exist today. Two catalog entities (Capability, Persona) are planned compiler additions — they make the sovereign option usable at scale without changing the runtime.
 
 ```
 PRIMITIVE ENTITIES (exist today, independently defined):
@@ -209,7 +214,7 @@ COMPOSITION:
 
 Two escape hatches: `extra_tools[]` for tools outside any capability, `soul_overrides` for personality that doesn't fit a persona. Power users can bypass the whole compiler and write flat config directly.
 
-**Marketplace security constraint:** Catalog items (capabilities and personas) are config-only — tool references, skill references, and prose. No scripts or custom code. The runtime sandbox is the security boundary. Custom code requires self-hosting or ClawHQ verification.
+**Marketplace security constraint (security by default):** Catalog items (capabilities and personas) are config-only — tool references, skill references, and prose. No scripts or custom code. The runtime sandbox is the security boundary. Custom code requires self-hosting or ClawHQ verification. This is AD-05 applied to the ecosystem: security is architectural (no code path for community-injected scripts), not policy (a flag that could be disabled).
 
 **Derived vs. configured:**
 

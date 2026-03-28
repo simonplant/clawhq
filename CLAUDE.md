@@ -33,7 +33,7 @@ See `docs/ARCHITECTURE.md` for the full solution architecture.
 
 **Three layers:**
 - **Platform** (table stakes) — Install, harden, launch, ops. Same for every agent.
-- **Blueprints** (THE PRODUCT) — Complete agent designs for specific jobs. ClawHQ forges a personalized agent from a blueprint.
+- **Blueprints** (THE PRODUCT) — Complete agent designs for specific jobs. ClawHQ compiles a blueprint into flat OpenClaw runtime config. No intermediate concepts survive compilation. The runtime is dumb by design; ClawHQ makes it smart.
 - **Cloud** (the business) — Managed hosting, remote monitoring, blueprint library. Optional.
 
 **Six modules** (`design → build → secure → operate → evolve → cloud`):
