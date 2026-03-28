@@ -172,20 +172,44 @@ COMPOSITION:
 
 **Current model (flat):** Blueprints directly reference tools and skills via `toolbelt.tools[]` and `skill_bundle.included[]`. Personality dimensions and SOUL.md content are set directly.
 
-**Planned model:** Capabilities and Personas are catalog entries that the compiler resolves at build time:
+**Planned model:** Capabilities and Personas are catalog entries that the compiler resolves at build time. The compiler pipeline has five stages:
 
-1. Resolve persona → SOUL.md template with `{{slots}}` for capability fragments
-2. Resolve capabilities → tool list, skill list, integration list, soul fragments
-3. Inject soul fragments into template slots
-4. Apply dimension overrides → finalize SOUL.md voice
-5. Merge extra_tools
-6. Derive cron from skills + capability suggested_crons
-7. Derive egress domains from integrations
-8. Emit flat runtime config: `config.yaml` + `SOUL.md` + `USER.md` + `AGENTS.md`
+```
+1. Resolve dependencies
+   └── Capability A needs integration X which needs tool Y
+   └── Expand full transitive dependency graph
 
-`extra_tools[]` is the escape hatch for tools outside any capability. `soul_overrides` is the escape hatch for personality that doesn't fit a persona. Power users can bypass the whole compiler and write flat config directly.
+2. Detect conflicts
+   └── Capability A says "never share data externally"
+   └── Capability B says "post to social media proactively"
+   └── → Surface conflict to user, force a choice
 
-**Risk: soul_fragments composing badly.** Four capabilities each injecting a paragraph into SOUL.md could create a Frankenstein voice. The compiler needs a coherence pass — likely an LLM call that reads the assembled SOUL.md and smooths it.
+3. Compose and coherence pass (LLM-assisted)
+   └── Resolve persona → SOUL.md template with {{slots}}
+   └── Inject capability soul_fragments into template slots
+   └── Apply dimension_overrides + soul_overrides
+   └── Read assembled SOUL.md, identify tonal contradictions
+   └── Smooth without losing intent
+   └── Show diff to user for approval
+
+4. Validate against model capabilities
+   └── Blueprint needs tool-use + long context + vision
+   └── Selected model doesn't support vision
+   └── → Suggest model upgrade or capability removal
+
+5. Cost estimation
+   └── Capabilities + model + cron schedules → monthly API cost
+   └── User sees this BEFORE deploying
+   └── "Adding news-scanner with 15-min cron on Sonnet ≈ $30/month"
+
+6. Emit flat runtime config
+   └── config.yaml + SOUL.md + USER.md + AGENTS.md
+   └── tool configs + skill definitions + cron + egress allowlist
+```
+
+Two escape hatches: `extra_tools[]` for tools outside any capability, `soul_overrides` for personality that doesn't fit a persona. Power users can bypass the whole compiler and write flat config directly.
+
+**Marketplace security constraint:** Catalog items (capabilities and personas) are config-only — tool references, skill references, and prose. No scripts or custom code. The runtime sandbox is the security boundary. Custom code requires self-hosting or ClawHQ verification.
 
 **Derived vs. configured:**
 
