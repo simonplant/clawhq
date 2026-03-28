@@ -7,6 +7,8 @@ import { generateCompose } from "./compose.js";
 import {
   generateStage1Dockerfile,
   generateStage2Dockerfile,
+  InvalidBinarySha256Error,
+  MissingBinarySha256Error,
   validateBinaryDestPath,
   validateBinaryUrl,
 } from "./dockerfile.js";
@@ -246,6 +248,264 @@ describe("generateStage2Dockerfile binary validation", () => {
       skills: [],
     };
     expect(() => generateStage2Dockerfile("base:tag", config)).toThrow("unsafe characters");
+  });
+});
+
+// ── FEAT-115: SHA256 Binary Pinning Tests ───────────────────────────────────
+
+const VALID_SHA256 = "a".repeat(64);
+
+describe("FEAT-115: SHA256 binary pinning", () => {
+  // ── Emit behaviour ────────────────────────────────────────────────────────
+
+  it("emits sha256sum verify step when sha256 is provided", () => {
+    const config: Stage2Config = {
+      binaries: [{
+        name: "himalaya",
+        url: "https://github.com/pimalaya/himalaya/releases/download/v1.0.0/himalaya-linux-amd64",
+        destPath: "/usr/local/bin/himalaya",
+        sha256: VALID_SHA256,
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+    expect(df).toContain("sha256sum -c -");
+    expect(df).toContain(VALID_SHA256);
+  });
+
+  it("emits .tmp download path, sha256sum verify, mv, chmod sequence in correct order", () => {
+    const config: Stage2Config = {
+      binaries: [{
+        name: "himalaya",
+        url: "https://github.com/example.com/bin",
+        destPath: "/usr/local/bin/himalaya",
+        sha256: VALID_SHA256,
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+    const curlIdx = df.indexOf("curl -fsSL");
+    const sha256Idx = df.indexOf("sha256sum -c -");
+    const mvIdx = df.indexOf("mv ");
+    const chmodIdx = df.indexOf("chmod +x");
+
+    expect(curlIdx).toBeLessThan(sha256Idx);
+    expect(sha256Idx).toBeLessThan(mvIdx);
+    expect(mvIdx).toBeLessThan(chmodIdx);
+  });
+
+  it("downloads to .tmp path before moving to final destination", () => {
+    const config: Stage2Config = {
+      binaries: [{
+        name: "mytool",
+        url: "https://example.com/mytool",
+        destPath: "/usr/local/bin/mytool",
+        sha256: VALID_SHA256,
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+    expect(df).toContain("/usr/local/bin/mytool.tmp");
+    expect(df).toContain('mv "/usr/local/bin/mytool.tmp" "/usr/local/bin/mytool"');
+  });
+
+  it("does not emit sha256sum when sha256 is absent (standard posture)", () => {
+    const config: Stage2Config = {
+      binaries: [{
+        name: "mytool",
+        url: "https://example.com/mytool",
+        destPath: "/usr/local/bin/mytool",
+        // no sha256
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config, "standard");
+    expect(df).not.toContain("sha256sum");
+  });
+
+  it("labels pinned binaries as SHA256-pinned in the comment", () => {
+    const config: Stage2Config = {
+      binaries: [{
+        name: "himalaya",
+        url: "https://example.com/himalaya",
+        destPath: "/usr/local/bin/himalaya",
+        sha256: VALID_SHA256,
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+    expect(df).toContain("# Install himalaya (SHA256-pinned)");
+  });
+
+  // ── Posture enforcement ───────────────────────────────────────────────────
+
+  it("throws MissingBinarySha256Error at hardened posture when sha256 absent", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "mytool", url: "https://example.com/mytool", destPath: "/usr/local/bin/mytool" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config, "hardened"))
+      .toThrow(MissingBinarySha256Error);
+  });
+
+  it("throws MissingBinarySha256Error at paranoid posture when sha256 absent", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "mytool", url: "https://example.com/mytool", destPath: "/usr/local/bin/mytool" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config, "paranoid"))
+      .toThrow(MissingBinarySha256Error);
+  });
+
+  it("error message names the offending binary and posture level", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "dangerous-tool", url: "https://example.com/dt", destPath: "/usr/local/bin/dt" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config, "hardened"))
+      .toThrow(/dangerous-tool.*hardened/);
+  });
+
+  it("allows missing sha256 at standard posture", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "mytool", url: "https://example.com/mytool", destPath: "/usr/local/bin/mytool" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config, "standard")).not.toThrow();
+  });
+
+  it("allows missing sha256 at minimal posture", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "mytool", url: "https://example.com/mytool", destPath: "/usr/local/bin/mytool" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config, "minimal")).not.toThrow();
+  });
+
+  it("does not throw when posture is undefined (backward compat)", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "mytool", url: "https://example.com/mytool", destPath: "/usr/local/bin/mytool" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config)).not.toThrow();
+  });
+
+  it("accepts valid sha256 at hardened posture", () => {
+    const config: Stage2Config = {
+      binaries: [{
+        name: "mytool",
+        url: "https://example.com/mytool",
+        destPath: "/usr/local/bin/mytool",
+        sha256: VALID_SHA256,
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config, "hardened")).not.toThrow();
+  });
+
+  // ── Format validation ─────────────────────────────────────────────────────
+
+  it("throws InvalidBinarySha256Error for too-short hex string", () => {
+    const config: Stage2Config = {
+      binaries: [{
+        name: "mytool",
+        url: "https://example.com/mytool",
+        destPath: "/usr/local/bin/mytool",
+        sha256: "abc123",
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config))
+      .toThrow(InvalidBinarySha256Error);
+  });
+
+  it("throws InvalidBinarySha256Error for non-hex characters", () => {
+    const config: Stage2Config = {
+      binaries: [{
+        name: "mytool",
+        url: "https://example.com/mytool",
+        destPath: "/usr/local/bin/mytool",
+        sha256: "z".repeat(64),
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config))
+      .toThrow(InvalidBinarySha256Error);
+  });
+
+  it("accepts uppercase hex in sha256", () => {
+    const config: Stage2Config = {
+      binaries: [{
+        name: "mytool",
+        url: "https://example.com/mytool",
+        destPath: "/usr/local/bin/mytool",
+        sha256: "A".repeat(64),
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config)).not.toThrow();
+  });
+
+  it("error message includes the offending sha256 value", () => {
+    const badHash = "tooshort";
+    const config: Stage2Config = {
+      binaries: [{
+        name: "mytool",
+        url: "https://example.com/mytool",
+        destPath: "/usr/local/bin/mytool",
+        sha256: badHash,
+      }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config))
+      .toThrow(badHash);
+  });
+
+  // ── Multi-binary scenarios ────────────────────────────────────────────────
+
+  it("emits pinned block for pinned binary and unpinned block for unpinned binary at standard posture", () => {
+    const config: Stage2Config = {
+      binaries: [
+        { name: "pinned", url: "https://example.com/pinned", destPath: "/usr/local/bin/pinned", sha256: VALID_SHA256 },
+        { name: "unpinned", url: "https://example.com/unpinned", destPath: "/usr/local/bin/unpinned" },
+      ],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config, "standard");
+    expect(df).toContain("# Install pinned (SHA256-pinned)");
+    expect(df).toContain("sha256sum -c -");
+    expect(df).toContain("# Install unpinned");
+    expect(df).not.toContain("# Install unpinned (SHA256-pinned)");
+  });
+
+  it("throws if first binary in list is missing sha256 at hardened posture", () => {
+    const config: Stage2Config = {
+      binaries: [
+        { name: "first", url: "https://example.com/first", destPath: "/usr/local/bin/first" },
+        { name: "second", url: "https://example.com/second", destPath: "/usr/local/bin/second", sha256: VALID_SHA256 },
+      ],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config, "hardened"))
+      .toThrow(/first/);
   });
 });
 

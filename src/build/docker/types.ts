@@ -55,6 +55,16 @@ export interface BinaryInstall {
   readonly name: string;
   readonly url: string;
   readonly destPath: string;
+  /**
+   * Expected SHA256 digest of the downloaded binary, as a 64-character hex string.
+   *
+   * When provided, the generated Dockerfile will verify the digest before
+   * making the binary executable, failing the build if there is a mismatch.
+   *
+   * Required at "hardened" and "paranoid" posture levels — omitting it will
+   * cause `generateStage2Dockerfile` to throw a `MissingBinarySha256Error`.
+   */
+  readonly sha256?: string;
 }
 
 /** Options for the build command. */

@@ -16,11 +16,12 @@ import {
   OPENCLAW_CONTAINER_WORKSPACE,
 } from "../../config/paths.js";
 
-import type { Stage1Config, Stage2Config } from "./types.js";
+import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "./types.js";
 
 // ── Binary Validation ───────────────────────────────────────────────────────
 
 const UNSAFE_PATH_CHARS = /[\n\r"'\\`$]/;
+const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/i;
 
 /** Throws if url is not a valid https:// URL. */
 export function validateBinaryUrl(url: string): void {
@@ -44,6 +45,43 @@ export function validateBinaryDestPath(destPath: string): void {
     throw new Error(`Binary destPath contains unsafe characters: ${destPath}`);
   }
 }
+
+/**
+ * Thrown when a binary is missing a sha256 field at a posture level that
+ * requires it ("hardened" or "paranoid").
+ */
+export class MissingBinarySha256Error extends Error {
+  constructor(binaryName: string, posture: BuildSecurityPosture) {
+    super(
+      `Binary "${binaryName}" is missing a sha256 digest. ` +
+      `SHA256 pinning is required at posture="${posture}".`,
+    );
+    this.name = "MissingBinarySha256Error";
+  }
+}
+
+/**
+ * Thrown when a sha256 field is present but is not a valid 64-character
+ * lowercase hex string.
+ */
+export class InvalidBinarySha256Error extends Error {
+  constructor(binaryName: string, sha256: string) {
+    super(
+      `Binary "${binaryName}" has an invalid sha256 digest: "${sha256}". ` +
+      `Expected a 64-character hex string.`,
+    );
+    this.name = "InvalidBinarySha256Error";
+  }
+}
+
+/**
+ * Posture levels that require sha256 pinning for every binary.
+ * Binaries without a sha256 field will cause a build-time error.
+ */
+const POSTURES_REQUIRING_SHA256: ReadonlySet<BuildSecurityPosture> = new Set([
+  "hardened",
+  "paranoid",
+]);
 
 // ── Stage 1: Base Image ─────────────────────────────────────────────────────
 
@@ -89,10 +127,17 @@ export function generateStage1Dockerfile(config: Stage1Config): string {
  *
  * Installs binary tools and copies workspace tools/skills.
  * This layer rebuilds frequently as the agent evolves.
+ *
+ * @param stage1Tag - The Docker image tag for Stage 1.
+ * @param config    - Stage 2 configuration (binaries, tools, skills).
+ * @param posture   - Security posture level. At "hardened" and "paranoid",
+ *                    every binary must include a sha256 digest or this
+ *                    function throws a MissingBinarySha256Error.
  */
 export function generateStage2Dockerfile(
   stage1Tag: string,
   config: Stage2Config,
+  posture?: BuildSecurityPosture,
 ): string {
   const lines: string[] = [
     `FROM ${stage1Tag}`,
@@ -106,12 +151,36 @@ export function generateStage2Dockerfile(
   for (const binary of config.binaries) {
     validateBinaryUrl(binary.url);
     validateBinaryDestPath(binary.destPath);
-    lines.push(
-      `# Install ${binary.name}`,
-      `RUN curl -fsSL "${binary.url}" -o "${binary.destPath}" && \\`,
-      `    chmod +x "${binary.destPath}"`,
-      "",
-    );
+
+    // Validate sha256 format if provided
+    if (binary.sha256 !== undefined && !SHA256_HEX_PATTERN.test(binary.sha256)) {
+      throw new InvalidBinarySha256Error(binary.name, binary.sha256);
+    }
+
+    // Enforce sha256 requirement at hardened/paranoid posture
+    if (posture && POSTURES_REQUIRING_SHA256.has(posture) && !binary.sha256) {
+      throw new MissingBinarySha256Error(binary.name, posture);
+    }
+
+    if (binary.sha256) {
+      // Download to a temp path, verify digest, then move to final destination
+      const tmpPath = `${binary.destPath}.tmp`;
+      lines.push(
+        `# Install ${binary.name} (SHA256-pinned)`,
+        `RUN curl -fsSL "${binary.url}" -o "${tmpPath}" && \\`,
+        `    echo "${binary.sha256}  ${tmpPath}" | sha256sum -c - && \\`,
+        `    mv "${tmpPath}" "${binary.destPath}" && \\`,
+        `    chmod +x "${binary.destPath}"`,
+        "",
+      );
+    } else {
+      lines.push(
+        `# Install ${binary.name}`,
+        `RUN curl -fsSL "${binary.url}" -o "${binary.destPath}" && \\`,
+        `    chmod +x "${binary.destPath}"`,
+        "",
+      );
+    }
   }
 
   // Copy workspace tools
