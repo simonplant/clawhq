@@ -85,13 +85,75 @@ A blueprint is a complete agent design — a YAML file that specifies every dime
 4. **Everything generated** — config, identity, tools, skills, cron, security, egress rules
 5. **Agent forged** — not a generic agent with a personality swap, but a fully configured system designed for a specific job
 
-### What a Blueprint Configures
+### Entity Model
+
+Six entities compose an agent. Three are primitive (defined independently), one is a planned composition layer, and two are top-level:
+
+```
+PRIMITIVE ENTITIES (defined independently, reusable):
+
+  Integration          Tool               Skill
+  ┌──────────────┐     ┌──────────────┐   ┌──────────────────┐
+  │ name         │◄────│ name         │◄──│ name             │
+  │ envKeys[]    │needs│ commands[]   │uses│ schedule (cron)  │
+  │ egressDom[]  │     │ integrations │   │ approval rules   │
+  │ probes       │     │              │   │ boundaries       │
+  └──────────────┘     └──────────────┘   └──────────────────┘
+
+COMPOSITION LAYER (planned — does not exist yet):
+
+  Role
+  ┌──────────────────────────────────────┐
+  │ name                                 │
+  │ tools[] ──────────→ Tool[]           │
+  │ skills[] ─────────→ Skill[]          │
+  │ autonomy_rules                       │
+  │ base_dimensions    (personality bias) │
+  │ integration_deps[] → Integration[]   │
+  └──────────────────────────────────────┘
+
+TOP-LEVEL ENTITIES:
+
+  PersonalityType              Blueprint
+  ┌───────────────────┐        ┌──────────────────────────────────┐
+  │ code (e.g. ENFP)  │        │ name                             │
+  │ dimension_mods    │───────→│ personality_type                 │
+  │   E/I → warmth,.. │        │ dimension_overrides              │
+  │   S/N → analyt,.. │        │ toolbelt.tools[] → Tool[]        │  ← current
+  │   T/F → direct,.. │        │ skill_bundle[] → Skill[]         │  ← current
+  │   J/P → caution,. │        │ (roles[] → Role[])               │  ← planned
+  └───────────────────┘        │ security_posture                 │
+                               │ memory_policy                    │
+                               │ channels                         │
+                               │ model_routing                    │
+                               └───────────┬──────────────────────┘
+                                           │ forge
+                                           ▼
+                                        Agent (deployed instance)
+```
+
+**Dependency chain:** Integration ← Tool ← Skill. Each depends on the one before it. An email tool needs an IMAP integration. An email-digest skill needs the email tool.
+
+**Current model (flat):** Blueprints directly reference tools and skills via `toolbelt.tools[]` and `skill_bundle.included[]`. Personality dimensions are set directly in the blueprint YAML.
+
+**Planned model (composed):** Roles bundle tools + skills + autonomy + personality base into named, reusable archetypes. Blueprints compose 1-4 roles. A 16 Personalities type (MBTI-based) cross-cuts all roles as a behavioral overlay. Final dimension values are derived: `role_bases + type_modifier + user_overrides`. See `docs/CONFIGURATION.md` § "Planned: Personality Composition" for details.
+
+**Derived vs. configured:** Several blueprint outputs are derived from the entities above, not configured directly:
+
+| Output | Derived From |
+|---|---|
+| Identity files (SOUL.md, AGENTS.md) | personality dimensions + roles |
+| Final dimension values | role bases + 16P type modifier + overrides |
+| Egress domain allowlist | union of integration.egressDomains[] |
+| Cron schedule | skill.schedule for each included skill |
+| Docker compose | security posture + integrations |
+| .env secrets | integration.envKeys[] |
+
+### What a Blueprint Configures (current)
 
 | Dimension | What Gets Generated | Example: "Stock Trading Assistant" |
 |---|---|---|
-| **Roles** | Composable job archetypes (tools + skills + autonomy) | financial-analyst, research-assistant |
-| **Personality** | 16P type + dimension sliders → SOUL.md | ISTJ-A: analytical, data-driven, conservative |
-| **Identity** | SOUL.md, AGENTS.md, USER.md, boundaries | Generated from roles × personality type |
+| **Identity** | SOUL.md, AGENTS.md, personality, boundaries | Analytical, data-driven, conservative risk warnings |
 | **Tools** | CLI wrappers installed to workspace | `quote` (market data), `web-search` (research), `tasks` (trade log) |
 | **Skills** | Autonomous capability scripts | market-scan, portfolio-alert, research-digest |
 | **Cron** | Scheduled jobs in OpenClaw-native format | Pre-market scan at 6am, portfolio check hourly during market |
@@ -101,22 +163,6 @@ A blueprint is a complete agent design — a YAML file that specifies every dime
 | **Memory** | Retention policy, tier configuration | Remember positions, preferences, market patterns |
 | **Models** | Local vs. cloud routing per task type | Local for monitoring, cloud for deep research synthesis |
 | **Egress** | Domain allowlist for firewall | Finance APIs + research API + email server, nothing else |
-
-### Personality Composition
-
-Agent personality is composed from three layers:
-
-1. **Roles** define what the agent does. Each role is a self-contained package: tools, skills, cron schedule, autonomy rules, and base personality tendencies. A blueprint composes one or more roles (e.g., `creative-collaborator + project-manager`). Roles are the atomic building blocks — in the WordPress analogy, they are plugins.
-
-2. **16 Personalities type** (MBTI-based) defines how the agent behaves across all its roles. The type is a behavioral overlay: an INTJ inbox-manager triages differently from an ENFP inbox-manager, even though both use the same email tools. In the WordPress analogy, this is the theme.
-
-3. **Dimension sliders** (7 dimensions, 1-5 scale) are the resolved output. Derived automatically from roles × type, adjustable by the user. In the WordPress analogy, these are custom CSS.
-
-```
-Roles (what you do) × 16P Type (how you do it) = Dimension Sliders
-```
-
-See `docs/CONFIGURATION.md` § "Personality Composition Model" for the full MBTI → dimension mapping and blueprint examples.
 
 ### Blueprint Examples
 
