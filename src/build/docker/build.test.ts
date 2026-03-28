@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
 import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
 
 import { computeStage1Hash, computeStage2Hash } from "./cache.js";
@@ -331,6 +332,74 @@ describe("generateCompose", () => {
 
     expect(compose.services.openclaw.tmpfs[0]).toContain("128m");
     expect(compose.services.openclaw.tmpfs[0]).toContain("noexec");
+  });
+});
+
+// ── Multi-Instance Tests ───────────────────────────────────────────────────
+
+describe("agentNetworkName", () => {
+  it("returns 'clawhq_net' when instanceName is undefined", () => {
+    expect(agentNetworkName()).toBe("clawhq_net");
+  });
+
+  it("returns 'clawhq_net' when instanceName is 'default'", () => {
+    expect(agentNetworkName("default")).toBe("clawhq_net");
+  });
+
+  it("returns 'clawhq_{name}_net' for custom instanceName", () => {
+    expect(agentNetworkName("john")).toBe("clawhq_john_net");
+  });
+});
+
+describe("agentImageTag", () => {
+  it("returns 'openclaw:custom' when instanceName is undefined", () => {
+    expect(agentImageTag()).toBe("openclaw:custom");
+  });
+
+  it("returns 'openclaw:custom' when instanceName is 'default'", () => {
+    expect(agentImageTag("default")).toBe("openclaw:custom");
+  });
+
+  it("returns 'openclaw:{name}' for custom instanceName", () => {
+    expect(agentImageTag("john")).toBe("openclaw:john");
+  });
+});
+
+describe("generateCompose with custom networkName", () => {
+  it("uses custom network name in service and network declaration", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:john", posture, "/home/user/.clawhq/john", "clawhq_john_net");
+
+    expect(compose.services.openclaw.networks).toContain("clawhq_john_net");
+    expect(compose.networks).toHaveProperty("clawhq_john_net");
+    expect(compose.networks).not.toHaveProperty("clawhq_net");
+  });
+
+  it("defaults to 'clawhq_net' when networkName is omitted", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
+
+    expect(compose.services.openclaw.networks).toContain("clawhq_net");
+    expect(compose.networks).toHaveProperty("clawhq_net");
+  });
+
+  it("ICC is disabled on custom network", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:john", posture, "/home/user/.clawhq/john", "clawhq_john_net");
+
+    const net = compose.networks["clawhq_john_net"];
+    expect(net.driver_opts?.["com.docker.network.bridge.enable_icc"]).toBe("false");
+  });
+
+  it("two instances produce non-colliding artifacts", () => {
+    const posture = getPostureConfig("standard");
+    const compose1 = generateCompose("openclaw:john", posture, "/home/user/.clawhq/john", "clawhq_john_net");
+    const compose2 = generateCompose("openclaw:jane", posture, "/home/user/.clawhq/jane", "clawhq_jane_net");
+
+    expect(compose1.services.openclaw.image).toBe("openclaw:john");
+    expect(compose2.services.openclaw.image).toBe("openclaw:jane");
+    expect(Object.keys(compose1.networks)[0]).toBe("clawhq_john_net");
+    expect(Object.keys(compose2.networks)[0]).toBe("clawhq_jane_net");
   });
 });
 

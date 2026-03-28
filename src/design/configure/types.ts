@@ -33,6 +33,9 @@ export interface WizardAnswers {
   /** Deployment directory (default ~/.clawhq). */
   readonly deployDir: string;
 
+  /** Instance name for multi-agent deployments. Defaults to 'default' for backward compatibility. */
+  readonly instanceName?: string;
+
   /** Whether running in air-gapped mode (no internet). */
   readonly airGapped: boolean;
 

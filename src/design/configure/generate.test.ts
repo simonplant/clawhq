@@ -233,6 +233,65 @@ describe("generateBundle", () => {
   });
 });
 
+describe("multi-instance support", () => {
+  it("uses default network name when instanceName is omitted", () => {
+    const bundle = generateBundle(makeAnswers());
+    const networks = bundle.composeConfig.networks ?? {};
+    expect(networks).toHaveProperty("clawhq_net");
+  });
+
+  it("uses default network name when instanceName is 'default'", () => {
+    const bundle = generateBundle(makeAnswers({ instanceName: "default" }));
+    const networks = bundle.composeConfig.networks ?? {};
+    expect(networks).toHaveProperty("clawhq_net");
+    const svc = bundle.composeConfig.services?.["openclaw"];
+    expect(svc?.networks).toContain("clawhq_net");
+  });
+
+  it("uses per-instance network name when instanceName is set", () => {
+    const bundle = generateBundle(makeAnswers({ instanceName: "john" }));
+    const networks = bundle.composeConfig.networks ?? {};
+    expect(networks).toHaveProperty("clawhq_john_net");
+    expect(networks).not.toHaveProperty("clawhq_net");
+    const svc = bundle.composeConfig.services?.["openclaw"];
+    expect(svc?.networks).toContain("clawhq_john_net");
+  });
+
+  it("threads instanceName into clawhqConfig", () => {
+    const bundle = generateBundle(makeAnswers({ instanceName: "john" }));
+    expect(bundle.clawhqConfig.instanceName).toBe("john");
+  });
+
+  it("omits instanceName from clawhqConfig when using default", () => {
+    const bundle = generateBundle(makeAnswers());
+    expect(bundle.clawhqConfig.instanceName).toBeUndefined();
+  });
+
+  it("two different instance names produce non-colliding networks", () => {
+    const bundle1 = generateBundle(makeAnswers({ instanceName: "john" }));
+    const bundle2 = generateBundle(makeAnswers({ instanceName: "jane" }));
+    const nets1 = Object.keys(bundle1.composeConfig.networks ?? {});
+    const nets2 = Object.keys(bundle2.composeConfig.networks ?? {});
+    expect(nets1[0]).not.toBe(nets2[0]);
+    expect(nets1[0]).toBe("clawhq_john_net");
+    expect(nets2[0]).toBe("clawhq_jane_net");
+  });
+
+  it("ICC is disabled on per-instance network", () => {
+    const bundle = generateBundle(makeAnswers({ instanceName: "john" }));
+    const networks = bundle.composeConfig.networks ?? {};
+    const net = networks["clawhq_john_net"];
+    expect(net?.driver_opts?.["com.docker.network.bridge.enable_icc"]).toBe("false");
+  });
+
+  it("passes full validation with instanceName set", () => {
+    const bundle = generateBundle(makeAnswers({ instanceName: "john" }));
+    const report = validateBundle(bundle);
+    expect(report.valid).toBe(true);
+    expect(report.errors).toHaveLength(0);
+  });
+});
+
 describe("validateCronExpr", () => {
   it("accepts valid 5-field expressions", () => {
     expect(validateCronExpr("0 7 * * *")).toHaveLength(0);

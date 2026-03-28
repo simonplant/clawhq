@@ -18,6 +18,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
 import { checkCache, computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
 import { generateStage1Dockerfile, generateStage2Dockerfile } from "./dockerfile.js";
@@ -29,8 +30,8 @@ const execFileAsync = promisify(execFile);
 
 // ── Image Tags ──────────────────────────────────────────────────────────────
 
+/** Stage 1 base image — shared across all instances. */
 const STAGE1_TAG = "openclaw:local";
-const STAGE2_TAG = "openclaw:custom";
 
 // ── Build Orchestrator ──────────────────────────────────────────────────────
 
@@ -45,6 +46,8 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   const posture = options.posture ?? DEFAULT_POSTURE;
   const postureConfig = getPostureConfig(posture);
   const engineDir = join(deployDir, "engine");
+  const stage2Tag = agentImageTag(options.instanceName);
+  const networkName = agentNetworkName(options.instanceName);
 
   // Ensure engine directory exists
   await mkdir(engineDir, { recursive: true });
@@ -71,17 +74,17 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 
   // Build Stage 2
   if (!skipStage2) {
-    const result = await dockerBuild(engineDir, "Dockerfile", STAGE2_TAG);
+    const result = await dockerBuild(engineDir, "Dockerfile", stage2Tag);
     if (!result.success) {
       return { success: false, manifest: null, cacheHit: { stage1: skipStage1, stage2: false }, error: result.error };
     }
   }
 
   // Get image info for manifest
-  const imageInfo = await getImageInfo(STAGE2_TAG);
+  const imageInfo = await getImageInfo(stage2Tag);
 
   // Generate docker-compose.yml
-  const compose = generateCompose(STAGE2_TAG, postureConfig, deployDir);
+  const compose = generateCompose(stage2Tag, postureConfig, deployDir, networkName);
   await writeFile(
     join(engineDir, "docker-compose.yml"),
     serializeYaml(compose),
@@ -91,7 +94,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   // Write build manifest
   const manifest = createManifest({
     imageId: imageInfo.id,
-    imageTag: STAGE2_TAG,
+    imageTag: stage2Tag,
     imageHash: imageInfo.hash,
     layers: imageInfo.layers,
     posture,

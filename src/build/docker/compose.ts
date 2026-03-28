@@ -63,6 +63,7 @@ export function generateCompose(
   imageTag: string,
   posture: PostureConfig,
   deployDir: string,
+  networkName = "clawhq_net",
 ): ComposeOutput {
   const service: ComposeServiceOutput = {
     image: imageTag,
@@ -84,7 +85,7 @@ export function generateCompose(
       // Cron
       `${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`,
     ],
-    networks: ["clawhq_net"],
+    networks: [networkName],
     env_file: [".env"],
     restart: "unless-stopped",
     ...(hasResourceLimits(posture)
@@ -103,7 +104,7 @@ export function generateCompose(
   };
 
   const networks: Record<string, ComposeNetworkOutput> = {
-    clawhq_net: {
+    [networkName]: {
       driver: "bridge",
       ...(posture.iccDisabled
         ? {

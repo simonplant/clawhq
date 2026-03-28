@@ -360,6 +360,8 @@ export interface MonitorConfig {
  */
 export interface ClawHQConfig {
   readonly version?: string;
+  /** Instance name for multi-agent deployments. Defaults to 'default'. */
+  readonly instanceName?: string;
   readonly installMethod?: InstallMethod;
   readonly security?: {
     readonly posture?: SecurityPosture;

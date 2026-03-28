@@ -64,6 +64,8 @@ export interface BuildOptions {
   readonly stage1: Stage1Config;
   readonly stage2: Stage2Config;
   readonly noCache?: boolean;
+  /** Instance name for multi-agent deployments. Defaults to 'default'. */
+  readonly instanceName?: string;
 }
 
 // ── Build Manifest ──────────────────────────────────────────────────────────

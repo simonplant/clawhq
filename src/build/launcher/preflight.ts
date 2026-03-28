@@ -17,10 +17,6 @@ import type { PreflightCheckName, PreflightCheckResult, PreflightReport } from "
 
 const execFileAsync = promisify(execFile);
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const GATEWAY_PORT = GATEWAY_DEFAULT_PORT;
-
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -30,13 +26,15 @@ const GATEWAY_PORT = GATEWAY_DEFAULT_PORT;
 export async function runPreflight(
   deployDir: string,
   signal?: AbortSignal,
+  gatewayPort?: number,
 ): Promise<PreflightReport> {
+  const port = gatewayPort ?? GATEWAY_DEFAULT_PORT;
   const checks = await Promise.all([
     checkDocker(signal),
     checkImages(deployDir, signal),
     checkConfig(deployDir),
     checkSecrets(deployDir),
-    checkPorts(signal),
+    checkPorts(port, signal),
     checkOllama(signal),
   ]);
 
@@ -180,12 +178,12 @@ async function checkSecrets(deployDir: string): Promise<PreflightCheckResult> {
 }
 
 /** 5. Gateway port is not already in use. */
-async function checkPorts(signal?: AbortSignal): Promise<PreflightCheckResult> {
+async function checkPorts(port: number, signal?: AbortSignal): Promise<PreflightCheckResult> {
   const name: PreflightCheckName = "ports";
   try {
     const { stdout } = await execFileAsync(
       "ss",
-      ["-tlnp", `sport = :${GATEWAY_PORT}`],
+      ["-tlnp", `sport = :${port}`],
       { timeout: PREFLIGHT_EXEC_TIMEOUT_MS, signal },
     );
 
@@ -195,16 +193,16 @@ async function checkPorts(signal?: AbortSignal): Promise<PreflightCheckResult> {
       return {
         name,
         passed: false,
-        message: `Port ${GATEWAY_PORT} is already in use`,
-        fix: `Stop the process using port ${GATEWAY_PORT} or change the gateway port in openclaw.json`,
+        message: `Port ${port} is already in use`,
+        fix: `Stop the process using port ${port} or change the gateway port in openclaw.json`,
       };
     }
 
-    return { name, passed: true, message: `Port ${GATEWAY_PORT} is available` };
+    return { name, passed: true, message: `Port ${port} is available` };
   } catch (e) {
     // ss not available (macOS) — try lsof
     try {
-      await execFileAsync("lsof", ["-i", `:${GATEWAY_PORT}`, "-sTCP:LISTEN"], {
+      await execFileAsync("lsof", ["-i", `:${port}`, "-sTCP:LISTEN"], {
         timeout: PREFLIGHT_EXEC_TIMEOUT_MS,
         signal,
       });
@@ -212,12 +210,12 @@ async function checkPorts(signal?: AbortSignal): Promise<PreflightCheckResult> {
       return {
         name,
         passed: false,
-        message: `Port ${GATEWAY_PORT} is already in use`,
-        fix: `Stop the process using port ${GATEWAY_PORT} or change the gateway port in openclaw.json`,
+        message: `Port ${port} is already in use`,
+        fix: `Stop the process using port ${port} or change the gateway port in openclaw.json`,
       };
     } catch (e) {
       // lsof exits non-zero when port is free
-      return { name, passed: true, message: `Port ${GATEWAY_PORT} is available` };
+      return { name, passed: true, message: `Port ${port} is available` };
     }
   }
 }

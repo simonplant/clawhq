@@ -48,7 +48,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
   if (!options.skipPreflight) {
     report("preflight", "running", "Running preflight checks…");
 
-    const preflight = await runPreflight(deployDir, signal);
+    const preflight = await runPreflight(deployDir, signal, options.gatewayPort);
 
     if (!preflight.passed) {
       const errors = preflight.failed

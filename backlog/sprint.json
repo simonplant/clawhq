@@ -1,31 +1,42 @@
 {
-  "sprintId": "sprint-1774721357",
-  "startedAt": "2026-03-28T11:09:17-07:00",
+  "sprintId": "sprint-1774731990",
+  "startedAt": "2026-03-28T14:06:30-07:00",
   "status": "in_progress",
   "item": {
-    "id": "FEAT-108",
-    "title": "Decompose CLI index.ts — 4,320 lines into per-command modules",
-    "intent": "A 4,320-line CLI file is unmaintainable, untestable, and blocks parallel development. Each command should live in its own module so changes to one command don't risk breaking others.",
-    "description": "Architecture review found src/cli/index.ts is 4,320 lines containing all command definitions, option parsing, and handler logic in a single file. This creates: (1) merge conflicts when multiple features touch CLI simultaneously, (2) impossible to unit test individual commands in isolation, (3) no clear ownership boundary between modules. Decomposition strategy: extract each command (or command group) into src/cli/commands/<name>.ts, with index.ts reduced to a thin registration layer that imports and wires commands to Commander.js.",
+    "id": "FEAT-110",
+    "title": "Multi-instance support — deploy multiple agents on the same host with isolated ports, networks, and data dirs",
+    "intent": "A single host must support multiple independent agents without conflicts. Port collisions, shared networks, or overlapping data dirs are deployment failures that must be prevented by construction.",
+    "description": "ClawHQ currently assumes a single agent per host. Deploying a second agent on the same server (different user, different blueprint) will collide on ports, Docker network names, data directories, and image tags. This blocks the primary use case of running agents for multiple people on one powerful machine. Required: (1) per-agent deployment directory (~/.clawhq/<agent-name>/), (2) per-agent Docker network with unique name, (3) per-agent port allocation with collision detection in preflight, (4) per-agent image tags (openclaw:<agent-name>), (5) per-agent container names.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Audit src/cli/index.ts — catalog all commands and their line ranges",
-      "Create src/cli/commands/ directory",
-      "Extract each command group into its own file (e.g., deploy.ts, doctor.ts, blueprint.ts, skill.ts, cloud.ts)",
-      "Each command file exports a function that takes the Commander program and registers its commands",
-      "Reduce index.ts to imports + command registration + top-level error handler",
-      "Run npm test to confirm no regression",
-      "Run npm run build to confirm compilation succeeds"
+      "Add instanceName?: string to WizardAnswers (src/design/configure/types.ts), BuildOptions (src/build/docker/types.ts), and ClawHQConfig (src/config/types.ts) — optional field, defaults to 'default' for backward compatibility",
+      "Add helper functions to src/config/defaults.ts: agentNetworkName(instanceName?) returns 'clawhq_net' for default, 'clawhq_{name}_net' otherwise; agentImageTag(instanceName?) returns 'openclaw:custom' for default, 'openclaw:{name}' otherwise",
+      "Update src/design/configure/generate.ts: replace const AGENT_NETWORK = 'clawhq_net' with call to agentNetworkName(answers.instanceName); thread instanceName into buildClawHQConfig(); default deployDir to ~/.clawhq/{name}/ when name is not 'default'",
+      "Update src/build/docker/compose.ts: add networkName parameter (default 'clawhq_net') to generateCompose(); replace two hardcoded 'clawhq_net' references with the parameter",
+      "Update src/build/docker/build.ts: replace constant STAGE2_TAG = 'openclaw:custom' with agentImageTag(options.instanceName); STAGE1_TAG stays 'openclaw:local' (shared base image); thread networkName to generateCompose(); update serializeYaml to handle dynamic network name",
+      "Fix src/build/launcher/preflight.ts: delete hardcoded const GATEWAY_PORT = GATEWAY_DEFAULT_PORT (line 22); add gatewayPort parameter to runPreflight(); pass through to checkPorts() — falls back to GATEWAY_DEFAULT_PORT when not provided",
+      "Update src/build/launcher/deploy.ts: thread gatewayPort from DeployOptions to runPreflight()",
+      "Add tests: build with instanceName 'john' produces image tag 'openclaw:john' and network 'clawhq_john_net'; preflight with custom port checks that port; generateBundle with instanceName produces correct network in compose config; two different instance names produce non-colliding artifacts"
     ],
     "acceptanceCriteria": [
-      "src/cli/index.ts is under 500 lines — purely command registration and top-level error handling",
-      "Each command group lives in src/cli/commands/<name>.ts",
-      "All existing CLI commands work identically — no user-visible behavior change",
-      "npm test and npm run build pass with no regression"
+      "Two agents can be deployed on the same host with different names, ports, and data directories",
+      "clawhq init with instanceName 'john' creates ~/.clawhq/john/ with isolated config",
+      "Docker networks and image tags are unique per agent name — network: clawhq_{name}_net, image: openclaw:{name}",
+      "Preflight checks the configured gateway port, not the hardcoded default 18789",
+      "Omitting instanceName or using 'default' produces identical artifacts to current behavior (backward compatible)",
+      "Stage 1 Docker image (openclaw:local) is shared across all instances — only stage 2 is per-instance"
     ],
     "scope": [
-      "src/cli/**"
+      "src/design/configure/types.ts",
+      "src/design/configure/generate.ts",
+      "src/build/docker/compose.ts",
+      "src/build/docker/build.ts",
+      "src/build/docker/types.ts",
+      "src/build/launcher/preflight.ts",
+      "src/build/launcher/deploy.ts",
+      "src/config/defaults.ts",
+      "src/config/types.ts"
     ],
-    "startedAt": "2026-03-28T11:09:17-07:00"
+    "startedAt": "2026-03-28T14:06:30-07:00"
   }
 }

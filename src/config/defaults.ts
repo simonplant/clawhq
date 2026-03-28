@@ -38,6 +38,29 @@ export const TELEGRAM_API_BASE = "https://api.telegram.org";
 /** Base URL for the 1Password Events API (no trailing slash). */
 export const ONEPASSWORD_API_BASE = "https://events.1password.com";
 
+// ── Multi-instance helpers ──────────────────────────────────────────────────
+
+/**
+ * Docker network name for an agent instance.
+ *
+ * Returns 'clawhq_net' for default/omitted, 'clawhq_{name}_net' otherwise.
+ */
+export function agentNetworkName(instanceName?: string): string {
+  if (!instanceName || instanceName === "default") return "clawhq_net";
+  return `clawhq_${instanceName}_net`;
+}
+
+/**
+ * Stage 2 Docker image tag for an agent instance.
+ *
+ * Returns 'openclaw:custom' for default/omitted, 'openclaw:{name}' otherwise.
+ * Stage 1 (openclaw:local) is always shared across instances.
+ */
+export function agentImageTag(instanceName?: string): string {
+  if (!instanceName || instanceName === "default") return "openclaw:custom";
+  return `openclaw:${instanceName}`;
+}
+
 // ── Container identity ──────────────────────────────────────────────────────
 
 /** Container non-root user (LM-06 landmine requirement). */

@@ -9,6 +9,7 @@
  */
 
 import {
+  agentNetworkName,
   BOOTSTRAP_MAX_CHARS,
   CONTAINER_USER,
   ENABLE_AUDIT_STDOUT,
@@ -37,7 +38,6 @@ import type { WizardAnswers } from "./types.js";
 
 const DEFAULT_GATEWAY_PORT = GATEWAY_DEFAULT_PORT;
 const DOCKER_BRIDGE_GATEWAY = "172.17.0.1";
-const AGENT_NETWORK = "clawhq_net";
 
 // ── Main Entry Point ─────────────────────────────────────────────────────────
 
@@ -62,10 +62,11 @@ const AGENT_NETWORK = "clawhq_net";
  */
 export function generateBundle(answers: WizardAnswers): DeploymentBundle {
   const port = answers.gatewayPort || DEFAULT_GATEWAY_PORT;
+  const networkName = agentNetworkName(answers.instanceName);
 
   return {
     openclawConfig: buildOpenClawConfig(answers, port),
-    composeConfig: buildComposeConfig(answers, port),
+    composeConfig: buildComposeConfig(answers, port, networkName),
     envVars: buildEnvVars(answers),
     cronJobs: buildCronJobs(answers.blueprint),
     identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions),
@@ -181,6 +182,7 @@ function buildChannelConfig(
 function buildComposeConfig(
   answers: WizardAnswers,
   port: number,
+  networkName: string,
 ): ComposeConfig {
   const bp = answers.blueprint;
   const posture = bp.security_posture.posture;
@@ -217,7 +219,7 @@ function buildComposeConfig(
         ],
 
         // Network
-        networks: [AGENT_NETWORK],
+        networks: [networkName],
 
         // Environment from .env file
         env_file: [".env"],
@@ -235,7 +237,7 @@ function buildComposeConfig(
     networks: {
       // LM-10: Network declared
       // LM-13: ICC disabled for egress filtering
-      [AGENT_NETWORK]: {
+      [networkName]: {
         driver: "bridge",
         driver_opts: {
           "com.docker.network.bridge.enable_icc": "false",
@@ -420,6 +422,9 @@ function buildClawHQConfig(answers: WizardAnswers): ClawHQConfig {
 
   return {
     version: "0.1.0",
+    ...(answers.instanceName && answers.instanceName !== "default"
+      ? { instanceName: answers.instanceName }
+      : {}),
     installMethod: "cache",
     security: {
       posture: bp.security_posture.posture === "paranoid"
