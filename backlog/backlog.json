@@ -209,33 +209,39 @@
       "priority": "must",
       "category": "core",
       "steps": [
-        "Add agent-name concept to clawhq init (--name flag or wizard question)",
-        "Update deployment directory structure: ~/.clawhq/<agent-name>/ instead of ~/.clawhq/current/",
-        "Update Docker image tag generation to use agent name: openclaw:<agent-name>",
-        "Update docker-compose.yml generation to use unique container names and network names per agent",
-        "Update preflight port check to scan for all running ClawHQ agents, not just the default port",
-        "Update clawhq up/down/status/doctor to accept --name or auto-detect from current directory",
-        "Add clawhq list command to show all deployed agents on the host",
-        "Add tests for multi-instance isolation (two agents with different names, verify no collisions)"
+        "Add instanceName?: string to WizardAnswers (src/design/configure/types.ts), BuildOptions (src/build/docker/types.ts), and ClawHQConfig (src/config/types.ts) — optional field, defaults to 'default' for backward compatibility",
+        "Add helper functions to src/config/defaults.ts: agentNetworkName(instanceName?) returns 'clawhq_net' for default, 'clawhq_{name}_net' otherwise; agentImageTag(instanceName?) returns 'openclaw:custom' for default, 'openclaw:{name}' otherwise",
+        "Update src/design/configure/generate.ts: replace const AGENT_NETWORK = 'clawhq_net' with call to agentNetworkName(answers.instanceName); thread instanceName into buildClawHQConfig(); default deployDir to ~/.clawhq/{name}/ when name is not 'default'",
+        "Update src/build/docker/compose.ts: add networkName parameter (default 'clawhq_net') to generateCompose(); replace two hardcoded 'clawhq_net' references with the parameter",
+        "Update src/build/docker/build.ts: replace constant STAGE2_TAG = 'openclaw:custom' with agentImageTag(options.instanceName); STAGE1_TAG stays 'openclaw:local' (shared base image); thread networkName to generateCompose(); update serializeYaml to handle dynamic network name",
+        "Fix src/build/launcher/preflight.ts: delete hardcoded const GATEWAY_PORT = GATEWAY_DEFAULT_PORT (line 22); add gatewayPort parameter to runPreflight(); pass through to checkPorts() — falls back to GATEWAY_DEFAULT_PORT when not provided",
+        "Update src/build/launcher/deploy.ts: thread gatewayPort from DeployOptions to runPreflight()",
+        "Add tests: build with instanceName 'john' produces image tag 'openclaw:john' and network 'clawhq_john_net'; preflight with custom port checks that port; generateBundle with instanceName produces correct network in compose config; two different instance names produce non-colliding artifacts"
       ],
       "acceptanceCriteria": [
         "Two agents can be deployed on the same host with different names, ports, and data directories",
-        "clawhq init --name john creates ~/.clawhq/john/ with isolated config",
-        "Docker networks, container names, and image tags are unique per agent name",
-        "Preflight detects port collisions with other running agents",
-        "clawhq list shows all deployed agents with their status and ports",
-        "clawhq up --name john starts only John's agent without affecting other agents"
+        "clawhq init with instanceName 'john' creates ~/.clawhq/john/ with isolated config",
+        "Docker networks and image tags are unique per agent name — network: clawhq_{name}_net, image: openclaw:{name}",
+        "Preflight checks the configured gateway port, not the hardcoded default 18789",
+        "Omitting instanceName or using 'default' produces identical artifacts to current behavior (backward compatible)",
+        "Stage 1 Docker image (openclaw:local) is shared across all instances — only stage 2 is per-instance"
       ],
       "scope": [
-        "src/design/configure/",
-        "src/build/docker/",
-        "src/build/launcher/",
-        "src/cli/"
+        "src/design/configure/types.ts",
+        "src/design/configure/generate.ts",
+        "src/build/docker/compose.ts",
+        "src/build/docker/build.ts",
+        "src/build/docker/types.ts",
+        "src/build/launcher/preflight.ts",
+        "src/build/launcher/deploy.ts",
+        "src/config/defaults.ts",
+        "src/config/types.ts"
       ],
+      "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-27",
-      "groomingNotes": "First real-world deployment — deploying a second agent for a friend on the same server as Clawdius. Multi-instance is the #1 blocker. Without isolated ports/networks/dirs, a second agent is impossible without manual Docker surgery. Must ship before any second deployment attempt."
+      "groomingNotes": "DOGFOOD 2026-03-27: Gate 0 blocker for John's deploy. Deep code analysis confirmed 5 hardcoding locations: compose.ts (network), build.ts (image tags), preflight.ts (port), generate.ts (network constant), firewall.ts (container pattern match — acceptable, works as-is). Design decision: service name stays 'openclaw' — compose project name (from dir basename) provides container isolation. Stage 1 image shared across instances. CLI --name flag and clawhq list deferred to Gate 1. Steps owned by Tech Lead — do not modify."
     },
     {
       "id": "FEAT-111",
