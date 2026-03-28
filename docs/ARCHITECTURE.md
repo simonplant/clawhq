@@ -87,7 +87,7 @@ A blueprint is a complete agent design — a YAML file that specifies every dime
 
 ### Entity Model
 
-Six entities compose an agent. Three are primitive (defined independently), one is a planned composition layer, and two are top-level:
+Five entities compose an agent. Three are primitive, one is a planned composition layer, and one is top-level:
 
 ```
 PRIMITIVE ENTITIES (defined independently, reusable):
@@ -102,52 +102,59 @@ PRIMITIVE ENTITIES (defined independently, reusable):
 
 COMPOSITION LAYER (planned — does not exist yet):
 
-  Role
+  Role (thin — a named preset, not a god object)
   ┌──────────────────────────────────────┐
   │ name                                 │
+  │ description        (human-readable)  │
   │ tools[] ──────────→ Tool[]           │
   │ skills[] ─────────→ Skill[]          │
-  │ autonomy_rules                       │
-  │ base_dimensions    (personality bias) │
   │ integration_deps[] → Integration[]   │
   └──────────────────────────────────────┘
 
-TOP-LEVEL ENTITIES:
+  Role is a named tool+skill bundle. Nothing more. Autonomy,
+  personality, and security are holistic agent properties — they
+  belong at the Blueprint level, not per-role.
 
-  PersonalityType              Blueprint
-  ┌───────────────────┐        ┌──────────────────────────────────┐
-  │ code (e.g. ENFP)  │        │ name                             │
-  │ dimension_mods    │───────→│ personality_type                 │
-  │   E/I → warmth,.. │        │ dimension_overrides              │
-  │   S/N → analyt,.. │        │ toolbelt.tools[] → Tool[]        │  ← current
-  │   T/F → direct,.. │        │ skill_bundle[] → Skill[]         │  ← current
-  │   J/P → caution,. │        │ (roles[] → Role[])               │  ← planned
-  └───────────────────┘        │ security_posture                 │
-                               │ memory_policy                    │
-                               │ channels                         │
-                               │ model_routing                    │
-                               └───────────┬──────────────────────┘
-                                           │ forge
-                                           ▼
-                                        Agent (deployed instance)
+TOP-LEVEL:
+
+  Blueprint
+  ┌──────────────────────────────────────────┐
+  │ name                                     │
+  │ roles[] ──────────→ Role[]      (planned)│
+  │ toolbelt.tools[] ─→ Tool[]      (current)│
+  │ skill_bundle[] ───→ Skill[]     (current)│
+  │ personality.dimensions  (7 sliders, 1-5) │
+  │ autonomy_model      (single, agent-wide) │
+  │ security_posture                         │
+  │ memory_policy                            │
+  │ channels                                 │
+  │ model_routing                            │
+  └────────────────────┬─────────────────────┘
+                       │ forge
+                       ▼
+                    Agent (deployed instance)
 ```
 
 **Dependency chain:** Integration ← Tool ← Skill. Each depends on the one before it. An email tool needs an IMAP integration. An email-digest skill needs the email tool.
 
-**Current model (flat):** Blueprints directly reference tools and skills via `toolbelt.tools[]` and `skill_bundle.included[]`. Personality dimensions are set directly in the blueprint YAML.
+**Current model (flat):** Blueprints directly reference tools and skills via `toolbelt.tools[]` and `skill_bundle.included[]`. Personality dimensions are set directly in the blueprint YAML. Autonomy is a single model at the blueprint level.
 
-**Planned model (composed):** Roles bundle tools + skills + autonomy + personality base into named, reusable archetypes. Blueprints compose 1-4 roles. A 16 Personalities type (MBTI-based) cross-cuts all roles as a behavioral overlay. Final dimension values are derived: `role_bases + type_modifier + user_overrides`. See `docs/CONFIGURATION.md` § "Planned: Personality Composition" for details.
+**Planned model:** Roles are named tool+skill bundles with a description. A blueprint composes 1-4 roles. `toolbelt.tools[]` coexists as an escape hatch for role-independent tools. Final tool set = union of role tools + toolbelt tools. Roles provide legibility — `roles: [creative-collaborator, project-manager]` communicates intent; `toolbelt.tools: [todoist, ical, fm, quote, sanitize]` is a parts list.
 
-**Derived vs. configured:** Several blueprint outputs are derived from the entities above, not configured directly:
+**16 Personalities (MBTI) as build-time preset:** The 16P type is a UI convenience, not a schema concept. During `clawhq init`, the user picks a type (or answers 4-5 questions) and the wizard pre-fills the 7 dimension sliders. The type is not stored in the blueprint — only the resolved slider values are. This keeps the runtime simple and sidesteps the question of whether MBTI is a valid personality model. It's just a preset picker.
+
+**Why Role is deliberately thin:** Role does NOT carry autonomy rules or personality dimensions. An agent with `[trader, inbox-manager]` roles doesn't have two autonomy models or two personality vectors — it has one of each that accounts for both domains. Personality and autonomy are holistic agent properties, not per-capability properties. If Role carried these concerns, it would become a god object that needs override layers the moment any role doesn't quite fit.
+
+**Derived vs. configured:** Several outputs are derived at forge time, not configured directly:
 
 | Output | Derived From |
 |---|---|
-| Identity files (SOUL.md, AGENTS.md) | personality dimensions + roles |
-| Final dimension values | role bases + 16P type modifier + overrides |
+| Identity files (SOUL.md, AGENTS.md) | personality dimensions + role descriptions |
 | Egress domain allowlist | union of integration.egressDomains[] |
 | Cron schedule | skill.schedule for each included skill |
 | Docker compose | security posture + integrations |
 | .env secrets | integration.envKeys[] |
+| Final tool set | union of role.tools[] + toolbelt.tools[] |
 
 ### What a Blueprint Configures (current)
 
