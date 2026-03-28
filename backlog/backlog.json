@@ -32,12 +32,14 @@
       "dependsOn": [
         "FEAT-110"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
       "groomingNotes": "STRATEGY: THE LAUNCH GATE. No public release without this. FAILED TWICE (failCount:2). Trust paradox — security tool with security bug is a brand-killer. Depends on FEAT-110 for correct directory structure (~/.clawhq/<agent-name>/). Each failure discovered new integration gaps — these are the bugs FEAT-018 is supposed to catch. AC verify commands added. Run smoke test completely before declaring pass.",
       "lastFailAt": "2026-03-26T12:23:08-07:00",
-      "failCount": 2
+      "failCount": 2,
+      "passes": true,
+      "completedAt": "2026-03-28T16:17:55-07:00"
     },
     {
       "id": "FEAT-111",

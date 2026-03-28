@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774739191",
   "startedAt": "2026-03-28T16:06:31-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-018",
     "title": "End-to-end smoke test — run full user journey against real Docker on local machine",
@@ -29,6 +29,10 @@
     "scope": [
       "test/e2e/"
     ],
-    "startedAt": "2026-03-28T16:06:31-07:00"
-  }
+    "startedAt": "2026-03-28T16:06:31-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-28T16:17:55-07:00"
+  },
+  "completedAt": "2026-03-28T16:17:55-07:00",
+  "attempts": 1
 }
