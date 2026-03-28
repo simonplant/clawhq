@@ -34,10 +34,12 @@
       "dependsOn": [
         "FEAT-108"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Security-by-default requirement. Trust paradox — an agent platform without content sanitization contradicts the security promise. Extracted from Clawdius production deployment. Depends on FEAT-108 for clean CLI integration. PO REVIEW 2026-03-28: Priority confirmed MUST — every blueprint reads external content; unfiltered prompt injection is not a theoretical risk. The quarantine log AC is critical: silent filtering erodes trust, operators need to see what was blocked. AC verify commands added."
+      "groomingNotes": "STRATEGY: Security-by-default requirement. Trust paradox — an agent platform without content sanitization contradicts the security promise. Extracted from Clawdius production deployment. Depends on FEAT-108 for clean CLI integration. PO REVIEW 2026-03-28: Priority confirmed MUST — every blueprint reads external content; unfiltered prompt injection is not a theoretical risk. The quarantine log AC is critical: silent filtering erodes trust, operators need to see what was blocked. AC verify commands added.",
+      "passes": true,
+      "completedAt": "2026-03-28T16:58:40-07:00"
     },
     {
       "id": "FEAT-115",
