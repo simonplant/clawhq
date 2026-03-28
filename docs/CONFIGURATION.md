@@ -77,50 +77,41 @@ Seven-dimensional personality model. Each dimension is an integer on a 1-5 scale
 | `personality.dimensions.formality` | integer (1-5) | Yes | — | How formal vs. casual the agent communicates |
 | `personality.dimensions.analyticalDepth` | integer (1-5) | Yes | — | How deeply the agent analyzes before responding |
 
-#### Personality Composition Model
+#### Planned: Personality Composition
 
-Personality dimensions are the resolved output of a three-layer composition:
+> **Status: Design only.** The fields below (`roles[]`, `personality_type`) do not exist in the current schema. The current schema uses `toolbelt.tools[]`, `skill_bundle.included[]`, and `personality.dimensions` directly. This section documents the planned composition model.
 
-```
-Roles (what you do) × 16P Type (how you do it) = Slider Values
-         ↓                      ↓                      ↓
-   tools, skills,         behavioral style        final resolved
-   cron, autonomy          modifier                dimensions
-```
-
-**Layer 1 — Roles** define what the agent does. Each role is a self-contained package of tools, skills, autonomy rules, and base personality tendencies. A blueprint composes one or more roles:
-
-```yaml
-roles:
-  - creative-collaborator  # brainstorm, project memory — skews spontaneous
-  - project-manager        # tasks, calendar, schedule-guard — skews structured
-  - inbox-manager          # email, email-digest — skews efficient
-  - stoic-coach            # journal, daily-reflection — skews analytical
-```
-
-Each role contributes base dimension values. A project-manager role naturally pushes caution and formality higher; a creative-collaborator pushes proactivity and warmth higher.
-
-**Layer 2 — 16 Personalities type** (MBTI-based) is a behavioral overlay that cross-cuts all roles. Same role, different style:
-
-| MBTI Axis | Dimensions Affected | Mapping |
-|---|---|---|
-| **E/I** (Extraversion / Introversion) | warmth, verbosity, proactivity | E = higher warmth, more verbose, more proactive outreach |
-| **S/N** (Sensing / Intuition) | analyticalDepth, verbosity | N = higher analytical depth, bigger picture; S = practical, concise |
-| **T/F** (Thinking / Feeling) | directness, formality, warmth | T = blunt, formal, task-first; F = warm, empathetic, relationship-first |
-| **J/P** (Judging / Perceiving) | caution, proactivity, formality | J = structured, plans ahead, cautious; P = spontaneous, adaptable |
-| **A/T** (Assertive / Turbulent) | caution, directness | A = confident, low hedging; T = careful, more caveats |
-
-An INTJ project manager: terse status updates, flags risks early, plans ahead. An ENFP project manager: enthusiastic check-ins, connects dots between projects, adapts on the fly.
-
-**Layer 3 — Slider overrides** let users fine-tune any dimension after composition. The resolved formula:
+The seven dimension sliders above are currently set directly in blueprints. The planned model derives them from three layers:
 
 ```
 final_dimensions = role_base_values + type_modifier + user_overrides
 ```
 
-**Blueprint example:**
+**Roles** — Named, reusable capability bundles. Each role packages tools + skills + autonomy rules + base personality tendencies. A blueprint composes 1-4 roles. Roles replace the current flat `toolbelt.tools[]` and `skill_bundle.included[]`.
 
 ```yaml
+# Planned schema — not yet implemented
+roles:
+  - inbox-manager          # email tool + email-digest skill → skews efficient, structured
+  - creative-collaborator  # brainstorm + journal tools → skews spontaneous, warm
+```
+
+Each role contributes base dimension values. A project-manager role pushes caution and formality higher; a creative-collaborator pushes proactivity and warmth higher.
+
+**16 Personalities type** (MBTI-based) — Behavioral overlay that cross-cuts all roles. Same role, different style. Adds a `personality_type` field to the blueprint.
+
+| MBTI Axis | Dimensions Affected | Mapping |
+|---|---|---|
+| **E/I** (Extraversion / Introversion) | warmth, verbosity, proactivity | E = higher warmth, more verbose, more proactive |
+| **S/N** (Sensing / Intuition) | analyticalDepth, verbosity | N = deeper analysis, bigger picture; S = practical, concise |
+| **T/F** (Thinking / Feeling) | directness, formality, warmth | T = blunt, formal, task-first; F = warm, empathetic |
+| **J/P** (Judging / Perceiving) | caution, proactivity, formality | J = structured, cautious; P = spontaneous, adaptable |
+| **A/T** (Assertive / Turbulent) | caution, directness | A = confident, low hedging; T = careful, more caveats |
+
+**Overrides** — User fine-tuning of any dimension after composition. Power users tune sliders directly; most users never touch them.
+
+```yaml
+# Planned schema — not yet implemented
 roles:
   - creative-collaborator
   - project-manager
@@ -129,7 +120,7 @@ overrides:
   caution: 4  # bump up from ENFP default
 ```
 
-During `clawhq init`, the wizard can present this as: pick roles → pick personality type (or answer 4-5 preference questions that derive one) → optionally adjust sliders. Power users tune sliders directly; most users never touch them.
+**Open design question:** Does the Role entity earn its weight? It adds reusability (same inbox-manager role across Email Manager and Founder's Ops blueprints) and personality coupling (tools come with behavioral expectations), but also adds indirection. The alternative is keeping the flat model and bolting 16P type onto the existing schema.
 
 ### `security_posture`
 
