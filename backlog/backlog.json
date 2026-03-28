@@ -143,10 +143,12 @@
         "src/config/schema.ts",
         "src/cli/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Highest-leverage documentation work. Standards capture play AND foundation absorption defense. Estimate ~1 week for rigorous spec (not a weekend — the compiler touches identity, security, tools, skills, cron, autonomy, memory, integrations). The validate command is the proof it's a real spec, not just documentation. Can be split: spec doc first, validate command second."
+      "groomingNotes": "STRATEGY: Highest-leverage documentation work. Standards capture play AND foundation absorption defense. Estimate ~1 week for rigorous spec (not a weekend — the compiler touches identity, security, tools, skills, cron, autonomy, memory, integrations). The validate command is the proof it's a real spec, not just documentation. Can be split: spec doc first, validate command second.",
+      "passes": true,
+      "completedAt": "2026-03-28T01:33:40-07:00"
     },
     {
       "id": "FEAT-111",

@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774686161",
   "startedAt": "2026-03-28T01:22:41-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-121",
     "title": "Blueprint Specification — publish human-readable spec as a community standard",
@@ -31,6 +31,15 @@
       "src/config/schema.ts",
       "src/cli/"
     ],
+<<<<<<< HEAD
     "startedAt": "2026-03-28T01:22:41-07:00"
   }
+=======
+    "startedAt": "2026-03-28T01:22:41-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-28T01:33:40-07:00"
+  },
+  "completedAt": "2026-03-28T01:33:40-07:00",
+  "attempts": 1
+>>>>>>> 7bff4d9 (feat(FEAT-121): All AC met. Intent fulfilled. Blueprint spec is a standalone 1028-line document covering all 12 required sections + 1 optional, with validation rules, security constraints, 3 worked examples, semver versioning, and a working `clawhq blueprint validate` CLI command. All 7 built-in blueprints validate cleanly via the CLI.)
 }
