@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774721357",
   "startedAt": "2026-03-28T11:09:17-07:00",
-  "status": "completed",
+  "status": "in_progress",
   "item": {
     "id": "FEAT-108",
     "title": "Decompose CLI index.ts — 4,320 lines into per-command modules",
@@ -26,10 +26,6 @@
     "scope": [
       "src/cli/**"
     ],
-    "startedAt": "2026-03-28T11:09:17-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-28T11:26:57-07:00"
-  },
-  "completedAt": "2026-03-28T11:26:57-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-28T11:09:17-07:00"
+  }
 }
