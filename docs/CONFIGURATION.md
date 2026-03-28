@@ -77,36 +77,63 @@ Seven-dimensional personality model. Each dimension is an integer on a 1-5 scale
 | `personality.dimensions.formality` | integer (1-5) | Yes | — | How formal vs. casual the agent communicates |
 | `personality.dimensions.analyticalDepth` | integer (1-5) | Yes | — | How deeply the agent analyzes before responding |
 
-#### Planned: Roles and 16P Presets
+#### Planned: Capabilities and Personas
 
-> **Status: Design only.** The fields below (`roles[]`) do not exist in the current schema. The current schema uses `toolbelt.tools[]`, `skill_bundle.included[]`, and `personality.dimensions` directly. This section documents the planned additions.
+> **Status: Design only.** The fields below (`capabilities[]`, `persona`) do not exist in the current schema. The current schema uses `toolbelt.tools[]`, `skill_bundle.included[]`, and `personality.dimensions` directly. This section documents the planned compiler catalog. See `docs/ARCHITECTURE.md` § "Compile-Time vs. Runtime" for the full model.
 
-**Roles** — Named tool+skill bundles with a human-readable description. A role is a preset, not a god object. It carries only capability concerns:
+Personality composition is a compile-time problem. OpenClaw never sees capabilities or personas — it gets flat, resolved config. These are ClawHQ compiler concepts.
+
+**Capability** — What the agent can do. A named tool+skill+integration bundle with operational doctrine:
+
+```typescript
+interface Capability {
+  id: string                    // "inbox-manager"
+  name: string                  // "Inbox Manager"
+  description: string           // one-line description
+  tools: string[]               // ["fm", "email", "contacts"]
+  skills: string[]              // ["scanner-triage"]
+  integrations: string[]        // ["fastmail", "icloud"]
+  soul_fragments: string[]      // prose injected into SOUL.md — operational
+                                // doctrine for this domain, NOT personality
+  suggested_crons: CronDef[]    // defaults, user can override
+}
+```
+
+Capability does NOT carry personality or autonomy. Those are agent-level concerns. `soul_fragments` is domain-specific behavioral guidance (e.g., a trader capability's fragment: "singles mentality, never execute trades directly"), not personality style.
+
+**Persona** — How the agent talks. A curated prose bundle, not an MBTI code:
+
+```typescript
+interface Persona {
+  id: string                    // "stoic-operator"
+  name: string                  // "Stoic Operator"
+  description: string
+  soul_template: string         // SOUL.md skeleton with {{slots}} for capability fragments
+  voice_examples: string[]      // 3-5 concrete example responses showing tone
+  dimensions: Dimensions        // the 7 slider defaults
+  anti_patterns: string[]       // "never use exclamation marks"
+}
+```
+
+ClawHQ ships 8-12 curated personas. Users can also start blank and write their own SOUL.md — the persona is a starting point, not a constraint. `voice_examples` are the key differentiator from abstract sliders: concrete samples of how this persona actually responds.
+
+**Blueprint with catalog references:**
 
 ```yaml
 # Planned schema — not yet implemented
-roles:
-  - inbox-manager          # email tool + email-digest skill
-  - creative-collaborator  # brainstorm + journal tools + daily-prompt skill
+persona: stoic-operator
+capabilities:
+  - inbox-manager
+  - trader
+  - meal-planner
+extra_tools: [weather]          # escape hatch, outside any capability
+dimension_overrides:
+  warmth: 3                     # fine-tune persona defaults
+soul_overrides: |               # free-text appended to SOUL.md
+  Always greet with the user's name.
 ```
 
-A role does NOT carry autonomy rules or personality dimensions. Those are holistic agent properties that belong at the blueprint level — an agent with `[trader, inbox-manager]` has one autonomy model and one personality, not two of each.
-
-`toolbelt.tools[]` coexists with `roles[]` as an escape hatch for role-independent tools. Final tool set = union of role tools + toolbelt tools. Roles cover 80% of tools; toolbelt handles the rest.
-
-**The value of roles is legibility, not reusability.** `roles: [creative-collaborator, project-manager]` communicates agent shape at a glance. `toolbelt.tools: [todoist, ical, fm, quote, sanitize]` is a parts list that tells you nothing about intent.
-
-**16 Personalities as build-time preset** — The 16P type (MBTI-based) is a UI convenience during `clawhq init`, not a schema field. The wizard offers a personality type picker (or 4-5 preference questions that derive one), pre-fills the 7 dimension sliders, and the user adjusts. Only the resolved slider values are stored in the blueprint. The type is not persisted.
-
-| MBTI Axis | Dimensions Pre-filled | Direction |
-|---|---|---|
-| **E/I** (Extraversion / Introversion) | warmth, verbosity, proactivity | E = higher |
-| **S/N** (Sensing / Intuition) | analyticalDepth, verbosity | N = higher analyticalDepth; S = lower verbosity |
-| **T/F** (Thinking / Feeling) | directness, formality, warmth | T = higher directness, formality; F = higher warmth |
-| **J/P** (Judging / Perceiving) | caution, proactivity, formality | J = higher caution, formality; P = higher proactivity |
-| **A/T** (Assertive / Turbulent) | caution, directness | A = higher directness, lower caution |
-
-This keeps the runtime simple — the agent only sees dimension values, never a type code. The 16P mapping is build-time expansion, not a runtime concept.
+**Compile step:** persona.soul_template + capability.soul_fragments → assembled SOUL.md → dimension overrides applied → flat runtime config emitted. No intermediate concepts survive into `config.yaml` or `SOUL.md`.
 
 ### `security_posture`
 
