@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774731990",
   "startedAt": "2026-03-28T14:06:30-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-110",
     "title": "Multi-instance support — deploy multiple agents on the same host with isolated ports, networks, and data dirs",
@@ -37,6 +37,10 @@
       "src/config/defaults.ts",
       "src/config/types.ts"
     ],
-    "startedAt": "2026-03-28T14:06:30-07:00"
-  }
+    "startedAt": "2026-03-28T14:06:30-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-28T14:14:49-07:00"
+  },
+  "completedAt": "2026-03-28T14:14:49-07:00",
+  "attempts": 1
 }

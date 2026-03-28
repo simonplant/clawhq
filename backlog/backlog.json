@@ -40,10 +40,12 @@
       "dependsOn": [
         "FEAT-108"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Gate 0 blocker for John's deploy. Deep code analysis confirmed 5 hardcoding locations. Design decision: service name stays 'openclaw' — compose project name (from dir basename) provides container isolation. Stage 1 image shared across instances. CLI --name flag and clawhq list deferred to Gate 1. Depends on FEAT-108."
+      "groomingNotes": "STRATEGY: Gate 0 blocker for John's deploy. Deep code analysis confirmed 5 hardcoding locations. Design decision: service name stays 'openclaw' — compose project name (from dir basename) provides container isolation. Stage 1 image shared across instances. CLI --name flag and clawhq list deferred to Gate 1. Depends on FEAT-108.",
+      "passes": true,
+      "completedAt": "2026-03-28T14:14:49-07:00"
     },
     {
       "id": "FEAT-018",
