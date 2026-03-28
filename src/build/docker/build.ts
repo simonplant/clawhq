@@ -21,16 +21,12 @@ import { promisify } from "node:util";
 import { checkCache, computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
 import { generateStage1Dockerfile, generateStage2Dockerfile } from "./dockerfile.js";
+import { getInstanceNames } from "./instance.js";
 import { createManifest, writeManifest } from "./manifest.js";
 import { DEFAULT_POSTURE, getPostureConfig } from "./posture.js";
 import type { BuildOptions, BuildResult, ManifestLayer } from "./types.js";
 
 const execFileAsync = promisify(execFile);
-
-// ── Image Tags ──────────────────────────────────────────────────────────────
-
-const STAGE1_TAG = "openclaw:local";
-const STAGE2_TAG = "openclaw:custom";
 
 // ── Build Orchestrator ──────────────────────────────────────────────────────
 
@@ -45,6 +41,11 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   const posture = options.posture ?? DEFAULT_POSTURE;
   const postureConfig = getPostureConfig(posture);
   const engineDir = join(deployDir, "engine");
+
+  // Derive per-instance Docker resource names (FEAT-110)
+  const names = getInstanceNames(deployDir);
+  const STAGE1_TAG = names.stage1Tag;
+  const STAGE2_TAG = names.stage2Tag;
 
   // Ensure engine directory exists
   await mkdir(engineDir, { recursive: true });
@@ -187,6 +188,7 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
 
   lines.push(`version: "${compose.version}"`, "", "services:", "  openclaw:");
   lines.push(`    image: ${svc.image}`);
+  lines.push(`    container_name: ${svc.container_name}`);
   lines.push(`    user: "${svc.user}"`);
   lines.push(`    read_only: ${svc.read_only}`);
   lines.push(`    restart: ${svc.restart}`);

@@ -14,6 +14,7 @@ import { join } from "node:path";
 
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
+import { getInstanceNames } from "../docker/instance.js";
 import { parseEnv, readEnv, setEnvValue, writeEnvAtomic } from "../../secure/credentials/env-store.js";
 
 import { getServiceConfig } from "./definitions.js";
@@ -31,6 +32,9 @@ export async function addService(options: ServiceAddOptions): Promise<ServiceAdd
   const { deployDir, service } = options;
   const composePath = join(deployDir, "engine", "docker-compose.yml");
   const envPath = join(deployDir, "engine", ".env");
+
+  // Derive per-instance network name (FEAT-110) so services join the right network
+  const { networkName } = getInstanceNames(deployDir);
 
   // Load service definition
   const config = getServiceConfig(service);
@@ -76,7 +80,7 @@ export async function addService(options: ServiceAddOptions): Promise<ServiceAdd
   const serviceEntry: Record<string, unknown> = {
     image: config.image,
     restart: "unless-stopped",
-    networks: ["clawhq_net"],
+    networks: [networkName],
     volumes: [...config.volumes],
     healthcheck: {
       test: ["CMD-SHELL", config.healthcheck.test],

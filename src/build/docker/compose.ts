@@ -4,6 +4,10 @@
  * Generates a docker-compose.yml structure with the correct security
  * controls applied based on the selected posture. Enforces all relevant
  * landmine rules (LM-06, LM-07, LM-10, LM-12, LM-13).
+ *
+ * Multi-instance (FEAT-110): network and container names are derived from
+ * the deploy directory via getInstanceNames() so multiple instances can
+ * run on the same host without port or network conflicts.
  */
 
 import {
@@ -13,6 +17,7 @@ import {
   OPENCLAW_CONTAINER_WORKSPACE,
 } from "../../config/paths.js";
 
+import { getInstanceNames } from "./instance.js";
 import type { PostureConfig } from "./types.js";
 
 /** Generated docker-compose structure. */
@@ -26,6 +31,7 @@ export interface ComposeOutput {
 
 interface ComposeServiceOutput {
   readonly image: string;
+  readonly container_name: string;
   readonly user: string;
   readonly cap_drop: readonly string[];
   readonly security_opt: readonly string[];
@@ -64,8 +70,12 @@ export function generateCompose(
   posture: PostureConfig,
   deployDir: string,
 ): ComposeOutput {
+  // Derive per-instance names so multiple deployments don't collide (FEAT-110)
+  const names = getInstanceNames(deployDir);
+
   const service: ComposeServiceOutput = {
     image: imageTag,
+    container_name: names.containerName,
     user: posture.user,
     cap_drop: [...posture.capDrop],
     security_opt: [...posture.securityOpt],
@@ -84,7 +94,7 @@ export function generateCompose(
       // Cron
       `${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`,
     ],
-    networks: ["clawhq_net"],
+    networks: [names.networkName],
     env_file: [".env"],
     restart: "unless-stopped",
     ...(hasResourceLimits(posture)
@@ -103,7 +113,7 @@ export function generateCompose(
   };
 
   const networks: Record<string, ComposeNetworkOutput> = {
-    clawhq_net: {
+    [names.networkName]: {
       driver: "bridge",
       ...(posture.iccDisabled
         ? {
