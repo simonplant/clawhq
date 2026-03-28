@@ -397,6 +397,134 @@ describe("auto-fix", { timeout: 30_000 }, () => {
     expect(fixReport.fixes.length).toBe(0);
     expect(fixReport.fixed).toBe(0);
   });
+
+  // ── BUG-125: YAML-parser-based compose fixes ───────────────────────────────
+
+  it("BUG-125: fixes missing cap_drop using yaml parser (not regex)", async () => {
+    // Compose without cap_drop — deliberately uses non-trivial indentation
+    // to prove regex would break but the parser handles it cleanly.
+    const compose = `services:
+  openclaw:
+    image: openclaw:custom
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges
+    volumes:
+      - ./workspace:/workspace
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    await writeValidConfig();
+    await writeValidEnv();
+
+    const checks = await runChecks(testDir);
+    const fixReport = await runFixes(testDir, checks);
+
+    const capDropFix = fixReport.fixes.find((f) => f.name === "cap-drop");
+    expect(capDropFix).toBeDefined();
+    expect(capDropFix?.success).toBe(true);
+
+    // Verify the written file is valid YAML with cap_drop: [ALL]
+    const { parseDocument } = await import("yaml");
+    const raw = await import("node:fs/promises").then((fs) =>
+      fs.readFile(join(testDir, "engine", "docker-compose.yml"), "utf-8"),
+    );
+    const doc = parseDocument(raw);
+    const capDrop = doc.getIn(["services", "openclaw", "cap_drop"]) as string[];
+    expect(Array.isArray(capDrop)).toBe(true);
+    expect(capDrop.some((c) => c.toUpperCase() === "ALL")).toBe(true);
+  });
+
+  it("BUG-125: fixes missing no-new-privileges using yaml parser (not regex)", async () => {
+    const compose = `services:
+  openclaw:
+    image: openclaw:custom
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    volumes:
+      - ./workspace:/workspace
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    await writeValidConfig();
+    await writeValidEnv();
+
+    const checks = await runChecks(testDir);
+    const fixReport = await runFixes(testDir, checks);
+
+    const noNewPrivFix = fixReport.fixes.find((f) => f.name === "no-new-privileges");
+    expect(noNewPrivFix).toBeDefined();
+    expect(noNewPrivFix?.success).toBe(true);
+
+    const { parseDocument } = await import("yaml");
+    const raw = await import("node:fs/promises").then((fs) =>
+      fs.readFile(join(testDir, "engine", "docker-compose.yml"), "utf-8"),
+    );
+    const doc = parseDocument(raw);
+    const secOpt = doc.getIn(["services", "openclaw", "security_opt"]) as string[];
+    expect(Array.isArray(secOpt)).toBe(true);
+    expect(secOpt.some((o) => o === "no-new-privileges" || o === "no-new-privileges:true")).toBe(true);
+  });
+
+  it("BUG-125: fixes missing user uid using yaml parser (not regex)", async () => {
+    const compose = `services:
+  openclaw:
+    image: openclaw:custom
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+    volumes:
+      - ./workspace:/workspace
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    await writeValidConfig();
+    await writeValidEnv();
+
+    const checks = await runChecks(testDir);
+    const fixReport = await runFixes(testDir, checks);
+
+    const userFix = fixReport.fixes.find((f) => f.name === "user-uid");
+    expect(userFix).toBeDefined();
+    expect(userFix?.success).toBe(true);
+
+    const { parseDocument } = await import("yaml");
+    const raw = await import("node:fs/promises").then((fs) =>
+      fs.readFile(join(testDir, "engine", "docker-compose.yml"), "utf-8"),
+    );
+    const doc = parseDocument(raw);
+    const user = String(doc.getIn(["services", "openclaw", "user"]));
+    // Should be either "1000:1000" or "1000"
+    expect(user === "1000:1000" || user === "1000").toBe(true);
+  });
+
+  it("BUG-125: all 3 compose fixes applied together preserve valid YAML", async () => {
+    // Minimal compose missing all 3 security settings
+    const compose = `services:
+  openclaw:
+    image: openclaw:custom
+    volumes:
+      - ./workspace:/workspace
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+    await writeValidConfig();
+    await writeValidEnv();
+
+    const checks = await runChecks(testDir);
+    const fixReport = await runFixes(testDir, checks);
+
+    const composeFixNames = ["cap-drop", "no-new-privileges", "user-uid"] as const;
+    for (const fixName of composeFixNames) {
+      const fix = fixReport.fixes.find((f) => f.name === fixName);
+      expect(fix?.success, `${fixName} fix should succeed`).toBe(true);
+    }
+
+    // Final file must still be parseable YAML (no regex corruption)
+    const { parseDocument } = await import("yaml");
+    const raw = await import("node:fs/promises").then((fs) =>
+      fs.readFile(join(testDir, "engine", "docker-compose.yml"), "utf-8"),
+    );
+    expect(() => parseDocument(raw)).not.toThrow();
+  });
 });
 
 // ── Version Detection Tests ─────────────────────────────────────────────────

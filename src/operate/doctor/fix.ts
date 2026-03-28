@@ -8,6 +8,8 @@
 import { chmod, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { parseDocument, stringify as yamlStringify } from "yaml";
+
 import { CONTAINER_USER, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import type { DoctorCheckResult, DoctorCheckName, FixReport, FixResult } from "./types.js";
@@ -150,31 +152,51 @@ async function fixConfigLandmines(deployDir: string): Promise<FixResult> {
 /** Fix missing cap_drop: ALL in docker-compose.yml. */
 async function fixCapDrop(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "cap-drop";
-  return patchCompose(deployDir, name, (content) => {
-    // Add cap_drop: ALL if not present
-    if (!content.includes("cap_drop")) {
-      content = content.replace(
-        /(services:\s*\n\s+\w+:\s*\n)/,
-        "$1    cap_drop:\n      - ALL\n",
-      );
-      return { content, message: "Added cap_drop: [ALL] to compose" };
+  return patchComposeYaml(deployDir, name, (doc) => {
+    const services = doc.get("services") as Record<string, unknown> | null;
+    if (!services) return null;
+    const serviceNames = Object.keys(services);
+    if (serviceNames.length === 0) return null;
+
+    let changed = false;
+    for (const svcName of serviceNames) {
+      const svc = doc.getIn(["services", svcName]);
+      if (!svc) continue;
+      const capDrop = doc.getIn(["services", svcName, "cap_drop"]);
+      const capDropArr = Array.isArray(capDrop) ? capDrop : [];
+      if (!capDropArr.some((c: unknown) => String(c).toUpperCase() === "ALL")) {
+        doc.setIn(["services", svcName, "cap_drop"], ["ALL"]);
+        changed = true;
+      }
     }
-    return null;
+    return changed ? "Added cap_drop: [ALL] to all services in compose" : null;
   });
 }
 
 /** Fix missing no-new-privileges in docker-compose.yml. */
 async function fixNoNewPrivileges(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "no-new-privileges";
-  return patchCompose(deployDir, name, (content) => {
-    if (!content.includes("no-new-privileges")) {
-      content = content.replace(
-        /(services:\s*\n\s+\w+:\s*\n)/,
-        "$1    security_opt:\n      - no-new-privileges\n",
+  return patchComposeYaml(deployDir, name, (doc) => {
+    const services = doc.get("services") as Record<string, unknown> | null;
+    if (!services) return null;
+    const serviceNames = Object.keys(services);
+    if (serviceNames.length === 0) return null;
+
+    let changed = false;
+    for (const svcName of serviceNames) {
+      const svc = doc.getIn(["services", svcName]);
+      if (!svc) continue;
+      const secOpt = doc.getIn(["services", svcName, "security_opt"]);
+      const secOptArr = Array.isArray(secOpt) ? secOpt : [];
+      const hasNoNewPriv = secOptArr.some(
+        (o: unknown) => o === "no-new-privileges" || o === "no-new-privileges:true",
       );
-      return { content, message: "Added security_opt: [no-new-privileges] to compose" };
+      if (!hasNoNewPriv) {
+        doc.setIn(["services", svcName, "security_opt"], ["no-new-privileges"]);
+        changed = true;
+      }
     }
-    return null;
+    return changed ? "Added security_opt: [no-new-privileges] to all services in compose" : null;
   });
 }
 
@@ -182,16 +204,24 @@ async function fixNoNewPrivileges(deployDir: string): Promise<FixResult> {
 async function fixUserUid(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "user-uid";
   const expectedUid = CONTAINER_USER.split(":")[0];
-  return patchCompose(deployDir, name, (content) => {
-    const uidPattern = new RegExp(`user:\\s*["']?${expectedUid}`);
-    if (!uidPattern.test(content)) {
-      content = content.replace(
-        /(services:\s*\n\s+\w+:\s*\n)/,
-        `$1    user: "${CONTAINER_USER}"\n`,
-      );
-      return { content, message: `Set user: "${CONTAINER_USER}" in compose` };
+  return patchComposeYaml(deployDir, name, (doc) => {
+    const services = doc.get("services") as Record<string, unknown> | null;
+    if (!services) return null;
+    const serviceNames = Object.keys(services);
+    if (serviceNames.length === 0) return null;
+
+    let changed = false;
+    for (const svcName of serviceNames) {
+      const svc = doc.getIn(["services", svcName]);
+      if (!svc) continue;
+      const user = doc.getIn(["services", svcName, "user"]);
+      const userStr = user != null ? String(user) : "";
+      if (userStr !== CONTAINER_USER && userStr !== expectedUid) {
+        doc.setIn(["services", svcName, "user"], CONTAINER_USER);
+        changed = true;
+      }
     }
-    return null;
+    return changed ? `Set user: "${CONTAINER_USER}" in all services in compose` : null;
   });
 }
 
@@ -226,20 +256,30 @@ async function fixToolAccessGrants(deployDir: string): Promise<FixResult> {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-async function patchCompose(
+/**
+ * Parse docker-compose.yml with a proper YAML parser, apply a structural
+ * patch, and write the result back. Using a parser instead of regex avoids
+ * fragile pattern-matching against arbitrary indentation and quoting styles.
+ *
+ * @param patcher - Receives the parsed YAML Document, mutates it in place,
+ *   and returns a human-readable message if a change was made, or null if
+ *   the value was already correct (no write needed).
+ */
+async function patchComposeYaml(
   deployDir: string,
   name: DoctorCheckName,
-  patcher: (content: string) => { content: string; message: string } | null,
+  patcher: (doc: ReturnType<typeof parseDocument>) => string | null,
 ): Promise<FixResult> {
   const composePath = join(deployDir, "engine", "docker-compose.yml");
   try {
-    const content = await readFile(composePath, "utf-8");
-    const result = patcher(content);
-    if (!result) {
+    const raw = await readFile(composePath, "utf-8");
+    const doc = parseDocument(raw);
+    const message = patcher(doc);
+    if (!message) {
       return { name, success: true, message: "Already set in compose file" };
     }
-    await writeFile(composePath, result.content, "utf-8");
-    return { name, success: true, message: result.message };
+    await writeFile(composePath, yamlStringify(doc), "utf-8");
+    return { name, success: true, message };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { name, success: false, message: `Failed to patch compose: ${msg}` };
