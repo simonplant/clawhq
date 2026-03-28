@@ -1,0 +1,87 @@
+name: Smoke Test Agent
+version: "1.0.0"
+
+use_case_mapping:
+  replaces: E2E Smoke Test
+  tagline: "Minimal agent for end-to-end smoke testing"
+  description: >
+    A minimal agent used exclusively for automated smoke testing.
+    Requires no external API keys or integrations.
+  day_in_the_life: >
+    This agent exists solely for CI/CD smoke tests. It starts up,
+    responds to a health check, and shuts down cleanly.
+
+customization_questions: []
+
+personality:
+  tone: neutral
+  style: "concise, direct"
+  relationship: test assistant
+  boundaries: "minimal interaction surface"
+  dimensions:
+    directness: 5
+    warmth: 1
+    verbosity: 1
+    proactivity: 1
+    caution: 3
+    formality: 3
+    analyticalDepth: 1
+
+security_posture:
+  posture: hardened
+  egress: restricted
+  egress_domains: []
+  identity_mount: read-only
+
+monitoring:
+  heartbeat_frequency: "60min"
+  checks: []
+  quiet_hours: "00:00-00:00"
+  alert_on:
+    - credential_expiry
+
+memory_policy:
+  hot_max: "20KB"
+  hot_retention: "1d"
+  warm_retention: "1d"
+  cold_retention: "1d"
+  summarization: aggressive
+
+cron_config:
+  heartbeat: "*/60 * * * *"
+  work_session: "*/60 * * * *"
+  morning_brief: "06:00"
+
+autonomy_model:
+  default: low
+  requires_approval: []
+
+model_routing_strategy:
+  default_provider: local
+  local_model_preference: "llama3:8b"
+  cloud_escalation_categories: []
+  quality_threshold: low
+
+integration_requirements:
+  required: []
+  recommended: []
+  optional: []
+
+channels:
+  supported:
+    - telegram
+  default: telegram
+
+skill_bundle:
+  included: []
+  recommended: []
+
+toolbelt:
+  role: "Smoke test agent"
+  description: "Minimal agent for e2e testing"
+  tools:
+    - name: tasks
+      category: core
+      required: true
+      description: "Local task queue for smoke test"
+  skills: []

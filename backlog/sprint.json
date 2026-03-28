@@ -1,46 +1,34 @@
 {
-  "sprintId": "sprint-1774731990",
-  "startedAt": "2026-03-28T14:06:30-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774739191",
+  "startedAt": "2026-03-28T16:06:31-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-110",
-    "title": "Multi-instance support — deploy multiple agents on the same host with isolated ports, networks, and data dirs",
-    "intent": "A single host must support multiple independent agents without conflicts. Port collisions, shared networks, or overlapping data dirs are deployment failures that must be prevented by construction.",
-    "description": "ClawHQ currently assumes a single agent per host. Deploying a second agent on the same server (different user, different blueprint) will collide on ports, Docker network names, data directories, and image tags. This blocks the primary use case of running agents for multiple people on one powerful machine. Required: (1) per-agent deployment directory (~/.clawhq/<agent-name>/), (2) per-agent Docker network with unique name, (3) per-agent port allocation with collision detection in preflight, (4) per-agent image tags (openclaw:<agent-name>), (5) per-agent container names.",
+    "id": "FEAT-018",
+    "title": "End-to-end smoke test — run full user journey against real Docker on local machine",
+    "intent": "946 unit tests pass but nothing proves the software works. An e2e smoke test must run the actual user journey (install → init → build → up → doctor → down → destroy) against real Docker containers and real filesystem, catching every integration gap the unit tests hide.",
+    "description": "Every external system interaction in ClawHQ is mocked in tests. Docker builds, container lifecycle, filesystem scaffolding, health checks, and config generation are tested in isolation but never together. The documented user journey has never been executed end-to-end. This is the LAUNCH GATE — a security tool with a security bug is dead on arrival. No compromises.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Add instanceName?: string to WizardAnswers (src/design/configure/types.ts), BuildOptions (src/build/docker/types.ts), and ClawHQConfig (src/config/types.ts) — optional field, defaults to 'default' for backward compatibility",
-      "Add helper functions to src/config/defaults.ts: agentNetworkName(instanceName?) returns 'clawhq_net' for default, 'clawhq_{name}_net' otherwise; agentImageTag(instanceName?) returns 'openclaw:custom' for default, 'openclaw:{name}' otherwise",
-      "Update src/design/configure/generate.ts: replace const AGENT_NETWORK = 'clawhq_net' with call to agentNetworkName(answers.instanceName); thread instanceName into buildClawHQConfig(); default deployDir to ~/.clawhq/{name}/ when name is not 'default'",
-      "Update src/build/docker/compose.ts: add networkName parameter (default 'clawhq_net') to generateCompose(); replace two hardcoded 'clawhq_net' references with the parameter",
-      "Update src/build/docker/build.ts: replace constant STAGE2_TAG = 'openclaw:custom' with agentImageTag(options.instanceName); STAGE1_TAG stays 'openclaw:local' (shared base image); thread networkName to generateCompose(); update serializeYaml to handle dynamic network name",
-      "Fix src/build/launcher/preflight.ts: delete hardcoded const GATEWAY_PORT = GATEWAY_DEFAULT_PORT (line 22); add gatewayPort parameter to runPreflight(); pass through to checkPorts() — falls back to GATEWAY_DEFAULT_PORT when not provided",
-      "Update src/build/launcher/deploy.ts: thread gatewayPort from DeployOptions to runPreflight()",
-      "Add tests: build with instanceName 'john' produces image tag 'openclaw:john' and network 'clawhq_john_net'; preflight with custom port checks that port; generateBundle with instanceName produces correct network in compose config; two different instance names produce non-colliding artifacts"
+      "Create test/e2e/ directory for end-to-end tests",
+      "Create a minimal test blueprint YAML that requires no external API keys (local Ollama or mock LLM)",
+      "Create a non-interactive init path or pre-canned config fixture that bypasses the wizard",
+      "Write smoke-test.sh or smoke-test.test.ts that executes each CLI command in sequence",
+      "Each step: capture exit code, stdout, stderr; assert expected outcomes (files created, container running, etc.)",
+      "Add npm run test:e2e script to package.json (separate from unit tests — requires Docker)",
+      "Run the smoke test, document every failure, add each as a backlog item",
+      "Integrate into CI as an optional job (requires Docker-in-Docker or privileged runner)"
     ],
     "acceptanceCriteria": [
-      "Two agents can be deployed on the same host with different names, ports, and data directories",
-      "clawhq init with instanceName 'john' creates ~/.clawhq/john/ with isolated config",
-      "Docker networks and image tags are unique per agent name — network: clawhq_{name}_net, image: openclaw:{name}",
-      "Preflight checks the configured gateway port, not the hardcoded default 18789",
-      "Omitting instanceName or using 'default' produces identical artifacts to current behavior (backward compatible)",
-      "Stage 1 Docker image (openclaw:local) is shared across all instances — only stage 2 is per-instance"
+      "npm run test:e2e runs the full user journey: install → init → build → up → doctor → down → destroy",
+      "Test uses real Docker (not mocked) and real filesystem (temp directory, cleaned up after)",
+      "Test uses a minimal blueprint that requires no external API keys",
+      "Each step reports pass/fail with captured output for debugging",
+      "Test is separate from unit tests (does not run on npm test) because it requires Docker",
+      "Every failure found during initial run is filed as a backlog item"
     ],
     "scope": [
-      "src/design/configure/types.ts",
-      "src/design/configure/generate.ts",
-      "src/build/docker/compose.ts",
-      "src/build/docker/build.ts",
-      "src/build/docker/types.ts",
-      "src/build/launcher/preflight.ts",
-      "src/build/launcher/deploy.ts",
-      "src/config/defaults.ts",
-      "src/config/types.ts"
+      "test/e2e/"
     ],
-    "startedAt": "2026-03-28T14:06:30-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-28T14:14:49-07:00"
-  },
-  "completedAt": "2026-03-28T14:14:49-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-28T16:06:31-07:00"
+  }
 }
