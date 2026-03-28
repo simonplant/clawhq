@@ -55,8 +55,11 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   const skipStage2 = !cache.stage2Changed && !options.noCache;
 
   // Generate and write Dockerfiles
+  // Pass posture to Stage 2 so sha256 pinning requirements are enforced.
+  // MissingBinarySha256Error or InvalidBinarySha256Error thrown here will
+  // propagate up and fail the build before any Docker CLI calls are made.
   const stage1Dockerfile = generateStage1Dockerfile(stage1);
-  const stage2Dockerfile = generateStage2Dockerfile(STAGE1_TAG, stage2);
+  const stage2Dockerfile = generateStage2Dockerfile(STAGE1_TAG, stage2, posture);
 
   await writeFile(join(engineDir, "Dockerfile.stage1"), stage1Dockerfile, "utf-8");
   await writeFile(join(engineDir, "Dockerfile"), stage2Dockerfile, "utf-8");
