@@ -16,12 +16,9 @@ cmd_help() {
         backlog) _help_backlog ;;
         groom)  _help_groom ;;
         review) _help_review ;;
-        report) _help_report ;;
-        metrics) _help_metrics ;;
         status) _help_status ;;
         update) _help_update ;;
         clean)  _help_clean ;;
-        config) _help_config ;;
         init)   _help_init ;;
         "")     _help_compact ;;
         *)      log_error "No help topic for: $arg"; _help_compact >&2; return 1 ;;
@@ -30,13 +27,13 @@ cmd_help() {
 
 _help_compact() {
     cat <<EOF
-aishore - AI Sprint Runner (v${AISHORE_VERSION})
+aishore - iterative intent-based development with evals (v${AISHORE_VERSION})
 
 Usage: aishore <command> [options]
 
 Commands:
   run [N|ID|scope] Run sprints, or drain backlog with scope (done|p0|p1|p2)
-  backlog <sub>    Manage backlog (list|add|show|edit|check|rm|history|populate)
+  backlog <sub>    Manage backlog (list|add|show|edit|check|rm)
   groom            Groom bugs/features/architecture
   review           Architecture review
   status           Backlog overview and sprint readiness
@@ -44,7 +41,7 @@ Commands:
   help <command>   Show detailed help for a command
   help --full      Show complete reference
 
-Other: report, metrics, clean, update, config, checksums, version
+Other: clean, update, version
 EOF
 }
 
@@ -70,21 +67,15 @@ Options:
   --no-merge            Keep feature branches for PR review
   --pr                  Create GitHub PR (implies --no-merge, requires gh)
   --retries N           Retry attempts on validation failure
-  --parallel N          Run up to N items concurrently (1-4)
-
-Session tuning (also settable in config.yaml under 'run:'):
-  --max-failures, --timeout, --category,
-  --auto-review, --limit, --no-summary
-  See: aishore help --full
+  --max-failures N      Circuit breaker: stop after N consecutive failures
+  --limit N             Stop after N successful items
 
 Examples:
   aishore run FEAT-001               # Run specific item
   aishore run --no-merge 3           # Keep branches for PR review
   aishore run --pr FEAT-001          # Create GitHub PR for review
   aishore run done                   # Drain entire backlog
-  aishore run done --parallel 2      # Run 2 items concurrently
   aishore run p1 --retries 2         # Must + should, with retries
-  aishore run done --category docs   # Only documentation items
 EOF
 }
 
@@ -126,8 +117,6 @@ Subcommands:
   check <ID>        Check readiness gates for an item
     --all             Audit every non-done item
   rm <ID>           Remove an item (--force to skip confirmation)
-  history           List recent completed sprint items (--limit N, --all)
-  populate          AI-populate backlog from PRODUCT.md (--preview)
 
 Examples:
   aishore backlog list --ready         # Show sprint-ready items
@@ -172,45 +161,11 @@ Examples:
 EOF
 }
 
-_help_report() {
-    cat <<EOF
-aishore report — Sprint activity summary
-
-Usage: aishore report [options]
-
-Options:
-  --since <date>      Only include items completed on or after YYYY-MM-DD
-  --output <file>     Write report to file instead of stdout
-  --format json       Emit JSON array instead of markdown
-
-Examples:
-  aishore report                           # Markdown to stdout
-  aishore report --since 2026-03-01        # Filter by date
-  aishore report --format json             # JSON output
-  aishore report --output report.md        # Write to file
-EOF
-}
-
-_help_metrics() {
-    cat <<EOF
-aishore metrics — Sprint metrics
-
-Usage: aishore metrics [options]
-
-Options:
-  --json    Output as JSON instead of human-readable format
-EOF
-}
-
 _help_status() {
     cat <<EOF
 aishore status — Backlog overview and sprint readiness
 
-Usage: aishore status [options]
-
-Options:
-  --watch           Live refresh until sprint completes or Ctrl-C
-  --interval N      Refresh interval in seconds (default: 30)
+Shows item counts, ready items, currently running sprint, and recent history.
 EOF
 }
 
@@ -235,17 +190,6 @@ Usage: aishore clean [options]
 Options:
   --dry-run       Preview what would be removed
   --no-archive    Remove without archiving
-EOF
-}
-
-_help_config() {
-    cat <<EOF
-aishore config — Configuration management
-
-Usage: aishore config <subcommand>
-
-Subcommands:
-  check     Validate config.yaml and print effective settings with sources
 EOF
 }
 

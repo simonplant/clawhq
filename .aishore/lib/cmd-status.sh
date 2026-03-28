@@ -94,39 +94,5 @@ _status_output() {
 
 cmd_status() {
     require_tool jq
-
-    local watch=false
-    local interval=30
-    parse_opts "bool:watch:--watch" "num:interval:--interval" -- "$@" || return 1
-
-    if [[ "$watch" == "false" ]]; then
-        _status_output
-        return 0
-    fi
-
-    # Watch mode: loop until sprint completes or Ctrl-C
-    while true; do
-        printf '\033[2J\033[H'
-        _status_output
-
-        # Check if sprint is idle (complete)
-        local sprint_file="$BACKLOG_DIR/sprint.json"
-        local sprint_status="idle"
-        if [[ -f "$sprint_file" ]]; then
-            sprint_status=$(jq -r '.status // "idle"' "$sprint_file" 2>/dev/null || echo "idle")
-        fi
-        if [[ "$sprint_status" == "idle" || "$sprint_status" == "completed" ]]; then
-            echo ""
-            log_info "Sprint complete"
-            return 0
-        fi
-
-        # Countdown to next refresh
-        local remaining="$interval"
-        while [[ "$remaining" -gt 0 ]]; do
-            printf '\r'"${CYAN}Refreshing in %ds... (Ctrl-C to stop)${NC}" "$remaining"
-            sleep 1
-            remaining=$((remaining - 1))
-        done
-    done
+    _status_output
 }

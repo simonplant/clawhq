@@ -2,48 +2,16 @@
   "description": "Bugs and tech debt",
   "items": [
     {
-      "id": "BUG-111",
-      "title": "health poller marks instance active on SSH timeout fallback even when agent never started",
-      "intent": "An instance must only be marked active when the agent is actually reachable. The SSH port timeout fallback that returns healthy:true after 18 attempts is incorrect — SSH up does not mean agent up.",
-      "description": "In src/cloud/provisioning/health.ts lines 86-93, after 18 poll attempts (~3 minutes) where SSH is open but the dashboard port (3737) is not, pollInstanceHealth() returns healthy:true with the comment 'cloud-init may still be running but VM is functional'. This is wrong: SSH being up means the VM booted, not that the agent is running. With the clawhq up failure masking bug (BUG-109), this fallback causes the provisioning engine to mark instances active even when the agent never started. Even with BUG-109 fixed, the fallback allows a VM with a failed cloud-init to be reported as healthy. Fix: change the fallback to return healthy:false with a clear error — if port 3737 is not open after 3 minutes, the agent has not started.",
-      "priority": "should",
-      "category": null,
-      "steps": [
-        "Read src/cloud/provisioning/health.ts lines 52-105 to understand the current polling logic.",
-        "At lines 86-93, change the fallback: instead of returning healthy:true, return healthy:false with error 'Agent did not become reachable on port 3737 within the expected window. SSH is accessible — connect with clawhq deploy update or check cloud-init logs: journalctl -u cloud-init'.",
-        "Verify that the tests in health.test.ts (if they exist) cover the timeout path — if not, add a test for: SSH open + dashboard never opens + 19+ poll attempts = healthy:false with expected error message.",
-        "Run npm test -- --testPathPattern=health to confirm all tests pass."
-      ],
-      "acceptanceCriteria": [
-        "pollInstanceHealth() returns healthy:false when SSH is reachable but port 3737 never opens, regardless of number of attempts",
-        "The error message in the result includes the SSH access hint for debugging",
-        "health.test.ts exists with tests covering: SSH+port both open = healthy:true, SSH open + port closed after timeout = healthy:false with error, neither open = healthy:false",
-        "All health and provisioning tests pass with no regression"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'should' confirmed. User trust violation — provisioning reports success when agent never started. BUG-109 dependency shipped 2026-03-24, so this is unblocked. AC1 (healthy:false on port 3737 timeout) and AC2 (SSH debug hint) are the correct user outcomes — operator must know how to diagnose a failed cloud-init without reading source code. health.test.ts must be created (Tech Lead confirmed it does not exist). Sprint immediately — health check correctness is a prerequisite for user trust in cloud deployments. Steps owned by Tech Lead — do not modify.",
-      "groomedAt": "2026-03-24",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-03-24T09:30:58-07:00",
-      "failCount": 1,
-      "completedAt": "2026-03-24T22:44:06-07:00"
-    },
-    {
       "id": "BUG-113",
       "title": "SSH host key never collected at provision time — deploy update uses accept-new on every connection",
       "intent": "Every deploy update SSH connection must verify the remote host key against the key collected at provision time. accept-new must never be used for a known instance.",
       "description": "In engine.ts, addInstance() is called without sshHostKey. The ProvisionedInstance type has a sshHostKey field and the registry supports it, but nothing collects the host key after provisioning. As a result, all deploy update SSH connections hit the buildHostKeyArgs() fallback in update.ts (lines 212-237) which uses StrictHostKeyChecking=accept-new with UserKnownHostsFile=/dev/null. This means: (1) the host key is trusted blindly on first connect, (2) the key is never stored, (3) every subsequent deploy update re-trusts blindly again. A MITM attacker who intercepts any deploy update connection can inject commands into the remote agent. Fix: after provisioning health check passes, run ssh-keyscan -t ed25519 <ipAddress> to collect the host public key, then store it in the registry. Note: registry currently only has updateInstanceStatus() — a new updateInstanceField() or extension is needed to write sshHostKey to an existing instance record.",
       "priority": "must",
-      "category": null,
       "steps": [
         "Read src/cloud/provisioning/engine.ts — find both addInstance() calls (lines ~172 and ~236) and the post-health-check block (line ~269)",
         "Read src/cloud/provisioning/registry.ts — understand updateInstanceStatus() and how to extend it to support writing sshHostKey",
         "Add a function to collect host key: spawn ssh-keyscan -t ed25519 <ipAddress>, parse output, return key string",
-        "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function",
+        "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function. Use retry loop (max 5 attempts, 5s delay) — HTTP health check (port 443) passes before port 22 is open",
         "If ssh-keyscan fails, log warning and continue — sshHostKey remains unset, accept-new fallback applies only in that case",
         "Add tests covering: successful key collection and storage, ssh-keyscan failure graceful degradation, update.ts strict mode when key is present",
         "Run npm test to confirm all tests pass"
@@ -54,197 +22,49 @@
         "If ssh-keyscan fails at provision time, provisioning still completes and a warning is logged — sshHostKey remains unset and accept-new fallback applies only in that case",
         "Existing deploy update and provisioning tests pass with no regression"
       ],
-      "scope": [],
-      "dependsOn": [],
+      "scope": [
+        "src/cloud/provisioning/"
+      ],
       "status": "todo",
-      "passes": false,
       "readyForSprint": true,
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): BUMPED to 'must'. Security-by-default is a non-negotiable: 'hardening is automatic, not opt-in'. accept-new on every SSH connection for every deploy update is the opposite of that — it trusts blindly, never stores, and a MITM attacker who intercepts any deploy update can inject commands into the remote agent. This is not a theoretical threat model; it is the default behavior right now for all users of clawhq deploy update. Prior note said 'should' because MITM requires active attacker — but cloud agents communicate over the internet and deploy update is the primary management channel. Violates security-by-default before cloud features stabilise. Must ship before cloud GA. AC4 (regression tests pass) confirmed. Steps populated by Tech Lead — do not modify.",
-      "groomedAt": "2026-03-24",
-      "lastFailReason": "Implementation failed",
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "PO REVIEW 2026-03-28 (failCount:2 — third attempt). Root cause of both failures: no retry on ssh-keyscan after health check — SSH port 22 lags behind HTTPS port 443. Tech Lead has specified retry loop (step 4, max 5 attempts, 5s delay) — this is the fix. Do NOT sprint without confirming retry is implemented. Added AC5: explicit retry coverage. Priority confirmed MUST — accept-new on every connect is a MITM window; contradicts core security promise.",
       "lastFailAt": "2026-03-24T20:51:33-07:00",
       "failCount": 2
     },
     {
-      "id": "BUG-114",
-      "title": "Tool server connections default to admin-only since OpenClaw v0.8.7 — blueprints with tools are invisible to users",
-      "intent": "Every blueprint that exposes tools must generate explicit access grants so tools are visible to users. The v0.8.7 default (no grants = admin-only) silently breaks all existing blueprints on upgrade.",
-      "description": "OpenClaw v0.8.7 changed the default access model for tool server and terminal connections: when no explicit access grants are set, connections are now private (admin-only). Previously they were visible to all users. ClawHQ's config generator (src/design/configure/generate.ts) does not set explicit access grants for blueprint tools, meaning any agent running on v0.8.7+ will have tools invisible to non-admin users. Fix: the config generator must emit explicit access grants for all tools a blueprint defines. This should also be added as a doctor check — detect v0.8.7+ and verify tool access grants are present.",
+      "id": "BUG-125",
+      "title": "Doctor auto-fix uses regex-based YAML patching — can corrupt docker-compose files",
+      "intent": "Doctor auto-fix must never corrupt configuration files. YAML patching must use a proper parser, not regex string manipulation.",
+      "description": "Code review found that src/operate/doctor/fix.ts uses naive regex like /(services:\\s*\\n\\s+\\w+:\\s*\\n)/ to locate service blocks and insert cap_drop/security_opt. This breaks on service names with underscores, inconsistent indentation, or multi-service compose files. Failed patches silently leave config broken.",
       "priority": "must",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "Config generator emits explicit access grants for all tools defined in a blueprint",
-        "An agent forged from any blueprint on OpenClaw v0.8.7+ has tools visible to the configured user",
-        "clawhq doctor detects missing tool access grants and reports a warning with fix suggestion",
-        "Existing config generation tests pass with no regression"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'must' confirmed — silent breaking change on v0.8.7 upgrade makes every blueprint's tools invisible to non-admin users. No user workaround exists; tools simply don't appear. DESIGN DECISION REQUIRED before sprint: what principal format does OpenClaw v0.8.7+ expect in the tools.allow field? (user IDs, emails, roles?) — Tech Lead must resolve this before implementation can proceed. Groomnig note: FEAT-017 doctor check must NOT duplicate the access grant check logic — BUG-114 owns the fix, FEAT-017 reuses it. Sprint BUG-114 first. Steps are empty — Tech Lead to populate after design decision is made.",
-      "passes": true,
-      "completedAt": "2026-03-24T20:59:32-07:00"
-    },
-    {
-      "id": "BUG-115",
-      "title": "clawhq build CLI command is a stub — prints 'not implemented' instead of calling build()",
-      "intent": "A user who runs clawhq build must get a Docker image built. The build() function exists and works (quickstart calls it), but the CLI command exits with 'Not yet implemented'.",
-      "description": "src/cli/index.ts lines 1264-1271: the 'build' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. The actual build() function in src/build/docker/index.ts is fully implemented — two-stage Docker build with change detection and manifests. clawhq quickstart calls build() directly and it works. The CLI command just never got wired up. This is the most critical stub in the codebase because 'clawhq build' is step 3 in the documented user journey (install → init → build → up).",
-      "priority": "must",
-      "category": "stub",
+      "category": "Reliability",
       "steps": [
-        "Read src/build/docker/index.ts to understand the build() function signature and required parameters",
-        "Read how clawhq quickstart calls build() to understand the expected invocation",
-        "Replace the stub in src/cli/index.ts lines 1267-1270 with a real call to build(), passing deployDir and appropriate options",
-        "Add progress reporting (ora spinner) consistent with other CLI commands",
-        "Test: run clawhq build after clawhq install + clawhq init and verify Docker image is built",
-        "Run npm test to confirm no regression"
+        "Read src/operate/doctor/fix.ts — understand patchCompose helper (lines 229-247) and the three regex-based fixers: fixCapDrop (151-164), fixNoNewPrivileges (167-179), fixUserUid (182-196)",
+        "Add import for yaml package (already a dependency — used in src/build/launcher/firewall.ts): import { parse as yamlParse, stringify as yamlStringify } from 'yaml'",
+        "Rewrite patchCompose helper: (1) read file as string, (2) create backup as docker-compose.yml.bak before any modification, (3) parse with yamlParse(), (4) pass parsed object to patcher callback (new signature: compose object → {message} | null), (5) serialize with yamlStringify(), (6) validate round-trip by re-parsing output — only write if valid",
+        "Add getFirstServiceEntry helper that extracts [serviceName, serviceConfig] from compose.services dynamically — no hardcoded 'openclaw' key (future-proofs for multi-instance where service name may vary)",
+        "Rewrite fixCapDrop: set svc.cap_drop = ['ALL'] if missing or not an array containing 'ALL'",
+        "Rewrite fixNoNewPrivileges: ensure svc.security_opt is an array containing 'no-new-privileges'",
+        "Rewrite fixUserUid: set svc.user = CONTAINER_USER if not matching expected UID pattern",
+        "Add tests: compose file with underscore service name, multi-service compose file, backup file creation verification, round-trip validation (output YAML parses back correctly)",
+        "Run npm test to confirm all existing tests pass with no regression"
       ],
       "acceptanceCriteria": [
-        "clawhq build calls the real build() function from src/build/docker/index.ts",
-        "Build output shows progress (Dockerfile generation, Docker build, manifest write)",
-        "clawhq build fails with actionable error if prerequisites are missing (no Docker, no config)",
-        "The documented user journey install → init → build → up works end-to-end"
+        "Doctor auto-fix uses yaml package (parse/stringify) instead of regex for all compose file modifications",
+        "Patched docker-compose files are valid YAML after auto-fix — verified by round-trip parse before writing",
+        "Auto-fix works correctly with underscore service names and multi-service files — service is found dynamically, not by hardcoded key",
+        "Auto-fix creates a backup (docker-compose.yml.bak) before modifying compose files"
       ],
       "scope": [
-        "src/cli/index.ts",
-        "src/build/docker/index.ts"
+        "src/operate/doctor/fix.ts"
       ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. The build() function IS implemented and tested — quickstart uses it. The CLI command is the only broken link. This is a 30-minute fix but blocks the entire documented user journey.",
-      "passes": true,
-      "completedAt": "2026-03-24T21:04:37-07:00"
-    },
-    {
-      "id": "BUG-116",
-      "title": "clawhq skill update CLI command is a stub — prints 'not implemented' instead of updating skills",
-      "intent": "Users who install skills must be able to update them. clawhq skill install and clawhq skill remove work, but clawhq skill update prints 'not implemented'.",
-      "description": "src/cli/index.ts lines 2316-2323: the 'skill update' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. Users can install and remove skills but cannot update them to newer versions. This breaks the 'agent grows' non-negotiable — if you can't update skills, the agent's capabilities stagnate.",
-      "priority": "should",
-      "category": "stub",
-      "steps": [
-        "Determine update semantics: re-install from source (overwrite), or diff-and-patch?",
-        "Read src/evolve/skills/lifecycle.ts to understand installSkill() and removeSkill() — update may be remove + reinstall with rollback",
-        "Implement updateSkill() in lifecycle.ts — simplest correct approach is snapshot current, remove, reinstall from source, rollback on failure",
-        "Wire CLI command to call updateSkill()",
-        "Add tests covering: successful update, update failure with rollback, skill not found",
-        "Run npm test to confirm no regression"
-      ],
-      "acceptanceCriteria": [
-        "clawhq skill update <name> updates an installed skill to the latest version from its source",
-        "If update fails, the previous version is restored (rollback)",
-        "clawhq skill update (no name) updates all installed skills",
-        "Existing skill install/remove tests pass with no regression"
-      ],
-      "scope": [
-        "src/cli/index.ts",
-        "src/evolve/skills/lifecycle.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Skill install and remove are fully implemented with rollback support. Update is likely remove+reinstall with the existing rollback mechanism. Design decision: does 'update' mean re-fetch from original source, or accept a new source?",
-      "passes": true,
-      "completedAt": "2026-03-24T22:49:33-07:00"
-    },
-    {
-      "id": "BUG-117",
-      "title": "clawhq evolve CLI command is a stub — prints 'not implemented' instead of managing capabilities",
-      "intent": "clawhq evolve is the top-level command for the 'agent grows' pillar. It must orchestrate the sub-systems (skills, tools, integrations, memory) into a coherent capability management experience.",
-      "description": "src/cli/index.ts lines 2358-2365: the 'evolve' command checks installation then prints 'Not yet implemented. Coming soon.' and exits. All sub-systems exist as separate commands (clawhq skill, clawhq tool, clawhq integrate, clawhq memory) but the top-level 'evolve' command that ties them together is a stub. This may be a UX question: should 'clawhq evolve' be an interactive dashboard showing current capabilities with options to add/remove, or should it just list sub-commands?",
-      "priority": "could",
-      "category": "stub",
-      "steps": [
-        "Decide UX: interactive capability dashboard vs sub-command listing vs guided wizard",
-        "If dashboard: show current skills, tools, integrations, memory status in a single view with action prompts",
-        "If sub-command listing: print available evolve sub-commands with descriptions",
-        "Implement chosen approach in CLI handler",
-        "Run npm test to confirm no regression"
-      ],
-      "acceptanceCriteria": [
-        "clawhq evolve does not print 'not implemented'",
-        "clawhq evolve provides a useful entry point for capability management",
-        "All existing sub-commands (skill, tool, integrate, memory) continue to work independently"
-      ],
-      "scope": [
-        "src/cli/index.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Lower priority — all sub-commands work independently. The 'evolve' command is a UX convenience, not a blocker. Design decision needed before implementation.",
-      "passes": true,
-      "completedAt": "2026-03-24T23:24:28-07:00"
-    },
-    {
-      "id": "BUG-118",
-      "title": "Email notification channel returns hardcoded failure — never sends email",
-      "intent": "The monitor notification system must be able to alert operators via email. Email is the most universal notification channel and the only one that works when Telegram/webhooks are unreachable.",
-      "description": "src/operate/monitor/notify.ts lines 52-55: dispatchToChannel() for the 'email' case returns { channel: 'email', success: false, error: 'Email channel not yet implemented' }. Comment says 'In production, this would be replaced with SMTP transport.' Telegram and webhook channels are fully implemented. Email is the missing third leg. Users who configure email notifications get silent failures.",
-      "priority": "should",
-      "category": "stub",
-      "steps": [
-        "Decide transport: nodemailer dependency vs raw SMTP via net/tls module vs external service (SES, SendGrid)",
-        "Implement sendEmail() — connect to configured SMTP server, send alert email with subject and body",
-        "Add SMTP configuration fields to monitor config (host, port, from, to, auth)",
-        "Replace the hardcoded failure return with a real sendEmail() call",
-        "Add tests: successful send (mock SMTP server), connection failure, auth failure",
-        "Run npm test to confirm no regression"
-      ],
-      "acceptanceCriteria": [
-        "clawhq monitor with email channel configured sends real email alerts via SMTP",
-        "Email contains: alert severity, check name, failure details, agent identifier",
-        "Connection failures are reported as channel errors, not silent failures",
-        "Existing Telegram and webhook notification tests pass with no regression"
-      ],
-      "scope": [
-        "src/operate/monitor/notify.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Design decision: adding nodemailer as a dependency vs raw SMTP. nodemailer is battle-tested but adds a dependency; raw SMTP is complex. Consider: does the sovereign/local-first ethos require avoiding SaaS email services?",
-      "passes": true,
-      "completedAt": "2026-03-24T22:58:04-07:00"
-    },
-    {
-      "id": "BUG-119",
-      "title": "Heartbeat disk usage always reports 0% — getDiskUsagePercent() is a placeholder",
-      "intent": "Cloud heartbeat must report real disk usage so operators can act before an agent fills its disk and crashes.",
-      "description": "src/cloud/heartbeat/reporter.ts lines 151-153: getDiskUsagePercent() takes deployDir but ignores it (prefixed with _), returns hardcoded 0. Comment says 'Would use statvfs in production; return 0 as placeholder'. This means cloud monitoring dashboards always show 0% disk usage regardless of actual state. An agent could fill its disk and the heartbeat would still report 0%.",
-      "priority": "should",
-      "category": "stub",
-      "steps": [
-        "Implement getDiskUsagePercent() using Node.js fs.statfs() (available since Node 18.15) or child_process df command",
-        "Calculate percentage: (total - available) / total * 100",
-        "Handle errors gracefully — return -1 or null if statfs fails, don't crash the heartbeat",
-        "Add tests: real filesystem check returns >0%, error handling on invalid path",
-        "Run npm test to confirm no regression"
-      ],
-      "acceptanceCriteria": [
-        "getDiskUsagePercent() returns the actual disk usage percentage for the deploy directory's filesystem",
-        "Cloud heartbeat reports include real disk usage data",
-        "If the filesystem query fails, the heartbeat still sends (with disk usage omitted or -1), not crashes"
-      ],
-      "scope": [
-        "src/cloud/heartbeat/reporter.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Node.js fs.statfs() is the right approach — no child_process needed. Small, self-contained fix.",
-      "passes": true,
-      "completedAt": "2026-03-24T23:01:37-07:00"
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "PO REVIEW 2026-03-28 (failCount:1, DOGFOOD Gate 0 blocker). Priority confirmed MUST — corrupted docker-compose silently breaks the agent; user has no recovery path except manual edit. The backup-before-patch AC is critical: without it, a bad patch destroys the working config with no recovery. Steps are Tech Lead owned — do not modify. AC verify commands added.",
+      "lastFailAt": "2026-03-24T21:54:33-07:00",
+      "failCount": 1
     },
     {
       "id": "BUG-120",
@@ -271,255 +91,12 @@
       "scope": [
         "src/cloud/heartbeat/reporter.ts"
       ],
-      "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep stub scan. Doctor module already has real Docker health checks — this is about reusing that logic in the heartbeat reporter. Coordinate with doctor checks to avoid duplication.",
-      "lastFailReason": "Implementation failed",
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "PO REVIEW 2026-03-28 (failCount:1). Priority confirmed SHOULD — a stopped container reporting as 'running' is a false green that erodes operator trust in the platform. Uptime always 0 means operators cannot diagnose restart loops. The graceful degradation AC is important: if Docker socket is unreachable, the heartbeat must not crash the entire cloud reporting pipeline. AC verify commands added.",
       "lastFailAt": "2026-03-24T23:03:51-07:00",
       "failCount": 1
-    },
-    {
-      "id": "BUG-121",
-      "title": "Shell injection in generated bash tool wrappers — user-controlled vars interpolated without safe quoting",
-      "intent": "Eliminate command injection risk in all generated tool scripts. Every variable must be safely quoted or the tool generation must switch to a safer language.",
-      "description": "Code review found that generated bash scripts in src/design/tools/ (email.ts, todoist.ts, ical.ts, etc.) interpolate user-controlled variables like $local_body and $local_id into shell commands without proper quoting. An attacker-controlled value containing shell metacharacters can break escaping and execute arbitrary commands inside the agent container.",
-      "priority": "must",
-      "category": "Security",
-      "steps": [
-        "Audit all tool generators in src/design/tools/ for unquoted variable expansions",
-        "Apply safe quoting (double-quote all variable refs) or switch to Python with shlex",
-        "Add tests that generate tools with metacharacter-laden inputs and verify no injection"
-      ],
-      "acceptanceCriteria": [
-        "All generated tool scripts use proper shell quoting for every variable expansion",
-        "No unquoted variable interpolation exists in any tool generator output",
-        "Alternatively, tool generation switches to Python with shlex for safe argument handling"
-      ],
-      "scope": [
-        "src/design/tools/**"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. Security-by-default non-negotiable: generated bash tool wrappers are code ClawHQ writes on behalf of users, and shell injection in that generated code is an architectural trust failure, not an implementation detail.",
-      "completedAt": "2026-03-24T21:23:53-07:00"
-    },
-    {
-      "id": "BUG-122",
-      "title": "Skill vetting bypass via comment-wrapped payloads and weak encoded-payload severity",
-      "intent": "Ensure no malicious skill can pass vetting by hiding code in comments or encoding. Vetting must use language-aware parsing, not line-by-line heuristics.",
-      "description": "Code review found two issues in src/evolve/skills/vet.ts: (1) Comment detection uses simple line-start heuristics that miss multi-line comments, here-docs, and Python triple-quoted strings. (2) Encoded payloads (base64, hex) are flagged as medium severity but buildSummary() only rejects critical/high, so obfuscated malicious code passes vetting.",
-      "priority": "must",
-      "category": "Security",
-      "steps": [
-        "Replace line-by-line comment detection with proper language-aware parsing",
-        "Bump encoded_payload and obfuscation_patterns severity from medium to high",
-        "Add test cases for comment-wrapped payloads, here-docs, and triple-quoted strings"
-      ],
-      "acceptanceCriteria": [
-        "Skill vetting uses language-aware comment parsing, not line-start heuristics",
-        "Encoded payload and obfuscation pattern findings are classified as high severity",
-        "Skills containing base64-encoded shell commands are rejected by vetting",
-        "Skills hiding payloads in multi-line comments or here-docs are detected"
-      ],
-      "scope": [
-        "src/evolve/skills/vet.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. The 'agent grows' pillar is only as trustworthy as the vetting pipeline. Skills must not smuggle payloads past vetting via comments or base64 encoding.",
-      "completedAt": "2026-03-24T21:34:11-07:00"
-    },
-    {
-      "id": "BUG-123",
-      "title": "Web dashboard security gaps — path traversal, missing CSRF, wrong HTTP status codes, no rate limiting",
-      "intent": "Harden the web dashboard against common web attacks. Path traversal must be airtight, state-changing endpoints must have CSRF protection, errors must return correct HTTP status codes, and resource-intensive endpoints must be rate-limited.",
-      "description": "Code review found four issues in src/web/server.tsx: (1) Path traversal check uses startsWith which passes /home/user-evil for /home/user. (2) POST endpoints for deploy/restart/shutdown/init have no CSRF token validation. (3) Error responses return HTTP 200 instead of 4xx/5xx. (4) /api/logs endpoint accepts unbounded line count with no rate limiting.",
-      "priority": "must",
-      "category": "Security",
-      "steps": [
-        "Fix path traversal: use path.relative() or check resolved path has / after home dir",
-        "Add CSRF token generation and validation middleware for all POST routes",
-        "Return proper HTTP status codes (500 for server errors, 400 for bad input)",
-        "Cap /api/logs line count at a reasonable maximum and add rate limiting",
-        "Add tests for path traversal edge cases and CSRF rejection"
-      ],
-      "acceptanceCriteria": [
-        "Path traversal check uses path.relative() or validates next char is /",
-        "All POST endpoints validate a CSRF token",
-        "Error responses return appropriate HTTP 4xx/5xx status codes",
-        "/api/logs endpoint has a maximum line count (e.g. 10000) and basic rate limiting"
-      ],
-      "scope": [
-        "src/web/**"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. Four distinct security gaps on the management interface. Path traversal, CSRF, wrong HTTP status codes, and unbounded /api/logs.",
-      "completedAt": "2026-03-24T21:43:01-07:00"
-    },
-    {
-      "id": "BUG-124",
-      "title": "Cloud command queue has no replay protection — signed commands accepted without timestamp validation",
-      "intent": "Prevent replay attacks on the cloud command queue. Every command must be validated for freshness before execution.",
-      "description": "Code review found that src/cloud/commands/verify.ts verifies command signatures but never validates the createdAt timestamp against current time. A valid intercepted command can be replayed indefinitely. Additionally, the command queue in queue.ts marks commands as executed without actually dispatching to handlers.",
-      "priority": "must",
-      "category": "Security",
-      "steps": [
-        "Add max-age validation to verifyCommandSignature() using createdAt timestamp",
-        "Add nonce tracking to detect exact replays within the validity window",
-        "Wire command queue to actual handler dispatch or document integration pattern",
-        "Add tests for expired commands and replayed commands"
-      ],
-      "acceptanceCriteria": [
-        "Command verification rejects commands older than a configurable max age (e.g. 5 minutes)",
-        "Replayed commands are detected and rejected with a clear error",
-        "Command queue either dispatches to actual handlers or documents the integration pattern"
-      ],
-      "scope": [
-        "src/cloud/commands/**"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. Cloud command queue replay attacks — signatures without freshness validation. Both timestamp validation and nonce tracking required.",
-      "completedAt": "2026-03-24T21:52:03-07:00"
-    },
-    {
-      "id": "BUG-125",
-      "title": "Doctor auto-fix uses regex-based YAML patching — can corrupt docker-compose files",
-      "intent": "Doctor auto-fix must never corrupt configuration files. YAML patching must use a proper parser, not regex string manipulation.",
-      "description": "Code review found that src/operate/doctor/fix.ts uses naive regex like /(services:\\s*\\n\\s+\\w+:\\s*\\n)/ to locate service blocks and insert cap_drop/security_opt. This breaks on service names with underscores, inconsistent indentation, or multi-service compose files. Failed patches silently leave config broken.",
-      "priority": "must",
-      "category": "Reliability",
-      "steps": [
-        "Replace regex-based YAML patching in fix.ts with js-yaml parse/serialize",
-        "Add validation that output YAML is syntactically correct before writing",
-        "Add backup of original file before patching",
-        "Add tests with underscore names, multi-service files, and unusual indentation"
-      ],
-      "acceptanceCriteria": [
-        "Doctor auto-fix uses a proper YAML parser (e.g. js-yaml) instead of regex",
-        "Patched docker-compose files are valid YAML after auto-fix",
-        "Auto-fix works correctly with underscore service names and multi-service files",
-        "Auto-fix creates a backup before modifying compose files"
-      ],
-      "scope": [
-        "src/operate/doctor/fix.ts"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24: Priority 'must' confirmed. Doctor auto-fix with regex YAML patching can silently corrupt compose files. Must use proper YAML parser, validate output, and create backup before writing.",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-03-24T21:54:33-07:00",
-      "failCount": 1
-    },
-    {
-      "id": "BUG-126",
-      "title": "Firewall rulesMatch() ignores destination — rules to different IPs on same port match as equal",
-      "intent": "Firewall verification must compare all rule fields including destination. Missing destination comparison means rules allowing traffic to unintended IPs go undetected.",
-      "description": "Code review found that src/build/launcher/firewall.ts rulesMatch() only compares target, protocol, and dport — not the destination IP/domain. Two rules with different destinations but same port are considered equivalent, so verifyFirewall() may report correct state when rules are actually wrong.",
-      "priority": "should",
-      "category": "Security",
-      "steps": [
-        "Add destination field to rulesMatch() comparison",
-        "Update FirewallRuleDescriptor type if destination is not already included",
-        "Add test cases for same-port-different-destination scenarios"
-      ],
-      "acceptanceCriteria": [
-        "rulesMatch() compares target, protocol, dport, AND destination",
-        "verifyFirewall() correctly detects when a rule exists with wrong destination",
-        "Existing tests updated to cover destination field comparison"
-      ],
-      "scope": [
-        "src/build/launcher/firewall.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24: Priority 'should' confirmed. Firewall rulesMatch() destination omission — security-by-default means verification must be complete, not approximate.",
-      "completedAt": "2026-03-24T23:07:25-07:00"
-    },
-    {
-      "id": "BUG-127",
-      "title": "Cron expressions not validated — invalid expressions like 99 99 99 99 99 accepted silently",
-      "intent": "All cron expressions must be validated before use. Invalid cron schedules must be caught at config generation time, not at runtime when jobs silently fail to run.",
-      "description": "Code review found that src/design/configure/generate.ts normalizeCronExpr() tries to fix step syntax but never validates the expression. Invalid fields (minute > 59, hour > 23, etc.) pass through. Additionally, src/operate/doctor/checks.ts cron-syntax check only looks for step patterns, not field count or value ranges.",
-      "priority": "should",
-      "category": "Reliability",
-      "steps": [
-        "Add a cron validation function (use cron-parser library or manual range checks)",
-        "Integrate validation into normalizeCronExpr() in generate.ts",
-        "Update doctor cron-syntax check to validate field count and ranges",
-        "Add tests for boundary values and invalid expressions"
-      ],
-      "acceptanceCriteria": [
-        "Cron expressions are validated for correct field count (5 fields)",
-        "Field value ranges are validated (minute 0-59, hour 0-23, etc.)",
-        "Invalid cron expressions produce clear error messages at config generation time",
-        "Doctor cron-syntax check validates field ranges, not just step patterns"
-      ],
-      "scope": [
-        "src/design/configure/generate.ts",
-        "src/operate/doctor/checks.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24: Priority 'should' confirmed. Cron expressions must be validated at config generation time — invalid schedules silently break agent autonomy.",
-      "completedAt": "2026-03-24T23:12:05-07:00"
-    },
-    {
-      "id": "BUG-128",
-      "title": "Security scanner alert: potential real secrets in git history — sk-ant-, ghp_, AKIA, private keys",
-      "intent": "Git history may contain real API keys and tokens. If any are live, they must be rotated immediately and history scrubbed. False positives must be confirmed as false.",
-      "description": "Automated security scanner flagged 131x sk-ant- matches, 7x ghp_ (GitHub PATs), 16x AKIA (AWS keys), 5x sk- patterns, 1x Slack token, 6x private key headers in clawhq git history. Also 1x sk-ant- each in simonplant-com, simonplant.com, easy-markdown, and 2x in toolkit. Most are likely false positives from test fixtures (scanner.test.ts, probes.test.ts, patterns.ts) but git history matches need human review. Ref: GitHub issue #5.",
-      "priority": "must",
-      "category": "Security",
-      "steps": [
-        "Run git log -p --all -S 'sk-ant-' to find actual commits containing Anthropic key patterns — distinguish test fixtures from real keys",
-        "Run git log -p --all -S 'ghp_' to find GitHub PAT commits — check if tokens are real (40+ hex chars after prefix)",
-        "Run git log -p --all -S 'AKIA' to find AWS key commits — check for real 20-char key IDs",
-        "Run git log -p --all -S 'PRIVATE KEY' to find private key header commits",
-        "For any confirmed real secrets: rotate immediately (GitHub Settings, AWS Console, Anthropic Console)",
-        "Use git filter-repo or BFG Repo-Cleaner to scrub confirmed secrets from history",
-        "Verify scrub succeeded: re-run scanner, confirm zero real matches",
-        "Close GitHub issue #5 with findings summary"
-      ],
-      "acceptanceCriteria": [
-        "All git history matches reviewed and classified as real or false positive",
-        "Any confirmed real secrets rotated at the source (API dashboard, console)",
-        "Git history scrubbed of confirmed secrets using git filter-repo or BFG",
-        "Re-scan confirms zero real secret matches in git history",
-        "GitHub issue #5 closed with summary of findings and actions taken"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-26",
-      "groomingNotes": "From GitHub issue #5 (real-clawdius-maximus / security scanner). Priority 'must' — potential live secrets in git history is a security incident until confirmed false positive. Note: git history scrubbing (git filter-repo/BFG) is destructive and requires force-push — sprint should confirm findings first, then scrub with user approval. Scanner also noted simonplant-com and other repos have matches — those are out of scope for this item.",
-      "completedAt": "2026-03-26T11:17:01-07:00"
     }
   ]
 }

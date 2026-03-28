@@ -1,6 +1,8 @@
 # aishore — Quick Guide
 
-AI sprint runner for Claude Code. Tell it what must be true, it builds it right.
+**Iterative intent-based development with evals for Claude Code.**
+
+Define what must be true (intent). Attach shell commands that prove it (evals). aishore iterates until the evals pass, then protects that work with a regression suite that compounds across every sprint.
 
 Full docs: https://github.com/simonplant/aishore
 
@@ -20,34 +22,37 @@ validation:
 
 Other config: `models.primary`, `models.fast`, `agent.timeout`. Env vars override config (e.g., `AISHORE_VALIDATE_CMD`).
 
-## The Intent-Driven Model
+## Intent + Evals
 
-Every backlog item needs a **commander's intent** — a non-negotiable directive that defines what must be true when done. This is the single most important field. Without it (or with <20 chars), items **cannot enter a sprint**.
+Every backlog item needs two things:
 
-Write intent like an order, not a description:
-- **Good:** "Ops must know instantly if the service is alive or dead. No false positives."
-- **Bad:** "Add health check endpoint" ← that's implementation, not outcome
+**Intent** — a non-negotiable directive stating what must be true when done. Not what to build; the outcome. Without it (or with <20 chars), items **cannot enter a sprint**.
 
-The developer agent follows intent when the spec is ambiguous or steps seem wrong. The validator checks intent was actually fulfilled, not just that AC passed mechanically.
+**Evals** — AC with `--ac-verify` commands that prove the intent is fulfilled. These run after every sprint, and accumulate into a regression suite that protects all prior work.
+
+```
+Intent:  "Ops must know instantly if the service is alive or dead. No false positives."
+Eval:    --ac "Health endpoint returns 200" --ac-verify "curl -sf localhost:3000/health"
+```
+
+The developer follows intent when the spec is ambiguous. The validator probes the implementation with Bash commands. The evals gate the merge. The regression suite prevents future sprints from breaking past work.
 
 ## Create Backlog Items
 
 ```bash
-# AI-populate from PRODUCT.md (non-interactive)
-.aishore/aishore backlog populate
-
 # With flags
 .aishore/aishore backlog add --title "Add health check" \
   --intent "Ops must know instantly if the service is alive or dead." \
   --priority must --type feat --desc "GET /health returns 200"
 
-# With testable acceptance criteria
+# With executable acceptance criteria (verify commands = evals)
 .aishore/aishore backlog add --title "Rate limiting" \
   --intent "API stays responsive under load. Abusers throttled, legit users unaffected." \
-  --ac "Returns 429 when limit exceeded" --ac "Has configurable rate per endpoint"
+  --ac "Returns 429 when limit exceeded" --ac-verify "curl -s -o /dev/null -w '%{http_code}' localhost:3000/api | grep -q 429" \
+  --ac "Has configurable rate per endpoint"
 ```
 
-Key flags: `--title`, `--intent`, `--type feat|bug`, `--desc`, `--priority must|should|could|future`, `--category`, `--steps "..."` (repeatable, replaces all), `--ac "..."` (repeatable, replaces all), `--depends-on ID` (repeatable, replaces all), `--scope "glob"` (repeatable, replaces all), `--ready`
+Key flags: `--title`, `--intent`, `--type feat|bug`, `--desc`, `--priority must|should|could|future`, `--steps "..."` (repeatable), `--ac "..."` (repeatable), `--ac-verify "cmd"` (attaches to preceding `--ac`), `--depends-on ID` (repeatable), `--scope "glob"` (repeatable), `--ready`
 
 Edit: `.aishore/aishore backlog edit <ID> --intent "..." --priority must --steps "step 1" --steps "step 2" --ac "criterion" --ready`
 
@@ -93,12 +98,11 @@ Grooming doesn't guarantee readiness — check with `backlog check <ID>` if item
 .aishore/aishore run p1             # Must + should
 .aishore/aishore run p2             # Must + should + could
 .aishore/aishore run done --retries 2 --max-failures 3
-.aishore/aishore run done --parallel 2  # Run 2 items concurrently
 ```
 
 When a scope is given (`done`, `p0`, `p1`, `p2`), auto-grooming activates when ready items drop below threshold, and the circuit breaker stops after N consecutive failures (default 5).
 
-**What happens:** Each item gets a feature branch (`aishore/<ID>`). The developer agent implements through 3 phases (implement → critique → harden), your validation command runs, then the validator agent checks AC + intent. On success: merge, push, archive. On failure: branch deleted, clean state restored.
+**What happens:** Each item gets a feature branch (`aishore/<ID>`). The regression suite runs as pre-flight (all verify commands from prior sprints). The developer agent implements through 3 phases (implement → critique → harden). Your validation command runs, AC verify commands execute, then the validator agent probes the implementation and checks AC + intent. On success: merge, push, archive (verify commands saved to regression suite). On failure: branch deleted, clean state restored.
 
 ## Review
 
@@ -112,10 +116,6 @@ When a scope is given (`done`, `p0`, `p1`, `p2`), auto-grooming activates when r
 
 ```bash
 .aishore/aishore status             # Backlog overview and sprint readiness
-.aishore/aishore status --watch     # Live refresh until sprint completes
-.aishore/aishore report             # Sprint activity summary
-.aishore/aishore metrics            # Sprint velocity, pass rates, trends
-.aishore/aishore diagnose           # Last sprint failure details
 .aishore/aishore clean              # Archive and remove done items
 .aishore/aishore clean --dry-run    # Preview what would be removed
 ```
@@ -144,6 +144,6 @@ Only `.aishore/` is replaced. Your `backlog/` and `config.yaml` are never touche
 
 **Stuck state?**
 - `rm .aishore/data/status/result.json` — clears completion signal
-- `rm .aishore/data/status/.aishore.lock` — clears concurrency lock
+- `rm -rf .aishore/data/status/.aishore.lock` — clears concurrency lock
 
 **Quick reference:** `.aishore/aishore help` (compact) or `.aishore/aishore help --full` (complete)

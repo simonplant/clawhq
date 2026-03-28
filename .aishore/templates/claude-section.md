@@ -1,7 +1,7 @@
 
 ## Sprint Orchestration (aishore)
 
-AI sprint runner. Backlog lives in `backlog/`, tool lives in `.aishore/`. Run `.aishore/aishore help` for full usage.
+Iterative intent-based development with evals. Backlog lives in `backlog/`, tool lives in `.aishore/`. Run `.aishore/aishore help` for full usage.
 
 ```bash
 .aishore/aishore run [N|ID]         # Run sprints (branch, commit, merge, push per item)
@@ -9,5 +9,3 @@ AI sprint runner. Backlog lives in `backlog/`, tool lives in `.aishore/`. Run `.
 .aishore/aishore review             # Architecture review
 .aishore/aishore status             # Backlog overview
 ```
-
-After modifying `.aishore/` files, run `.aishore/aishore checksums` before committing.

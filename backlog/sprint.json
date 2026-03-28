@@ -1,31 +1,36 @@
 {
-  "sprintId": "sprint-1774684836",
-  "startedAt": "2026-03-28T01:00:36-07:00",
+  "sprintId": "sprint-1774686161",
+  "startedAt": "2026-03-28T01:22:41-07:00",
   "status": "in_progress",
   "item": {
-    "id": "BUG-113",
-    "title": "SSH host key never collected at provision time — deploy update uses accept-new on every connection",
-    "intent": "Every deploy update SSH connection must verify the remote host key against the key collected at provision time. accept-new must never be used for a known instance.",
-    "description": "In engine.ts, addInstance() is called without sshHostKey. The ProvisionedInstance type has a sshHostKey field and the registry supports it, but nothing collects the host key after provisioning. As a result, all deploy update SSH connections hit the buildHostKeyArgs() fallback in update.ts (lines 212-237) which uses StrictHostKeyChecking=accept-new with UserKnownHostsFile=/dev/null. This means: (1) the host key is trusted blindly on first connect, (2) the key is never stored, (3) every subsequent deploy update re-trusts blindly again. A MITM attacker who intercepts any deploy update connection can inject commands into the remote agent. Fix: after provisioning health check passes, run ssh-keyscan -t ed25519 <ipAddress> to collect the host public key, then store it in the registry. Note: registry currently only has updateInstanceStatus() — a new updateInstanceField() or extension is needed to write sshHostKey to an existing instance record.",
-    "sourceBacklog": "bugs.json",
+    "id": "FEAT-121",
+    "title": "Blueprint Specification — publish human-readable spec as a community standard",
+    "intent": "The blueprint format must be documented as a standalone specification so third parties can create compatible blueprints without reading ClawHQ source code. This is the standards capture play and the primary defense against foundation absorption.",
+    "description": "ClawHQ's blueprint format exists only as TypeScript types in the compiler. It can't travel without source code. A competing format from the OpenClaw foundation could split the ecosystem. Publishing the spec creates the strongest possible long-term moat: if the format is adopted, ClawHQ is the reference implementation by definition. The spec is also the foundation absorption defense — if OpenClaw ships guided config, they'd need to be compatible with an adopted spec. Scope: complete YAML schema documentation covering all blueprint sections (identity, personality, tools, skills, cron, security, autonomy, memory, integrations, model routing, egress). Include validation rules, security constraints, and worked examples for each section.",
+    "sourceBacklog": "backlog.json",
     "steps": [
-      "Read src/cloud/provisioning/engine.ts — find both addInstance() calls (lines ~172 and ~236) and the post-health-check block (line ~269)",
-      "Read src/cloud/provisioning/registry.ts — understand updateInstanceStatus() and how to extend it to support writing sshHostKey",
-      "Add a function to collect host key: spawn ssh-keyscan -t ed25519 <ipAddress>, parse output, return key string",
-      "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function. Use retry loop (max 5 attempts, 5s delay) — HTTP health check (port 443) passes before port 22 is open",
-      "If ssh-keyscan fails, log warning and continue — sshHostKey remains unset, accept-new fallback applies only in that case",
-      "Add tests covering: successful key collection and storage, ssh-keyscan failure graceful degradation, update.ts strict mode when key is present",
-      "Run npm test to confirm all tests pass"
+      "Extract the current blueprint schema from src/design/blueprints/ and src/config/schema.ts",
+      "Document each top-level section: metadata, identity, personality (7 dimensions), tools, skills, cron, security_posture, autonomy, memory, integrations, model_routing, egress",
+      "Document validation rules: required fields, value ranges (personality 1-5), cross-field constraints",
+      "Document security constraints: which fields are read-only at runtime, credential handling rules",
+      "Include 3 worked examples: minimal blueprint, medium (email manager), full (replace-my-pa)",
+      "Add versioning scheme (semver for the spec itself)",
+      "Publish as docs/BLUEPRINT-SPEC.md alongside the repo",
+      "Add clawhq blueprint validate command that checks a YAML file against the spec"
     ],
     "acceptanceCriteria": [
-      "After a successful provision, the instance record in instances.json has a non-empty sshHostKey field",
-      "A subsequent clawhq deploy update connection to that instance uses StrictHostKeyChecking=yes (not accept-new)",
-      "If ssh-keyscan fails at provision time, provisioning still completes and a warning is logged — sshHostKey remains unset and accept-new fallback applies only in that case",
-      "Existing deploy update and provisioning tests pass with no regression"
+      "docs/BLUEPRINT-SPEC.md is a standalone, human-readable specification",
+      "A developer can create a valid blueprint from the spec alone, without reading ClawHQ source",
+      "All 7 existing blueprints validate against the documented spec",
+      "Spec includes validation rules, security constraints, and 3+ worked examples",
+      "clawhq blueprint validate checks any YAML file against the spec and reports errors"
     ],
     "scope": [
-      "src/cloud/provisioning/"
+      "docs/BLUEPRINT-SPEC.md",
+      "src/design/blueprints/",
+      "src/config/schema.ts",
+      "src/cli/"
     ],
-    "startedAt": "2026-03-28T01:00:36-07:00"
+    "startedAt": "2026-03-28T01:22:41-07:00"
   }
 }

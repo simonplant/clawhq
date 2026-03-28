@@ -133,15 +133,20 @@ cmd_update() {
             expected=$(printf '%s\n' "$checksums_content" | awk -v f="$checksum_key" '$2 == f {print $1; exit}') || true
         fi
         if [[ -n "$expected" ]]; then
-            if ! verify_checksum "$local_path" "$expected"; then
+            if verify_checksum "$local_path" "$expected"; then
+                echo "$checksum_key=verified" >> "$checksum_status_file"
+            else
                 log_error "Checksum mismatch for $label — file may be corrupted or tampered"
+                echo "$checksum_key=mismatch" >> "$checksum_status_file"
                 all_verified=false
             fi
         elif [[ -n "$checksums_content" ]]; then
             if [[ "$no_verify" == "true" ]]; then
                 log_warning "No checksum entry for $label — skipping (--no-verify)"
+                echo "$checksum_key=skipped" >> "$checksum_status_file"
             else
                 log_error "No checksum entry for $label — aborting (use --force --no-verify to skip)"
+                echo "$checksum_key=missing" >> "$checksum_status_file"
                 all_verified=false
             fi
         fi
@@ -152,6 +157,9 @@ cmd_update() {
     staging_dir="$(ensure_tmpdir)/update_staging"
     local all_verified=true
     local file_count=${#update_files[@]}
+    local checksum_status_file
+    checksum_status_file="$(ensure_tmpdir)/checksum_status.txt"
+    : > "$checksum_status_file"
 
     # Create staging subdirectories for all files
     for f in "${update_files[@]}"; do
@@ -178,13 +186,20 @@ cmd_update() {
         return 1
     fi
 
-    # Install and show each file
+    # Install and show each file with checksum status
     echo "Installed:"
     for f in "${update_files[@]}"; do
         local dest="$PROJECT_ROOT/$f"
         mkdir -p "$(dirname "$dest")"
         mv "$staging_dir/$f" "$dest"
-        log_success "$f"
+        # Look up checksum status for this file
+        local ck_status=""
+        ck_status=$(awk -F= -v key="$f" '$1 == key {print $2; exit}' "$checksum_status_file") || true
+        case "$ck_status" in
+            verified) log_success "$f  (sha256 ✓)" ;;
+            skipped)  log_warning "$f  (checksum skipped)" ;;
+            *)        log_success "$f" ;;
+        esac
     done
     chmod +x "$AISHORE_ROOT/aishore"
 

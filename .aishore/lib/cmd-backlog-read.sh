@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Module: cmd-backlog-read — backlog read/check commands (dispatcher, list, show, check, rm, history)
+# Module: cmd-backlog-read — backlog read/check commands (dispatcher, list, show, check, rm)
 # Lazy-loaded by _load_module; all globals (BACKLOG_DIR, BACKLOG_FILES, ARCHIVE_DIR,
 # PROJECT_ROOT, jq, log_*, parse_opts, validate_status, validate_priority,
 # find_item, resolve_backlog_file, remove_item, check_readiness_gates,
@@ -18,11 +18,9 @@ cmd_backlog() {
         edit)       _load_module cmd-backlog-write; cmd_backlog_edit "$@" ;;
         rm|remove)  cmd_backlog_rm "$@" ;;
         check)      cmd_backlog_check "$@" ;;
-        history)    cmd_backlog_history "$@" ;;
-        populate)   _load_module cmd-backlog-write; cmd_backlog_populate "$@" ;;
         *)
             log_error "Unknown backlog command: $subcmd"
-            echo "Usage: backlog {list|add|show|edit|check|rm|history|populate}" >&2
+            echo "Usage: backlog {list|add|show|edit|check|rm}" >&2
             return 1
             ;;
     esac
@@ -202,33 +200,6 @@ cmd_backlog_show() {
         if .resolved_at then "Resolved:     \(.resolved_at)" else empty end,
         if .completedAt then "Completed:    \(.completedAt)" else empty end
     '
-}
-
-cmd_backlog_history() {
-    local limit=20 all=false
-
-    parse_opts "num:limit:--limit" "bool:all:--all" -- "$@" || return 1
-
-    local sprints_file="$ARCHIVE_DIR/sprints.jsonl"
-    if [[ ! -f "$sprints_file" || ! -s "$sprints_file" ]]; then
-        echo "No sprint history found"
-        return 0
-    fi
-
-    printf "%-12s %-12s %-10s %-10s %s\n" "ID" "DATE" "STATUS" "DURATION" "TITLE"
-    printf "%-12s %-12s %-10s %-10s %s\n" "──────────" "──────────" "────────" "────────" "─────────────────────"
-
-    local _hist_jq='[.itemId // "-", .date // "-", .status // "-", (if (.duration // 0) > 0 then (if .duration >= 60 then "\(.duration / 60 | floor)m \(.duration % 60)s" else "\(.duration)s" end) else "-" end), ((.title // "-") | if length > 40 then .[:40] + "…" else . end)] | @tsv'
-    local _hist_input
-    if [[ "$all" == "true" ]]; then
-        _hist_input=$(cat "$sprints_file")
-    else
-        _hist_input=$(tail -n "$limit" "$sprints_file")
-    fi
-    printf '%s\n' "$_hist_input" | jq -r "$_hist_jq" | reverse_lines | \
-        while IFS=$'\t' read -r id date status duration title; do
-            printf "%-12s %-12s %-10s %-10s %s\n" "$id" "$date" "$status" "$duration" "$title"
-        done
 }
 
 cmd_backlog_rm() {

@@ -1,8 +1,8 @@
-aishore - AI Sprint Runner (v__VERSION__)
+aishore - iterative intent-based development with evals (v__VERSION__)
 Copyright (C) 2025-2026 Simon Plant. Licensed under Apache-2.0. See LICENSE.
 
 Usage: .aishore/aishore <command> [options]
-       .aishore/aishore run [<count>|<ID>|<scope>] [--parallel N] [--limit N] [--retries N] [--max-failures N] [--timeout N] [--no-merge] [--pr] [--category <name>] [--auto-review] [--no-summary] [--dry-run]
+       .aishore/aishore run [<count>|<ID>|<scope>] [--limit N] [--retries N] [--max-failures N] [--no-merge] [--pr] [--dry-run]
 
 Commands:
   backlog list      List all items (features + bugs)
@@ -36,9 +36,6 @@ Commands:
     --all           Audit every non-done item and print a summary table
   backlog rm <ID>   Remove an item (with confirmation)
     --force         Skip confirmation
-  backlog history   List recent completed sprint items (last 20)
-  backlog populate  Use AI to populate backlog from PRODUCT.md (non-interactive)
-    --preview       Show proposed items without modifying backlog
 
   run [count]       Run N sprints (default: 1, feature branches, push/pull)
   run <ID>          Run specific item by ID (e.g., TEST-006)
@@ -47,16 +44,11 @@ Commands:
     p0              Complete all P0 (must) items
     p1              Complete all P0+P1 (must + should) items
     p2              Complete all P0-P2 (must + should + could) items
-    --parallel N    Run up to N items concurrently in worktrees (1-4, default: 1)
     --limit N       Cap session at N successful items then exit cleanly
     --max-failures N  Consecutive failures before stopping (default: 5)
     --retries N     Per-item retry attempts on failure
-    --timeout N     Kill agent after N minutes (default: 0 = no limit)
     --no-merge      Keep feature branches for PR review
     --pr            Create GitHub PR (implies --no-merge, requires gh CLI)
-    --category <name>  Only run items matching this category
-    --auto-review   Run architecture review automatically after completion
-    --no-summary    Suppress end-of-session summary table
     --dry-run       Preview without running agents
 
   groom             Groom bugs/tech debt (Tech Lead mode)
@@ -67,18 +59,9 @@ Commands:
     --update-docs   Allow updates to docs
     --since <hash>  Review since specific commit
 
-  report            Sprint activity summary (markdown by default)
-    --since <date>  Only include items completed on or after YYYY-MM-DD
-    --output <file> Write report to file instead of stdout
-    --format json   Emit JSON array instead of markdown
-  metrics           Show sprint metrics (--json for JSON output)
   status            Show backlog overview and sprint readiness
-    --watch         Live refresh until sprint completes or Ctrl-C
-    --interval N    Refresh interval in seconds (default: 30)
   update            Update from upstream (--dry-run to check, --force to override)
   clean             Archive and remove done items (--dry-run to preview, --no-archive to skip)
-  config check      Validate config.yaml and print effective settings with sources
-  checksums         Regenerate checksums.sha256 for update verification
   init              Setup wizard — checks prerequisites, configures project
     -y, --yes       Accept all detected defaults (non-interactive)
   version, -v, --version   Show version
@@ -86,13 +69,10 @@ Commands:
 
 Examples:
   .aishore/aishore run done                # Drain entire backlog
-  .aishore/aishore run done --parallel 2   # Run 2 items concurrently
   .aishore/aishore run p1 --retries 2      # Complete must + should, with retries
   .aishore/aishore run FEAT-001            # Run specific item
   .aishore/aishore run --no-merge 3        # Keep branches for PR review
   .aishore/aishore run --pr FEAT-001       # Create GitHub PR for review
-  .aishore/aishore run done --timeout 5    # Kill agents running longer than 5 min
-  .aishore/aishore run done --category documentation  # Only documentation items
   .aishore/aishore groom --backlog         # Groom features
   .aishore/aishore groom --architect       # Detect missing scaffolding, add skeleton items
   .aishore/aishore update --dry-run        # Check for updates

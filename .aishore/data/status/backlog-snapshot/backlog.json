@@ -1,138 +1,85 @@
 {
-  "description": "ClawHQ backlog — derived from PRODUCT.md, ARCHITECTURE.md, README.md (2026-03-18)",
+  "description": "ClawHQ backlog — aligned with evolved strategy (2026-03-28). See docs/STRATEGY.md for strategic context.",
   "items": [
     {
-      "id": "FEAT-005",
-      "title": "clawhq deploy update — push config and version updates to cloud-deployed agents",
-      "intent": "A sovereign cloud agent that cannot be updated is a liability, not an asset. clawhq deploy update must let users push config changes, version upgrades, and new skills to any cloud-deployed agent without reprovisioning. The agent grows pillar must hold for cloud deployments.",
-      "description": "After clawhq deploy provisions a cloud agent, users need to push updates without reprovisioning from scratch. Three update scenarios: (1) config change — update blueprint vars or credentials without restart, (2) clawhq version upgrade — pull latest, rebuild Docker image, restart agent, (3) skill install/remove — evolve the cloud agent remotely. NOTE: Implementation is ~90% complete — update.ts has full SSH execution engine with 3 modes, shell escaping, timeouts, abort signals. ssh-keygen.ts generates Ed25519 keypairs. cloud-init.ts/snapshot-init.ts inject SSH keys. CLI wired at clawhq deploy update. Remaining work: test coverage for update.ts (zero tests exist) and AC5 error message fix (should name state file path per PO groom notes).",
+      "id": "FEAT-108",
+      "title": "Decompose CLI index.ts — 4,320 lines into per-command modules",
+      "intent": "A 4,320-line CLI file is unmaintainable, untestable, and blocks parallel development. Each command should live in its own module so changes to one command don't risk breaking others.",
+      "description": "Architecture review found src/cli/index.ts is 4,320 lines containing all command definitions, option parsing, and handler logic in a single file. This creates: (1) merge conflicts when multiple features touch CLI simultaneously, (2) impossible to unit test individual commands in isolation, (3) no clear ownership boundary between modules. Decomposition strategy: extract each command (or command group) into src/cli/commands/<name>.ts, with index.ts reduced to a thin registration layer that imports and wires commands to Commander.js.",
       "priority": "must",
-      "category": null,
+      "category": "Code Quality",
       "steps": [
-        "Write tests for src/cloud/provisioning/update.ts covering: successful config/version/skill update, SSH connection failure, timeout, instance not found, shell escaping correctness",
-        "Fix AC5 error message at update.ts line ~50 to include ~/.clawhq/cloud/instances.json path alongside 'run clawhq deploy list'",
-        "Add integration test: mock SSH provider, verify correct remote commands sent for each mode (config: clawhq build && clawhq restart, version: clawhq update --yes, skill: clawhq skill <args>)",
-        "Run npm test to confirm all tests pass"
+        "Audit src/cli/index.ts — catalog all commands and their line ranges",
+        "Create src/cli/commands/ directory",
+        "Extract each command group into its own file (e.g., deploy.ts, doctor.ts, blueprint.ts, skill.ts, cloud.ts)",
+        "Each command file exports a function that takes the Commander program and registers its commands",
+        "Reduce index.ts to imports + command registration + top-level error handler",
+        "Run npm test to confirm no regression",
+        "Run npm run build to confirm compilation succeeds"
       ],
       "acceptanceCriteria": [
-        "clawhq deploy update --id <agent-id> --config pushes updated blueprint vars to the remote agent without reprovisioning",
-        "clawhq deploy update --id <agent-id> --version pulls latest clawhq, rebuilds Docker image, and restarts the agent on the remote",
-        "clawhq deploy update --id <agent-id> --skill install <source> installs a skill on the remote agent",
-        "SSH keypair is read from the deploy state file — no manual key management by user",
-        "Update fails cleanly if agent-id not found in deploy state — helpful error shown"
-      ],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'must' confirmed. Feature failed once — re-scoped correctly to 'tests + AC5 fix', not rebuild. TECH NOTE: zero tests for shellEscape() is a risk — shell escaping is a security boundary and untested means it could silently pass malformed commands to the remote agent. AC5 error UX (naming the state file path) is a usability requirement, not a nice-to-have — user must know where to look when an agent ID is not found. Sprint-ready as re-scoped. Steps owned by Tech Lead — do not modify.",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-03-24T08:19:20-07:00",
-      "failCount": 1,
-      "completedAt": "2026-03-24T20:46:57-07:00"
-    },
-    {
-      "id": "FEAT-014",
-      "title": "Add .doc-standard.yaml schema file for doc structure enforcement",
-      "intent": "The repo must declare its doc standard version and structure so automated checks can validate compliance — undeclared standards are unenforceable.",
-      "description": "Part of a cross-repo documentation standard shared with aishore, GigOS, and other portfolio repos. The .doc-standard.yaml declares: schema version, project metadata (name: ClawHQ, tagline: WordPress for AI agents, category: infrastructure), required files list matching the docs/ structure, cross-repo links to sibling projects (aishore, Easy-Markdown, GigOS), and author info for consistency enforcement across the portfolio. This file enables a future GitHub Action to validate doc structure compliance on PR. Note: ClawHQ has additional docs not in the standard (docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md) — these should be listed in an optional_files section so the validator doesn't flag them as non-standard.",
-      "priority": "could",
-      "category": "documentation",
-      "steps": [
-        "Create .doc-standard.yaml at repo root",
-        "Set schema_version to '1.0'",
-        "Set project name to 'ClawHQ', tagline to 'WordPress for AI agents', category to 'infrastructure'",
-        "List required_files: README.md, docs/ARCHITECTURE.md, docs/QUICKSTART.md, docs/CONFIGURATION.md, docs/PROBLEMS.md, docs/ROADMAP.md, docs/CONTRIBUTING.md, docs/CHANGELOG.md",
-        "Add optional_files: docs/PRODUCT.md, docs/OPENCLAW-REFERENCE.md (repo-specific docs not in the standard)",
-        "Add portfolio section with sibling repos: aishore (complementary), Easy-Markdown (related), GigOS (related)",
-        "Add author section: name Simon Plant, location Santa Barbara CA, status 'Building AI infrastructure tools. Open to roles.'",
-        "Verify the file is valid YAML"
-      ],
-      "acceptanceCriteria": [
-        ".doc-standard.yaml exists at repo root and is valid YAML",
-        "File declares schema_version, project metadata, required_files, optional_files, portfolio siblings, and author info",
-        "required_files matches the docs/ structure created by FEAT-006 through FEAT-012",
-        "optional_files lists docs/PRODUCT.md and docs/OPENCLAW-REFERENCE.md so they are not flagged as non-standard",
-        "Portfolio section lists aishore, Easy-Markdown, and GigOS with correct GitHub URLs"
+        "src/cli/index.ts is under 500 lines — purely command registration and top-level error handling",
+        "Each command group lives in src/cli/commands/<name>.ts",
+        "All existing CLI commands work identically — no user-visible behavior change",
+        "npm test and npm run build pass with no regression"
       ],
       "scope": [
-        ".doc-standard.yaml"
+        "src/cli/**"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Gate 0 prerequisite. Unblocks FEAT-110 (multi-instance), FEAT-106 (process.exit cleanup), and FEAT-111 (ClawWall). Every sprint that touches CLI without this decomposition carries compound regression risk. Sprint tonight — first in queue."
+    },
+    {
+      "id": "FEAT-110",
+      "title": "Multi-instance support — deploy multiple agents on the same host with isolated ports, networks, and data dirs",
+      "intent": "A single host must support multiple independent agents without conflicts. Port collisions, shared networks, or overlapping data dirs are deployment failures that must be prevented by construction.",
+      "description": "ClawHQ currently assumes a single agent per host. Deploying a second agent on the same server (different user, different blueprint) will collide on ports, Docker network names, data directories, and image tags. This blocks the primary use case of running agents for multiple people on one powerful machine. Required: (1) per-agent deployment directory (~/.clawhq/<agent-name>/), (2) per-agent Docker network with unique name, (3) per-agent port allocation with collision detection in preflight, (4) per-agent image tags (openclaw:<agent-name>), (5) per-agent container names.",
+      "priority": "must",
+      "category": "core",
+      "steps": [
+        "Add instanceName?: string to WizardAnswers (src/design/configure/types.ts), BuildOptions (src/build/docker/types.ts), and ClawHQConfig (src/config/types.ts) — optional field, defaults to 'default' for backward compatibility",
+        "Add helper functions to src/config/defaults.ts: agentNetworkName(instanceName?) returns 'clawhq_net' for default, 'clawhq_{name}_net' otherwise; agentImageTag(instanceName?) returns 'openclaw:custom' for default, 'openclaw:{name}' otherwise",
+        "Update src/design/configure/generate.ts: replace const AGENT_NETWORK = 'clawhq_net' with call to agentNetworkName(answers.instanceName); thread instanceName into buildClawHQConfig(); default deployDir to ~/.clawhq/{name}/ when name is not 'default'",
+        "Update src/build/docker/compose.ts: add networkName parameter (default 'clawhq_net') to generateCompose(); replace two hardcoded 'clawhq_net' references with the parameter",
+        "Update src/build/docker/build.ts: replace constant STAGE2_TAG = 'openclaw:custom' with agentImageTag(options.instanceName); STAGE1_TAG stays 'openclaw:local' (shared base image); thread networkName to generateCompose(); update serializeYaml to handle dynamic network name",
+        "Fix src/build/launcher/preflight.ts: delete hardcoded const GATEWAY_PORT = GATEWAY_DEFAULT_PORT (line 22); add gatewayPort parameter to runPreflight(); pass through to checkPorts() — falls back to GATEWAY_DEFAULT_PORT when not provided",
+        "Update src/build/launcher/deploy.ts: thread gatewayPort from DeployOptions to runPreflight()",
+        "Add tests: build with instanceName 'john' produces image tag 'openclaw:john' and network 'clawhq_john_net'; preflight with custom port checks that port; generateBundle with instanceName produces correct network in compose config; two different instance names produce non-colliding artifacts"
+      ],
+      "acceptanceCriteria": [
+        "Two agents can be deployed on the same host with different names, ports, and data directories",
+        "clawhq init with instanceName 'john' creates ~/.clawhq/john/ with isolated config",
+        "Docker networks and image tags are unique per agent name — network: clawhq_{name}_net, image: openclaw:{name}",
+        "Preflight checks the configured gateway port, not the hardcoded default 18789",
+        "Omitting instanceName or using 'default' produces identical artifacts to current behavior (backward compatible)",
+        "Stage 1 Docker image (openclaw:local) is shared across all instances — only stage 2 is per-instance"
+      ],
+      "scope": [
+        "src/design/configure/types.ts",
+        "src/design/configure/generate.ts",
+        "src/build/docker/compose.ts",
+        "src/build/docker/build.ts",
+        "src/build/docker/types.ts",
+        "src/build/launcher/preflight.ts",
+        "src/build/launcher/deploy.ts",
+        "src/config/defaults.ts",
+        "src/config/types.ts"
       ],
       "dependsOn": [
-        "FEAT-013"
+        "FEAT-108"
       ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'could' confirmed — no direct user value; this is internal tooling for cross-repo doc validation. FEAT-013 dependency confirmed complete. Sprint only after all must/should items are clear. Self-contained and well-specified — no blockers when bandwidth allows.",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-03-24T09:31:23-07:00",
-      "failCount": 1,
-      "passes": true,
-      "completedAt": "2026-03-24T23:14:01-07:00"
-    },
-    {
-      "id": "FEAT-016",
-      "title": "Config surface update for OpenClaw v0.8.6–v0.8.10 environment variables",
-      "intent": "ClawHQ must track OpenClaw's config surface so the config generator, validator, and reference docs stay current. Ten new env vars were added or fixed across v0.8.6–v0.8.10 — they need to be in our schema and docs.",
-      "description": "OpenClaw v0.8.6–v0.8.10 introduced or fixed the following environment variables: WEBSOCKET_EVENT_CALLER_TIMEOUT (configurable WS timeout, was hardcoded 60s), VECTOR_DB=mariadb-vector (new vector DB backend), OPENID_END_SESSION_ENDPOINT (custom OIDC logout), USER_PERMISSIONS_ACCESS_GRANTS_ALLOW_USERS (disable individual sharing), DEFAULT_GROUP_SHARE_PERMISSION, ENABLE_AUDIT_STDOUT (was broken, now works), WEB_SEARCH_DOMAIN_FILTER_LIST (was broken, now works), REPORTING_ENDPOINTS (CSP reporting), OAUTH_UPDATE_NAME_ON_LOGIN, OAUTH_UPDATE_EMAIL_ON_LOGIN. Update: (1) src/config/schema.ts to include new fields, (2) docs/OPENCLAW-REFERENCE.md config inventory section, (3) config generator to set sensible defaults where appropriate (especially WEBSOCKET_EVENT_CALLER_TIMEOUT and ENABLE_AUDIT_STDOUT). Also add a minimum version note to OPENCLAW-REFERENCE.md — ClawHQ now assumes v0.8.6+ baseline.",
-      "priority": "should",
-      "category": null,
-      "steps": [],
-      "acceptanceCriteria": [
-        "src/config/types.ts includes type definitions for all 10 new environment variables",
-        "docs/OPENCLAW-REFERENCE.md config inventory lists the new variables with version introduced",
-        "Config generator sets WEBSOCKET_EVENT_CALLER_TIMEOUT and ENABLE_AUDIT_STDOUT defaults for new agents",
-        "OPENCLAW-REFERENCE.md states minimum OpenClaw version as v0.8.6",
-        "Existing config validation tests pass with no regression"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'should' confirmed. OpenClaw v0.8.6+ is the declared baseline — ClawHQ's config generator must be current or it produces incorrect configs for the baseline version. WEBSOCKET_EVENT_CALLER_TIMEOUT and ENABLE_AUDIT_STDOUT are the highest-value defaults: ENABLE_AUDIT_STDOUT was broken before v0.8.6 and should now default to true for new agents (doctor is the hero feature; audit visibility supports it). Steps are empty — Tech Lead to populate. OPENCLAW-REFERENCE.md minimum version note is required for engineering clarity, not optional.",
-      "passes": true,
-      "completedAt": "2026-03-24T22:00:41-07:00"
-    },
-    {
-      "id": "FEAT-017",
-      "title": "Doctor checks for OpenClaw v0.8.6+ upgrade issues — migration state, tool access grants, underscore tool methods",
-      "intent": "clawhq doctor must detect upgrade-related issues introduced by OpenClaw v0.8.6–v0.8.10 so users upgrading existing agents don't hit silent failures.",
-      "description": "Three new doctor checks needed: (1) Post-upgrade migration verification — verify database migrations completed (they previously failed silently). (2) Tool access grants — detect tools without explicit access grants and warn that they are admin-only on v0.8.7+ (related to BUG-114 but doctor check is independently useful for existing agents). (3) Underscore tool methods — detect tools with underscore-prefixed public methods that are no longer exposed to the LLM on v0.8.10+. CRITICAL PREREQUISITE: No OpenClaw version detection mechanism exists anywhere in the codebase. Version-gating requires implementing a version query first (options: docker exec to read package.json, parse image tag from docker-compose, or add Gateway RPC version endpoint). Without this, checks must either run unconditionally or this item is blocked.",
-      "priority": "should",
-      "category": null,
-      "steps": [
-        "Implement OpenClaw version detection — determine running version via docker exec, image tag parsing, or Gateway RPC (no mechanism currently exists)",
-        "Add version detection to doctor infrastructure (src/operate/doctor/) so checks can query it",
-        "Add check: database migration verification (run unconditionally — safe on all versions)",
-        "Add check: tool access grants missing (version-gate to v0.8.7+ if version detection works, otherwise run unconditionally with note in output)",
-        "Add check: underscore tool methods (version-gate to v0.8.10+ if version detection works, otherwise run unconditionally with note in output)",
-        "Coordinate with BUG-114 AC3 — reuse the same tool access grant check logic, don't duplicate",
-        "Add tests for all 3 checks and version-gating logic",
-        "Run npm test to confirm all tests pass"
-      ],
-      "acceptanceCriteria": [
-        "clawhq doctor checks that database migrations completed successfully",
-        "clawhq doctor warns if any tool server connections lack explicit access grants",
-        "clawhq doctor warns if any installed tools have underscore-prefixed methods that were previously LLM-visible",
-        "Checks are version-gated when OpenClaw version is detectable; run unconditionally with advisory note when version is unknown",
-        "Existing doctor tests pass with no regression"
-      ],
-      "scope": [],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24 (pass 2): Priority 'should' confirmed — doctor is the hero feature. BLOCKING PREREQUISITE: OpenClaw version detection does not exist anywhere in the codebase. If version detection cannot be implemented, checks must run unconditionally (with advisory note in output) — this is the correct fallback per AC4. Do NOT block the entire item on version detection; run unconditionally if needed. COORDINATION REQUIRED: AC2 (tool access grant check) must reuse BUG-114's check logic — do not duplicate. Sprint BUG-114 first, then this. Steps populated by Tech Lead — do not modify.",
-      "passes": true,
-      "completedAt": "2026-03-24T22:08:50-07:00"
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Gate 0 blocker for John's deploy. Deep code analysis confirmed 5 hardcoding locations. Design decision: service name stays 'openclaw' — compose project name (from dir basename) provides container isolation. Stage 1 image shared across instances. CLI --name flag and clawhq list deferred to Gate 1. Depends on FEAT-108."
     },
     {
       "id": "FEAT-018",
       "title": "End-to-end smoke test — run full user journey against real Docker on local machine",
       "intent": "946 unit tests pass but nothing proves the software works. An e2e smoke test must run the actual user journey (install → init → build → up → doctor → down → destroy) against real Docker containers and real filesystem, catching every integration gap the unit tests hide.",
-      "description": "Every external system interaction in ClawHQ is mocked in tests. Docker builds, container lifecycle, filesystem scaffolding, health checks, and config generation are tested in isolation but never together. The documented user journey has never been executed end-to-end. This item creates a smoke test harness that: (1) compiles the binary, (2) runs clawhq install against real filesystem, (3) runs clawhq init with a pre-canned test blueprint (non-interactive), (4) runs clawhq build against real Docker, (5) runs clawhq up and verifies container is running, (6) runs clawhq doctor and checks all 17 checks pass, (7) runs clawhq down, (8) runs clawhq destroy. Each step captures pass/fail and stdout/stderr. Failures are the backlog — this test IS the top-down validation.",
+      "description": "Every external system interaction in ClawHQ is mocked in tests. Docker builds, container lifecycle, filesystem scaffolding, health checks, and config generation are tested in isolation but never together. The documented user journey has never been executed end-to-end. This is the LAUNCH GATE — a security tool with a security bug is dead on arrival. No compromises.",
       "priority": "must",
       "category": "testing",
       "steps": [
@@ -157,154 +104,248 @@
         "test/e2e/"
       ],
       "dependsOn": [
-        "BUG-115"
+        "FEAT-110"
       ],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: This is the most important item in the backlog. Every other item is fixing a piece — this item proves whether the pieces work together. Depends on BUG-115 (clawhq build stub) because the build step is mandatory in the journey. Design decision: shell script vs vitest e2e test? Shell script is simpler and more portable; vitest gives better assertions and CI integration.",
-      "lastFailReason": "Implementation failed",
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: THE LAUNCH GATE. No public release without this. FAILED TWICE (failCount:2). Trust paradox — security tool with security bug is a brand-killer. Depends on FEAT-110 for correct directory structure (~/.clawhq/<agent-name>/). Each failure discovered new integration gaps — these are the bugs FEAT-018 is supposed to catch. AC verify commands added. Run smoke test completely before declaring pass.",
       "lastFailAt": "2026-03-26T12:23:08-07:00",
       "failCount": 2
     },
     {
-      "id": "FEAT-019",
-      "title": "Integration tests for cloud provider APIs — replace fetch mocks with contract tests",
-      "intent": "Cloud provider API integrations (DigitalOcean, Hetzner, GCP, AWS) are tested entirely against mocked fetch responses. If a provider changes their API response format, ClawHQ will break silently. Contract tests must verify our code handles real API shapes.",
-      "description": "10 test files mock globalThis.fetch to simulate cloud provider API responses. The mocks return hardcoded JSON that may not match the real API. Four providers are implemented: DigitalOcean (src/cloud/provisioning/providers/digitalocean.ts), Hetzner (hetzner.ts), GCP (gcp.ts), AWS (aws.ts). Each has a test file with fetch mocked. No test ever hits a real API or validates against a real response schema. This item adds contract tests: (1) record real API responses (sanitized) as fixtures, (2) validate our parsing logic against those fixtures, (3) optionally run live API tests when credentials are available (CI secret). This does NOT remove unit test mocks — it adds a second layer of validation.",
-      "priority": "should",
-      "category": "testing",
+      "id": "FEAT-121",
+      "title": "Blueprint Specification — publish human-readable spec as a community standard",
+      "intent": "The blueprint format must be documented as a standalone specification so third parties can create compatible blueprints without reading ClawHQ source code. This is the standards capture play and the primary defense against foundation absorption.",
+      "description": "ClawHQ's blueprint format exists only as TypeScript types in the compiler. It can't travel without source code. A competing format from the OpenClaw foundation could split the ecosystem. Publishing the spec creates the strongest possible long-term moat: if the format is adopted, ClawHQ is the reference implementation by definition. The spec is also the foundation absorption defense — if OpenClaw ships guided config, they'd need to be compatible with an adopted spec. Scope: complete YAML schema documentation covering all blueprint sections (identity, personality, tools, skills, cron, security, autonomy, memory, integrations, model routing, egress). Include validation rules, security constraints, and worked examples for each section.",
+      "priority": "must",
+      "category": "standards",
       "steps": [
-        "Record real API responses from each provider (sanitized — no real IPs, keys, or account IDs)",
-        "Create fixture files: test/fixtures/providers/{digitalocean,hetzner,gcp,aws}/*.json",
-        "Write contract tests that parse real API response shapes through our provider code",
-        "Add optional live API test mode: if CLAWHQ_TEST_DO_TOKEN is set, run against real DigitalOcean API (create+destroy a $4 droplet)",
-        "Add npm run test:contract script",
-        "Document how to run live tests safely in CONTRIBUTING.md"
+        "Extract the current blueprint schema from src/design/blueprints/ and src/config/schema.ts",
+        "Document each top-level section: metadata, identity, personality (7 dimensions), tools, skills, cron, security_posture, autonomy, memory, integrations, model_routing, egress",
+        "Document validation rules: required fields, value ranges (personality 1-5), cross-field constraints",
+        "Document security constraints: which fields are read-only at runtime, credential handling rules",
+        "Include 3 worked examples: minimal blueprint, medium (email manager), full (replace-my-pa)",
+        "Add versioning scheme (semver for the spec itself)",
+        "Publish as docs/BLUEPRINT-SPEC.md alongside the repo",
+        "Add clawhq blueprint validate command that checks a YAML file against the spec"
       ],
       "acceptanceCriteria": [
-        "Contract tests validate provider code against real API response shapes (recorded fixtures)",
-        "Tests catch response format changes that would break parsing (field renames, type changes, new required fields)",
-        "Live API tests run when provider credentials are available, skip gracefully when not",
-        "Existing unit tests with mocks continue to pass unchanged"
+        "docs/BLUEPRINT-SPEC.md is a standalone, human-readable specification",
+        "A developer can create a valid blueprint from the spec alone, without reading ClawHQ source",
+        "All 7 existing blueprints validate against the documented spec",
+        "Spec includes validation rules, security constraints, and 3+ worked examples",
+        "clawhq blueprint validate checks any YAML file against the spec and reports errors"
       ],
       "scope": [
-        "src/cloud/provisioning/providers/"
+        "docs/BLUEPRINT-SPEC.md",
+        "src/design/blueprints/",
+        "src/config/schema.ts",
+        "src/cli/"
       ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. 4 provider files, 4 test files, all with mocked fetch. The mocks were likely written from API docs, not recorded from real responses — drift is probable. Contract tests are the right middle ground between full mocks and expensive live tests.",
-      "passes": true,
-      "completedAt": "2026-03-24T22:19:55-07:00"
-    },
-    {
-      "id": "FEAT-020",
-      "title": "Integration tests for prerequisite detection — test against real Docker, Node, Ollama binaries",
-      "intent": "Prerequisite detection (Docker version, Node version, Ollama availability) is tested with mocked child_process.execFile. If the output format of 'docker --version' changes, or if our version parsing regex is wrong, we won't know until a user hits it.",
-      "description": "src/build/installer/prereqs.test.ts mocks the entire node:child_process module. The mock provides helpers like succeedsWith() and fails() to simulate command output. The real execFile() is never called. This means: (1) version parsing regexes are tested against hardcoded strings, not real binary output, (2) error handling for 'command not found' is simulated, not real, (3) Docker socket permissions, PATH issues, and platform differences are invisible. This item adds integration tests that run real binaries when available and skip gracefully when not.",
-      "priority": "could",
-      "category": "testing",
-      "steps": [
-        "Add integration test file: src/build/installer/prereqs.integration.test.ts",
-        "Test: if Docker is available, run the real version check and verify parsing succeeds",
-        "Test: if Node is available (it always is in CI), run the real version check",
-        "Test: if Ollama is available, run the real availability check",
-        "Skip tests gracefully when binaries are not installed (not failures)",
-        "Run on CI where Docker is available (GitHub Actions ubuntu-latest has Docker)"
-      ],
-      "acceptanceCriteria": [
-        "Integration tests run real prerequisite checks against installed binaries",
-        "Version parsing succeeds against real Docker and Node output",
-        "Tests skip gracefully on machines where Docker or Ollama is not installed",
-        "Existing mock-based unit tests remain unchanged"
-      ],
-      "scope": [
-        "src/build/installer/prereqs.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. Lower priority — prereq detection is simple string parsing and unlikely to break. But it's also easy to test for real. Quick win.",
-      "passes": true,
-      "completedAt": "2026-03-24T23:17:05-07:00"
-    },
-    {
-      "id": "FEAT-021",
-      "title": "Integration tests for cloud provisioning engine — test real registry, health polling, and state transitions",
-      "intent": "The provisioning engine (engine.ts) is tested with every dependency mocked — credentials, provider adapter, health poller, and registry are all fakes. State transitions (provisioning → active → destroyed) have never been tested against real state persistence.",
-      "description": "src/cloud/provisioning/engine.test.ts mocks 4 modules: credentials.js (returns fake API key), providers/digitalocean.js (returns fake VM creation results), health.js (returns fake health status), registry.js (uses vi.importActual with overrides). The real provisioning engine orchestrates: validate credentials → create firewall → create VM → poll health → register instance → return. None of these steps have been tested in sequence with real state. The registry writes to instances.json — this has never been tested with a real file. Health polling uses real HTTP — this has never been tested against a real (or local test) server. This item creates integration tests that use real filesystem state and a local test HTTP server for health checks, with only the cloud provider API mocked (since we can't create real VMs in CI).",
-      "priority": "should",
-      "category": "testing",
-      "steps": [
-        "Create integration test: engine.integration.test.ts",
-        "Use real filesystem (mkdtempSync) for registry state (instances.json)",
-        "Use real health polling against a local HTTP test server (like gateway/client.test.ts does with WebSocketServer)",
-        "Mock only the provider adapter (can't create real VMs in CI)",
-        "Test full state machine: provision → health check → register → status query → destroy → verify cleanup",
-        "Test error paths: provision succeeds but health fails, destroy fails, registry write fails",
-        "Run npm test to confirm no regression"
-      ],
-      "acceptanceCriteria": [
-        "Integration test exercises the full provisioning state machine with real filesystem and real HTTP",
-        "Only the cloud provider API is mocked (VM creation/destruction) — everything else is real",
-        "Registry state is verified by reading the actual instances.json file, not mocked return values",
-        "Health polling is tested against a real local HTTP server, not mocked",
-        "All existing engine unit tests continue to pass"
-      ],
-      "scope": [
-        "src/cloud/provisioning/"
-      ],
-      "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. engine.test.ts is the most heavily mocked test file in the codebase (4 modules mocked, 15+ vi.fn() calls). The test verifies that the engine calls the right mocks in the right order — it does not verify that the engine produces correct state. gateway/client.test.ts already demonstrates the pattern of testing against a local server.",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-03-24T22:29:10-07:00",
-      "failCount": 1
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Highest-leverage documentation work. Standards capture play AND foundation absorption defense. Estimate ~1 week for rigorous spec (not a weekend — the compiler touches identity, security, tools, skills, cron, autonomy, memory, integrations). The validate command is the proof it's a real spec, not just documentation. Can be split: spec doc first, validate command second."
     },
     {
-      "id": "FEAT-022",
-      "title": "Integration tests for credential probes — test against real API endpoints with test keys",
-      "intent": "Credential health probes (Anthropic, OpenAI, Telegram, etc.) are tested with mocked fetch. If an API changes its auth error response, our probe will misinterpret it. Real probes against real APIs must be tested.",
-      "description": "src/secure/credentials/probes.test.ts mocks globalThis.fetch for all credential probes. The probes check API key validity by making a lightweight API call (e.g., Anthropic /v1/messages with max_tokens:1). The mocks return simulated 200/401/403 responses. This item adds optional live probe tests: when a real API key is available (via env var), run the actual probe against the real API. These tests validate that: (1) our request format is accepted by the real API, (2) the response parsing handles real response shapes, (3) error codes are correctly interpreted.",
-      "priority": "could",
-      "category": "testing",
+      "id": "FEAT-111",
+      "title": "ClawWall content sanitization tool — prompt injection defense for all inbound external content",
+      "intent": "Every agent that reads external content (email, web, social media, RSS) must have a sanitization layer that filters prompt injection attacks before content reaches the LLM. This is not optional — it is a security-by-default requirement.",
+      "description": "Clawdius has a battle-tested 'sanitize' tool (ClawWall) that filters all inbound content from X, Tavily, Substack, email, and news through a prompt injection firewall implementing OWASP LLM01 Tier 1+2 defenses. It logs, quarantines, and strips malicious content. ClawHQ has no equivalent — generated tools pass raw external content directly to the LLM context.",
+      "priority": "must",
+      "category": "Security",
       "steps": [
-        "Add integration test: src/secure/credentials/probes.integration.test.ts",
-        "For each probe (Anthropic, OpenAI, Telegram, Ollama): if env var with test key is set, run real probe",
-        "Ollama probe can always run if Ollama is installed locally (no API key needed)",
-        "Validate: probe returns valid:true for good keys, valid:false for bad keys, correct error messages",
-        "Skip gracefully when no test keys are available",
-        "Document which env vars to set in CONTRIBUTING.md"
+        "Design the sanitize tool API: stdin filter, configurable strictness levels, quarantine log format",
+        "Implement sanitize as a generated tool (src/design/tools/sanitize.ts) included in every blueprint by default",
+        "Wire all external-facing tool generators (tavily, email, quote) to pipe through sanitize",
+        "Add quarantine log: ~/.clawhq/<agent>/security/quarantine.jsonl for blocked content",
+        "Add OWASP LLM01 Tier 1 patterns: system prompt overrides, role confusion, instruction injection",
+        "Add Tier 2 patterns: encoded payloads (base64, hex), Unicode homoglyphs, invisible characters",
+        "Add tests with real-world prompt injection examples",
+        "Add doctor check: verify sanitize is on PATH and quarantine log is writable"
       ],
       "acceptanceCriteria": [
-        "Live probe tests run against real APIs when test credentials are available",
-        "Ollama probe runs against local Ollama when available (no key needed)",
-        "Tests validate real response parsing, not just mocked shapes",
-        "Tests skip gracefully when no credentials are provided — not failures",
-        "Existing mock-based unit tests remain unchanged"
+        "A sanitize tool is generated and placed on PATH for every new agent deployment",
+        "All external-facing tools (email, tavily, web search) pipe content through sanitize",
+        "Known prompt injection patterns (OWASP LLM01 Tier 1+2) are detected and stripped",
+        "Quarantine log records all filtered content with timestamps and source attribution",
+        "clawhq doctor checks sanitize availability and log writability",
+        "Sanitize tool works as a standalone stdin filter (composable with any tool)"
       ],
       "scope": [
-        "src/secure/credentials/probes.ts"
+        "src/design/tools/",
+        "src/secure/",
+        "src/operate/doctor/"
       ],
-      "dependsOn": [],
+      "dependsOn": [
+        "FEAT-108"
+      ],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "SCAN 2026-03-24: Found during deep mock scan. Lower priority — probe API calls are simple HTTP and unlikely to break. But Ollama probe can run for free locally, making it a quick win for at least one provider.",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-03-24T23:20:05-07:00",
-      "failCount": 1
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Security-by-default requirement. Trust paradox — an agent platform without content sanitization contradicts the security promise. Extracted from Clawdius production deployment. Depends on FEAT-108 for clean CLI integration. PO REVIEW 2026-03-28: Priority confirmed MUST — every blueprint reads external content; unfiltered prompt injection is not a theoretical risk. The quarantine log AC is critical: silent filtering erodes trust, operators need to see what was blocked. AC verify commands added."
+    },
+    {
+      "id": "FEAT-115",
+      "title": "SHA256 binary pinning in Docker build — verify every downloaded tool binary against known hashes",
+      "intent": "Every binary downloaded during Docker build must be verified against a pinned SHA256 hash. Unverified downloads in a security-by-default platform are a supply chain vulnerability.",
+      "description": "ClawHQ's Docker build stage downloads tool binaries (himalaya, gh, curl, jq, ripgrep, etc.) via HTTPS URLs but does not verify checksums. A compromised CDN or GitHub release could inject malicious binaries into every ClawHQ-built agent.",
+      "priority": "must",
+      "category": "Security",
+      "steps": [
+        "Add a binary manifest to the build config: tool name, version, URL, SHA256 hash",
+        "Update Dockerfile generator (src/build/docker/build.ts) to emit SHA256 verification after each download",
+        "Add hash verification: download → sha256sum → compare → fail build if mismatch",
+        "Populate manifest with current hashes for all tool binaries (himalaya, gh, curl, jq, rg, git, ffmpeg)",
+        "Add clawhq build --verify-hashes flag to re-check hashes against upstream (for maintainer use)",
+        "Add tests: build fails on hash mismatch, build succeeds on correct hash"
+      ],
+      "acceptanceCriteria": [
+        "Every binary downloaded in Docker build is verified against a pinned SHA256 hash",
+        "Build fails immediately if any hash does not match",
+        "Binary manifest is human-readable and auditable",
+        "clawhq build output shows verification status for each binary",
+        "Hash mismatch produces a clear error naming the tool, expected hash, and actual hash"
+      ],
+      "scope": [
+        "src/build/docker/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Security-by-default. Supply chain vulnerability contradicts core promise. Extracted from Clawdius Dockerfile which pins every binary with SHA256. PO REVIEW 2026-03-28: Priority confirmed MUST — an unverified binary in a security-by-default platform is a brand-killing contradiction. AC verify commands added."
+    },
+    {
+      "id": "FEAT-122",
+      "title": "Sentinel monitoring service — upstream intelligence that a cron job can't replicate",
+      "intent": "ClawHQ must have a day-one revenue hypothesis. Sentinel is a paid monitoring service that provides upstream intelligence — pre-computing config breakage against incoming OpenClaw commits, tracking CVE impact per blueprint, and alerting on skill dependency changes. This must do something a local cron job cannot.",
+      "description": "The evolved strategy requires testing revenue from day one, not deferring it. Sentinel is the hypothesis: ~$19/month monitoring that enhances sovereignty rather than compromising it. CRITICAL DESIGN CONSTRAINT: this must NOT be 'clawhq doctor --watch' as a service — that's replicable with a cron job and the sovereignty audience will call it out immediately. The value is upstream intelligence: (1) monitor OpenClaw GitHub commits and pre-compute whether your specific config will break before you update, (2) track new CVEs and map them to your installed skills/tools, (3) detect when upstream dependencies of your skills change, (4) aggregate anonymized health signals across the fleet to identify emerging issues before they hit you. Phase 1 (MVP): OpenClaw commit monitoring + config breakage prediction. Phase 2: CVE mapping + skill dependency tracking.",
+      "priority": "should",
+      "category": "revenue",
+      "steps": [
+        "Design Sentinel architecture: upstream monitor (GitHub API polling), config analyzer (diff against user's blueprint), alert delivery (email/webhook)",
+        "Implement OpenClaw commit monitor: poll GitHub API for new commits to main, parse changed files, identify config-impacting changes",
+        "Implement config breakage predictor: given a commit diff and a user's compiled config, determine if the update would break their deployment",
+        "Implement alert system: email or webhook notification with specific breakage details and recommended action",
+        "Design pricing page / signup flow for revenue validation",
+        "Build minimal web endpoint for Sentinel subscription management",
+        "Add clawhq cloud sentinel connect command to link a deployment to Sentinel",
+        "Phase 2: CVE tracker that maps advisories to user's specific skill/tool inventory"
+      ],
+      "acceptanceCriteria": [
+        "Sentinel monitors OpenClaw upstream commits and identifies config-impacting changes",
+        "Users receive alerts BEFORE updating when a new release would break their specific config",
+        "Alert includes: what changed upstream, what would break in their config, recommended action",
+        "Service provides value that a local cron job cannot replicate (upstream intelligence, not local health checks)",
+        "Pricing page exists and accepts signups for revenue validation",
+        "Revenue signal measurable within 30 days of announcement"
+      ],
+      "scope": [
+        "src/cloud/",
+        "src/config/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Day-zero revenue experiment. Not sprint-ready — needs architecture design. Key insight from critique: must do something a cron job can't. WebSocket health checks are trivially replicable. Upstream commit analysis + config breakage prediction is genuinely valuable and requires centralized infrastructure. Phase 1 can be technically simple (GitHub API + config diff) but the product design needs work first."
+    },
+    {
+      "id": "FEAT-123",
+      "title": "OpenClaw Security Incident Tracker — public authority-building resource",
+      "intent": "ClawHQ must become the authoritative source on OpenClaw security incidents before launch. This builds the exact audience that will adopt ClawHQ and creates compounding discovery value that one-time launch events cannot.",
+      "description": "The OpenClaw security landscape is alarming: 9+ CVEs in first 2 months, 20-36% of ClawHub skills found malicious, 42,000+ exposed instances, 14 silent config landmines. Nobody is tracking this systematically. A public incident tracker builds authority, drives SEO, and creates the audience that ClawHQ serves. This should run IN PARALLEL with development, not as a contingency. Content: CVE tracker with impact analysis, malicious skill registry, exposed instance statistics (anonymized), breaking change log with migration guides. Can start as a curated markdown document and evolve into a live dashboard.",
+      "priority": "should",
+      "category": "content",
+      "steps": [
+        "Create docs/security/ directory for public security content",
+        "Compile initial CVE list: all known OpenClaw CVEs with severity, impact, and ClawHQ mitigation status",
+        "Compile malicious skill analysis: known malicious ClawHub items, detection patterns, ClawHQ's vetting response",
+        "Compile exposed instance data: methodology, current count, common misconfigurations found",
+        "Create docs/security/INCIDENTS.md as the public-facing tracker",
+        "Add RSS/JSON feed generation for automated consumption",
+        "Set up monthly update cadence (ties into development-as-content)",
+        "Cross-reference each incident with ClawHQ's specific mitigation (doctor check, config validation, etc.)"
+      ],
+      "acceptanceCriteria": [
+        "Public incident tracker exists with all known OpenClaw CVEs and their ClawHQ mitigation status",
+        "Each incident includes: description, severity, affected versions, ClawHQ mitigation, detection method",
+        "Tracker is linkable and SEO-friendly (individual incident anchors)",
+        "Content demonstrates deep OpenClaw security expertise",
+        "Monthly update cadence established"
+      ],
+      "scope": [
+        "docs/security/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Authority-building play that addresses discovery wound. Better than a fallback — should run in parallel with development. The OpenClaw security landscape data already exists in docs/OPENCLAW-REFERENCE.md and docs/PROBLEMS.md. This is about packaging it as a public resource. Sprint-ready — primarily content work, not code."
+    },
+    {
+      "id": "FEAT-124",
+      "title": "Development-as-content pipeline — every commit generates discoverable content",
+      "intent": "ClawHQ's development work must produce discoverable content as a byproduct. One-time launch events decay in 72 hours. Compounding content solves the discovery problem without a separate content calendar.",
+      "description": "The evolved strategy identified discovery decay as a critical wound. The fix: every development action produces content. Bug fix → postmortem article. New blueprint → tutorial walkthrough. OpenClaw breaking change → 'what broke and how we fixed it.' This is a process change, not a feature. Implementation: (1) CHANGELOG entries written as narratives, not version lists, (2) template for converting commits/PRs into technical articles, (3) docs/articles/ directory for long-form content derived from development, (4) PROBLEMS.md already exists and is evergreen SEO — formalize the update process.",
+      "priority": "should",
+      "category": "content",
+      "steps": [
+        "Create docs/articles/ directory for technical content",
+        "Create article template: title, problem, context, solution, what we learned, ClawHQ relevance",
+        "Rewrite CHANGELOG.md entries as narratives (not just version bumps)",
+        "Write first article from existing work: '14 Ways Your OpenClaw Agent Silently Breaks' (from PROBLEMS.md content)",
+        "Write second article from BUG-125: 'Why Regex YAML Patching Will Corrupt Your Docker Config'",
+        "Add CONTRIBUTING.md section on development-as-content expectations",
+        "Document the process: each PR that fixes a landmine or adds a blueprint should include a content draft"
+      ],
+      "acceptanceCriteria": [
+        "docs/articles/ directory exists with article template",
+        "At least 2 articles written from existing development work",
+        "CHANGELOG.md entries are narrative, not version lists",
+        "Process documented in CONTRIBUTING.md for future development"
+      ],
+      "scope": [
+        "docs/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Zero-cost discovery fix. The content already exists in the codebase — PROBLEMS.md, OPENCLAW-REFERENCE.md, bug fixes. This is about packaging it. Sprint-ready — content work, not code. The '14 ways' article could be the HN launch piece."
+    },
+    {
+      "id": "FEAT-125",
+      "title": "Assumption validation framework — concrete tests for the 3 riskiest strategic assumptions",
+      "intent": "Strategy without validation is fiction. The 3 highest-risk assumptions must have concrete pass/fail criteria, measurement methods, and deadlines so the team knows when to pivot.",
+      "description": "The evolved strategy identified 7 assumptions, 3 critical. Each needs a concrete test: (1) Addressable demand — measure clone→install conversion in first 1,000 visitors (pass: >5%), (2) Willingness to pay — Sentinel landing page signups (pass: 10+ in 60 days), (3) Foundation absorption — monitor OpenClaw PRs for guided config (signal: 2+ PRs in 6 months). Implementation: tracking dashboard or simple JSON file that records metrics against targets, reviewed monthly.",
+      "priority": "should",
+      "category": "strategy",
+      "steps": [
+        "Create backlog/assumptions.json with the 3 testable assumptions, pass/fail criteria, and deadlines",
+        "Add GitHub repo analytics tracking plan (stars, clones, installs via curl script)",
+        "Design Sentinel landing page for willingness-to-pay test",
+        "Set up OpenClaw GitHub watch for configuration-related PRs/RFCs",
+        "Document review cadence: monthly assumption review, update assumptions.json with latest data"
+      ],
+      "acceptanceCriteria": [
+        "backlog/assumptions.json documents all 3 assumptions with pass/fail criteria and deadlines",
+        "Each assumption has a concrete measurement method that doesn't require guessing",
+        "Monthly review cadence is documented",
+        "First review date set for 30 days after repo goes public"
+      ],
+      "scope": [
+        "backlog/",
+        "docs/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Converts 'direction locked' into something testable. Without this, the strategy is faith, not science. Sprint-ready — primarily documentation work. Can be done in a single sprint."
     },
     {
       "id": "FEAT-106",
       "title": "Reduce process.exit() usage in CLI — return exit codes or throw for testability",
       "intent": "Make CLI command handlers testable and allow proper cleanup. Commands should throw or return exit codes instead of calling process.exit() directly.",
-      "description": "Architecture review found 192 direct process.exit() calls (updated from initial 107+ estimate). This prevents testing error paths, blocks defer/cleanup handlers, and makes graceful shutdown impossible. Commands should throw errors or return codes, with a single top-level handler calling process.exit().",
+      "description": "Architecture review found 192 direct process.exit() calls. This prevents testing error paths, blocks defer/cleanup handlers, and makes graceful shutdown impossible.",
       "priority": "should",
       "category": "Code Quality",
       "steps": [
@@ -323,82 +364,19 @@
       "scope": [
         "src/cli/**"
       ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24: Priority 'should' confirmed. User-facing value is indirect but real: process.exit() in command handlers prevents proper cleanup (spinners left running, temp files not deleted, partial state on disk). It also makes error paths untestable, which means error messages shown to users are untested. The intent should be clarified — this is not code quality for its own sake; it is about users seeing correct error messages and not being left with a broken spinner. AC item 'at least 3 command handlers' is too vague — Tech Lead should target the highest-risk commands (deploy, destroy, scan) where partial state is most dangerous. Steps look correct. Sprint after must-priority items are clear.",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-03-24T22:32:57-07:00",
-      "failCount": 1
-    },
-    {
-      "id": "FEAT-107",
-      "title": "Add manifest version checking on all JSON manifest reads across evolve/cloud",
-      "intent": "Prevent silent data corruption when manifest formats change. Every manifest read must validate the version field and fail clearly on unsupported versions.",
-      "description": "Code review found that multiple modules write manifest files with version: 1 but never validate version on read. If the manifest format changes in a future version, old code will parse new manifests incorrectly — either silently producing wrong data or crashing with confusing errors. Affects skill manifests, export manifests, destruction proofs, and cloud state files.",
-      "priority": "should",
-      "category": "Reliability",
-      "steps": [
-        "Identify all manifest read locations across evolve/ and cloud/ modules",
-        "Add version validation to each manifest reader (reject if version !== expected)",
-        "Add descriptive error messages mentioning the expected vs actual version",
-        "Add tests for version mismatch on skill, export, destruction, and cloud manifests"
+      "dependsOn": [
+        "FEAT-108"
       ],
-      "acceptanceCriteria": [
-        "All manifest read functions validate the version field before parsing",
-        "Unsupported manifest versions produce a clear error message",
-        "Tests cover version mismatch scenarios for each manifest type"
-      ],
-      "scope": [
-        "src/evolve/**",
-        "src/cloud/**"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "PO GROOM 2026-03-24: Priority 'should' confirmed. Silent data corruption on manifest version mismatch is a reliability risk that compounds over time — as ClawHQ evolves, old manifests will accumulate in the wild. The first user who upgrades ClawHQ and has an old skill manifest will get a silent wrong result or a confusing crash. Version validation is cheap to add and expensive to retrofit later. AC is correct and complete. Tech Lead note: manifest types are spread across evolve/ and cloud/ — identify all read locations before implementing to avoid partial coverage. Sprint after must-priority items are clear.",
-      "completedAt": "2026-03-24T22:40:45-07:00"
-    },
-    {
-      "id": "FEAT-108",
-      "title": "Decompose CLI index.ts — 4,320 lines into per-command modules",
-      "intent": "A 4,320-line CLI file is unmaintainable, untestable, and blocks parallel development. Each command should live in its own module so changes to one command don't risk breaking others.",
-      "description": "Architecture review found src/cli/index.ts is 4,320 lines containing all command definitions, option parsing, and handler logic in a single file. This creates: (1) merge conflicts when multiple features touch CLI simultaneously, (2) impossible to unit test individual commands in isolation, (3) no clear ownership boundary between modules. Decomposition strategy: extract each command (or command group) into src/cli/commands/<name>.ts, with index.ts reduced to a thin registration layer that imports and wires commands to Commander.js. This pairs with FEAT-106 (process.exit cleanup) — decompose first, then refactor error handling per-command.",
-      "priority": "should",
-      "category": "Code Quality",
-      "steps": [
-        "Audit src/cli/index.ts — catalog all commands and their line ranges",
-        "Create src/cli/commands/ directory",
-        "Extract each command group into its own file (e.g., deploy.ts, doctor.ts, blueprint.ts, skill.ts, cloud.ts)",
-        "Each command file exports a function that takes the Commander program and registers its commands",
-        "Reduce index.ts to imports + command registration + top-level error handler",
-        "Run npm test to confirm no regression",
-        "Run npm run build to confirm compilation succeeds"
-      ],
-      "acceptanceCriteria": [
-        "src/cli/index.ts is under 500 lines — purely command registration and top-level error handling",
-        "Each command group lives in src/cli/commands/<name>.ts",
-        "All existing CLI commands work identically — no user-visible behavior change",
-        "npm test and npm run build pass with no regression"
-      ],
-      "scope": [
-        "src/cli/**"
-      ],
-      "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-24",
-      "groomingNotes": "ARCHITECT REVIEW 2026-03-24: Critical finding — 4,320 lines is the largest file in the codebase. Pairs with FEAT-106 (process.exit cleanup). Decompose first, then FEAT-106 becomes per-command refactoring instead of a 4K-line surgery. Priority 'should' — not blocking users directly but blocking developer velocity on every CLI change."
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "Blocked by FEAT-108. After decomposition, each command file can be fixed independently. process.exit() cleanup is per-command surgery — doing it in a 4320-line index.ts carries high regression risk."
     },
     {
       "id": "FEAT-109",
       "title": "1Password integration — agent-accessible credential vault via service account tokens",
       "intent": "Agents need credential access for email, logins, API calls. Hardcoded env vars have no rotation or audit. 1Password service accounts give scoped read-only access with full audit trail — aligned with data sovereignty and security-by-default.",
-      "description": "Integrate 1Password service account model into agent runtime. Architecture: user's 1Password account has an Agent Vault with only the credentials the agent needs. Agent gets a service account token (OP_SERVICE_ACCOUNT_TOKEN) injected as Docker secret. op CLI or Python SDK installed in container. Helper utility claw-secret wraps credential fetch with logging. Security model: read-only, fetch-at-use (never persisted), never in LLM context, scoped vault, full audit, instant revoke, quarterly rotation. Each agent requests its own service account token programmatically. Ref: GitHub issue #8, 1Password AI agent docs.",
+      "description": "Integrate 1Password service account model into agent runtime. Architecture: user's 1Password account has an Agent Vault with only the credentials the agent needs. Agent gets a service account token (OP_SERVICE_ACCOUNT_TOKEN) injected as Docker secret. op CLI or Python SDK installed in container. Helper utility claw-secret wraps credential fetch with logging. Security model: read-only, fetch-at-use (never persisted), never in LLM context, scoped vault, full audit, instant revoke, quarterly rotation.",
       "priority": "should",
       "category": "Security",
       "steps": [
@@ -408,8 +386,7 @@
         "Add credential probe for 1Password service account token validity (src/secure/credentials/probes.ts)",
         "Add blueprint configuration for 1Password vault name and credential mapping",
         "Add doctor check: 1Password service account token valid, vault accessible, op CLI installed",
-        "Add documentation: setup guide, security best practices, audit procedures",
-        "Add tests for credential fetch, token validation, error handling (vault not found, token revoked, op not installed)"
+        "Add tests for credential fetch, token validation, error handling"
       ],
       "acceptanceCriteria": [
         "op CLI or Python SDK available in agent container after clawhq build",
@@ -417,8 +394,7 @@
         "claw-secret utility fetches credentials with audit logging",
         "Credentials never appear in LLM context, agent memory files, or logs",
         "clawhq doctor checks 1Password connectivity and token validity",
-        "Blueprint supports 1Password vault configuration",
-        "Tests cover: successful fetch, revoked token, missing op CLI, vault not found"
+        "Blueprint supports 1Password vault configuration"
       ],
       "scope": [
         "src/build/docker/",
@@ -426,11 +402,362 @@
         "src/operate/doctor/",
         "src/design/blueprints/"
       ],
-      "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-26",
-      "groomingNotes": "From GitHub issue #8 (real-clawdius-maximus). User confirmed: agents request their own service account token programmatically. Priority 'should' — core credential access pattern needed for any agent that interacts with external services. Aligns with security-by-default (no hardcoded keys) and data sovereignty (user controls vault, instant revoke)."
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "From GitHub issue #8. Core credential access pattern needed for any agent that interacts with external services. Aligns with security-by-default and data sovereignty."
+    },
+    {
+      "id": "FEAT-113",
+      "title": "Model routing per cron job — haiku for cheap scans, opus for deep work, with fallback chains",
+      "intent": "Cron jobs must be cost-efficient. A heartbeat check that runs every 10 minutes should not use the most expensive model. Each job must specify its model with a fallback chain.",
+      "description": "Clawdius routes cron jobs to different models: heartbeat and x-scan use haiku (cheap, fast) with sonnet fallback, while work-session uses opus (expensive, capable) with sonnet fallback. ClawHQ's blueprint cron_config only specifies schedule expressions — no model routing.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Extend blueprint cron_config schema to support model and fallbacks per job",
+        "Update config generator (src/design/configure/generate.ts) to emit model and fallbacks in cron job payloads",
+        "Update all 7 blueprints with sensible model routing (heartbeat→haiku, work_session→opus, morning_brief→sonnet)",
+        "Add wizard question or smart inference for model routing preferences",
+        "Add validation: specified models must be available in the configured provider",
+        "Add tests for cron job generation with model routing"
+      ],
+      "acceptanceCriteria": [
+        "Blueprint cron_config supports model and fallbacks per job type",
+        "Generated cron jobs include payload.model and payload.fallbacks fields",
+        "Default model routing follows cost-efficiency: cheap models for frequent jobs, capable models for deep work",
+        "All 7 blueprints have sensible model routing defaults",
+        "Validation catches references to unavailable models"
+      ],
+      "scope": [
+        "configs/blueprints/",
+        "src/design/configure/generate.ts",
+        "src/config/schema.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "Direct cost impact for every user. Without model routing, an agent running 10-minute heartbeats on opus burns through budget unnecessarily."
+    },
+    {
+      "id": "FEAT-021",
+      "title": "Integration tests for cloud provisioning engine — test real registry, health polling, and state transitions",
+      "intent": "The provisioning engine (engine.ts) is tested with every dependency mocked — credentials, provider adapter, health poller, and registry are all fakes. State transitions (provisioning → active → destroyed) have never been tested against real state persistence.",
+      "description": "src/cloud/provisioning/engine.test.ts mocks 4 modules. The test verifies that the engine calls the right mocks in the right order — it does not verify that the engine produces correct state.",
+      "priority": "should",
+      "category": "testing",
+      "steps": [
+        "Create integration test: engine.integration.test.ts",
+        "Use real filesystem (mkdtempSync) for registry state (instances.json)",
+        "Use real health polling against a local HTTP test server",
+        "Mock only the provider adapter (can't create real VMs in CI)",
+        "Test full state machine: provision → health check → register → status query → destroy → verify cleanup",
+        "Test error paths: provision succeeds but health fails, destroy fails, registry write fails",
+        "Run npm test to confirm no regression"
+      ],
+      "acceptanceCriteria": [
+        "Integration test exercises the full provisioning state machine with real filesystem and real HTTP",
+        "Only the cloud provider API is mocked — everything else is real",
+        "Registry state is verified by reading the actual instances.json file",
+        "Health polling is tested against a real local HTTP server",
+        "All existing engine unit tests continue to pass"
+      ],
+      "scope": [
+        "src/cloud/provisioning/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "Most heavily mocked test file in the codebase. Real state machine testing deferred until after Gate 0 blockers.",
+      "lastFailAt": "2026-03-24T22:29:10-07:00",
+      "failCount": 1
+    },
+    {
+      "id": "FEAT-118",
+      "title": "Extended identity files — USER.md, TOOLS.md, and domain-specific runbooks in blueprint config",
+      "intent": "An agent that only knows its personality (SOUL.md) and capabilities (AGENTS.md) is incomplete. It must also understand its user's context, have a role-organized tool reference, and carry domain-specific operating procedures.",
+      "description": "Clawdius has 7 identity/reference files beyond SOUL.md and AGENTS.md. ClawHQ only generates SOUL.md + AGENTS.md. The delta is significant: without USER.md, the agent doesn't know who it's serving.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Extend wizard to collect user context: name, timezone, communication preferences, key constraints",
+        "Add USER.md generator to src/design/identity/",
+        "Add TOOLS.md generator — organizes blueprint tools by role/use-case with descriptions",
+        "Add blueprint-specific runbook support: each blueprint can define additional identity files",
+        "Update identity file generation in generate.ts to include new files",
+        "Update Docker build to copy all identity files, not just SOUL.md and AGENTS.md",
+        "Add tests for USER.md and TOOLS.md generation from various blueprints"
+      ],
+      "acceptanceCriteria": [
+        "clawhq init collects user context (name, timezone, preferences) via wizard",
+        "Generated deployment includes USER.md with user profile",
+        "Generated deployment includes TOOLS.md with role-organized tool reference",
+        "Blueprints can define additional identity files (runbooks) in their YAML",
+        "All identity files are mounted read-only in the container",
+        "Token budget validation accounts for all identity files"
+      ],
+      "scope": [
+        "src/design/identity/",
+        "src/design/configure/",
+        "configs/blueprints/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Supports '10 curated blueprints' goal — each masterclass blueprint needs rich identity files. Not sprint-ready — needs design for blueprint-specific runbooks."
+    },
+    {
+      "id": "FEAT-112",
+      "title": "Construct meta-skill — autonomous self-improvement loop for agent capability growth",
+      "intent": "Agents must grow their capabilities over time without manual intervention. The construct skill is the mechanism: assess gaps → propose new skills → build → deploy → validate. This is THE differentiator for the 'agent grows' pillar.",
+      "description": "Clawdius has a 'construct' skill that runs daily at 2am PT. Over 3 months it has autonomously built 7 skills. ClawHQ's skill system supports install/remove/update but has no autonomous growth mechanism.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Design construct skill config for ClawHQ: SKILL.md, state machine (assess/propose/build/deploy/validate), cron schedule",
+        "Add construct to configs/skills/ as a built-in skill",
+        "Implement state persistence (construct tracks what it has assessed, proposed, built)",
+        "Wire construct into blueprint cron_config as an optional daily job",
+        "Add skill vetting integration — construct-built skills must pass the same vetting as manually installed skills",
+        "Add construct to 'replace-my-pa', 'founders-ops', and 'research-copilot' blueprints by default",
+        "Add tests for state machine transitions and skill output validation"
+      ],
+      "acceptanceCriteria": [
+        "Construct skill is available as a built-in skill in configs/skills/",
+        "Construct follows Assess→Propose→Build→Deploy→Validate cycle",
+        "Construct-built skills pass the same vetting pipeline as manually installed skills",
+        "State is persisted across runs (no redundant assessments)",
+        "Blueprints can opt-in to construct via skill_bundle configuration",
+        "At least 3 blueprints include construct by default"
+      ],
+      "scope": [
+        "configs/skills/",
+        "configs/blueprints/",
+        "src/evolve/skills/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "Extracted from Clawdius. 'Agent grows' pillar differentiator. Not sprint-ready — needs design for vetting pipeline integration."
+    },
+    {
+      "id": "FEAT-120",
+      "title": "Operational automation scripts — auto-update, security monitoring, workspace backup generation",
+      "intent": "A deployed agent must maintain itself. Auto-updates, security advisory monitoring, and workspace backups should be generated by ClawHQ, not hand-written by the operator.",
+      "description": "Clawdius has 24 operational scripts. ClawHQ has doctor and backup commands but does not generate the operational automation layer.",
+      "priority": "should",
+      "category": "operate",
+      "steps": [
+        "Generate auto-update script during clawhq init",
+        "Generate security monitor script (checks GitHub Security Advisories for OpenClaw CVEs)",
+        "Generate workspace backup script (incremental rsync to configurable backup dir)",
+        "Generate systemd unit files for firewall watcher and backup timer",
+        "Add clawhq ops install command to deploy generated scripts and timers",
+        "Add doctor checks: auto-update timer active, backup recent, security monitor running"
+      ],
+      "acceptanceCriteria": [
+        "clawhq init generates operational scripts in the deployment directory",
+        "clawhq ops install deploys scripts as systemd timers/services",
+        "Auto-update runs on configurable schedule (default: daily)",
+        "Security monitor checks GitHub Advisories and alerts on critical/high CVEs",
+        "Workspace backup runs on configurable schedule with retention policy",
+        "clawhq doctor reports operational automation status"
+      ],
+      "scope": [
+        "src/design/configure/",
+        "src/operate/",
+        "src/cli/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Supports 'agent grows' pillar. Auto-update and security monitoring tie into Sentinel value prop. Not sprint-ready — needs design for multi-instance interaction."
+    },
+    {
+      "id": "FEAT-116",
+      "title": "Domain-based egress firewall with ipset — upgrade from IP-based iptables to DNS-resolved allowlists",
+      "intent": "Agent egress must be restricted to explicitly allowed domains, not IP addresses. IP-based rules miss CDN rotations, multi-homed services, and IPv6.",
+      "description": "ClawHQ's firewall module uses IP-based iptables rules. Clawdius uses domain-based egress: a domain allowlist resolved via DNS into an ipset, refreshed every 5 minutes.",
+      "priority": "should",
+      "category": "Security",
+      "steps": [
+        "Add domain-allowlist concept to blueprint security_posture",
+        "Generate domain allowlist file from blueprint egress config during clawhq init",
+        "Implement ipset creation from domain allowlist",
+        "Update firewall module to use ipset match rules instead of per-IP iptables rules",
+        "Generate refresh mechanism for periodic DNS re-resolution",
+        "Add doctor check: ipset exists, not stale, matches allowlist",
+        "Add tests for domain resolution, ipset creation, stale detection"
+      ],
+      "acceptanceCriteria": [
+        "Blueprint security posture includes a domain allowlist",
+        "clawhq up creates an ipset from DNS resolution of the allowlist",
+        "iptables rules reference the ipset, not individual IP addresses",
+        "A refresh mechanism keeps the ipset current",
+        "clawhq doctor detects stale ipsets",
+        "clawhq down removes the ipset and iptables rules cleanly"
+      ],
+      "scope": [
+        "src/build/launcher/firewall.ts",
+        "src/operate/doctor/",
+        "configs/blueprints/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "Extracted from Clawdius. Not sprint-ready — needs design for ipset lifecycle with multi-instance."
+    },
+    {
+      "id": "FEAT-022",
+      "title": "Integration tests for credential probes — test against real API endpoints with test keys",
+      "intent": "Credential health probes are tested with mocked fetch. If an API changes its auth error response, our probe will misinterpret it. Real probes against real APIs must be tested.",
+      "description": "Live probe tests that run when test API keys are available. Ollama probe can always run locally.",
+      "priority": "could",
+      "category": "testing",
+      "steps": [
+        "Add integration test: src/secure/credentials/probes.integration.test.ts",
+        "For each probe: if env var with test key is set, run real probe",
+        "Ollama probe can always run if Ollama is installed locally",
+        "Validate: probe returns valid:true for good keys, valid:false for bad keys",
+        "Skip gracefully when no test keys are available"
+      ],
+      "acceptanceCriteria": [
+        "Live probe tests run against real APIs when test credentials are available",
+        "Ollama probe runs against local Ollama when available",
+        "Tests skip gracefully when no credentials are provided",
+        "Existing mock-based unit tests remain unchanged"
+      ],
+      "scope": [
+        "src/secure/credentials/probes.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "Lower priority — probe API calls are simple HTTP and unlikely to break. Quick win for Ollama probe.",
+      "lastFailAt": "2026-03-24T23:20:05-07:00",
+      "failCount": 1
+    },
+    {
+      "id": "FEAT-117",
+      "title": "Stoic coach personality blueprint — purpose-built agent for philosophical mentorship",
+      "intent": "The stoic coach blueprint proves ClawHQ can forge agents with deep personality — not just task automation, but genuine character. This is the blueprint that makes people say 'this is different from ChatGPT'.",
+      "description": "Extract Clawdius's stoic identity patterns into a 'Stoic Coach' blueprint. Part of the '10 curated blueprints' strategy — this is blueprint #8.",
+      "priority": "could",
+      "category": "blueprints",
+      "steps": [
+        "Create configs/blueprints/stoic-coach.yaml",
+        "Define personality: high analyticalDepth, moderate warmth, high directness, low verbosity",
+        "Define customization questions: philosophical tradition, practice times, accountability style",
+        "Define toolbelt: journal (append-only markdown), reflection-prompt generator",
+        "Define skills: daily-stoic (morning prompt + evening reflection), weekly-review",
+        "Define cron, autonomy, and memory policy",
+        "Test: clawhq init --guided with stoic-coach produces a deployable agent config"
+      ],
+      "acceptanceCriteria": [
+        "stoic-coach.yaml is a complete blueprint with all required sections",
+        "Personality dimensions are distinct from other blueprints",
+        "Blueprint includes at least one unique tool and one unique skill",
+        "clawhq init --guided with stoic-coach produces a deployable agent config",
+        "The forged agent has a distinctive voice — tested by reading generated SOUL.md"
+      ],
+      "scope": [
+        "configs/blueprints/",
+        "configs/skills/",
+        "src/design/tools/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY: Part of '10 curated blueprints' goal. Blueprint #8 (current 7 + stoic coach). Not sprint-ready — needs journal tool generator and daily-stoic skill."
+    },
+    {
+      "id": "FEAT-114",
+      "title": "JMAP email backend — FastMail-compatible email tool as alternative to himalaya/IMAP",
+      "intent": "Users on FastMail (or any JMAP provider) must have a native email tool that uses JMAP instead of IMAP.",
+      "description": "Clawdius has a battle-tested email-fastmail.py (stdlib Python, no deps) implementing JMAP. ClawHQ's email tool generator only produces himalaya-based IMAP scripts.",
+      "priority": "could",
+      "category": "tools",
+      "steps": [
+        "Add JMAP email backend to src/design/tools/email.ts",
+        "Generate email-jmap.py (stdlib Python, no deps)",
+        "Add JMAP credential collection to wizard",
+        "Add account switching support (--account flag)",
+        "Add doctor check: JMAP session endpoint reachable, token valid",
+        "Add to email-manager and replace-my-pa blueprints"
+      ],
+      "acceptanceCriteria": [
+        "Email tool generator can produce JMAP-based scripts as alternative to himalaya",
+        "Generated JMAP tool uses stdlib Python only",
+        "Account switching works between JMAP and himalaya backends",
+        "clawhq doctor checks JMAP connectivity when configured"
+      ],
+      "scope": [
+        "src/design/tools/email.ts",
+        "configs/blueprints/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "Extracted from Clawdius. JMAP is superior to IMAP for agent use cases. Not sprint-ready — needs design for JMAP/himalaya coexistence."
+    },
+    {
+      "id": "FEAT-119",
+      "title": "News aggregator tool — multi-source scan with deduplication and interest-graph filtering",
+      "intent": "Agents that monitor information sources need a unified news aggregator. Foundation for any monitoring or research blueprint.",
+      "description": "Clawdius has a 'news' tool that scans X + Substack + Tavily by interest topic, deduplicates, and manages API budget.",
+      "priority": "could",
+      "category": "tools",
+      "steps": [
+        "Design news tool API: scan by interest, deduplicate, budget management",
+        "Design interests tool API: add/remove topics, set priorities, manage sources",
+        "Add tool generators to src/design/tools/",
+        "Generate interests.json with default interests from blueprint",
+        "Add to research-copilot, founders-ops blueprints",
+        "Add tests for deduplication logic and budget management"
+      ],
+      "acceptanceCriteria": [
+        "News tool scans and returns deduplicated, filtered results",
+        "Interests tool manages a persistent interest graph",
+        "Generated tools use existing tool dependencies as backends",
+        "Budget management prevents runaway API costs"
+      ],
+      "scope": [
+        "src/design/tools/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "Extracted from Clawdius. Depends on Tavily and X tools working first. Lower priority than security and multi-instance."
+    },
+    {
+      "id": "FEAT-126",
+      "title": "Expand blueprint library to 10 reference masterclasses",
+      "intent": "ClawHQ must ship with 10 curated reference blueprints, each a deep demonstration of a real use case. 7 blueprints exist. The remaining 3 must be production-quality — reading them should make a target user think 'this person understands how I actually work.'",
+      "description": "Strategy fix #2 (Community) requires 10 curated reference blueprints, not a community marketplace. Current count: 7 blueprints. The gap is 3 more. Each blueprint must be a masterclass for its use case — selection criteria: (1) significant OpenClaw user population has this need, (2) the use case has well-known failure modes ClawHQ handles correctly by default, (3) demonstrates security-by-default in a concrete domain. Candidates: Research Copilot (Tavily, summarization, citation), Founders Ops (communications, scheduling, prioritization), Personal Finance Assistant (read-only bank feeds, alerts, summaries — no write access). Each requires identity file content, tool selection, skill bundle, cron jobs, security posture, and integration config.",
+      "priority": "should",
+      "category": "core",
+      "steps": [],
+      "acceptanceCriteria": [
+        {
+          "text": "Blueprint library contains exactly 10 blueprints, each with complete YAML (identity, tools, skills, cron, security_posture, autonomy)",
+          "verify": "ls configs/blueprints/*.yaml 2>/dev/null | wc -l | grep -q '^10$'"
+        },
+        "Each new blueprint includes at least one domain-specific security constraint not in the default posture",
+        "All 10 blueprints validate against the blueprint spec (once FEAT-121 is complete)",
+        {
+          "text": "Each blueprint has a corresponding tutorial draft in docs/articles/ for the dev-as-content pipeline",
+          "verify": "ls docs/articles/ 2>/dev/null | wc -l | grep -qE '^[3-9]|^[0-9]{2,}'"
+        }
+      ],
+      "scope": [
+        "configs/blueprints/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-28",
+      "groomingNotes": "STRATEGY fix #2 (Community). Gap identified during PO grooming 2026-03-28: strategy says '10 reference blueprints' but backlog had no item for the missing 3. Each blueprint is a content asset (tutorial draft in docs/articles/) and a quality signal for the Blueprint Specification (FEAT-121). Priority should because it follows Gate 0 — not blocking launch but must ship with repo. Candidates: Research Copilot, Founders Ops, Personal Finance Assistant. Depends on FEAT-121 for final validation. Not sprint-ready until FEAT-121 spec is done."
     }
   ]
 }
