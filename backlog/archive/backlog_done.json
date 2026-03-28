@@ -1867,6 +1867,38 @@
     "completedAt": "2026-03-24T22:40:45-07:00"
   },
   {
+    "id": "FEAT-108",
+    "title": "Decompose CLI index.ts — 4,320 lines into per-command modules",
+    "intent": "A 4,320-line CLI file is unmaintainable, untestable, and blocks parallel development. Each command should live in its own module so changes to one command don't risk breaking others.",
+    "description": "Architecture review found src/cli/index.ts is 4,320 lines containing all command definitions, option parsing, and handler logic in a single file. This creates: (1) merge conflicts when multiple features touch CLI simultaneously, (2) impossible to unit test individual commands in isolation, (3) no clear ownership boundary between modules. Decomposition strategy: extract each command (or command group) into src/cli/commands/<name>.ts, with index.ts reduced to a thin registration layer that imports and wires commands to Commander.js.",
+    "priority": "must",
+    "category": "Code Quality",
+    "steps": [
+      "Audit src/cli/index.ts — catalog all commands and their line ranges",
+      "Create src/cli/commands/ directory",
+      "Extract each command group into its own file (e.g., deploy.ts, doctor.ts, blueprint.ts, skill.ts, cloud.ts)",
+      "Each command file exports a function that takes the Commander program and registers its commands",
+      "Reduce index.ts to imports + command registration + top-level error handler",
+      "Run npm test to confirm no regression",
+      "Run npm run build to confirm compilation succeeds"
+    ],
+    "acceptanceCriteria": [
+      "src/cli/index.ts is under 500 lines — purely command registration and top-level error handling",
+      "Each command group lives in src/cli/commands/<name>.ts",
+      "All existing CLI commands work identically — no user-visible behavior change",
+      "npm test and npm run build pass with no regression"
+    ],
+    "scope": [
+      "src/cli/**"
+    ],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-28",
+    "groomingNotes": "STRATEGY: Gate 0 prerequisite. Unblocks FEAT-110 (multi-instance), FEAT-106 (process.exit cleanup), and FEAT-111 (ClawWall). Every sprint that touches CLI without this decomposition carries compound regression risk. Sprint tonight — first in queue.",
+    "passes": true,
+    "completedAt": "2026-03-28T11:26:57-07:00"
+  },
+  {
     "id": "FEAT-121",
     "title": "Blueprint Specification — publish human-readable spec as a community standard",
     "intent": "The blueprint format must be documented as a standalone specification so third parties can create compatible blueprints without reading ClawHQ source code. This is the standards capture play and the primary defense against foundation absorption.",
