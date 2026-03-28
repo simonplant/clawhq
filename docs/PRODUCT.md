@@ -94,8 +94,8 @@ This is the product. Everything else is infrastructure.
 - [ ] **Blueprint customization** `must`
   Blueprint-specific questions during setup: dietary restrictions, risk tolerance, communication style, priority contacts. 1-3 questions per blueprint.
 
-- [ ] **Personality composition model** `must`
-  Three-layer personality system that replaces flat dimension setting. **Roles** are named, reusable capability bundles (tools + skills + autonomy + base personality tendencies). A blueprint composes 1-4 roles. **16 Personalities type** (MBTI-based) is a behavioral overlay that cross-cuts all roles — same role, different style. **Dimension sliders** (7 axes, 1-5) become derived output: `role_bases + type_modifier + user_overrides`. Wizard flow: pick roles → pick personality type (or answer 4-5 questions) → optionally adjust sliders. Roles replace `toolbelt.tools[]` and `skill_bundle.included[]` — open design question on migration path. See `docs/ARCHITECTURE.md` § "Entity Model" and `docs/CONFIGURATION.md` § "Planned: Personality Composition".
+- [ ] **Roles and personality presets** `must`
+  **Roles** are thin, named tool+skill bundles that communicate agent shape at a glance (`roles: [creative-collaborator, project-manager]`). They coexist with `toolbelt.tools[]` (escape hatch for role-independent tools). Roles do NOT carry autonomy or personality — those stay at the blueprint level. **16P personality presets** (MBTI-based) are a build-time UI convenience: pick a type → pre-fill the 7 dimension sliders → user adjusts → only resolved values stored. No runtime concept. See `docs/ARCHITECTURE.md` § "Entity Model" and `docs/CONFIGURATION.md` § "Planned: Roles and 16P Presets".
 
 - [x] **AI-powered config inference** ✅
   `clawhq init --smart` — describe what you need, system selects blueprint + configures integrations. Uses local Ollama.
