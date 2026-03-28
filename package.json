@@ -32,15 +32,15 @@
     "security",
     "self-hosted"
   ],
-  "author": "Simon Weniger",
+  "author": "Simon Plant",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/clawhq/clawhq.git"
+    "url": "git+https://github.com/simonplant/clawhq.git"
   },
   "homepage": "https://clawhq.com",
   "bugs": {
-    "url": "https://github.com/clawhq/clawhq/issues"
+    "url": "https://github.com/simonplant/clawhq/issues"
   },
   "engines": {
     "node": ">=22.0.0"

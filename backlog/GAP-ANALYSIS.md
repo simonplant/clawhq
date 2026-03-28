@@ -7,18 +7,18 @@
 
 ## AS-IS: What's Built
 
-**90,768 lines of TypeScript** across 436 files. 132 test files. 40/43 backlog items complete. Production-grade implementations across all major subsystems.
+**~67,000 lines of TypeScript** across ~590 files. 77 test files. 40/43 backlog items complete. Built with AI-assisted development (Claude Code).
 
 ### Codebase State by Subsystem
 
 | Subsystem | Status | Lines | Tests | Notes |
 |---|---|---|---|---|
-| CLI (33 commands) | COMPLETE | 7,354 | 7 | All commands wired |
+| CLI (78 commands) | COMPLETE | 7,354 | 7 | All commands wired |
 | Config (schema, validator, loader) | COMPLETE | 1,591 | 3 | All 14 landmine rules |
 | Init (wizard, generate, writer) | COMPLETE | 2,328 | 4 | Full bundle generation |
 | Docker (build, hardening, compose) | COMPLETE | 1,412 | 4 | Two-stage build |
 | Deploy (orchestration, preflight) | COMPLETE | 11,718 | 3 | Full lifecycle |
-| Doctor (11 checks, auto-fix) | COMPLETE | 1,926 | 4 | 11 diagnostic checks |
+| Doctor (14+ checks, auto-fix) | COMPLETE | 1,926 | 4 | 14+ diagnostic checks |
 | Security (secrets, firewall, creds, vetting) | COMPLETE | 3,498 | 7 | Full hardening |
 | Backup (encrypted, restore) | COMPLETE | 2,161 | 5 | GPG snapshots |
 | Skills (lifecycle, vetting, catalog) | COMPLETE | 2,387 | 4 | 6 built-in skills |
