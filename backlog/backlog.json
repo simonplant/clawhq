@@ -2,46 +2,6 @@
   "description": "ClawHQ backlog — aligned with evolved strategy (2026-03-28). See docs/STRATEGY.md for strategic context.",
   "items": [
     {
-      "id": "FEAT-018",
-      "title": "End-to-end smoke test — run full user journey against real Docker on local machine",
-      "intent": "946 unit tests pass but nothing proves the software works. An e2e smoke test must run the actual user journey (install → init → build → up → doctor → down → destroy) against real Docker containers and real filesystem, catching every integration gap the unit tests hide.",
-      "description": "Every external system interaction in ClawHQ is mocked in tests. Docker builds, container lifecycle, filesystem scaffolding, health checks, and config generation are tested in isolation but never together. The documented user journey has never been executed end-to-end. This is the LAUNCH GATE — a security tool with a security bug is dead on arrival. No compromises.",
-      "priority": "must",
-      "category": "testing",
-      "steps": [
-        "Create test/e2e/ directory for end-to-end tests",
-        "Create a minimal test blueprint YAML that requires no external API keys (local Ollama or mock LLM)",
-        "Create a non-interactive init path or pre-canned config fixture that bypasses the wizard",
-        "Write smoke-test.sh or smoke-test.test.ts that executes each CLI command in sequence",
-        "Each step: capture exit code, stdout, stderr; assert expected outcomes (files created, container running, etc.)",
-        "Add npm run test:e2e script to package.json (separate from unit tests — requires Docker)",
-        "Run the smoke test, document every failure, add each as a backlog item",
-        "Integrate into CI as an optional job (requires Docker-in-Docker or privileged runner)"
-      ],
-      "acceptanceCriteria": [
-        "npm run test:e2e runs the full user journey: install → init → build → up → doctor → down → destroy",
-        "Test uses real Docker (not mocked) and real filesystem (temp directory, cleaned up after)",
-        "Test uses a minimal blueprint that requires no external API keys",
-        "Each step reports pass/fail with captured output for debugging",
-        "Test is separate from unit tests (does not run on npm test) because it requires Docker",
-        "Every failure found during initial run is filed as a backlog item"
-      ],
-      "scope": [
-        "test/e2e/"
-      ],
-      "dependsOn": [
-        "FEAT-110"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: THE LAUNCH GATE. No public release without this. FAILED TWICE (failCount:2). Trust paradox — security tool with security bug is a brand-killer. Depends on FEAT-110 for correct directory structure (~/.clawhq/<agent-name>/). Each failure discovered new integration gaps — these are the bugs FEAT-018 is supposed to catch. AC verify commands added. Run smoke test completely before declaring pass.",
-      "lastFailAt": "2026-03-26T12:23:08-07:00",
-      "failCount": 2,
-      "passes": true,
-      "completedAt": "2026-03-28T16:17:55-07:00"
-    },
-    {
       "id": "FEAT-111",
       "title": "ClawWall content sanitization tool — prompt injection defense for all inbound external content",
       "intent": "Every agent that reads external content (email, web, social media, RSS) must have a sanitization layer that filters prompt injection attacks before content reaches the LLM. This is not optional — it is a security-by-default requirement.",
