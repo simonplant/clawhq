@@ -94,6 +94,9 @@ This is the product. Everything else is infrastructure.
 - [ ] **Blueprint customization** `must`
   Blueprint-specific questions during setup: dietary restrictions, risk tolerance, communication style, priority contacts. 1-3 questions per blueprint.
 
+- [ ] **Personality composition model** `must`
+  Three-layer personality system: **Roles** (composable job archetypes — each brings tools, skills, autonomy, base personality tendencies) × **16 Personalities type** (MBTI-based behavioral overlay — same role, different style) → **Dimension sliders** (7 axes, 1-5 scale, auto-derived, user-adjustable). Wizard flow: pick roles → pick personality type (or answer 4-5 questions) → optionally adjust sliders. Power users tune sliders directly; most users never touch them. See `docs/CONFIGURATION.md` § "Personality Composition Model" for the full mapping.
+
 - [x] **AI-powered config inference** ✅
   `clawhq init --smart` — describe what you need, system selects blueprint + configures integrations. Uses local Ollama.
 

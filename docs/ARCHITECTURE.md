@@ -89,7 +89,9 @@ A blueprint is a complete agent design — a YAML file that specifies every dime
 
 | Dimension | What Gets Generated | Example: "Stock Trading Assistant" |
 |---|---|---|
-| **Identity** | SOUL.md, AGENTS.md, IDENTITY.md, personality, boundaries | Analytical, data-driven, conservative risk warnings |
+| **Roles** | Composable job archetypes (tools + skills + autonomy) | financial-analyst, research-assistant |
+| **Personality** | 16P type + dimension sliders → SOUL.md | ISTJ-A: analytical, data-driven, conservative |
+| **Identity** | SOUL.md, AGENTS.md, USER.md, boundaries | Generated from roles × personality type |
 | **Tools** | CLI wrappers installed to workspace | `quote` (market data), `web-search` (research), `tasks` (trade log) |
 | **Skills** | Autonomous capability scripts | market-scan, portfolio-alert, research-digest |
 | **Cron** | Scheduled jobs in OpenClaw-native format | Pre-market scan at 6am, portfolio check hourly during market |
@@ -99,6 +101,22 @@ A blueprint is a complete agent design — a YAML file that specifies every dime
 | **Memory** | Retention policy, tier configuration | Remember positions, preferences, market patterns |
 | **Models** | Local vs. cloud routing per task type | Local for monitoring, cloud for deep research synthesis |
 | **Egress** | Domain allowlist for firewall | Finance APIs + research API + email server, nothing else |
+
+### Personality Composition
+
+Agent personality is composed from three layers:
+
+1. **Roles** define what the agent does. Each role is a self-contained package: tools, skills, cron schedule, autonomy rules, and base personality tendencies. A blueprint composes one or more roles (e.g., `creative-collaborator + project-manager`). Roles are the atomic building blocks — in the WordPress analogy, they are plugins.
+
+2. **16 Personalities type** (MBTI-based) defines how the agent behaves across all its roles. The type is a behavioral overlay: an INTJ inbox-manager triages differently from an ENFP inbox-manager, even though both use the same email tools. In the WordPress analogy, this is the theme.
+
+3. **Dimension sliders** (7 dimensions, 1-5 scale) are the resolved output. Derived automatically from roles × type, adjustable by the user. In the WordPress analogy, these are custom CSS.
+
+```
+Roles (what you do) × 16P Type (how you do it) = Dimension Sliders
+```
+
+See `docs/CONFIGURATION.md` § "Personality Composition Model" for the full MBTI → dimension mapping and blueprint examples.
 
 ### Blueprint Examples
 

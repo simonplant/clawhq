@@ -77,6 +77,60 @@ Seven-dimensional personality model. Each dimension is an integer on a 1-5 scale
 | `personality.dimensions.formality` | integer (1-5) | Yes | — | How formal vs. casual the agent communicates |
 | `personality.dimensions.analyticalDepth` | integer (1-5) | Yes | — | How deeply the agent analyzes before responding |
 
+#### Personality Composition Model
+
+Personality dimensions are the resolved output of a three-layer composition:
+
+```
+Roles (what you do) × 16P Type (how you do it) = Slider Values
+         ↓                      ↓                      ↓
+   tools, skills,         behavioral style        final resolved
+   cron, autonomy          modifier                dimensions
+```
+
+**Layer 1 — Roles** define what the agent does. Each role is a self-contained package of tools, skills, autonomy rules, and base personality tendencies. A blueprint composes one or more roles:
+
+```yaml
+roles:
+  - creative-collaborator  # brainstorm, project memory — skews spontaneous
+  - project-manager        # tasks, calendar, schedule-guard — skews structured
+  - inbox-manager          # email, email-digest — skews efficient
+  - stoic-coach            # journal, daily-reflection — skews analytical
+```
+
+Each role contributes base dimension values. A project-manager role naturally pushes caution and formality higher; a creative-collaborator pushes proactivity and warmth higher.
+
+**Layer 2 — 16 Personalities type** (MBTI-based) is a behavioral overlay that cross-cuts all roles. Same role, different style:
+
+| MBTI Axis | Dimensions Affected | Mapping |
+|---|---|---|
+| **E/I** (Extraversion / Introversion) | warmth, verbosity, proactivity | E = higher warmth, more verbose, more proactive outreach |
+| **S/N** (Sensing / Intuition) | analyticalDepth, verbosity | N = higher analytical depth, bigger picture; S = practical, concise |
+| **T/F** (Thinking / Feeling) | directness, formality, warmth | T = blunt, formal, task-first; F = warm, empathetic, relationship-first |
+| **J/P** (Judging / Perceiving) | caution, proactivity, formality | J = structured, plans ahead, cautious; P = spontaneous, adaptable |
+| **A/T** (Assertive / Turbulent) | caution, directness | A = confident, low hedging; T = careful, more caveats |
+
+An INTJ project manager: terse status updates, flags risks early, plans ahead. An ENFP project manager: enthusiastic check-ins, connects dots between projects, adapts on the fly.
+
+**Layer 3 — Slider overrides** let users fine-tune any dimension after composition. The resolved formula:
+
+```
+final_dimensions = role_base_values + type_modifier + user_overrides
+```
+
+**Blueprint example:**
+
+```yaml
+roles:
+  - creative-collaborator
+  - project-manager
+personality_type: ENFP
+overrides:
+  caution: 4  # bump up from ENFP default
+```
+
+During `clawhq init`, the wizard can present this as: pick roles → pick personality type (or answer 4-5 preference questions that derive one) → optionally adjust sliders. Power users tune sliders directly; most users never touch them.
+
 ### `security_posture`
 
 Controls container hardening, egress filtering, and identity file protection.
