@@ -431,6 +431,381 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-26",
       "groomingNotes": "From GitHub issue #8 (real-clawdius-maximus). User confirmed: agents request their own service account token programmatically. Priority 'should' — core credential access pattern needed for any agent that interacts with external services. Aligns with security-by-default (no hardcoded keys) and data sovereignty (user controls vault, instant revoke)."
+    },
+    {
+      "id": "FEAT-110",
+      "title": "Multi-instance support — deploy multiple agents on the same host with isolated ports, networks, and data dirs",
+      "intent": "A single host must support multiple independent agents without conflicts. Port collisions, shared networks, or overlapping data dirs are deployment failures that must be prevented by construction.",
+      "description": "ClawHQ currently assumes a single agent per host. Deploying a second agent on the same server (different user, different blueprint) will collide on ports, Docker network names, data directories, and image tags. This blocks the primary use case of running agents for multiple people on one powerful machine. Required: (1) per-agent deployment directory (~/.clawhq/<agent-name>/), (2) per-agent Docker network with unique name, (3) per-agent port allocation with collision detection in preflight, (4) per-agent image tags (openclaw:<agent-name>), (5) per-agent container names. Reference implementation: Clawdius uses port 18789, openclaw-net network, openclaw:simon image tag, ~/.openclaw/ data dir. A second agent needs all of these to be different.",
+      "priority": "must",
+      "category": "core",
+      "steps": [
+        "Add agent-name concept to clawhq init (--name flag or wizard question)",
+        "Update deployment directory structure: ~/.clawhq/<agent-name>/ instead of ~/.clawhq/current/",
+        "Update Docker image tag generation to use agent name: openclaw:<agent-name>",
+        "Update docker-compose.yml generation to use unique container names and network names per agent",
+        "Update preflight port check to scan for all running ClawHQ agents, not just the default port",
+        "Update clawhq up/down/status/doctor to accept --name or auto-detect from current directory",
+        "Add clawhq list command to show all deployed agents on the host",
+        "Add tests for multi-instance isolation (two agents with different names, verify no collisions)"
+      ],
+      "acceptanceCriteria": [
+        "Two agents can be deployed on the same host with different names, ports, and data directories",
+        "clawhq init --name john creates ~/.clawhq/john/ with isolated config",
+        "Docker networks, container names, and image tags are unique per agent name",
+        "Preflight detects port collisions with other running agents",
+        "clawhq list shows all deployed agents with their status and ports",
+        "clawhq up --name john starts only John's agent without affecting other agents"
+      ],
+      "scope": [
+        "src/design/configure/",
+        "src/build/docker/",
+        "src/build/launcher/",
+        "src/cli/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: First real-world deployment — deploying a second agent for a friend on the same server as Clawdius. Multi-instance is the #1 blocker. Without isolated ports/networks/dirs, a second agent is impossible without manual Docker surgery. Must ship before any second deployment attempt."
+    },
+    {
+      "id": "FEAT-111",
+      "title": "ClawWall content sanitization tool — prompt injection defense for all inbound external content",
+      "intent": "Every agent that reads external content (email, web, social media, RSS) must have a sanitization layer that filters prompt injection attacks before content reaches the LLM. This is not optional — it is a security-by-default requirement.",
+      "description": "Clawdius has a battle-tested 'sanitize' tool (ClawWall) that filters all inbound content from X, Tavily, Substack, email, and news through a prompt injection firewall implementing OWASP LLM01 Tier 1+2 defenses. It logs, quarantines, and strips malicious content. ClawHQ has no equivalent — generated tools pass raw external content directly to the LLM context. Backport the sanitize tool as a built-in wrapper that all external-facing tools pipe through. Design: sanitize reads stdin, applies regex + heuristic filters for injection patterns (system prompt override, role confusion, instruction injection, encoded payloads), logs suspicious content, strips confirmed attacks, passes clean content to stdout.",
+      "priority": "must",
+      "category": "Security",
+      "steps": [
+        "Design the sanitize tool API: stdin filter, configurable strictness levels, quarantine log format",
+        "Implement sanitize as a generated tool (src/design/tools/sanitize.ts) included in every blueprint by default",
+        "Wire all external-facing tool generators (tavily, email, quote) to pipe through sanitize",
+        "Add quarantine log: ~/.clawhq/<agent>/security/quarantine.jsonl for blocked content",
+        "Add OWASP LLM01 Tier 1 patterns: system prompt overrides, role confusion, instruction injection",
+        "Add Tier 2 patterns: encoded payloads (base64, hex), Unicode homoglyphs, invisible characters",
+        "Add tests with real-world prompt injection examples",
+        "Add doctor check: verify sanitize is on PATH and quarantine log is writable"
+      ],
+      "acceptanceCriteria": [
+        "A sanitize tool is generated and placed on PATH for every new agent deployment",
+        "All external-facing tools (email, tavily, web search) pipe content through sanitize",
+        "Known prompt injection patterns (OWASP LLM01 Tier 1+2) are detected and stripped",
+        "Quarantine log records all filtered content with timestamps and source attribution",
+        "clawhq doctor checks sanitize availability and log writability",
+        "Sanitize tool works as a standalone stdin filter (composable with any tool)"
+      ],
+      "scope": [
+        "src/design/tools/",
+        "src/secure/",
+        "src/operate/doctor/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Extracted from Clawdius production deployment. Every Clawdius tool that reads external content (x, tavily, substack, email, news) pipes through sanitize. ClawHQ has zero content sanitization — generated tools pass raw external content to LLM context. This violates security-by-default. Must ship for any agent exposed to external content."
+    },
+    {
+      "id": "FEAT-112",
+      "title": "Construct meta-skill — autonomous self-improvement loop for agent capability growth",
+      "intent": "Agents must grow their capabilities over time without manual intervention. The construct skill is the mechanism: assess gaps → propose new skills → build → deploy → validate. This is THE differentiator for the 'agent grows' pillar.",
+      "description": "Clawdius has a 'construct' skill that runs daily at 2am PT as a cron job. It follows an Assess→Propose→Build→Deploy cycle: introspects memory and recent interactions to identify capability gaps, proposes new skills, builds them with proper structure (SKILL.md, scripts/, prompts/), deploys to workspace, and validates they work. Over 3 months it has autonomously built 7 skills (content-seed, eod-review, focus25-fetch, mancini-fetch, meal-planner, scanner-triage, x-poster). ClawHQ's skill system supports install/remove/update but has no autonomous growth mechanism. Backport construct as a built-in skill available to all blueprints.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Design construct skill config for ClawHQ: SKILL.md, state machine (assess/propose/build/deploy/validate), cron schedule",
+        "Add construct to configs/skills/ as a built-in skill",
+        "Implement state persistence (construct tracks what it has assessed, proposed, built)",
+        "Wire construct into blueprint cron_config as an optional daily job",
+        "Add skill vetting integration — construct-built skills must pass the same vetting as manually installed skills",
+        "Add construct to 'replace-my-pa', 'founders-ops', and 'research-copilot' blueprints by default",
+        "Add tests for state machine transitions and skill output validation"
+      ],
+      "acceptanceCriteria": [
+        "Construct skill is available as a built-in skill in configs/skills/",
+        "Construct follows Assess→Propose→Build→Deploy→Validate cycle",
+        "Construct-built skills pass the same vetting pipeline as manually installed skills",
+        "State is persisted across runs (no redundant assessments)",
+        "Blueprints can opt-in to construct via skill_bundle configuration",
+        "At least 3 blueprints include construct by default"
+      ],
+      "scope": [
+        "configs/skills/",
+        "configs/blueprints/",
+        "src/evolve/skills/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Extracted from Clawdius. Construct has autonomously built 7 production skills over 3 months. This is the 'agent grows' story made real. Not sprint-ready yet — needs design work on how construct interacts with ClawHQ's skill vetting pipeline (Clawdius has no vetting, ClawHQ does)."
+    },
+    {
+      "id": "FEAT-113",
+      "title": "Model routing per cron job — haiku for cheap scans, opus for deep work, with fallback chains",
+      "intent": "Cron jobs must be cost-efficient. A heartbeat check that runs every 10 minutes should not use the most expensive model. Each job must specify its model with a fallback chain.",
+      "description": "Clawdius routes cron jobs to different models: heartbeat and x-scan use haiku (cheap, fast) with sonnet fallback, while work-session uses opus (expensive, capable) with sonnet fallback. ClawHQ's blueprint cron_config only specifies schedule expressions — no model routing. The config generator produces cron jobs without model or fallback fields. OpenClaw's jobs.json supports payload.model and payload.fallbacks fields. Backport model routing into blueprint cron definitions and config generation.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Extend blueprint cron_config schema to support model and fallbacks per job",
+        "Update config generator (src/design/configure/generate.ts) to emit model and fallbacks in cron job payloads",
+        "Update all 7 blueprints with sensible model routing (heartbeat→haiku, work_session→opus, morning_brief→sonnet)",
+        "Add wizard question or smart inference for model routing preferences",
+        "Add validation: specified models must be available in the configured provider",
+        "Add tests for cron job generation with model routing"
+      ],
+      "acceptanceCriteria": [
+        "Blueprint cron_config supports model and fallbacks per job type",
+        "Generated cron jobs include payload.model and payload.fallbacks fields",
+        "Default model routing follows cost-efficiency: cheap models for frequent jobs, capable models for deep work",
+        "All 7 blueprints have sensible model routing defaults",
+        "Validation catches references to unavailable models"
+      ],
+      "scope": [
+        "configs/blueprints/",
+        "src/design/configure/generate.ts",
+        "src/config/schema.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Extracted from Clawdius cron config. Without model routing, an agent running 10-minute heartbeats on opus burns through budget unnecessarily. Clawdius uses haiku for heartbeat/x-scan (cheap, frequent) and opus for work-session (expensive, deep). Direct cost impact for every user."
+    },
+    {
+      "id": "FEAT-114",
+      "title": "JMAP email backend — FastMail-compatible email tool as alternative to himalaya/IMAP",
+      "intent": "Users on FastMail (or any JMAP provider) must have a native email tool that uses JMAP instead of IMAP. JMAP is faster, stateless, and supports features himalaya cannot (header inspection, batch operations, server-side search).",
+      "description": "Clawdius has a battle-tested email-fastmail.py (stdlib Python, no deps) that implements FastMail JMAP for inbox management: read, search, move, archive, reply, send, headers, folders. It's wired as the 'fm' shortcut. The email tool wraps both himalaya (iCloud/Gmail) and JMAP (FastMail) behind a unified interface with account switching (--account). ClawHQ's email tool generator only produces himalaya-based IMAP scripts. Backport the JMAP backend as an alternative email provider in the tool generator.",
+      "priority": "should",
+      "category": "tools",
+      "steps": [
+        "Add JMAP email backend to src/design/tools/email.ts as an alternative to himalaya",
+        "Generate email-jmap.py (stdlib Python, no deps) with JMAP session management, mailbox operations, email send",
+        "Add JMAP credential collection to wizard: JMAP API token, account ID (auto-discoverable)",
+        "Add account switching support to the email tool wrapper (--account flag)",
+        "Add JMAP-specific features: header inspection, batch operations, server-side search",
+        "Add doctor check: JMAP session endpoint reachable, token valid",
+        "Add to email-manager and replace-my-pa blueprints as recommended integration"
+      ],
+      "acceptanceCriteria": [
+        "Email tool generator can produce JMAP-based scripts as alternative to himalaya",
+        "Generated JMAP tool uses stdlib Python only (no pip dependencies)",
+        "JMAP session management handles token auth and endpoint discovery",
+        "Account switching works: email --account fastmail uses JMAP, email --account icloud uses himalaya",
+        "clawhq doctor checks JMAP connectivity when JMAP is configured"
+      ],
+      "scope": [
+        "src/design/tools/email.ts",
+        "configs/blueprints/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Extracted from Clawdius email-fastmail.py. JMAP is superior to IMAP for agent use cases (stateless, batch ops, server-side search). Not sprint-ready — needs design for how JMAP and himalaya coexist in the generated tool structure. FastMail is the reference provider but JMAP is an open standard."
+    },
+    {
+      "id": "FEAT-115",
+      "title": "SHA256 binary pinning in Docker build — verify every downloaded tool binary against known hashes",
+      "intent": "Every binary downloaded during Docker build must be verified against a pinned SHA256 hash. Unverified downloads in a security-by-default platform are a supply chain vulnerability.",
+      "description": "ClawHQ's Docker build stage downloads tool binaries (himalaya, gh, curl, jq, ripgrep, etc.) via HTTPS URLs but does not verify checksums. Clawdius pins every binary with SHA256 verification in the Dockerfile — if a hash doesn't match, the build fails. This is a supply chain security requirement: a compromised CDN or GitHub release could inject malicious binaries into every ClawHQ-built agent. Backport SHA256 pinning into ClawHQ's Docker build generator.",
+      "priority": "must",
+      "category": "Security",
+      "steps": [
+        "Add a binary manifest to the build config: tool name, version, URL, SHA256 hash",
+        "Update Dockerfile generator (src/build/docker/build.ts) to emit SHA256 verification after each download",
+        "Add hash verification: download → sha256sum → compare → fail build if mismatch",
+        "Populate manifest with current hashes for all tool binaries (himalaya, gh, curl, jq, rg, git, ffmpeg)",
+        "Add clawhq build --verify-hashes flag to re-check hashes against upstream (for maintainer use)",
+        "Add tests: build fails on hash mismatch, build succeeds on correct hash"
+      ],
+      "acceptanceCriteria": [
+        "Every binary downloaded in Docker build is verified against a pinned SHA256 hash",
+        "Build fails immediately if any hash does not match",
+        "Binary manifest is human-readable and auditable",
+        "clawhq build output shows verification status for each binary",
+        "Hash mismatch produces a clear error naming the tool, expected hash, and actual hash"
+      ],
+      "scope": [
+        "src/build/docker/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Extracted from Clawdius Dockerfile which pins every binary with SHA256. ClawHQ downloads binaries without verification — supply chain vulnerability. Security-by-default requires this. Sprint-ready — well-scoped, clear implementation path."
+    },
+    {
+      "id": "FEAT-116",
+      "title": "Domain-based egress firewall with ipset — upgrade from IP-based iptables to DNS-resolved allowlists",
+      "intent": "Agent egress must be restricted to explicitly allowed domains, not IP addresses. IP-based rules miss CDN rotations, multi-homed services, and IPv6. Domain-based egress via ipset is the correct approach.",
+      "description": "ClawHQ's firewall module (src/build/launcher/firewall.ts) uses IP-based iptables rules. Clawdius uses domain-based egress: a domain allowlist file is resolved via DNS into an ipset, refreshed every 5 minutes by a systemd timer. This handles CDN IP rotation, multi-homed services, and is auditable (the allowlist is a list of domain names, not opaque IPs). Backport: (1) domain allowlist file per blueprint, (2) DNS resolution into ipset at deploy time, (3) systemd timer or cron for periodic refresh, (4) doctor check for stale ipsets.",
+      "priority": "should",
+      "category": "Security",
+      "steps": [
+        "Add domain-allowlist concept to blueprint security_posture",
+        "Generate domain allowlist file from blueprint egress config during clawhq init",
+        "Implement ipset creation from domain allowlist (DNS resolution at deploy time)",
+        "Update firewall module to use ipset match rules instead of per-IP iptables rules",
+        "Generate systemd timer or wrapper script for periodic DNS re-resolution (every 5 min)",
+        "Add doctor check: ipset exists, is not stale (last refresh within 10 min), matches allowlist",
+        "Add tests for domain resolution, ipset creation, stale detection"
+      ],
+      "acceptanceCriteria": [
+        "Blueprint security posture includes a domain allowlist (list of permitted domains)",
+        "clawhq up creates an ipset from DNS resolution of the allowlist",
+        "iptables rules reference the ipset, not individual IP addresses",
+        "A refresh mechanism keeps the ipset current as DNS records change",
+        "clawhq doctor detects stale ipsets and reports the last refresh time",
+        "clawhq down removes the ipset and iptables rules cleanly"
+      ],
+      "scope": [
+        "src/build/launcher/firewall.ts",
+        "src/operate/doctor/",
+        "configs/blueprints/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Extracted from Clawdius egress firewall (setup-domain-egress.sh, refresh-egress-ipset.sh, openclaw-egress-refresh.timer). IP-based iptables rules are fragile — CDN IPs rotate constantly. Not sprint-ready — needs design for how ipset lifecycle integrates with clawhq up/down and multi-instance."
+    },
+    {
+      "id": "FEAT-117",
+      "title": "Stoic coach personality blueprint — purpose-built agent for philosophical mentorship and self-examination",
+      "intent": "The stoic coach blueprint proves ClawHQ can forge agents with deep personality — not just task automation, but genuine character. This is the blueprint that makes people say 'this is different from ChatGPT'.",
+      "description": "Clawdius Maximus is named for the Stoic philosopher Marcus Aurelius thanked the gods for knowing. His SOUL.md defines a distinctive personality: helping the user see themselves clearly so they can act from truth, not from habit. This is a compelling blueprint for the general public — a personal philosophical mentor that remembers your patterns, challenges your assumptions, and holds you accountable. Extract Clawdius's stoic identity patterns into a 'Stoic Coach' blueprint with: (1) personality dimensions tuned for depth over speed, (2) tools for journaling and reflection, (3) skills for daily Stoic prompts and weekly reviews, (4) memory policy optimized for personal growth tracking.",
+      "priority": "could",
+      "category": "blueprints",
+      "steps": [
+        "Create configs/blueprints/stoic-coach.yaml",
+        "Define personality: high analyticalDepth, moderate warmth, high directness, low verbosity",
+        "Define customization questions: philosophical tradition preference, morning/evening practice times, accountability style",
+        "Define toolbelt: journal (new tool — append-only markdown), reflection-prompt (daily Stoic prompt generator)",
+        "Define skills: daily-stoic (morning prompt + evening reflection), weekly-review (pattern analysis from journal)",
+        "Define cron: morning prompt at user's preferred time, evening reflection reminder, weekly review on Sunday",
+        "Define autonomy: high for prompts and reflections, requires approval for sharing or forwarding",
+        "Define memory policy: long retention (365d+) for personal growth patterns, conservative summarization"
+      ],
+      "acceptanceCriteria": [
+        "stoic-coach.yaml is a complete blueprint with all required sections",
+        "Personality dimensions are distinct from other blueprints (not just 'generic helpful assistant')",
+        "Blueprint includes at least one unique tool (journal) and one unique skill (daily-stoic)",
+        "clawhq init --guided with stoic-coach blueprint produces a deployable agent config",
+        "The forged agent has a distinctive voice — tested by reading generated SOUL.md"
+      ],
+      "scope": [
+        "configs/blueprints/",
+        "configs/skills/",
+        "src/design/tools/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Inspired by Clawdius's stoic identity. This is the blueprint that shows ClawHQ can forge agents with character, not just capabilities. Not sprint-ready — needs the journal tool generator and daily-stoic skill to be designed first. Lower priority than infrastructure, but high value for product differentiation."
+    },
+    {
+      "id": "FEAT-118",
+      "title": "Extended identity files — USER.md, TOOLS.md, and domain-specific runbooks in blueprint config",
+      "intent": "An agent that only knows its personality (SOUL.md) and capabilities (AGENTS.md) is incomplete. It must also understand its user's context, have a role-organized tool reference, and carry domain-specific operating procedures.",
+      "description": "Clawdius has 7 identity/reference files beyond SOUL.md and AGENTS.md: USER.md (personal/financial context), TOOLS.md (tool reference organized by role), IDENTITY.md (identity card), MEMORY.md (operational wisdom), INBOX_MANAGER.md (email triage runbook), MANCINI.md (trading signal parsing), NUTRITION.md (dietary guidelines). ClawHQ only generates SOUL.md + AGENTS.md. The wizard should collect enough context to generate: (1) USER.md — user profile, preferences, timezone, communication style, (2) TOOLS.md — tool reference organized by the blueprint's use-case roles, (3) domain-specific runbooks based on blueprint (email-manager gets inbox triage rules, meal-plan gets dietary guidelines, etc.).",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Extend wizard to collect user context: name, timezone, communication preferences, key constraints",
+        "Add USER.md generator to src/design/identity/ — produces user profile from wizard answers",
+        "Add TOOLS.md generator — organizes blueprint tools by role/use-case with descriptions",
+        "Add blueprint-specific runbook support: each blueprint can define additional identity files",
+        "Update identity file generation in generate.ts to include new files",
+        "Update Docker build to copy all identity files, not just SOUL.md and AGENTS.md",
+        "Add tests for USER.md and TOOLS.md generation from various blueprints"
+      ],
+      "acceptanceCriteria": [
+        "clawhq init collects user context (name, timezone, preferences) via wizard",
+        "Generated deployment includes USER.md with user profile",
+        "Generated deployment includes TOOLS.md with role-organized tool reference",
+        "Blueprints can define additional identity files (runbooks) in their YAML",
+        "All identity files are mounted read-only in the container",
+        "Token budget validation (LM-08) accounts for all identity files, not just SOUL.md"
+      ],
+      "scope": [
+        "src/design/identity/",
+        "src/design/configure/",
+        "configs/blueprints/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Clawdius has 7+ identity files — ClawHQ generates only 2. The delta is significant: without USER.md, the agent doesn't know who it's serving. Without TOOLS.md, it doesn't have a role-organized tool reference. Not sprint-ready — needs design for how blueprint-specific runbooks are defined in YAML."
+    },
+    {
+      "id": "FEAT-119",
+      "title": "News aggregator tool — multi-source scan with deduplication and interest-graph filtering",
+      "intent": "Agents that monitor information sources need a unified news aggregator that scans multiple backends, deduplicates across sources, and filters by the user's interest graph. This is the foundation for any monitoring or research blueprint.",
+      "description": "Clawdius has a 'news' tool that scans X + Substack + Tavily by interest topic, deduplicates results across sources, and manages Tavily API budget. It's powered by an 'interests' tool that maintains a weighted interest graph (interests.json). Together they enable proactive intelligence gathering. ClawHQ's blueprints reference tavily and quote for research but have no aggregation layer. Backport news + interests as optional tools available to research-copilot, founders-ops, and replace-chatgpt-plus blueprints.",
+      "priority": "could",
+      "category": "tools",
+      "steps": [
+        "Design news tool API: scan by interest, deduplicate, budget management, source attribution",
+        "Design interests tool API: add/remove topics, set priorities, manage sources per topic",
+        "Add news and interests tool generators to src/design/tools/",
+        "Generate interests.json data file in workspace with default interests from blueprint",
+        "Add to research-copilot, founders-ops blueprints as recommended tools",
+        "Add tests for deduplication logic and budget management"
+      ],
+      "acceptanceCriteria": [
+        "News tool scans configured sources and returns deduplicated, filtered results",
+        "Interests tool manages a persistent interest graph with topics and source priorities",
+        "Generated tools use existing tool dependencies (tavily, x, substack) as backends",
+        "Blueprint can define default interests that seed the interest graph at init time",
+        "Budget management prevents runaway API costs on Tavily"
+      ],
+      "scope": [
+        "src/design/tools/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedNotes": "DOGFOOD 2026-03-27: Extracted from Clawdius news + interests tools. Not sprint-ready — depends on having Tavily and X tools working first. Lower priority than security and multi-instance.",
+      "groomedAt": "2026-03-27"
+    },
+    {
+      "id": "FEAT-120",
+      "title": "Operational automation scripts — auto-update, security monitoring, workspace backup generation",
+      "intent": "A deployed agent must maintain itself. Auto-updates, security advisory monitoring, and workspace backups should be generated by ClawHQ, not hand-written by the operator.",
+      "description": "Clawdius has 24 operational scripts including auto-update (daily unattended OpenClaw update with changelog extraction), security monitoring (GitHub Advisory scanning with auto-patch for critical/high), workspace backup (incremental rsync with 30-day retention), and a systemd firewall watcher. ClawHQ has doctor and backup commands but does not generate the operational automation layer. A deployed agent should come with: (1) auto-update cron/timer, (2) security advisory check, (3) workspace backup schedule, (4) firewall watcher for network recreates.",
+      "priority": "should",
+      "category": "operate",
+      "steps": [
+        "Generate auto-update script during clawhq init (checks upstream, rebuilds, restarts, extracts changelog)",
+        "Generate security monitor script (checks GitHub Security Advisories for OpenClaw CVEs)",
+        "Generate workspace backup script (incremental rsync to configurable backup dir)",
+        "Generate systemd unit files for firewall watcher and backup timer",
+        "Add clawhq ops install command to deploy generated scripts and timers",
+        "Add doctor checks: auto-update timer active, backup recent, security monitor running"
+      ],
+      "acceptanceCriteria": [
+        "clawhq init generates operational scripts in the deployment directory",
+        "clawhq ops install deploys scripts as systemd timers/services",
+        "Auto-update runs on configurable schedule (default: daily)",
+        "Security monitor checks GitHub Advisories and alerts on critical/high CVEs",
+        "Workspace backup runs on configurable schedule with retention policy",
+        "clawhq doctor reports operational automation status"
+      ],
+      "scope": [
+        "src/design/configure/",
+        "src/operate/",
+        "src/cli/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Extracted from Clawdius scripts/ directory. These scripts are what keep Clawdius running unattended — without them an agent deployment degrades over time. Not sprint-ready — needs design for how generated scripts interact with multi-instance."
     }
   ]
 }
