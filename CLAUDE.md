@@ -8,6 +8,10 @@ Today you choose between **surveillance AI** (polished, easy, you own nothing) a
 
 **Core bet:** People will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
 
+**What ClawHQ is:** A deployment tool, a configuration tool, and a personalization tool for sovereign AI agents. It deploys OpenClaw, configures it correctly, and makes the agent personal — identity, personality, capabilities, all compiled from high-level intent into flat runtime config. The user trusts ClawHQ with their agent. That trust is earned through integrity: open source, local-first, no data exfiltration, no dark patterns.
+
+**The window is short.** Big-tech AI will absorb memory, tools, and personality features. The gap between surveillance AI and sovereign AI won't stay this wide. ClawHQ's role is to evolve the open-source option fast enough that sovereign digital agency becomes a real choice for normal people, not just infrastructure engineers.
+
 **Three non-negotiables:**
 1. **Data sovereignty** — local-first, zero bytes leave unless you choose, portable export, verified destroy
 2. **Security by default** — hardening is automatic, not opt-in; content access architecturally blocked (no code path, not a policy flag)
@@ -17,7 +21,7 @@ Every decision should be tested against this intent. If a feature doesn't make s
 
 ## Project Overview
 
-ClawHQ is an agent platform for OpenClaw. It forges purpose-built agents from blueprints — complete operational designs that configure every dimension of OpenClaw for a specific job. Choose a blueprint ("Email Manager," "Stock Trading Assistant," "Meal Planner"), customize it, and ClawHQ forges a hardened, running agent. The user gets a Signal, Telegram, or Discord UI. We do the rest.
+ClawHQ deploys, configures, and personalizes OpenClaw agents. It compiles blueprints — complete operational designs — into hardened, running agents. Choose a blueprint ("Email Manager," "Stock Trading Assistant," "Meal Planner"), customize it, and ClawHQ forges the agent. The user gets a Signal, Telegram, or Discord UI. We do the rest.
 
 Everything in OpenClaw is a file or API call. ClawHQ controls all of it programmatically.
 

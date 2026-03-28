@@ -8,9 +8,9 @@
 
 ## The Model
 
-OpenClaw is a powerful engine with its own control panel (the Gateway UI). ClawHQ is the platform layer that forges purpose-built agents from blueprints — complete operational designs that configure every dimension of OpenClaw for a specific job.
+OpenClaw is a powerful engine with its own control panel (the Gateway UI). ClawHQ deploys it, configures it correctly, and makes the agent personal — compiling blueprints into hardened, running agents.
 
-Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically.
+Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically. The user trusts ClawHQ with their agent. That trust is the product.
 
 ### Three Layers
 
