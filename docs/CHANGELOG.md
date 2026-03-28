@@ -2,7 +2,7 @@
 
 All notable changes to ClawHQ are documented in this file.
 
-This changelog was reconstructed retroactively from build history, sprint records, and completion timestamps. The project does not yet use version tags — entries are organized by development phase instead.
+This changelog was reconstructed retroactively from build history, sprint records, and completion timestamps. The project does not yet use version tags — entries are organized by development phase instead. ClawHQ is built with AI-assisted development (Claude Code). The compressed timeline reflects this methodology.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
@@ -126,12 +126,12 @@ Core infrastructure: config schema, gateway client, CLI, Docker build, security 
 
 | Metric | Value |
 |---|---|
-| **Total codebase** | 90,768 lines of TypeScript across 436 files |
-| **Test coverage** | 132 test files |
+| **Total codebase** | ~67,000 lines of TypeScript across ~590 files |
+| **Test coverage** | 77 test files |
 | **Backlog completion** | 40+ items complete |
 | **Blueprints** | 7 use-case blueprints |
 | **Skills** | 6 built-in skills |
-| **CLI commands** | 33 commands |
+| **CLI commands** | 78 leaf commands (13 command groups) |
 | **Cloud providers** | 4 (DigitalOcean, AWS, GCP, Hetzner) |
 | **Security checks** | 14+ doctor diagnostics |
-| **Development timeline** | 2026-03-18 to 2026-03-24 |
+| **Development timeline** | 2026-03-18 to 2026-03-24 (AI-assisted) |

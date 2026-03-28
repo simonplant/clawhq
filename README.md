@@ -22,10 +22,6 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Cloud                                                       │
-│  Managed hosting · Remote monitoring · Blueprint library     │
-│  ─── optional — the product works without this ───           │
-├─────────────────────────────────────────────────────────────┤
 │  Blueprints (the product)                                    │
 │  Complete agent designs that configure EVERYTHING             │
 │  in OpenClaw for a specific job.                             │
@@ -34,18 +30,23 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 │  Install · Harden · Launch · Ops                             │
 │  Same for every agent — acquire engine, secure it,           │
 │  keep it alive, back it up, update it safely                 │
+├─────────────────────────────────────────────────────────────┤
+│  Cloud (optional · deferred)                                 │
+│  Remote monitoring · Blueprint library                       │
+│  ─── the product works without this ───                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
 
 ```bash
-npm install -g clawhq          # Install
+git clone https://github.com/clawhq/clawhq && cd clawhq
+npm install && npm run build && npm link
 clawhq init --guided           # Pick a blueprint, connect services
 clawhq up                      # Deploy your agent
 ```
 
-Security hardening is automatic — no opt-in required. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the full walkthrough.
+Security hardening is automatic — no opt-in required. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the full walkthrough (development preview).
 
 ## Blueprints
 
@@ -66,7 +67,11 @@ See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for the full blueprint schema
 
 ## Status
 
-**Active development.** 59 CLI commands, ~53,000 lines of TypeScript, 52 test files. The platform layer (install, harden, deploy, doctor, backup, update, skills), blueprint customization, the installer, and a web dashboard (`clawhq dashboard`) are implemented. Cloud provisioning and remote deploy updates are in progress.
+**Active development.** Built with AI-assisted development (Claude Code).
+
+**Working:** Blueprint engine with 7 use-case blueprints, config generation with 14-landmine prevention, full deploy pipeline with container security hardening, diagnostics + auto-fix (`clawhq doctor`), skill system with sandboxed vetting, encrypted backup/restore, credential health probes, memory lifecycle, cloud provisioning (4 providers), trust modes, audit trail.
+
+**In progress:** Agent runtime integration (wiring subsystems to the running agent), web dashboard UI, distro installer (`curl | sh`).
 
 Core bet: people will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
 
