@@ -39,13 +39,16 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 
 ## Quick Start
 
+Build from source today:
+
 ```bash
-npm install -g clawhq          # Install
-clawhq init --guided           # Pick a blueprint, connect services
-clawhq up                      # Deploy your agent
+git clone https://github.com/simonplant/clawhq
+cd clawhq && npm install && npm run build
+npm install -g .
+clawhq --help
 ```
 
-Security hardening is automatic — no opt-in required. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the full walkthrough.
+The one-command installer and guided setup wizard are in progress. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for what works now vs. what's planned.
 
 ## Blueprints
 
@@ -64,12 +67,6 @@ cron: inbox check every 15 min, daily digest at 8am
 
 See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for the full blueprint schema and all available options.
 
-## Status
-
-**Active development.** 59 CLI commands, ~53,000 lines of TypeScript, 52 test files. The platform layer (install, harden, deploy, doctor, backup, update, skills), blueprint customization, the installer, and a web dashboard (`clawhq dashboard`) are implemented. Cloud provisioning and remote deploy updates are in progress.
-
-Core bet: people will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
-
 ## Documentation
 
 | Document | Description |
@@ -83,6 +80,14 @@ Core bet: people will choose a sovereign AI agent over a big-tech one — if the
 | [Changelog](docs/CHANGELOG.md) | Development history and notable changes |
 | [Product](docs/PRODUCT.md) | Product design: problem, personas, user stories |
 | [OpenClaw Reference](docs/OPENCLAW-REFERENCE.md) | Engine internals, 14 landmines, integration surfaces |
+
+## Status
+
+**Active development — early access.** The CLI builds from source and has 59 commands across all major subsystems. The platform layer (harden, deploy, doctor, backup, update, skills) is implemented. The one-command installer, guided setup wizard, and use-case-specific blueprints are in progress.
+
+Core bet: people will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for a full breakdown of what's built, what's next, and what's honest aspiration.
 
 ## Author
 
