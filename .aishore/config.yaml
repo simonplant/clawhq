@@ -4,8 +4,8 @@ project:
   name: "clawhq"
 
 validation:
-  command: "npm run build && npm test"
-  timeout: 120
+  command: "npm install --prefer-offline --no-audit --no-fund 2>/dev/null && npm run build && npm test"
+  timeout: 300
 
 # models:
 #   primary: "claude-opus-4-6"

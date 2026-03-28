@@ -11,7 +11,7 @@
         "Read src/cloud/provisioning/engine.ts — find both addInstance() calls (lines ~172 and ~236) and the post-health-check block (line ~269)",
         "Read src/cloud/provisioning/registry.ts — understand updateInstanceStatus() and how to extend it to support writing sshHostKey",
         "Add a function to collect host key: spawn ssh-keyscan -t ed25519 <ipAddress>, parse output, return key string",
-        "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function. Use retry loop (max 5 attempts, 5s delay) — HTTP health check (port 443) passes before port 22 is open",
+        "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function",
         "If ssh-keyscan fails, log warning and continue — sshHostKey remains unset, accept-new fallback applies only in that case",
         "Add tests covering: successful key collection and storage, ssh-keyscan failure graceful degradation, update.ts strict mode when key is present",
         "Run npm test to confirm all tests pass"
@@ -22,15 +22,44 @@
         "If ssh-keyscan fails at provision time, provisioning still completes and a warning is logged — sshHostKey remains unset and accept-new fallback applies only in that case",
         "Existing deploy update and provisioning tests pass with no regression"
       ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomingNotes": "FAILED TWICE (failCount: 2). Root cause confirmed: steps 1-2 lacked a retry loop for SSH port startup latency. HTTP health check (port 443) passes before port 22 is open — the ssh-keyscan ran immediately after and hit a closed port every time. Fixed: step 4 now specifies a retry loop (max 5 attempts, 5s delay). Also clarified: sshHostKey update must use a new registry function since instance is registered before health check. Unhealthy case: skip scan entirely. Warning message required per AC3 — must be user-visible (console.error), not just a log entry.",
+      "groomedAt": "2026-03-27",
+      "lastFailAt": "2026-03-24T20:51:33-07:00",
+      "failCount": 2
+    },
+    {
+      "id": "BUG-120",
+      "title": "Heartbeat container check uses file existence as proxy — never queries Docker, uptime always 0",
+      "intent": "Cloud heartbeat must report whether the agent container is actually running and for how long. File existence does not mean the container is up.",
+      "description": "src/cloud/heartbeat/reporter.ts lines 132-146: checkContainerRunning() checks if compose file and config file exist on disk, returns running:true if both present. It never queries Docker. uptimeSeconds always returns 0 (hardcoded). Comment says 'Container state would normally be checked via Docker API; for now we check if the engine directory looks active'. This means: (1) a stopped container with files on disk is reported as running, (2) uptime is always 0 so operators can't tell how long an agent has been up, (3) a container restart is invisible to monitoring.",
+      "priority": "should",
+      "category": "stub",
+      "steps": [
+        "Read src/operate/doctor/checks.ts to find the real Docker container health check (it exists there)",
+        "Reuse or extract the Docker check logic — docker inspect or docker compose ps to get container state and start time",
+        "Calculate uptimeSeconds from container start time",
+        "Replace file-existence check with real Docker query",
+        "Fall back to file-existence check if Docker socket is unreachable (graceful degradation)",
+        "Add tests: container running returns real state, container stopped returns running:false, Docker unavailable falls back gracefully",
+        "Run npm test to confirm no regression"
+      ],
+      "acceptanceCriteria": [
+        "checkContainerRunning() queries Docker for actual container state",
+        "uptimeSeconds reflects real container uptime, not hardcoded 0",
+        "A stopped container is reported as running:false even if config files exist on disk",
+        "If Docker socket is unreachable, function degrades gracefully (returns running:false with error, does not crash heartbeat)"
+      ],
       "scope": [
-        "src/cloud/provisioning/"
+        "src/cloud/heartbeat/reporter.ts"
       ],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "PO REVIEW 2026-03-28 (failCount:2 — third attempt). Root cause of both failures: no retry on ssh-keyscan after health check — SSH port 22 lags behind HTTPS port 443. Tech Lead has specified retry loop (step 4, max 5 attempts, 5s delay) — this is the fix. Do NOT sprint without confirming retry is implemented. Added AC5: explicit retry coverage. Priority confirmed MUST — accept-new on every connect is a MITM window; contradicts core security promise.",
-      "lastFailAt": "2026-03-24T20:51:33-07:00",
-      "failCount": 2
+      "groomedAt": "2026-03-24",
+      "groomingNotes": "Found during deep stub scan. Doctor module already has real Docker health checks — this is about reusing that logic in the heartbeat reporter. Coordinate with doctor checks to avoid duplication.",
+      "lastFailAt": "2026-03-24T23:03:51-07:00",
+      "failCount": 1
     },
     {
       "id": "BUG-125",
@@ -61,41 +90,9 @@
       ],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "PO REVIEW 2026-03-28 (failCount:1, DOGFOOD Gate 0 blocker). Priority confirmed MUST — corrupted docker-compose silently breaks the agent; user has no recovery path except manual edit. The backup-before-patch AC is critical: without it, a bad patch destroys the working config with no recovery. Steps are Tech Lead owned — do not modify. AC verify commands added.",
+      "groomedAt": "2026-03-27",
+      "groomingNotes": "DOGFOOD 2026-03-27: Gate 0 blocker for John's deploy. Previous sprint failed — steps now refined with exact line numbers and implementation details. yaml package already in use in firewall.ts, no new dependency. Key insight: getFirstServiceEntry helper future-proofs for FEAT-110 multi-instance where service names may vary. Steps owned by Tech Lead — do not modify.",
       "lastFailAt": "2026-03-24T21:54:33-07:00",
-      "failCount": 1
-    },
-    {
-      "id": "BUG-120",
-      "title": "Heartbeat container check uses file existence as proxy — never queries Docker, uptime always 0",
-      "intent": "Cloud heartbeat must report whether the agent container is actually running and for how long. File existence does not mean the container is up.",
-      "description": "src/cloud/heartbeat/reporter.ts lines 132-146: checkContainerRunning() checks if compose file and config file exist on disk, returns running:true if both present. It never queries Docker. uptimeSeconds always returns 0 (hardcoded). Comment says 'Container state would normally be checked via Docker API; for now we check if the engine directory looks active'. This means: (1) a stopped container with files on disk is reported as running, (2) uptime is always 0 so operators can't tell how long an agent has been up, (3) a container restart is invisible to monitoring.",
-      "priority": "should",
-      "category": "stub",
-      "steps": [
-        "Read src/operate/doctor/checks.ts to find the real Docker container health check (it exists there)",
-        "Reuse or extract the Docker check logic — docker inspect or docker compose ps to get container state and start time",
-        "Calculate uptimeSeconds from container start time",
-        "Replace file-existence check with real Docker query",
-        "Fall back to file-existence check if Docker socket is unreachable (graceful degradation)",
-        "Add tests: container running returns real state, container stopped returns running:false, Docker unavailable falls back gracefully",
-        "Run npm test to confirm no regression"
-      ],
-      "acceptanceCriteria": [
-        "checkContainerRunning() queries Docker for actual container state",
-        "uptimeSeconds reflects real container uptime, not hardcoded 0",
-        "A stopped container is reported as running:false even if config files exist on disk",
-        "If Docker socket is unreachable, function degrades gracefully (returns running:false with error, does not crash heartbeat)"
-      ],
-      "scope": [
-        "src/cloud/heartbeat/reporter.ts"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "PO REVIEW 2026-03-28 (failCount:1). Priority confirmed SHOULD — a stopped container reporting as 'running' is a false green that erodes operator trust in the platform. Uptime always 0 means operators cannot diagnose restart loops. The graceful degradation AC is important: if Docker socket is unreachable, the heartbeat must not crash the entire cloud reporting pipeline. AC verify commands added.",
-      "lastFailAt": "2026-03-24T23:03:51-07:00",
       "failCount": 1
     }
   ]

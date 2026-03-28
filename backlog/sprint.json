@@ -1,6 +1,6 @@
 {
-  "sprintId": "sprint-1774552988",
-  "startedAt": "2026-03-26T12:23:08-07:00",
+  "sprintId": "sprint-1774684836",
+  "startedAt": "2026-03-28T01:00:36-07:00",
   "status": "in_progress",
   "item": {
     "id": "BUG-113",
@@ -12,7 +12,7 @@
       "Read src/cloud/provisioning/engine.ts — find both addInstance() calls (lines ~172 and ~236) and the post-health-check block (line ~269)",
       "Read src/cloud/provisioning/registry.ts — understand updateInstanceStatus() and how to extend it to support writing sshHostKey",
       "Add a function to collect host key: spawn ssh-keyscan -t ed25519 <ipAddress>, parse output, return key string",
-      "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function",
+      "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function. Use retry loop (max 5 attempts, 5s delay) — HTTP health check (port 443) passes before port 22 is open",
       "If ssh-keyscan fails, log warning and continue — sshHostKey remains unset, accept-new fallback applies only in that case",
       "Add tests covering: successful key collection and storage, ssh-keyscan failure graceful degradation, update.ts strict mode when key is present",
       "Run npm test to confirm all tests pass"
@@ -23,7 +23,9 @@
       "If ssh-keyscan fails at provision time, provisioning still completes and a warning is logged — sshHostKey remains unset and accept-new fallback applies only in that case",
       "Existing deploy update and provisioning tests pass with no regression"
     ],
-    "scope": [],
-    "startedAt": "2026-03-26T12:23:08-07:00"
+    "scope": [
+      "src/cloud/provisioning/"
+    ],
+    "startedAt": "2026-03-28T01:00:36-07:00"
   }
 }
