@@ -2,6 +2,8 @@
 
 > From zero to a working AI agent in under 10 minutes.
 
+> **Development Preview.** ClawHQ is in active development. The CLI commands below are implemented but the end-to-end flow (from init to a working agent responding on Telegram) requires agent runtime integration that is still in progress. See [Known Limitations](ROADMAP.md#known-limitations).
+
 This guide walks you through installing ClawHQ and forging your first agent — an **Email Manager** that triages your inbox, delivers morning digests, and guards your calendar.
 
 ---
@@ -27,27 +29,19 @@ success
 
 ## 2. Install ClawHQ
 
-**Option A — Trusted cache** (recommended):
+**From source** (current install method):
 
 ```
-$ curl -fsSL https://clawhq.com/install | sh
-
-  ClawHQ Installer v1.0.0
-  ✔ Detected Docker 27.1.2
-  ✔ Detected Node.js v22.12.0
-  ✔ Downloading ClawHQ...
-  ✔ Verifying SHA256 + GPG signature...
-  ✔ Installed to /usr/local/bin/clawhq
-  ✔ Created ~/.clawhq/
+$ git clone https://github.com/clawhq/clawhq
+$ cd clawhq
+$ npm install
+$ npm run build
+$ npm link          # makes `clawhq` available globally
 
   Run: clawhq init --guided
 ```
 
-**Option B — From source** (zero-trust):
-
-```
-$ git clone https://github.com/clawhq/clawhq && cd clawhq && ./install --from-source --verify
-```
+> A one-command installer (`curl -fsSL https://clawhq.com/install | sh`) is planned but not yet available. See [Roadmap](ROADMAP.md#next).
 
 ---
 

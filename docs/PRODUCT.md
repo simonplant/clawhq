@@ -2,7 +2,7 @@
 
 > Your AI agent runs on your hardware, talks to your services, and never sends a byte to anyone you didn't choose. ClawHQ makes that possible without a PhD in DevOps.
 
-**Owner:** [Name] · **Status:** Active Development · **Updated:** 2026-03-17
+**Owner:** Simon Plant · **Status:** Active Development · **Updated:** 2026-03-27
 
 ---
 
@@ -83,17 +83,17 @@ Six modules. One binary. Parallel development tracks. Items marked ✅ are alrea
 
 This is the product. Everything else is infrastructure.
 
-- [ ] **Use-case blueprints** `must`
+- [x] **Use-case blueprints** ✅
   Blueprints organized by what you're replacing. Each configures: identity, tools, skills, cron, integrations, security, autonomy, memory, model routing, egress.
   - "Email Manager" — inbox zero, triage, auto-reply, morning digest
-  - "Stock Trading Assistant" — market monitoring, research, alerts, risk guardrails
-  - "Meal Planner" — nutrition, shopping lists, weekly plans, dietary preferences
-  - "AI Blog Maintainer" — research, writing, editorial workflow, publish approval
-  - "Replace Google Assistant" — email + calendar + tasks + full-day orchestration
-  - "Founder's Ops" — inbox zero, investor updates, hiring pipeline
   - "Family Hub" — shared calendar, chores, meals, coordination
+  - "Founder's Ops" — inbox zero, investor updates, hiring pipeline
+  - "Replace Google Assistant" — email + calendar + tasks + full-day orchestration
+  - "Replace ChatGPT Plus" — sovereign alternative with local models
+  - "Replace my PA" — personal assistant with full tool access
+  - "Research Co-pilot" — research, analysis, writing
 
-- [ ] **Blueprint customization** `must`
+- [x] **Blueprint customization** ✅
   Blueprint-specific questions during setup: dietary restrictions, risk tolerance, communication style, priority contacts. 1-3 questions per blueprint.
 
 - [ ] **Capability and persona catalog** `must`
@@ -133,7 +133,7 @@ Hardened by default. Every action auditable.
 
 - [x] **Container hardening** ✅ — `cap_drop: ALL`, read-only rootfs, non-root UID 1000, ICC disabled.
 - [x] **Egress firewall** ✅ — iptables `CLAWHQ_FWD`, per-integration domain allowlist.
-- [ ] **Credentials management** `must` — `credentials.json` (mode 0600) separate from `.env`. _(`.env` + `clawhq creds` implemented; separate credential store is new work.)_
+- [x] **Credentials management** ✅ — `credentials.json` (mode 0600) separate from `.env`, with `clawhq creds` health probes.
 - [x] **PII and secret scanning** ✅
 - [x] **Audit trail** ✅ — tool execution + secret lifecycle (HMAC-chained) + egress.
 - [x] **Data egress audit** ✅
@@ -160,18 +160,18 @@ The retention mechanism.
 - [x] **Portable export** ✅
 - [x] **Verified destruction** ✅
 - [ ] **Identity governance** `could`
-- [ ] **Memory lifecycle** `could` — three tiers, LLM-powered summarization, PII masking.
-- [ ] **Decision trace** `could` — "why did you do that?" with preference learning.
+- [x] **Memory lifecycle** ✅ — three tiers, LLM-powered summarization, PII masking.
+- [x] **Decision trace** ✅ — "why did you do that?" with preference learning.
 
 ### cloud — The Business
 
 Optional. Zero-trust by design.
 
-- [ ] **Trust mode management** `should` — Paranoid / Zero-Trust / Managed. Kill switch.
-- [ ] **Health heartbeat** `should` — agent-initiated, never reports content.
-- [ ] **Command queue** `should` — pull, verify signature, execute or reject. Content access architecturally blocked.
+- [x] **Trust mode management** ✅ — Paranoid / Zero-Trust / Managed. Kill switch.
+- [x] **Health heartbeat** ✅ — agent-initiated, never reports content.
+- [x] **Command queue** ✅ — pull, verify signature, execute or reject. Content access architecturally blocked.
 - [ ] **agentd daemon** `could`
-- [ ] **Managed hosting** `future`
+- [ ] **Managed hosting** `deferred` — _Ship self-hosted first, own sovereignty position. Revisit after 1,000+ self-hosted users._
 - [ ] **Remote dashboard** `future`
 - [ ] **Blueprint library** `future`
 - [ ] **Migration tools** `future`
@@ -222,10 +222,10 @@ Parallel tracks. See `backlog/backlog.json` for sprint-ready items.
 - Skill supply chain → mitigation: sandboxed vetting, AI scanning, allowlists, rollback
 
 **Open questions:**
-- [ ] Phase 0 candidates — Who are the 3-5 Privacy Migrants?
+- [ ] Early adopters — Which OpenClaw power users from the 2M+ ecosystem are the right first users?
 - [ ] Local model minimum bar — Which Ollama models for which tasks?
-- [ ] OpenClaw relationship — Inform? Partner?
-- [ ] Pricing — Cost to run one managed agent?
+- [ ] OpenClaw foundation relationship — Contribute upstream? Advisory influence?
+- [ ] Revenue model — Premium blueprints, enterprise fleet management, or marketplace? _(Managed hosting deferred.)_
 
 ---
 

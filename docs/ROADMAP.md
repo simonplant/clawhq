@@ -2,24 +2,29 @@
 
 > Where the project is, where it's going, and what's honest aspiration vs shipped reality.
 
-**Updated:** 2026-03-24
+**Updated:** 2026-03-27
 
 ---
 
 ## What's Built
 
-ClawHQ has a working CLI with 33 commands, 90,000+ lines of TypeScript, and 132 test files across all major subsystems:
+ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 test files across all major subsystems. Built with AI-assisted development (Claude Code).
 
-- **Blueprint engine** — 6 built-in blueprints (Guardian, Assistant, Coach, Analyst, Companion, Custom) with guided and AI-powered setup
+- **Blueprint engine** — 7 use-case blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
 - **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
-- **Diagnostics** — `clawhq doctor` with 11 checks and auto-fix, predictive health alerts, self-healing
+- **Diagnostics** — `clawhq doctor` with 14+ checks and auto-fix, predictive health alerts, self-healing
 - **Skill system** — 6 built-in skills (email digest, morning brief, market scan, meal plan, schedule guard, investor update) with sandboxed vetting and rollback
 - **Workspace tools** — 7 CLI tool generators (email, tasks, todoist, iCal, market quotes, web search, todoist-sync)
 - **Operational tooling** — encrypted backup/restore, safe updates with rollback, status dashboard, audit trail (tool execution + egress + secrets), log streaming
 - **Agent lifecycle** — portable export with PII masking, verified destruction, approval queue, multi-channel notifications
 - **AI-powered setup** — `clawhq init --smart` uses local Ollama to infer configuration from a natural-language description
+- **Credential management** — separate `credentials.json` (mode 0600), health probes with expiry tracking
+- **Memory lifecycle** — hot/warm/cold tiers, LLM-powered summarization, PII masking
+- **Decision trace** — "why did you do that?" explanation system with preference learning
+- **Cloud provisioning** — 4 provider adapters (DigitalOcean, AWS, GCP, Hetzner), trust modes (Paranoid/Zero-Trust/Managed), health heartbeat, signed command queue
+- **Migration import** — ChatGPT and Google Assistant data export parsing with PII masking
 
 ---
 
@@ -27,22 +32,21 @@ ClawHQ has a working CLI with 33 commands, 90,000+ lines of TypeScript, and 132 
 
 Active development focus:
 
-- **Cloud deployment updates** — push config changes, version upgrades, and new skills to cloud-deployed agents without reprovisioning
-- **Documentation suite** — contributing guide and changelog to support contributors and evaluators
-- **README overhaul** — slim the README to storefront format, with detailed content moved to dedicated docs
+- **Documentation alignment** — spring cleaning all docs to match current state, remove stale content, align with sovereignty-first positioning
+- **End-to-end testing** — FEAT-018: smoke test covering the full journey (install → init → up → verify)
+- **Agent runtime integration** — wiring memory, learning, autonomy, and trace subsystems to the running agent
 
 ---
 
 ## Next
 
-Committed direction — these are the immediate priorities after current work:
+Committed direction — immediate priorities after current work:
 
-- **Use-case blueprints** — purpose-built blueprints for specific jobs: Email Manager, Stock Trading Assistant, Meal Planner, AI Blog Maintainer, Founder's Ops, Family Hub, Replace Google Assistant
-- **Blueprint customization** — blueprint-specific questions during setup (dietary restrictions, risk tolerance, communication style)
-- **One-command installer** — `clawhq install` handles prerequisites, engine acquisition (signed or from-source), and deployment directory scaffolding
-- **Deployment directory** — dedicated `~/.clawhq/` structure separating engine, workspace, ops, security, cron, and cloud
-- **Separate credential store** — `credentials.json` (mode 0600) for integration credentials, distinct from `.env` environment secrets
+- **Distro installer** — `curl -fsSL https://clawhq.com/install | sh` one-command install (currently requires manual clone + build)
+- **Web dashboard UI** — Hono server scaffolded, UI components not yet built out
+- **Monitor daemon** — background health loop with configurable alerts
 - **Additional workspace tools** — blueprint-driven tool generators for new use cases
+- **Public launch** — GitHub repo public, community alpha to OpenClaw power users
 
 ---
 
@@ -50,15 +54,10 @@ Committed direction — these are the immediate priorities after current work:
 
 Vision — directionally committed but not yet scheduled:
 
-- **Cloud trust modes** — Paranoid (no cloud), Zero-Trust (agent-initiated, signed commands, user-approved), Managed (auto-approved ops, content architecturally blocked)
-- **Health heartbeat** — agent-initiated cloud reporting that never sends content, only operational status
-- **Remote command queue** — pull-based, cryptographically signed commands with reject capability
-- **Managed hosting** — provision and manage agents on DigitalOcean, Hetzner, or any VPS from a web console
-- **Monitor daemon** — background health loop with configurable alerts
-- **Web dashboard** — local browser UI for visual agent management (server scaffolded, UI in progress)
-- **Memory lifecycle** — three-tier memory management with LLM-powered summarization and PII masking
-- **Decision trace** — "why did you do that?" explanations with preference learning
-- **Community blueprint library** — submit, review, and share blueprints
+- **Community blueprint library** — submit, review, and share blueprints; security-vetted alternative to ClawHub
+- **Managed hosting** — provision and manage agents from a web console. _Deferred — ship self-hosted first, own the sovereignty position. Revisit after 1,000+ self-hosted users._
+- **Identity governance** — drift detection, contradiction checking, token budget enforcement
+- **Capability and persona catalog** — compile-time composition of named tool+skill+integration bundles
 
 **How the agent grows over time:**
 
@@ -73,12 +72,11 @@ Vision — directionally committed but not yet scheduled:
 
 Honest constraints in the current state:
 
-- **No installer yet** — users must manually install Docker, Node.js, and OpenClaw before using ClawHQ
-- **Limited blueprint library** — 6 generic blueprints exist; use-case-specific blueprints (email manager, stock trading) are not yet available
+- **No distro installer yet** — users must clone the repo and build from source; `clawhq install` handles engine acquisition but the one-command `curl | sh` installer does not exist yet
 - **Single machine only** — no multi-machine or cluster deployment support
 - **Linux and macOS only** — Windows requires WSL; native Windows is not supported
 - **Docker required** — ClawHQ runs agents in Docker containers; there is no bare-metal option
-- **Cloud is a stub** — the cloud module exists as a placeholder; remote monitoring and managed hosting are not functional
+- **Cloud provisioning exists, managed hosting does not** — 4 provider adapters work; the managed hosting service (web console, billing, remote dashboard) is deferred
 - **Web dashboard is scaffolded** — the Hono server runs but UI components are not yet built out
 - **Agent runtime integration pending** — memory, learning, autonomy, and trace subsystems work standalone but are not yet wired to the running agent
 
