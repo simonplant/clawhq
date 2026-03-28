@@ -85,12 +85,33 @@ A blueprint is a complete agent design — a YAML file that specifies every dime
 4. **Everything generated** — config, identity, tools, skills, cron, security, egress rules
 5. **Agent forged** — not a generic agent with a personality swap, but a fully configured system designed for a specific job
 
-### Entity Model
+### Compile-Time vs. Runtime
 
-Five entities compose an agent. Three are primitive, one is a planned composition layer, and one is top-level:
+Personality composition is a compile-time problem, not a runtime problem.
+
+OpenClaw doesn't need to understand capabilities, personas, or composition. It needs a `config.yaml`, a `SOUL.md`, tool configs, and skill definitions. Full stop. Everything above that is ClawHQ's job — take high-level intent, compile it to flat runtime config.
 
 ```
-PRIMITIVE ENTITIES (defined independently, reusable):
+┌─────────────────────────────────────┐
+│         ClawHQ Studio (UX)          │  ← User touches this
+│  Wizard · Sliders · Preview · Chat  │
+├─────────────────────────────────────┤
+│      ClawHQ Compiler (Build)        │  ← Capabilities, personas, composition
+│  Blueprint + Catalog → Runtime Cfg  │
+├─────────────────────────────────────┤
+│      OpenClaw Runtime (OSS)         │  ← Runs what it's given
+│  config.yaml · SOUL.md · tools · skills │
+└─────────────────────────────────────┘
+```
+
+No intermediate concepts survive compilation. A user who hand-configures OpenClaw without ClawHQ never needs to know the compiler layer exists.
+
+### Entity Model
+
+Three primitive entities, two catalog entities (planned), one composition entity:
+
+```
+PRIMITIVE ENTITIES (exist today, independently defined):
 
   Integration          Tool               Skill
   ┌──────────────┐     ┌──────────────┐   ┌──────────────────┐
@@ -100,61 +121,84 @@ PRIMITIVE ENTITIES (defined independently, reusable):
   │ probes       │     │              │   │ boundaries       │
   └──────────────┘     └──────────────┘   └──────────────────┘
 
-COMPOSITION LAYER (planned — does not exist yet):
+CATALOG ENTITIES (planned — compiler concepts, not runtime):
 
-  Role (thin — a named preset, not a god object)
-  ┌──────────────────────────────────────┐
-  │ name                                 │
-  │ description        (human-readable)  │
-  │ tools[] ──────────→ Tool[]           │
-  │ skills[] ─────────→ Skill[]          │
-  │ integration_deps[] → Integration[]   │
-  └──────────────────────────────────────┘
+  Capability                           Persona
+  ┌──────────────────────────────┐     ┌──────────────────────────────┐
+  │ id            "inbox-manager"│     │ id          "stoic-operator" │
+  │ description                  │     │ soul_template   (with slots) │
+  │ tools[] ─────→ Tool[]       │     │ voice_examples[]  (concrete) │
+  │ skills[] ────→ Skill[]      │     │ dimensions    (slider defaults│
+  │ integrations[] → Integration│     │ anti_patterns[]              │
+  │ soul_fragments[]   (prose)  │     └──────────────────────────────┘
+  │ suggested_crons[]           │
+  └──────────────────────────────┘
 
-  Role is a named tool+skill bundle. Nothing more. Autonomy,
-  personality, and security are holistic agent properties — they
-  belong at the Blueprint level, not per-role.
+  Capability = what can it do. Named tool+skill+integration
+  bundle with operational doctrine (soul_fragments). Does NOT
+  carry personality or autonomy — those are agent-level.
 
-TOP-LEVEL:
+  Persona = how does it talk. Curated prose bundle with
+  voice examples, slider defaults, and anti-patterns. NOT
+  MBTI. NOT 16P. Just well-crafted presets. ClawHQ ships
+  8-12; users can start blank and write their own SOUL.md.
+
+COMPOSITION:
 
   Blueprint
-  ┌──────────────────────────────────────────┐
-  │ name                                     │
-  │ roles[] ──────────→ Role[]      (planned)│
-  │ toolbelt.tools[] ─→ Tool[]      (current)│
-  │ skill_bundle[] ───→ Skill[]     (current)│
-  │ personality.dimensions  (7 sliders, 1-5) │
-  │ autonomy_model      (single, agent-wide) │
-  │ security_posture                         │
-  │ memory_policy                            │
-  │ channels                                 │
-  │ model_routing                            │
-  └────────────────────┬─────────────────────┘
-                       │ forge
-                       ▼
-                    Agent (deployed instance)
+  ┌──────────────────────────────────────────────┐
+  │ name                                         │
+  │ persona ─────────→ Persona          (planned)│
+  │ capabilities[] ──→ Capability[]     (planned)│
+  │ extra_tools[] ───→ Tool[]     (escape hatch) │
+  │ dimension_overrides   (fine-tune persona)    │
+  │ soul_overrides        (free-text append)     │
+  │ toolbelt.tools[] ─→ Tool[]          (current)│
+  │ skill_bundle[] ───→ Skill[]         (current)│
+  │ personality.dimensions               (current)│
+  │ autonomy_model      (single, agent-wide)     │
+  │ security_posture                             │
+  │ memory_policy                                │
+  │ channels                                     │
+  │ model_routing                                │
+  └──────────────────────┬───────────────────────┘
+                         │ compile
+                         ▼
+  RUNTIME OUTPUT (flat — what OpenClaw actually gets):
+  config.yaml + SOUL.md + USER.md + AGENTS.md + tool configs + skill defs
 ```
 
-**Dependency chain:** Integration ← Tool ← Skill. Each depends on the one before it. An email tool needs an IMAP integration. An email-digest skill needs the email tool.
+**Dependency chain:** Integration ← Tool ← Skill. Each depends on the one before it.
 
-**Current model (flat):** Blueprints directly reference tools and skills via `toolbelt.tools[]` and `skill_bundle.included[]`. Personality dimensions are set directly in the blueprint YAML. Autonomy is a single model at the blueprint level.
+**Current model (flat):** Blueprints directly reference tools and skills via `toolbelt.tools[]` and `skill_bundle.included[]`. Personality dimensions and SOUL.md content are set directly.
 
-**Planned model:** Roles are named tool+skill bundles with a description. A blueprint composes 1-4 roles. `toolbelt.tools[]` coexists as an escape hatch for role-independent tools. Final tool set = union of role tools + toolbelt tools. Roles provide legibility — `roles: [creative-collaborator, project-manager]` communicates intent; `toolbelt.tools: [todoist, ical, fm, quote, sanitize]` is a parts list.
+**Planned model:** Capabilities and Personas are catalog entries that the compiler resolves at build time:
 
-**16 Personalities (MBTI) as build-time preset:** The 16P type is a UI convenience, not a schema concept. During `clawhq init`, the user picks a type (or answers 4-5 questions) and the wizard pre-fills the 7 dimension sliders. The type is not stored in the blueprint — only the resolved slider values are. This keeps the runtime simple and sidesteps the question of whether MBTI is a valid personality model. It's just a preset picker.
+1. Resolve persona → SOUL.md template with `{{slots}}` for capability fragments
+2. Resolve capabilities → tool list, skill list, integration list, soul fragments
+3. Inject soul fragments into template slots
+4. Apply dimension overrides → finalize SOUL.md voice
+5. Merge extra_tools
+6. Derive cron from skills + capability suggested_crons
+7. Derive egress domains from integrations
+8. Emit flat runtime config: `config.yaml` + `SOUL.md` + `USER.md` + `AGENTS.md`
 
-**Why Role is deliberately thin:** Role does NOT carry autonomy rules or personality dimensions. An agent with `[trader, inbox-manager]` roles doesn't have two autonomy models or two personality vectors — it has one of each that accounts for both domains. Personality and autonomy are holistic agent properties, not per-capability properties. If Role carried these concerns, it would become a god object that needs override layers the moment any role doesn't quite fit.
+`extra_tools[]` is the escape hatch for tools outside any capability. `soul_overrides` is the escape hatch for personality that doesn't fit a persona. Power users can bypass the whole compiler and write flat config directly.
 
-**Derived vs. configured:** Several outputs are derived at forge time, not configured directly:
+**Risk: soul_fragments composing badly.** Four capabilities each injecting a paragraph into SOUL.md could create a Frankenstein voice. The compiler needs a coherence pass — likely an LLM call that reads the assembled SOUL.md and smooths it.
+
+**Derived vs. configured:**
 
 | Output | Derived From |
 |---|---|
-| Identity files (SOUL.md, AGENTS.md) | personality dimensions + role descriptions |
-| Egress domain allowlist | union of integration.egressDomains[] |
-| Cron schedule | skill.schedule for each included skill |
+| SOUL.md | persona.soul_template + capability.soul_fragments + overrides |
+| Tool list | union of capability.tools[] + extra_tools[] |
+| Skill list | union of capability.skills[] |
+| Integration list | union of capability.integrations[] |
+| Egress allowlist | union of integration.egressDomains[] |
+| Cron schedule | skill.schedule + capability.suggested_crons |
 | Docker compose | security posture + integrations |
 | .env secrets | integration.envKeys[] |
-| Final tool set | union of role.tools[] + toolbelt.tools[] |
 
 ### What a Blueprint Configures (current)
 

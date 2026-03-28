@@ -71,8 +71,8 @@ Canonical terms — use these consistently:
 | ClawHQ itself | **agent platform** | distro, configuration layer |
 | The product layers | **Platform / Blueprints / Cloud** | Distro / Template Engine / Cloud Service |
 | The six modules | **design, build, secure, operate, evolve, cloud** | ClawSmith, ClawForge, ClawAdmin, ClawOps, ClawConstruct |
-| Named tool+skill bundle (planned) | **role** | job, function, module |
-| Build-time slider preset (MBTI-based) | **16P preset** | personality type, temperament |
+| Tool+skill+integration bundle (planned) | **capability** | role, job, function |
+| Curated personality preset (planned) | **persona** | personality type, temperament, character |
 | 7-axis personality values (1-5) | **dimension sliders** / **dimensions** | personality settings, traits |
 
 ## Key Design Constraints

@@ -94,8 +94,8 @@ This is the product. Everything else is infrastructure.
 - [ ] **Blueprint customization** `must`
   Blueprint-specific questions during setup: dietary restrictions, risk tolerance, communication style, priority contacts. 1-3 questions per blueprint.
 
-- [ ] **Roles and personality presets** `must`
-  **Roles** are thin, named tool+skill bundles that communicate agent shape at a glance (`roles: [creative-collaborator, project-manager]`). They coexist with `toolbelt.tools[]` (escape hatch for role-independent tools). Roles do NOT carry autonomy or personality — those stay at the blueprint level. **16P personality presets** (MBTI-based) are a build-time UI convenience: pick a type → pre-fill the 7 dimension sliders → user adjusts → only resolved values stored. No runtime concept. See `docs/ARCHITECTURE.md` § "Entity Model" and `docs/CONFIGURATION.md` § "Planned: Roles and 16P Presets".
+- [ ] **Capability and persona catalog** `must`
+  Composition is a compile-time problem. **Capabilities** are named tool+skill+integration bundles with `soul_fragments` (operational doctrine per domain — NOT personality). **Personas** are curated prose presets with `soul_template`, `voice_examples`, dimension defaults, and `anti_patterns`. The compiler resolves blueprint (persona + capabilities + overrides) into flat runtime config — no intermediate concepts survive into OpenClaw. Two escape hatches: `extra_tools[]` for tools outside any capability, `soul_overrides` for personality that doesn't fit a persona. See `docs/ARCHITECTURE.md` § "Compile-Time vs. Runtime" and `docs/CONFIGURATION.md` § "Planned: Capabilities and Personas".
 
 - [x] **AI-powered config inference** ✅
   `clawhq init --smart` — describe what you need, system selects blueprint + configures integrations. Uses local Ollama.
