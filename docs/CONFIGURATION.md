@@ -87,7 +87,7 @@ Controls container hardening, egress filtering, and identity file protection.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `security_posture.posture` | enum | Yes | — | `"standard"`, `"hardened"`, or `"paranoid"` — maps to container hardening level |
+| `security_posture.posture` | enum | Yes | — | `"minimal"` (dev only), `"standard"`, `"hardened"`, or `"paranoid"` — maps to container hardening level. Blueprints should default to `"standard"` or `"hardened"`. |
 | `security_posture.egress` | enum | Yes | — | `"allowlist-only"` (strict domain filter) or `"restricted"` (HTTPS only) |
 | `security_posture.egress_domains[]` | string[] | Yes | — | Domains the agent is allowed to reach (e.g., `"imap.gmail.com"`, `"api.todoist.com"`) |
 | `security_posture.identity_mount` | enum | Yes | — | `"read-only"` — identity files are mounted read-only to prevent self-modification |

@@ -30,11 +30,12 @@ ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 t
 
 ## Now
 
-Active development focus:
+Active development focus. The market is large (250K+ stars, 2M+ MAU) and contested — 10+ hosting providers are capturing the OpenClaw ecosystem. Urgency is around public visibility and proving the end-to-end pipeline.
 
-- **Documentation alignment** — spring cleaning all docs to match current state, remove stale content, align with sovereignty-first positioning
+- **Documentation alignment** — aligning all docs with corrected market data, competitive positioning, and sovereignty-first messaging
 - **End-to-end testing** — FEAT-018: smoke test covering the full journey (install → init → up → verify)
 - **Agent runtime integration** — wiring memory, learning, autonomy, and trace subsystems to the running agent
+- **Public launch preparation** — GitHub repo public, community alpha to OpenClaw power users
 
 ---
 
@@ -55,7 +56,7 @@ Committed direction — immediate priorities after current work:
 Vision — directionally committed but not yet scheduled:
 
 - **Community blueprint library** — submit, review, and share blueprints; security-vetted alternative to ClawHub
-- **Managed hosting** — provision and manage agents from a web console. _Deferred — ship self-hosted first, own the sovereignty position. Revisit after 1,000+ self-hosted users._
+- **Managed hosting** — provision and manage agents from a web console. _Deprioritized — 10+ funded competitors (Blink, AWS Lightsail, xCloud, DigitalOcean, Hostinger, etc.) already sell managed OpenClaw at $22-45/mo. ClawHQ's strength is architectural depth and sovereignty, not hosting convenience. Revisit after 1,000+ self-hosted users and clear signal on differentiation._
 - **Identity governance** — drift detection, contradiction checking, token budget enforcement
 - **Capability and persona catalog** — compile-time composition of named tool+skill+integration bundles
 
@@ -76,7 +77,7 @@ Honest constraints in the current state:
 - **Single machine only** — no multi-machine or cluster deployment support
 - **Linux and macOS only** — Windows requires WSL; native Windows is not supported
 - **Docker required** — ClawHQ runs agents in Docker containers; there is no bare-metal option
-- **Cloud provisioning exists, managed hosting does not** — 4 provider adapters work; the managed hosting service (web console, billing, remote dashboard) is deferred
+- **Cloud provisioning exists, managed hosting deprioritized** — 4 provider adapters work; the managed hosting market has 10+ funded competitors at $22-45/mo, so ClawHQ focuses on sovereignty and architectural depth instead
 - **Web dashboard is scaffolded** — the Hono server runs but UI components are not yet built out
 - **Agent runtime integration pending** — memory, learning, autonomy, and trace subsystems work standalone but are not yet wired to the running agent
 

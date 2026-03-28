@@ -2,6 +2,8 @@
 
 > People search for problems, not solutions. This document exists for everyone who typed one of these headings into a search bar.
 
+**The scale of the problem:** OpenClaw has 250K+ GitHub stars and 2M+ monthly active users. In its first 2 months: 9+ CVEs disclosed, 42,000+ instances found publicly exposed, 20-36% of community skills on ClawHub found malicious (the ClawHavoc campaign). Microsoft, Cisco, and Nvidia have all published security guidance for OpenClaw deployments. 1,000+ people queued outside Tencent HQ for installation help. The creator, Peter Steinberger, joined OpenAI in February 2026 and the project moved to a foundation. The ecosystem is massive, the problems are real, and nobody is solving them at the platform level.
+
 ---
 
 ## OpenClaw configuration is too complex for non-developers
@@ -52,7 +54,7 @@ OpenClaw treats identity files as opaque markdown. It reads them, includes them 
 
 OpenClaw ships as a Docker container with shell access, browser control, and the ability to send messages on your behalf — on a loop, without asking. The default configuration has no capability restrictions (`cap_drop`), no read-only filesystem, no egress filtering, no inter-container communication controls, and runs with more privileges than necessary.
 
-The threat surface is documented: host compromise via open ports or weak SSH, prompt injection through emails and web pages, secret leakage if the agent can read `~/.ssh` or `.env`, supply chain attacks through community skills (the "ClawHavoc" campaign targeted workspace files), and cross-site WebSocket hijacking (CVE-2026-25253, CVSS 8.8). The hardening checklist in the OpenClaw docs runs to 30+ items across gateway, filesystem, agent behavior, container, and monitoring categories. All of it is opt-in. All of it is manual.
+The results speak for themselves: 42,000+ OpenClaw instances found publicly exposed, 9+ CVEs disclosed in the first 2 months (including CVE-2026-25253, CVSS 8.8 — cross-site WebSocket hijacking that lets any website steal auth tokens), and 20-36% of community skills on ClawHub found malicious. The ClawHavoc campaign targeted workspace files with hidden instructions in base64 strings and zero-width Unicode characters. Microsoft, Cisco, and Nvidia have all published security guidance specifically for OpenClaw. The hardening checklist in the OpenClaw docs runs to 30+ items across gateway, filesystem, agent behavior, container, and monitoring categories. All of it is opt-in. All of it is manual.
 *(Source: docs/OPENCLAW-REFERENCE.md — Section 15: Threat Model & Hardening)*
 
 **How ClawHQ fixes this:** Security is the default, not an opt-in feature (AD-05). Every forged agent gets `cap_drop: ALL`, read-only rootfs, `no-new-privileges`, non-root UID 1000, and ICC disabled — automatically. The egress firewall (`CLAWHQ_FWD` iptables chain) restricts outbound traffic to an allowlist of domains specific to each blueprint's integrations. Identity files are read-only mounts. Credentials are stored in mode 0600 files, never in config. Community skills go through a vetting pipeline (stage → vet → approve → activate) with rollback snapshots. The prompt injection sanitizer (`src/secure/sanitizer/`) scores and quarantines hostile content before it reaches the model. None of this requires the user to know what `cap_drop` means.

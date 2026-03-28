@@ -20,7 +20,7 @@ Today you choose between **surveillance AI** (polished, easy, you own nothing) o
 
 ClawHQ deploys, configures, and personalizes OpenClaw agents. Three things, done well: get the engine running (deployment), make it correct (configuration), and make it yours (personalization). It compiles blueprints — complete operational designs — into hardened, running agents.
 
-The window for sovereign AI is short. Big-tech agents will absorb memory, tools, and personality features. ClawHQ's job is to evolve the open-source option fast enough that sovereign digital agency becomes a real choice — built with the trust and integrity that people need to hand their digital life to a tool.
+The window is closing — not because big-tech AI will absorb features, but because 10+ hosting providers are commoditizing OpenClaw deployment right now. Blink, xCloud, AWS Lightsail, DigitalOcean, Hostinger, and others sell managed OpenClaw at $22-45/mo. They solve convenience but not sovereignty: default configs, no landmine prevention, no architectural security, no lifecycle management. ClawHQ's job is to own the sovereignty layer before the ecosystem consolidates around convenience-first platforms.
 
 - "Run my emails" → email tools, triage skills, inbox-check cron, morning digest, auto-reply with approval gates
 - "Help with stock trading" → market data tools, research skills, pre-market alerts, portfolio monitoring, risk guardrails
@@ -29,7 +29,7 @@ The window for sovereign AI is short. Big-tech agents will absorb memory, tools,
 
 Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically. You get a Signal, Telegram, or Discord UI. We do the rest.
 
-**Core bet:** People will choose a sovereign AI agent over a big-tech one — if the sovereign option isn't dramatically harder to use.
+**Market reality:** 2M+ people already chose sovereign AI — OpenClaw has 250K+ stars and 42,000+ exposed instances. The demand is proven. The question is whether ClawHQ captures the sovereignty segment before competitors consolidate around convenience-first hosting.
 
 ---
 
@@ -171,7 +171,7 @@ Optional. Zero-trust by design.
 - [x] **Health heartbeat** ✅ — agent-initiated, never reports content.
 - [x] **Command queue** ✅ — pull, verify signature, execute or reject. Content access architecturally blocked.
 - [ ] **agentd daemon** `could`
-- [ ] **Managed hosting** `deferred` — _Ship self-hosted first, own sovereignty position. Revisit after 1,000+ self-hosted users._
+- [ ] **Managed hosting** `deprioritized` — _10+ funded competitors (Blink, AWS Lightsail, xCloud, DigitalOcean, Hostinger, etc.) already sell managed OpenClaw at $22-45/mo. ClawHQ competes on architectural depth and sovereignty, not hosting convenience. Revisit only after 1,000+ self-hosted users and clear signal on what managed should include beyond what competitors offer._
 - [ ] **Remote dashboard** `future`
 - [ ] **Blueprint library** `future`
 - [ ] **Migration tools** `future`
@@ -213,6 +213,42 @@ Parallel tracks. See `backlog/backlog.json` for sprint-ready items.
 
 ---
 
+## Competitive Landscape
+
+The OpenClaw ecosystem is large (250K+ GitHub stars, 2M+ MAU) and contested. 10+ hosting providers sell managed OpenClaw. None solve the problems ClawHQ addresses.
+
+| Alternative | What It Offers | What It Doesn't |
+|---|---|---|
+| **Hosting providers** (Blink, xCloud, AWS Lightsail, DigitalOcean, Hostinger, RunMyClaw, LumaDock, OpenClaw Cloud) | Deploy OpenClaw on a VPS, $22-45/mo | Default config, no landmine prevention, no architectural security, no lifecycle management, no blueprints |
+| **Raw OpenClaw** | Full power, full control | Months of setup, ongoing SRE, 14 silent landmines, no memory management |
+| **Community dashboards** | Basic monitoring | No security, no lifecycle, no configuration management |
+| **Security point tools** (ClawSec) | Hardening guides, scanning | Fragmented, no unified platform, manual execution |
+| **Big-tech agents** (Google, Apple, Microsoft) | Polished, integrated, easy | Platform lock-in, no sovereignty, black box |
+
+### Market Gap
+
+| Domain | Current Coverage | Gap |
+|---|---|---|
+| Provisioning & Deploy | Well-served by 10+ hosting providers | Low |
+| Security Hardening | Fragmented: guides + point tools; no unified self-serve platform | **Critical** |
+| Configuration Management | Very weak: most config requires CLI/JSON editing | **Critical** |
+| Operations & Maintenance | Fragmented: updates manual, backups DIY | **Critical** |
+| Agent Lifecycle | Weak: most dashboards are read-only | High |
+| Governance & Compliance | Nearly nonexistent for self-hosted | **Critical** |
+
+### ClawHQ's Position
+
+ClawHQ is not a hosting provider. It's the operations and sovereignty layer — the cPanel for OpenClaw. Same analogy that played out for every successful open-source infrastructure engine:
+
+| Engine | Operational Burden | Control Panel |
+|---|---|---|
+| Linux | Server admin, security, mail, cron | cPanel, Plesk, Webmin |
+| WordPress | Hosting, updates, security, backups | WordPress.com, managed WP hosting |
+| Kubernetes | Container orchestration, networking | Rancher, OpenShift |
+| **OpenClaw** | **Agent config, security, monitoring, evolution** | **ClawHQ** |
+
+---
+
 ## Risks & Open Questions
 
 **Risks:**
@@ -222,10 +258,13 @@ Parallel tracks. See `backlog/backlog.json` for sprint-ready items.
 - Skill supply chain → mitigation: sandboxed vetting, AI scanning, allowlists, rollback
 
 **Open questions:**
-- [ ] Early adopters — Which OpenClaw power users from the 2M+ ecosystem are the right first users?
 - [ ] Local model minimum bar — Which Ollama models for which tasks?
-- [ ] OpenClaw foundation relationship — Contribute upstream? Advisory influence?
-- [ ] Revenue model — Premium blueprints, enterprise fleet management, or marketplace? _(Managed hosting deferred.)_
+- [ ] OpenClaw foundation relationship — Steinberger joined OpenAI Feb 2026, project at foundation. Governance unknown. Active contribution gives influence.
+
+**Directional decisions (from market analysis):**
+- **Early adopters:** OpenClaw community power users who self-host and care about security. Recruit through Discord, GitHub, Reddit, HackerNews — not through SEO competition with hosting providers.
+- **Revenue sequencing:** Open-source adoption builds community and reputation → premium blueprints and enterprise fleet management → security-vetted skill marketplace. Managed hosting deprioritized against 10+ funded competitors.
+- **Competitive positioning:** ClawHQ is the sovereignty platform. Hosting providers deploy default-config agents. ClawHQ does blueprint composition, architectural security, landmine prevention, and lifecycle management. Different layer entirely.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > Architecture for ClawHQ — the agent platform for OpenClaw.
 
-**Status:** Active Development · **Updated:** 2026-03-17
+**Status:** Active Development · **Updated:** 2026-03-27
 
 ---
 
@@ -16,8 +16,8 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  LAYER 3: Cloud                                              │
-│  Managed hosting · Remote monitoring · Blueprint library     │
+│  LAYER 3: Cloud (optional)                                   │
+│  Remote monitoring · Blueprint library · Fleet management    │
 ├─────────────────────────────────────────────────────────────┤
 │  LAYER 2: Blueprints (the product)                           │
 │  Complete agent designs for specific jobs.                    │
@@ -49,8 +49,8 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Tier 3: ClawHQ Cloud                              │
-│  Managed hosting · Remote health · Blueprint library    │
+│  Tier 3: ClawHQ Cloud (optional)                   │
+│  Remote health · Blueprint library · Fleet management   │
 │  ─── optional — product works without this ───          │
 └────────────────────────┬────────────────────────────────┘
                          │ HTTPS (health status only)
@@ -463,15 +463,17 @@ Message routing, model API calls, tool execution, session persistence, channel p
 
 ### Container Hardening (Applied Automatically)
 
-| Control | Standard | Hardened | Paranoid |
-|---|---|---|---|
-| Linux capabilities | `cap_drop: ALL` | `cap_drop: ALL` | `cap_drop: ALL` |
-| Filesystem | Read-only rootfs | Read-only rootfs | Read-only rootfs + encrypted workspace |
-| Privilege escalation | `no-new-privileges` | `no-new-privileges` | `no-new-privileges` |
-| User | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) |
-| Network isolation | ICC disabled | ICC disabled | ICC disabled + allowlist egress |
-| Resource limits | 4 CPU / 4GB RAM | 2 CPU / 2GB RAM | 1 CPU / 1GB RAM |
-| Identity files | Read-only mount | Read-only mount | Read-only mount + integrity hash |
+| Control | Minimal (dev only) | Standard | Hardened | Paranoid |
+|---|---|---|---|---|
+| Linux capabilities | None dropped | `cap_drop: ALL` | `cap_drop: ALL` | `cap_drop: ALL` |
+| Filesystem | Writable | Read-only rootfs | Read-only rootfs | Read-only rootfs + encrypted workspace |
+| Privilege escalation | Not restricted | `no-new-privileges` | `no-new-privileges` | `no-new-privileges` |
+| User | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) |
+| Network isolation | ICC allowed | ICC disabled | ICC disabled | ICC disabled + allowlist egress |
+| Resource limits | None | 4 CPU / 4GB RAM | 2 CPU / 2GB RAM | 1 CPU / 1GB RAM |
+| Identity files | Read-write | Read-only mount | Read-only mount | Read-only mount + integrity hash |
+
+> **Note:** `minimal` is for development only and should never be used in production. Blueprint defaults are `standard` or `hardened`.
 
 ### Egress Firewall
 
