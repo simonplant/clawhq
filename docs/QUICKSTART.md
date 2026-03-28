@@ -32,7 +32,7 @@ success
 **From source** (current install method):
 
 ```
-$ git clone https://github.com/clawhq/clawhq
+$ git clone https://github.com/simonplant/clawhq
 $ cd clawhq
 $ npm install
 $ npm run build
@@ -49,6 +49,7 @@ $ npm link          # makes `clawhq` available globally
 
 Run the guided setup wizard:
 
+<!-- Expected output (development preview) -->
 ```
 $ clawhq init --guided
 
@@ -56,16 +57,19 @@ $ clawhq init --guided
 
   ? Choose a blueprint:
     ❯ Email Manager — inbox zero, triage, auto-reply, morning digest
-      Stock Trading Assistant — market monitoring, research, alerts
-      Meal Planner — nutrition, shopping lists, weekly plans
-      Replace Google Assistant — email + calendar + tasks + daily brief
+      Family Hub — shared calendar, chores, meals, coordination
       Founder's Ops — inbox zero, investor updates, hiring pipeline
+      Replace Google Assistant — email + calendar + tasks + daily brief
+      Replace ChatGPT Plus — sovereign alternative with local models
+      Replace my PA — personal assistant with full tool access
+      Research Co-pilot — research, analysis, writing
 
   ✔ Selected: Email Manager
 ```
 
 The wizard asks three customization questions:
 
+<!-- Expected output (development preview) -->
 ```
   ? How should your agent communicate?
     ❯ Brief and direct — bullet points, no fluff
@@ -87,6 +91,7 @@ The wizard asks three customization questions:
 
 The wizard prompts for each integration the Email Manager needs:
 
+<!-- Expected output (development preview) -->
 ```
   Email (required)
   ─────────────────
@@ -128,6 +133,7 @@ The wizard prompts for each integration the Email Manager needs:
 
 ## 5. Launch Your Agent
 
+<!-- Expected output (development preview) -->
 ```
 $ clawhq up
 
@@ -149,6 +155,7 @@ $ clawhq up
 
 Run the health check:
 
+<!-- Expected output (development preview) -->
 ```
 $ clawhq status
 
@@ -175,6 +182,7 @@ $ clawhq status
 
 Run diagnostics:
 
+<!-- Expected output (development preview) -->
 ```
 $ clawhq doctor
 
@@ -204,6 +212,7 @@ $ clawhq doctor
 
 Open Telegram and message your bot:
 
+<!-- Expected output (development preview) -->
 ```
 You:   What's in my inbox?
 Agent: Morning. 52 emails overnight — 7 need you:

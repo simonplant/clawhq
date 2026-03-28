@@ -40,7 +40,7 @@ Everything in OpenClaw is either a file or an API call. ClawHQ controls all of i
 ## Quick Start
 
 ```bash
-git clone https://github.com/clawhq/clawhq && cd clawhq
+git clone https://github.com/simonplant/clawhq && cd clawhq
 npm install && npm run build && npm link
 clawhq init --guided           # Pick a blueprint, connect services
 clawhq up                      # Deploy your agent

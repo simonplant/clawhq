@@ -93,7 +93,7 @@ Core infrastructure: config schema, gateway client, CLI, Docker build, security 
 
 - Config schema + 14 landmine validator — all OpenClaw landmine rules enforced at schema level, config loader with precedence merging (~1,591 lines) (CQ-001, 2026-03-18)
 - Gateway WebSocket RPC client — token-authenticated communication with OpenClaw Gateway, typed errors, timeout handling (~1,248 lines) (CQ-002, 2026-03-18)
-- CLI entry point — Commander.js flat CLI with 33 commands (AD-01), error handler, first-run detection (~7,354 lines) (CQ-013, 2026-03-19)
+- CLI entry point — Commander.js flat CLI (AD-01), error handler, first-run detection (~7,354 lines) (CQ-013, 2026-03-19)
 - `clawhq install` — pre-req detection (Docker, Node.js ≥20, Ollama), deployment directory scaffold (~644 lines) (CQ-014, 2026-03-19)
 - `clawhq install --from-source` — zero-trust acquisition: clone, audit, build from source (CQ-015, 2026-03-19)
 - `~/.clawhq/` deployment directory — configurable root, migration from `~/.openclaw/` (CQ-016, 2026-03-19)
