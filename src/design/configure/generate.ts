@@ -31,13 +31,13 @@ import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../to
 import type { ToolFileContent } from "../tools/index.js";
 
 
+import { getInstanceNames } from "../../build/docker/instance.js";
 import type { WizardAnswers } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_GATEWAY_PORT = GATEWAY_DEFAULT_PORT;
 const DOCKER_BRIDGE_GATEWAY = "172.17.0.1";
-const AGENT_NETWORK = "clawhq_net";
 
 // ── Main Entry Point ─────────────────────────────────────────────────────────
 
@@ -184,6 +184,9 @@ function buildComposeConfig(
 ): ComposeConfig {
   const bp = answers.blueprint;
   const posture = bp.security_posture.posture;
+
+  // Derive per-instance network name (FEAT-110)
+  const { networkName: AGENT_NETWORK } = getInstanceNames(answers.deployDir);
 
   // Resource limits based on security posture
   const resourceLimits = posture === "paranoid"
