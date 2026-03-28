@@ -48,7 +48,7 @@ describe("generateToolWrappers", () => {
   it("generates exactly the number of tools in the blueprint plus platform tools", () => {
     const bp = loadEmailManager();
     const wrappers = generateToolWrappers(bp);
-    const blueprintTools = wrappers.filter((w) => w.name !== "approve-action");
+    const blueprintTools = wrappers.filter((w) => w.name !== "approve-action" && w.name !== "sanitize");
     expect(blueprintTools).toHaveLength(bp.toolbelt.tools.length);
   });
 
@@ -104,7 +104,7 @@ describe("generateToolWrappers — all blueprints", () => {
         `${name} should produce tool wrappers`,
       ).toBeGreaterThan(0);
 
-      const blueprintTools = wrappers.filter((w) => w.name !== "approve-action");
+      const blueprintTools = wrappers.filter((w) => w.name !== "approve-action" && w.name !== "sanitize");
       expect(
         blueprintTools.length,
         `${name} wrapper count should match blueprint tool count`,
@@ -136,7 +136,7 @@ describe("tool names match AGENTS.md references", () => {
       const agentsContent = generateAgents(bp);
 
       // Platform tools (approve-action) are not listed in AGENTS.md
-      const blueprintTools = wrappers.filter((w) => w.name !== "approve-action");
+      const blueprintTools = wrappers.filter((w) => w.name !== "approve-action" && w.name !== "sanitize");
       for (const wrapper of blueprintTools) {
         expect(
           agentsContent,
@@ -254,6 +254,118 @@ describe("quote tool", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "quote");
     expect(wrapper?.content).toContain("batch");
+  });
+});
+
+// ── Sanitize Tool (ClawWall) ───────────────────────────────────────────────
+
+describe("sanitize tool", () => {
+  it("is included as a platform tool for every blueprint", () => {
+    for (const name of ALL_BLUEPRINTS) {
+      const bp = loadBlueprint(name).blueprint;
+      const wrappers = generateToolWrappers(bp);
+      const sanitize = wrappers.find((w) => w.name === "sanitize");
+      expect(sanitize, `${name} should include sanitize tool`).toBeDefined();
+      expect(sanitize?.relativePath).toBe("workspace/tools/sanitize");
+    }
+  });
+
+  it("is a node script with OWASP LLM01 patterns", () => {
+    const bp = loadEmailManager();
+    const sanitize = generateToolWrappers(bp).find((w) => w.name === "sanitize");
+    expect(sanitize).toBeDefined();
+    expect(sanitize?.content).toMatch(/^#!\/usr\/bin\/env node/);
+    // Tier 1 patterns
+    expect(sanitize?.content).toContain("INJECTION_PATTERNS");
+    expect(sanitize?.content).toContain("DELIMITER_PATTERNS");
+    expect(sanitize?.content).toContain("ENCODING_PATTERNS");
+    expect(sanitize?.content).toContain("EXFIL_PATTERNS");
+    // Tier 2 patterns
+    expect(sanitize?.content).toContain("CONFUSABLE_MAP");
+    expect(sanitize?.content).toContain("MULTILINGUAL_INJECTION");
+    expect(sanitize?.content).toContain("FEWSHOT_");
+    expect(sanitize?.content).toContain("MORSE_PATTERN");
+  });
+
+  it("works as a stdin filter with --source and --strict flags", () => {
+    const bp = loadEmailManager();
+    const sanitize = generateToolWrappers(bp).find((w) => w.name === "sanitize");
+    expect(sanitize?.content).toContain("--source");
+    expect(sanitize?.content).toContain("--strict");
+    expect(sanitize?.content).toContain("--wrap");
+    expect(sanitize?.content).toContain("stdin");
+  });
+
+  it("writes quarantine log to ~/.clawhq/ops/security/", () => {
+    const bp = loadEmailManager();
+    const sanitize = generateToolWrappers(bp).find((w) => w.name === "sanitize");
+    expect(sanitize?.content).toContain("sanitizer-quarantine.jsonl");
+    expect(sanitize?.content).toContain("sanitizer-audit.jsonl");
+  });
+
+  it("supports JSON field sanitization via --json flag", () => {
+    const bp = loadEmailManager();
+    const sanitize = generateToolWrappers(bp).find((w) => w.name === "sanitize");
+    expect(sanitize?.content).toContain("--json");
+    expect(sanitize?.content).toContain("processJson");
+  });
+
+  it("detects and replaces injection keywords", () => {
+    const bp = loadEmailManager();
+    const sanitize = generateToolWrappers(bp).find((w) => w.name === "sanitize");
+    // Verify replacement markers are present
+    expect(sanitize?.content).toContain("[FILTERED]");
+    expect(sanitize?.content).toContain("[DELIM]");
+    expect(sanitize?.content).toContain("[LINK REMOVED]");
+    expect(sanitize?.content).toContain("[EXFIL REMOVED]");
+    expect(sanitize?.content).toContain("[TURN REMOVED]");
+    expect(sanitize?.content).toContain("[ENCODED REMOVED]");
+  });
+
+  it("includes quarantine threshold at 0.6", () => {
+    const bp = loadEmailManager();
+    const sanitize = generateToolWrappers(bp).find((w) => w.name === "sanitize");
+    expect(sanitize?.content).toContain("QUARANTINE_THRESHOLD = 0.6");
+  });
+});
+
+// ── External Tools Pipe Through Sanitize ──────────────────────────────────
+
+describe("external tools pipe through sanitize", () => {
+  it("tavily pipes results through sanitize", () => {
+    const bp = loadFoundersOps();
+    const tavily = generateToolWrappers(bp).find((w) => w.name === "tavily");
+    expect(tavily?.content).toContain("pipe_sanitize");
+    expect(tavily?.content).toContain("SANITIZE");
+    expect(tavily?.content).toContain('--source tavily');
+  });
+
+  it("email pipes read/list/search through sanitize", () => {
+    const bp = loadEmailManager();
+    const email = generateToolWrappers(bp).find((w) => w.name === "email");
+    expect(email?.content).toContain("pipe_sanitize");
+    expect(email?.content).toContain("SANITIZE");
+    expect(email?.content).toContain('--source email');
+    // list, read, search should go through sanitize
+    expect(email?.content).toMatch(/list.*\|\s*pipe_sanitize/);
+    expect(email?.content).toMatch(/read.*\|\s*pipe_sanitize/);
+    expect(email?.content).toMatch(/search.*\|\s*pipe_sanitize/);
+  });
+
+  it("quote pipes results through sanitize", () => {
+    const bp = loadFoundersOps();
+    const quote = generateToolWrappers(bp).find((w) => w.name === "quote");
+    expect(quote?.content).toContain("pipe_sanitize");
+    expect(quote?.content).toContain("SANITIZE");
+    expect(quote?.content).toContain('--source quote');
+  });
+
+  it("sanitize pipe is gracefully optional (falls back to cat)", () => {
+    const bp = loadFoundersOps();
+    const tavily = generateToolWrappers(bp).find((w) => w.name === "tavily");
+    // Should check if sanitize is executable, fall back to cat
+    expect(tavily?.content).toContain('[ -x "$SANITIZE" ]');
+    expect(tavily?.content).toContain("cat");
   });
 });
 

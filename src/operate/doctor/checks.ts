@@ -1,5 +1,5 @@
 /**
- * Doctor diagnostic checks — 21 preventive checks covering all known failure modes.
+ * Doctor diagnostic checks — 23 preventive checks covering all known failure modes.
  *
  * Each check is async and independent (runs in parallel via Promise.all).
  * Checks never throw — they return a result with pass/fail + message + fix.
@@ -140,6 +140,7 @@ export async function runChecks(
     checkMigrationState(deployDir, signal),
     checkUnderscoreToolMethods(deployDir, version),
     check1PasswordSetup(deployDir),
+    checkSanitizeAvailable(deployDir),
   ]);
 }
 
@@ -1102,5 +1103,52 @@ async function check1PasswordSetup(deployDir: string): Promise<DoctorCheckResult
     return ok(name, "1Password service account token configured");
   } catch {
     return ok(name, "1Password check inconclusive", "info");
+  }
+}
+
+// ── 23. Sanitize Tool Available ───────��─────────────────────────────────────
+
+/** Check that the sanitize (ClawWall) tool is on PATH and quarantine log is writable. */
+async function checkSanitizeAvailable(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "sanitize-available";
+
+  try {
+    // Check the tool exists and is executable
+    const sanitizePath = join(deployDir, "workspace", "tools", "sanitize");
+    try {
+      await access(sanitizePath, constants.X_OK);
+    } catch {
+      return fail(
+        name,
+        "error",
+        "sanitize tool not found at workspace/tools/sanitize — prompt injection defense is inactive",
+        "Run 'clawhq build' to regenerate tools from blueprint",
+        false,
+      );
+    }
+
+    // Check quarantine log directory is writable
+    const securityDir = join(deployDir, "ops", "security");
+    try {
+      await access(securityDir, constants.W_OK);
+    } catch {
+      // Directory may not exist yet — try to check parent
+      const opsDir = join(deployDir, "ops");
+      try {
+        await access(opsDir, constants.W_OK);
+      } catch {
+        return fail(
+          name,
+          "warning",
+          "Quarantine log directory not writable — sanitizer audit logs will fail silently",
+          "Run 'mkdir -p ~/.clawhq/ops/security && chmod 700 ~/.clawhq/ops/security'",
+        );
+      }
+    }
+
+    return ok(name, "sanitize tool available, quarantine log writable");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return fail(name, "warning", `Sanitize check failed: ${msg}`);
   }
 }

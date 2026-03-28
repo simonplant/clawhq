@@ -17,6 +17,7 @@ import { generateApproveActionTool } from "./approve-action.js";
 import { generateEmailTool } from "./email.js";
 import { generateIcalTool } from "./ical.js";
 import { generateQuoteTool } from "./quote.js";
+import { generateSanitizeTool } from "./sanitize.js";
 import { generateTasksTool } from "./tasks.js";
 import { generateTavilyTool } from "./tavily.js";
 import { generateTodoistSyncTool } from "./todoist-sync.js";
@@ -95,6 +96,16 @@ export function generateToolWrappers(blueprint: Blueprint): ToolFileContent[] {
       mode: FILE_MODE_EXEC,
     });
   }
+
+  // Always include the sanitize platform tool — ClawWall prompt injection
+  // firewall. Every deployment gets sanitize on PATH so external-facing
+  // tools can pipe content through it.
+  wrappers.push({
+    name: "sanitize",
+    relativePath: "workspace/tools/sanitize",
+    content: generateSanitizeTool(),
+    mode: FILE_MODE_EXEC,
+  });
 
   return wrappers;
 }

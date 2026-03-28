@@ -31,7 +31,8 @@ export type DoctorCheckName =
   | "tool-access-grants"
   | "migration-state"
   | "underscore-tool-methods"
-  | "onepassword-setup";
+  | "onepassword-setup"
+  | "sanitize-available";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 
