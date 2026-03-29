@@ -2,46 +2,6 @@
   "description": "ClawHQ backlog — aligned with evolved strategy (2026-03-28). See docs/STRATEGY.md for strategic context.",
   "items": [
     {
-      "id": "FEAT-111",
-      "title": "ClawWall content sanitization tool — prompt injection defense for all inbound external content",
-      "intent": "Every agent that reads external content (email, web, social media, RSS) must have a sanitization layer that filters prompt injection attacks before content reaches the LLM. This is not optional — it is a security-by-default requirement.",
-      "description": "Clawdius has a battle-tested 'sanitize' tool (ClawWall) that filters all inbound content from X, Tavily, Substack, email, and news through a prompt injection firewall implementing OWASP LLM01 Tier 1+2 defenses. It logs, quarantines, and strips malicious content. ClawHQ has no equivalent — generated tools pass raw external content directly to the LLM context.",
-      "priority": "must",
-      "category": "Security",
-      "steps": [
-        "Design the sanitize tool API: stdin filter, configurable strictness levels, quarantine log format",
-        "Implement sanitize as a generated tool (src/design/tools/sanitize.ts) included in every blueprint by default",
-        "Wire all external-facing tool generators (tavily, email, quote) to pipe through sanitize",
-        "Add quarantine log: ~/.clawhq/<agent>/security/quarantine.jsonl for blocked content",
-        "Add OWASP LLM01 Tier 1 patterns: system prompt overrides, role confusion, instruction injection",
-        "Add Tier 2 patterns: encoded payloads (base64, hex), Unicode homoglyphs, invisible characters",
-        "Add tests with real-world prompt injection examples",
-        "Add doctor check: verify sanitize is on PATH and quarantine log is writable"
-      ],
-      "acceptanceCriteria": [
-        "A sanitize tool is generated and placed on PATH for every new agent deployment",
-        "All external-facing tools (email, tavily, web search) pipe content through sanitize",
-        "Known prompt injection patterns (OWASP LLM01 Tier 1+2) are detected and stripped",
-        "Quarantine log records all filtered content with timestamps and source attribution",
-        "clawhq doctor checks sanitize availability and log writability",
-        "Sanitize tool works as a standalone stdin filter (composable with any tool)"
-      ],
-      "scope": [
-        "src/design/tools/",
-        "src/secure/",
-        "src/operate/doctor/"
-      ],
-      "dependsOn": [
-        "FEAT-108"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Security-by-default requirement. Trust paradox — an agent platform without content sanitization contradicts the security promise. Extracted from Clawdius production deployment. Depends on FEAT-108 for clean CLI integration. PO REVIEW 2026-03-28: Priority confirmed MUST — every blueprint reads external content; unfiltered prompt injection is not a theoretical risk. The quarantine log AC is critical: silent filtering erodes trust, operators need to see what was blocked. AC verify commands added.",
-      "passes": true,
-      "completedAt": "2026-03-28T16:58:40-07:00"
-    },
-    {
       "id": "FEAT-115",
       "title": "SHA256 binary pinning in Docker build — verify every downloaded tool binary against known hashes",
       "intent": "Every binary downloaded during Docker build must be verified against a pinned SHA256 hash. Unverified downloads in a security-by-default platform are a supply chain vulnerability.",
