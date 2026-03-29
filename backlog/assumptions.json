@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "description": "Strategic assumption validation framework — concrete tests for ClawHQ's 3 highest-risk assumptions",
+  "reviewCadence": {
+    "frequency": "monthly",
+    "firstReview": "30 days after repo goes public",
+    "owner": "Simon Plant",
+    "process": "Review each assumption against latest data. Update 'latestData' fields. If any assumption hits FAIL threshold, trigger the documented response. Record review in 'reviewLog'."
+  },
+  "assumptions": [
+    {
+      "id": "ASSUMPTION-1",
+      "name": "Addressable Demand",
+      "riskLevel": "CRITICAL",
+      "assumption": "OpenClaw's 2M+ users includes meaningful demand for a sovereign deployment tool",
+      "rationale": "2M MAU sounds large, but each filter (self-hosted, technical, security-conscious, willing to use CLI) cuts 80-90%. The actual addressable market may be tiny.",
+      "test": {
+        "method": "Measure GitHub clone → clawhq install conversion in first 1,000 unique visitors",
+        "dataSource": "GitHub repo analytics (clones, unique visitors) + install telemetry (curl script hit count)",
+        "trackingSetup": [
+          "Enable GitHub repo traffic analytics (Settings → Traffic)",
+          "Add unique visitor counter to curl install script (privacy-respecting: count only, no PII)",
+          "Track: unique visitors, unique clones, install script executions, successful installs",
+          "Funnel: visitor → clone → install attempt → successful install → 7-day retention"
+        ],
+        "passCriteria": ">5% clone-to-install conversion (50+ installs from first 1,000 unique visitors)",
+        "failCriteria": "<2% conversion — thesis is wrong",
+        "failResponse": "Pivot to authority play: content, upstream contribution, open-source reference implementation. Reassess product thesis.",
+        "ambiguousRange": "2-5% conversion — inconclusive, extend test to 2,000 visitors before deciding"
+      },
+      "deadline": "30 days after repo goes public",
+      "status": "not_started",
+      "latestData": null,
+      "reviewLog": []
+    },
+    {
+      "id": "ASSUMPTION-2",
+      "name": "Willingness to Pay",
+      "riskLevel": "CRITICAL",
+      "assumption": "Sovereignty audience will pay for monitoring that enhances (not compromises) sovereignty",
+      "rationale": "Sentinel is the first revenue experiment. If sovereign users won't pay for sovereign monitoring, the revenue model needs rethinking.",
+      "test": {
+        "method": "Sentinel landing page with pricing, measure signups",
+        "dataSource": "Landing page analytics (visits, signup form submissions)",
+        "trackingSetup": [
+          "Create Sentinel landing page at clawhq.com/sentinel (or subdomain)",
+          "Include: value proposition, pricing ($X/mo), signup form (email + 'I'd pay for this' commitment)",
+          "Track: page visits, time on page, signup form submissions, email confirmations",
+          "Funnel: landing page visit → read pricing → submit signup → confirm email"
+        ],
+        "passCriteria": "10+ signups in 60 days",
+        "failCriteria": "<3 signups — monitoring isn't the revenue model",
+        "failResponse": "Explore alternative revenue: premium blueprints, enterprise fleet management, or marketplace commission model.",
+        "ambiguousRange": "3-9 signups — weak signal, extend test 30 days and add direct user interviews"
+      },
+      "deadline": "60 days after Sentinel announced",
+      "status": "not_started",
+      "latestData": null,
+      "reviewLog": []
+    },
+    {
+      "id": "ASSUMPTION-3",
+      "name": "Foundation Absorption Risk",
+      "riskLevel": "CRITICAL",
+      "assumption": "OpenClaw foundation won't ship guided configuration tooling within 12 months",
+      "rationale": "Steinberger joined OpenAI Feb 2026, project at foundation. If the foundation ships 'openclaw configure --guided', ClawHQ's core differentiator erodes. This is an existential risk.",
+      "test": {
+        "method": "Monitor OpenClaw GitHub for configuration-related PRs, RFCs, and roadmap items",
+        "dataSource": "OpenClaw GitHub repository (PRs, issues, RFCs, roadmap discussions)",
+        "trackingSetup": [
+          "Set up GitHub watch on OpenClaw repo with notifications for PRs/issues",
+          "Search terms: 'configure', 'guided', 'setup wizard', 'init', 'blueprint', 'template', 'config tool'",
+          "Monitor OpenClaw Discord #development channel for roadmap discussions",
+          "Check OpenClaw foundation meeting notes (if public) monthly",
+          "Track: number of config-related PRs, RFC proposals, roadmap mentions"
+        ],
+        "passCriteria": "0-1 config-related PRs in 6 months — foundation is not prioritizing this",
+        "failCriteria": "2+ PRs targeting guided configuration — assumption under attack",
+        "failResponse": "Accelerate blueprint spec publication. Propose upstream collaboration to position ClawHQ as the reference implementation. Shift from competing with foundation to partnering.",
+        "ambiguousRange": "1 PR with no follow-up — monitor closely, increase review to biweekly"
+      },
+      "deadline": "Ongoing — monthly review, 12-month horizon",
+      "status": "not_started",
+      "latestData": null,
+      "reviewLog": []
+    }
+  ],
+  "meta": {
+    "createdAt": "2026-03-29",
+    "createdBy": "FEAT-125",
+    "sourceStrategy": "docs/STRATEGY.md § Assumption Tests",
+    "nextReviewDate": "30 days after repo goes public"
+  }
+}
