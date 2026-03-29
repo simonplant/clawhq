@@ -1,37 +1,35 @@
 {
-  "sprintId": "sprint-1774825580",
-  "startedAt": "2026-03-29T16:06:20-07:00",
+  "sprintId": "sprint-1774827042",
+  "startedAt": "2026-03-29T16:30:42-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-123",
-    "title": "OpenClaw Security Incident Tracker — public authority-building resource",
-    "intent": "ClawHQ must become the authoritative source on OpenClaw security incidents before launch. This builds the exact audience that will adopt ClawHQ and creates compounding discovery value that one-time launch events cannot.",
-    "description": "The OpenClaw security landscape is alarming: 9+ CVEs in first 2 months, 20-36% of ClawHub skills found malicious, 42,000+ exposed instances, 14 silent config landmines. Nobody is tracking this systematically. A public incident tracker builds authority, drives SEO, and creates the audience that ClawHQ serves. This should run IN PARALLEL with development, not as a contingency. Content: CVE tracker with impact analysis, malicious skill registry, exposed instance statistics (anonymized), breaking change log with migration guides. Can start as a curated markdown document and evolve into a live dashboard.",
+    "id": "FEAT-124",
+    "title": "Development-as-content pipeline — every commit generates discoverable content",
+    "intent": "ClawHQ's development work must produce discoverable content as a byproduct. One-time launch events decay in 72 hours. Compounding content solves the discovery problem without a separate content calendar.",
+    "description": "The evolved strategy identified discovery decay as a critical wound. The fix: every development action produces content. Bug fix → postmortem article. New blueprint → tutorial walkthrough. OpenClaw breaking change → 'what broke and how we fixed it.' This is a process change, not a feature. Implementation: (1) CHANGELOG entries written as narratives, not version lists, (2) template for converting commits/PRs into technical articles, (3) docs/articles/ directory for long-form content derived from development, (4) PROBLEMS.md already exists and is evergreen SEO — formalize the update process.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create docs/security/ directory for public security content",
-      "Compile initial CVE list: all known OpenClaw CVEs with severity, impact, and ClawHQ mitigation status",
-      "Compile malicious skill analysis: known malicious ClawHub items, detection patterns, ClawHQ's vetting response",
-      "Compile exposed instance data: methodology, current count, common misconfigurations found",
-      "Create docs/security/INCIDENTS.md as the public-facing tracker",
-      "Add RSS/JSON feed generation for automated consumption",
-      "Set up monthly update cadence (ties into development-as-content)",
-      "Cross-reference each incident with ClawHQ's specific mitigation (doctor check, config validation, etc.)"
+      "Create docs/articles/ directory for technical content",
+      "Create article template: title, problem, context, solution, what we learned, ClawHQ relevance",
+      "Rewrite CHANGELOG.md entries as narratives (not just version bumps)",
+      "Write first article from existing work: '14 Ways Your OpenClaw Agent Silently Breaks' (from PROBLEMS.md content)",
+      "Write second article from BUG-125: 'Why Regex YAML Patching Will Corrupt Your Docker Config'",
+      "Add CONTRIBUTING.md section on development-as-content expectations",
+      "Document the process: each PR that fixes a landmine or adds a blueprint should include a content draft"
     ],
     "acceptanceCriteria": [
-      "Public incident tracker exists with all known OpenClaw CVEs and their ClawHQ mitigation status",
-      "Each incident includes: description, severity, affected versions, ClawHQ mitigation, detection method",
-      "Tracker is linkable and SEO-friendly (individual incident anchors)",
-      "Content demonstrates deep OpenClaw security expertise",
-      "Monthly update cadence established"
+      "docs/articles/ directory exists with article template",
+      "At least 2 articles written from existing development work",
+      "CHANGELOG.md entries are narrative, not version lists",
+      "Process documented in CONTRIBUTING.md for future development"
     ],
     "scope": [
-      "docs/security/"
+      "docs/"
     ],
-    "startedAt": "2026-03-29T16:06:20-07:00",
+    "startedAt": "2026-03-29T16:30:42-07:00",
     "status": "passed",
-    "completedAt": "2026-03-29T16:16:45-07:00"
+    "completedAt": "2026-03-29T16:41:51-07:00"
   },
-  "completedAt": "2026-03-29T16:16:45-07:00",
+  "completedAt": "2026-03-29T16:41:51-07:00",
   "attempts": 1
 }

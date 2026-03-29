@@ -60,10 +60,12 @@
       "scope": [
         "docs/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Zero-cost discovery fix. The content already exists in the codebase — PROBLEMS.md, OPENCLAW-REFERENCE.md, bug fixes. This is about packaging it. Sprint-ready — content work, not code. The '14 ways' article could be the HN launch piece."
+      "groomingNotes": "STRATEGY: Zero-cost discovery fix. The content already exists in the codebase — PROBLEMS.md, OPENCLAW-REFERENCE.md, bug fixes. This is about packaging it. Sprint-ready — content work, not code. The '14 ways' article could be the HN launch piece.",
+      "passes": true,
+      "completedAt": "2026-03-29T16:41:51-07:00"
     },
     {
       "id": "FEAT-125",
