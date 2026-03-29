@@ -55,6 +55,8 @@ export interface BinaryInstall {
   readonly name: string;
   readonly url: string;
   readonly destPath: string;
+  /** Pinned SHA256 hash for supply-chain verification. */
+  readonly sha256: string;
 }
 
 /** Options for the build command. */

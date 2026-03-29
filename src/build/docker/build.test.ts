@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
 import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
 
+import { formatHashMismatch, validateBinarySha256 } from "./binary-manifest.js";
 import { computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
 import {
@@ -14,6 +15,11 @@ import {
 import { createManifest } from "./manifest.js";
 import { DEFAULT_POSTURE, getPostureConfig, POSTURE_LEVELS } from "./posture.js";
 import type { Stage1Config, Stage2Config } from "./types.js";
+
+// ── Test SHA256 Hashes ─────────────────────────────────────────────────────
+
+const VALID_SHA256 = "a".repeat(64);
+const VALID_SHA256_B = "b".repeat(64);
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -31,6 +37,7 @@ function stage2Config(): Stage2Config {
         name: "himalaya",
         url: "https://github.com/pimalaya/himalaya/releases/download/v1.0.0/himalaya-linux-amd64",
         destPath: "/usr/local/bin/himalaya",
+        sha256: VALID_SHA256,
       },
     ],
     workspaceTools: ["email", "tasks", "quote"],
@@ -146,11 +153,13 @@ describe("generateStage2Dockerfile", () => {
     expect(df).toContain("FROM openclaw:local");
   });
 
-  it("installs binary tools", () => {
+  it("installs binary tools with SHA256 verification", () => {
     const df = generateStage2Dockerfile("openclaw:local", stage2Config());
     expect(df).toContain("himalaya");
     expect(df).toContain("curl -fsSL");
+    expect(df).toContain("sha256sum -c");
     expect(df).toContain("chmod +x");
+    expect(df).toContain(VALID_SHA256);
   });
 
   it("copies workspace tools", () => {
@@ -233,7 +242,7 @@ describe("validateBinaryDestPath", () => {
 describe("generateStage2Dockerfile binary validation", () => {
   it("rejects binaries with http URLs", () => {
     const config: Stage2Config = {
-      binaries: [{ name: "bad", url: "http://evil.com/bin", destPath: "/usr/local/bin/bad" }],
+      binaries: [{ name: "bad", url: "http://evil.com/bin", destPath: "/usr/local/bin/bad", sha256: VALID_SHA256 }],
       workspaceTools: [],
       skills: [],
     };
@@ -242,11 +251,38 @@ describe("generateStage2Dockerfile binary validation", () => {
 
   it("rejects binaries with unsafe destPath", () => {
     const config: Stage2Config = {
-      binaries: [{ name: "bad", url: "https://example.com/bin", destPath: "/bin/bad\nRUN evil" }],
+      binaries: [{ name: "bad", url: "https://example.com/bin", destPath: "/bin/bad\nRUN evil", sha256: VALID_SHA256 }],
       workspaceTools: [],
       skills: [],
     };
     expect(() => generateStage2Dockerfile("base:tag", config)).toThrow("unsafe characters");
+  });
+
+  it("rejects binaries with invalid SHA256", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "bad", url: "https://example.com/bin", destPath: "/usr/local/bin/bad", sha256: "not-a-hash" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config)).toThrow("Invalid SHA256");
+  });
+
+  it("rejects binaries with uppercase SHA256", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "bad", url: "https://example.com/bin", destPath: "/usr/local/bin/bad", sha256: "A".repeat(64) }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config)).toThrow("Invalid SHA256");
+  });
+
+  it("rejects binaries with short SHA256", () => {
+    const config: Stage2Config = {
+      binaries: [{ name: "bad", url: "https://example.com/bin", destPath: "/usr/local/bin/bad", sha256: "abc123" }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config)).toThrow("Invalid SHA256");
   });
 });
 
@@ -528,5 +564,130 @@ describe("createManifest", () => {
 
     expect(manifest.builtAt >= before).toBe(true);
     expect(manifest.builtAt <= after).toBe(true);
+  });
+});
+
+// ── SHA256 Binary Pinning Tests ────────────────────────────────────────────
+
+describe("validateBinarySha256", () => {
+  it("accepts valid 64-char lowercase hex hash", () => {
+    expect(() => validateBinarySha256(VALID_SHA256)).not.toThrow();
+  });
+
+  it("accepts a realistic SHA256 hash", () => {
+    expect(() => validateBinarySha256("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")).not.toThrow();
+  });
+
+  it("rejects uppercase hex", () => {
+    expect(() => validateBinarySha256("A".repeat(64))).toThrow("Invalid SHA256");
+  });
+
+  it("rejects too-short hash", () => {
+    expect(() => validateBinarySha256("abc123")).toThrow("Invalid SHA256");
+  });
+
+  it("rejects too-long hash", () => {
+    expect(() => validateBinarySha256("a".repeat(65))).toThrow("Invalid SHA256");
+  });
+
+  it("rejects empty string", () => {
+    expect(() => validateBinarySha256("")).toThrow("Invalid SHA256");
+  });
+
+  it("rejects non-hex characters", () => {
+    expect(() => validateBinarySha256("g".repeat(64))).toThrow("Invalid SHA256");
+  });
+});
+
+describe("SHA256 in Dockerfile generation", () => {
+  it("emits sha256sum verification for each binary", () => {
+    const config: Stage2Config = {
+      binaries: [
+        { name: "tool-a", url: "https://example.com/a", destPath: "/usr/local/bin/a", sha256: VALID_SHA256 },
+        { name: "tool-b", url: "https://example.com/b", destPath: "/usr/local/bin/b", sha256: VALID_SHA256_B },
+      ],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+
+    // Both binaries have sha256sum verification
+    expect(df).toContain(`echo "${VALID_SHA256}  /usr/local/bin/a" | sha256sum -c -`);
+    expect(df).toContain(`echo "${VALID_SHA256_B}  /usr/local/bin/b" | sha256sum -c -`);
+  });
+
+  it("includes SHA256 in Dockerfile comment for auditability", () => {
+    const config: Stage2Config = {
+      binaries: [
+        { name: "himalaya", url: "https://example.com/himalaya", destPath: "/usr/local/bin/himalaya", sha256: VALID_SHA256 },
+      ],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+    expect(df).toContain(`# Install himalaya (SHA256: ${VALID_SHA256})`);
+  });
+
+  it("verification runs between download and chmod", () => {
+    const config: Stage2Config = {
+      binaries: [
+        { name: "tool", url: "https://example.com/tool", destPath: "/usr/local/bin/tool", sha256: VALID_SHA256 },
+      ],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+    const lines = df.split("\n");
+
+    const curlLine = lines.findIndex((l) => l.includes("curl -fsSL"));
+    const sha256Line = lines.findIndex((l) => l.includes("sha256sum -c"));
+    const chmodLine = lines.findIndex((l) => l.includes("chmod +x"));
+
+    expect(curlLine).toBeGreaterThan(-1);
+    expect(sha256Line).toBeGreaterThan(curlLine);
+    expect(chmodLine).toBeGreaterThan(sha256Line);
+  });
+
+  it("build fails if sha256 is missing (empty string)", () => {
+    const config: Stage2Config = {
+      binaries: [
+        { name: "bad", url: "https://example.com/bin", destPath: "/usr/local/bin/bad", sha256: "" },
+      ],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(() => generateStage2Dockerfile("base:tag", config)).toThrow("Invalid SHA256");
+  });
+});
+
+describe("SHA256 in cache detection", () => {
+  it("stage2 hash changes when binary sha256 changes", () => {
+    const config1: Stage2Config = {
+      binaries: [{ name: "tool", url: "https://example.com/tool", destPath: "/usr/local/bin/tool", sha256: VALID_SHA256 }],
+      workspaceTools: [],
+      skills: [],
+    };
+    const config2: Stage2Config = {
+      binaries: [{ name: "tool", url: "https://example.com/tool", destPath: "/usr/local/bin/tool", sha256: VALID_SHA256_B }],
+      workspaceTools: [],
+      skills: [],
+    };
+    expect(computeStage2Hash(config1)).not.toBe(computeStage2Hash(config2));
+  });
+});
+
+describe("formatHashMismatch", () => {
+  it("produces clear error with tool name, expected, and actual hash", () => {
+    const msg = formatHashMismatch({
+      name: "himalaya",
+      expected: VALID_SHA256,
+      actual: VALID_SHA256_B,
+      ok: false,
+    });
+    expect(msg).toContain("himalaya");
+    expect(msg).toContain(VALID_SHA256);
+    expect(msg).toContain(VALID_SHA256_B);
+    expect(msg).toContain("expected");
+    expect(msg).toContain("actual");
   });
 });

@@ -29,7 +29,7 @@ export function computeStage1Hash(config: Stage1Config): string {
 /** Compute a deterministic hash of Stage 2 inputs. */
 export function computeStage2Hash(config: Stage2Config): string {
   const data = JSON.stringify({
-    binaries: config.binaries.map((b) => ({ name: b.name, url: b.url })),
+    binaries: config.binaries.map((b) => ({ name: b.name, url: b.url, sha256: b.sha256 })),
     workspaceTools: [...config.workspaceTools].sort(),
     skills: [...config.skills].sort(),
   });

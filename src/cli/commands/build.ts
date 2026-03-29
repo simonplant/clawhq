@@ -5,7 +5,7 @@ import type { Command } from "commander";
 import chalk from "chalk";
 import ora from "ora";
 
-import { build, DEFAULT_POSTURE, readCurrentPosture } from "../../build/docker/index.js";
+import { build, DEFAULT_POSTURE, formatHashMismatch, readCurrentPosture, verifyBinaryHashes } from "../../build/docker/index.js";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
 import { checkDocker } from "../../build/installer/index.js";
 import { deploy, restart, shutdown } from "../../build/launcher/index.js";
@@ -20,7 +20,8 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
     .description("Two-stage Docker build with change detection and manifests")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--no-cache", "Force rebuild without cache")
-    .action(async (opts: { deployDir: string; cache: boolean }) => {
+    .option("--verify-hashes", "Download binaries and verify SHA256 hashes against pinned values")
+    .action(async (opts: { deployDir: string; cache: boolean; verifyHashes?: boolean }) => {
       if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
 
       const spinner = ora();
@@ -49,6 +50,46 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         workspaceTools: [],
         skills: [],
       };
+
+      // --verify-hashes: download and check binaries against pinned SHA256
+      if (opts.verifyHashes) {
+        if (stage2.binaries.length === 0) {
+          console.log(chalk.dim("  No binaries to verify."));
+        } else {
+          spinner.start("Verifying binary hashes…");
+          const report = await verifyBinaryHashes(stage2.binaries, (name, status) => {
+            if (status === "downloading") spinner.text = `Downloading ${name}…`;
+            else if (status === "verifying") spinner.text = `Verifying ${name}…`;
+          });
+
+          if (report.allPassed) {
+            spinner.succeed(`All ${report.results.length} binary hashes verified`);
+            for (const r of report.results) {
+              console.log(chalk.dim(`  ${chalk.green("✔")} ${r.name}: ${r.expected.slice(0, 16)}…`));
+            }
+          } else {
+            spinner.fail("Binary hash verification failed");
+            for (const r of report.results) {
+              if (r.ok) {
+                console.log(chalk.dim(`  ${chalk.green("✔")} ${r.name}: ${r.expected.slice(0, 16)}…`));
+              } else {
+                console.error(chalk.red(`  ${formatHashMismatch(r)}`));
+              }
+            }
+            process.exit(1);
+          }
+        }
+        return;
+      }
+
+      // Show binary verification status in build output
+      if (stage2.binaries.length > 0) {
+        console.log(chalk.bold("\nBinary SHA256 verification:"));
+        for (const binary of stage2.binaries) {
+          console.log(chalk.dim(`  ${chalk.green("✔")} ${binary.name}: ${binary.sha256.slice(0, 16)}… (pinned)`));
+        }
+        console.log("");
+      }
 
       spinner.start("Generating Dockerfile…");
 

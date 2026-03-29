@@ -1,40 +1,31 @@
 {
-  "sprintId": "sprint-1774741616",
-  "startedAt": "2026-03-28T16:46:56-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774749714",
+  "startedAt": "2026-03-28T19:01:54-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-111",
-    "title": "ClawWall content sanitization tool — prompt injection defense for all inbound external content",
-    "intent": "Every agent that reads external content (email, web, social media, RSS) must have a sanitization layer that filters prompt injection attacks before content reaches the LLM. This is not optional — it is a security-by-default requirement.",
-    "description": "Clawdius has a battle-tested 'sanitize' tool (ClawWall) that filters all inbound content from X, Tavily, Substack, email, and news through a prompt injection firewall implementing OWASP LLM01 Tier 1+2 defenses. It logs, quarantines, and strips malicious content. ClawHQ has no equivalent — generated tools pass raw external content directly to the LLM context.",
+    "id": "FEAT-115",
+    "title": "SHA256 binary pinning in Docker build — verify every downloaded tool binary against known hashes",
+    "intent": "Every binary downloaded during Docker build must be verified against a pinned SHA256 hash. Unverified downloads in a security-by-default platform are a supply chain vulnerability.",
+    "description": "ClawHQ's Docker build stage downloads tool binaries (himalaya, gh, curl, jq, ripgrep, etc.) via HTTPS URLs but does not verify checksums. A compromised CDN or GitHub release could inject malicious binaries into every ClawHQ-built agent.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Design the sanitize tool API: stdin filter, configurable strictness levels, quarantine log format",
-      "Implement sanitize as a generated tool (src/design/tools/sanitize.ts) included in every blueprint by default",
-      "Wire all external-facing tool generators (tavily, email, quote) to pipe through sanitize",
-      "Add quarantine log: ~/.clawhq/<agent>/security/quarantine.jsonl for blocked content",
-      "Add OWASP LLM01 Tier 1 patterns: system prompt overrides, role confusion, instruction injection",
-      "Add Tier 2 patterns: encoded payloads (base64, hex), Unicode homoglyphs, invisible characters",
-      "Add tests with real-world prompt injection examples",
-      "Add doctor check: verify sanitize is on PATH and quarantine log is writable"
+      "Add a binary manifest to the build config: tool name, version, URL, SHA256 hash",
+      "Update Dockerfile generator (src/build/docker/build.ts) to emit SHA256 verification after each download",
+      "Add hash verification: download → sha256sum → compare → fail build if mismatch",
+      "Populate manifest with current hashes for all tool binaries (himalaya, gh, curl, jq, rg, git, ffmpeg)",
+      "Add clawhq build --verify-hashes flag to re-check hashes against upstream (for maintainer use)",
+      "Add tests: build fails on hash mismatch, build succeeds on correct hash"
     ],
     "acceptanceCriteria": [
-      "A sanitize tool is generated and placed on PATH for every new agent deployment",
-      "All external-facing tools (email, tavily, web search) pipe content through sanitize",
-      "Known prompt injection patterns (OWASP LLM01 Tier 1+2) are detected and stripped",
-      "Quarantine log records all filtered content with timestamps and source attribution",
-      "clawhq doctor checks sanitize availability and log writability",
-      "Sanitize tool works as a standalone stdin filter (composable with any tool)"
+      "Every binary downloaded in Docker build is verified against a pinned SHA256 hash",
+      "Build fails immediately if any hash does not match",
+      "Binary manifest is human-readable and auditable",
+      "clawhq build output shows verification status for each binary",
+      "Hash mismatch produces a clear error naming the tool, expected hash, and actual hash"
     ],
     "scope": [
-      "src/design/tools/",
-      "src/secure/",
-      "src/operate/doctor/"
+      "src/build/docker/"
     ],
-    "startedAt": "2026-03-28T16:46:56-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-28T16:58:40-07:00"
-  },
-  "completedAt": "2026-03-28T16:58:40-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-28T19:01:54-07:00"
+  }
 }

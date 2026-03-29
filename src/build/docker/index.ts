@@ -36,6 +36,17 @@ export { checkCache, computeStage1Hash, computeStage2Hash, manifestPath } from "
 // Manifest
 export { createManifest, readManifest, writeManifest } from "./manifest.js";
 
+// Binary manifest (SHA256 pinning)
+export {
+  formatHashMismatch,
+  PINNED_BINARIES,
+  validateBinarySha256,
+} from "./binary-manifest.js";
+export type { BinaryVerificationResult, VerificationReport } from "./binary-manifest.js";
+
+// Hash verification
+export { verifyBinaryHashes } from "./verify-hashes.js";
+
 // Types
 export type {
   BinaryInstall,

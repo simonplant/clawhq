@@ -17,6 +17,7 @@ import {
 } from "../../config/paths.js";
 
 import type { Stage1Config, Stage2Config } from "./types.js";
+import { validateBinarySha256 } from "./binary-manifest.js";
 
 // ── Binary Validation ───────────────────────────────────────────────────────
 
@@ -102,13 +103,15 @@ export function generateStage2Dockerfile(
     "",
   ];
 
-  // Install binary tools from URLs
+  // Install binary tools from URLs with SHA256 verification
   for (const binary of config.binaries) {
     validateBinaryUrl(binary.url);
     validateBinaryDestPath(binary.destPath);
+    validateBinarySha256(binary.sha256);
     lines.push(
-      `# Install ${binary.name}`,
+      `# Install ${binary.name} (SHA256: ${binary.sha256})`,
       `RUN curl -fsSL "${binary.url}" -o "${binary.destPath}" && \\`,
+      `    echo "${binary.sha256}  ${binary.destPath}" | sha256sum -c - && \\`,
       `    chmod +x "${binary.destPath}"`,
       "",
     );
