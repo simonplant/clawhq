@@ -71,8 +71,12 @@ export {
   instanceRegistryPath,
   readInstanceRegistry,
   removeInstance,
+  updateInstanceSshHostKey,
   updateInstanceStatus,
 } from "./registry.js";
+
+// SSH host key collection
+export { collectHostKey } from "./ssh-keyscan.js";
 
 // Credentials
 export {

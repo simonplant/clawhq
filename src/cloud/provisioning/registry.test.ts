@@ -11,6 +11,7 @@ import {
   instanceRegistryPath,
   readInstanceRegistry,
   removeInstance,
+  updateInstanceSshHostKey,
   updateInstanceStatus,
 } from "./registry.js";
 import type { CloudProvider } from "./types.js";
@@ -169,6 +170,64 @@ describe("instance registry", () => {
     });
 
     expect(inst.id).toBe("custom-uuid-12345");
+  });
+
+  // ── sshHostKey persistence via updateInstanceSshHostKey ─────────────────
+
+  it("stores sshHostKey via updateInstanceSshHostKey", () => {
+    const inst = addInstance(testDir, {
+      name: "key-vm",
+      provider: "digitalocean",
+      providerInstanceId: "drop-key-1",
+      ipAddress: "10.0.0.30",
+      region: "nyc1",
+      size: "s-1vcpu-1gb",
+      status: "active",
+    });
+
+    expect(inst.sshHostKey).toBeUndefined();
+
+    const updated = updateInstanceSshHostKey(
+      testDir,
+      inst.id,
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey",
+    );
+
+    expect(updated?.sshHostKey).toBe("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey");
+
+    // Verify persisted to disk
+    const found = findInstance(testDir, inst.id);
+    expect(found?.sshHostKey).toBe("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey");
+  });
+
+  it("returns undefined when updating sshHostKey for nonexistent instance", () => {
+    addInstance(testDir, {
+      name: "other-vm",
+      provider: "aws",
+      providerInstanceId: "i-other",
+      ipAddress: "10.0.0.31",
+      region: "us-east-1",
+      size: "t3.micro",
+      status: "active",
+    });
+
+    const result = updateInstanceSshHostKey(testDir, "nonexistent-id", "ssh-ed25519 key");
+    expect(result).toBeUndefined();
+  });
+
+  it("preserves mode 0600 after updateInstanceSshHostKey", () => {
+    const inst = addInstance(testDir, {
+      name: "perm-vm",
+      provider: "digitalocean",
+      providerInstanceId: "drop-perm-1",
+      ipAddress: "10.0.0.32",
+      region: "nyc1",
+      size: "s-1vcpu-1gb",
+      status: "active",
+    });
+
+    updateInstanceSshHostKey(testDir, inst.id, "ssh-ed25519 AAAAC3key");
+    expect(registryMode()).toBe(0o600);
   });
 
   // ── AC3: All four providers confirm registry written with 0600 ───────────

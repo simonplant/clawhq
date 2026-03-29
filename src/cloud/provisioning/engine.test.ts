@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { findInstance } from "./registry.js";
 import type { ProviderAdapter, ProvisionOptions } from "./types.js";
 
 // ── Module-level mocks ─────────────────────────────────────────────────────
@@ -20,6 +21,13 @@ vi.mock("./providers/digitalocean.js", () => ({
 
 vi.mock("./health.js", () => ({
   pollInstanceHealth: () => Promise.resolve({ healthy: true, attempts: 1, elapsedMs: 100 }),
+}));
+
+// ssh-keyscan mock — allows per-test override
+let collectHostKeyResult: string | undefined = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockKey";
+
+vi.mock("./ssh-keyscan.js", () => ({
+  collectHostKey: () => Promise.resolve(collectHostKeyResult),
 }));
 
 // Registry mock — allows per-test override of addInstance to simulate write failures
@@ -47,6 +55,7 @@ beforeEach(() => {
 
 afterEach(() => {
   addInstanceOverride = undefined;
+  collectHostKeyResult = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockKey";
   rmSync(testDir, { recursive: true, force: true });
 });
 
@@ -196,5 +205,70 @@ describe("provision — registry write failure after VM creation (BUG-110)", () 
     expect(result.success).toBe(false);
     expect(result.error).toContain("SSH key path:");
     expect(result.error).toContain(".pem");
+  });
+});
+
+describe("provision — SSH host key collection (BUG-113)", () => {
+  it("stores sshHostKey in registry after successful provision", async () => {
+    mockAdapter = makeAdapterWith();
+    collectHostKeyResult = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIRealKey";
+
+    const { provision } = await import("./engine.js");
+    const result = await provision(opts());
+
+    expect(result.success).toBe(true);
+    expect(result.instanceId).toBeDefined();
+
+    const instance = findInstance(testDir, result.instanceId!);
+    expect(instance?.sshHostKey).toBe("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIRealKey");
+  });
+
+  it("completes provisioning even when ssh-keyscan fails (graceful degradation)", async () => {
+    mockAdapter = makeAdapterWith();
+    collectHostKeyResult = undefined;
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { provision } = await import("./engine.js");
+    const result = await provision(opts());
+
+    expect(result.success).toBe(true);
+    expect(result.instanceId).toBeDefined();
+
+    // sshHostKey should remain unset
+    const instance = findInstance(testDir, result.instanceId!);
+    expect(instance?.sshHostKey).toBeUndefined();
+
+    // Warning should be logged
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Could not collect SSH host key"),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it("does not attempt host key collection when health check fails", async () => {
+    // Override health mock for this test — unhealthy result
+    const healthMod = await import("./health.js");
+    const origPoll = healthMod.pollInstanceHealth;
+    vi.spyOn(healthMod, "pollInstanceHealth").mockResolvedValueOnce({
+      healthy: false,
+      attempts: 10,
+      elapsedMs: 60000,
+      error: "Timed out",
+    });
+
+    mockAdapter = makeAdapterWith();
+    collectHostKeyResult = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIShouldNotBeStored";
+
+    const { provision } = await import("./engine.js");
+    const result = await provision(opts());
+
+    expect(result.success).toBe(true);
+    expect(result.healthy).toBe(false);
+
+    // Host key should NOT be stored when health check fails
+    const instance = findInstance(testDir, result.instanceId!);
+    expect(instance?.sshHostKey).toBeUndefined();
   });
 });

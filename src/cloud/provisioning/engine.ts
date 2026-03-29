@@ -27,8 +27,10 @@ import {
   addInstance,
   findInstance,
   removeInstance,
+  updateInstanceSshHostKey,
   updateInstanceStatus,
 } from "./registry.js";
+import { collectHostKey } from "./ssh-keyscan.js";
 import { generateSnapshotInit } from "./snapshot-init.js";
 import { generateSshKeypair } from "./ssh-keygen.js";
 import type {
@@ -269,6 +271,15 @@ export async function provision(options: ProvisionOptions): Promise<ProvisionRes
   if (healthResult.healthy) {
     updateInstanceStatus(options.deployDir, instance.id, "active");
     report("health-check", "done", `Agent healthy (${healthResult.attempts} checks, ${Math.round(healthResult.elapsedMs / 1000)}s)`);
+
+    // Collect SSH host key for strict verification on future connections.
+    // Port 22 may lag behind port 443, so collectHostKey retries internally.
+    const hostKey = await collectHostKey(ipAddress, options.signal);
+    if (hostKey) {
+      updateInstanceSshHostKey(options.deployDir, instance.id, hostKey);
+    } else {
+      console.warn(`[provision] Could not collect SSH host key for ${ipAddress} — future connections will use accept-new fallback.`);
+    }
   } else {
     updateInstanceStatus(options.deployDir, instance.id, "unhealthy");
     report("health-check", "failed", healthResult.error ?? "Agent did not become healthy");

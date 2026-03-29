@@ -149,6 +149,35 @@ export function updateInstanceStatus(
   return found;
 }
 
+/** Update the SSH host key of an instance. Returns the updated instance or undefined. */
+export function updateInstanceSshHostKey(
+  deployDir: string,
+  instanceId: string,
+  sshHostKey: string,
+): ProvisionedInstance | undefined {
+  const registry = readInstanceRegistry(deployDir);
+  const now = new Date().toISOString();
+
+  let found: ProvisionedInstance | undefined;
+  const updated: ProvisionedInstance[] = registry.instances.map((inst) => {
+    if (inst.id === instanceId) {
+      found = {
+        ...inst,
+        sshHostKey,
+        updatedAt: now,
+      };
+      return found;
+    }
+    return inst;
+  });
+
+  if (found) {
+    writeInstanceRegistry(deployDir, { version: 1, instances: updated });
+  }
+
+  return found;
+}
+
 /** Remove an instance from the registry. Returns true if found and removed. */
 export function removeInstance(deployDir: string, instanceId: string): boolean {
   const registry = readInstanceRegistry(deployDir);

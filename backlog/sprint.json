@@ -1,35 +1,31 @@
 {
-  "sprintId": "sprint-1774749714",
-  "startedAt": "2026-03-28T19:01:54-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774753130",
+  "startedAt": "2026-03-28T19:58:50-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-115",
-    "title": "SHA256 binary pinning in Docker build — verify every downloaded tool binary against known hashes",
-    "intent": "Every binary downloaded during Docker build must be verified against a pinned SHA256 hash. Unverified downloads in a security-by-default platform are a supply chain vulnerability.",
-    "description": "ClawHQ's Docker build stage downloads tool binaries (himalaya, gh, curl, jq, ripgrep, etc.) via HTTPS URLs but does not verify checksums. A compromised CDN or GitHub release could inject malicious binaries into every ClawHQ-built agent.",
-    "sourceBacklog": "backlog.json",
+    "id": "BUG-113",
+    "title": "SSH host key never collected at provision time — deploy update uses accept-new on every connection",
+    "intent": "Every deploy update SSH connection must verify the remote host key against the key collected at provision time. accept-new must never be used for a known instance.",
+    "description": "In engine.ts, addInstance() is called without sshHostKey. The ProvisionedInstance type has a sshHostKey field and the registry supports it, but nothing collects the host key after provisioning. As a result, all deploy update SSH connections hit the buildHostKeyArgs() fallback in update.ts (lines 212-237) which uses StrictHostKeyChecking=accept-new with UserKnownHostsFile=/dev/null. This means: (1) the host key is trusted blindly on first connect, (2) the key is never stored, (3) every subsequent deploy update re-trusts blindly again. A MITM attacker who intercepts any deploy update connection can inject commands into the remote agent. Fix: after provisioning health check passes, run ssh-keyscan -t ed25519 <ipAddress> to collect the host public key, then store it in the registry. Note: registry currently only has updateInstanceStatus() — a new updateInstanceField() or extension is needed to write sshHostKey to an existing instance record.",
+    "sourceBacklog": "bugs.json",
     "steps": [
-      "Add a binary manifest to the build config: tool name, version, URL, SHA256 hash",
-      "Update Dockerfile generator (src/build/docker/build.ts) to emit SHA256 verification after each download",
-      "Add hash verification: download → sha256sum → compare → fail build if mismatch",
-      "Populate manifest with current hashes for all tool binaries (himalaya, gh, curl, jq, rg, git, ffmpeg)",
-      "Add clawhq build --verify-hashes flag to re-check hashes against upstream (for maintainer use)",
-      "Add tests: build fails on hash mismatch, build succeeds on correct hash"
+      "Read src/cloud/provisioning/engine.ts — find both addInstance() calls (lines ~172 and ~236) and the post-health-check block (line ~269)",
+      "Read src/cloud/provisioning/registry.ts — understand updateInstanceStatus() and how to extend it to support writing sshHostKey",
+      "Add a function to collect host key: spawn ssh-keyscan -t ed25519 <ipAddress>, parse output, return key string",
+      "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function. Use retry loop (max 5 attempts, 5s delay) — HTTP health check (port 443) passes before port 22 is open",
+      "If ssh-keyscan fails, log warning and continue — sshHostKey remains unset, accept-new fallback applies only in that case",
+      "Add tests covering: successful key collection and storage, ssh-keyscan failure graceful degradation, update.ts strict mode when key is present",
+      "Run npm test to confirm all tests pass"
     ],
     "acceptanceCriteria": [
-      "Every binary downloaded in Docker build is verified against a pinned SHA256 hash",
-      "Build fails immediately if any hash does not match",
-      "Binary manifest is human-readable and auditable",
-      "clawhq build output shows verification status for each binary",
-      "Hash mismatch produces a clear error naming the tool, expected hash, and actual hash"
+      "After a successful provision, the instance record in instances.json has a non-empty sshHostKey field",
+      "A subsequent clawhq deploy update connection to that instance uses StrictHostKeyChecking=yes (not accept-new)",
+      "If ssh-keyscan fails at provision time, provisioning still completes and a warning is logged — sshHostKey remains unset and accept-new fallback applies only in that case",
+      "Existing deploy update and provisioning tests pass with no regression"
     ],
     "scope": [
-      "src/build/docker/"
+      "src/cloud/provisioning/"
     ],
-    "startedAt": "2026-03-28T19:01:54-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-28T19:10:03-07:00"
-  },
-  "completedAt": "2026-03-28T19:10:03-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-28T19:58:50-07:00"
+  }
 }
