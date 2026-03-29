@@ -3,7 +3,11 @@
   "rewrites": [
     {
       "source": "/install",
-      "destination": "https://raw.githubusercontent.com/simonplant/clawhq/main/scripts/install.sh"
+      "destination": "https://raw.githubusercontent.com/real-clawdius-maximus/clawhq/main/install.sh"
+    },
+    {
+      "source": "/install.sh",
+      "destination": "https://raw.githubusercontent.com/real-clawdius-maximus/clawhq/main/install.sh"
     }
   ]
 }

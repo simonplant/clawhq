@@ -17,7 +17,7 @@ website/
 Any static host works. Recommended: Cloudflare Pages, Vercel, Netlify.
 
 **Cloudflare Pages:**
-1. Connect `simonplant/clawhq` repo
+1. Connect `real-clawdius-maximus/clawhq` repo
 2. Build command: (none — static files)
 3. Output directory: `website`
 4. Custom domain: `claw-hq.com`
