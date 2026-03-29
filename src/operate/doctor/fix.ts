@@ -5,8 +5,10 @@
  * internals. Fixes are conservative — they only change what's broken.
  */
 
-import { chmod, readFile, writeFile } from "node:fs/promises";
+import { chmod, copyFile, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+
+import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
 import { CONTAINER_USER, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
@@ -150,31 +152,29 @@ async function fixConfigLandmines(deployDir: string): Promise<FixResult> {
 /** Fix missing cap_drop: ALL in docker-compose.yml. */
 async function fixCapDrop(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "cap-drop";
-  return patchCompose(deployDir, name, (content) => {
-    // Add cap_drop: ALL if not present
-    if (!content.includes("cap_drop")) {
-      content = content.replace(
-        /(services:\s*\n\s+\w+:\s*\n)/,
-        "$1    cap_drop:\n      - ALL\n",
-      );
-      return { content, message: "Added cap_drop: [ALL] to compose" };
-    }
-    return null;
+  return patchCompose(deployDir, name, (compose) => {
+    const entry = getFirstServiceEntry(compose);
+    if (!entry) return null;
+    const [, svc] = entry;
+    if (Array.isArray(svc.cap_drop) && svc.cap_drop.includes("ALL")) return null;
+    svc.cap_drop = ["ALL"];
+    return { message: "Added cap_drop: [ALL] to compose" };
   });
 }
 
 /** Fix missing no-new-privileges in docker-compose.yml. */
 async function fixNoNewPrivileges(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "no-new-privileges";
-  return patchCompose(deployDir, name, (content) => {
-    if (!content.includes("no-new-privileges")) {
-      content = content.replace(
-        /(services:\s*\n\s+\w+:\s*\n)/,
-        "$1    security_opt:\n      - no-new-privileges\n",
-      );
-      return { content, message: "Added security_opt: [no-new-privileges] to compose" };
+  return patchCompose(deployDir, name, (compose) => {
+    const entry = getFirstServiceEntry(compose);
+    if (!entry) return null;
+    const [, svc] = entry;
+    if (Array.isArray(svc.security_opt) && svc.security_opt.includes("no-new-privileges")) {
+      return null;
     }
-    return null;
+    const existing = Array.isArray(svc.security_opt) ? svc.security_opt : [];
+    svc.security_opt = [...existing, "no-new-privileges"];
+    return { message: "Added security_opt: [no-new-privileges] to compose" };
   });
 }
 
@@ -182,16 +182,14 @@ async function fixNoNewPrivileges(deployDir: string): Promise<FixResult> {
 async function fixUserUid(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "user-uid";
   const expectedUid = CONTAINER_USER.split(":")[0];
-  return patchCompose(deployDir, name, (content) => {
-    const uidPattern = new RegExp(`user:\\s*["']?${expectedUid}`);
-    if (!uidPattern.test(content)) {
-      content = content.replace(
-        /(services:\s*\n\s+\w+:\s*\n)/,
-        `$1    user: "${CONTAINER_USER}"\n`,
-      );
-      return { content, message: `Set user: "${CONTAINER_USER}" in compose` };
-    }
-    return null;
+  return patchCompose(deployDir, name, (compose) => {
+    const entry = getFirstServiceEntry(compose);
+    if (!entry) return null;
+    const [, svc] = entry;
+    const current = String(svc.user ?? "");
+    if (current.startsWith(expectedUid)) return null;
+    svc.user = CONTAINER_USER;
+    return { message: `Set user: "${CONTAINER_USER}" in compose` };
   });
 }
 
@@ -226,19 +224,44 @@ async function fixToolAccessGrants(deployDir: string): Promise<FixResult> {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Extract the first [serviceName, serviceConfig] from compose.services dynamically. */
+function getFirstServiceEntry(
+  compose: Record<string, unknown>,
+): [string, Record<string, unknown>] | null {
+  const services = compose["services"] as Record<string, unknown> | undefined;
+  if (!services || typeof services !== "object") return null;
+  const keys = Object.keys(services);
+  if (keys.length === 0) return null;
+  const name = keys[0];
+  const svc = services[name] as Record<string, unknown>;
+  if (!svc || typeof svc !== "object") return null;
+  return [name, svc];
+}
+
+/**
+ * Parse compose file as YAML, apply patcher to the parsed object, validate
+ * round-trip, create backup, and write. Patcher returns {message} on change
+ * or null if no change needed.
+ */
 async function patchCompose(
   deployDir: string,
   name: DoctorCheckName,
-  patcher: (content: string) => { content: string; message: string } | null,
+  patcher: (compose: Record<string, unknown>) => { message: string } | null,
 ): Promise<FixResult> {
   const composePath = join(deployDir, "engine", "docker-compose.yml");
+  const backupPath = composePath + ".bak";
   try {
-    const content = await readFile(composePath, "utf-8");
-    const result = patcher(content);
+    const raw = await readFile(composePath, "utf-8");
+    const compose = yamlParse(raw) as Record<string, unknown>;
+    const result = patcher(compose);
     if (!result) {
       return { name, success: true, message: "Already set in compose file" };
     }
-    await writeFile(composePath, result.content, "utf-8");
+    const output = yamlStringify(compose);
+    // Validate round-trip: re-parse output to ensure it's valid YAML
+    yamlParse(output);
+    await copyFile(composePath, backupPath);
+    await writeFile(composePath, output, "utf-8");
     return { name, success: true, message: result.message };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

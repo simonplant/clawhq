@@ -2,11 +2,12 @@
  * Tests for doctor diagnostics, auto-fix, and formatters.
  */
 
-import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { parse as yamlParse } from "yaml";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
@@ -396,6 +397,127 @@ describe("auto-fix", { timeout: 30_000 }, () => {
 
     expect(fixReport.fixes.length).toBe(0);
     expect(fixReport.fixed).toBe(0);
+  });
+});
+
+// ── YAML-Based Compose Patching Tests ──────────────────────────────────────
+
+/** Synthetic failed check results to trigger compose fixers (Docker not required). */
+function failedComposeChecks(): DoctorCheckResult[] {
+  return [
+    { name: "cap-drop", passed: false, severity: "error", message: "Missing cap_drop", fixable: true },
+    { name: "no-new-privileges", passed: false, severity: "error", message: "Missing no-new-privileges", fixable: true },
+    { name: "user-uid", passed: false, severity: "error", message: "Missing user", fixable: true },
+  ];
+}
+
+describe("YAML-based compose patching", { timeout: 30_000 }, () => {
+  it("fixes compose with underscore service name", async () => {
+    const compose = `
+services:
+  my_custom_agent:
+    image: openclaw:custom
+    volumes:
+      - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+
+    const fixReport = await runFixes(testDir, failedComposeChecks());
+
+    const capFix = fixReport.fixes.find((f) => f.name === "cap-drop");
+    expect(capFix).toBeDefined();
+    expect(capFix?.success).toBe(true);
+
+    // Verify the output is valid YAML with the fix applied
+    const patched = await readFile(join(testDir, "engine", "docker-compose.yml"), "utf-8");
+    const parsed = yamlParse(patched) as Record<string, unknown>;
+    const services = parsed["services"] as Record<string, unknown>;
+    const svc = services["my_custom_agent"] as Record<string, unknown>;
+    expect(svc["cap_drop"]).toEqual(["ALL"]);
+  });
+
+  it("fixes compose with multi-service file", async () => {
+    const compose = `
+services:
+  openclaw:
+    image: openclaw:custom
+    volumes:
+      - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+
+    const fixReport = await runFixes(testDir, failedComposeChecks());
+
+    const capFix = fixReport.fixes.find((f) => f.name === "cap-drop");
+    expect(capFix?.success).toBe(true);
+
+    // Verify both services still exist in output
+    const patched = await readFile(join(testDir, "engine", "docker-compose.yml"), "utf-8");
+    const parsed = yamlParse(patched) as Record<string, unknown>;
+    const services = parsed["services"] as Record<string, unknown>;
+    expect(services["openclaw"]).toBeDefined();
+    expect(services["redis"]).toBeDefined();
+    // Fix applied to first service
+    const svc = services["openclaw"] as Record<string, unknown>;
+    expect(svc["cap_drop"]).toEqual(["ALL"]);
+  });
+
+  it("creates backup before modifying compose file", async () => {
+    const compose = `services:
+  openclaw:
+    image: openclaw:custom
+    volumes:
+      - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+
+    // Run only one fix to verify backup contains original content
+    const singleCheck: DoctorCheckResult[] = [
+      { name: "cap-drop", passed: false, severity: "error", message: "Missing", fixable: true },
+    ];
+    await runFixes(testDir, singleCheck);
+
+    // Backup file should exist
+    const backupPath = join(testDir, "engine", "docker-compose.yml.bak");
+    await expect(access(backupPath)).resolves.toBeUndefined();
+
+    // Backup should contain original content (pre-fix)
+    const backup = await readFile(backupPath, "utf-8");
+    expect(backup).toBe(compose);
+  });
+
+  it("produces valid YAML after round-trip (output parses back correctly)", async () => {
+    const compose = `
+services:
+  my_app:
+    image: openclaw:custom
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
+`;
+    await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
+
+    await runFixes(testDir, failedComposeChecks());
+
+    const patched = await readFile(join(testDir, "engine", "docker-compose.yml"), "utf-8");
+    // Must parse without throwing
+    const parsed = yamlParse(patched) as Record<string, unknown>;
+    const services = parsed["services"] as Record<string, unknown>;
+    const svc = services["my_app"] as Record<string, unknown>;
+    // All three fixes should have been applied
+    expect(svc["cap_drop"]).toEqual(["ALL"]);
+    expect(svc["security_opt"]).toContain("no-new-privileges");
+    expect(svc["user"]).toBe("1000:1000");
+    // Original fields preserved
+    expect(svc["image"]).toBe("openclaw:custom");
+    expect(svc["ports"]).toEqual(["8080:8080"]);
   });
 });
 

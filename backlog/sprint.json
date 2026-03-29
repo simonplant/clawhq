@@ -1,35 +1,33 @@
 {
-  "sprintId": "sprint-1774753130",
-  "startedAt": "2026-03-28T19:58:50-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774824947",
+  "startedAt": "2026-03-29T15:55:47-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "BUG-113",
-    "title": "SSH host key never collected at provision time — deploy update uses accept-new on every connection",
-    "intent": "Every deploy update SSH connection must verify the remote host key against the key collected at provision time. accept-new must never be used for a known instance.",
-    "description": "In engine.ts, addInstance() is called without sshHostKey. The ProvisionedInstance type has a sshHostKey field and the registry supports it, but nothing collects the host key after provisioning. As a result, all deploy update SSH connections hit the buildHostKeyArgs() fallback in update.ts (lines 212-237) which uses StrictHostKeyChecking=accept-new with UserKnownHostsFile=/dev/null. This means: (1) the host key is trusted blindly on first connect, (2) the key is never stored, (3) every subsequent deploy update re-trusts blindly again. A MITM attacker who intercepts any deploy update connection can inject commands into the remote agent. Fix: after provisioning health check passes, run ssh-keyscan -t ed25519 <ipAddress> to collect the host public key, then store it in the registry. Note: registry currently only has updateInstanceStatus() — a new updateInstanceField() or extension is needed to write sshHostKey to an existing instance record.",
+    "id": "BUG-125",
+    "title": "Doctor auto-fix uses regex-based YAML patching — can corrupt docker-compose files",
+    "intent": "Doctor auto-fix must never corrupt configuration files. YAML patching must use a proper parser, not regex string manipulation.",
+    "description": "Code review found that src/operate/doctor/fix.ts uses naive regex like /(services:\\s*\\n\\s+\\w+:\\s*\\n)/ to locate service blocks and insert cap_drop/security_opt. This breaks on service names with underscores, inconsistent indentation, or multi-service compose files. Failed patches silently leave config broken.",
     "sourceBacklog": "bugs.json",
     "steps": [
-      "Read src/cloud/provisioning/engine.ts — find both addInstance() calls (lines ~172 and ~236) and the post-health-check block (line ~269)",
-      "Read src/cloud/provisioning/registry.ts — understand updateInstanceStatus() and how to extend it to support writing sshHostKey",
-      "Add a function to collect host key: spawn ssh-keyscan -t ed25519 <ipAddress>, parse output, return key string",
-      "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function. Use retry loop (max 5 attempts, 5s delay) — HTTP health check (port 443) passes before port 22 is open",
-      "If ssh-keyscan fails, log warning and continue — sshHostKey remains unset, accept-new fallback applies only in that case",
-      "Add tests covering: successful key collection and storage, ssh-keyscan failure graceful degradation, update.ts strict mode when key is present",
-      "Run npm test to confirm all tests pass"
+      "Read src/operate/doctor/fix.ts — understand patchCompose helper (lines 229-247) and the three regex-based fixers: fixCapDrop (151-164), fixNoNewPrivileges (167-179), fixUserUid (182-196)",
+      "Add import for yaml package (already a dependency — used in src/build/launcher/firewall.ts): import { parse as yamlParse, stringify as yamlStringify } from 'yaml'",
+      "Rewrite patchCompose helper: (1) read file as string, (2) create backup as docker-compose.yml.bak before any modification, (3) parse with yamlParse(), (4) pass parsed object to patcher callback (new signature: compose object → {message} | null), (5) serialize with yamlStringify(), (6) validate round-trip by re-parsing output — only write if valid",
+      "Add getFirstServiceEntry helper that extracts [serviceName, serviceConfig] from compose.services dynamically — no hardcoded 'openclaw' key (future-proofs for multi-instance where service name may vary)",
+      "Rewrite fixCapDrop: set svc.cap_drop = ['ALL'] if missing or not an array containing 'ALL'",
+      "Rewrite fixNoNewPrivileges: ensure svc.security_opt is an array containing 'no-new-privileges'",
+      "Rewrite fixUserUid: set svc.user = CONTAINER_USER if not matching expected UID pattern",
+      "Add tests: compose file with underscore service name, multi-service compose file, backup file creation verification, round-trip validation (output YAML parses back correctly)",
+      "Run npm test to confirm all existing tests pass with no regression"
     ],
     "acceptanceCriteria": [
-      "After a successful provision, the instance record in instances.json has a non-empty sshHostKey field",
-      "A subsequent clawhq deploy update connection to that instance uses StrictHostKeyChecking=yes (not accept-new)",
-      "If ssh-keyscan fails at provision time, provisioning still completes and a warning is logged — sshHostKey remains unset and accept-new fallback applies only in that case",
-      "Existing deploy update and provisioning tests pass with no regression"
+      "Doctor auto-fix uses yaml package (parse/stringify) instead of regex for all compose file modifications",
+      "Patched docker-compose files are valid YAML after auto-fix — verified by round-trip parse before writing",
+      "Auto-fix works correctly with underscore service names and multi-service files — service is found dynamically, not by hardcoded key",
+      "Auto-fix creates a backup (docker-compose.yml.bak) before modifying compose files"
     ],
     "scope": [
-      "src/cloud/provisioning/"
+      "src/operate/doctor/fix.ts"
     ],
-    "startedAt": "2026-03-28T19:58:50-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-28T20:06:34-07:00"
-  },
-  "completedAt": "2026-03-28T20:06:34-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-29T15:55:47-07:00"
+  }
 }
