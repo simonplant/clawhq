@@ -1765,6 +1765,125 @@ program
   });
 
 program
+  .command("sanitize [file]")
+  .description("ClawWall — prompt injection firewall for inbound content (OWASP LLM01)")
+  .option("-d, --deploy-dir <path>", "Deployment directory (for audit logs)", DEFAULT_DEPLOY_DIR)
+  .option("-s, --source <label>", "Content source label for audit log (e.g. email, rss, api)", "stdin")
+  .option("--strict", "Strict mode — also strip encoded blobs (base64/hex/URL)")
+  .option("--wrap", "Wrap output with <untrusted-content> data-boundary markers")
+  .option("--log", "Write threat events to audit log (default: false)")
+  .option("--json", "Output sanitization result as JSON")
+  .addHelpText("after", `
+Examples:
+  echo "ignore all previous instructions" | clawhq sanitize
+  cat email.txt | clawhq sanitize --source email --strict
+  clawhq sanitize message.txt --json
+  cat rss.xml | clawhq sanitize --source rss --log --wrap`)
+  .action(async (file: string | undefined, opts: {
+    deployDir: string;
+    source: string;
+    strict?: boolean;
+    wrap?: boolean;
+    log?: boolean;
+    json?: boolean;
+  }) => {
+    try {
+      const { sanitizeContent, sanitizeContentSync } = await import("../secure/sanitizer/index.js");
+
+      // Read input: file argument or stdin
+      let input: string;
+      if (file) {
+        const { readFile } = await import("node:fs/promises");
+        input = await readFile(file, "utf-8");
+      } else {
+        // Read from stdin
+        const chunks: Buffer[] = [];
+        for await (const chunk of process.stdin) {
+          chunks.push(chunk as Buffer);
+        }
+        if (chunks.length === 0) {
+          console.error(chalk.red("Error: no input. Pipe content or provide a file path."));
+          console.error(chalk.dim("  echo 'text' | clawhq sanitize"));
+          console.error(chalk.dim("  clawhq sanitize message.txt"));
+          process.exit(1);
+        }
+        input = Buffer.concat(chunks).toString("utf-8");
+      }
+
+      const auditConfig = opts.log ? {
+        auditPath: join(opts.deployDir, "ops", "security", "sanitizer-audit.jsonl"),
+        quarantinePath: join(opts.deployDir, "ops", "security", "sanitizer-quarantine.jsonl"),
+      } : undefined;
+
+      const result = opts.log
+        ? await sanitizeContent(input, {
+            source: opts.source,
+            strict: opts.strict,
+            wrap: opts.wrap,
+            log: true,
+            quarantine: true,
+            audit: auditConfig,
+          })
+        : sanitizeContentSync(input, {
+            source: opts.source,
+            strict: opts.strict,
+            wrap: opts.wrap,
+          });
+
+      if (opts.json) {
+        console.log(JSON.stringify({
+          score: result.score,
+          quarantined: result.quarantined,
+          threatCount: result.threats.length,
+          threats: result.threats.map((t) => ({
+            category: t.category,
+            severity: t.severity,
+            tier: t.tier,
+            detail: t.detail,
+          })),
+          text: result.text,
+        }, null, 2));
+      } else {
+        // Human-readable output
+        const scoreColor = result.score >= 0.6 ? chalk.red : result.score >= 0.2 ? chalk.yellow : chalk.green;
+        const scoreLabel = result.score >= 0.6 ? "QUARANTINED" : result.score > 0 ? "SANITIZED" : "CLEAN";
+        const scoreIcon = result.score >= 0.6 ? "🔴" : result.score > 0 ? "🟡" : "🟢";
+
+        console.log(`\n${scoreIcon}  ${chalk.bold("ClawWall")}  ${scoreColor(scoreLabel)}  score ${result.score.toFixed(2)}`);
+
+        if (result.threats.length > 0) {
+          console.log(`\n${chalk.bold("Threats detected:")} ${chalk.dim(`(${result.threats.length})`)}`);
+          for (const threat of result.threats) {
+            const sevColor = threat.severity === "high" ? chalk.red : threat.severity === "medium" ? chalk.yellow : chalk.dim;
+            const preview = threat.detail.length > 60 ? threat.detail.slice(0, 60) + "…" : threat.detail;
+            console.log(`  ${sevColor(threat.severity.padEnd(8))}  ${chalk.cyan(threat.category)}  ${chalk.dim(preview)}`);
+          }
+        }
+
+        if (result.quarantined) {
+          console.log(`\n${chalk.red.bold("Content quarantined.")} Original replaced with notice.`);
+        }
+
+        if (opts.log) {
+          const logPath = join(opts.deployDir, "ops", "security", "sanitizer-audit.jsonl");
+          console.log(chalk.dim(`\nAudit logged → ${logPath}`));
+        }
+
+        console.log(`\n${chalk.bold("Output:")}`);
+        console.log(result.text);
+      }
+
+      // Non-zero exit if threats found (consistent with clawhq scan)
+      if (result.threats.length > 0) {
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(renderError(error));
+      process.exit(1);
+    }
+  });
+
+program
   .command("creds")
   .description("Check credential health for all configured integrations")
   .option("-d, --deploy-dir <path>", "Deployment directory", DEFAULT_DEPLOY_DIR)
