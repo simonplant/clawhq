@@ -1,35 +1,34 @@
 {
-  "sprintId": "sprint-1774827042",
-  "startedAt": "2026-03-29T16:30:42-07:00",
+  "sprintId": "sprint-1774828134",
+  "startedAt": "2026-03-29T16:48:54-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-124",
-    "title": "Development-as-content pipeline — every commit generates discoverable content",
-    "intent": "ClawHQ's development work must produce discoverable content as a byproduct. One-time launch events decay in 72 hours. Compounding content solves the discovery problem without a separate content calendar.",
-    "description": "The evolved strategy identified discovery decay as a critical wound. The fix: every development action produces content. Bug fix → postmortem article. New blueprint → tutorial walkthrough. OpenClaw breaking change → 'what broke and how we fixed it.' This is a process change, not a feature. Implementation: (1) CHANGELOG entries written as narratives, not version lists, (2) template for converting commits/PRs into technical articles, (3) docs/articles/ directory for long-form content derived from development, (4) PROBLEMS.md already exists and is evergreen SEO — formalize the update process.",
+    "id": "FEAT-125",
+    "title": "Assumption validation framework — concrete tests for the 3 riskiest strategic assumptions",
+    "intent": "Strategy without validation is fiction. The 3 highest-risk assumptions must have concrete pass/fail criteria, measurement methods, and deadlines so the team knows when to pivot.",
+    "description": "The evolved strategy identified 7 assumptions, 3 critical. Each needs a concrete test: (1) Addressable demand — measure clone→install conversion in first 1,000 visitors (pass: >5%), (2) Willingness to pay — Sentinel landing page signups (pass: 10+ in 60 days), (3) Foundation absorption — monitor OpenClaw PRs for guided config (signal: 2+ PRs in 6 months). Implementation: tracking dashboard or simple JSON file that records metrics against targets, reviewed monthly.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create docs/articles/ directory for technical content",
-      "Create article template: title, problem, context, solution, what we learned, ClawHQ relevance",
-      "Rewrite CHANGELOG.md entries as narratives (not just version bumps)",
-      "Write first article from existing work: '14 Ways Your OpenClaw Agent Silently Breaks' (from PROBLEMS.md content)",
-      "Write second article from BUG-125: 'Why Regex YAML Patching Will Corrupt Your Docker Config'",
-      "Add CONTRIBUTING.md section on development-as-content expectations",
-      "Document the process: each PR that fixes a landmine or adds a blueprint should include a content draft"
+      "Create backlog/assumptions.json with the 3 testable assumptions, pass/fail criteria, and deadlines",
+      "Add GitHub repo analytics tracking plan (stars, clones, installs via curl script)",
+      "Design Sentinel landing page for willingness-to-pay test",
+      "Set up OpenClaw GitHub watch for configuration-related PRs/RFCs",
+      "Document review cadence: monthly assumption review, update assumptions.json with latest data"
     ],
     "acceptanceCriteria": [
-      "docs/articles/ directory exists with article template",
-      "At least 2 articles written from existing development work",
-      "CHANGELOG.md entries are narrative, not version lists",
-      "Process documented in CONTRIBUTING.md for future development"
+      "backlog/assumptions.json documents all 3 assumptions with pass/fail criteria and deadlines",
+      "Each assumption has a concrete measurement method that doesn't require guessing",
+      "Monthly review cadence is documented",
+      "First review date set for 30 days after repo goes public"
     ],
     "scope": [
+      "backlog/",
       "docs/"
     ],
-    "startedAt": "2026-03-29T16:30:42-07:00",
+    "startedAt": "2026-03-29T16:48:54-07:00",
     "status": "passed",
-    "completedAt": "2026-03-29T16:41:51-07:00"
+    "completedAt": "2026-03-29T16:54:06-07:00"
   },
-  "completedAt": "2026-03-29T16:41:51-07:00",
+  "completedAt": "2026-03-29T16:54:06-07:00",
   "attempts": 1
 }
