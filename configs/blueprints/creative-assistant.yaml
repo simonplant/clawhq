@@ -1,0 +1,151 @@
+name: Creative Assistant
+version: "1.0.0"
+
+use_case_mapping:
+  replaces: ChatGPT Plus
+  tagline: "Research, writing, and brainstorm partner for creative work — video, music, art"
+  description: >
+    Creative partner for video editors, musicians, writers, and artists.
+    Handles research, client communications, project brainstorming, and writing.
+    Runs locally on your hardware — your creative ideas never train someone else's model.
+  day_in_the_life: >
+    You're editing a documentary and need B-roll ideas for a scene about urban solitude.
+    You message your agent: "B-roll ideas, urban isolation, dusk, London streets, moody."
+    It returns 12 specific, shootable concepts with lighting notes. Later, you need to
+    pitch a music licensing deal to an ad agency — the agent drafts the email in your voice,
+    using language from your previous successful pitches. Your creative history builds up
+    over months: your clients, your style, your recurring projects. Nobody else has access
+    to any of it.
+
+customization_questions:
+  - id: creative_domain
+    prompt: "What's your primary creative work? (e.g. video editing, music production, photography)"
+    type: input
+    default: "Video editing and music"
+  - id: communication_style
+    prompt: "How should your assistant communicate?"
+    type: select
+    options:
+      - "Brief — key points only, I'll ask for more"
+      - "Conversational — friendly and warm"
+      - "Detailed — thorough, give me the full picture"
+  - id: client_context
+    prompt: "Do you have regular clients or work independently?"
+    type: select
+    options:
+      - "Regular clients — I want it to remember them and their preferences"
+      - "Freelance/varied — different clients per project"
+      - "Mostly personal projects — no client context needed"
+
+personality:
+  tone: warm
+  style: "creative, collaborative, enthusiastic about craft — peer, not assistant"
+  relationship: creative collaborator
+  boundaries: "supports ideas without judging taste, flags practical issues honestly"
+  dimensions:
+    directness: 3
+    warmth: 4
+    verbosity: 3
+    proactivity: 2
+    caution: 2
+    formality: 2
+    analyticalDepth: 3
+
+security_posture:
+  posture: standard
+  egress: restricted
+  egress_domains:
+    - api.anthropic.com
+    - api.tavily.com
+  identity_mount: read-only
+
+monitoring:
+  heartbeat_frequency: "60min"
+  checks:
+    - research
+  quiet_hours: "23:00-08:00"
+  alert_on:
+    - credential_expiry
+    - memory_bloat
+
+memory_policy:
+  hot_max: "150KB"
+  hot_retention: "14d"
+  warm_retention: "180d"
+  cold_retention: "365d"
+  summarization: conservative
+
+cron_config:
+  heartbeat: "*/60 waking"
+  work_session: "*/120 waking"
+  morning_brief: "09:30"
+
+autonomy_model:
+  default: low
+  requires_approval:
+    - public_posts
+    - sending_messages
+    - account_changes
+    - file_writes
+
+model_routing_strategy:
+  default_provider: cloud
+  cloud_provider: anthropic
+  cloud_model: claude-haiku-3-5
+  cloud_escalation_categories:
+    - long_form_writing
+    - deep_research
+    - complex_brainstorm
+  escalation_model: claude-sonnet-4-5
+  quality_threshold: medium
+
+integration_requirements:
+  required:
+    - messaging
+  recommended:
+    - research
+  optional:
+    - notes
+    - email
+
+channels:
+  supported:
+    - telegram
+    - discord
+  default: telegram
+
+skill_bundle:
+  included:
+    - construct
+  recommended:
+    - web-search
+
+toolbelt:
+  role: "Creative collaborator"
+  description: "Research, writing, brainstorming, and project support for creative professionals"
+  tools:
+    - name: tavily
+      category: research
+      required: false
+      description: "Web research — trends, references, licensing info, techniques"
+    - name: tasks
+      category: core
+      required: true
+      description: "Local task queue for project tracking and follow-up"
+  skills:
+    - name: construct
+      required: false
+      description: "Self-improvement — agent expands capabilities based on your work patterns"
+
+infrastructure_recommendation:
+  minimum:
+    provider: digitalocean
+    plan: "Basic — $6/mo (1vCPU, 1GB RAM)"
+    notes: "Sufficient for API-backed mode (no local Ollama)"
+  local_alternative:
+    provider: self-hosted
+    notes: "Any machine with 4GB RAM and Docker installed — old laptop, Mac mini, NUC"
+  estimated_monthly_cost:
+    hosting: "$0-6"
+    api_keys: "$5-15 (Anthropic, light usage)"
+    total: "$5-21/mo depending on usage"
