@@ -2,39 +2,6 @@
   "description": "Bugs and tech debt",
   "items": [
     {
-      "id": "BUG-113",
-      "title": "SSH host key never collected at provision time — deploy update uses accept-new on every connection",
-      "intent": "Every deploy update SSH connection must verify the remote host key against the key collected at provision time. accept-new must never be used for a known instance.",
-      "description": "In engine.ts, addInstance() is called without sshHostKey. The ProvisionedInstance type has a sshHostKey field and the registry supports it, but nothing collects the host key after provisioning. As a result, all deploy update SSH connections hit the buildHostKeyArgs() fallback in update.ts (lines 212-237) which uses StrictHostKeyChecking=accept-new with UserKnownHostsFile=/dev/null. This means: (1) the host key is trusted blindly on first connect, (2) the key is never stored, (3) every subsequent deploy update re-trusts blindly again. A MITM attacker who intercepts any deploy update connection can inject commands into the remote agent. Fix: after provisioning health check passes, run ssh-keyscan -t ed25519 <ipAddress> to collect the host public key, then store it in the registry. Note: registry currently only has updateInstanceStatus() — a new updateInstanceField() or extension is needed to write sshHostKey to an existing instance record.",
-      "priority": "must",
-      "steps": [
-        "Read src/cloud/provisioning/engine.ts — find both addInstance() calls (lines ~172 and ~236) and the post-health-check block (line ~269)",
-        "Read src/cloud/provisioning/registry.ts — understand updateInstanceStatus() and how to extend it to support writing sshHostKey",
-        "Add a function to collect host key: spawn ssh-keyscan -t ed25519 <ipAddress>, parse output, return key string",
-        "In engine.ts after health check passes (line ~269), call ssh-keyscan and store result in registry via new/extended registry function. Use retry loop (max 5 attempts, 5s delay) — HTTP health check (port 443) passes before port 22 is open",
-        "If ssh-keyscan fails, log warning and continue — sshHostKey remains unset, accept-new fallback applies only in that case",
-        "Add tests covering: successful key collection and storage, ssh-keyscan failure graceful degradation, update.ts strict mode when key is present",
-        "Run npm test to confirm all tests pass"
-      ],
-      "acceptanceCriteria": [
-        "After a successful provision, the instance record in instances.json has a non-empty sshHostKey field",
-        "A subsequent clawhq deploy update connection to that instance uses StrictHostKeyChecking=yes (not accept-new)",
-        "If ssh-keyscan fails at provision time, provisioning still completes and a warning is logged — sshHostKey remains unset and accept-new fallback applies only in that case",
-        "Existing deploy update and provisioning tests pass with no regression"
-      ],
-      "scope": [
-        "src/cloud/provisioning/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "PO REVIEW 2026-03-28 (failCount:2 — third attempt). Root cause of both failures: no retry on ssh-keyscan after health check — SSH port 22 lags behind HTTPS port 443. Tech Lead has specified retry loop (step 4, max 5 attempts, 5s delay) — this is the fix. Do NOT sprint without confirming retry is implemented. Added AC5: explicit retry coverage. Priority confirmed MUST — accept-new on every connect is a MITM window; contradicts core security promise.",
-      "lastFailAt": "2026-03-24T20:51:33-07:00",
-      "failCount": 2,
-      "passes": true,
-      "completedAt": "2026-03-28T20:06:34-07:00"
-    },
-    {
       "id": "BUG-125",
       "title": "Doctor auto-fix uses regex-based YAML patching — can corrupt docker-compose files",
       "intent": "Doctor auto-fix must never corrupt configuration files. YAML patching must use a proper parser, not regex string manipulation.",
