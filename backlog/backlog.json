@@ -36,38 +36,6 @@
       "groomingNotes": "STRATEGY: Day-zero revenue experiment. Not sprint-ready — needs architecture design. Key insight from critique: must do something a cron job can't. WebSocket health checks are trivially replicable. Upstream commit analysis + config breakage prediction is genuinely valuable and requires centralized infrastructure. Phase 1 can be technically simple (GitHub API + config diff) but the product design needs work first."
     },
     {
-      "id": "FEAT-124",
-      "title": "Development-as-content pipeline — every commit generates discoverable content",
-      "intent": "ClawHQ's development work must produce discoverable content as a byproduct. One-time launch events decay in 72 hours. Compounding content solves the discovery problem without a separate content calendar.",
-      "description": "The evolved strategy identified discovery decay as a critical wound. The fix: every development action produces content. Bug fix → postmortem article. New blueprint → tutorial walkthrough. OpenClaw breaking change → 'what broke and how we fixed it.' This is a process change, not a feature. Implementation: (1) CHANGELOG entries written as narratives, not version lists, (2) template for converting commits/PRs into technical articles, (3) docs/articles/ directory for long-form content derived from development, (4) PROBLEMS.md already exists and is evergreen SEO — formalize the update process.",
-      "priority": "should",
-      "category": "content",
-      "steps": [
-        "Create docs/articles/ directory for technical content",
-        "Create article template: title, problem, context, solution, what we learned, ClawHQ relevance",
-        "Rewrite CHANGELOG.md entries as narratives (not just version bumps)",
-        "Write first article from existing work: '14 Ways Your OpenClaw Agent Silently Breaks' (from PROBLEMS.md content)",
-        "Write second article from BUG-125: 'Why Regex YAML Patching Will Corrupt Your Docker Config'",
-        "Add CONTRIBUTING.md section on development-as-content expectations",
-        "Document the process: each PR that fixes a landmine or adds a blueprint should include a content draft"
-      ],
-      "acceptanceCriteria": [
-        "docs/articles/ directory exists with article template",
-        "At least 2 articles written from existing development work",
-        "CHANGELOG.md entries are narrative, not version lists",
-        "Process documented in CONTRIBUTING.md for future development"
-      ],
-      "scope": [
-        "docs/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Zero-cost discovery fix. The content already exists in the codebase — PROBLEMS.md, OPENCLAW-REFERENCE.md, bug fixes. This is about packaging it. Sprint-ready — content work, not code. The '14 ways' article could be the HN launch piece.",
-      "passes": true,
-      "completedAt": "2026-03-29T16:41:51-07:00"
-    },
-    {
       "id": "FEAT-125",
       "title": "Assumption validation framework — concrete tests for the 3 riskiest strategic assumptions",
       "intent": "Strategy without validation is fiction. The 3 highest-risk assumptions must have concrete pass/fail criteria, measurement methods, and deadlines so the team knows when to pivot.",
