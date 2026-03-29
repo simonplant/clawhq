@@ -2092,5 +2092,39 @@
     "groomingNotes": "STRATEGY: Highest-leverage documentation work. Standards capture play AND foundation absorption defense. Estimate ~1 week for rigorous spec (not a weekend — the compiler touches identity, security, tools, skills, cron, autonomy, memory, integrations). The validate command is the proof it's a real spec, not just documentation. Can be split: spec doc first, validate command second.",
     "passes": true,
     "completedAt": "2026-03-28T01:33:40-07:00"
+  },
+  {
+    "id": "FEAT-123",
+    "title": "OpenClaw Security Incident Tracker — public authority-building resource",
+    "intent": "ClawHQ must become the authoritative source on OpenClaw security incidents before launch. This builds the exact audience that will adopt ClawHQ and creates compounding discovery value that one-time launch events cannot.",
+    "description": "The OpenClaw security landscape is alarming: 9+ CVEs in first 2 months, 20-36% of ClawHub skills found malicious, 42,000+ exposed instances, 14 silent config landmines. Nobody is tracking this systematically. A public incident tracker builds authority, drives SEO, and creates the audience that ClawHQ serves. This should run IN PARALLEL with development, not as a contingency. Content: CVE tracker with impact analysis, malicious skill registry, exposed instance statistics (anonymized), breaking change log with migration guides. Can start as a curated markdown document and evolve into a live dashboard.",
+    "priority": "should",
+    "category": "content",
+    "steps": [
+      "Create docs/security/ directory for public security content",
+      "Compile initial CVE list: all known OpenClaw CVEs with severity, impact, and ClawHQ mitigation status",
+      "Compile malicious skill analysis: known malicious ClawHub items, detection patterns, ClawHQ's vetting response",
+      "Compile exposed instance data: methodology, current count, common misconfigurations found",
+      "Create docs/security/INCIDENTS.md as the public-facing tracker",
+      "Add RSS/JSON feed generation for automated consumption",
+      "Set up monthly update cadence (ties into development-as-content)",
+      "Cross-reference each incident with ClawHQ's specific mitigation (doctor check, config validation, etc.)"
+    ],
+    "acceptanceCriteria": [
+      "Public incident tracker exists with all known OpenClaw CVEs and their ClawHQ mitigation status",
+      "Each incident includes: description, severity, affected versions, ClawHQ mitigation, detection method",
+      "Tracker is linkable and SEO-friendly (individual incident anchors)",
+      "Content demonstrates deep OpenClaw security expertise",
+      "Monthly update cadence established"
+    ],
+    "scope": [
+      "docs/security/"
+    ],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-28",
+    "groomingNotes": "STRATEGY: Authority-building play that addresses discovery wound. Better than a fallback — should run in parallel with development. The OpenClaw security landscape data already exists in docs/OPENCLAW-REFERENCE.md and docs/PROBLEMS.md. This is about packaging it as a public resource. Sprint-ready — primarily content work, not code.",
+    "passes": true,
+    "completedAt": "2026-03-29T16:16:45-07:00"
   }
 ]
