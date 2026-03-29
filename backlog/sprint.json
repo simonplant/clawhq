@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774753130",
   "startedAt": "2026-03-28T19:58:50-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "BUG-113",
     "title": "SSH host key never collected at provision time — deploy update uses accept-new on every connection",
@@ -26,6 +26,10 @@
     "scope": [
       "src/cloud/provisioning/"
     ],
-    "startedAt": "2026-03-28T19:58:50-07:00"
-  }
+    "startedAt": "2026-03-28T19:58:50-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-28T20:06:34-07:00"
+  },
+  "completedAt": "2026-03-28T20:06:34-07:00",
+  "attempts": 1
 }

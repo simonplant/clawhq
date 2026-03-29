@@ -25,12 +25,14 @@
       "scope": [
         "src/cloud/provisioning/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
       "groomingNotes": "PO REVIEW 2026-03-28 (failCount:2 — third attempt). Root cause of both failures: no retry on ssh-keyscan after health check — SSH port 22 lags behind HTTPS port 443. Tech Lead has specified retry loop (step 4, max 5 attempts, 5s delay) — this is the fix. Do NOT sprint without confirming retry is implemented. Added AC5: explicit retry coverage. Priority confirmed MUST — accept-new on every connect is a MITM window; contradicts core security promise.",
       "lastFailAt": "2026-03-24T20:51:33-07:00",
-      "failCount": 2
+      "failCount": 2,
+      "passes": true,
+      "completedAt": "2026-03-28T20:06:34-07:00"
     },
     {
       "id": "BUG-125",
