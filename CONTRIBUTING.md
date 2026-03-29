@@ -1,5 +1,47 @@
 # Contributing to ClawHQ
 
+## Development-as-Content
+
+Every development action in ClawHQ should produce discoverable content as a byproduct. One-time launch events decay in 72 hours. Compounding content solves the discovery problem without a separate content calendar.
+
+### What generates content
+
+| Development action | Content output |
+|---|---|
+| Bug fix | Postmortem article: what broke, why, how we fixed it |
+| New blueprint | Tutorial walkthrough: what the blueprint does, who it's for |
+| OpenClaw breaking change | "What broke and how we fixed it" article |
+| New landmine discovered | Addition to PROBLEMS.md + article if substantial |
+| Security incident | Entry in docs/security/INCIDENTS.md |
+
+### The article template
+
+All articles live in `docs/articles/` and follow the template at `docs/articles/TEMPLATE.md`:
+
+1. **Title** — problem-first, searchable (what someone would type into Google)
+2. **The Problem** — what goes wrong, who it affects, scale data
+3. **Context** — why this is non-obvious, prior art, failed approaches
+4. **The Fix** — what we did, with enough detail to reproduce or verify
+5. **What We Learned** — the generalizable insight
+6. **How ClawHQ Handles This** — how it's built into the platform
+
+### PR expectations
+
+Each PR that fixes a landmine, resolves a security issue, or adds a blueprint should include one of:
+
+- A content draft in `docs/articles/` (preferred for substantial fixes)
+- An update to `docs/PROBLEMS.md` (for new landmine discoveries)
+- An entry in `docs/security/INCIDENTS.md` (for security incidents)
+- A narrative entry in `docs/CHANGELOG.md` (minimum for all PRs)
+
+Not every PR needs a full article. Use judgment: if the fix teaches something generalizable, write the article. If it's a routine bug fix, a narrative changelog entry is sufficient.
+
+### CHANGELOG conventions
+
+Changelog entries in `docs/CHANGELOG.md` are narratives, not version lists. Each entry tells the story of what changed, why it mattered, and what it means for operators. See the existing entries for the style.
+
+---
+
 ## Running Tests
 
 ### Unit Tests
