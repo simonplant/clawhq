@@ -1,37 +1,37 @@
 {
-  "sprintId": "sprint-1774824947",
-  "startedAt": "2026-03-29T15:55:47-07:00",
+  "sprintId": "sprint-1774825580",
+  "startedAt": "2026-03-29T16:06:20-07:00",
   "status": "completed",
   "item": {
-    "id": "BUG-125",
-    "title": "Doctor auto-fix uses regex-based YAML patching — can corrupt docker-compose files",
-    "intent": "Doctor auto-fix must never corrupt configuration files. YAML patching must use a proper parser, not regex string manipulation.",
-    "description": "Code review found that src/operate/doctor/fix.ts uses naive regex like /(services:\\s*\\n\\s+\\w+:\\s*\\n)/ to locate service blocks and insert cap_drop/security_opt. This breaks on service names with underscores, inconsistent indentation, or multi-service compose files. Failed patches silently leave config broken.",
-    "sourceBacklog": "bugs.json",
+    "id": "FEAT-123",
+    "title": "OpenClaw Security Incident Tracker — public authority-building resource",
+    "intent": "ClawHQ must become the authoritative source on OpenClaw security incidents before launch. This builds the exact audience that will adopt ClawHQ and creates compounding discovery value that one-time launch events cannot.",
+    "description": "The OpenClaw security landscape is alarming: 9+ CVEs in first 2 months, 20-36% of ClawHub skills found malicious, 42,000+ exposed instances, 14 silent config landmines. Nobody is tracking this systematically. A public incident tracker builds authority, drives SEO, and creates the audience that ClawHQ serves. This should run IN PARALLEL with development, not as a contingency. Content: CVE tracker with impact analysis, malicious skill registry, exposed instance statistics (anonymized), breaking change log with migration guides. Can start as a curated markdown document and evolve into a live dashboard.",
+    "sourceBacklog": "backlog.json",
     "steps": [
-      "Read src/operate/doctor/fix.ts — understand patchCompose helper (lines 229-247) and the three regex-based fixers: fixCapDrop (151-164), fixNoNewPrivileges (167-179), fixUserUid (182-196)",
-      "Add import for yaml package (already a dependency — used in src/build/launcher/firewall.ts): import { parse as yamlParse, stringify as yamlStringify } from 'yaml'",
-      "Rewrite patchCompose helper: (1) read file as string, (2) create backup as docker-compose.yml.bak before any modification, (3) parse with yamlParse(), (4) pass parsed object to patcher callback (new signature: compose object → {message} | null), (5) serialize with yamlStringify(), (6) validate round-trip by re-parsing output — only write if valid",
-      "Add getFirstServiceEntry helper that extracts [serviceName, serviceConfig] from compose.services dynamically — no hardcoded 'openclaw' key (future-proofs for multi-instance where service name may vary)",
-      "Rewrite fixCapDrop: set svc.cap_drop = ['ALL'] if missing or not an array containing 'ALL'",
-      "Rewrite fixNoNewPrivileges: ensure svc.security_opt is an array containing 'no-new-privileges'",
-      "Rewrite fixUserUid: set svc.user = CONTAINER_USER if not matching expected UID pattern",
-      "Add tests: compose file with underscore service name, multi-service compose file, backup file creation verification, round-trip validation (output YAML parses back correctly)",
-      "Run npm test to confirm all existing tests pass with no regression"
+      "Create docs/security/ directory for public security content",
+      "Compile initial CVE list: all known OpenClaw CVEs with severity, impact, and ClawHQ mitigation status",
+      "Compile malicious skill analysis: known malicious ClawHub items, detection patterns, ClawHQ's vetting response",
+      "Compile exposed instance data: methodology, current count, common misconfigurations found",
+      "Create docs/security/INCIDENTS.md as the public-facing tracker",
+      "Add RSS/JSON feed generation for automated consumption",
+      "Set up monthly update cadence (ties into development-as-content)",
+      "Cross-reference each incident with ClawHQ's specific mitigation (doctor check, config validation, etc.)"
     ],
     "acceptanceCriteria": [
-      "Doctor auto-fix uses yaml package (parse/stringify) instead of regex for all compose file modifications",
-      "Patched docker-compose files are valid YAML after auto-fix — verified by round-trip parse before writing",
-      "Auto-fix works correctly with underscore service names and multi-service files — service is found dynamically, not by hardcoded key",
-      "Auto-fix creates a backup (docker-compose.yml.bak) before modifying compose files"
+      "Public incident tracker exists with all known OpenClaw CVEs and their ClawHQ mitigation status",
+      "Each incident includes: description, severity, affected versions, ClawHQ mitigation, detection method",
+      "Tracker is linkable and SEO-friendly (individual incident anchors)",
+      "Content demonstrates deep OpenClaw security expertise",
+      "Monthly update cadence established"
     ],
     "scope": [
-      "src/operate/doctor/fix.ts"
+      "docs/security/"
     ],
-    "startedAt": "2026-03-29T15:55:47-07:00",
+    "startedAt": "2026-03-29T16:06:20-07:00",
     "status": "passed",
-    "completedAt": "2026-03-29T16:03:26-07:00"
+    "completedAt": "2026-03-29T16:16:45-07:00"
   },
-  "completedAt": "2026-03-29T16:03:26-07:00",
+  "completedAt": "2026-03-29T16:16:45-07:00",
   "attempts": 1
 }
