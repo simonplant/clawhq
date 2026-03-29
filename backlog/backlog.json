@@ -26,10 +26,12 @@
       "scope": [
         "src/build/docker/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Security-by-default. Supply chain vulnerability contradicts core promise. Extracted from Clawdius Dockerfile which pins every binary with SHA256. PO REVIEW 2026-03-28: Priority confirmed MUST — an unverified binary in a security-by-default platform is a brand-killing contradiction. AC verify commands added."
+      "groomingNotes": "STRATEGY: Security-by-default. Supply chain vulnerability contradicts core promise. Extracted from Clawdius Dockerfile which pins every binary with SHA256. PO REVIEW 2026-03-28: Priority confirmed MUST — an unverified binary in a security-by-default platform is a brand-killing contradiction. AC verify commands added.",
+      "passes": true,
+      "completedAt": "2026-03-28T19:10:03-07:00"
     },
     {
       "id": "FEAT-122",

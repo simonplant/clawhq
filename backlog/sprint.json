@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774749714",
   "startedAt": "2026-03-28T19:01:54-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-115",
     "title": "SHA256 binary pinning in Docker build — verify every downloaded tool binary against known hashes",
@@ -26,6 +26,10 @@
     "scope": [
       "src/build/docker/"
     ],
-    "startedAt": "2026-03-28T19:01:54-07:00"
-  }
+    "startedAt": "2026-03-28T19:01:54-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-28T19:10:03-07:00"
+  },
+  "completedAt": "2026-03-28T19:10:03-07:00",
+  "attempts": 1
 }
