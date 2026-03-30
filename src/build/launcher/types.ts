@@ -8,7 +8,7 @@
 
 // ── Preflight Checks ────────────────────────────────────────────────────────
 
-/** Names of the 6 preflight checks that block deploy on failure. */
+/** Names of the 6 preflight checks. Most block deploy on failure; some are warnings. */
 export type PreflightCheckName =
   | "docker"
   | "images"
@@ -25,13 +25,19 @@ export interface PreflightCheckResult {
   readonly message: string;
   /** Suggested fix command or action. */
   readonly fix?: string;
+  /** When true, check failed but should not block deploy (e.g. Ollama absent). */
+  readonly warning?: boolean;
 }
 
 /** Aggregate result of all preflight checks. */
 export interface PreflightReport {
+  /** True when all non-warning checks passed. */
   readonly passed: boolean;
   readonly checks: readonly PreflightCheckResult[];
+  /** Checks that hard-failed (blocking). */
   readonly failed: readonly PreflightCheckResult[];
+  /** Checks that failed but are non-blocking warnings. */
+  readonly warnings: readonly PreflightCheckResult[];
 }
 
 // ── Deploy Steps ────────────────────────────────────────────────────────────

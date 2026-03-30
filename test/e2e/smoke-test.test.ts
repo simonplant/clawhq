@@ -292,6 +292,7 @@ describe("e2e smoke test — full user journey", () => {
       "-d", deployDir,
       "--token", "e2e-smoke-test-token",
       "-p", "18799",
+      "--skip-preflight",
       "--skip-firewall",
     ], { timeoutMs: 120_000 });
 

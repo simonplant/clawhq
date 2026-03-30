@@ -50,6 +50,14 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
 
     const preflight = await runPreflight(deployDir, signal, options.gatewayPort);
 
+    // Report warnings (non-blocking) before checking hard failures
+    if (preflight.warnings.length > 0) {
+      const warns = preflight.warnings
+        .map((c) => `  ⚠ ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
+        .join("\n");
+      report("preflight", "running", `Warning:\n${warns}`);
+    }
+
     if (!preflight.passed) {
       const errors = preflight.failed
         .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
@@ -65,7 +73,11 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
       };
     }
 
-    report("preflight", "done", "All preflight checks passed");
+    if (preflight.warnings.length > 0) {
+      report("preflight", "done", `Preflight passed with ${preflight.warnings.length} warning(s)`);
+    } else {
+      report("preflight", "done", "All preflight checks passed");
+    }
   }
 
   // ── Step 2: Compose Up ─────────────────────────────────────────────────

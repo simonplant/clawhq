@@ -1,36 +1,28 @@
 {
-  "sprintId": "sprint-1774836137",
-  "startedAt": "2026-03-29T19:02:17-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774837368",
+  "startedAt": "2026-03-29T19:22:48-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-021",
-    "title": "Integration tests for cloud provisioning engine — test real registry, health polling, and state transitions",
-    "intent": "The provisioning engine (engine.ts) is tested with every dependency mocked — credentials, provider adapter, health poller, and registry are all fakes. State transitions (provisioning → active → destroyed) have never been tested against real state persistence.",
-    "description": "src/cloud/provisioning/engine.test.ts mocks 4 modules. The test verifies that the engine calls the right mocks in the right order — it does not verify that the engine produces correct state.",
+    "id": "FEAT-127",
+    "title": "Deploy preflight should not hard-fail when Ollama is absent for local-model blueprints",
+    "intent": "The e2e smoke test (FEAT-018) revealed that `clawhq up` hard-fails on preflight when Ollama is not installed, even though the Docker build succeeds. In CI environments and on machines without Ollama, the full user journey cannot complete. The preflight Ollama check should warn instead of block, or `--skip-preflight` should be documented as the CI workaround.",
+    "description": "Discovered during FEAT-018 initial e2e run: `clawhq up -d <dir> --token <tok> --skip-firewall` exits 1 with 'Ollama is not installed — required for local model inference'. The blueprint uses local model provider, so preflight rejects deployment. This blocks the full user journey in any environment without Ollama. Options: (a) downgrade Ollama check to a warning when model routing is local, (b) allow --skip-preflight to bypass gracefully, (c) add a --no-ollama flag that switches to a no-model-needed mode for testing.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create integration test: engine.integration.test.ts",
-      "Use real filesystem (mkdtempSync) for registry state (instances.json)",
-      "Use real health polling against a local HTTP test server",
-      "Mock only the provider adapter (can't create real VMs in CI)",
-      "Test full state machine: provision → health check → register → status query → destroy → verify cleanup",
-      "Test error paths: provision succeeds but health fails, destroy fails, registry write fails",
-      "Run npm test to confirm no regression"
+      "Review preflight Ollama check in src/build/launcher/ — determine if it should be a hard gate or warning",
+      "For local-model blueprints, downgrade Ollama absence to a warning (agent can still start, just no inference)",
+      "Ensure --skip-preflight cleanly bypasses all preflight checks including Ollama",
+      "Update e2e smoke test to use --skip-preflight for the up step so CI can pass end-to-end",
+      "Add test coverage for preflight with and without Ollama"
     ],
     "acceptanceCriteria": [
-      "Integration test exercises the full provisioning state machine with real filesystem and real HTTP",
-      "Only the cloud provider API is mocked — everything else is real",
-      "Registry state is verified by reading the actual instances.json file",
-      "Health polling is tested against a real local HTTP server",
-      "All existing engine unit tests continue to pass"
+      "clawhq up completes (containers start) even when Ollama is not installed, with a clear warning",
+      "e2e smoke test passes the 'up' step in CI environments without Ollama",
+      "--skip-preflight flag cleanly bypasses the Ollama check"
     ],
     "scope": [
-      "src/cloud/provisioning/"
+      "src/build/launcher/"
     ],
-    "startedAt": "2026-03-29T19:02:17-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-29T19:16:47-07:00"
-  },
-  "completedAt": "2026-03-29T19:16:47-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-29T19:22:48-07:00"
+  }
 }

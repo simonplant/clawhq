@@ -144,6 +144,43 @@ describe("preflight", () => {
     }
   });
 
+  it("ollama check is a warning, not a hard failure", async () => {
+    const report = await runPreflight(testDir);
+    const ollamaCheck = findCheck(report.checks, "ollama");
+    if (!ollamaCheck.passed) {
+      // When Ollama is absent, it should be a warning
+      expect(ollamaCheck.warning).toBe(true);
+      // It should appear in warnings, not in failed
+      expect(report.warnings.some((c) => c.name === "ollama")).toBe(true);
+      expect(report.failed.some((c) => c.name === "ollama")).toBe(false);
+    }
+  });
+
+  it("warnings array contains only warning checks", async () => {
+    const report = await runPreflight(testDir);
+    for (const check of report.warnings) {
+      expect(check.passed).toBe(false);
+      expect(check.warning).toBe(true);
+    }
+  });
+
+  it("passed is true when only warnings exist (no hard failures)", async () => {
+    // In a real environment where only Ollama is missing but Docker, config,
+    // secrets, images, and ports all pass — passed should be true.
+    // We can't easily simulate that here, so we verify the logic:
+    // the ollama check should not cause passed to be false on its own
+    const report = await runPreflight(testDir);
+    const nonOllamaFailures = report.failed.filter((c) => c.name !== "ollama");
+    // Ollama should never appear in failed (it's a warning)
+    expect(report.failed.some((c) => c.name === "ollama")).toBe(false);
+    // passed should reflect only hard failures
+    if (nonOllamaFailures.length === 0) {
+      expect(report.passed).toBe(true);
+    } else {
+      expect(report.passed).toBe(false);
+    }
+  });
+
   it("respects AbortSignal", async () => {
     const ac = new AbortController();
     ac.abort();
@@ -263,6 +300,26 @@ describe("deploy", () => {
     // At minimum, preflight running + failed
     expect(progress.some((p) => p.step === "preflight" && p.status === "running")).toBe(true);
     expect(progress.some((p) => p.step === "preflight" && p.status === "failed")).toBe(true);
+  });
+
+  it("reports preflight warnings without blocking", async () => {
+    const progress: DeployProgress[] = [];
+
+    const result = await deploy({
+      deployDir: testDir,
+      gatewayToken: "test-token",
+      onProgress: (p) => progress.push(p),
+    });
+
+    // Deploy still fails (config/secrets/images missing), but check that
+    // warnings are reported in progress messages when Ollama is absent
+    expect(result.success).toBe(false);
+    if (result.preflight && result.preflight.warnings.length > 0) {
+      const warningEvents = progress.filter(
+        (p) => p.step === "preflight" && p.message.includes("⚠"),
+      );
+      expect(warningEvents.length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("respects skipPreflight option", async () => {

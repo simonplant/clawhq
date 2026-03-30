@@ -1,7 +1,9 @@
 /**
  * Preflight checks for deploy.
  *
- * Six checks that must all pass before `clawhq up` proceeds.
+ * Six checks run before `clawhq up` proceeds. Five are hard gates
+ * (docker, images, config, secrets, ports) and one is a warning
+ * (ollama). Warnings are reported but do not block deploy.
  * Each check returns an actionable error message on failure —
  * never a generic "check failed" message.
  */
@@ -38,12 +40,14 @@ export async function runPreflight(
     checkOllama(signal),
   ]);
 
-  const failed = checks.filter((c) => !c.passed);
+  const warnings = checks.filter((c) => !c.passed && c.warning);
+  const failed = checks.filter((c) => !c.passed && !c.warning);
 
   return {
     passed: failed.length === 0,
     checks,
     failed,
+    warnings,
   };
 }
 
@@ -220,7 +224,14 @@ async function checkPorts(port: number, signal?: AbortSignal): Promise<Preflight
   }
 }
 
-/** 6. Ollama is running (needed for local model inference). */
+/**
+ * 6. Ollama is available (needed for local model inference).
+ *
+ * Ollama absence is a **warning**, not a hard failure. The agent can still
+ * start — it just won't be able to run local model inference until Ollama
+ * is installed and running. This allows CI environments and machines
+ * without Ollama to complete `clawhq up` successfully.
+ */
 async function checkOllama(signal?: AbortSignal): Promise<PreflightCheckResult> {
   const name: PreflightCheckName = "ollama";
   try {
@@ -235,14 +246,16 @@ async function checkOllama(signal?: AbortSignal): Promise<PreflightCheckResult> 
       return {
         name,
         passed: false,
-        message: "Ollama is not installed — required for local model inference",
+        warning: true,
+        message: "Ollama is not installed — local model inference will not be available",
         fix: "Install Ollama: https://ollama.ai/download",
       };
     }
     return {
       name,
       passed: false,
-      message: "Ollama is not running — required for local model inference",
+      warning: true,
+      message: "Ollama is not running — local model inference will not be available",
       fix: "Start Ollama with: ollama serve",
     };
   }
