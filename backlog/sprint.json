@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774913503",
   "startedAt": "2026-03-30T16:31:43-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-129",
     "title": "Credential proxy architecture — host-side token proxy so secrets never enter the container",
@@ -28,6 +28,10 @@
       "src/build/docker/",
       "src/design/tools/"
     ],
-    "startedAt": "2026-03-30T16:31:43-07:00"
-  }
+    "startedAt": "2026-03-30T16:31:43-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-30T16:47:23-07:00"
+  },
+  "completedAt": "2026-03-30T16:47:23-07:00",
+  "attempts": 1
 }
