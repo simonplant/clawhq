@@ -1877,6 +1877,39 @@
     "completedAt": "2026-03-24T23:17:05-07:00"
   },
   {
+    "id": "FEAT-106",
+    "title": "Reduce process.exit() usage in CLI — return exit codes or throw for testability",
+    "intent": "Make CLI command handlers testable and allow proper cleanup. Commands should throw or return exit codes instead of calling process.exit() directly.",
+    "description": "Architecture review found 192 direct process.exit() calls. This prevents testing error paths, blocks defer/cleanup handlers, and makes graceful shutdown impossible.",
+    "priority": "should",
+    "category": "Code Quality",
+    "steps": [
+      "Create a CommandError class that carries an exit code",
+      "Replace process.exit() calls with throw CommandError in command handlers",
+      "Add try/finally blocks around spinner usage to ensure cleanup",
+      "Wire top-level parseAsync catch to extract exit codes from CommandError",
+      "Add unit tests for error paths in key commands (deploy, destroy, scan)"
+    ],
+    "acceptanceCriteria": [
+      "Command handlers throw errors or return exit codes instead of calling process.exit()",
+      "A single top-level error handler in the CLI entry point calls process.exit()",
+      "Spinners are properly stopped in error paths via try/finally",
+      "At least 3 command handlers have unit tests covering error paths"
+    ],
+    "scope": [
+      "src/cli/**"
+    ],
+    "dependsOn": [
+      "FEAT-108"
+    ],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-28",
+    "groomingNotes": "Blocked by FEAT-108. After decomposition, each command file can be fixed independently. process.exit() cleanup is per-command surgery — doing it in a 4320-line index.ts carries high regression risk.",
+    "passes": true,
+    "completedAt": "2026-03-29T17:51:03-07:00"
+  },
+  {
     "id": "FEAT-107",
     "title": "Add manifest version checking on all JSON manifest reads across evolve/cloud",
     "intent": "Prevent silent data corruption when manifest formats change. Every manifest read must validate the version field and fail clearly on unsupported versions.",
