@@ -29,7 +29,8 @@ import {
   unregisterAgent,
 } from "../../cloud/index.js";
 
-import { warnIfNotInstalled } from "../ux.js";
+import { CommandError } from "../errors.js";
+import { ensureInstalled } from "../ux.js";
 
 export function registerCloudCommands(program: Command, defaultDeployDir: string): void {
   const cloud = program.command("cloud").description("Remote monitoring and managed hosting (optional)");
@@ -41,12 +42,12 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
     .option("-t, --token <token>", "Cloud authentication token")
     .option("-m, --mode <mode>", "Trust mode (zero-trust or managed)", "zero-trust")
     .action(async (opts: { deployDir: string; token?: string; mode: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const mode = opts.mode as TrustMode;
       if (mode !== "zero-trust" && mode !== "managed") {
         console.error(chalk.red("Trust mode must be 'zero-trust' or 'managed'. Paranoid mode disables cloud."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const current = readTrustModeState(opts.deployDir);
@@ -54,7 +55,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
         const switchResult = switchTrustMode(opts.deployDir, mode);
         if (!switchResult.success) {
           console.error(chalk.red(formatSwitchResult(switchResult)));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
         console.log(chalk.dim(formatSwitchResult(switchResult)));
       }
@@ -66,7 +67,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
         console.log(chalk.dim("  Disconnect anytime: clawhq cloud disconnect"));
       } else {
         console.error(chalk.red(result.error ?? "Failed to connect."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -76,7 +77,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const snapshot = {
         trustMode: readTrustModeState(opts.deployDir),
@@ -96,7 +97,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
     .description("Disconnect from cloud — immediate, no confirmation")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const result = disconnectCloud(opts.deployDir);
       console.log(formatDisconnectResult(result));
@@ -108,7 +109,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
     .argument("[mode]", "New trust mode to switch to")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (mode: string | undefined, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       if (!mode) {
         const state = readTrustModeState(opts.deployDir);
@@ -120,7 +121,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
       const validModes: TrustMode[] = ["paranoid", "zero-trust", "managed"];
       if (!validModes.includes(mode as TrustMode)) {
         console.error(chalk.red(`Invalid mode: ${mode}. Must be one of: ${validModes.join(", ")}`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const result = switchTrustMode(opts.deployDir, mode as TrustMode);
@@ -128,7 +129,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
         console.log(chalk.green(formatSwitchResult(result)));
       } else {
         console.error(chalk.red(formatSwitchResult(result)));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -138,33 +139,37 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output report as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const state = readTrustModeState(opts.deployDir);
       if (state.mode === "paranoid") {
         console.error(chalk.red("Heartbeat is disabled in paranoid mode."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       if (!state.connected) {
         console.error(chalk.red("Not connected to cloud. Run: clawhq cloud connect"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const spinner = ora("Sending heartbeat…");
       if (!opts.json) spinner.start();
 
-      const result = await sendHeartbeat(opts.deployDir, state.mode);
+      try {
+        const result = await sendHeartbeat(opts.deployDir, state.mode);
 
-      if (!opts.json) spinner.stop();
+        if (!opts.json) spinner.stop();
 
-      if (opts.json) {
-        console.log(JSON.stringify(result, null, 2));
-      } else if (result.success) {
-        console.log(chalk.green("Heartbeat sent."));
-      } else {
-        console.error(chalk.red(`Heartbeat failed: ${result.error}`));
-        process.exit(1);
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (result.success) {
+          console.log(chalk.green("Heartbeat sent."));
+        } else {
+          console.error(chalk.red(`Heartbeat failed: ${result.error}`));
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -209,7 +214,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
         console.log(chalk.green(`Agent removed: ${nameOrPath}`));
       } else {
         console.error(chalk.red(`Agent not found: ${nameOrPath}`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -237,18 +242,22 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
       const spinner = ora("Running fleet-wide doctor checks…");
       if (!opts.json) spinner.start();
 
-      const report = await runFleetDoctor(opts.deployDir);
+      try {
+        const report = await runFleetDoctor(opts.deployDir);
 
-      if (!opts.json) spinner.stop();
+        if (!opts.json) spinner.stop();
 
-      if (opts.json) {
-        console.log(formatFleetDoctorJson(report));
-      } else {
-        console.log(formatFleetDoctor(report));
-      }
+        if (opts.json) {
+          console.log(formatFleetDoctorJson(report));
+        } else {
+          console.log(formatFleetDoctor(report));
+        }
 
-      if (!report.allHealthy) {
-        process.exit(1);
+        if (!report.allHealthy) {
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 }

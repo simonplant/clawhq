@@ -9,7 +9,6 @@ import ora from "ora";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
 import { build } from "../../build/docker/index.js";
 import { install } from "../../build/installer/index.js";
-import type { PrereqCheckResult } from "../../build/installer/index.js";
 import { deploy } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
@@ -27,7 +26,8 @@ import {
   runDoctor,
 } from "../../operate/doctor/index.js";
 
-import { renderError, validatePort, warnIfNotInstalled } from "../ux.js";
+import { CommandError } from "../errors.js";
+import { renderError, validatePort, ensureInstalled } from "../ux.js";
 import { bundleToFiles, createConnectProgressHandler, createProgressHandler, formatPrereqCheck } from "./helpers.js";
 
 const DEFAULT_DEPLOY_DIR = join(homedir(), ".clawhq");
@@ -78,18 +78,19 @@ export function registerQuickstartCommand(program: Command): void {
             formatPrereqCheck(check);
           }
           console.log(chalk.dim("\n  Fix the issues above and re-run: clawhq quickstart"));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         spinner.succeed(`${phase("install")} Platform installed at ${deployDir}`);
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         spinner.fail(`${phase("install")} Install failed`);
         console.error(renderError(error));
         console.log(chalk.dim("\n  Fix the issue and re-run: clawhq quickstart"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
-      if (ac.signal.aborted) process.exit(1);
+      if (ac.signal.aborted) throw new CommandError("", 1);
 
       // ── Phase 2: Init ─────────────────────────────────────────────────────
 
@@ -124,7 +125,7 @@ export function registerQuickstartCommand(program: Command): void {
             console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
           }
           console.log(chalk.dim("\n  Fix the issues and re-run: clawhq init --guided"));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers);
@@ -132,18 +133,19 @@ export function registerQuickstartCommand(program: Command): void {
 
         spinner.succeed(`${phase("init")} Agent forged — all 14 landmine rules passed`);
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         if (error instanceof WizardAbortError || error instanceof SmartInferenceAbortError) {
           spinner.stop();
           console.log(chalk.yellow("\nSetup cancelled."));
-          process.exit(0);
+          throw new CommandError("", 0);
         }
         spinner.fail(`${phase("init")} Init failed`);
         console.error(renderError(error));
         console.log(chalk.dim("\n  Re-run: clawhq init --guided"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
-      if (ac.signal.aborted) process.exit(1);
+      if (ac.signal.aborted) throw new CommandError("", 1);
 
       // ── Phase 3: Build ────────────────────────────────────────────────────
 
@@ -174,7 +176,7 @@ export function registerQuickstartCommand(program: Command): void {
           console.error(chalk.red(`  ${buildResult.error}`));
           console.log(chalk.dim("\n  Fix the issue and run: clawhq build"));
           console.log(chalk.dim("  Then resume with: clawhq up"));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         const cacheInfo = buildResult.cacheHit.stage1 && buildResult.cacheHit.stage2
@@ -182,14 +184,15 @@ export function registerQuickstartCommand(program: Command): void {
           : "";
         spinner.succeed(`${phase("build")} Docker image built${cacheInfo}`);
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         spinner.fail(`${phase("build")} Build failed`);
         console.error(renderError(error));
         console.log(chalk.dim("\n  Fix the issue and run: clawhq build"));
         console.log(chalk.dim("  Then resume with: clawhq up"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
-      if (ac.signal.aborted) process.exit(1);
+      if (ac.signal.aborted) throw new CommandError("", 1);
 
       // ── Phase 4: Deploy ───────────────────────────────────────────────────
 
@@ -201,7 +204,7 @@ export function registerQuickstartCommand(program: Command): void {
       if (!gatewayToken) {
         spinner.fail(`${phase("deploy")} No gateway token found in .env`);
         console.log(chalk.dim("  Re-run: clawhq init --guided"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const gatewayPort = validatePort(opts.port);
@@ -222,12 +225,12 @@ export function registerQuickstartCommand(program: Command): void {
         console.error(chalk.red(`\n✘ ${phase("deploy")} Deploy failed:\n${deployResult.error}`));
         console.log(chalk.dim("\n  Diagnose with: clawhq doctor --fix"));
         console.log(chalk.dim("  Then retry: clawhq up"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       console.log(chalk.green(`  ${phase("deploy")} Agent is live and responding`));
 
-      if (ac.signal.aborted) process.exit(1);
+      if (ac.signal.aborted) throw new CommandError("", 1);
 
       // ── Phase 5: Connect ──────────────────────────────────────────────────
       // Connect is non-fatal — the agent is already running. Failures here

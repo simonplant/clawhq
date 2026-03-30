@@ -25,6 +25,7 @@ import {
   writeBundle,
 } from "../../design/configure/index.js";
 
+import { CommandError } from "../errors.js";
 import { renderError } from "../ux.js";
 import { bundleToFiles } from "./helpers.js";
 
@@ -178,7 +179,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
           for (const err of report.errors) {
             console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
           }
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         // Step 4: Write files atomically
@@ -197,12 +198,13 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         console.log(chalk.dim(`  All 14 landmine rules passed`));
         console.log(chalk.dim(`\n  Next: clawhq up`));
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         if (error instanceof WizardAbortError || error instanceof SmartInferenceAbortError) {
           console.log(chalk.yellow("\nSetup cancelled."));
-          process.exit(0);
+          throw new CommandError("", 0);
         }
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -215,7 +217,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
       const loaded = loadAllBuiltinBlueprints();
       if (loaded.length === 0) {
         console.log(chalk.yellow("No blueprints found."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       console.log(chalk.bold("\nAvailable Blueprints\n"));
@@ -247,7 +249,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         printBlueprintPreview(bp);
       } catch (error) {
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -259,13 +261,13 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
       const resolved = resolve(file);
       if (!existsSync(resolved)) {
         console.error(chalk.red(`\n  ✘ File not found: ${resolved}\n`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const stat = statSync(resolved);
       if (stat.size > 256 * 1024) {
         console.error(chalk.red(`\n  ✘ File exceeds 256 KB limit (${stat.size} bytes)\n`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const content = readFileSync(resolved, "utf-8");
@@ -275,12 +277,12 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(chalk.red(`\n  ✘ YAML parse error: ${msg}\n`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       if (parsed === null || parsed === undefined || typeof parsed !== "object" || Array.isArray(parsed)) {
         console.error(chalk.red("\n  ✘ Blueprint must be a YAML mapping (object), not a scalar or array\n"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const report = validateBlueprint(parsed as Record<string, unknown>);
@@ -302,7 +304,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
           console.log(`    ${chalk.dim("-")} ${chalk.red(e.check)}: ${e.message}`);
         }
         console.log(chalk.red(`\nBlueprint is invalid (${report.errors.length} error${report.errors.length === 1 ? "" : "s"}).\n`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       if (report.warnings.length > 0) {

@@ -11,6 +11,8 @@ import { join } from "node:path";
 
 import chalk from "chalk";
 
+import { CommandError } from "./errors.js";
+
 // ── Error Formatting ────────────────────────────────────────────────────────
 
 /** Known error types that get specific formatting. */
@@ -87,13 +89,12 @@ export function renderError(error: unknown): string {
 // ── Port Validation ─────────────────────────────────────────────────────────
 
 /**
- * Parse and validate a port string. Exits with an error if the value is not a valid number.
+ * Parse and validate a port string. Throws CommandError if the value is not a valid number.
  */
 export function validatePort(portStr: string): number {
   const port = parseInt(portStr, 10);
   if (isNaN(port)) {
-    console.error(chalk.red("Invalid port number"));
-    process.exit(1);
+    throw new CommandError("Invalid port number");
   }
   return port;
 }
@@ -126,6 +127,8 @@ export function checkFirstRun(deployDir?: string): FirstRunResult {
  *
  * Called before commands that require an installed platform.
  * Returns true if the platform is missing (caller should exit).
+ *
+ * @deprecated Use {@link ensureInstalled} which throws CommandError instead.
  */
 export function warnIfNotInstalled(deployDir?: string): boolean {
   const result = checkFirstRun(deployDir);
@@ -142,4 +145,17 @@ export function warnIfNotInstalled(deployDir?: string): boolean {
   }
 
   return false;
+}
+
+/**
+ * Throw CommandError if the platform isn't installed.
+ *
+ * Replacement for `if (warnIfNotInstalled(dir)) process.exit(1)` pattern.
+ * Prints the same guidance message, then throws so the top-level handler
+ * can call process.exit() in one place.
+ */
+export function ensureInstalled(deployDir?: string): void {
+  if (warnIfNotInstalled(deployDir)) {
+    throw new CommandError("", 1);
+  }
 }

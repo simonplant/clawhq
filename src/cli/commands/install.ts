@@ -5,6 +5,7 @@ import ora from "ora";
 
 import { detectLegacyInstallation, install, migrateDeployDir } from "../../build/installer/index.js";
 
+import { CommandError } from "../errors.js";
 import { renderError } from "../ux.js";
 import { formatPrereqCheck } from "./helpers.js";
 
@@ -46,7 +47,7 @@ export function registerInstallCommands(program: Command, defaultDeployDir: stri
 
         if (!result.prereqs.passed) {
           console.log(chalk.red("✘ Prerequisites not met. Fix the issues above and run again."));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         // Step 2–3: Scaffold + config (already done by install())
@@ -62,7 +63,7 @@ export function registerInstallCommands(program: Command, defaultDeployDir: stri
             }
           } else {
             console.log(chalk.red(`✘ From-source build failed: ${result.sourceBuild.error}`));
-            process.exit(1);
+            throw new CommandError("", 1);
           }
 
           // Verification result
@@ -79,7 +80,7 @@ export function registerInstallCommands(program: Command, defaultDeployDir: stri
 
         if (!result.success) {
           console.log(chalk.red(`\n✘ Install failed: ${result.error}`));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         // Next-step guidance
@@ -96,8 +97,9 @@ export function registerInstallCommands(program: Command, defaultDeployDir: stri
         }
         console.log("");
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -139,7 +141,7 @@ export function registerInstallCommands(program: Command, defaultDeployDir: stri
 
         if (!result.success) {
           console.log(chalk.red(`✘ Migration failed: ${result.error}`));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         console.log(chalk.green(`✔ Migrated ${result.itemsMigrated} items to ${result.targetDir}`));
@@ -157,8 +159,9 @@ export function registerInstallCommands(program: Command, defaultDeployDir: stri
         console.log(`  ${chalk.bold("clawhq doctor")}    Verify the migrated installation`);
         console.log("");
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 }

@@ -35,7 +35,8 @@ import {
 } from "../../evolve/role/index.js";
 import type { Permission } from "../../evolve/role/index.js";
 
-import { renderError, warnIfNotInstalled } from "../ux.js";
+import { CommandError } from "../errors.js";
+import { renderError, ensureInstalled } from "../ux.js";
 
 function createIntegrationProgressHandler(spinner: ReturnType<typeof ora>) {
   return (event: IntegrationProgress): void => {
@@ -87,13 +88,13 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--skip-validation", "Skip live credential validation")
     .action(async (name: string, opts: { deployDir: string; skipValidation?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const def = getIntegrationDef(name);
       if (!def) {
         console.error(chalk.red(`Unknown integration: ${name}`));
         console.error(chalk.dim(`Available: ${availableIntegrationNames().join(", ")}`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       try {
@@ -134,15 +135,16 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
           }
         } else {
           console.error(chalk.red(`\n✘ ${result.error}`));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         if (error instanceof Error && error.name === "ExitPromptError") {
           console.log(chalk.yellow("\nCancelled."));
-          process.exit(0);
+          throw new CommandError("", 0);
         }
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -153,7 +155,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--keep-credentials", "Keep credentials in .env")
     .action(async (name: string, opts: { deployDir: string; keepCredentials?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = await removeIntegrationCmd({
         deployDir: opts.deployDir,
         name,
@@ -166,7 +168,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
         }
       } else {
         console.error(chalk.red(result.error ?? "Failed to remove."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -176,7 +178,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = listIntegrations({ deployDir: opts.deployDir });
       if (opts.json) {
         console.log(formatIntegrationListJson(result));
@@ -191,15 +193,19 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .argument("<name>", "Integration name")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (name: string, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const spinner = ora(`Testing ${name} credentials…`).start();
-      const result = await testIntegration({ deployDir: opts.deployDir, name });
-      spinner.stop();
-      if (result.success) {
-        console.log(chalk.green(`✔ ${result.message}`));
-      } else {
-        console.error(chalk.red(`✘ ${result.error}`));
-        process.exit(1);
+      try {
+        const result = await testIntegration({ deployDir: opts.deployDir, name });
+        spinner.stop();
+        if (result.success) {
+          console.log(chalk.green(`✔ ${result.message}`));
+        } else {
+          console.error(chalk.red(`✘ ${result.error}`));
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -223,35 +229,39 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
       route?: string;
       skipValidation?: boolean;
     }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const spinner = ora();
       const onProgress = createProviderProgressHandler(spinner);
 
       const routeCategories = opts.route ? opts.route.split(",").map((s) => s.trim()) : undefined;
 
-      const result = await addProvider({
-        deployDir: opts.deployDir,
-        name,
-        apiKey: opts.apiKey,
-        model: opts.model,
-        routeCategories,
-        skipValidation: opts.skipValidation,
-        onProgress,
-      });
+      try {
+        const result = await addProvider({
+          deployDir: opts.deployDir,
+          name,
+          apiKey: opts.apiKey,
+          model: opts.model,
+          routeCategories,
+          skipValidation: opts.skipValidation,
+          onProgress,
+        });
 
-      spinner.stop();
+        spinner.stop();
 
-      if (result.success) {
-        console.log(chalk.green(`\n✔ Provider "${name}" configured`));
-        if (result.validated) {
-          console.log(chalk.green("✔ Live validation passed"));
-        } else if (!opts.skipValidation) {
-          console.log(chalk.yellow("⚠ Live validation failed — credentials stored"));
+        if (result.success) {
+          console.log(chalk.green(`\n✔ Provider "${name}" configured`));
+          if (result.validated) {
+            console.log(chalk.green("✔ Live validation passed"));
+          } else if (!opts.skipValidation) {
+            console.log(chalk.yellow("⚠ Live validation failed — credentials stored"));
+          }
+        } else {
+          console.error(chalk.red(`\n✘ ${result.error}`));
+          throw new CommandError("", 1);
         }
-      } else {
-        console.error(chalk.red(`\n✘ ${result.error}`));
-        process.exit(1);
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -262,7 +272,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--keep-credentials", "Keep API key in .env")
     .action(async (name: string, opts: { deployDir: string; keepCredentials?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = await removeProviderCmd({
         deployDir: opts.deployDir,
         name,
@@ -272,7 +282,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
         console.log(chalk.green(`Provider "${name}" removed.`));
       } else {
         console.error(chalk.red(result.error ?? "Failed to remove."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -282,7 +292,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = listProviders({ deployDir: opts.deployDir });
       if (opts.json) {
         console.log(formatProviderListJson(result));
@@ -311,11 +321,11 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
       categories?: string;
       maxEgress: string;
     }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       if (!opts.permissions) {
         console.error(chalk.red("Error: --permissions is required (e.g., --permissions read,write,send)"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const permissions = opts.permissions.split(",").map((s) => s.trim()) as Permission[];
@@ -323,8 +333,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
 
       const maxEgressDomains = parseInt(opts.maxEgress, 10);
       if (isNaN(maxEgressDomains)) {
-        console.error(chalk.red("Invalid --max-egress value: must be a number"));
-        process.exit(1);
+        throw new CommandError("Invalid --max-egress value: must be a number");
       }
 
       const result = await addRole({
@@ -340,7 +349,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
         console.log(chalk.green(`Role "${name}" created.`));
       } else {
         console.error(chalk.red(result.error ?? "Failed to create role."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -350,7 +359,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .argument("<name>", "Role name")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (name: string, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = await removeRoleCmd({ deployDir: opts.deployDir, name });
       if (result.success) {
         console.log(chalk.green(`Role "${name}" removed.`));
@@ -359,7 +368,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
         }
       } else {
         console.error(chalk.red(result.error ?? "Failed to remove."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -370,7 +379,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .argument("<integration>", "Integration name")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (roleName: string, integrationName: string, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = await assignRoleToIntegration({
         deployDir: opts.deployDir,
         roleName,
@@ -380,7 +389,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
         console.log(chalk.green(`Role "${roleName}" assigned to integration "${integrationName}".`));
       } else {
         console.error(chalk.red(result.error ?? "Failed to assign."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -390,7 +399,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = listRoles({ deployDir: opts.deployDir });
       if (opts.json) {
         console.log(formatRoleListJson(result));
@@ -405,7 +414,7 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .argument("<integration>", "Integration name")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (integrationName: string, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = checkRole({ deployDir: opts.deployDir, integrationName });
       console.log(formatRoleCheck(result.integrationName, result.roleName, result.permissions));
     });

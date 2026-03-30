@@ -11,7 +11,8 @@ import { checkDocker } from "../../build/installer/index.js";
 import { deploy, restart, shutdown } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
-import { renderError, validatePort, warnIfNotInstalled } from "../ux.js";
+import { CommandError } from "../errors.js";
+import { renderError, validatePort, ensureInstalled } from "../ux.js";
 import { createConnectProgressHandler, createProgressHandler } from "./helpers.js";
 
 export function registerBuildCommands(program: Command, defaultDeployDir: string): void {
@@ -22,7 +23,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
     .option("--no-cache", "Force rebuild without cache")
     .option("--verify-hashes", "Download binaries and verify SHA256 hashes against pinned values")
     .action(async (opts: { deployDir: string; cache: boolean; verifyHashes?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const spinner = ora();
 
@@ -34,7 +35,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         console.error(chalk.red(`  ${dockerCheck.detail}`));
         console.log(chalk.dim("\n  Install Docker and ensure the daemon is running."));
         console.log(chalk.dim("  Then re-run: clawhq build"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
       spinner.succeed("Docker available");
 
@@ -76,7 +77,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
                 console.error(chalk.red(`  ${formatHashMismatch(r)}`));
               }
             }
-            process.exit(1);
+            throw new CommandError("", 1);
           }
         }
         return;
@@ -106,7 +107,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           spinner.fail("Docker build failed");
           console.error(chalk.red(`  ${result.error}`));
           console.log(chalk.dim("\n  Fix the issue and re-run: clawhq build"));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         const cacheInfo = result.cacheHit.stage1 && result.cacheHit.stage2
@@ -120,10 +121,11 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           console.log(chalk.dim(`  Manifest: written`));
         }
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         spinner.fail("Build failed");
         console.error(renderError(error));
         console.log(chalk.dim("\n  Fix the issue and re-run: clawhq build"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -146,12 +148,12 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       skipFirewall?: boolean;
       airGap?: boolean;
     }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const token = opts.token ?? process.env["CLAWHQ_GATEWAY_TOKEN"] ?? "";
       if (!token) {
         console.error(chalk.red("Error: Gateway token required. Use --token or set CLAWHQ_GATEWAY_TOKEN"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const gatewayPort = validatePort(opts.port);
@@ -167,24 +169,28 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       const spinner = ora();
       const onProgress = createProgressHandler(spinner);
 
-      const result = await deploy({
-        deployDir: opts.deployDir,
-        gatewayToken: token,
-        gatewayPort,
-        skipPreflight: opts.skipPreflight,
-        skipFirewall: opts.skipFirewall,
-        airGap: opts.airGap,
-        onProgress,
-        signal: ac.signal,
-      });
+      try {
+        const result = await deploy({
+          deployDir: opts.deployDir,
+          gatewayToken: token,
+          gatewayPort,
+          skipPreflight: opts.skipPreflight,
+          skipFirewall: opts.skipFirewall,
+          airGap: opts.airGap,
+          onProgress,
+          signal: ac.signal,
+        });
 
-      spinner.stop();
+        spinner.stop();
 
-      if (result.success) {
-        console.log(chalk.green("\n✔ Agent is live and responding to messages"));
-      } else {
-        console.error(chalk.red(`\n✘ Deploy failed:\n${result.error}`));
-        process.exit(1);
+        if (result.success) {
+          console.log(chalk.green("\n✔ Agent is live and responding to messages"));
+        } else {
+          console.error(chalk.red(`\n✘ Deploy failed:\n${result.error}`));
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -194,7 +200,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("-v, --volumes", "Remove volumes")
     .action(async (opts: { deployDir: string; volumes?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const ac = new AbortController();
       process.on("SIGINT", () => ac.abort());
@@ -203,20 +209,24 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       const spinner = ora();
       const onProgress = createProgressHandler(spinner);
 
-      const result = await shutdown({
-        deployDir: opts.deployDir,
-        removeVolumes: opts.volumes,
-        onProgress,
-        signal: ac.signal,
-      });
+      try {
+        const result = await shutdown({
+          deployDir: opts.deployDir,
+          removeVolumes: opts.volumes,
+          onProgress,
+          signal: ac.signal,
+        });
 
-      spinner.stop();
+        spinner.stop();
 
-      if (result.success) {
-        console.log(chalk.green("\n✔ Agent stopped"));
-      } else {
-        console.error(chalk.red(`\n✘ Shutdown failed: ${result.error}`));
-        process.exit(1);
+        if (result.success) {
+          console.log(chalk.green("\n✔ Agent stopped"));
+        } else {
+          console.error(chalk.red(`\n✘ Shutdown failed: ${result.error}`));
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -237,12 +247,12 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       skipFirewall?: boolean;
       airGap?: boolean;
     }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const token = opts.token ?? process.env["CLAWHQ_GATEWAY_TOKEN"] ?? "";
       if (!token) {
         console.error(chalk.red("Error: Gateway token required. Use --token or set CLAWHQ_GATEWAY_TOKEN"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const gatewayPort = validatePort(opts.port);
@@ -258,24 +268,28 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       const spinner = ora();
       const onProgress = createProgressHandler(spinner);
 
-      const result = await restart({
-        deployDir: opts.deployDir,
-        gatewayToken: token,
-        gatewayPort,
-        skipPreflight: opts.skipPreflight,
-        skipFirewall: opts.skipFirewall,
-        airGap: opts.airGap,
-        onProgress,
-        signal: ac.signal,
-      });
+      try {
+        const result = await restart({
+          deployDir: opts.deployDir,
+          gatewayToken: token,
+          gatewayPort,
+          skipPreflight: opts.skipPreflight,
+          skipFirewall: opts.skipFirewall,
+          airGap: opts.airGap,
+          onProgress,
+          signal: ac.signal,
+        });
 
-      spinner.stop();
+        spinner.stop();
 
-      if (result.success) {
-        console.log(chalk.green("\n✔ Agent restarted and reachable"));
-      } else {
-        console.error(chalk.red(`\n✘ Restart failed: ${result.error}`));
-        process.exit(1);
+        if (result.success) {
+          console.log(chalk.green("\n✔ Agent restarted and reachable"));
+        } else {
+          console.error(chalk.red(`\n✘ Restart failed: ${result.error}`));
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -292,7 +306,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       port: string;
       channel?: string;
     }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       try {
         const { select, input, password } = await import("@inquirer/prompts");
@@ -315,7 +329,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
 
         if (!gatewayToken) {
           console.error(chalk.red("Error: Gateway token required. Use --token or set CLAWHQ_GATEWAY_TOKEN"));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         const gatewayPort = validatePort(opts.port);
@@ -331,7 +345,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
 
         if (channel !== "telegram" && channel !== "whatsapp") {
           console.error(chalk.red(`Unsupported channel: ${channel}. Use telegram or whatsapp.`));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
 
         // Step 2: Collect and validate credentials
@@ -344,7 +358,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           const botToken = await password({ message: "Telegram bot token:", mask: "*" });
           if (!botToken) {
             console.error(chalk.red("Bot token is required."));
-            process.exit(1);
+            throw new CommandError("", 1);
           }
 
           // Validate token
@@ -354,7 +368,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
             spinner.succeed(`Bot verified: @${botUsername}`);
           } catch (err) {
             spinner.fail(`Token validation failed: ${err instanceof Error ? err.message : String(err)}`);
-            process.exit(1);
+            throw new CommandError("", 1);
           }
 
           const chatId = await input({
@@ -362,7 +376,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           });
           if (!chatId) {
             console.error(chalk.red("Chat ID is required."));
-            process.exit(1);
+            throw new CommandError("", 1);
           }
 
           vars["TELEGRAM_BOT_TOKEN"] = botToken;
@@ -374,7 +388,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           const accessToken = await password({ message: "Access Token:", mask: "*" });
           if (!phoneNumberId || !accessToken) {
             console.error(chalk.red("Phone Number ID and Access Token are required."));
-            process.exit(1);
+            throw new CommandError("", 1);
           }
 
           // Validate token
@@ -384,7 +398,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
             spinner.succeed(`WhatsApp verified: ${displayPhone}`);
           } catch (err) {
             spinner.fail(`Validation failed: ${err instanceof Error ? err.message : String(err)}`);
-            process.exit(1);
+            throw new CommandError("", 1);
           }
 
           const recipientPhone = await input({
@@ -392,7 +406,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           });
           if (!recipientPhone) {
             console.error(chalk.red("Recipient phone is required for test message."));
-            process.exit(1);
+            throw new CommandError("", 1);
           }
 
           vars["WHATSAPP_PHONE_NUMBER_ID"] = phoneNumberId;
@@ -426,15 +440,16 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           console.log(chalk.dim("\n  Your agent is now reachable. Send it a message!"));
         } else {
           console.error(chalk.red(`\n✘ ${result.error}`));
-          process.exit(1);
+          throw new CommandError("", 1);
         }
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         if (error instanceof Error && error.name === "ExitPromptError") {
           console.log(chalk.yellow("\nSetup cancelled."));
-          process.exit(0);
+          throw new CommandError("", 0);
         }
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -449,7 +464,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("-p, --port <port>", "Custom host port")
     .action(async (name: string, opts: { deployDir: string; port?: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const { addService, SUPPORTED_SERVICES } = await import("../../build/services/index.js");
       type ServiceName = import("../../build/services/index.js").ServiceName;
@@ -457,37 +472,41 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       if (!SUPPORTED_SERVICES.includes(name as ServiceName)) {
         console.error(chalk.red(`Unknown service: ${name}`));
         console.error(chalk.dim(`Supported: ${SUPPORTED_SERVICES.join(", ")}`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const spinner = ora(`Adding ${name}…`);
       spinner.start();
 
-      let port: number | undefined;
-      if (opts.port) {
-        port = validatePort(opts.port);
-      }
-
-      const result = await addService({
-        deployDir: opts.deployDir,
-        service: name as ServiceName,
-        port,
-      });
-
-      spinner.stop();
-
-      if (result.success) {
-        console.log(chalk.green(`\n✔ Service "${name}" configured`));
-        if (result.composePath) {
-          console.log(chalk.dim(`  Compose: ${result.composePath}`));
+      try {
+        let port: number | undefined;
+        if (opts.port) {
+          port = validatePort(opts.port);
         }
-        if (result.envVarsAdded && result.envVarsAdded.length > 0) {
-          console.log(chalk.dim(`  Env vars: ${result.envVarsAdded.join(", ")}`));
+
+        const result = await addService({
+          deployDir: opts.deployDir,
+          service: name as ServiceName,
+          port,
+        });
+
+        spinner.stop();
+
+        if (result.success) {
+          console.log(chalk.green(`\n✔ Service "${name}" configured`));
+          if (result.composePath) {
+            console.log(chalk.dim(`  Compose: ${result.composePath}`));
+          }
+          if (result.envVarsAdded && result.envVarsAdded.length > 0) {
+            console.log(chalk.dim(`  Env vars: ${result.envVarsAdded.join(", ")}`));
+          }
+          console.log(chalk.dim(`\n  Restart to activate: clawhq restart`));
+        } else {
+          console.error(chalk.red(`\n✘ Failed to add ${name}: ${result.error}`));
+          throw new CommandError("", 1);
         }
-        console.log(chalk.dim(`\n  Restart to activate: clawhq restart`));
-      } else {
-        console.error(chalk.red(`\n✘ Failed to add ${name}: ${result.error}`));
-        process.exit(1);
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -497,7 +516,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const { listServices, SUPPORTED_SERVICES } = await import("../../build/services/index.js");
 

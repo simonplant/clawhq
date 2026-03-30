@@ -14,7 +14,8 @@ import {
 } from "../../secure/audit/index.js";
 import { formatProbeReport, runProbes } from "../../secure/credentials/health.js";
 
-import { renderError, warnIfNotInstalled } from "../ux.js";
+import { CommandError } from "../errors.js";
+import { renderError, ensureInstalled } from "../ux.js";
 
 export function registerSecureCommands(program: Command, defaultDeployDir: string): void {
   program
@@ -25,12 +26,12 @@ export function registerSecureCommands(program: Command, defaultDeployDir: strin
     .option("--max-commits <n>", "Max git commits to scan (default: 100)", "100")
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; git?: boolean; maxCommits: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
-      try {
-        const { runScan, formatScanTable, formatScanJson } = await import("../../secure/scanner/index.js");
-        const spinner = ora("Scanning for secrets and PII…");
-        if (!opts.json) spinner.start();
+      ensureInstalled(opts.deployDir);
+      const { runScan, formatScanTable, formatScanJson } = await import("../../secure/scanner/index.js");
+      const spinner = ora("Scanning for secrets and PII…");
+      if (!opts.json) spinner.start();
 
+      try {
         const report = await runScan({
           deployDir: opts.deployDir,
           git: opts.git,
@@ -45,10 +46,12 @@ export function registerSecureCommands(program: Command, defaultDeployDir: strin
           console.log(formatScanTable(report));
         }
 
-        if (!report.clean) process.exit(1);
+        if (!report.clean) throw new CommandError("", 1);
       } catch (error) {
+        if (error instanceof CommandError) throw error;
+        spinner.stop();
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -58,22 +61,26 @@ export function registerSecureCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--configured", "Show only configured integrations (hide unconfigured)")
     .action(async (opts: { deployDir: string; configured?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const envPath = join(opts.deployDir, "engine", ".env");
       const spinner = ora("Checking credentials…");
       spinner.start();
 
-      const report = await runProbes({
-        envPath,
-        includeUnconfigured: !opts.configured,
-      });
+      try {
+        const report = await runProbes({
+          envPath,
+          includeUnconfigured: !opts.configured,
+        });
 
-      spinner.stop();
-      console.log(formatProbeReport(report));
+        spinner.stop();
+        console.log(formatProbeReport(report));
 
-      if (!report.healthy) {
-        process.exit(1);
+        if (!report.healthy) {
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -92,16 +99,15 @@ export function registerSecureCommands(program: Command, defaultDeployDir: strin
       since?: string;
       limit?: string;
     }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
+
+      const config = createAuditConfig(opts.deployDir, "");
+      const limit = opts.limit ? parseInt(opts.limit, 10) : undefined;
+
+      const spinner = ora("Reading audit logs…");
+      if (!opts.json && !opts.export) spinner.start();
 
       try {
-        // Use a placeholder HMAC key for reading — verification uses the key from the log
-        const config = createAuditConfig(opts.deployDir, "");
-        const limit = opts.limit ? parseInt(opts.limit, 10) : undefined;
-
-        const spinner = ora("Reading audit logs…");
-        if (!opts.json && !opts.export) spinner.start();
-
         const report = await readAuditReport(config, {
           since: opts.since,
           limit,
@@ -118,8 +124,10 @@ export function registerSecureCommands(program: Command, defaultDeployDir: strin
           console.log(formatAuditTable(report));
         }
       } catch (error) {
+        spinner.stop();
+        if (error instanceof CommandError) throw error;
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 }

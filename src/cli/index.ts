@@ -26,6 +26,7 @@ import { registerOperateCommands } from "./commands/operate.js";
 import { registerProvisionCommands } from "./commands/provision.js";
 import { registerQuickstartCommand } from "./commands/quickstart.js";
 import { registerSecureCommands } from "./commands/secure.js";
+import { CommandError } from "./errors.js";
 import { renderError } from "./ux.js";
 
 const require = createRequire(import.meta.url);
@@ -67,6 +68,10 @@ if (!process.argv.slice(2).length) {
   program.outputHelp();
 } else {
   program.parseAsync(process.argv).catch((err: unknown) => {
+    if (err instanceof CommandError) {
+      if (err.message) console.error(renderError(err));
+      process.exit(err.exitCode);
+    }
     console.error(renderError(err));
     process.exit(1);
   });

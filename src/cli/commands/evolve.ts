@@ -58,7 +58,8 @@ import {
 import { listIntegrations } from "../../evolve/integrate/index.js";
 import { createAuditConfig } from "../../secure/audit/index.js";
 
-import { renderError, warnIfNotInstalled } from "../ux.js";
+import { CommandError } from "../errors.js";
+import { renderError, ensureInstalled } from "../ux.js";
 
 function createSkillProgressHandler(spinner: ReturnType<typeof ora>) {
   return (event: SkillProgress): void => {
@@ -90,26 +91,30 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--auto-approve", "Auto-approve if vetting passes")
     .action(async (source: string, opts: { deployDir: string; autoApprove?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const spinner = ora();
-      const result = await installSkill({
-        deployDir: opts.deployDir,
-        source,
-        autoApprove: opts.autoApprove,
-        onProgress: createSkillProgressHandler(spinner),
-      });
-      if (result.success) {
-        console.log(chalk.green(`\nSkill "${result.skillName}" installed and active.`));
-      } else {
-        console.log(chalk.red(`\nSkill installation failed: ${result.error}`));
-        if (result.vetReport && result.vetReport.findings.length > 0) {
-          console.log(chalk.dim("\nSecurity findings:"));
-          for (const f of result.vetReport.findings) {
-            const sev = f.severity === "critical" ? chalk.red(f.severity) : chalk.yellow(f.severity);
-            console.log(`  ${sev} ${f.file}:${f.line} — ${f.detail}`);
+      try {
+        const result = await installSkill({
+          deployDir: opts.deployDir,
+          source,
+          autoApprove: opts.autoApprove,
+          onProgress: createSkillProgressHandler(spinner),
+        });
+        if (result.success) {
+          console.log(chalk.green(`\nSkill "${result.skillName}" installed and active.`));
+        } else {
+          console.log(chalk.red(`\nSkill installation failed: ${result.error}`));
+          if (result.vetReport && result.vetReport.findings.length > 0) {
+            console.log(chalk.dim("\nSecurity findings:"));
+            for (const f of result.vetReport.findings) {
+              const sev = f.severity === "critical" ? chalk.red(f.severity) : chalk.yellow(f.severity);
+              console.log(`  ${sev} ${f.file}:${f.line} — ${f.detail}`);
+            }
           }
+          throw new CommandError("", 1);
         }
-        process.exit(1);
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -119,43 +124,47 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .argument("[name]", "Skill name (all if omitted)")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (name: string | undefined, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const spinner = ora();
 
-      if (name) {
-        const result = await updateSkill(opts.deployDir, name, createSkillProgressHandler(spinner));
-        spinner.stop();
-        if (result.success) {
-          console.log(chalk.green(`Skill "${name}" updated.`));
-        } else if (result.status === "not-found") {
-          console.log(chalk.red(`Skill "${name}" not found.`));
-          process.exit(1);
-        } else {
-          console.log(chalk.red(`Failed to update skill "${name}": ${result.error}`));
-          if (result.status === "rolled-back") {
-            console.log(chalk.yellow("Previous version has been restored."));
-          }
-          process.exit(1);
-        }
-      } else {
-        const results = await updateAllSkills(opts.deployDir, createSkillProgressHandler(spinner));
-        spinner.stop();
-        if (results.length === 0) {
-          console.log(chalk.yellow("No skills installed."));
-          return;
-        }
-        let hasFailure = false;
-        for (const result of results) {
+      try {
+        if (name) {
+          const result = await updateSkill(opts.deployDir, name, createSkillProgressHandler(spinner));
+          spinner.stop();
           if (result.success) {
-            console.log(chalk.green(`  ✓ ${result.skillName} updated`));
+            console.log(chalk.green(`Skill "${name}" updated.`));
+          } else if (result.status === "not-found") {
+            console.log(chalk.red(`Skill "${name}" not found.`));
+            throw new CommandError("", 1);
           } else {
-            hasFailure = true;
-            console.log(chalk.red(`  ✗ ${result.skillName}: ${result.error}`));
+            console.log(chalk.red(`Failed to update skill "${name}": ${result.error}`));
+            if (result.status === "rolled-back") {
+              console.log(chalk.yellow("Previous version has been restored."));
+            }
+            throw new CommandError("", 1);
+          }
+        } else {
+          const results = await updateAllSkills(opts.deployDir, createSkillProgressHandler(spinner));
+          spinner.stop();
+          if (results.length === 0) {
+            console.log(chalk.yellow("No skills installed."));
+            return;
+          }
+          let hasFailure = false;
+          for (const result of results) {
+            if (result.success) {
+              console.log(chalk.green(`  ✓ ${result.skillName} updated`));
+            } else {
+              hasFailure = true;
+              console.log(chalk.red(`  ✗ ${result.skillName}: ${result.error}`));
+            }
+          }
+          if (hasFailure) {
+            throw new CommandError("", 1);
           }
         }
-        if (hasFailure) {
-          process.exit(1);
-        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -165,13 +174,13 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .argument("<name>", "Skill name")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (name: string, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = await removeSkill(opts.deployDir, name);
       if (result.success) {
         console.log(chalk.green(`Skill "${name}" removed.`));
       } else {
         console.log(chalk.red(`Failed to remove skill: ${result.error}`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -181,7 +190,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = await listSkills({ deployDir: opts.deployDir });
       if (opts.json) {
         console.log(formatSkillListJson(result));
@@ -196,7 +205,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const [skillsResult, toolsResult, memoryResult] = await Promise.all([
         listSkills({ deployDir: opts.deployDir }).catch(() => null),
@@ -293,7 +302,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const status = await getMemoryStatus({ deployDir: opts.deployDir });
       if (opts.json) {
         console.log(formatMemoryStatusJson(status));
@@ -308,21 +317,25 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const spinner = ora("Running memory lifecycle...").start();
-      const result = await runLifecycle({
-        deployDir: opts.deployDir,
-        onProgress: (p: MemoryProgress) => {
-          if (p.status === "running") spinner.text = p.message;
-        },
-      });
-      spinner.stop();
-      if (opts.json) {
-        console.log(formatLifecycleResultJson(result));
-      } else {
-        console.log(formatLifecycleResult(result));
+      try {
+        const result = await runLifecycle({
+          deployDir: opts.deployDir,
+          onProgress: (p: MemoryProgress) => {
+            if (p.status === "running") spinner.text = p.message;
+          },
+        });
+        spinner.stop();
+        if (opts.json) {
+          console.log(formatLifecycleResultJson(result));
+        } else {
+          console.log(formatLifecycleResult(result));
+        }
+        if (!result.success) throw new CommandError("", 1);
+      } finally {
+        spinner.stop();
       }
-      if (!result.success) process.exit(1);
     });
 
   memory
@@ -331,7 +344,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const report = await analyzePreferences({ deployDir: opts.deployDir });
       if (opts.json) {
         console.log(formatPreferenceReportJson(report));
@@ -351,26 +364,30 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--skip-rebuild", "Skip Stage 2 Docker rebuild")
     .action(async (name: string, opts: { deployDir: string; skipRebuild?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const spinner = ora(`Installing tool "${name}"...`).start();
-      const result = await installTool({
-        deployDir: opts.deployDir,
-        name,
-        skipRebuild: opts.skipRebuild,
-      });
-      spinner.stop();
-      if (result.success) {
-        console.log(chalk.green(`Tool "${result.toolName}" installed.`));
-        if (result.rebuilt) {
-          console.log(chalk.dim("Stage 2 rebuild complete."));
-        } else if (result.error) {
-          console.log(chalk.yellow(result.error));
-        } else if (opts.skipRebuild) {
-          console.log(chalk.dim("Rebuild skipped. Run 'clawhq build' to apply changes."));
+      try {
+        const result = await installTool({
+          deployDir: opts.deployDir,
+          name,
+          skipRebuild: opts.skipRebuild,
+        });
+        spinner.stop();
+        if (result.success) {
+          console.log(chalk.green(`Tool "${result.toolName}" installed.`));
+          if (result.rebuilt) {
+            console.log(chalk.dim("Stage 2 rebuild complete."));
+          } else if (result.error) {
+            console.log(chalk.yellow(result.error));
+          } else if (opts.skipRebuild) {
+            console.log(chalk.dim("Rebuild skipped. Run 'clawhq build' to apply changes."));
+          }
+        } else {
+          console.log(chalk.red(`Tool install failed: ${result.error}`));
+          throw new CommandError("", 1);
         }
-      } else {
-        console.log(chalk.red(`Tool install failed: ${result.error}`));
-        process.exit(1);
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -381,26 +398,30 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--skip-rebuild", "Skip Stage 2 Docker rebuild")
     .action(async (name: string, opts: { deployDir: string; skipRebuild?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const spinner = ora(`Removing tool "${name}"...`).start();
-      const result = await removeTool({
-        deployDir: opts.deployDir,
-        name,
-        skipRebuild: opts.skipRebuild,
-      });
-      spinner.stop();
-      if (result.success) {
-        console.log(chalk.green(`Tool "${result.toolName}" removed.`));
-        if (result.rebuilt) {
-          console.log(chalk.dim("Stage 2 rebuild complete."));
-        } else if (result.error) {
-          console.log(chalk.yellow(result.error));
-        } else if (opts.skipRebuild) {
-          console.log(chalk.dim("Rebuild skipped. Run 'clawhq build' to apply changes."));
+      try {
+        const result = await removeTool({
+          deployDir: opts.deployDir,
+          name,
+          skipRebuild: opts.skipRebuild,
+        });
+        spinner.stop();
+        if (result.success) {
+          console.log(chalk.green(`Tool "${result.toolName}" removed.`));
+          if (result.rebuilt) {
+            console.log(chalk.dim("Stage 2 rebuild complete."));
+          } else if (result.error) {
+            console.log(chalk.yellow(result.error));
+          } else if (opts.skipRebuild) {
+            console.log(chalk.dim("Rebuild skipped. Run 'clawhq build' to apply changes."));
+          }
+        } else {
+          console.log(chalk.red(`Tool remove failed: ${result.error}`));
+          throw new CommandError("", 1);
         }
-      } else {
-        console.log(chalk.red(`Tool remove failed: ${result.error}`));
-        process.exit(1);
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -410,7 +431,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const result = await listTools({ deployDir: opts.deployDir });
       if (opts.json) {
         console.log(formatToolListJson(result));
@@ -429,7 +450,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const pending = await listPending(opts.deployDir);
       if (opts.json) {
         console.log(JSON.stringify(pending, null, 2));
@@ -457,14 +478,14 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .argument("<id>", "Approval item ID")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (id: string, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const auditConfig = createAuditConfig(opts.deployDir, "");
       const result = await approveItem(opts.deployDir, id, { resolvedVia: "cli", auditConfig });
       if (result.success) {
         console.log(chalk.green(`Approved: ${id}`));
       } else {
         console.log(chalk.red(result.error ?? "Failed to approve."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -474,14 +495,14 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .argument("<id>", "Approval item ID")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (id: string, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const auditConfig = createAuditConfig(opts.deployDir, "");
       const result = await rejectItem(opts.deployDir, id, { resolvedVia: "cli", auditConfig });
       if (result.success) {
         console.log(chalk.green(`Rejected: ${id}`));
       } else {
         console.log(chalk.red(result.error ?? "Failed to reject."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -490,7 +511,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .description("Count pending approval items")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const count = await countPending(opts.deployDir);
       console.log(String(count));
     });
@@ -500,7 +521,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .description("Start Telegram approval bot (polls for approve/reject button presses)")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const { readEnvValue } = await import("../../secure/credentials/env-store.js");
       const envPath = join(opts.deployDir, "engine", ".env");
@@ -509,11 +530,11 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
 
       if (!botToken) {
         console.error(chalk.red("TELEGRAM_BOT_TOKEN not set in .env. Configure via clawhq creds."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
       if (!chatId) {
         console.error(chalk.red("TELEGRAM_CHAT_ID not set in .env. Set the chat ID for approval notifications."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const telegramConfig: TelegramConfig = { botToken, chatId };
@@ -546,7 +567,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .argument("<id>", "Approval item ID")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .action(async (id: string, opts: { deployDir: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const { readEnvValue } = await import("../../secure/credentials/env-store.js");
       const { getItem } = await import("../../evolve/approval/queue.js");
@@ -556,17 +577,17 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
 
       if (!botToken || !chatId) {
         console.error(chalk.red("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set in .env."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const item = await getItem(opts.deployDir, id);
       if (!item) {
         console.error(chalk.red(`Approval item "${id}" not found.`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
       if (item.status !== "pending") {
         console.error(chalk.red(`Item "${id}" is already ${item.status}.`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const result = await sendApprovalNotification({ botToken, chatId }, item);
@@ -574,7 +595,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
         console.log(chalk.green(`Telegram notification sent for ${id}.`));
       } else {
         console.error(chalk.red(`Failed to notify: ${result.error}`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -587,7 +608,7 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("-o, --output <path>", "Output file path")
     .option("--json", "Output as JSON for scripting")
     .action(async (opts: { deployDir: string; output?: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       const spinner = ora();
       const onProgress = (event: LifecycleProgress): void => {
         const label = `[${event.step}]`;
@@ -602,11 +623,12 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
         const result = await exportBundle({ deployDir: opts.deployDir, output: opts.output, onProgress });
         console.log();
         console.log(opts.json ? formatExportJson(result) : formatExportTable(result));
-        process.exit(result.success ? 0 : 1);
+        if (!result.success) throw new CommandError("", 1);
       } catch (err) {
         spinner.stop();
+        if (err instanceof CommandError) throw err;
         console.error(renderError(err));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -617,13 +639,13 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
     .option("--confirm", "Skip confirmation prompt")
     .option("--json", "Output as JSON for scripting")
     .action(async (opts: { deployDir: string; confirm?: boolean; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
       if (!opts.confirm) {
         console.log(chalk.red.bold("⚠  WARNING: This will permanently destroy ALL agent data."));
         console.log(chalk.red("   This action cannot be undone.\n"));
         console.log(`   Deploy dir: ${opts.deployDir}\n`);
         console.log(chalk.yellow("   Run with --confirm to proceed."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
       const spinner = ora();
       const onProgress = (event: LifecycleProgress): void => {
@@ -639,11 +661,12 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
         const result = await destroyAgent({ deployDir: opts.deployDir, confirm: true, onProgress });
         console.log();
         console.log(opts.json ? formatDestroyJson(result) : formatDestroyTable(result));
-        process.exit(result.success ? 0 : 1);
+        if (!result.success) throw new CommandError("", 1);
       } catch (err) {
         spinner.stop();
+        if (err instanceof CommandError) throw err;
         console.error(renderError(err));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -658,10 +681,11 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
         const proof = JSON.parse(raw) as DestructionProof;
         const valid = verifyDestructionProof(proof);
         console.log(formatVerifyResult(proof, valid));
-        process.exit(valid ? 0 : 1);
+        if (!valid) throw new CommandError("", 1);
       } catch (err) {
+        if (err instanceof CommandError) throw err;
         console.error(renderError(err));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 }

@@ -35,6 +35,7 @@ import {
 } from "../../design/blueprints/index.js";
 import { startDashboard } from "../../web/index.js";
 
+import { CommandError } from "../errors.js";
 import { validatePort } from "../ux.js";
 
 function resolveProviderAlias(input: string): CloudProvider | undefined {
@@ -133,7 +134,7 @@ async function runDeployWizard(opts: {
     const resolved = resolveProviderAlias(opts.provider);
     if (!resolved) {
       console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner (hz)`));
-      process.exit(1);
+      throw new CommandError("", 1);
     }
     provider = resolved;
   } else {
@@ -147,7 +148,7 @@ async function runDeployWizard(opts: {
   const providerInfo = getProviderInfo(provider);
   if (!providerInfo) {
     console.error(chalk.red(`Unknown provider: ${provider}`));
-    process.exit(1);
+    throw new CommandError("", 1);
   }
 
   // Step 2: Credentials
@@ -155,7 +156,7 @@ async function runDeployWizard(opts: {
     if (opts.yes) {
       console.error(chalk.red(`No credentials found for ${providerInfo.name}. Set them first:`));
       console.error(chalk.dim(`  clawhq deploy credentials --provider ${provider} --token <your-token>`));
-      process.exit(1);
+      throw new CommandError("", 1);
     }
 
     if (!opts.json) {
@@ -176,7 +177,7 @@ async function runDeployWizard(opts: {
 
     if (!validation.valid) {
       console.error(chalk.red(`\n  Invalid credentials: ${validation.error}`));
-      process.exit(1);
+      throw new CommandError("", 1);
     }
 
     if (!opts.json) {
@@ -331,7 +332,7 @@ async function runDeployWizard(opts: {
     });
     if (!proceed) {
       console.log(chalk.dim("\n  Deploy cancelled. No charges incurred.\n"));
-      process.exit(0);
+      throw new CommandError("", 0);
     }
   }
 
@@ -361,7 +362,7 @@ async function runDeployWizard(opts: {
 
   if (opts.json) {
     console.log(JSON.stringify(result, null, 2));
-    if (!result.provision.success) process.exit(1);
+    if (!result.provision.success) throw new CommandError("", 1);
     return;
   }
 
@@ -394,7 +395,7 @@ async function runDeployWizard(opts: {
       console.error(chalk.dim(`  Instance ID: ${result.provision.instanceId} (partially created)`));
     }
     console.error(chalk.dim("  Mid-flight failures are auto-cleaned. No orphaned resources.\n"));
-    process.exit(1);
+    throw new CommandError("", 1);
   }
 }
 
@@ -422,6 +423,7 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       console.log(chalk.green(`Dashboard running at http://${server.hostname}:${server.port}`));
       console.log(chalk.dim("Press Ctrl+C to stop.\n"));
 
+      // Signal handler for cleanup — legitimately calls process.exit()
       const shutdownServer = () => {
         console.log(chalk.dim("\nShutting down dashboard…"));
         server.close();
@@ -469,7 +471,7 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
     .option("-r, --region <region>", "VM region", "nyc3")
     .option("-s, --size <size>", "VM size", "s-2vcpu-4gb")
     .option("--snapshot <id>", "Use a pre-built snapshot for sub-60s provisioning")
-    .option("--ssh-keys <keys>", "Comma-separated SSH key IDs or fingerprints")
+    .option("--ssh-keys <keys>", "Comma-separated SSH key IDs (for debugging builder)")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: {
@@ -485,7 +487,7 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const provider = resolveProviderAlias(opts.provider);
       if (!provider) {
         console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner (hz)`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const sshKeys = opts.sshKeys ? opts.sshKeys.split(",").map((k) => k.trim()) : undefined;
@@ -493,36 +495,40 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const spinner = ora("Provisioning cloud instance…");
       if (!opts.json) spinner.start();
 
-      const onProgress = createProvisionProgressHandler(spinner, opts.json);
+      try {
+        const onProgress = createProvisionProgressHandler(spinner, opts.json);
 
-      const result = await provision({
-        provider,
-        deployDir: opts.deployDir,
-        name: opts.name,
-        region: opts.region,
-        size: opts.size,
-        snapshotId: opts.snapshot,
-        sshKeys,
-        onProgress,
-      });
+        const result = await provision({
+          provider,
+          deployDir: opts.deployDir,
+          name: opts.name,
+          region: opts.region,
+          size: opts.size,
+          snapshotId: opts.snapshot,
+          sshKeys,
+          onProgress,
+        });
 
-      if (!opts.json) spinner.stop();
+        if (!opts.json) spinner.stop();
 
-      if (opts.json) {
-        console.log(JSON.stringify(result, null, 2));
-      } else if (result.success) {
-        console.log(chalk.green(`\nInstance provisioned successfully.`));
-        console.log(chalk.dim(`  ID:       ${result.instanceId}`));
-        console.log(chalk.dim(`  IP:       ${result.ipAddress}`));
-        console.log(chalk.dim(`  Healthy:  ${result.healthy ? "yes" : "no"}`));
-        console.log(chalk.dim(`\n  Destroy:  clawhq deploy destroy ${result.instanceId}`));
-        console.log(chalk.dim(`  Status:   clawhq deploy status ${result.instanceId}`));
-      } else {
-        console.error(chalk.red(`Provisioning failed: ${result.error}`));
-        if (result.instanceId) {
-          console.error(chalk.dim(`  Instance ID: ${result.instanceId} (partially created)`));
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (result.success) {
+          console.log(chalk.green(`\nInstance provisioned successfully.`));
+          console.log(chalk.dim(`  ID:       ${result.instanceId}`));
+          console.log(chalk.dim(`  IP:       ${result.ipAddress}`));
+          console.log(chalk.dim(`  Healthy:  ${result.healthy ? "yes" : "no"}`));
+          console.log(chalk.dim(`\n  Destroy:  clawhq deploy destroy ${result.instanceId}`));
+          console.log(chalk.dim(`  Status:   clawhq deploy status ${result.instanceId}`));
+        } else {
+          console.error(chalk.red(`Provisioning failed: ${result.error}`));
+          if (result.instanceId) {
+            console.error(chalk.dim(`  Instance ID: ${result.instanceId} (partially created)`));
+          }
+          throw new CommandError("", 1);
         }
-        process.exit(1);
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -537,7 +543,7 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const instance = findInstance(opts.deployDir, instanceId);
       if (!instance) {
         console.error(chalk.red(`Instance not found: ${instanceId}`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       if (!opts.yes && !opts.json) {
@@ -555,21 +561,25 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const spinner = ora(`Destroying instance ${instance.name}…`);
       if (!opts.json) spinner.start();
 
-      const result = await destroyInstance({
-        deployDir: opts.deployDir,
-        instanceId,
-      });
+      try {
+        const result = await destroyInstance({
+          deployDir: opts.deployDir,
+          instanceId,
+        });
 
-      if (!opts.json) spinner.stop();
+        if (!opts.json) spinner.stop();
 
-      if (opts.json) {
-        console.log(JSON.stringify(result, null, 2));
-      } else if (result.success) {
-        console.log(chalk.green(`Instance destroyed: ${instance.name} (${instance.provider})`));
-        console.log(chalk.dim("  VM terminated, SSH key removed, local state cleaned."));
-      } else {
-        console.error(chalk.red(`Failed to destroy instance: ${result.error}`));
-        process.exit(1);
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (result.success) {
+          console.log(chalk.green(`Instance destroyed: ${instance.name} (${instance.provider})`));
+          console.log(chalk.dim("  VM terminated, SSH key removed, local state cleaned."));
+        } else {
+          console.error(chalk.red(`Failed to destroy instance: ${result.error}`));
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -594,16 +604,16 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const modeCount = [opts.config, opts.version, opts.skill].filter(Boolean).length;
       if (modeCount === 0) {
         console.error(chalk.red("Specify an update mode: --config, --version, or --skill <subcommand>"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
       if (modeCount > 1) {
         console.error(chalk.red("Specify only one update mode: --config, --version, or --skill"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       if (opts.skill && skillArgs.length === 0) {
         console.error(chalk.red("--skill requires a subcommand (e.g. --skill install <source>)"));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const mode = opts.config ? "config" as const : opts.version ? "version" as const : "skill" as const;
@@ -611,28 +621,32 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const spinner = ora("Updating cloud agent…");
       if (!opts.json) spinner.start();
 
-      const onProgress = createUpdateProgressHandler(spinner, opts.json);
+      try {
+        const onProgress = createUpdateProgressHandler(spinner, opts.json);
 
-      const result = await updateInstance({
-        deployDir: opts.deployDir,
-        instanceId: opts.id,
-        mode,
-        skillArgs: opts.skill ? skillArgs.join(" ") : undefined,
-        onProgress,
-      });
+        const result = await updateInstance({
+          deployDir: opts.deployDir,
+          instanceId: opts.id,
+          mode,
+          skillArgs: opts.skill ? skillArgs.join(" ") : undefined,
+          onProgress,
+        });
 
-      if (!opts.json) spinner.stop();
+        if (!opts.json) spinner.stop();
 
-      if (opts.json) {
-        console.log(JSON.stringify(result, null, 2));
-      } else if (result.success) {
-        console.log(chalk.green(`\nUpdate complete.`));
-        if (result.output) {
-          console.log(chalk.dim(`\nRemote output:\n${result.output}`));
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (result.success) {
+          console.log(chalk.green(`\nUpdate complete.`));
+          if (result.output) {
+            console.log(chalk.dim(`\nRemote output:\n${result.output}`));
+          }
+        } else {
+          console.error(chalk.red(`Update failed: ${result.error}`));
+          throw new CommandError("", 1);
         }
-      } else {
-        console.error(chalk.red(`Update failed: ${result.error}`));
-        process.exit(1);
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -678,7 +692,7 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const instance = findInstance(opts.deployDir, instanceId);
       if (!instance) {
         console.error(chalk.red(`Instance not found: ${instanceId}`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const status = await getInstanceStatus({
@@ -737,7 +751,7 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const provider = resolveProviderAlias(opts.provider);
       if (!provider) {
         console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner (hz)`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       setProviderCredential(opts.deployDir, provider, opts.token);
@@ -768,7 +782,7 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const provider = resolveProviderAlias(opts.provider);
       if (!provider) {
         console.error(chalk.red(`Invalid provider: ${opts.provider}. Must be one of: digitalocean (do), aws, gcp, hetzner (hz)`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const sshKeys = opts.sshKeys ? opts.sshKeys.split(",").map((k) => k.trim()) : undefined;
@@ -776,31 +790,35 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
       const spinner = ora("Building golden VM snapshot…");
       if (!opts.json) spinner.start();
 
-      const onProgress = createSnapshotProgressHandler(spinner, opts.json);
+      try {
+        const onProgress = createSnapshotProgressHandler(spinner, opts.json);
 
-      const result = await buildSnapshot({
-        provider,
-        deployDir: opts.deployDir,
-        region: opts.region,
-        size: opts.size,
-        sshKeys,
-        onProgress,
-      });
+        const result = await buildSnapshot({
+          provider,
+          deployDir: opts.deployDir,
+          region: opts.region,
+          size: opts.size,
+          sshKeys,
+          onProgress,
+        });
 
-      if (!opts.json) spinner.stop();
+        if (!opts.json) spinner.stop();
 
-      if (opts.json) {
-        console.log(JSON.stringify(result, null, 2));
-      } else if (result.success) {
-        console.log(chalk.green(`\nSnapshot built successfully.`));
-        console.log(chalk.dim(`  Snapshot ID:  ${result.snapshotId}`));
-        console.log(chalk.dim(`  Version:      ${result.clawhqVersion}`));
-        console.log(chalk.dim(`\n  Use it:  clawhq deploy create --provider ${provider} --name my-agent --snapshot ${result.snapshotId}`));
-        console.log(chalk.dim(`  List:    clawhq deploy snapshot list`));
-        console.log(chalk.dim(`  Delete:  clawhq deploy snapshot delete ${result.snapshotId}`));
-      } else {
-        console.error(chalk.red(`Snapshot build failed: ${result.error}`));
-        process.exit(1);
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (result.success) {
+          console.log(chalk.green(`\nSnapshot built successfully.`));
+          console.log(chalk.dim(`  Snapshot ID:  ${result.snapshotId}`));
+          console.log(chalk.dim(`  Version:      ${result.clawhqVersion}`));
+          console.log(chalk.dim(`\n  Use it:  clawhq deploy create --provider ${provider} --name my-agent --snapshot ${result.snapshotId}`));
+          console.log(chalk.dim(`  List:    clawhq deploy snapshot list`));
+          console.log(chalk.dim(`  Delete:  clawhq deploy snapshot delete ${result.snapshotId}`));
+        } else {
+          console.error(chalk.red(`Snapshot build failed: ${result.error}`));
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -848,7 +866,7 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
         console.log(chalk.green(`Snapshot removed: ${snapshotId}`));
       } else {
         console.error(chalk.red(`Failed to delete snapshot: ${result.error}`));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 }

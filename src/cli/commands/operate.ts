@@ -39,7 +39,8 @@ import {
 } from "../../operate/updater/index.js";
 import type { UpdateProgress } from "../../operate/updater/index.js";
 
-import { renderError, validatePort, warnIfNotInstalled } from "../ux.js";
+import { CommandError } from "../errors.js";
+import { renderError, validatePort, ensureInstalled } from "../ux.js";
 
 async function loadNotificationChannels(deployDir: string): Promise<NotificationChannel[]> {
   const channels: NotificationChannel[] = [];
@@ -88,7 +89,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
       fix?: boolean;
       json?: boolean;
     }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const ac = new AbortController();
       process.on("SIGINT", () => ac.abort());
@@ -100,43 +101,51 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
         const spinner = ora("Running diagnostics and auto-fix…");
         if (!opts.json) spinner.start();
 
-        const { report, fixReport } = await runDoctorWithFix({
-          deployDir: opts.deployDir,
-          fix: true,
-          format,
-          signal: ac.signal,
-        });
+        try {
+          const { report, fixReport } = await runDoctorWithFix({
+            deployDir: opts.deployDir,
+            fix: true,
+            format,
+            signal: ac.signal,
+          });
 
-        if (!opts.json) spinner.stop();
+          if (!opts.json) spinner.stop();
 
-        if (opts.json) {
-          console.log(formatDoctorJson(report, fixReport));
-        } else {
-          console.log(formatFixTable(fixReport));
-          console.log("");
-          console.log(formatDoctorTable(report));
+          if (opts.json) {
+            console.log(formatDoctorJson(report, fixReport));
+          } else {
+            console.log(formatFixTable(fixReport));
+            console.log("");
+            console.log(formatDoctorTable(report));
+          }
+
+          if (!report.healthy) throw new CommandError("", 1);
+        } finally {
+          spinner.stop();
         }
-
-        if (!report.healthy) process.exit(1);
       } else {
         const spinner = ora("Running diagnostics…");
         if (!opts.json) spinner.start();
 
-        const report = await runDoctor({
-          deployDir: opts.deployDir,
-          format,
-          signal: ac.signal,
-        });
+        try {
+          const report = await runDoctor({
+            deployDir: opts.deployDir,
+            format,
+            signal: ac.signal,
+          });
 
-        if (!opts.json) spinner.stop();
+          if (!opts.json) spinner.stop();
 
-        if (opts.json) {
-          console.log(formatDoctorJson(report));
-        } else {
-          console.log(formatDoctorTable(report));
+          if (opts.json) {
+            console.log(formatDoctorJson(report));
+          } else {
+            console.log(formatDoctorTable(report));
+          }
+
+          if (!report.healthy) throw new CommandError("", 1);
+        } finally {
+          spinner.stop();
         }
-
-        if (!report.healthy) process.exit(1);
       }
     });
 
@@ -148,7 +157,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     .option("--json", "Output as JSON for scripting")
     .option("-i, --interval <seconds>", "Watch refresh interval in seconds", "5")
     .action(async (opts: { deployDir: string; watch?: boolean; json?: boolean; interval: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       try {
         if (opts.watch) {
@@ -177,23 +186,28 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
           const spinner = ora("Gathering status…");
           if (!opts.json) spinner.start();
 
-          const snapshot = await getStatus({
-            deployDir: opts.deployDir,
-          });
+          try {
+            const snapshot = await getStatus({
+              deployDir: opts.deployDir,
+            });
 
-          if (!opts.json) spinner.stop();
+            if (!opts.json) spinner.stop();
 
-          if (opts.json) {
-            console.log(formatStatusJson(snapshot));
-          } else {
-            console.log(formatStatusTable(snapshot));
+            if (opts.json) {
+              console.log(formatStatusJson(snapshot));
+            } else {
+              console.log(formatStatusTable(snapshot));
+            }
+
+            if (!snapshot.healthy) throw new CommandError("", 1);
+          } finally {
+            spinner.stop();
           }
-
-          if (!snapshot.healthy) process.exit(1);
         }
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -205,36 +219,40 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("-p, --passphrase <passphrase>", "GPG passphrase for encryption")
     .action(async (opts: { deployDir: string; passphrase?: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       if (!opts.passphrase) {
         console.error(chalk.red("Error: --passphrase is required for encrypted backup."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const spinner = ora("Creating encrypted backup…");
       spinner.start();
 
-      const result = await createBackup({
-        deployDir: opts.deployDir,
-        passphrase: opts.passphrase,
-        onProgress: (p: BackupProgress) => {
-          spinner.text = p.message;
-        },
-      });
+      try {
+        const result = await createBackup({
+          deployDir: opts.deployDir,
+          passphrase: opts.passphrase,
+          onProgress: (p: BackupProgress) => {
+            spinner.text = p.message;
+          },
+        });
 
-      spinner.stop();
+        spinner.stop();
 
-      if (!result.success) {
-        console.error(chalk.red(`Backup failed: ${result.error}`));
-        process.exit(1);
-      }
+        if (!result.success) {
+          console.error(chalk.red(`Backup failed: ${result.error}`));
+          throw new CommandError("", 1);
+        }
 
-      console.log(chalk.green(`\n✔ Snapshot created: ${result.snapshotId}`));
-      console.log(`  Path: ${result.snapshotPath}`);
-      if (result.manifest) {
-        console.log(`  Files: ${result.manifest.fileCount}`);
-        console.log(`  SHA-256: ${result.manifest.sha256.slice(0, 16)}…`);
+        console.log(chalk.green(`\n✔ Snapshot created: ${result.snapshotId}`));
+        console.log(`  Path: ${result.snapshotPath}`);
+        if (result.manifest) {
+          console.log(`  Files: ${result.manifest.fileCount}`);
+          console.log(`  SHA-256: ${result.manifest.sha256.slice(0, 16)}…`);
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -244,7 +262,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const snapshots = await listSnapshots(opts.deployDir);
 
@@ -280,37 +298,41 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     .action(async (snapshot: string, opts: { deployDir: string; passphrase?: string }) => {
       if (!opts.passphrase) {
         console.error(chalk.red("Error: --passphrase is required for restore."));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
 
       const spinner = ora("Restoring from backup…");
       spinner.start();
 
-      const result = await restoreBackup({
-        deployDir: opts.deployDir,
-        snapshot,
-        passphrase: opts.passphrase,
-        onProgress: (p: BackupProgress) => {
-          spinner.text = p.message;
-        },
-      });
+      try {
+        const result = await restoreBackup({
+          deployDir: opts.deployDir,
+          snapshot,
+          passphrase: opts.passphrase,
+          onProgress: (p: BackupProgress) => {
+            spinner.text = p.message;
+          },
+        });
 
-      spinner.stop();
+        spinner.stop();
 
-      if (!result.success) {
-        console.error(chalk.red(`Restore failed: ${result.error}`));
-        process.exit(1);
-      }
+        if (!result.success) {
+          console.error(chalk.red(`Restore failed: ${result.error}`));
+          throw new CommandError("", 1);
+        }
 
-      console.log(chalk.green(`\n✔ Restore complete`));
-      if (result.fileCount != null) {
-        console.log(`  Entries restored: ${result.fileCount}`);
-      }
+        console.log(chalk.green(`\n✔ Restore complete`));
+        if (result.fileCount != null) {
+          console.log(`  Entries restored: ${result.fileCount}`);
+        }
 
-      if (result.doctorHealthy) {
-        console.log(chalk.green("  Doctor check: HEALTHY"));
-      } else {
-        console.log(chalk.yellow("  Doctor check: issues detected — run `clawhq doctor` for details"));
+        if (result.doctorHealthy) {
+          console.log(chalk.green("  Doctor check: HEALTHY"));
+        } else {
+          console.log(chalk.yellow("  Doctor check: issues detected — run `clawhq doctor` for details"));
+        }
+      } finally {
+        spinner.stop();
       }
     });
 
@@ -329,7 +351,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
       token?: string;
       port: string;
     }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const gatewayPort = validatePort(opts.port);
 
@@ -361,7 +383,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
           if (result.error) {
             console.error(chalk.red(`\n✘ ${result.error}`));
-            process.exit(1);
+            throw new CommandError("", 1);
           }
 
           if (result.available) {
@@ -397,13 +419,14 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
               console.log(chalk.dim(`  Backup restored: ${result.backupId}`));
             }
             console.error(chalk.red(`\n✘ ${result.error}`));
-            process.exit(1);
+            throw new CommandError("", 1);
           }
         }
       } catch (error) {
         spinner.stop();
+        if (error instanceof CommandError) throw error;
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -414,7 +437,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     .option("-f, --follow", "Follow log output")
     .option("-n, --lines <count>", "Number of lines to show", "50")
     .action(async (opts: { deployDir: string; follow?: boolean; lines: string }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const ac = new AbortController();
       process.on("SIGINT", () => ac.abort());
@@ -422,8 +445,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
       const lineCount = parseInt(opts.lines, 10);
       if (isNaN(lineCount)) {
-        console.error(chalk.red("Invalid --lines value: must be a number"));
-        process.exit(1);
+        throw new CommandError("Invalid --lines value: must be a number");
       }
 
       try {
@@ -437,7 +459,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
           if (!result.success && !ac.signal.aborted) {
             console.error(chalk.red(`\n✘ ${result.error}`));
-            process.exit(1);
+            throw new CommandError("", 1);
           }
         } else {
           const result = await streamLogs({
@@ -449,7 +471,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
           if (!result.success) {
             console.error(chalk.red(`✘ ${result.error}`));
-            process.exit(1);
+            throw new CommandError("", 1);
           }
 
           if (result.output) {
@@ -459,8 +481,9 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
           }
         }
       } catch (error) {
+        if (error instanceof CommandError) throw error;
         console.error(renderError(error));
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 
@@ -487,7 +510,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
       memoryLifecycleInterval: string;
       json?: boolean;
     }) => {
-      if (warnIfNotInstalled(opts.deployDir)) process.exit(1);
+      ensureInstalled(opts.deployDir);
 
       const ac = new AbortController();
       process.on("SIGINT", () => ac.abort());
@@ -498,14 +521,12 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
       const parsedInterval = parseInt(opts.interval, 10);
       if (isNaN(parsedInterval)) {
-        console.error(chalk.red("Invalid --interval value: must be a number"));
-        process.exit(1);
+        throw new CommandError("Invalid --interval value: must be a number");
       }
       const intervalMs = Math.max(10, parsedInterval) * 1000;
       const parsedDigestHour = parseInt(opts.digestHour, 10);
       if (isNaN(parsedDigestHour)) {
-        console.error(chalk.red("Invalid --digest-hour value: must be a number"));
-        process.exit(1);
+        throw new CommandError("Invalid --digest-hour value: must be a number");
       }
       const digestHour = Math.max(0, Math.min(23, parsedDigestHour));
 
@@ -547,8 +568,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
       const parsedMemoryLifecycleInterval = parseFloat(opts.memoryLifecycleInterval);
       if (isNaN(parsedMemoryLifecycleInterval)) {
-        console.error(chalk.red("Invalid --memory-lifecycle-interval value: must be a number"));
-        process.exit(1);
+        throw new CommandError("Invalid --memory-lifecycle-interval value: must be a number");
       }
       const memoryLifecycleIntervalMs =
         Math.max(1, parsedMemoryLifecycleInterval) * 3600_000;

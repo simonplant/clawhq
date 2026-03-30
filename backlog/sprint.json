@@ -1,34 +1,29 @@
 {
-  "sprintId": "sprint-1774828134",
-  "startedAt": "2026-03-29T16:48:54-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774830093",
+  "startedAt": "2026-03-29T17:21:33-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-125",
-    "title": "Assumption validation framework — concrete tests for the 3 riskiest strategic assumptions",
-    "intent": "Strategy without validation is fiction. The 3 highest-risk assumptions must have concrete pass/fail criteria, measurement methods, and deadlines so the team knows when to pivot.",
-    "description": "The evolved strategy identified 7 assumptions, 3 critical. Each needs a concrete test: (1) Addressable demand — measure clone→install conversion in first 1,000 visitors (pass: >5%), (2) Willingness to pay — Sentinel landing page signups (pass: 10+ in 60 days), (3) Foundation absorption — monitor OpenClaw PRs for guided config (signal: 2+ PRs in 6 months). Implementation: tracking dashboard or simple JSON file that records metrics against targets, reviewed monthly.",
+    "id": "FEAT-106",
+    "title": "Reduce process.exit() usage in CLI — return exit codes or throw for testability",
+    "intent": "Make CLI command handlers testable and allow proper cleanup. Commands should throw or return exit codes instead of calling process.exit() directly.",
+    "description": "Architecture review found 192 direct process.exit() calls. This prevents testing error paths, blocks defer/cleanup handlers, and makes graceful shutdown impossible.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create backlog/assumptions.json with the 3 testable assumptions, pass/fail criteria, and deadlines",
-      "Add GitHub repo analytics tracking plan (stars, clones, installs via curl script)",
-      "Design Sentinel landing page for willingness-to-pay test",
-      "Set up OpenClaw GitHub watch for configuration-related PRs/RFCs",
-      "Document review cadence: monthly assumption review, update assumptions.json with latest data"
+      "Create a CommandError class that carries an exit code",
+      "Replace process.exit() calls with throw CommandError in command handlers",
+      "Add try/finally blocks around spinner usage to ensure cleanup",
+      "Wire top-level parseAsync catch to extract exit codes from CommandError",
+      "Add unit tests for error paths in key commands (deploy, destroy, scan)"
     ],
     "acceptanceCriteria": [
-      "backlog/assumptions.json documents all 3 assumptions with pass/fail criteria and deadlines",
-      "Each assumption has a concrete measurement method that doesn't require guessing",
-      "Monthly review cadence is documented",
-      "First review date set for 30 days after repo goes public"
+      "Command handlers throw errors or return exit codes instead of calling process.exit()",
+      "A single top-level error handler in the CLI entry point calls process.exit()",
+      "Spinners are properly stopped in error paths via try/finally",
+      "At least 3 command handlers have unit tests covering error paths"
     ],
     "scope": [
-      "backlog/",
-      "docs/"
+      "src/cli/**"
     ],
-    "startedAt": "2026-03-29T16:48:54-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-29T16:54:06-07:00"
-  },
-  "completedAt": "2026-03-29T16:54:06-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-29T17:21:33-07:00"
+  }
 }

@@ -8,6 +8,8 @@ import type { CloudDemoProgress } from "../../demo/cloud.js";
 import { runDemo } from "../../demo/index.js";
 import type { DemoProgress } from "../../demo/index.js";
 
+import { CommandError } from "../errors.js";
+
 /** Cloud demo CLI action — provisions ephemeral DO droplet, opens browser, destroys on exit. */
 async function runCloudDemoAction(opts: { yes?: boolean; region: string }): Promise<void> {
   // 1. Check for DIGITALOCEAN_TOKEN
@@ -16,7 +18,7 @@ async function runCloudDemoAction(opts: { yes?: boolean; region: string }): Prom
     console.error(chalk.red("\n  DIGITALOCEAN_TOKEN environment variable is required for --cloud demo."));
     console.error(chalk.dim("  Get a token at: https://cloud.digitalocean.com/account/api/tokens"));
     console.error(chalk.dim("  Then: export DIGITALOCEAN_TOKEN=<your-token>\n"));
-    process.exit(1);
+    throw new CommandError("", 1);
   }
 
   console.log("");
@@ -42,7 +44,7 @@ async function runCloudDemoAction(opts: { yes?: boolean; region: string }): Prom
     });
     if (!proceed) {
       console.log(chalk.dim("\n  Demo cancelled.\n"));
-      process.exit(0);
+      throw new CommandError("", 0);
     }
     console.log("");
   }
@@ -74,6 +76,8 @@ async function runCloudDemoAction(opts: { yes?: boolean; region: string }): Prom
   let cloudDemo: { destroy: () => Promise<boolean> } | undefined;
   let destroying = false;
 
+  // Signal handlers for cleanup — these legitimately call process.exit()
+  // because they run outside the normal command flow.
   const shutdown = async () => {
     if (destroying) return;
     destroying = true;
@@ -127,8 +131,9 @@ async function runCloudDemoAction(opts: { yes?: boolean; region: string }): Prom
     console.log(chalk.dim("  For a full agent: clawhq quickstart"));
     console.log("");
   } catch (err) {
+    if (err instanceof CommandError) throw err;
     spinner.fail(err instanceof Error ? err.message : "Cloud demo failed");
-    process.exit(1);
+    throw new CommandError("", 1);
   }
 }
 
@@ -150,8 +155,7 @@ export function registerDemoCommand(program: Command): void {
       // ── Local demo path (existing) ──────────────────────────────────────────
       const port = parseInt(opts.port, 10);
       if (isNaN(port) || port < 1 || port > 65535) {
-        console.error(chalk.red("Invalid port number"));
-        process.exit(1);
+        throw new CommandError("Invalid port number");
       }
 
       console.log("");
@@ -186,6 +190,7 @@ export function registerDemoCommand(program: Command): void {
 
       let demo: { port: number; close: () => void } | undefined;
 
+      // Signal handler for cleanup — legitimately calls process.exit()
       const shutdown = () => {
         if (demo) {
           console.log("");
@@ -215,7 +220,7 @@ export function registerDemoCommand(program: Command): void {
       } catch (err) {
         spinner.fail(err instanceof Error ? err.message : "Demo failed");
         if (demo) demo.close();
-        process.exit(1);
+        throw new CommandError("", 1);
       }
     });
 }
