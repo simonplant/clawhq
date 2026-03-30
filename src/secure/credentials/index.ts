@@ -39,7 +39,16 @@ export { formatProbeReport, runProbes } from "./health.js";
 export type { RunProbesOptions } from "./health.js";
 
 // Built-in probes
-export { builtinProbes, probeAnthropic, probeOpenAI, probeTelegram } from "./probes.js";
+export { builtinProbes, probe1Password, probeAnthropic, probeOpenAI, probeTelegram } from "./probes.js";
+
+// 1Password credential fetch (claw-secret)
+export {
+  checkVaultAccess,
+  fetchSecret,
+  OP_TOKEN_SECRET_PATH,
+  readServiceAccountToken,
+} from "./claw-secret.js";
+export type { FetchSecretOptions, SecretFetchResult, VaultCheckResult } from "./claw-secret.js";
 
 // Credential store (credentials.json — integration credentials separate from .env)
 export type { CredentialEntry, CredentialStore } from "./credential-store-types.js";

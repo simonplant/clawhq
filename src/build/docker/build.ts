@@ -211,6 +211,11 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
   lines.push("    env_file:");
   for (const e of svc.env_file) lines.push(`      - ${e}`);
 
+  if (svc.secrets && svc.secrets.length > 0) {
+    lines.push("    secrets:");
+    for (const s of svc.secrets) lines.push(`      - ${s}`);
+  }
+
   if (svc.deploy) {
     lines.push("    deploy:");
     lines.push("      resources:");
@@ -229,6 +234,15 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
       for (const [key, val] of Object.entries(net.driver_opts)) {
         lines.push(`      ${key}: "${val}"`);
       }
+    }
+  }
+
+  // Top-level secrets section
+  if (compose.secrets) {
+    lines.push("", "secrets:");
+    for (const [name, secret] of Object.entries(compose.secrets)) {
+      lines.push(`  ${name}:`);
+      lines.push(`    file: ${secret.file}`);
     }
   }
 

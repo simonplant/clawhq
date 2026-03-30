@@ -676,6 +676,78 @@ describe("SHA256 in cache detection", () => {
   });
 });
 
+// ── 1Password Integration Tests ────────────────────────────────────────────
+
+describe("1Password Docker integration", () => {
+  it("generates op CLI install in Stage 2 when enableOnePassword is true", () => {
+    const config: Stage2Config = {
+      binaries: [],
+      workspaceTools: [],
+      skills: [],
+      enableOnePassword: true,
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+
+    expect(df).toContain("1Password CLI");
+    expect(df).toContain("op.zip");
+    expect(df).toContain("/usr/local/bin/op");
+  });
+
+  it("does not generate op CLI install when enableOnePassword is false", () => {
+    const config: Stage2Config = {
+      binaries: [],
+      workspaceTools: [],
+      skills: [],
+      enableOnePassword: false,
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+
+    expect(df).not.toContain("1Password");
+    expect(df).not.toContain("op.zip");
+  });
+
+  it("does not generate op CLI install when enableOnePassword is omitted", () => {
+    const config: Stage2Config = {
+      binaries: [],
+      workspaceTools: [],
+      skills: [],
+    };
+    const df = generateStage2Dockerfile("base:tag", config);
+
+    expect(df).not.toContain("1Password");
+  });
+
+  it("generates Docker secrets section when enableOnePasswordSecret is true", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableOnePasswordSecret: true,
+    });
+
+    expect(compose.secrets).toBeDefined();
+    expect(compose.secrets?.["op_service_account_token"]).toBeDefined();
+    expect(compose.secrets?.["op_service_account_token"].file).toBe("./secrets/op_service_account_token");
+    expect(compose.services.openclaw.secrets).toContain("op_service_account_token");
+  });
+
+  it("does not generate secrets section when not enabled", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
+
+    expect(compose.secrets).toBeUndefined();
+    expect(compose.services.openclaw.secrets).toBeUndefined();
+  });
+
+  it("supports custom token file path", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableOnePasswordSecret: true,
+      onePasswordTokenFile: "/custom/path/token",
+    });
+
+    expect(compose.secrets?.["op_service_account_token"].file).toBe("/custom/path/token");
+  });
+});
+
 describe("formatHashMismatch", () => {
   it("produces clear error with tool name, expected, and actual hash", () => {
     const msg = formatHashMismatch({

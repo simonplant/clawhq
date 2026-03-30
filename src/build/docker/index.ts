@@ -22,7 +22,7 @@ export {
 
 // Compose generation
 export { generateCompose } from "./compose.js";
-export type { ComposeOutput } from "./compose.js";
+export type { ComposeOptions, ComposeOutput } from "./compose.js";
 
 // Security postures
 export { DEFAULT_POSTURE, getPostureConfig, POSTURE_LEVELS } from "./posture.js";
@@ -39,6 +39,10 @@ export { createManifest, readManifest, writeManifest } from "./manifest.js";
 // Binary manifest (SHA256 pinning)
 export {
   formatHashMismatch,
+  OP_CLI_APT_DEPS,
+  OP_CLI_DEST,
+  OP_CLI_URL,
+  OP_CLI_VERSION,
   PINNED_BINARIES,
   validateBinarySha256,
 } from "./binary-manifest.js";

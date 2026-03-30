@@ -48,6 +48,8 @@ export interface Stage2Config {
   readonly binaries: readonly BinaryInstall[];
   readonly workspaceTools: readonly string[];
   readonly skills: readonly string[];
+  /** Install 1Password CLI (op) for credential vault access. */
+  readonly enableOnePassword?: boolean;
 }
 
 /** Binary to install from a GitHub release or URL. */

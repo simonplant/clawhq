@@ -21,6 +21,7 @@ export type {
   MemoryPolicy,
   ModelRoutingStrategy,
   Monitoring,
+  OnePasswordConfig,
   Personality,
   SkillBundle,
   SkillEntry,

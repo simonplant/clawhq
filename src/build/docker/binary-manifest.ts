@@ -41,6 +41,28 @@ export function validateBinarySha256(sha256: string): void {
  */
 export const PINNED_BINARIES: readonly BinaryInstall[] = [];
 
+// ── 1Password CLI ──────────────���──────────────────────────────────────────
+
+/**
+ * 1Password CLI (op) install metadata.
+ *
+ * Used when a blueprint enables 1Password vault integration. The op CLI
+ * is installed in Stage 2 so agents can fetch credentials at runtime
+ * via `op read`.
+ *
+ * The op CLI is distributed as a zip archive, so it requires a custom
+ * install RUN directive (not the standard binary download pattern).
+ */
+export const OP_CLI_VERSION = "2.30.3";
+export const OP_CLI_URL = `https://cache.agilebits.com/dist/1P/op2/pkg/v${OP_CLI_VERSION}/op_linux_amd64_v${OP_CLI_VERSION}.zip`;
+export const OP_CLI_DEST = "/usr/local/bin/op";
+
+/**
+ * Stage 1 apt packages required for 1Password CLI installation.
+ * unzip is needed to extract the op CLI archive.
+ */
+export const OP_CLI_APT_DEPS: readonly string[] = ["unzip", "curl"] as const;
+
 // ── Verification Reporting ─────────────────────────────────────────────────
 
 export interface BinaryVerificationResult {

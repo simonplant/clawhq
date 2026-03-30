@@ -139,7 +139,7 @@ export async function runChecks(
     checkToolAccessGrants(deployDir, version),
     checkMigrationState(deployDir, signal),
     checkUnderscoreToolMethods(deployDir, version),
-    check1PasswordSetup(deployDir),
+    check1PasswordSetup(deployDir, signal),
     checkSanitizeAvailable(deployDir),
   ]);
 }
@@ -1064,33 +1064,49 @@ async function checkAirGapActive(deployDir: string, signal?: AbortSignal): Promi
 // ── 22. 1Password Setup ──────────────────────────────────────────────────────
 
 /** Check 1Password service account token is configured when the integration is active. */
-async function check1PasswordSetup(deployDir: string): Promise<DoctorCheckResult> {
+async function check1PasswordSetup(deployDir: string, signal?: AbortSignal): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "onepassword-setup";
 
   try {
     // Check if 1Password integration is configured by looking for the token in .env
+    // or Docker secrets directory
     const envPath = join(deployDir, "engine", ".env");
-    let envContent: string;
+    const secretsDir = join(deployDir, "engine", "secrets");
+    const secretTokenPath = join(secretsDir, "op_service_account_token");
+
+    let hasEnvToken = false;
+    let hasSecretToken = false;
+    let token = "";
+
+    // Check Docker secret file first (preferred)
     try {
-      envContent = await readFile(envPath, "utf-8");
+      const secretContent = await readFile(secretTokenPath, "utf-8");
+      token = secretContent.trim();
+      hasSecretToken = !!token;
     } catch {
-      // No .env file — 1Password not configured, that's fine
-      return ok(name, "1Password not configured (no .env file)", "info");
+      // No Docker secret file
     }
 
-    const hasToken = envContent.split("\n").some(
-      (line) => line.startsWith("OP_SERVICE_ACCOUNT_TOKEN=") && line.split("=")[1]?.trim(),
-    );
+    // Fall back to .env token
+    if (!hasSecretToken) {
+      try {
+        const envContent = await readFile(envPath, "utf-8");
+        const tokenLine = envContent.split("\n").find((l) => l.startsWith("OP_SERVICE_ACCOUNT_TOKEN="));
+        if (tokenLine) {
+          token = tokenLine.split("=").slice(1).join("=").trim();
+          hasEnvToken = !!token;
+        }
+      } catch {
+        // No .env file
+      }
+    }
 
-    if (!hasToken) {
-      // Token not present — 1Password not configured, skip silently
+    if (!hasSecretToken && !hasEnvToken) {
+      // 1Password not configured — that's fine
       return ok(name, "1Password not configured", "info");
     }
 
-    // Token is set — validate it's not obviously broken
-    const tokenLine = envContent.split("\n").find((l) => l.startsWith("OP_SERVICE_ACCOUNT_TOKEN="));
-    const token = tokenLine?.split("=").slice(1).join("=").trim() ?? "";
-
+    // Token is set — validate format
     if (!token.startsWith("ops_")) {
       return fail(
         name,
@@ -1100,7 +1116,38 @@ async function check1PasswordSetup(deployDir: string): Promise<DoctorCheckResult
       );
     }
 
-    return ok(name, "1Password service account token configured");
+    // Warn if token is in .env instead of Docker secret
+    if (hasEnvToken && !hasSecretToken) {
+      return fail(
+        name,
+        "warning",
+        "1Password token found in .env — should use Docker secret for better security",
+        `Move token to ${secretTokenPath} and remove from .env. Run: clawhq build to regenerate compose with secrets`,
+      );
+    }
+
+    // Check op CLI is available in the container
+    try {
+      await execFileAsync(
+        "docker",
+        [
+          "compose", "-f", join(deployDir, "engine", "docker-compose.yml"),
+          "exec", "-T", "openclaw", "op", "--version",
+        ],
+        { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
+      );
+    } catch {
+      // Container may not be running — check if op is expected in build
+      // This is a non-fatal warning since the container might not be running
+      return fail(
+        name,
+        "warning",
+        "1Password token configured but op CLI not reachable in container",
+        "Run: clawhq build with 1Password enabled blueprint to install op CLI",
+      );
+    }
+
+    return ok(name, "1Password configured: token valid, op CLI available");
   } catch {
     return ok(name, "1Password check inconclusive", "info");
   }

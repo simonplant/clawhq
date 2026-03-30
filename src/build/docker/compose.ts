@@ -15,6 +15,14 @@ import {
 
 import type { PostureConfig } from "./types.js";
 
+/** Options for generating a Docker Compose configuration. */
+export interface ComposeOptions {
+  /** Enable 1Password Docker secret injection for OP_SERVICE_ACCOUNT_TOKEN. */
+  readonly enableOnePasswordSecret?: boolean;
+  /** Path to the 1Password token file on host (relative to compose dir). */
+  readonly onePasswordTokenFile?: string;
+}
+
 /** Generated docker-compose structure. */
 export interface ComposeOutput {
   readonly version: string;
@@ -22,6 +30,7 @@ export interface ComposeOutput {
     readonly openclaw: ComposeServiceOutput;
   };
   readonly networks: Record<string, ComposeNetworkOutput>;
+  readonly secrets?: Record<string, ComposeSecretOutput>;
 }
 
 interface ComposeServiceOutput {
@@ -35,6 +44,7 @@ interface ComposeServiceOutput {
   readonly networks: readonly string[];
   readonly env_file: readonly string[];
   readonly restart: string;
+  readonly secrets?: readonly string[];
   readonly deploy?: {
     readonly resources: {
       readonly limits: {
@@ -51,6 +61,10 @@ interface ComposeNetworkOutput {
   readonly driver_opts?: Record<string, string>;
 }
 
+interface ComposeSecretOutput {
+  readonly file: string;
+}
+
 // ── Compose Generation ──────────────────────────────────────────────────────
 
 /**
@@ -64,7 +78,11 @@ export function generateCompose(
   posture: PostureConfig,
   deployDir: string,
   networkName = "clawhq_net",
+  options?: ComposeOptions,
 ): ComposeOutput {
+  const enableOp = options?.enableOnePasswordSecret ?? false;
+  const opTokenFile = options?.onePasswordTokenFile ?? "./secrets/op_service_account_token";
+
   const service: ComposeServiceOutput = {
     image: imageTag,
     user: posture.user,
@@ -88,6 +106,8 @@ export function generateCompose(
     networks: [networkName],
     env_file: [".env"],
     restart: "unless-stopped",
+    // 1Password service account token via Docker secret (never in env vars)
+    ...(enableOp ? { secrets: ["op_service_account_token"] } : {}),
     ...(hasResourceLimits(posture)
       ? {
           deploy: {
@@ -120,6 +140,16 @@ export function generateCompose(
     version: "3.8",
     services: { openclaw: service },
     networks,
+    // Docker secrets: token file on host → /run/secrets/ in container
+    ...(enableOp
+      ? {
+          secrets: {
+            op_service_account_token: {
+              file: opTokenFile,
+            },
+          },
+        }
+      : {}),
   };
 }
 

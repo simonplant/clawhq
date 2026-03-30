@@ -109,6 +109,25 @@ export interface SkillBundle {
   readonly recommended: readonly string[];
 }
 
+/**
+ * 1Password vault integration configuration.
+ *
+ * When enabled, the agent container gets the op CLI installed and
+ * credentials are fetched at runtime via `claw-secret` (wrapping `op read`).
+ * The service account token is injected via Docker secret, never in env vars.
+ */
+export interface OnePasswordConfig {
+  /** Whether 1Password vault integration is enabled. */
+  readonly enabled: boolean;
+  /** Name of the 1Password vault containing agent credentials. */
+  readonly vault: string;
+  /**
+   * Credential mapping: logical name → 1Password secret reference.
+   * Example: { "anthropic_api_key": "op://Agent-Vault/anthropic/credential" }
+   */
+  readonly credentials: Readonly<Record<string, string>>;
+}
+
 /** Individual tool in the toolbelt. */
 export interface ToolEntry {
   readonly name: string;
@@ -176,6 +195,9 @@ export interface Blueprint {
 
   /** Optional customization questions asked during setup (1-3 per blueprint). */
   readonly customization_questions?: readonly CustomizationQuestion[];
+
+  /** Optional 1Password vault integration configuration. */
+  readonly onepassword?: OnePasswordConfig;
 }
 
 // ── Validation Types ────────────────────────────────────────────────────────

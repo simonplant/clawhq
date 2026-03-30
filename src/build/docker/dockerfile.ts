@@ -17,7 +17,7 @@ import {
 } from "../../config/paths.js";
 
 import type { Stage1Config, Stage2Config } from "./types.js";
-import { validateBinarySha256 } from "./binary-manifest.js";
+import { validateBinarySha256, OP_CLI_URL, OP_CLI_DEST } from "./binary-manifest.js";
 
 // ── Binary Validation ───────────────────────────────────────────────────────
 
@@ -102,6 +102,19 @@ export function generateStage2Dockerfile(
     "# Rebuilds when tools, skills, or integrations change",
     "",
   ];
+
+  // Install 1Password CLI if enabled
+  if (config.enableOnePassword) {
+    lines.push(
+      "# Install 1Password CLI (op) for credential vault access",
+      `RUN curl -fsSL "${OP_CLI_URL}" -o /tmp/op.zip && \\`,
+      `    unzip -o /tmp/op.zip -d /tmp/op-extract && \\`,
+      `    mv /tmp/op-extract/op "${OP_CLI_DEST}" && \\`,
+      `    chmod +x "${OP_CLI_DEST}" && \\`,
+      "    rm -rf /tmp/op.zip /tmp/op-extract",
+      "",
+    );
+  }
 
   // Install binary tools from URLs with SHA256 verification
   for (const binary of config.binaries) {
