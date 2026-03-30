@@ -137,10 +137,12 @@
         "src/operate/doctor/",
         "configs/blueprints/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: ipset named clawhq_<instance>_egress per deploy dir basename. clawhq down destroys ipset. No shared state between instances. Multi-instance safe by construction."
+      "groomingNotes": "Design resolved: ipset named clawhq_<instance>_egress per deploy dir basename. clawhq down destroys ipset. No shared state between instances. Multi-instance safe by construction.",
+      "passes": true,
+      "completedAt": "2026-03-30T15:50:43-07:00"
     },
     {
       "id": "FEAT-022",
