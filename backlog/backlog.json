@@ -321,36 +321,6 @@
       "readyForSprint": false,
       "groomedAt": "2026-03-28",
       "groomingNotes": "STRATEGY fix #2 (Community). Gap identified during PO grooming 2026-03-28: strategy says '10 reference blueprints' but backlog had no item for the missing 3. Each blueprint is a content asset (tutorial draft in docs/articles/) and a quality signal for the Blueprint Specification (FEAT-121). Priority should because it follows Gate 0 — not blocking launch but must ship with repo. Candidates: Research Copilot, Founders Ops, Personal Finance Assistant. Depends on FEAT-121 for final validation. Not sprint-ready until FEAT-121 spec is done."
-    },
-    {
-      "id": "FEAT-127",
-      "title": "Deploy preflight should not hard-fail when Ollama is absent for local-model blueprints",
-      "intent": "The e2e smoke test (FEAT-018) revealed that `clawhq up` hard-fails on preflight when Ollama is not installed, even though the Docker build succeeds. In CI environments and on machines without Ollama, the full user journey cannot complete. The preflight Ollama check should warn instead of block, or `--skip-preflight` should be documented as the CI workaround.",
-      "description": "Discovered during FEAT-018 initial e2e run: `clawhq up -d <dir> --token <tok> --skip-firewall` exits 1 with 'Ollama is not installed — required for local model inference'. The blueprint uses local model provider, so preflight rejects deployment. This blocks the full user journey in any environment without Ollama. Options: (a) downgrade Ollama check to a warning when model routing is local, (b) allow --skip-preflight to bypass gracefully, (c) add a --no-ollama flag that switches to a no-model-needed mode for testing.",
-      "priority": "should",
-      "category": "build",
-      "steps": [
-        "Review preflight Ollama check in src/build/launcher/ — determine if it should be a hard gate or warning",
-        "For local-model blueprints, downgrade Ollama absence to a warning (agent can still start, just no inference)",
-        "Ensure --skip-preflight cleanly bypasses all preflight checks including Ollama",
-        "Update e2e smoke test to use --skip-preflight for the up step so CI can pass end-to-end",
-        "Add test coverage for preflight with and without Ollama"
-      ],
-      "acceptanceCriteria": [
-        "clawhq up completes (containers start) even when Ollama is not installed, with a clear warning",
-        "e2e smoke test passes the 'up' step in CI environments without Ollama",
-        "--skip-preflight flag cleanly bypasses the Ollama check"
-      ],
-      "scope": [
-        "src/build/launcher/"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Filed from FEAT-018 e2e smoke test initial run. The Ollama preflight hard-fail is the only integration gap found — all other steps (init, build, doctor, down, destroy) pass. This is a usability issue for CI and for users who want to deploy with cloud-only models.",
-      "passes": true,
-      "completedAt": "2026-03-29T19:30:48-07:00"
     }
   ]
 }
