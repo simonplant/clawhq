@@ -1,39 +1,39 @@
 {
-  "sprintId": "sprint-1774904085",
-  "startedAt": "2026-03-30T13:54:45-07:00",
+  "sprintId": "sprint-1774907750",
+  "startedAt": "2026-03-30T14:55:50-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-122",
-    "title": "Sentinel monitoring service — upstream intelligence that a cron job can't replicate",
-    "intent": "ClawHQ must have a day-one revenue hypothesis. Sentinel is a paid monitoring service that provides upstream intelligence — pre-computing config breakage against incoming OpenClaw commits, tracking CVE impact per blueprint, and alerting on skill dependency changes. This must do something a local cron job cannot.",
-    "description": "The evolved strategy requires testing revenue from day one, not deferring it. Sentinel is the hypothesis: ~$19/month monitoring that enhances sovereignty rather than compromising it. CRITICAL DESIGN CONSTRAINT: this must NOT be 'clawhq doctor --watch' as a service — that's replicable with a cron job and the sovereignty audience will call it out immediately. The value is upstream intelligence: (1) monitor OpenClaw GitHub commits and pre-compute whether your specific config will break before you update, (2) track new CVEs and map them to your installed skills/tools, (3) detect when upstream dependencies of your skills change, (4) aggregate anonymized health signals across the fleet to identify emerging issues before they hit you. Phase 1 (MVP): OpenClaw commit monitoring + config breakage prediction. Phase 2: CVE mapping + skill dependency tracking.",
+    "id": "FEAT-112",
+    "title": "Construct meta-skill — autonomous self-improvement loop for agent capability growth",
+    "intent": "Agents must grow their capabilities over time without manual intervention. The construct skill is the mechanism: assess gaps → propose new skills → build → deploy → validate. This is THE differentiator for the 'agent grows' pillar.",
+    "description": "Clawdius has a 'construct' skill that runs daily at 2am PT. Over 3 months it has autonomously built 7 skills. ClawHQ's skill system supports install/remove/update but has no autonomous growth mechanism.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Design Sentinel architecture: upstream monitor (GitHub API polling), config analyzer (diff against user's blueprint), alert delivery (email/webhook)",
-      "Implement OpenClaw commit monitor: poll GitHub API for new commits to main, parse changed files, identify config-impacting changes",
-      "Implement config breakage predictor: given a commit diff and a user's compiled config, determine if the update would break their deployment",
-      "Implement alert system: email or webhook notification with specific breakage details and recommended action",
-      "Design pricing page / signup flow for revenue validation",
-      "Build minimal web endpoint for Sentinel subscription management",
-      "Add clawhq cloud sentinel connect command to link a deployment to Sentinel",
-      "Phase 2: CVE tracker that maps advisories to user's specific skill/tool inventory"
+      "Design construct skill config for ClawHQ: SKILL.md, state machine (assess/propose/build/deploy/validate), cron schedule",
+      "Add construct to configs/skills/ as a built-in skill",
+      "Implement state persistence (construct tracks what it has assessed, proposed, built)",
+      "Wire construct into blueprint cron_config as an optional daily job",
+      "Add skill vetting integration — construct-built skills must pass the same vetting as manually installed skills",
+      "Add construct to 'replace-my-pa', 'founders-ops', and 'research-copilot' blueprints by default",
+      "Add tests for state machine transitions and skill output validation"
     ],
     "acceptanceCriteria": [
-      "Sentinel monitors OpenClaw upstream commits and identifies config-impacting changes",
-      "Users receive alerts BEFORE updating when a new release would break their specific config",
-      "Alert includes: what changed upstream, what would break in their config, recommended action",
-      "Service provides value that a local cron job cannot replicate (upstream intelligence, not local health checks)",
-      "Pricing page exists and accepts signups for revenue validation",
-      "Revenue signal measurable within 30 days of announcement"
+      "Construct skill is available as a built-in skill in configs/skills/",
+      "Construct follows Assess→Propose→Build→Deploy→Validate cycle",
+      "Construct-built skills pass the same vetting pipeline as manually installed skills",
+      "State is persisted across runs (no redundant assessments)",
+      "Blueprints can opt-in to construct via skill_bundle configuration",
+      "At least 3 blueprints include construct by default"
     ],
     "scope": [
-      "src/cloud/",
-      "src/config/"
+      "configs/skills/",
+      "configs/blueprints/",
+      "src/evolve/skills/"
     ],
-    "startedAt": "2026-03-30T13:54:45-07:00",
+    "startedAt": "2026-03-30T14:55:50-07:00",
     "status": "passed",
-    "completedAt": "2026-03-30T14:12:15-07:00"
+    "completedAt": "2026-03-30T15:07:40-07:00"
   },
-  "completedAt": "2026-03-30T14:12:15-07:00",
+  "completedAt": "2026-03-30T15:07:40-07:00",
   "attempts": 1
 }

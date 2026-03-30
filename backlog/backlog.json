@@ -66,10 +66,12 @@
         "configs/blueprints/",
         "src/evolve/skills/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: construct-built skills call vetSkill() from src/evolve/skills/. State in workspace/.construct-state.json. Assessed items tracked by ID+timestamp to avoid repeats."
+      "groomingNotes": "Design resolved: construct-built skills call vetSkill() from src/evolve/skills/. State in workspace/.construct-state.json. Assessed items tracked by ID+timestamp to avoid repeats.",
+      "passes": true,
+      "completedAt": "2026-03-30T15:07:40-07:00"
     },
     {
       "id": "FEAT-120",
