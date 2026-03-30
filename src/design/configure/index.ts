@@ -9,6 +9,7 @@
 export type {
   FileEntry,
   GenerateOptions,
+  UserContext,
   WizardAnswers,
   WizardOptions,
   WriteResult,

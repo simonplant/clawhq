@@ -26,6 +26,7 @@ import type {
   ToolFileInfo,
 } from "../../config/types.js";
 import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
+import type { UserContext } from "./types.js";
 import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../identity/index.js";
 import type { IdentityFileContent } from "../identity/index.js";
 import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../tools/index.js";
@@ -69,7 +70,7 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     composeConfig: buildComposeConfig(answers, port, networkName),
     envVars: buildEnvVars(answers),
     cronJobs: buildCronJobs(answers.blueprint),
-    identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions),
+    identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions, answers.userContext),
     toolFiles: buildToolFiles(answers.blueprint),
     clawhqConfig: buildClawHQConfig(answers),
   };
@@ -372,15 +373,16 @@ export type { IdentityFileContent } from "../identity/index.js";
 /**
  * Generate identity file content from a blueprint.
  *
- * Delegates to the identity module for SOUL.md and AGENTS.md generation.
+ * Delegates to the identity module for identity file generation.
  * Returns the actual file content for writing to disk.
  */
 export function generateIdentityFiles(
   blueprint: Blueprint,
   customizationAnswers: Readonly<Record<string, string>> = {},
   personalityDimensions?: PersonalityDimensions,
+  userContext?: UserContext,
 ): IdentityFileContent[] {
-  return generateIdentityFilesFromBlueprint(blueprint, undefined, customizationAnswers, personalityDimensions);
+  return generateIdentityFilesFromBlueprint(blueprint, undefined, customizationAnswers, personalityDimensions, userContext);
 }
 
 /**
@@ -392,8 +394,9 @@ function buildIdentityFiles(
   blueprint: Blueprint,
   customizationAnswers: Readonly<Record<string, string>> = {},
   personalityDimensions?: PersonalityDimensions,
+  userContext?: UserContext,
 ): IdentityFileInfo[] {
-  return generateIdentityFiles(blueprint, customizationAnswers, personalityDimensions).map((f) => ({
+  return generateIdentityFiles(blueprint, customizationAnswers, personalityDimensions, userContext).map((f) => ({
     name: f.name,
     path: f.relativePath,
     sizeBytes: Buffer.byteLength(f.content, "utf-8"),

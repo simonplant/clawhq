@@ -139,6 +139,31 @@ skill_bundle:
     - auto-reply
     - calendar-sync
 
+runbooks:
+  - name: TRIAGE-RULES.md
+    content: |
+      # Email Triage Rules
+
+      ## Priority Classification
+
+      1. **Urgent** — From flagged senders, contains "urgent"/"ASAP"/"emergency", or time-sensitive deadlines within 24h
+      2. **Action Required** — Needs a reply or task creation, but not time-critical
+      3. **Informational** — FYI, newsletters, notifications — archive after digest
+      4. **Auto-handled** — Meeting confirmations, read receipts, automated notifications — auto-archive
+
+      ## Auto-Reply Rules
+
+      - Never auto-reply to first contact (unknown sender)
+      - Never auto-reply to flagged senders (requires user approval)
+      - Meeting confirmations and acknowledgments may be auto-replied based on user preference
+      - All auto-replies are logged in the audit trail
+
+      ## Focus Block Protection
+
+      - During calendar focus blocks, hold all non-urgent notifications
+      - Deliver held notifications as a batch when the focus block ends
+      - Urgent items from flagged senders bypass focus block holds
+
 toolbelt:
   role: "Email operations manager"
   description: "Inbox triage, calendar-aware digests, task extraction, morning briefs — replaces manual email management"

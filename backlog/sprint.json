@@ -1,33 +1,35 @@
 {
-  "sprintId": "sprint-1774842455",
-  "startedAt": "2026-03-29T20:47:35-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774845916",
+  "startedAt": "2026-03-29T21:45:16-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-126",
-    "title": "Expand blueprint library to 10 reference masterclasses",
-    "intent": "ClawHQ must ship with 10 curated reference blueprints, each a deep demonstration of a real use case. 7 blueprints exist. The remaining 3 must be production-quality — reading them should make a target user think 'this person understands how I actually work.'",
-    "description": "Strategy fix #2 (Community) requires 10 curated reference blueprints, not a community marketplace. Current count: 7 blueprints. The gap is 3 more. Each blueprint must be a masterclass for its use case — selection criteria: (1) significant OpenClaw user population has this need, (2) the use case has well-known failure modes ClawHQ handles correctly by default, (3) demonstrates security-by-default in a concrete domain. Candidates: Research Copilot (Tavily, summarization, citation), Founders Ops (communications, scheduling, prioritization), Personal Finance Assistant (read-only bank feeds, alerts, summaries — no write access). Each requires identity file content, tool selection, skill bundle, cron jobs, security posture, and integration config.",
+    "id": "FEAT-118",
+    "title": "Extended identity files — USER.md, TOOLS.md, and domain-specific runbooks in blueprint config",
+    "intent": "An agent that only knows its personality (SOUL.md) and capabilities (AGENTS.md) is incomplete. It must also understand its user's context, have a role-organized tool reference, and carry domain-specific operating procedures.",
+    "description": "Clawdius has 7 identity/reference files beyond SOUL.md and AGENTS.md. ClawHQ only generates SOUL.md + AGENTS.md. The delta is significant: without USER.md, the agent doesn't know who it's serving.",
     "sourceBacklog": "backlog.json",
-    "steps": [],
+    "steps": [
+      "Extend wizard to collect user context: name, timezone, communication preferences, key constraints",
+      "Add USER.md generator to src/design/identity/",
+      "Add TOOLS.md generator — organizes blueprint tools by role/use-case with descriptions",
+      "Add blueprint-specific runbook support: each blueprint can define additional identity files",
+      "Update identity file generation in generate.ts to include new files",
+      "Update Docker build to copy all identity files, not just SOUL.md and AGENTS.md",
+      "Add tests for USER.md and TOOLS.md generation from various blueprints"
+    ],
     "acceptanceCriteria": [
-      {
-        "text": "Blueprint library contains exactly 10 blueprints, each with complete YAML (identity, tools, skills, cron, security_posture, autonomy)",
-        "verify": "ls configs/blueprints/*.yaml 2>/dev/null | wc -l | grep -q '^10$'"
-      },
-      "Each new blueprint includes at least one domain-specific security constraint not in the default posture",
-      "All 10 blueprints validate against the blueprint spec (once FEAT-121 is complete)",
-      {
-        "text": "Each blueprint has a corresponding tutorial draft in docs/articles/ for the dev-as-content pipeline",
-        "verify": "ls docs/articles/ 2>/dev/null | wc -l | grep -qE '^[3-9]|^[0-9]{2,}'"
-      }
+      "clawhq init collects user context (name, timezone, preferences) via wizard",
+      "Generated deployment includes USER.md with user profile",
+      "Generated deployment includes TOOLS.md with role-organized tool reference",
+      "Blueprints can define additional identity files (runbooks) in their YAML",
+      "All identity files are mounted read-only in the container",
+      "Token budget validation accounts for all identity files"
     ],
     "scope": [
+      "src/design/identity/",
+      "src/design/configure/",
       "configs/blueprints/"
     ],
-    "startedAt": "2026-03-29T20:47:35-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-29T20:58:14-07:00"
-  },
-  "completedAt": "2026-03-29T20:58:14-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-29T21:45:16-07:00"
+  }
 }

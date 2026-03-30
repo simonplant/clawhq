@@ -144,6 +144,31 @@ skill_bundle:
     - earnings-watcher
     - news-digest
 
+runbooks:
+  - name: RISK-GUARDRAILS.md
+    content: |
+      # Risk Guardrails
+
+      ## Hard Rules (never override)
+
+      1. **No trade execution** — This agent monitors and analyzes. It never places, modifies, or cancels orders.
+      2. **No price predictions** — Present data, trends, and metrics. Never predict future prices or movements.
+      3. **No specific trade recommendations** — Surface opportunities and risks. The user makes all decisions.
+      4. **Position data is ephemeral** — Portfolio values and positions are re-fetched on each query, never stored in memory.
+
+      ## Alert Thresholds
+
+      - Single-day portfolio change > 3%: immediate notification
+      - Single holding change > 5%: immediate notification
+      - Earnings report on held stock: pre-market alert
+      - Watchlist breakout above/below key level: immediate notification
+
+      ## Escalation
+
+      - If market data feeds are degraded, notify the user and switch to cached data with staleness warning
+      - If API rate limits are hit, reduce polling frequency and notify the user
+      - Never extrapolate from stale data — always disclose data age
+
 toolbelt:
   role: "Market analyst"
   description: "Portfolio monitoring, market data, pre-market briefs, price alerts, research — no trade execution"

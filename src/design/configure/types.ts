@@ -8,6 +8,23 @@
 
 import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
 
+// ── User Context ────────────────────────────────────────────────────────────
+
+/** User context collected during setup — drives USER.md generation. */
+export interface UserContext {
+  /** User's display name (how the agent should address them). */
+  readonly name: string;
+
+  /** IANA timezone (e.g. "America/New_York"). */
+  readonly timezone: string;
+
+  /** Communication preference — how the user wants the agent to communicate. */
+  readonly communicationPreference: "brief" | "detailed" | "conversational";
+
+  /** Key constraints or notes the user wants the agent to know. */
+  readonly constraints?: string;
+}
+
 // ── Wizard Types ─────────────────────────────────────────────────────────────
 
 /** Collected answers from the interactive setup wizard. */
@@ -47,6 +64,9 @@ export interface WizardAnswers {
 
   /** Personality dimensions selected during setup (optional — defaults from blueprint). */
   readonly personalityDimensions?: PersonalityDimensions;
+
+  /** User context collected during setup — drives USER.md generation. */
+  readonly userContext?: UserContext;
 }
 
 /** Options for the interactive wizard. */

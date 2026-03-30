@@ -32,7 +32,7 @@ function mockPrompter(answers: unknown[]): Prompter {
 
 describe("runWizard", () => {
   it("completes happy path without errors", async () => {
-    // Script: select blueprint → customization Qs → personality → channel → air-gapped? →
+    // Script: select blueprint → customization Qs → personality → user context → channel → air-gapped? →
     //         model → local model → deploy dir → port → configure tasks? → confirm
     const prompter = mockPrompter([
       "family-hub",       // blueprint selection
@@ -41,6 +41,11 @@ describe("runWizard", () => {
       "",                        // meal_preferences (input, use default)
       "Friendly but firm — clear expectations with warmth",  // reminder_style (select)
       false,              // customize personality? no (use defaults)
+      // user context
+      "Alice",            // name
+      "",                 // timezone (use default)
+      "brief",            // communication preference
+      "",                 // constraints (skip)
       "telegram",         // channel selection
       false,              // not air-gapped
       "local",            // model provider
@@ -65,6 +70,9 @@ describe("runWizard", () => {
     expect(answers.channel).toBe("telegram");
     expect(answers.modelProvider).toBe("local");
     expect(answers.airGapped).toBe(false);
+    expect(answers.userContext).toBeDefined();
+    expect(answers.userContext?.name).toBe("Alice");
+    expect(answers.userContext?.communicationPreference).toBe("brief");
   });
 
   it("uses pre-selected blueprint from options", async () => {
@@ -74,6 +82,11 @@ describe("runWizard", () => {
       "",
       "Friendly but firm — clear expectations with warmth",
       false,              // customize personality? no
+      // user context
+      "Bob",              // name
+      "",                 // timezone
+      "detailed",         // communication preference
+      "",                 // constraints
       "telegram",         // channel
       false,              // not air-gapped
       "local",            // model
@@ -100,6 +113,11 @@ describe("runWizard", () => {
       "",
       "Friendly but firm — clear expectations with warmth",
       false,              // customize personality? no
+      // user context
+      "Charlie",
+      "",
+      "brief",
+      "",
       "telegram",
       false,
       "local",
@@ -124,6 +142,11 @@ describe("runWizard", () => {
       "",
       "Friendly but firm — clear expectations with warmth",
       false,              // customize personality? no
+      // user context
+      "Dave",
+      "",
+      "conversational",
+      "",
       "telegram",         // channel
       true,               // air-gapped
       "",                 // local model default (forced local)
@@ -150,6 +173,11 @@ describe("runWizard", () => {
       "",
       "Friendly but firm — clear expectations with warmth",
       false,              // customize personality? no
+      // user context
+      "Eve",
+      "",
+      "brief",
+      "",
       "telegram",
       "",                 // local model default
       "",                 // deploy dir
@@ -178,6 +206,11 @@ describe("runWizard", () => {
       "",
       "Friendly but firm — clear expectations with warmth",
       false,              // customize personality? no
+      // user context
+      "Frank",
+      "",
+      "detailed",
+      "",
       "telegram",
       false,
       "local",

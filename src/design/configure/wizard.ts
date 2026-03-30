@@ -30,7 +30,7 @@ import { DIMENSION_META, PERSONALITY_PRESETS, type DimensionMeta } from "../blue
 import { detectTensions, hasConflicts, type DetectedTension } from "../blueprints/personality-tensions.js";
 import type { Blueprint, BlueprintChoice, PersonalityDimensions, DimensionValue } from "../blueprints/types.js";
 
-import type { WizardAnswers, WizardOptions } from "./types.js";
+import type { UserContext, WizardAnswers, WizardOptions } from "./types.js";
 
 // ── Prompter Interface ───────────────────────────────────────────────────────
 
@@ -88,6 +88,10 @@ export async function runWizard(
   if (personalityDimensions) {
     console.log(chalk.green("✓ Personality: customized"));
   }
+
+  // Step 2.75: User context (name, timezone, communication preferences)
+  const userContext = await collectUserContext(prompter);
+  console.log(chalk.green(`✓ User: ${userContext.name} (${userContext.timezone})`));
 
   // Step 3: Channel selection
   const channel = await selectChannel(prompter, blueprint);
@@ -155,6 +159,7 @@ export async function runWizard(
     integrations,
     customizationAnswers,
     personalityDimensions,
+    userContext,
   };
 }
 
@@ -332,6 +337,44 @@ function displayTensions(tensions: readonly DetectedTension[]): void {
     console.log(`  ${icon} ${label} [${t.id}]: ${t.description}`);
   }
   console.log();
+}
+
+async function collectUserContext(
+  prompter: Prompter,
+): Promise<UserContext> {
+  console.log(chalk.bold("\n👤 About You"));
+  console.log(chalk.dim("Your agent needs to know who it's working for.\n"));
+
+  const name = await prompter.input({
+    message: "Your name (how the agent should address you):",
+    default: "User",
+  });
+
+  const timezone = await prompter.input({
+    message: "Your timezone (IANA format):",
+    default: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+
+  const communicationPreference = await prompter.select<"brief" | "detailed" | "conversational">({
+    message: "How should the agent communicate with you?",
+    choices: [
+      { name: "Brief — bullet points, minimal prose", value: "brief" as const },
+      { name: "Detailed — thorough explanations with context", value: "detailed" as const },
+      { name: "Conversational — natural, friendly dialogue", value: "conversational" as const },
+    ],
+  });
+
+  const constraints = await prompter.input({
+    message: "Any key constraints the agent should know? (optional, press Enter to skip):",
+    default: "",
+  });
+
+  return {
+    name,
+    timezone,
+    communicationPreference,
+    constraints: constraints.trim() || undefined,
+  };
 }
 
 async function selectChannel(

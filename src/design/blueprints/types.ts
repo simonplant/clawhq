@@ -139,6 +139,15 @@ export interface OnePasswordConfig {
   readonly credentials: Readonly<Record<string, string>>;
 }
 
+/** A domain-specific runbook — additional identity file defined by a blueprint. */
+export interface RunbookEntry {
+  /** Filename (e.g. "ESCALATION.md"). Must end in .md. */
+  readonly name: string;
+
+  /** Runbook content — domain-specific operating procedures. */
+  readonly content: string;
+}
+
 /** Individual tool in the toolbelt. */
 export interface ToolEntry {
   readonly name: string;
@@ -209,6 +218,9 @@ export interface Blueprint {
 
   /** Optional 1Password vault integration configuration. */
   readonly onepassword?: OnePasswordConfig;
+
+  /** Optional domain-specific runbooks — additional identity files for the agent. */
+  readonly runbooks?: readonly RunbookEntry[];
 }
 
 // ── Validation Types ────────────────────────────────────────────────────────

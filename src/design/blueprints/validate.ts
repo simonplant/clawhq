@@ -567,6 +567,64 @@ function checkCustomizationQuestions(raw: RawBlueprint): BlueprintValidationResu
   return results;
 }
 
+// ── runbooks (optional, checks 83-86) ──────────────────────────────────────
+
+function checkRunbooks(raw: RawBlueprint): BlueprintValidationResult[] {
+  const section = raw.runbooks;
+
+  // Optional field — skip if absent
+  if (section === undefined) return [];
+
+  const results: BlueprintValidationResult[] = [];
+
+  // Must be an array
+  if (!Array.isArray(section)) {
+    results.push(fail("runbooks", "runbooks must be an array"));
+    return results;
+  }
+
+  results.push(pass("runbooks", "runbooks is an array"));
+
+  // Per-runbook validation
+  for (let i = 0; i < section.length; i++) {
+    const rb = section[i] as unknown;
+    const prefix = `runbooks[${i}]`;
+
+    if (!isObj(rb)) {
+      results.push(fail(prefix, `${prefix} must be an object`));
+      continue;
+    }
+
+    // name is required and must end in .md
+    const nameCheck = checkRequiredString(rb, "name", prefix);
+    results.push(nameCheck);
+    if (nameCheck.passed && isStr(rb.name)) {
+      if (!rb.name.endsWith(".md")) {
+        results.push(fail(`${prefix}.name_suffix`, `${prefix}.name must end in .md (got "${rb.name}")`));
+      } else {
+        results.push(pass(`${prefix}.name_suffix`, `${prefix}.name has .md suffix`));
+      }
+    }
+
+    // content is required
+    results.push(checkRequiredString(rb, "content", prefix));
+  }
+
+  // Runbook names must be unique
+  const names = section.filter(isObj).map((rb) => rb.name).filter(isStr);
+  const nameSet = new Set(names);
+  if (nameSet.size === names.length) {
+    results.push(pass("runbooks.unique_names", "All runbook names are unique"));
+  } else {
+    const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+    results.push(
+      fail("runbooks.unique_names", `Duplicate runbook names: ${[...new Set(dupes)].join(", ")}`),
+    );
+  }
+
+  return results;
+}
+
 // ── Security Baseline Enforcement ───────────────────────────────────────────
 
 function checkSecurityBaseline(raw: RawBlueprint): BlueprintValidationResult[] {
@@ -812,6 +870,7 @@ export function validateBlueprint(
     ...checkSkillBundle(raw),
     ...checkToolbelt(raw),
     ...checkCustomizationQuestions(raw),
+    ...checkRunbooks(raw),
     ...checkSecurityBaseline(raw),
     ...checkCrossSection(raw),
   ];

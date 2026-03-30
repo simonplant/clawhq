@@ -1,19 +1,32 @@
 /**
- * Identity module — generates SOUL.md and AGENTS.md from blueprints.
+ * Identity module — generates identity files from blueprints.
  *
- * Identity files define who the agent IS and what it CAN do. They are
+ * Identity files define who the agent IS, what it CAN do, who it serves,
+ * how to use its tools, and domain-specific operating procedures. They are
  * mounted read-only in the container (LM-12) and must fit within the
  * token budget (LM-08: bootstrapMaxChars, default 20,000).
+ *
+ * Generated files:
+ * - SOUL.md — agent personality and boundaries
+ * - AGENTS.md — capability inventory and autonomy model
+ * - USER.md — user profile (name, timezone, preferences)
+ * - TOOLS.md — role-organized tool reference by category
+ * - Blueprint runbooks — domain-specific operating procedures
  */
 
 import { BOOTSTRAP_MAX_CHARS } from "../../config/defaults.js";
+import type { UserContext } from "../configure/types.js";
 import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
 
 import { generateAgents } from "./agents.js";
 import { generateSoul } from "./soul.js";
+import { generateTools } from "./tools.js";
+import { generateUser } from "./user.js";
 
 export { generateAgents } from "./agents.js";
 export { generateSoul } from "./soul.js";
+export { generateTools } from "./tools.js";
+export { generateUser } from "./user.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -32,8 +45,12 @@ const DEFAULT_MAX_CHARS = BOOTSTRAP_MAX_CHARS;
 /**
  * Generate all identity files from a blueprint.
  *
- * Returns SOUL.md and AGENTS.md with content that:
+ * Returns identity files (SOUL.md, AGENTS.md, USER.md, TOOLS.md, and
+ * any blueprint-defined runbooks) with content that:
  * - Reflects the blueprint's personality, tools, and skills
+ * - Includes user context (name, timezone, preferences)
+ * - Organizes tools by category for role-based reference
+ * - Includes domain-specific runbooks from the blueprint
  * - Fits within the token budget (LM-08)
  * - Is ready for read-only mount in the container (LM-12)
  */
@@ -42,6 +59,7 @@ export function generateIdentityFiles(
   maxChars: number = DEFAULT_MAX_CHARS,
   customizationAnswers: Readonly<Record<string, string>> = {},
   personalityDimensions?: PersonalityDimensions,
+  userContext?: UserContext,
 ): IdentityFileContent[] {
   const files: IdentityFileContent[] = [
     {
@@ -54,7 +72,32 @@ export function generateIdentityFiles(
       relativePath: "workspace/identity/AGENTS.md",
       content: generateAgents(blueprint),
     },
+    {
+      name: "TOOLS.md",
+      relativePath: "workspace/identity/TOOLS.md",
+      content: generateTools(blueprint),
+    },
   ];
+
+  // Include USER.md if user context was collected
+  if (userContext) {
+    files.push({
+      name: "USER.md",
+      relativePath: "workspace/identity/USER.md",
+      content: generateUser(userContext),
+    });
+  }
+
+  // Include blueprint-defined runbooks
+  if (blueprint.runbooks) {
+    for (const runbook of blueprint.runbooks) {
+      files.push({
+        name: runbook.name,
+        relativePath: `workspace/identity/${runbook.name}`,
+        content: runbook.content,
+      });
+    }
+  }
 
   // LM-08: Enforce token budget — truncate if content exceeds limit
   const totalSize = files.reduce(
