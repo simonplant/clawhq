@@ -1,33 +1,40 @@
 {
-  "sprintId": "sprint-1774830093",
-  "startedAt": "2026-03-29T17:21:33-07:00",
+  "sprintId": "sprint-1774833340",
+  "startedAt": "2026-03-29T18:15:40-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-106",
-    "title": "Reduce process.exit() usage in CLI — return exit codes or throw for testability",
-    "intent": "Make CLI command handlers testable and allow proper cleanup. Commands should throw or return exit codes instead of calling process.exit() directly.",
-    "description": "Architecture review found 192 direct process.exit() calls. This prevents testing error paths, blocks defer/cleanup handlers, and makes graceful shutdown impossible.",
+    "id": "FEAT-109",
+    "title": "1Password integration — agent-accessible credential vault via service account tokens",
+    "intent": "Agents need credential access for email, logins, API calls. Hardcoded env vars have no rotation or audit. 1Password service accounts give scoped read-only access with full audit trail — aligned with data sovereignty and security-by-default.",
+    "description": "Integrate 1Password service account model into agent runtime. Architecture: user's 1Password account has an Agent Vault with only the credentials the agent needs. Agent gets a service account token (OP_SERVICE_ACCOUNT_TOKEN) injected as Docker secret. op CLI or Python SDK installed in container. Helper utility claw-secret wraps credential fetch with logging. Security model: read-only, fetch-at-use (never persisted), never in LLM context, scoped vault, full audit, instant revoke, quarterly rotation.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create a CommandError class that carries an exit code",
-      "Replace process.exit() calls with throw CommandError in command handlers",
-      "Add try/finally blocks around spinner usage to ensure cleanup",
-      "Wire top-level parseAsync catch to extract exit codes from CommandError",
-      "Add unit tests for error paths in key commands (deploy, destroy, scan)"
+      "Add op CLI or 1Password Python SDK to the Docker build stage (src/build/docker/)",
+      "Add OP_SERVICE_ACCOUNT_TOKEN to credential store (src/secure/credentials/) with Docker secret injection",
+      "Create claw-secret helper utility that wraps op read with logging and never exposes credentials to stdout/LLM context",
+      "Add credential probe for 1Password service account token validity (src/secure/credentials/probes.ts)",
+      "Add blueprint configuration for 1Password vault name and credential mapping",
+      "Add doctor check: 1Password service account token valid, vault accessible, op CLI installed",
+      "Add tests for credential fetch, token validation, error handling"
     ],
     "acceptanceCriteria": [
-      "Command handlers throw errors or return exit codes instead of calling process.exit()",
-      "A single top-level error handler in the CLI entry point calls process.exit()",
-      "Spinners are properly stopped in error paths via try/finally",
-      "At least 3 command handlers have unit tests covering error paths"
+      "op CLI or Python SDK available in agent container after clawhq build",
+      "Service account token injected via Docker secrets, never in env vars or config files",
+      "claw-secret utility fetches credentials with audit logging",
+      "Credentials never appear in LLM context, agent memory files, or logs",
+      "clawhq doctor checks 1Password connectivity and token validity",
+      "Blueprint supports 1Password vault configuration"
     ],
     "scope": [
-      "src/cli/**"
+      "src/build/docker/",
+      "src/secure/credentials/",
+      "src/operate/doctor/",
+      "src/design/blueprints/"
     ],
-    "startedAt": "2026-03-29T17:21:33-07:00",
+    "startedAt": "2026-03-29T18:15:40-07:00",
     "status": "passed",
-    "completedAt": "2026-03-29T17:51:03-07:00"
+    "completedAt": "2026-03-29T18:34:29-07:00"
   },
-  "completedAt": "2026-03-29T17:51:03-07:00",
+  "completedAt": "2026-03-29T18:34:29-07:00",
   "attempts": 1
 }
