@@ -36,42 +36,6 @@
       "groomingNotes": "STRATEGY: Day-zero revenue experiment. Not sprint-ready — needs architecture design. Key insight from critique: must do something a cron job can't. WebSocket health checks are trivially replicable. Upstream commit analysis + config breakage prediction is genuinely valuable and requires centralized infrastructure. Phase 1 can be technically simple (GitHub API + config diff) but the product design needs work first."
     },
     {
-      "id": "FEAT-118",
-      "title": "Extended identity files — USER.md, TOOLS.md, and domain-specific runbooks in blueprint config",
-      "intent": "An agent that only knows its personality (SOUL.md) and capabilities (AGENTS.md) is incomplete. It must also understand its user's context, have a role-organized tool reference, and carry domain-specific operating procedures.",
-      "description": "Clawdius has 7 identity/reference files beyond SOUL.md and AGENTS.md. ClawHQ only generates SOUL.md + AGENTS.md. The delta is significant: without USER.md, the agent doesn't know who it's serving.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Extend wizard to collect user context: name, timezone, communication preferences, key constraints",
-        "Add USER.md generator to src/design/identity/",
-        "Add TOOLS.md generator — organizes blueprint tools by role/use-case with descriptions",
-        "Add blueprint-specific runbook support: each blueprint can define additional identity files",
-        "Update identity file generation in generate.ts to include new files",
-        "Update Docker build to copy all identity files, not just SOUL.md and AGENTS.md",
-        "Add tests for USER.md and TOOLS.md generation from various blueprints"
-      ],
-      "acceptanceCriteria": [
-        "clawhq init collects user context (name, timezone, preferences) via wizard",
-        "Generated deployment includes USER.md with user profile",
-        "Generated deployment includes TOOLS.md with role-organized tool reference",
-        "Blueprints can define additional identity files (runbooks) in their YAML",
-        "All identity files are mounted read-only in the container",
-        "Token budget validation accounts for all identity files"
-      ],
-      "scope": [
-        "src/design/identity/",
-        "src/design/configure/",
-        "configs/blueprints/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Supports '10 curated blueprints' goal — each masterclass blueprint needs rich identity files. Not sprint-ready — needs design for blueprint-specific runbooks.",
-      "passes": true,
-      "completedAt": "2026-03-29T22:02:26-07:00"
-    },
-    {
       "id": "FEAT-112",
       "title": "Construct meta-skill — autonomous self-improvement loop for agent capability growth",
       "intent": "Agents must grow their capabilities over time without manual intervention. The construct skill is the mechanism: assess gaps → propose new skills → build → deploy → validate. This is THE differentiator for the 'agent grows' pillar.",
