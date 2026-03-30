@@ -291,37 +291,6 @@
       "readyForSprint": false,
       "groomedAt": "2026-03-28",
       "groomingNotes": "Extracted from Clawdius. Depends on Tavily and X tools working first. Lower priority than security and multi-instance."
-    },
-    {
-      "id": "FEAT-126",
-      "title": "Expand blueprint library to 10 reference masterclasses",
-      "intent": "ClawHQ must ship with 10 curated reference blueprints, each a deep demonstration of a real use case. 7 blueprints exist. The remaining 3 must be production-quality — reading them should make a target user think 'this person understands how I actually work.'",
-      "description": "Strategy fix #2 (Community) requires 10 curated reference blueprints, not a community marketplace. Current count: 7 blueprints. The gap is 3 more. Each blueprint must be a masterclass for its use case — selection criteria: (1) significant OpenClaw user population has this need, (2) the use case has well-known failure modes ClawHQ handles correctly by default, (3) demonstrates security-by-default in a concrete domain. Candidates: Research Copilot (Tavily, summarization, citation), Founders Ops (communications, scheduling, prioritization), Personal Finance Assistant (read-only bank feeds, alerts, summaries — no write access). Each requires identity file content, tool selection, skill bundle, cron jobs, security posture, and integration config.",
-      "priority": "should",
-      "category": "core",
-      "steps": [],
-      "acceptanceCriteria": [
-        {
-          "text": "Blueprint library contains exactly 10 blueprints, each with complete YAML (identity, tools, skills, cron, security_posture, autonomy)",
-          "verify": "ls configs/blueprints/*.yaml 2>/dev/null | wc -l | grep -q '^10$'"
-        },
-        "Each new blueprint includes at least one domain-specific security constraint not in the default posture",
-        "All 10 blueprints validate against the blueprint spec (once FEAT-121 is complete)",
-        {
-          "text": "Each blueprint has a corresponding tutorial draft in docs/articles/ for the dev-as-content pipeline",
-          "verify": "ls docs/articles/ 2>/dev/null | wc -l | grep -qE '^[3-9]|^[0-9]{2,}'"
-        }
-      ],
-      "scope": [
-        "configs/blueprints/"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY fix #2 (Community). Gap identified during PO grooming 2026-03-28: strategy says '10 reference blueprints' but backlog had no item for the missing 3. Each blueprint is a content asset (tutorial draft in docs/articles/) and a quality signal for the Blueprint Specification (FEAT-121). Priority should because it follows Gate 0 — not blocking launch but must ship with repo. Candidates: Research Copilot, Founders Ops, Personal Finance Assistant. Depends on FEAT-121 for final validation. Not sprint-ready until FEAT-121 spec is done.",
-      "completedAt": "2026-03-29T20:58:14-07:00"
     }
   ]
 }
