@@ -282,11 +282,12 @@
         "configs/blueprints/"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "Sprint-ready after codebase analysis. generateAgents() in src/design/identity/agents.ts is 78 lines — confirmed gap: emits only name/role/tools/skills/autonomy-list. Missing: three-tier delegation (execute/propose/approve), per-action examples, heartbeat behavior section, communication rules. Blueprint autonomy_model must be extended with delegation_defaults[]. Implementation: (1) extend Blueprint type with delegation_defaults field, (2) add generateDelegationGates() function, (3) emit 3-section Approval Gates block in generateAgents(), (4) add test file. Scope is contained: agents.ts + blueprint types + tests. Autonomy level mapping: low=approve-most, medium=balanced, high=execute-most."
+      "groomingNotes": "Sprint-ready after codebase analysis. generateAgents() in src/design/identity/agents.ts is 78 lines — confirmed gap: emits only name/role/tools/skills/autonomy-list. Missing: three-tier delegation (execute/propose/approve), per-action examples, heartbeat behavior section, communication rules. Blueprint autonomy_model must be extended with delegation_defaults[]. Implementation: (1) extend Blueprint type with delegation_defaults field, (2) add generateDelegationGates() function, (3) emit 3-section Approval Gates block in generateAgents(), (4) add test file. Scope is contained: agents.ts + blueprint types + tests. Autonomy level mapping: low=approve-most, medium=balanced, high=execute-most.",
+      "completedAt": "2026-03-29T23:14:55-07:00"
     },
     {
       "id": "FEAT-129",
