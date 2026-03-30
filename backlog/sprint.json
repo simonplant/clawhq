@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774830093",
   "startedAt": "2026-03-29T17:21:33-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-106",
     "title": "Reduce process.exit() usage in CLI — return exit codes or throw for testability",
@@ -24,6 +24,10 @@
     "scope": [
       "src/cli/**"
     ],
-    "startedAt": "2026-03-29T17:21:33-07:00"
-  }
+    "startedAt": "2026-03-29T17:21:33-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-29T17:51:03-07:00"
+  },
+  "completedAt": "2026-03-29T17:51:03-07:00",
+  "attempts": 1
 }

@@ -61,10 +61,12 @@
       "dependsOn": [
         "FEAT-108"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Blocked by FEAT-108. After decomposition, each command file can be fixed independently. process.exit() cleanup is per-command surgery — doing it in a 4320-line index.ts carries high regression risk."
+      "groomingNotes": "Blocked by FEAT-108. After decomposition, each command file can be fixed independently. process.exit() cleanup is per-command surgery — doing it in a 4320-line index.ts carries high regression risk.",
+      "passes": true,
+      "completedAt": "2026-03-29T17:51:03-07:00"
     },
     {
       "id": "FEAT-109",
