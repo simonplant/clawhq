@@ -345,10 +345,12 @@
         "src/build/launcher/"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Filed from FEAT-018 e2e smoke test initial run. The Ollama preflight hard-fail is the only integration gap found — all other steps (init, build, doctor, down, destroy) pass. This is a usability issue for CI and for users who want to deploy with cloud-only models."
+      "groomingNotes": "Filed from FEAT-018 e2e smoke test initial run. The Ollama preflight hard-fail is the only integration gap found — all other steps (init, build, doctor, down, destroy) pass. This is a usability issue for CI and for users who want to deploy with cloud-only models.",
+      "passes": true,
+      "completedAt": "2026-03-29T19:30:48-07:00"
     }
   ]
 }
