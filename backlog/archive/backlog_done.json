@@ -2158,5 +2158,36 @@
     "groomingNotes": "STRATEGY: Zero-cost discovery fix. The content already exists in the codebase — PROBLEMS.md, OPENCLAW-REFERENCE.md, bug fixes. This is about packaging it. Sprint-ready — content work, not code. The '14 ways' article could be the HN launch piece.",
     "passes": true,
     "completedAt": "2026-03-29T16:41:51-07:00"
+  },
+  {
+    "id": "FEAT-125",
+    "title": "Assumption validation framework — concrete tests for the 3 riskiest strategic assumptions",
+    "intent": "Strategy without validation is fiction. The 3 highest-risk assumptions must have concrete pass/fail criteria, measurement methods, and deadlines so the team knows when to pivot.",
+    "description": "The evolved strategy identified 7 assumptions, 3 critical. Each needs a concrete test: (1) Addressable demand — measure clone→install conversion in first 1,000 visitors (pass: >5%), (2) Willingness to pay — Sentinel landing page signups (pass: 10+ in 60 days), (3) Foundation absorption — monitor OpenClaw PRs for guided config (signal: 2+ PRs in 6 months). Implementation: tracking dashboard or simple JSON file that records metrics against targets, reviewed monthly.",
+    "priority": "should",
+    "category": "strategy",
+    "steps": [
+      "Create backlog/assumptions.json with the 3 testable assumptions, pass/fail criteria, and deadlines",
+      "Add GitHub repo analytics tracking plan (stars, clones, installs via curl script)",
+      "Design Sentinel landing page for willingness-to-pay test",
+      "Set up OpenClaw GitHub watch for configuration-related PRs/RFCs",
+      "Document review cadence: monthly assumption review, update assumptions.json with latest data"
+    ],
+    "acceptanceCriteria": [
+      "backlog/assumptions.json documents all 3 assumptions with pass/fail criteria and deadlines",
+      "Each assumption has a concrete measurement method that doesn't require guessing",
+      "Monthly review cadence is documented",
+      "First review date set for 30 days after repo goes public"
+    ],
+    "scope": [
+      "backlog/",
+      "docs/"
+    ],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-28",
+    "groomingNotes": "STRATEGY: Converts 'direction locked' into something testable. Without this, the strategy is faith, not science. Sprint-ready — primarily documentation work. Can be done in a single sprint.",
+    "passes": true,
+    "completedAt": "2026-03-29T16:54:06-07:00"
   }
 ]
