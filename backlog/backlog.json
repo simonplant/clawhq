@@ -64,10 +64,12 @@
         "src/design/configure/",
         "configs/blueprints/"
       ],
-      "status": "todo",
+      "status": "done",
       "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Supports '10 curated blueprints' goal — each masterclass blueprint needs rich identity files. Not sprint-ready — needs design for blueprint-specific runbooks."
+      "groomingNotes": "STRATEGY: Supports '10 curated blueprints' goal — each masterclass blueprint needs rich identity files. Not sprint-ready — needs design for blueprint-specific runbooks.",
+      "passes": true,
+      "completedAt": "2026-03-29T22:02:26-07:00"
     },
     {
       "id": "FEAT-112",
