@@ -316,11 +316,12 @@
         "configs/blueprints/"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY fix #2 (Community). Gap identified during PO grooming 2026-03-28: strategy says '10 reference blueprints' but backlog had no item for the missing 3. Each blueprint is a content asset (tutorial draft in docs/articles/) and a quality signal for the Blueprint Specification (FEAT-121). Priority should because it follows Gate 0 — not blocking launch but must ship with repo. Candidates: Research Copilot, Founders Ops, Personal Finance Assistant. Depends on FEAT-121 for final validation. Not sprint-ready until FEAT-121 spec is done."
+      "groomingNotes": "STRATEGY fix #2 (Community). Gap identified during PO grooming 2026-03-28: strategy says '10 reference blueprints' but backlog had no item for the missing 3. Each blueprint is a content asset (tutorial draft in docs/articles/) and a quality signal for the Blueprint Specification (FEAT-121). Priority should because it follows Gate 0 — not blocking launch but must ship with repo. Candidates: Research Copilot, Founders Ops, Personal Finance Assistant. Depends on FEAT-121 for final validation. Not sprint-ready until FEAT-121 spec is done.",
+      "completedAt": "2026-03-29T20:58:14-07:00"
     }
   ]
 }

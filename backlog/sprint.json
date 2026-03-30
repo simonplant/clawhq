@@ -1,32 +1,33 @@
 {
-  "sprintId": "sprint-1774837368",
-  "startedAt": "2026-03-29T19:22:48-07:00",
+  "sprintId": "sprint-1774842455",
+  "startedAt": "2026-03-29T20:47:35-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-127",
-    "title": "Deploy preflight should not hard-fail when Ollama is absent for local-model blueprints",
-    "intent": "The e2e smoke test (FEAT-018) revealed that `clawhq up` hard-fails on preflight when Ollama is not installed, even though the Docker build succeeds. In CI environments and on machines without Ollama, the full user journey cannot complete. The preflight Ollama check should warn instead of block, or `--skip-preflight` should be documented as the CI workaround.",
-    "description": "Discovered during FEAT-018 initial e2e run: `clawhq up -d <dir> --token <tok> --skip-firewall` exits 1 with 'Ollama is not installed — required for local model inference'. The blueprint uses local model provider, so preflight rejects deployment. This blocks the full user journey in any environment without Ollama. Options: (a) downgrade Ollama check to a warning when model routing is local, (b) allow --skip-preflight to bypass gracefully, (c) add a --no-ollama flag that switches to a no-model-needed mode for testing.",
+    "id": "FEAT-126",
+    "title": "Expand blueprint library to 10 reference masterclasses",
+    "intent": "ClawHQ must ship with 10 curated reference blueprints, each a deep demonstration of a real use case. 7 blueprints exist. The remaining 3 must be production-quality — reading them should make a target user think 'this person understands how I actually work.'",
+    "description": "Strategy fix #2 (Community) requires 10 curated reference blueprints, not a community marketplace. Current count: 7 blueprints. The gap is 3 more. Each blueprint must be a masterclass for its use case — selection criteria: (1) significant OpenClaw user population has this need, (2) the use case has well-known failure modes ClawHQ handles correctly by default, (3) demonstrates security-by-default in a concrete domain. Candidates: Research Copilot (Tavily, summarization, citation), Founders Ops (communications, scheduling, prioritization), Personal Finance Assistant (read-only bank feeds, alerts, summaries — no write access). Each requires identity file content, tool selection, skill bundle, cron jobs, security posture, and integration config.",
     "sourceBacklog": "backlog.json",
-    "steps": [
-      "Review preflight Ollama check in src/build/launcher/ — determine if it should be a hard gate or warning",
-      "For local-model blueprints, downgrade Ollama absence to a warning (agent can still start, just no inference)",
-      "Ensure --skip-preflight cleanly bypasses all preflight checks including Ollama",
-      "Update e2e smoke test to use --skip-preflight for the up step so CI can pass end-to-end",
-      "Add test coverage for preflight with and without Ollama"
-    ],
+    "steps": [],
     "acceptanceCriteria": [
-      "clawhq up completes (containers start) even when Ollama is not installed, with a clear warning",
-      "e2e smoke test passes the 'up' step in CI environments without Ollama",
-      "--skip-preflight flag cleanly bypasses the Ollama check"
+      {
+        "text": "Blueprint library contains exactly 10 blueprints, each with complete YAML (identity, tools, skills, cron, security_posture, autonomy)",
+        "verify": "ls configs/blueprints/*.yaml 2>/dev/null | wc -l | grep -q '^10$'"
+      },
+      "Each new blueprint includes at least one domain-specific security constraint not in the default posture",
+      "All 10 blueprints validate against the blueprint spec (once FEAT-121 is complete)",
+      {
+        "text": "Each blueprint has a corresponding tutorial draft in docs/articles/ for the dev-as-content pipeline",
+        "verify": "ls docs/articles/ 2>/dev/null | wc -l | grep -qE '^[3-9]|^[0-9]{2,}'"
+      }
     ],
     "scope": [
-      "src/build/launcher/"
+      "configs/blueprints/"
     ],
-    "startedAt": "2026-03-29T19:22:48-07:00",
+    "startedAt": "2026-03-29T20:47:35-07:00",
     "status": "passed",
-    "completedAt": "2026-03-29T19:30:48-07:00"
+    "completedAt": "2026-03-29T20:58:14-07:00"
   },
-  "completedAt": "2026-03-29T19:30:48-07:00",
+  "completedAt": "2026-03-29T20:58:14-07:00",
   "attempts": 1
 }
