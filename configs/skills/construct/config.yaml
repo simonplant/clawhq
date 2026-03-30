@@ -1,0 +1,35 @@
+# construct skill configuration
+name: construct
+version: "1.0.0"
+description: "Autonomous self-improvement — assess capability gaps, propose new skills, build, deploy through vetting, and validate"
+
+# Schedule: daily at 2am PT (low-activity window)
+schedule:
+  cron: "0 2 * * *"
+  active_hours:
+    start: 0
+    end: 23
+
+# Model requirements — local preferred, cloud escalation for skill generation
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: true
+
+# No tool dependencies — construct reads agent state and builds skills
+dependencies:
+  tools: []
+  skills: []
+
+# Approval required — user must approve proposed skills before deploy
+approval:
+  required: true
+  category: skill_construction
+  auto_approve: false
+
+# Boundaries — file_write needed to create skill artifacts
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false
