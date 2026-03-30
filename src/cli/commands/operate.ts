@@ -20,6 +20,7 @@ import {
   runDoctorWithFix,
 } from "../../operate/doctor/index.js";
 import { streamLogs } from "../../operate/logs/index.js";
+import { installOpsAutomation } from "../../operate/automation/index.js";
 import {
   formatMonitorEvent,
   formatMonitorStateJson,
@@ -596,6 +597,47 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
         console.log(formatMonitorStateJson(state));
       } else {
         console.log(formatMonitorStateTable(state));
+      }
+    });
+
+  const ops = program.command("ops").description("Operational automation — deploy and manage systemd timers");
+
+  ops
+    .command("install")
+    .description("Deploy generated scripts as systemd timers/services")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .action(async (opts: { deployDir: string }) => {
+      ensureInstalled(opts.deployDir);
+
+      const ac = new AbortController();
+      process.on("SIGINT", () => ac.abort());
+      process.on("SIGTERM", () => ac.abort());
+
+      const spinner = ora("Installing ops automation…");
+      spinner.start();
+
+      try {
+        const result = await installOpsAutomation({
+          deployDir: opts.deployDir,
+          signal: ac.signal,
+        });
+
+        spinner.stop();
+
+        if (!result.success) {
+          console.error(chalk.red(`\n✘ ${result.error}`));
+          throw new CommandError("", 1);
+        }
+
+        console.log(chalk.green("\n✔ Ops automation installed"));
+        console.log(chalk.dim(`  Installed: ${result.installed.join(", ")}`));
+        console.log(chalk.dim(`  Enabled:   ${result.enabled.join(", ")}`));
+        console.log(chalk.dim("\n  Check status: systemctl list-timers 'clawhq-*'"));
+      } catch (error) {
+        spinner.stop();
+        if (error instanceof CommandError) throw error;
+        console.error(renderError(error));
+        throw new CommandError("", 1);
       }
     });
 }

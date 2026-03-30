@@ -32,7 +32,10 @@ export type DoctorCheckName =
   | "migration-state"
   | "underscore-tool-methods"
   | "onepassword-setup"
-  | "sanitize-available";
+  | "sanitize-available"
+  | "ops-autoupdate-active"
+  | "ops-backup-recent"
+  | "ops-security-monitor";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

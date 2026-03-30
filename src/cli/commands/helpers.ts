@@ -7,6 +7,7 @@ import type { DeployProgress } from "../../build/launcher/index.js";
 import type { PrereqCheckResult } from "../../build/installer/index.js";
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
 import { generateBundle, generateIdentityFiles } from "../../design/configure/index.js";
+import { generateOpsAutomationFiles } from "../../operate/automation/index.js";
 
 export function formatPrereqCheck(check: PrereqCheckResult): void {
   if (check.ok) {
@@ -116,6 +117,15 @@ export function bundleToFiles(
     ...identityFiles.map((f) => ({
       relativePath: f.relativePath,
       content: f.content,
+    })),
+    // Operational automation scripts + systemd units
+    ...generateOpsAutomationFiles(
+      bundle.clawhqConfig.paths?.deployDir ?? "~/.clawhq",
+      bundle.clawhqConfig.ops,
+    ).map((f) => ({
+      relativePath: f.relativePath,
+      content: f.content,
+      mode: f.mode,
     })),
   ];
 }

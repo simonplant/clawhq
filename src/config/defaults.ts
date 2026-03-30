@@ -220,6 +220,26 @@ export const SENTINEL_MAX_COMMITS_PER_CHECK = 50;
 /** Sentinel pricing page URL. */
 export const SENTINEL_PRICING_URL = "https://clawhq.com/sentinel";
 
+// ── Operational automation defaults ─────────────────────────────────────────
+
+/** Default systemd timer schedule for auto-update (daily at 3am). */
+export const OPS_AUTO_UPDATE_SCHEDULE = "daily";
+
+/** Default systemd timer schedule for security monitor (every 6 hours). */
+export const OPS_SECURITY_MONITOR_SCHEDULE = "*-*-* 00/6:00:00";
+
+/** Default systemd timer schedule for workspace backup (daily at 2am). */
+export const OPS_BACKUP_SCHEDULE = "*-*-* 02:00:00";
+
+/** Default backup retention in days. */
+export const OPS_BACKUP_RETENTION_DAYS = 30;
+
+/** Default CVE severities to alert on. */
+export const OPS_SECURITY_SEVERITIES: readonly string[] = ["critical", "high"];
+
+/** GitHub Security Advisories API endpoint for OpenClaw. */
+export const GITHUB_ADVISORIES_URL = "https://api.github.com/repos/nicepkg/openclaw/security/advisories";
+
 // ── OpenClaw environment variable defaults (v0.8.6+) ────────────────────────
 
 /** Default WebSocket event caller timeout in milliseconds (was hardcoded 60s). */

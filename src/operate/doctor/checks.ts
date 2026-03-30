@@ -20,6 +20,7 @@ import { promisify } from "node:util";
 
 import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
+import { isTimerActive } from "../automation/install.js";
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -141,6 +142,9 @@ export async function runChecks(
     checkUnderscoreToolMethods(deployDir, version),
     check1PasswordSetup(deployDir, signal),
     checkSanitizeAvailable(deployDir),
+    checkOpsAutoUpdateActive(deployDir, signal),
+    checkOpsBackupRecent(deployDir, signal),
+    checkOpsSecurityMonitor(deployDir, signal),
   ]);
 }
 
@@ -1198,4 +1202,130 @@ async function checkSanitizeAvailable(deployDir: string): Promise<DoctorCheckRes
     const msg = err instanceof Error ? err.message : String(err);
     return fail(name, "warning", `Sanitize check failed: ${msg}`);
   }
+}
+
+// ── 24. Auto-Update Timer Active ────────────────────────────────────────────
+
+/** Check that the auto-update systemd timer is active. */
+async function checkOpsAutoUpdateActive(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "ops-autoupdate-active";
+
+  // First check if ops automation scripts were generated
+  const scriptPath = join(deployDir, "ops", "automation", "scripts", "clawhq-autoupdate.sh");
+  try {
+    await access(scriptPath, constants.R_OK);
+  } catch {
+    return fail(
+      name,
+      "info",
+      "Auto-update script not found — run clawhq init to generate ops automation",
+      "Run: clawhq init --guided",
+    );
+  }
+
+  // Check if timer is active
+  const active = await isTimerActive("clawhq-autoupdate.timer", signal);
+  if (!active) {
+    return fail(
+      name,
+      "warning",
+      "Auto-update timer is not active — updates will not run automatically",
+      "Run: clawhq ops install",
+    );
+  }
+
+  return ok(name, "Auto-update timer is active");
+}
+
+// ── 25. Backup Recent ──────────────────────────────────────────────────────
+
+/** Check that workspace backup has run recently. */
+async function checkOpsBackupRecent(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "ops-backup-recent";
+
+  // Check if backup script exists
+  const scriptPath = join(deployDir, "ops", "automation", "scripts", "clawhq-backup.sh");
+  try {
+    await access(scriptPath, constants.R_OK);
+  } catch {
+    return fail(
+      name,
+      "info",
+      "Backup script not found — run clawhq init to generate ops automation",
+      "Run: clawhq init --guided",
+    );
+  }
+
+  // Check for recent backup snapshots
+  const backupDir = join(deployDir, "ops", "backup", "incremental");
+  const latestLink = join(backupDir, "latest");
+  try {
+    const latestStat = await stat(latestLink);
+    const ageMs = Date.now() - latestStat.mtimeMs;
+    const ageDays = ageMs / (1000 * 60 * 60 * 24);
+
+    if (ageDays > 7) {
+      return fail(
+        name,
+        "warning",
+        `Last backup is ${Math.floor(ageDays)} days old — recommend daily backups`,
+        "Run: clawhq ops install to enable backup timer, or run backup script manually",
+      );
+    }
+    return ok(name, `Last backup: ${Math.floor(ageDays)} day(s) ago`);
+  } catch {
+    // No backup yet — check if timer is at least active
+    const timerActive = await isTimerActive("clawhq-backup.timer", signal);
+    if (timerActive) {
+      return ok(name, "Backup timer active, awaiting first run", "info");
+    }
+    return fail(
+      name,
+      "warning",
+      "No backups found and backup timer is not active",
+      "Run: clawhq ops install",
+    );
+  }
+}
+
+// ── 26. Security Monitor Running ───────────────────────────────────────────
+
+/** Check that the security monitor is active. */
+async function checkOpsSecurityMonitor(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "ops-security-monitor";
+
+  // Check if script exists
+  const scriptPath = join(deployDir, "ops", "automation", "scripts", "clawhq-security-monitor.sh");
+  try {
+    await access(scriptPath, constants.R_OK);
+  } catch {
+    return fail(
+      name,
+      "info",
+      "Security monitor script not found — run clawhq init to generate ops automation",
+      "Run: clawhq init --guided",
+    );
+  }
+
+  // Check if timer is active
+  const active = await isTimerActive("clawhq-security-monitor.timer", signal);
+  if (!active) {
+    return fail(
+      name,
+      "warning",
+      "Security monitor timer is not active — CVE alerts will not be generated",
+      "Run: clawhq ops install",
+    );
+  }
+
+  return ok(name, "Security monitor timer is active");
 }

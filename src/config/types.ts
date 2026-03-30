@@ -363,6 +363,40 @@ export interface SentinelConfig {
   readonly alertEmail?: string;
 }
 
+/** Auto-update automation configuration. */
+export interface OpsAutoUpdateConfig {
+  readonly enabled?: boolean;
+  /** Systemd timer schedule (default: daily). */
+  readonly schedule?: string;
+}
+
+/** Security monitor automation configuration. */
+export interface OpsSecurityMonitorConfig {
+  readonly enabled?: boolean;
+  /** Systemd timer schedule (default: every 6 hours). */
+  readonly schedule?: string;
+  /** CVE severities to alert on (default: ["critical", "high"]). */
+  readonly severities?: readonly string[];
+}
+
+/** Workspace backup automation configuration. */
+export interface OpsBackupConfig {
+  readonly enabled?: boolean;
+  /** Systemd timer schedule (default: daily). */
+  readonly schedule?: string;
+  /** Target directory for incremental backups. */
+  readonly targetDir?: string;
+  /** Number of days to retain backups (default: 30). */
+  readonly retentionDays?: number;
+}
+
+/** Operational automation configuration within clawhq.yaml. */
+export interface OpsAutomationConfig {
+  readonly autoUpdate?: OpsAutoUpdateConfig;
+  readonly securityMonitor?: OpsSecurityMonitorConfig;
+  readonly backup?: OpsBackupConfig;
+}
+
 /**
  * ClawHQ's own configuration (clawhq.yaml).
  *
@@ -385,6 +419,7 @@ export interface ClawHQConfig {
   };
   readonly sentinel?: SentinelConfig;
   readonly monitor?: MonitorConfig;
+  readonly ops?: OpsAutomationConfig;
   readonly paths?: {
     readonly deployDir?: string;
     readonly engineDir?: string;
