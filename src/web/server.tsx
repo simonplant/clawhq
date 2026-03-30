@@ -48,6 +48,7 @@ import { DoctorPage, DoctorResults } from "./pages/doctor.js";
 import { HomePage, StatusCard } from "./pages/home.js";
 import { InitPage, InitResult } from "./pages/init.js";
 import { LogsPage, LogOutput } from "./pages/logs.js";
+import { SentinelPricingPage, SignupConfirmation } from "./pages/sentinel.js";
 import { SkillsPage, SkillList, SkillResult } from "./pages/skills.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -79,9 +80,13 @@ export function createApp(options: DashboardOptions): Hono {
   // ── CSRF Middleware ──────────────────────────────────────────────────────
   app.use("*", async (c, next) => {
     if (c.req.method === "POST") {
-      const headerToken = c.req.header("X-CSRF-Token");
-      if (headerToken !== csrfToken) {
-        return c.html("<p>CSRF token validation failed</p>", 403);
+      // Sentinel signup is public-facing — exempt from CSRF
+      const path = new URL(c.req.url).pathname;
+      if (!path.startsWith("/sentinel/")) {
+        const headerToken = c.req.header("X-CSRF-Token");
+        if (headerToken !== csrfToken) {
+          return c.html("<p>CSRF token validation failed</p>", 403);
+        }
       }
     }
     await next();
@@ -371,6 +376,24 @@ export function createApp(options: DashboardOptions): Hono {
         500,
       );
     }
+  });
+
+  // ── Sentinel Pricing (public-facing) ──────────────────────────────────
+
+  app.get("/sentinel", (c) => {
+    return c.html(<SentinelPricingPage />);
+  });
+
+  app.post("/sentinel/signup", async (c) => {
+    const body = await c.req.parseBody();
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    if (!email || !email.includes("@")) {
+      return c.html("<p>Please provide a valid email address.</p>", 400);
+    }
+    // Store signup for revenue validation — in production, this hits the Sentinel API.
+    // For MVP, log the signup and show confirmation.
+    console.log(`[sentinel] Waitlist signup: ${email}`);
+    return c.html(<SignupConfirmation email={email} />);
   });
 
   return app;

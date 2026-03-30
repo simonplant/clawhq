@@ -202,6 +202,24 @@ export const CLOUD_POLL_TIMEOUT_MS = 300_000;
 /** Timeout for long-running cloud operations — snapshots, GCE ops (ms). */
 export const CLOUD_OPERATION_TIMEOUT_MS = 600_000;
 
+/** Timeout for Sentinel API requests (ms). */
+export const SENTINEL_API_TIMEOUT_MS = 30_000;
+
+/** Base URL for the Sentinel upstream monitoring API (no trailing slash). */
+export const SENTINEL_API_BASE = "https://sentinel.clawhq.com/api/v1";
+
+/** OpenClaw GitHub repository for upstream monitoring. */
+export const OPENCLAW_GITHUB_REPO = "nicepkg/openclaw";
+
+/** GitHub API base URL (no trailing slash). */
+export const GITHUB_API_BASE = "https://api.github.com";
+
+/** Maximum number of upstream commits to analyze per check. */
+export const SENTINEL_MAX_COMMITS_PER_CHECK = 50;
+
+/** Sentinel pricing page URL. */
+export const SENTINEL_PRICING_URL = "https://clawhq.com/sentinel";
+
 // ── OpenClaw environment variable defaults (v0.8.6+) ────────────────────────
 
 /** Default WebSocket event caller timeout in milliseconds (was hardcoded 60s). */

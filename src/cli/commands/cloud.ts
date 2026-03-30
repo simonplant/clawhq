@@ -6,7 +6,11 @@ import ora from "ora";
 import type { TrustMode } from "../../config/types.js";
 import {
   connectCloud,
+  connectSentinel,
   disconnectCloud,
+  disconnectSentinel,
+  formatAlerts,
+  formatAlertsJson,
   formatCloudStatus,
   formatCloudStatusJson,
   formatDisconnectResult,
@@ -17,13 +21,17 @@ import {
   formatFleetList,
   formatFleetListJson,
   formatSwitchResult,
+  generateFingerprint,
   getFleetHealth,
+  getPricingUrl,
   readFleetRegistry,
   readHeartbeatState,
   readQueueState,
+  readSentinelState,
   readTrustModeState,
   registerAgent,
   runFleetDoctor,
+  runSentinelCheck,
   sendHeartbeat,
   switchTrustMode,
   unregisterAgent,
@@ -259,5 +267,188 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
       } finally {
         spinner.stop();
       }
+    });
+
+  // ── Sentinel Monitoring ─────────────────────────────────────────────────
+
+  const sentinel = cloud.command("sentinel").description("Upstream intelligence monitoring (~$19/mo)");
+
+  sentinel
+    .command("connect")
+    .description("Subscribe to Sentinel upstream monitoring")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .option("-t, --token <token>", "Sentinel API token (from clawhq.com/sentinel)")
+    .option("-w, --webhook <url>", "Webhook URL for alert delivery")
+    .option("-e, --email <email>", "Email address for alert delivery")
+    .action(async (opts: { deployDir: string; token?: string; webhook?: string; email?: string }) => {
+      ensureInstalled(opts.deployDir);
+
+      const spinner = ora("Connecting to Sentinel…");
+      spinner.start();
+
+      try {
+        const result = await connectSentinel(opts.deployDir, {
+          token: opts.token,
+          webhookUrl: opts.webhook,
+          alertEmail: opts.email,
+        });
+
+        spinner.stop();
+
+        if (result.success) {
+          console.log(chalk.green("Sentinel monitoring activated."));
+          console.log(chalk.dim(`  Tier: ${result.tier}`));
+          if (!opts.token) {
+            console.log(chalk.dim(`  Running in free tier (local checks only).`));
+            console.log(chalk.dim(`  Upgrade: ${getPricingUrl()}`));
+          }
+          if (opts.webhook) console.log(chalk.dim(`  Webhook: ${opts.webhook}`));
+          if (opts.email) console.log(chalk.dim(`  Email: ${opts.email}`));
+          console.log(chalk.dim("  Disconnect anytime: clawhq cloud sentinel disconnect"));
+        } else {
+          console.error(chalk.red(result.error ?? "Failed to connect."));
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
+      }
+    });
+
+  sentinel
+    .command("status")
+    .description("Sentinel subscription status and recent alerts")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .option("--json", "Output as JSON")
+    .action(async (opts: { deployDir: string; json?: boolean }) => {
+      ensureInstalled(opts.deployDir);
+
+      const state = readSentinelState(opts.deployDir);
+
+      if (opts.json) {
+        console.log(JSON.stringify(state, null, 2));
+      } else {
+        console.log(`Sentinel: ${state.active ? chalk.green("active") : chalk.dim("inactive")}`);
+        console.log(chalk.dim(`  Tier: ${state.tier}`));
+        if (state.lastCheckAt) console.log(chalk.dim(`  Last check: ${state.lastCheckAt}`));
+        if (state.consecutiveFailures > 0) {
+          console.log(chalk.yellow(`  Consecutive failures: ${state.consecutiveFailures}`));
+        }
+        if (state.lastError) console.log(chalk.red(`  Last error: ${state.lastError}`));
+        if (!state.active) {
+          console.log(chalk.dim(`\n  Activate: clawhq cloud sentinel connect`));
+          console.log(chalk.dim(`  Pricing: ${getPricingUrl()}`));
+        }
+      }
+    });
+
+  sentinel
+    .command("disconnect")
+    .description("Stop Sentinel monitoring")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .action(async (opts: { deployDir: string }) => {
+      ensureInstalled(opts.deployDir);
+
+      const result = disconnectSentinel(opts.deployDir);
+      if (result.wasActive) {
+        console.log(chalk.green("Sentinel monitoring deactivated."));
+      } else {
+        console.log(chalk.dim("Sentinel was not active."));
+      }
+    });
+
+  sentinel
+    .command("check")
+    .description("Run an upstream check — scan for config-breaking changes")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .option("--json", "Output as JSON")
+    .action(async (opts: { deployDir: string; json?: boolean }) => {
+      ensureInstalled(opts.deployDir);
+
+      const spinner = ora("Checking upstream for config-impacting changes…");
+      if (!opts.json) spinner.start();
+
+      try {
+        const result = await runSentinelCheck(opts.deployDir);
+
+        if (!opts.json) spinner.stop();
+
+        if (!result.success) {
+          if (opts.json) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            console.error(chalk.red(result.error ?? "Sentinel check failed."));
+          }
+          throw new CommandError("", 1);
+        }
+
+        if (opts.json) {
+          console.log(formatAlertsJson(result.alerts));
+        } else if (result.alerts.length === 0) {
+          console.log(chalk.green("No config-breaking changes detected upstream."));
+          if (result.breakageReport) {
+            console.log(chalk.dim(`  Commits analyzed: ${result.breakageReport.commitsAnalyzed}`));
+          }
+        } else {
+          console.log(formatAlerts(result.alerts));
+          if (result.breakageReport?.shouldHoldUpdate) {
+            console.log(chalk.yellow("\n  Recommendation: Hold off on updating until you address the above."));
+          }
+        }
+      } finally {
+        spinner.stop();
+      }
+    });
+
+  sentinel
+    .command("fingerprint")
+    .description("Show your config fingerprint (what Sentinel sees — never values)")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .option("--json", "Output as JSON")
+    .action(async (opts: { deployDir: string; json?: boolean }) => {
+      ensureInstalled(opts.deployDir);
+
+      const fingerprint = generateFingerprint(opts.deployDir);
+
+      if (opts.json) {
+        console.log(JSON.stringify(fingerprint, null, 2));
+      } else {
+        console.log("Config Fingerprint (privacy-safe — structural metadata only)");
+        console.log(chalk.dim("─".repeat(60)));
+        console.log(`  Agent ID:       ${fingerprint.agentId}`);
+        console.log(`  OpenClaw:       ${fingerprint.openclawVersion}`);
+        if (fingerprint.blueprintId) console.log(`  Blueprint:      ${fingerprint.blueprintId}`);
+        console.log(`  Config keys:    ${fingerprint.configKeysSet.join(", ") || "(none)"}`);
+        console.log(`  Tools:          ${fingerprint.toolsEnabled.join(", ") || "(none)"}`);
+        console.log(`  Channels:       ${fingerprint.channelsConfigured.join(", ") || "(none)"}`);
+        console.log(`  Cron jobs:      ${fingerprint.cronJobCount}`);
+        console.log(`  Identity:       ${fingerprint.hasIdentityConfig ? "custom" : "default"}`);
+        console.log(`  Gateway:        ${fingerprint.hasGatewayConfig ? "custom" : "default"}`);
+        console.log(`  Multi-agent:    ${fingerprint.hasAgentsConfig ? "yes" : "no"}`);
+        console.log(`  Landmines OK:   ${fingerprint.landminesPassed.join(", ") || "(none checked)"}`);
+        console.log(chalk.dim("\n  This is what Sentinel uses to predict breakage."));
+        console.log(chalk.dim("  No values, credentials, or content are ever shared."));
+      }
+    });
+
+  sentinel
+    .command("pricing")
+    .description("Open the Sentinel pricing page for subscription signup")
+    .action(async () => {
+      const url = getPricingUrl();
+      console.log(`Sentinel Upstream Monitoring — ~$19/mo`);
+      console.log(chalk.dim("─".repeat(60)));
+      console.log(`\n  What you get:`);
+      console.log(`  - Pre-computed config breakage alerts before you update`);
+      console.log(`  - CVE tracking mapped to your specific skill inventory`);
+      console.log(`  - Skill dependency change notifications`);
+      console.log(`  - Anonymized fleet health intelligence`);
+      console.log(`\n  What a cron job can't do:`);
+      console.log(`  - Cross-reference upstream commits against YOUR config`);
+      console.log(`  - Map CVEs to YOUR installed skills and tools`);
+      console.log(`  - Detect breaking changes before they hit you`);
+      console.log(`  - Aggregate patterns across the fleet`);
+      console.log(`\n  Sign up: ${chalk.cyan(url)}`);
+      console.log(chalk.dim(`\n  Free tier: clawhq cloud sentinel connect (local checks only)`));
+      console.log(chalk.dim(`  Pro tier:  clawhq cloud sentinel connect -t <your-token>`));
     });
 }
