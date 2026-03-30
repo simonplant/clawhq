@@ -101,10 +101,12 @@
         "src/operate/",
         "src/cli/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: systemd units use clawhq-<instance>-<service>.timer naming from deploy dir basename. Multi-instance safe. No shared state."
+      "groomingNotes": "Design resolved: systemd units use clawhq-<instance>-<service>.timer naming from deploy dir basename. Multi-instance safe. No shared state.",
+      "passes": true,
+      "completedAt": "2026-03-30T15:28:19-07:00"
     },
     {
       "id": "FEAT-116",

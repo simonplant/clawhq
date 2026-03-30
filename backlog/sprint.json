@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774909015",
   "startedAt": "2026-03-30T15:16:55-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-120",
     "title": "Operational automation scripts — auto-update, security monitoring, workspace backup generation",
@@ -29,6 +29,10 @@
       "src/operate/",
       "src/cli/"
     ],
-    "startedAt": "2026-03-30T15:16:55-07:00"
-  }
+    "startedAt": "2026-03-30T15:16:55-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-30T15:28:19-07:00"
+  },
+  "completedAt": "2026-03-30T15:28:19-07:00",
+  "attempts": 1
 }
