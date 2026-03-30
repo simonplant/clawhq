@@ -26,10 +26,12 @@
       "scope": [
         "src/cli/**"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Gate 0 prerequisite. Unblocks FEAT-110 (multi-instance), FEAT-106 (process.exit cleanup), and FEAT-111 (ClawWall). Every sprint that touches CLI without this decomposition carries compound regression risk. Sprint tonight — first in queue."
+      "groomingNotes": "STRATEGY: Gate 0 prerequisite. Unblocks FEAT-110 (multi-instance), FEAT-106 (process.exit cleanup), and FEAT-111 (ClawWall). Every sprint that touches CLI without this decomposition carries compound regression risk. Sprint tonight — first in queue.",
+      "passes": true,
+      "completedAt": "2026-03-28T11:26:57-07:00"
     },
     {
       "id": "FEAT-110",
@@ -212,8 +214,8 @@
       ],
       "status": "todo",
       "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Day-zero revenue experiment. Not sprint-ready — needs architecture design. Key insight from critique: must do something a cron job can't. WebSocket health checks are trivially replicable. Upstream commit analysis + config breakage prediction is genuinely valuable and requires centralized infrastructure. Phase 1 can be technically simple (GitHub API + config diff) but the product design needs work first."
+      "groomedAt": "2026-03-29",
+      "groomingNotes": "PO REVIEW 2026-03-29. ARCHITECTURE DECISIONS (PO-owned): (1) WHERE IT RUNS: Sentinel is a clawhq.com backend service, not a self-hosted daemon. Users connect to it via 'clawhq cloud sentinel connect'. (2) ALERT DELIVERY: user provides email or webhook URL at signup; stored in clawhq.com user account (not local). (3) GITHUB API AUTH: Sentinel uses a single authenticated GitHub App or PAT at the backend — users do not need to provide GitHub credentials. (4) PRICING: 9/month, validated against assumptions.json targets. OPEN FOR TECH LEAD: config breakage prediction algorithm (diff approach vs. semantic analysis). Still NOT READY — Tech Lead must design the breakage prediction mechanism and answer: how does a commit diff get evaluated against a user's compiled config? Options: (a) schema diff against user's blueprint YAML, (b) file-path pattern matching against commit changed files, (c) semantic analysis of commit messages. PO preference: start with (b) as Phase 1 — it is simple and catches 80% of breaking changes. Re-groom when Tech Lead has a design."
     },
     {
       "id": "FEAT-123",
@@ -373,105 +375,6 @@
       "groomingNotes": "From GitHub issue #8. Core credential access pattern needed for any agent that interacts with external services. Aligns with security-by-default and data sovereignty."
     },
     {
-      "id": "FEAT-113",
-      "title": "Model routing per cron job — haiku for cheap scans, opus for deep work, with fallback chains",
-      "intent": "Cron jobs must be cost-efficient. A heartbeat check that runs every 10 minutes should not use the most expensive model. Each job must specify its model with a fallback chain.",
-      "description": "Clawdius routes cron jobs to different models: heartbeat and x-scan use haiku (cheap, fast) with sonnet fallback, while work-session uses opus (expensive, capable) with sonnet fallback. ClawHQ's blueprint cron_config only specifies schedule expressions — no model routing.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Extend blueprint cron_config schema to support model and fallbacks per job",
-        "Update config generator (src/design/configure/generate.ts) to emit model and fallbacks in cron job payloads",
-        "Update all 7 blueprints with sensible model routing (heartbeat→haiku, work_session→opus, morning_brief→sonnet)",
-        "Add wizard question or smart inference for model routing preferences",
-        "Add validation: specified models must be available in the configured provider",
-        "Add tests for cron job generation with model routing"
-      ],
-      "acceptanceCriteria": [
-        "Blueprint cron_config supports model and fallbacks per job type",
-        "Generated cron jobs include payload.model and payload.fallbacks fields",
-        "Default model routing follows cost-efficiency: cheap models for frequent jobs, capable models for deep work",
-        "All 7 blueprints have sensible model routing defaults",
-        "Validation catches references to unavailable models"
-      ],
-      "scope": [
-        "configs/blueprints/",
-        "src/design/configure/generate.ts",
-        "src/config/schema.ts"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Direct cost impact for every user. Without model routing, an agent running 10-minute heartbeats on opus burns through budget unnecessarily."
-    },
-    {
-      "id": "FEAT-021",
-      "title": "Integration tests for cloud provisioning engine — test real registry, health polling, and state transitions",
-      "intent": "The provisioning engine (engine.ts) is tested with every dependency mocked — credentials, provider adapter, health poller, and registry are all fakes. State transitions (provisioning → active → destroyed) have never been tested against real state persistence.",
-      "description": "src/cloud/provisioning/engine.test.ts mocks 4 modules. The test verifies that the engine calls the right mocks in the right order — it does not verify that the engine produces correct state.",
-      "priority": "should",
-      "category": "testing",
-      "steps": [
-        "Create integration test: engine.integration.test.ts",
-        "Use real filesystem (mkdtempSync) for registry state (instances.json)",
-        "Use real health polling against a local HTTP test server",
-        "Mock only the provider adapter (can't create real VMs in CI)",
-        "Test full state machine: provision → health check → register → status query → destroy → verify cleanup",
-        "Test error paths: provision succeeds but health fails, destroy fails, registry write fails",
-        "Run npm test to confirm no regression"
-      ],
-      "acceptanceCriteria": [
-        "Integration test exercises the full provisioning state machine with real filesystem and real HTTP",
-        "Only the cloud provider API is mocked — everything else is real",
-        "Registry state is verified by reading the actual instances.json file",
-        "Health polling is tested against a real local HTTP server",
-        "All existing engine unit tests continue to pass"
-      ],
-      "scope": [
-        "src/cloud/provisioning/"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Most heavily mocked test file in the codebase. Real state machine testing deferred until after Gate 0 blockers.",
-      "lastFailAt": "2026-03-24T22:29:10-07:00",
-      "failCount": 1
-    },
-    {
-      "id": "FEAT-118",
-      "title": "Extended identity files — USER.md, TOOLS.md, and domain-specific runbooks in blueprint config",
-      "intent": "An agent that only knows its personality (SOUL.md) and capabilities (AGENTS.md) is incomplete. It must also understand its user's context, have a role-organized tool reference, and carry domain-specific operating procedures.",
-      "description": "Clawdius has 7 identity/reference files beyond SOUL.md and AGENTS.md. ClawHQ only generates SOUL.md + AGENTS.md. The delta is significant: without USER.md, the agent doesn't know who it's serving.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Extend wizard to collect user context: name, timezone, communication preferences, key constraints",
-        "Add USER.md generator to src/design/identity/",
-        "Add TOOLS.md generator — organizes blueprint tools by role/use-case with descriptions",
-        "Add blueprint-specific runbook support: each blueprint can define additional identity files",
-        "Update identity file generation in generate.ts to include new files",
-        "Update Docker build to copy all identity files, not just SOUL.md and AGENTS.md",
-        "Add tests for USER.md and TOOLS.md generation from various blueprints"
-      ],
-      "acceptanceCriteria": [
-        "clawhq init collects user context (name, timezone, preferences) via wizard",
-        "Generated deployment includes USER.md with user profile",
-        "Generated deployment includes TOOLS.md with role-organized tool reference",
-        "Blueprints can define additional identity files (runbooks) in their YAML",
-        "All identity files are mounted read-only in the container",
-        "Token budget validation accounts for all identity files"
-      ],
-      "scope": [
-        "src/design/identity/",
-        "src/design/configure/",
-        "configs/blueprints/"
-      ],
-      "status": "todo",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Supports '10 curated blueprints' goal — each masterclass blueprint needs rich identity files. Not sprint-ready — needs design for blueprint-specific runbooks."
-    },
-    {
       "id": "FEAT-112",
       "title": "Construct meta-skill — autonomous self-improvement loop for agent capability growth",
       "intent": "Agents must grow their capabilities over time without manual intervention. The construct skill is the mechanism: assess gaps → propose new skills → build → deploy → validate. This is THE differentiator for the 'agent grows' pillar.",
@@ -502,8 +405,8 @@
       ],
       "status": "todo",
       "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Extracted from Clawdius. 'Agent grows' pillar differentiator. Not sprint-ready — needs design for vetting pipeline integration."
+      "groomedAt": "2026-03-29",
+      "groomingNotes": "TECH LEAD GROOM 2026-03-29. NOT READY. Blocking design question: how does construct-built skill vetting integrate with the existing skill vetting pipeline in src/evolve/skills/? The vetting pipeline must be confirmed to exist and be hookable before this can sprint. Also: state persistence format (sqlite vs. JSON file) needs decision — affects the assess/propose/build/deploy/validate machine design. Recommend: architect creates a design doc or ADR for the vetting pipeline integration, then re-groom. Current steps are correct at a high level but too vague for a developer to follow without guessing."
     },
     {
       "id": "FEAT-120",
@@ -535,8 +438,8 @@
       ],
       "status": "todo",
       "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Supports 'agent grows' pillar. Auto-update and security monitoring tie into Sentinel value prop. Not sprint-ready — needs design for multi-instance interaction."
+      "groomedAt": "2026-03-29",
+      "groomingNotes": "TECH LEAD GROOM 2026-03-29. NOT READY. Multi-instance design needed: if two agents are on the same host, do they share systemd timers or have per-instance timers? Per-instance timers (clawhq-autoupdate-{instanceName}.timer) seems correct but needs explicit decision. Also: clawhq ops install command doesn't exist yet — it's a new CLI entry point. Need to confirm if src/cli/ops.ts exists or if it needs to be created. Check src/cli/ structure before marking ready. Script generation steps are clear; the install command and timer naming are the blocking questions."
     },
     {
       "id": "FEAT-116",
@@ -568,9 +471,9 @@
         "configs/blueprints/"
       ],
       "status": "todo",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Extracted from Clawdius. Not sprint-ready — needs design for ipset lifecycle with multi-instance."
+      "readyForSprint": true,
+      "groomedAt": "2026-03-29",
+      "groomingNotes": "TECH LEAD GROOM 2026-03-29. Multi-instance design resolved: each instance gets its own ipset named clawhq_{instanceName}_egress. instanceName comes from blueprint/config name (already available in FirewallOptions). Atomic refresh via ipset swap eliminates traffic gaps during DNS re-resolution. Current firewall.ts already has applyFirewall() and removeFirewall() — changes are additive. ipset CLI must be installed (add to installer pre-reqs check). AC verify commands target sudo — tests require privileged mode or mocked execFileAsync. Sprint-ready."
     },
     {
       "id": "FEAT-022",
@@ -597,8 +500,8 @@
       ],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Lower priority — probe API calls are simple HTTP and unlikely to break. Quick win for Ollama probe.",
+      "groomedAt": "2026-03-29",
+      "groomingNotes": "TECH LEAD GROOM 2026-03-29. AC verify commands added. Skip-if-no-key pattern: probes.ts already returns {ok:false, message:'Not configured'} when env var absent — test harness checks this and calls test.skip(). Ollama probe: check localhost:11434/api/tags availability before running. File: src/secure/credentials/probes.integration.test.ts. Import directly from probes.ts source — no need to build first if ts-jest is configured (it is). Sprint-ready.",
       "lastFailAt": "2026-03-24T23:20:05-07:00",
       "failCount": 1
     },
@@ -631,9 +534,9 @@
         "src/design/tools/"
       ],
       "status": "todo",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Part of '10 curated blueprints' goal. Blueprint #8 (current 7 + stoic coach). Not sprint-ready — needs journal tool generator and daily-stoic skill."
+      "readyForSprint": true,
+      "groomedAt": "2026-03-29",
+      "groomingNotes": "TECH LEAD GROOM 2026-03-29. stoic-coach.yaml does not exist. Journal tool does not exist in src/design/tools/ — must be created as part of this sprint. daily-stoic and weekly-review skills must be created. Blueprint format is fully established from 10 existing blueprints — use email-manager.yaml as structural template. Journal tool is append-only bash script, no external deps — similar pattern to existing tool generators. Blueprint auto-discovery: verify in src/design/blueprints/loader.ts whether blueprints are discovered by directory scan or hardcoded — adjust accordingly. Sprint-ready."
     },
     {
       "id": "FEAT-114",
@@ -661,9 +564,9 @@
         "configs/blueprints/"
       ],
       "status": "todo",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Extracted from Clawdius. JMAP is superior to IMAP for agent use cases. Not sprint-ready — needs design for JMAP/himalaya coexistence."
+      "readyForSprint": true,
+      "groomedAt": "2026-03-29",
+      "groomingNotes": "TECH LEAD GROOM 2026-03-29. Coexistence design: email (himalaya) and email-jmap are separate tool entries in TOOL_GENERATORS — no shared state, no backend switching logic needed. Blueprint authors choose which tool to include. Credential types are separate (himalaya uses HIMALAYA_BIN env var; JMAP uses jmapBaseUrl+accountId+token in credentials.json). JMAP discovery: .well-known/jmap returns session object with primaryAccounts map — use accountId from session or from user config. FastMail primary endpoint: api.fastmail.com. No X tool or news tool dependency. Sprint-ready."
     },
     {
       "id": "FEAT-119",
@@ -691,38 +594,8 @@
       ],
       "status": "todo",
       "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Extracted from Clawdius. Depends on Tavily and X tools working first. Lower priority than security and multi-instance."
-    },
-    {
-      "id": "FEAT-126",
-      "title": "Expand blueprint library to 10 reference masterclasses",
-      "intent": "ClawHQ must ship with 10 curated reference blueprints, each a deep demonstration of a real use case. 7 blueprints exist. The remaining 3 must be production-quality — reading them should make a target user think 'this person understands how I actually work.'",
-      "description": "Strategy fix #2 (Community) requires 10 curated reference blueprints, not a community marketplace. Current count: 7 blueprints. The gap is 3 more. Each blueprint must be a masterclass for its use case — selection criteria: (1) significant OpenClaw user population has this need, (2) the use case has well-known failure modes ClawHQ handles correctly by default, (3) demonstrates security-by-default in a concrete domain. Candidates: Research Copilot (Tavily, summarization, citation), Founders Ops (communications, scheduling, prioritization), Personal Finance Assistant (read-only bank feeds, alerts, summaries — no write access). Each requires identity file content, tool selection, skill bundle, cron jobs, security posture, and integration config.",
-      "priority": "should",
-      "category": "core",
-      "steps": [],
-      "acceptanceCriteria": [
-        {
-          "text": "Blueprint library contains exactly 10 blueprints, each with complete YAML (identity, tools, skills, cron, security_posture, autonomy)",
-          "verify": "ls configs/blueprints/*.yaml 2>/dev/null | wc -l | grep -q '^10$'"
-        },
-        "Each new blueprint includes at least one domain-specific security constraint not in the default posture",
-        "All 10 blueprints validate against the blueprint spec (once FEAT-121 is complete)",
-        {
-          "text": "Each blueprint has a corresponding tutorial draft in docs/articles/ for the dev-as-content pipeline",
-          "verify": "ls docs/articles/ 2>/dev/null | wc -l | grep -qE '^[3-9]|^[0-9]{2,}'"
-        }
-      ],
-      "scope": [
-        "configs/blueprints/"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY fix #2 (Community). Gap identified during PO grooming 2026-03-28: strategy says '10 reference blueprints' but backlog had no item for the missing 3. Each blueprint is a content asset (tutorial draft in docs/articles/) and a quality signal for the Blueprint Specification (FEAT-121). Priority should because it follows Gate 0 — not blocking launch but must ship with repo. Candidates: Research Copilot, Founders Ops, Personal Finance Assistant. Depends on FEAT-121 for final validation. Not sprint-ready until FEAT-121 spec is done."
+      "groomedAt": "2026-03-29",
+      "groomingNotes": "TECH LEAD GROOM 2026-03-29. NOT READY. Partial dependencies met: tavily tool exists in src/design/tools/tavily.ts. X (Twitter) tool does NOT exist — no src/design/tools/x.ts or twitter.ts found. Substack has no tool either. Deduplication logic needs a key design decision (hash by URL? by title+source?). Budget management needs a design (per-run token budget or daily cap?). Recommend: groom a prerequisite item to add the X/Substack source adapter, or scope news tool to tavily-only for the first sprint. As written, the item depends on tools that don't exist. NOT sprint-ready until scoped to available sources or prerequisites are built."
     }
   ]
 }
