@@ -439,6 +439,97 @@ describe("generateCompose with custom networkName", () => {
   });
 });
 
+// ── Credential Proxy Sidecar Tests ──────────────────────────────────────────
+
+describe("generateCompose with credential proxy", () => {
+  it("does not include cred-proxy service by default", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
+    expect(compose.services["cred-proxy"]).toBeUndefined();
+  });
+
+  it("includes cred-proxy service when enableCredProxy is true", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableCredProxy: true,
+    });
+    expect(compose.services["cred-proxy"]).toBeDefined();
+  });
+
+  it("cred-proxy runs as non-root with read-only rootfs", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableCredProxy: true,
+    });
+    const proxy = compose.services["cred-proxy"]!;
+    expect(proxy.user).toBe("1000:1000");
+    expect(proxy.read_only).toBe(true);
+    expect(proxy.cap_drop).toContain("ALL");
+  });
+
+  it("cred-proxy mounts script and routes read-only", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableCredProxy: true,
+    });
+    const proxy = compose.services["cred-proxy"]!;
+    const scriptVol = proxy.volumes.find((v) => v.includes("proxy.js"));
+    const routesVol = proxy.volumes.find((v) => v.includes("routes.json"));
+    expect(scriptVol).toContain(":ro");
+    expect(routesVol).toContain(":ro");
+  });
+
+  it("cred-proxy has healthcheck", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableCredProxy: true,
+    });
+    const proxy = compose.services["cred-proxy"]!;
+    expect(proxy.healthcheck).toBeDefined();
+    expect(proxy.healthcheck.test[0]).toBe("CMD");
+  });
+
+  it("cred-proxy shares the same network as openclaw", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableCredProxy: true,
+    });
+    const proxy = compose.services["cred-proxy"]!;
+    expect(proxy.networks).toContain("clawhq_net");
+  });
+
+  it("enables ICC when cred-proxy is active (agent must reach proxy)", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableCredProxy: true,
+    });
+    const net = compose.networks["clawhq_net"];
+    // ICC should NOT be disabled when proxy is enabled (agent needs to reach proxy)
+    expect(net.driver_opts?.["com.docker.network.bridge.enable_icc"]).toBeUndefined();
+  });
+
+  it("cred-proxy gets env_file for API keys", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableCredProxy: true,
+    });
+    const proxy = compose.services["cred-proxy"]!;
+    expect(proxy.env_file).toContain(".env");
+  });
+
+  it("supports custom script and routes paths", () => {
+    const posture = getPostureConfig("standard");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableCredProxy: true,
+      credProxyScriptPath: "/custom/proxy.js",
+      credProxyRoutesPath: "/custom/routes.json",
+    });
+    const proxy = compose.services["cred-proxy"]!;
+    expect(proxy.volumes.some((v) => v.includes("/custom/proxy.js"))).toBe(true);
+    expect(proxy.volumes.some((v) => v.includes("/custom/routes.json"))).toBe(true);
+  });
+});
+
 // ── Cache Detection Tests ───────────────────────────────────────────────────
 
 describe("cache detection", () => {

@@ -213,32 +213,34 @@ describe("tasks tool", () => {
 });
 
 describe("todoist tool", () => {
-  it("uses Todoist REST API", () => {
+  it("uses credential proxy for Todoist REST API", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "todoist");
     expect(wrapper).toBeDefined();
-    expect(wrapper?.content).toContain("api.todoist.com/rest/v2");
-    expect(wrapper?.content).toContain("TODOIST_API_TOKEN");
+    expect(wrapper?.content).toContain("CRED_PROXY_URL");
+    expect(wrapper?.content).toContain("/todoist");
   });
 });
 
 describe("todoist-sync tool", () => {
-  it("checks for overdue tasks", () => {
+  it("checks for overdue tasks via credential proxy", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "todoist-sync");
     expect(wrapper).toBeDefined();
     expect(wrapper?.content).toContain("overdue");
     expect(wrapper?.content).toContain("due-today");
+    expect(wrapper?.content).toContain("CRED_PROXY_URL");
+    expect(wrapper?.content).toContain("/todoist-sync");
   });
 });
 
 describe("tavily tool", () => {
-  it("uses Tavily search API", () => {
+  it("uses credential proxy for Tavily search API", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "tavily");
     expect(wrapper).toBeDefined();
-    expect(wrapper?.content).toContain("api.tavily.com");
-    expect(wrapper?.content).toContain("TAVILY_API_KEY");
+    expect(wrapper?.content).toContain("CRED_PROXY_URL");
+    expect(wrapper?.content).toContain("/tavily");
   });
 });
 

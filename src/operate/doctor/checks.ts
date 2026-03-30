@@ -18,7 +18,7 @@ import { access, constants, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import { IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadIpsetMeta } from "../../build/launcher/firewall.js";
 import { isTimerActive } from "../automation/install.js";
@@ -147,6 +147,7 @@ export async function runChecks(
     checkOpsAutoUpdateActive(deployDir, signal),
     checkOpsBackupRecent(deployDir, signal),
     checkOpsSecurityMonitor(deployDir, signal),
+    checkCredProxyHealthy(deployDir, signal),
   ]);
 }
 
@@ -1427,4 +1428,75 @@ async function checkOpsSecurityMonitor(
   }
 
   return ok(name, "Security monitor timer is active");
+}
+
+// ── 27. Credential Proxy Healthy ──────────────────────────────────────────
+
+/** Check that the credential proxy sidecar is reachable and routes are configured. */
+async function checkCredProxyHealthy(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "cred-proxy-healthy";
+
+  // First check if cred-proxy routes config exists — if not, proxy isn't enabled
+  const routesPath = join(deployDir, "engine", "cred-proxy-routes.json");
+  try {
+    await access(routesPath, constants.R_OK);
+  } catch {
+    return ok(name, "Credential proxy not configured (optional)", "info");
+  }
+
+  // Routes exist, so proxy should be running. Check if it's reachable.
+  try {
+    const { stdout } = await execFileAsync(
+      "docker",
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "--format", "json", "cred-proxy"],
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
+    );
+
+    // Parse container status
+    if (!stdout.trim()) {
+      return fail(
+        name,
+        "error",
+        "Credential proxy container is not running",
+        "Run: clawhq up",
+      );
+    }
+
+    // Try health endpoint via docker exec
+    const { stdout: healthOut } = await execFileAsync(
+      "docker",
+      [
+        "compose", "-f", join(deployDir, "engine", "docker-compose.yml"),
+        "exec", "-T", "cred-proxy",
+        "node", "-e",
+        `require("http").get("http://localhost:${CRED_PROXY_PORT}/health",(r)=>{let d="";r.on("data",c=>d+=c);r.on("end",()=>console.log(d))}).on("error",e=>console.error(e.message))`,
+      ],
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
+    );
+
+    const health = JSON.parse(healthOut.trim());
+    const routeCount = health.routes?.length ?? 0;
+    const configured = health.routes?.filter((r: { credConfigured: boolean }) => r.credConfigured).length ?? 0;
+
+    if (configured === 0 && routeCount > 0) {
+      return fail(
+        name,
+        "warning",
+        `Credential proxy running with ${routeCount} route(s) but no credentials configured`,
+        "Run: clawhq creds to configure API keys",
+      );
+    }
+
+    return ok(name, `Credential proxy healthy: ${configured}/${routeCount} route(s) with credentials`);
+  } catch {
+    return fail(
+      name,
+      "warning",
+      "Credential proxy is configured but health check failed",
+      "Run: clawhq up to start the proxy sidecar",
+    );
+  }
 }

@@ -63,3 +63,24 @@ export {
   verifyCredentialPermissions,
   writeCredentialStore,
 } from "./credential-store.js";
+
+// Credential proxy — host-side token proxy so secrets never enter the container
+export type {
+  BodyJsonAuth,
+  HeaderAuth,
+  ProxyAuditEntry,
+  ProxyAuthConfig,
+  ProxyRoute,
+  ProxyRoutesConfig,
+} from "./proxy-types.js";
+export {
+  BUILTIN_ROUTES,
+  buildRoutesConfig,
+  CRED_PROXY_DEFAULT_HOST,
+  CRED_PROXY_DEFAULT_PORT,
+  CRED_PROXY_SERVICE_NAME,
+  filterRoutesForEnv,
+  routesConfigPath,
+  writeRoutesConfig,
+} from "./proxy-routes.js";
+export { generateProxyServerScript } from "./proxy-server.js";

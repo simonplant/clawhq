@@ -1,39 +1,33 @@
 {
-  "sprintId": "sprint-1774910045",
-  "startedAt": "2026-03-30T15:34:05-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774913503",
+  "startedAt": "2026-03-30T16:31:43-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-116",
-    "title": "Domain-based egress firewall with ipset — upgrade from IP-based iptables to DNS-resolved allowlists",
-    "intent": "Agent egress must be restricted to explicitly allowed domains, not IP addresses. IP-based rules miss CDN rotations, multi-homed services, and IPv6.",
-    "description": "ClawHQ's firewall module uses IP-based iptables rules. Clawdius uses domain-based egress: a domain allowlist resolved via DNS into an ipset, refreshed every 5 minutes.",
+    "id": "FEAT-129",
+    "title": "Credential proxy architecture — host-side token proxy so secrets never enter the container",
+    "intent": "Storing API tokens inside the agent container is a single-exploit-away from credential theft. A host-side credential proxy means the container never holds tokens.",
+    "description": "Clawdius recon (2026-03-29): cred-proxy on Docker bridge holds all API tokens on host, injects auth headers. ClawHQ has src/secure/credentials/ but no proxy architecture.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Add domain-allowlist concept to blueprint security_posture",
-      "Generate domain allowlist file from blueprint egress config during clawhq init",
-      "Implement ipset creation from domain allowlist",
-      "Update firewall module to use ipset match rules instead of per-IP iptables rules",
-      "Generate refresh mechanism for periodic DNS re-resolution",
-      "Add doctor check: ipset exists, not stale, matches allowlist",
-      "Add tests for domain resolution, ipset creation, stale detection"
+      "Design credential proxy service: Docker sidecar, route definitions, header injection",
+      "Add routes.json schema",
+      "Generate cred-proxy docker-compose service during clawhq init",
+      "Update tool generators to call cred-proxy URL",
+      "Add audit logging for proxied requests",
+      "Add doctor check: cred-proxy reachable, routes healthy"
     ],
     "acceptanceCriteria": [
-      "Blueprint security posture includes a domain allowlist",
-      "clawhq up creates an ipset from DNS resolution of the allowlist",
-      "iptables rules reference the ipset, not individual IP addresses",
-      "A refresh mechanism keeps the ipset current",
-      "clawhq doctor detects stale ipsets",
-      "clawhq down removes the ipset and iptables rules cleanly"
+      "Credential proxy runs as host-side sidecar",
+      "API tokens never in agent container",
+      "Generated tools call proxy URL",
+      "Proxied requests audit-logged",
+      "clawhq doctor checks proxy health"
     ],
     "scope": [
-      "src/build/launcher/firewall.ts",
-      "src/operate/doctor/",
-      "configs/blueprints/"
+      "src/secure/credentials/",
+      "src/build/docker/",
+      "src/design/tools/"
     ],
-    "startedAt": "2026-03-30T15:34:05-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-30T15:50:43-07:00"
-  },
-  "completedAt": "2026-03-30T15:50:43-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-30T16:31:43-07:00"
+  }
 }

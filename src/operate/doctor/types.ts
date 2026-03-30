@@ -36,7 +36,8 @@ export type DoctorCheckName =
   | "ipset-egress-current"
   | "ops-autoupdate-active"
   | "ops-backup-recent"
-  | "ops-security-monitor";
+  | "ops-security-monitor"
+  | "cred-proxy-healthy";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

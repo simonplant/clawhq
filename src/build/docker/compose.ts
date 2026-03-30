@@ -7,6 +7,13 @@
  */
 
 import {
+  CRED_PROXY_AUDIT_DIR,
+  CRED_PROXY_IMAGE,
+  CRED_PROXY_PORT,
+  CRED_PROXY_ROUTES_PATH,
+  CRED_PROXY_SCRIPT_PATH,
+} from "../../config/defaults.js";
+import {
   OPENCLAW_CONTAINER_CONFIG,
   OPENCLAW_CONTAINER_CREDENTIALS,
   OPENCLAW_CONTAINER_CRON,
@@ -21,6 +28,12 @@ export interface ComposeOptions {
   readonly enableOnePasswordSecret?: boolean;
   /** Path to the 1Password token file on host (relative to compose dir). */
   readonly onePasswordTokenFile?: string;
+  /** Enable credential proxy sidecar — secrets stay on host, never in agent container. */
+  readonly enableCredProxy?: boolean;
+  /** Host path to the generated proxy server script. */
+  readonly credProxyScriptPath?: string;
+  /** Host path to the proxy routes config file. */
+  readonly credProxyRoutesPath?: string;
 }
 
 /** Generated docker-compose structure. */
@@ -28,6 +41,7 @@ export interface ComposeOutput {
   readonly version: string;
   readonly services: {
     readonly openclaw: ComposeServiceOutput;
+    readonly "cred-proxy"?: ComposeCredProxyServiceOutput;
   };
   readonly networks: Record<string, ComposeNetworkOutput>;
   readonly secrets?: Record<string, ComposeSecretOutput>;
@@ -65,6 +79,26 @@ interface ComposeSecretOutput {
   readonly file: string;
 }
 
+/** Credential proxy sidecar service output. */
+interface ComposeCredProxyServiceOutput {
+  readonly image: string;
+  readonly user: string;
+  readonly read_only: boolean;
+  readonly cap_drop: readonly string[];
+  readonly volumes: readonly string[];
+  readonly networks: readonly string[];
+  readonly env_file: readonly string[];
+  readonly command: readonly string[];
+  readonly restart: string;
+  readonly tmpfs: readonly string[];
+  readonly healthcheck: {
+    readonly test: readonly string[];
+    readonly interval: string;
+    readonly timeout: string;
+    readonly retries: number;
+  };
+}
+
 // ── Compose Generation ──────────────────────────────────────────────────────
 
 /**
@@ -82,6 +116,9 @@ export function generateCompose(
 ): ComposeOutput {
   const enableOp = options?.enableOnePasswordSecret ?? false;
   const opTokenFile = options?.onePasswordTokenFile ?? "./secrets/op_service_account_token";
+  const enableCredProxy = options?.enableCredProxy ?? false;
+  const credProxyScriptPath = options?.credProxyScriptPath ?? `${deployDir}/engine/cred-proxy.js`;
+  const credProxyRoutesPath = options?.credProxyRoutesPath ?? `${deployDir}/engine/cred-proxy-routes.json`;
 
   const service: ComposeServiceOutput = {
     image: imageTag,
@@ -93,6 +130,9 @@ export function generateCompose(
     volumes: [
       // Config files read-only (LM-12)
       `${deployDir}/engine/openclaw.json:${OPENCLAW_CONTAINER_CONFIG}:ro`,
+      // Credentials read-only — when cred-proxy is enabled, the agent container
+      // still mounts credentials.json for OpenClaw runtime (model provider keys).
+      // Tool-level API tokens are proxied and never reach the container env.
       `${deployDir}/engine/credentials.json:${OPENCLAW_CONTAINER_CREDENTIALS}:ro`,
       // Identity files read-only
       `${deployDir}/workspace/identity:${OPENCLAW_CONTAINER_WORKSPACE}/identity:ro`,
@@ -123,10 +163,11 @@ export function generateCompose(
       : {}),
   };
 
+  // When cred-proxy is enabled, ICC must be allowed so agent can reach the proxy
   const networks: Record<string, ComposeNetworkOutput> = {
     [networkName]: {
       driver: "bridge",
-      ...(posture.iccDisabled
+      ...(posture.iccDisabled && !enableCredProxy
         ? {
             driver_opts: {
               "com.docker.network.bridge.enable_icc": "false",
@@ -136,9 +177,38 @@ export function generateCompose(
     },
   };
 
+  // Build cred-proxy sidecar service if enabled
+  const credProxyService: ComposeCredProxyServiceOutput | undefined = enableCredProxy
+    ? {
+        image: CRED_PROXY_IMAGE,
+        user: "1000:1000",
+        read_only: true,
+        cap_drop: ["ALL"],
+        volumes: [
+          `${credProxyScriptPath}:${CRED_PROXY_SCRIPT_PATH}:ro`,
+          `${credProxyRoutesPath}:${CRED_PROXY_ROUTES_PATH}:ro`,
+          `${deployDir}/ops/audit:${CRED_PROXY_AUDIT_DIR}`,
+        ],
+        networks: [networkName],
+        env_file: [".env"],
+        command: ["node", CRED_PROXY_SCRIPT_PATH],
+        restart: "unless-stopped",
+        tmpfs: ["/tmp:size=16m,noexec,nosuid"],
+        healthcheck: {
+          test: ["CMD", "node", "-e", `require("http").get("http://localhost:${CRED_PROXY_PORT}/health",(r)=>{process.exit(r.statusCode===200?0:1)}).on("error",()=>process.exit(1))`],
+          interval: "30s",
+          timeout: "5s",
+          retries: 3,
+        },
+      }
+    : undefined;
+
   return {
     version: "3.8",
-    services: { openclaw: service },
+    services: {
+      openclaw: service,
+      ...(credProxyService ? { "cred-proxy": credProxyService } : {}),
+    },
     networks,
     // Docker secrets: token file on host → /run/secrets/ in container
     ...(enableOp

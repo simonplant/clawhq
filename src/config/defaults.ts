@@ -240,6 +240,23 @@ export const OPS_SECURITY_SEVERITIES: readonly string[] = ["critical", "high"];
 /** GitHub Security Advisories API endpoint for OpenClaw. */
 export const GITHUB_ADVISORIES_URL = "https://api.github.com/repos/nicepkg/openclaw/security/advisories";
 
+// ── Credential proxy defaults ─────────────────────────────────────────────
+
+/** Default port for the credential proxy sidecar. */
+export const CRED_PROXY_PORT = 9876;
+
+/** Docker image for the credential proxy sidecar (lightweight Node.js). */
+export const CRED_PROXY_IMAGE = "node:20-alpine";
+
+/** Container-internal path to the proxy server script. */
+export const CRED_PROXY_SCRIPT_PATH = "/app/proxy.js";
+
+/** Container-internal path to the proxy routes config. */
+export const CRED_PROXY_ROUTES_PATH = "/app/routes.json";
+
+/** Container-internal path to the proxy audit log directory. */
+export const CRED_PROXY_AUDIT_DIR = "/app/audit";
+
 // ── OpenClaw environment variable defaults (v0.8.6+) ────────────────────────
 
 /** Default WebSocket event caller timeout in milliseconds (was hardcoded 60s). */
