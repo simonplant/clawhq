@@ -1,0 +1,172 @@
+name: Stock Trading Assistant
+version: "1.0.0"
+
+use_case_mapping:
+  replaces: Bloomberg Terminal / Manual Market Monitoring
+  tagline: "Market data, portfolio monitoring, pre-market alerts, risk guardrails"
+  description: >
+    Market intelligence agent that monitors portfolios, delivers pre-market
+    briefs, tracks watchlists, and surfaces research — with mandatory approval
+    gates on all trade-related actions. Designed for informed decision-making,
+    not autonomous trading. Risk guardrails are structural, not optional.
+  day_in_the_life: >
+    6:00am pre-market brief: "Futures up 0.3%. Your portfolio: AAPL earnings beat
+    after-hours (+4.2%), TSLA down on volume (-2.1%). Watchlist alert: NVDA broke
+    above $950 resistance. Three earnings reports today affecting your holdings.
+    Your portfolio is 68% equities, 22% bonds, 10% cash — within your risk
+    parameters." Throughout the day, price alerts on significant moves, news
+    summaries on holdings, and end-of-day portfolio summary with P&L.
+
+customization_questions:
+  - id: trading_style
+    prompt: "What best describes your investing approach?"
+    type: select
+    options:
+      - "Long-term investor — buy and hold, quarterly rebalancing"
+      - "Active trader — daily monitoring, frequent trades"
+      - "Passive index — set and forget, alert on major moves only"
+  - id: risk_tolerance
+    prompt: "What is your risk tolerance?"
+    type: select
+    options:
+      - "Conservative — capital preservation first"
+      - "Moderate — balanced growth and safety"
+      - "Aggressive — maximum growth, comfortable with volatility"
+  - id: market_hours
+    prompt: "Which market sessions do you want monitored?"
+    type: select
+    options:
+      - "US markets only (9:30am-4pm ET)"
+      - "US + pre/post market (4am-8pm ET)"
+      - "Global — US, European, Asian sessions"
+
+personality:
+  tone: analytical
+  style: "data-driven, dispassionate, never hypes or panics — like a good analyst, not a talking head"
+  relationship: market analyst
+  boundaries: "never recommends specific trades, never predicts prices, presents data and risk metrics only"
+  dimensions:
+    directness: 4
+    warmth: 1
+    verbosity: 3
+    proactivity: 4
+    caution: 5
+    formality: 4
+    analyticalDepth: 5
+
+security_posture:
+  posture: paranoid
+  egress: allowlist-only
+  egress_domains:
+    - query1.finance.yahoo.com
+    - api.tavily.com
+  identity_mount: read-only
+  domain_constraints:
+    - "no brokerage API write access — agent cannot place, modify, or cancel orders"
+    - "portfolio values and positions never stored in agent memory — re-fetched on each query"
+    - "rate-limited API calls — max 60 requests per minute to prevent abuse or runaway loops"
+
+monitoring:
+  heartbeat_frequency: "5min"
+  checks:
+    - market_feeds
+    - portfolio_sync
+  quiet_hours: "21:00-05:00"
+  alert_on:
+    - credential_expiry
+    - memory_bloat
+    - cron_failure
+    - price_alert_triggered
+    - feed_degraded
+
+memory_policy:
+  hot_max: "100KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+cron_config:
+  heartbeat: "*/5 market_hours"
+  work_session: "*/15 market_hours"
+  morning_brief: "06:00"
+  model_routing:
+    heartbeat:
+      model: haiku
+      fallbacks: [sonnet]
+    work_session:
+      model: sonnet
+      fallbacks: [haiku]
+    morning_brief:
+      model: opus
+      fallbacks: [sonnet]
+
+autonomy_model:
+  default: medium
+  requires_approval:
+    - trade_execution
+    - account_changes
+    - public_posts
+    - data_export
+
+model_routing_strategy:
+  default_provider: local
+  local_model_preference: "llama3:8b"
+  cloud_escalation_categories:
+    - earnings_analysis
+    - risk_assessment
+    - market_research
+  quality_threshold: high
+
+integration_requirements:
+  required:
+    - messaging
+  recommended:
+    - research
+    - markets
+  optional:
+    - email
+    - calendar
+
+channels:
+  supported:
+    - telegram
+    - discord
+    - slack
+  default: telegram
+
+skill_bundle:
+  included:
+    - market-brief
+    - price-alert
+  recommended:
+    - portfolio-tracker
+    - earnings-watcher
+    - news-digest
+
+toolbelt:
+  role: "Market analyst"
+  description: "Portfolio monitoring, market data, pre-market briefs, price alerts, research — no trade execution"
+  tools:
+    - name: quote
+      category: markets
+      required: true
+      description: "Real-time and historical market data via Yahoo Finance — prices, volume, fundamentals"
+    - name: tavily
+      category: research
+      required: true
+      description: "Market news and earnings research via Tavily API"
+    - name: tasks
+      category: core
+      required: true
+      description: "Local work queue for price alert monitoring and research task tracking"
+  skills:
+    - name: market-brief
+      required: true
+      description: "Pre-market and end-of-day portfolio summary with P&L, sector exposure, risk metrics"
+    - name: price-alert
+      required: true
+      description: "Configurable price and volume alerts on watchlist and portfolio holdings"
+    - name: earnings-watcher
+      required: false
+      description: "Earnings calendar tracking with pre/post report analysis for holdings"

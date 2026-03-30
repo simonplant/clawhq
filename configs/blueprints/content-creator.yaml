@@ -1,0 +1,161 @@
+name: Content Creator
+version: "1.0.0"
+
+use_case_mapping:
+  replaces: Manual Blog / Newsletter Workflow
+  tagline: "Research, write, edit, publish — with approval gates before anything goes live"
+  description: >
+    Editorial workflow agent for blogs, newsletters, and content pipelines.
+    Researches topics, drafts posts, maintains an editorial calendar, and
+    manages the publish pipeline — with mandatory approval before any content
+    goes public. Your drafts and unpublished ideas stay local.
+  day_in_the_life: >
+    Monday 9am brief: "This week's editorial calendar: Tuesday draft on 'AI agents
+    in 2026' (research complete, outline ready for review), Thursday newsletter
+    (subscriber Q&A compiled, draft started). Last week's post got 2,400 views —
+    34% above your average. Three topic ideas queued from your research backlog.
+    One draft awaiting your approval to publish." You review the outline, suggest
+    changes, approve the newsletter, and the agent handles formatting, scheduling,
+    and distribution — nothing publishes without your sign-off.
+
+customization_questions:
+  - id: content_type
+    prompt: "What type of content do you primarily create?"
+    type: select
+    options:
+      - "Blog posts — long-form articles, tutorials, opinion pieces"
+      - "Newsletter — regular subscriber updates, curated content"
+      - "Both — blog and newsletter with cross-posting"
+  - id: writing_voice
+    prompt: "How would you describe your writing voice?"
+    type: input
+    default: "Conversational but informed — accessible without dumbing down"
+  - id: publish_frequency
+    prompt: "How often do you want to publish?"
+    type: select
+    options:
+      - "Daily — high volume, shorter pieces"
+      - "2-3 times per week — balanced depth and frequency"
+      - "Weekly — one substantial piece per week"
+
+personality:
+  tone: creative
+  style: "collaborative, editorial-minded, quality over speed — like a good editor, not a content mill"
+  relationship: editorial partner
+  boundaries: "never publishes without approval, never plagiarizes, always cites sources, flags thin content"
+  dimensions:
+    directness: 3
+    warmth: 3
+    verbosity: 4
+    proactivity: 4
+    caution: 3
+    formality: 2
+    analyticalDepth: 4
+
+security_posture:
+  posture: hardened
+  egress: allowlist-only
+  egress_domains:
+    - api.tavily.com
+  identity_mount: read-only
+  domain_constraints:
+    - "no publish action without explicit user approval — drafts are local-only until approved"
+    - "unpublished content never included in egress — research queries use topic keywords, not draft text"
+
+monitoring:
+  heartbeat_frequency: "30min"
+  checks:
+    - research
+  quiet_hours: "22:00-08:00"
+  alert_on:
+    - credential_expiry
+    - memory_bloat
+    - cron_failure
+    - deadline_approaching
+
+memory_policy:
+  hot_max: "200KB"
+  hot_retention: "30d"
+  warm_retention: "180d"
+  cold_retention: "365d"
+  summarization: conservative
+
+cron_config:
+  heartbeat: "*/30 waking"
+  work_session: "*/60 waking"
+  morning_brief: "09:00 monday"
+  model_routing:
+    heartbeat:
+      model: haiku
+      fallbacks: [sonnet]
+    work_session:
+      model: opus
+      fallbacks: [sonnet]
+    morning_brief:
+      model: sonnet
+      fallbacks: [haiku]
+
+autonomy_model:
+  default: medium
+  requires_approval:
+    - public_posts
+    - sending_messages
+    - account_changes
+
+model_routing_strategy:
+  default_provider: local
+  local_model_preference: "llama3:70b"
+  cloud_escalation_categories:
+    - long_form_writing
+    - deep_research
+    - editorial_review
+  quality_threshold: high
+
+integration_requirements:
+  required:
+    - messaging
+  recommended:
+    - research
+    - notes
+  optional:
+    - email
+    - calendar
+
+channels:
+  supported:
+    - telegram
+    - discord
+    - slack
+  default: telegram
+
+skill_bundle:
+  included:
+    - construct
+    - web-search
+  recommended:
+    - content-drafting
+    - editorial-calendar
+    - newsletter-compiler
+
+toolbelt:
+  role: "Editorial partner"
+  description: "Research, drafting, editorial calendar, publish pipeline — with approval gates on all public content"
+  tools:
+    - name: tavily
+      category: research
+      required: true
+      description: "Topic research, trend discovery, and source gathering via Tavily API"
+    - name: tasks
+      category: core
+      required: true
+      description: "Editorial calendar and content pipeline tracking"
+  skills:
+    - name: construct
+      required: true
+      description: "Self-improvement for expanding writing and research capabilities"
+    - name: web-search
+      required: false
+      description: "Web research for topic discovery and fact-checking"
+    - name: content-drafting
+      required: false
+      description: "Long-form content drafting with voice matching and source citation"
