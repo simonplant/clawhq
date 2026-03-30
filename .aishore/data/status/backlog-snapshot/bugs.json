@@ -28,8 +28,8 @@
       ],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "PO REVIEW 2026-03-28 (failCount:1). Priority confirmed SHOULD — a stopped container reporting as 'running' is a false green that erodes operator trust in the platform. Uptime always 0 means operators cannot diagnose restart loops. The graceful degradation AC is important: if Docker socket is unreachable, the heartbeat must not crash the entire cloud reporting pipeline. AC verify commands added.",
+      "groomedAt": "2026-03-29",
+      "groomingNotes": "PO REVIEW 2026-03-29. Priority confirmed SHOULD. Implementation path is clear: use docker compose ps --format json (same pattern as src/operate/doctor/checks.ts:304 and src/operate/status/status.ts:104). For uptimeSeconds: docker inspect --format '{{.State.StartedAt}}' <container_id> returns an ISO timestamp; calculate elapsed seconds. The pattern in status.ts uses svc.RunningFor which is human-readable only — use docker inspect for numeric uptime. Graceful degradation: if execFileAsync throws (Docker socket unavailable), return running:false with an error note. DO NOT crash the heartbeat reporter. Sprint-ready: all implementation details are in-repo at the referenced lines.",
       "lastFailAt": "2026-03-24T23:03:51-07:00",
       "failCount": 1
     }

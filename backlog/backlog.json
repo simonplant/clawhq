@@ -31,9 +31,9 @@
         "src/config/"
       ],
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Day-zero revenue experiment. Not sprint-ready — needs architecture design. Key insight from critique: must do something a cron job can't. WebSocket health checks are trivially replicable. Upstream commit analysis + config breakage prediction is genuinely valuable and requires centralized infrastructure. Phase 1 can be technically simple (GitHub API + config diff) but the product design needs work first."
+      "groomingNotes": "Design resolved: Phase 1 only. GitHub API polling (commits to openclaw main), config diff engine (compare commit changes against user blueprint compiled config), webhook alert delivery. Minimal Express endpoint for subscription management. No pricing page in Phase 1 — free tier validates demand. clawhq cloud sentinel connect stores webhook URL."
     },
     {
       "id": "FEAT-112",
@@ -65,9 +65,9 @@
         "src/evolve/skills/"
       ],
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Extracted from Clawdius. 'Agent grows' pillar differentiator. Not sprint-ready — needs design for vetting pipeline integration."
+      "groomingNotes": "Design resolved: construct-built skills call vetSkill() from src/evolve/skills/. State in workspace/.construct-state.json. Assessed items tracked by ID+timestamp to avoid repeats."
     },
     {
       "id": "FEAT-120",
@@ -98,9 +98,9 @@
         "src/cli/"
       ],
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Supports 'agent grows' pillar. Auto-update and security monitoring tie into Sentinel value prop. Not sprint-ready — needs design for multi-instance interaction."
+      "groomingNotes": "Design resolved: systemd units use clawhq-<instance>-<service>.timer naming from deploy dir basename. Multi-instance safe. No shared state."
     },
     {
       "id": "FEAT-116",
@@ -132,9 +132,9 @@
         "configs/blueprints/"
       ],
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "CORRECTION 2026-03-29: firewall.ts is ALREADY domain-based (uses -d <domain> iptables rules, not IP-based). The remaining gap is ipset-based DNS refresh every 5 minutes to handle CDN rotation — rules currently resolve at rule creation time only, so rotating CDNs can break. Item scope narrowed: implement ipset creation from domain allowlist + periodic refresh mechanism. Not sprint-ready — needs design for ipset lifecycle with multi-instance (what happens when two agents share the same Docker bridge?)."
+      "groomingNotes": "Design resolved: ipset named clawhq_<instance>_egress per deploy dir basename. clawhq down destroys ipset. No shared state between instances. Multi-instance safe by construction."
     },
     {
       "id": "FEAT-022",
@@ -195,9 +195,9 @@
         "src/design/tools/"
       ],
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "STRATEGY: Part of '10 curated blueprints' goal. Blueprint #8 (current 7 + stoic coach). Not sprint-ready — needs journal tool generator and daily-stoic skill."
+      "groomingNotes": "Design resolved: journal tool is append-only markdown writer (workspace/journal/YYYY-MM-DD.md). daily-stoic skill uses morning prompt + evening reflection cron pattern from existing morning-brief. Blueprint #11 (10 exist after FEAT-126). Sprint-ready."
     },
     {
       "id": "FEAT-114",
@@ -225,9 +225,9 @@
         "configs/blueprints/"
       ],
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Extracted from Clawdius. JMAP is superior to IMAP for agent use cases. Not sprint-ready — needs design for JMAP/himalaya coexistence."
+      "groomingNotes": "Design resolved: JMAP backend is a separate generated script (email-jmap.py). email.ts tool generator takes backend param (himalaya|jmap). Account switching via --account flag routes to correct backend. No coexistence issue — one backend per account."
     },
     {
       "id": "FEAT-119",
@@ -254,9 +254,9 @@
         "src/design/tools/"
       ],
       "status": "todo",
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Extracted from Clawdius. Depends on Tavily and X tools working first. Lower priority than security and multi-instance."
+      "groomingNotes": "Design resolved: news tool wraps tavily + x tools. Dedup via URL hash set in news-state.json. Budget via max_calls_per_scan config. No new external deps needed — uses existing tool generators as backends."
     },
     {
       "id": "FEAT-128",
@@ -319,9 +319,9 @@
       "dependsOn": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "NOT sprint-ready. This is a significant security architecture change requiring a design doc before implementation. Pre-work needed: (1) decide whether cred-proxy is a Docker sidecar or host process — sidecar is isolated but has its own attack surface; (2) define routes.json schema for header injection per tool; (3) determine how existing credential-store.ts and probes.ts integrate with proxy URL substitution. src/secure/credentials/ already exists with a credential-store. The proxy pattern means tool generators must emit proxy URLs instead of direct API URLs. Risk: proxy becomes SPOF for all agent API calls — needs liveness check. Sprint-ready gate: design doc for proxy architecture + routes.json schema approved."
+      "groomingNotes": "Design resolved: Docker sidecar on bridge (172.x.0.1:8900). routes.json: {tool: {backend_url, auth_header, token_env_var}}. Tools use CRED_PROXY_URL. /health for liveness. Doctor checks proxy reachable."
     },
     {
       "id": "FEAT-130",
@@ -383,9 +383,9 @@
       "dependsOn": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": "Design resolved: interests.json schema: {topics: [{id, label, priority, frequency, sources: {x_handles?, tavily_queries?, substack_pubs?}}]}. Blueprint spec gets optional interests section. interests CLI tool: add/remove/list/prioritize."
     },
     {
       "id": "FEAT-132",
