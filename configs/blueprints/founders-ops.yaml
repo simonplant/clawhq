@@ -106,6 +106,25 @@ autonomy_model:
     - large_purchases
     - public_posts
     - hiring_decisions
+  delegation:
+    - action: triage_inbox
+      tier: execute
+      example: "Sort founder inbox by urgency, auto-archive routine notifications"
+    - action: update_pipeline
+      tier: execute
+      example: "Track hiring pipeline status and investor follow-ups automatically"
+    - action: draft_investor_update
+      tier: propose
+      example: "Draft weekly investor update from metrics — present for review"
+    - action: schedule_candidate_interview
+      tier: propose
+      example: "Propose interview slot for candidate — confirm before sending invite"
+    - action: make_hiring_decision
+      tier: approve
+      example: "Any hiring commitment or offer — founder must explicitly decide"
+    - action: publish_announcement
+      tier: approve
+      example: "Public post or press communication — requires explicit founder approval"
 
 model_routing_strategy:
   default_provider: local

@@ -87,10 +87,25 @@ export interface CronConfig {
   };
 }
 
+/** Delegation tier — controls whether the agent acts, proposes, or waits. */
+export type DelegationTier = "execute" | "propose" | "approve";
+
+/** A single per-action delegation rule with a concrete example. */
+export interface DelegationRule {
+  /** Action category (e.g. "archive_email", "send_reply"). */
+  readonly action: string;
+  /** Which tier this action falls into. */
+  readonly tier: DelegationTier;
+  /** Concrete example the LLM can reference at runtime. */
+  readonly example: string;
+}
+
 /** Autonomy model — what the agent does alone vs. asks permission. */
 export interface AutonomyModel {
   readonly default: "low" | "medium" | "high";
   readonly requires_approval: readonly string[];
+  /** Per-action delegation rules with concrete examples. */
+  readonly delegation?: readonly DelegationRule[];
 }
 
 /** Model routing strategy for local vs. cloud. */

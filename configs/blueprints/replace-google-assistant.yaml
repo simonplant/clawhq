@@ -98,6 +98,25 @@ autonomy_model:
     - large_purchases
     - account_changes
     - public_posts
+  delegation:
+    - action: manage_calendar
+      tier: execute
+      example: "Accept routine meeting invites and protect focus blocks automatically"
+    - action: send_routine_reply
+      tier: execute
+      example: "Reply to known contacts for routine confirmations and acknowledgments"
+    - action: draft_complex_response
+      tier: propose
+      example: "Draft response to sensitive or unfamiliar topic — present for review"
+    - action: schedule_appointment
+      tier: propose
+      example: "Suggest new appointment with external party — confirm before sending invite"
+    - action: make_purchase
+      tier: approve
+      example: "Any purchase or payment — user must explicitly request and confirm"
+    - action: change_account_settings
+      tier: approve
+      example: "Modify integrations or service connections — requires user initiation"
 
 model_routing_strategy:
   default_provider: local

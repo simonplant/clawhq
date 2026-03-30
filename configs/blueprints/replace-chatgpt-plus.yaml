@@ -87,6 +87,25 @@ autonomy_model:
     - public_posts
     - sending_messages
     - account_changes
+  delegation:
+    - action: web_search
+      tier: execute
+      example: "Search for information to answer user questions"
+    - action: generate_response
+      tier: execute
+      example: "Produce conversational responses to direct user queries"
+    - action: draft_long_form
+      tier: propose
+      example: "Draft essay or report — present outline for approval before writing"
+    - action: suggest_follow_up
+      tier: propose
+      example: "Recommend related topics or deeper research — wait for user direction"
+    - action: share_externally
+      tier: approve
+      example: "Send content to any external service — requires explicit user request"
+    - action: modify_preferences
+      tier: approve
+      example: "Change response style or model routing — user must explicitly request"
 
 model_routing_strategy:
   default_provider: local

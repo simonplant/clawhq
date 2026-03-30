@@ -118,18 +118,129 @@ describe("generateAgents", () => {
     }
   });
 
-  it("includes autonomy model", () => {
+  // ── Three-tier approval gates ──────────────────────────────────────────
+
+  it("includes approval gates section with autonomy level", () => {
     const bp = loadEmailManager();
     const content = generateAgents(bp);
-    expect(content).toContain(`**Default level:** ${bp.autonomy_model.default}`);
+    expect(content).toContain("## Approval Gates");
+    expect(content).toContain("**Autonomy level:** medium");
   });
 
-  it("lists approval requirements", () => {
+  it("renders three delegation tiers with per-action examples", () => {
     const bp = loadEmailManager();
     const content = generateAgents(bp);
+    expect(content).toContain("### Execute — Agent acts autonomously");
+    expect(content).toContain("### Propose — Agent drafts, user approves");
+    expect(content).toContain("### Approve — User must explicitly request");
+    // Per-action examples from email-manager delegation
+    expect(content).toContain("Archive newsletters and read receipts after triage");
+    expect(content).toContain("Draft reply to known contact");
+    expect(content).toContain("First email to unknown recipient");
+  });
+
+  it("lists hard approval requirements", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    expect(content).toContain("**Hard gates (always require approval):**");
     for (const item of bp.autonomy_model.requires_approval) {
-      expect(content).toContain(`- ${item}`);
+      expect(content).toContain(item.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()));
     }
+  });
+
+  it("low autonomy maps to conservative delegation defaults", () => {
+    const bp = loadStockTrading();
+    // Override to low for testing tier mapping
+    const lowBp = {
+      ...bp,
+      autonomy_model: { ...bp.autonomy_model, default: "low" as const },
+    };
+    const content = generateAgents(lowBp);
+    expect(content).toContain("**Autonomy level:** low");
+    expect(content).toContain("Conservative");
+  });
+
+  it("medium autonomy maps to balanced delegation defaults", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    expect(content).toContain("**Autonomy level:** medium");
+    expect(content).toContain("Balanced");
+  });
+
+  it("high autonomy maps to high-autonomy delegation defaults", () => {
+    const bp = loadBlueprint("replace-google-assistant").blueprint;
+    const content = generateAgents(bp);
+    expect(content).toContain("**Autonomy level:** high");
+    expect(content).toContain("High autonomy");
+  });
+
+  it("each autonomy level produces correct delegation tiers", () => {
+    // Test all three levels with real blueprints
+    const levels: Array<{ name: string; level: string }> = [
+      { name: "research-copilot", level: "low" },
+      { name: "email-manager", level: "medium" },
+      { name: "founders-ops", level: "high" },
+    ];
+
+    for (const { name, level } of levels) {
+      const bp = loadBlueprint(name).blueprint;
+      const content = generateAgents(bp);
+      expect(content, `${name} should show ${level} autonomy`).toContain(`**Autonomy level:** ${level}`);
+      expect(content, `${name} should have approval gates`).toContain("## Approval Gates");
+      expect(content, `${name} should have execute tier`).toContain("### Execute");
+      expect(content, `${name} should have propose tier`).toContain("### Propose");
+      expect(content, `${name} should have approve tier`).toContain("### Approve");
+    }
+  });
+
+  // ── Heartbeat behavior ─────────────────────────────────────────────────
+
+  it("includes heartbeat behavior section", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    expect(content).toContain("## Heartbeat Behavior");
+    expect(content).toContain(`**Frequency:** ${bp.monitoring.heartbeat_frequency}`);
+    expect(content).toContain(`**Quiet hours:** ${bp.monitoring.quiet_hours}`);
+  });
+
+  it("lists monitored checks in heartbeat section", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    for (const check of bp.monitoring.checks) {
+      expect(content).toContain(`Check ${check} integration health`);
+    }
+  });
+
+  it("includes alert conditions in heartbeat section", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    expect(content).toContain("**Alert on:**");
+  });
+
+  // ── Communication rules ────────────────────────────────────────────────
+
+  it("includes communication rules section", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    expect(content).toContain("## Communication Rules");
+    expect(content).toContain("Respect quiet hours");
+  });
+
+  it("communication rules vary by autonomy level", () => {
+    // Low autonomy: reactive
+    const lowBp = loadBlueprint("research-copilot").blueprint;
+    const lowContent = generateAgents(lowBp);
+    expect(lowContent).toContain("Respond only when directly addressed");
+
+    // Medium autonomy: balanced
+    const medBp = loadEmailManager();
+    const medContent = generateAgents(medBp);
+    expect(medContent).toContain("Proactive notifications");
+
+    // High autonomy: proactive
+    const highBp = loadBlueprint("founders-ops").blueprint;
+    const highContent = generateAgents(highBp);
+    expect(highContent).toContain("Act autonomously on routine tasks");
   });
 });
 

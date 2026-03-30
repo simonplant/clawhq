@@ -337,15 +337,59 @@ function checkCronConfig(raw: RawBlueprint): BlueprintValidationResult[] {
   return results;
 }
 
-// ── autonomy_model (checks 38-39) ───────────────────────────────────────────
+// ── autonomy_model (checks 38-39 + delegation validation) ──────────────────
+
+const DELEGATION_TIERS = ["execute", "propose", "approve"] as const;
 
 function checkAutonomyModel(raw: RawBlueprint): BlueprintValidationResult[] {
   const section = raw.autonomy_model;
   if (!isObj(section)) return [];
-  return [
+
+  const results: BlueprintValidationResult[] = [
     checkEnum(section, "default", "autonomy_model", ["low", "medium", "high"]),
     checkStringArray(section, "requires_approval", "autonomy_model"),
   ];
+
+  // Optional delegation validation
+  const delegation = section.delegation;
+  if (delegation !== undefined) {
+    if (!Array.isArray(delegation)) {
+      results.push(fail("autonomy_model.delegation", "autonomy_model.delegation must be an array"));
+    } else {
+      results.push(pass("autonomy_model.delegation", "autonomy_model.delegation is an array"));
+
+      for (let i = 0; i < delegation.length; i++) {
+        const rule = delegation[i] as unknown;
+        const prefix = `autonomy_model.delegation[${i}]`;
+
+        if (!isObj(rule)) {
+          results.push(fail(prefix, `${prefix} must be an object`));
+          continue;
+        }
+
+        results.push(checkRequiredString(rule, "action", prefix));
+        results.push(checkEnum(rule, "tier", prefix, [...DELEGATION_TIERS]));
+        results.push(checkRequiredString(rule, "example", prefix));
+      }
+
+      // Delegation action names must be unique
+      const actions = delegation
+        .filter(isObj)
+        .map((r) => r.action)
+        .filter(isStr);
+      const actionSet = new Set(actions);
+      if (actionSet.size === actions.length) {
+        results.push(pass("autonomy_model.delegation.unique_actions", "All delegation action names are unique"));
+      } else {
+        const dupes = actions.filter((a, i) => actions.indexOf(a) !== i);
+        results.push(
+          fail("autonomy_model.delegation.unique_actions", `Duplicate delegation actions: ${[...new Set(dupes)].join(", ")}`),
+        );
+      }
+    }
+  }
+
+  return results;
 }
 
 // ── model_routing_strategy (checks 40-43) ───────────────────────────────────

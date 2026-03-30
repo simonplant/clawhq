@@ -108,6 +108,25 @@ autonomy_model:
     - account_changes
     - public_posts
     - data_export
+  delegation:
+    - action: fetch_market_data
+      tier: execute
+      example: "Pull real-time quotes and portfolio values on schedule"
+    - action: generate_daily_summary
+      tier: execute
+      example: "Compile end-of-day P&L and sector exposure report"
+    - action: rebalancing_suggestion
+      tier: propose
+      example: "Flag portfolio drift beyond risk parameters — present options, never act"
+    - action: earnings_analysis
+      tier: propose
+      example: "Draft earnings impact report for holdings — user reviews before sharing"
+    - action: place_trade
+      tier: approve
+      example: "Any buy/sell/modify order — user must explicitly request and confirm"
+    - action: export_portfolio_data
+      tier: approve
+      example: "Export holdings or transaction history — requires explicit user request"
 
 model_routing_strategy:
   default_provider: local

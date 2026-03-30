@@ -103,6 +103,25 @@ autonomy_model:
     - account_changes
     - public_posts
     - data_export
+  delegation:
+    - action: categorize_transaction
+      tier: execute
+      example: "Classify incoming transactions into budget categories"
+    - action: generate_spending_report
+      tier: propose
+      example: "Compile monthly spending summary — present for review before sharing"
+    - action: suggest_budget_adjustment
+      tier: propose
+      example: "Flag overspending in category and propose adjustment — wait for decision"
+    - action: alert_unusual_activity
+      tier: propose
+      example: "Notify user of unusual transaction pattern — suggest investigation"
+    - action: modify_budget_rules
+      tier: approve
+      example: "Change budget limits or categories — user must explicitly request"
+    - action: export_financial_data
+      tier: approve
+      example: "Export transaction history or reports — requires explicit user approval"
 
 model_routing_strategy:
   default_provider: local

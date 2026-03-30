@@ -89,6 +89,25 @@ autonomy_model:
     - sending_messages
     - public_posts
     - account_changes
+  delegation:
+    - action: search_literature
+      tier: execute
+      example: "Query academic databases and compile relevant paper summaries"
+    - action: organize_references
+      tier: execute
+      example: "Categorize and tag research sources in local library"
+    - action: draft_summary
+      tier: propose
+      example: "Write literature review section — present for academic review"
+    - action: suggest_methodology
+      tier: propose
+      example: "Propose research approach based on literature — wait for researcher decision"
+    - action: submit_paper
+      tier: approve
+      example: "Submit to journal or conference — requires explicit researcher approval"
+    - action: share_findings
+      tier: approve
+      example: "Share research externally or with collaborators — user must approve"
 
 model_routing_strategy:
   default_provider: local

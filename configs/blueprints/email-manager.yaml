@@ -104,6 +104,25 @@ autonomy_model:
     - sending_messages
     - account_changes
     - public_posts
+  delegation:
+    - action: archive_email
+      tier: execute
+      example: "Archive newsletters and read receipts after triage"
+    - action: update_task_list
+      tier: execute
+      example: "Extract action items from emails into task queue"
+    - action: draft_reply
+      tier: propose
+      example: "Draft reply to known contact — present for review before sending"
+    - action: reschedule_meeting
+      tier: propose
+      example: "Suggest calendar change when conflict detected — wait for approval"
+    - action: send_to_new_contact
+      tier: approve
+      example: "First email to unknown recipient — requires explicit user request"
+    - action: modify_email_rules
+      tier: approve
+      example: "Change triage rules or priority classifications — user must initiate"
 
 model_routing_strategy:
   default_provider: local

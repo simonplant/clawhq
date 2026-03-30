@@ -94,6 +94,25 @@ autonomy_model:
   requires_approval:
     - account_changes
     - large_purchases
+  delegation:
+    - action: update_shared_calendar
+      tier: execute
+      example: "Add recurring family events and school schedules"
+    - action: track_chore_completion
+      tier: execute
+      example: "Mark chores complete when family members confirm"
+    - action: suggest_meal_plan
+      tier: propose
+      example: "Draft weekly meal plan based on dietary preferences — present for approval"
+    - action: create_grocery_list
+      tier: propose
+      example: "Generate shopping list from approved meal plan — confirm before sending"
+    - action: authorize_purchase
+      tier: approve
+      example: "Any purchase above household threshold — user must explicitly approve"
+    - action: modify_family_settings
+      tier: approve
+      example: "Change household rules or member permissions — requires user initiation"
 
 model_routing_strategy:
   default_provider: local

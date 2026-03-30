@@ -69,6 +69,16 @@ autonomy_model:
   default: medium
   requires_approval:
     - account_changes
+  delegation:
+    - action: read_data
+      tier: execute
+      example: "Read and process incoming information"
+    - action: draft_response
+      tier: propose
+      example: "Draft a response for user review"
+    - action: modify_settings
+      tier: approve
+      example: "Change account settings — user must request"
 
 model_routing_strategy:
   default_provider: local

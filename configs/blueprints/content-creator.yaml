@@ -101,6 +101,25 @@ autonomy_model:
     - public_posts
     - sending_messages
     - account_changes
+  delegation:
+    - action: research_topic
+      tier: execute
+      example: "Gather sources and references for upcoming content pieces"
+    - action: track_editorial_calendar
+      tier: execute
+      example: "Monitor deadlines and update content pipeline status"
+    - action: draft_article
+      tier: propose
+      example: "Write draft post based on editorial brief — present for review"
+    - action: suggest_content_ideas
+      tier: propose
+      example: "Propose content topics based on trends — wait for selection"
+    - action: publish_content
+      tier: approve
+      example: "Publish to any platform — requires explicit user approval"
+    - action: engage_audience
+      tier: approve
+      example: "Reply to comments or messages publicly — user must approve each response"
 
 model_routing_strategy:
   default_provider: local

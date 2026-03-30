@@ -102,6 +102,25 @@ autonomy_model:
     - creating_events
     - large_purchases
     - public_posts
+  delegation:
+    - action: organize_inbox
+      tier: execute
+      example: "Sort and label emails by priority, archive routine notifications"
+    - action: prepare_meeting_brief
+      tier: execute
+      example: "Compile agenda and background notes before scheduled meetings"
+    - action: draft_email
+      tier: propose
+      example: "Draft professional email for review — never send without approval"
+    - action: propose_calendar_change
+      tier: propose
+      example: "Suggest rescheduling when conflicts detected — wait for confirmation"
+    - action: send_on_behalf
+      tier: approve
+      example: "Send email to client or external party — requires explicit approval"
+    - action: commit_to_event
+      tier: approve
+      example: "Accept meeting invite that creates obligations — user must confirm"
 
 model_routing_strategy:
   default_provider: local
