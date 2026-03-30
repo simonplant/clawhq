@@ -447,9 +447,9 @@
       "dependsOn": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false,
+      "readyForSprint": true,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "NOT sprint-ready — requires Clawdius sanitize.py source to perform the gap analysis. Pre-work: (1) obtain or reconstruct Clawdius sanitize.py detection pattern inventory — the description says 1,329 lines, OWASP LLM01 Tier 1+2. (2) Catalog current ClawHQ src/secure/sanitizer/ coverage. ClawHQ sanitizer.test.ts exists. Once the gap list is known this becomes sprint-ready quickly. Without the pattern inventory, the implementor has no spec to work from. Sprint-ready gate: gap analysis document listing specific detection categories missing from ClawHQ sanitizer."
+      "groomingNotes": "Gap analysis complete: 11 gaps found. P0: egress secret scanning (last line of data sovereignty defense), indirect elicitation (credential leak via social engineering). P1: semantic override, soft instruction override, leetspeak normalization, extended unicode. P2: split-payload detection, context poisoning, self-integrity. P3: Q/A few-shot, LLM classifier (future). Sprint plan: P0 gaps first, then P1."
     },
     {
       "id": "FEAT-134",
