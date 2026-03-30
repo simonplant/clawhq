@@ -36,40 +36,6 @@
       "groomingNotes": "STRATEGY: Day-zero revenue experiment. Not sprint-ready — needs architecture design. Key insight from critique: must do something a cron job can't. WebSocket health checks are trivially replicable. Upstream commit analysis + config breakage prediction is genuinely valuable and requires centralized infrastructure. Phase 1 can be technically simple (GitHub API + config diff) but the product design needs work first."
     },
     {
-      "id": "FEAT-113",
-      "title": "Model routing per cron job — haiku for cheap scans, opus for deep work, with fallback chains",
-      "intent": "Cron jobs must be cost-efficient. A heartbeat check that runs every 10 minutes should not use the most expensive model. Each job must specify its model with a fallback chain.",
-      "description": "Clawdius routes cron jobs to different models: heartbeat and x-scan use haiku (cheap, fast) with sonnet fallback, while work-session uses opus (expensive, capable) with sonnet fallback. ClawHQ's blueprint cron_config only specifies schedule expressions — no model routing.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Extend blueprint cron_config schema to support model and fallbacks per job",
-        "Update config generator (src/design/configure/generate.ts) to emit model and fallbacks in cron job payloads",
-        "Update all 7 blueprints with sensible model routing (heartbeat→haiku, work_session→opus, morning_brief→sonnet)",
-        "Add wizard question or smart inference for model routing preferences",
-        "Add validation: specified models must be available in the configured provider",
-        "Add tests for cron job generation with model routing"
-      ],
-      "acceptanceCriteria": [
-        "Blueprint cron_config supports model and fallbacks per job type",
-        "Generated cron jobs include payload.model and payload.fallbacks fields",
-        "Default model routing follows cost-efficiency: cheap models for frequent jobs, capable models for deep work",
-        "All 7 blueprints have sensible model routing defaults",
-        "Validation catches references to unavailable models"
-      ],
-      "scope": [
-        "configs/blueprints/",
-        "src/design/configure/generate.ts",
-        "src/config/schema.ts"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Direct cost impact for every user. Without model routing, an agent running 10-minute heartbeats on opus burns through budget unnecessarily.",
-      "passes": true,
-      "completedAt": "2026-03-29T18:49:50-07:00"
-    },
-    {
       "id": "FEAT-021",
       "title": "Integration tests for cloud provisioning engine — test real registry, health polling, and state transitions",
       "intent": "The provisioning engine (engine.ts) is tested with every dependency mocked — credentials, provider adapter, health poller, and registry are all fakes. State transitions (provisioning → active → destroyed) have never been tested against real state persistence.",
