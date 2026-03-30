@@ -89,6 +89,47 @@ export {
   unregisterAgent,
 } from "./fleet/index.js";
 
+// Sentinel — upstream monitoring
+export type {
+  AlertCategory,
+  AlertDeliveryMethod,
+  AlertDeliveryResult,
+  AlertSeverity,
+  BreakagePrediction,
+  BreakageReport,
+  ConfigFingerprint,
+  ConfigImpact,
+  ConfigImpactLevel,
+  SentinelAlert,
+  SentinelCheckResult,
+  SentinelConnectResult,
+  SentinelStatusResult,
+  SentinelSubscription,
+  SentinelTier,
+  UpstreamAnalysis,
+  UpstreamCommit,
+} from "./sentinel/index.js";
+export {
+  analyzeUpstreamCommits,
+  breakageToAlerts,
+  classifyConfigImpacts,
+  connectSentinel,
+  deliverAlert,
+  disconnectSentinel,
+  fetchCommitDetails,
+  fetchUpstreamCommits,
+  formatAlert,
+  formatAlerts,
+  formatAlertsJson,
+  generateFingerprint,
+  getPricingUrl,
+  predictBreakage,
+  readSentinelState,
+  runSentinelCheck,
+  sentinelPath,
+  writeSentinelState,
+} from "./sentinel/index.js";
+
 // Provisioning
 export type {
   AddSshKeyOptions,

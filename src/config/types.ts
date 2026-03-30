@@ -354,6 +354,15 @@ export interface MonitorConfig {
   };
 }
 
+/** Sentinel upstream monitoring configuration within clawhq.yaml. */
+export interface SentinelConfig {
+  readonly enabled?: boolean;
+  /** Webhook URL for alert delivery. */
+  readonly webhookUrl?: string;
+  /** Email address for alert delivery. */
+  readonly alertEmail?: string;
+}
+
 /**
  * ClawHQ's own configuration (clawhq.yaml).
  *
@@ -374,6 +383,7 @@ export interface ClawHQConfig {
     readonly trustMode?: TrustMode;
     readonly token?: string;
   };
+  readonly sentinel?: SentinelConfig;
   readonly monitor?: MonitorConfig;
   readonly paths?: {
     readonly deployDir?: string;

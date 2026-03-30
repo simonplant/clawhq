@@ -30,6 +30,7 @@ export type {
   InstallMethod,
   OpenClawConfig,
   SecurityPosture,
+  SentinelConfig,
   SessionConfig,
   ToolExecConfig,
   ToolsConfig,

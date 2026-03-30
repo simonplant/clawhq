@@ -47,6 +47,7 @@ export type CloudCommandType =
   | "health-check"
   | "update-notify"
   | "security-advisory"
+  | "sentinel-alert"
   | "trigger-update"
   | "trigger-backup"
   | "restart-agent"

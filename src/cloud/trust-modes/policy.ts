@@ -33,6 +33,7 @@ const POLICY_TABLE: Record<CloudCommandType, Record<TrustMode, CommandDispositio
   "health-check":             { paranoid: "blocked",  "zero-trust": "allowed",  managed: "allowed" },
   "update-notify":            { paranoid: "blocked",  "zero-trust": "allowed",  managed: "allowed" },
   "security-advisory":        { paranoid: "blocked",  "zero-trust": "allowed",  managed: "allowed" },
+  "sentinel-alert":           { paranoid: "blocked",  "zero-trust": "allowed",  managed: "allowed" },
   "trigger-update":           { paranoid: "blocked",  "zero-trust": "approval", managed: "auto" },
   "trigger-backup":           { paranoid: "blocked",  "zero-trust": "approval", managed: "auto" },
   "restart-agent":            { paranoid: "blocked",  "zero-trust": "approval", managed: "auto" },
