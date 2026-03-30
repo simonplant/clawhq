@@ -36,43 +36,6 @@
       "groomingNotes": "STRATEGY: Day-zero revenue experiment. Not sprint-ready — needs architecture design. Key insight from critique: must do something a cron job can't. WebSocket health checks are trivially replicable. Upstream commit analysis + config breakage prediction is genuinely valuable and requires centralized infrastructure. Phase 1 can be technically simple (GitHub API + config diff) but the product design needs work first."
     },
     {
-      "id": "FEAT-109",
-      "title": "1Password integration — agent-accessible credential vault via service account tokens",
-      "intent": "Agents need credential access for email, logins, API calls. Hardcoded env vars have no rotation or audit. 1Password service accounts give scoped read-only access with full audit trail — aligned with data sovereignty and security-by-default.",
-      "description": "Integrate 1Password service account model into agent runtime. Architecture: user's 1Password account has an Agent Vault with only the credentials the agent needs. Agent gets a service account token (OP_SERVICE_ACCOUNT_TOKEN) injected as Docker secret. op CLI or Python SDK installed in container. Helper utility claw-secret wraps credential fetch with logging. Security model: read-only, fetch-at-use (never persisted), never in LLM context, scoped vault, full audit, instant revoke, quarterly rotation.",
-      "priority": "should",
-      "category": "Security",
-      "steps": [
-        "Add op CLI or 1Password Python SDK to the Docker build stage (src/build/docker/)",
-        "Add OP_SERVICE_ACCOUNT_TOKEN to credential store (src/secure/credentials/) with Docker secret injection",
-        "Create claw-secret helper utility that wraps op read with logging and never exposes credentials to stdout/LLM context",
-        "Add credential probe for 1Password service account token validity (src/secure/credentials/probes.ts)",
-        "Add blueprint configuration for 1Password vault name and credential mapping",
-        "Add doctor check: 1Password service account token valid, vault accessible, op CLI installed",
-        "Add tests for credential fetch, token validation, error handling"
-      ],
-      "acceptanceCriteria": [
-        "op CLI or Python SDK available in agent container after clawhq build",
-        "Service account token injected via Docker secrets, never in env vars or config files",
-        "claw-secret utility fetches credentials with audit logging",
-        "Credentials never appear in LLM context, agent memory files, or logs",
-        "clawhq doctor checks 1Password connectivity and token validity",
-        "Blueprint supports 1Password vault configuration"
-      ],
-      "scope": [
-        "src/build/docker/",
-        "src/secure/credentials/",
-        "src/operate/doctor/",
-        "src/design/blueprints/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "From GitHub issue #8. Core credential access pattern needed for any agent that interacts with external services. Aligns with security-by-default and data sovereignty.",
-      "passes": true,
-      "completedAt": "2026-03-29T18:34:29-07:00"
-    },
-    {
       "id": "FEAT-113",
       "title": "Model routing per cron job — haiku for cheap scans, opus for deep work, with fallback chains",
       "intent": "Cron jobs must be cost-efficient. A heartbeat check that runs every 10 minutes should not use the most expensive model. Each job must specify its model with a fallback chain.",
