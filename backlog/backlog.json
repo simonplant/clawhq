@@ -36,41 +36,6 @@
       "groomingNotes": "STRATEGY: Day-zero revenue experiment. Not sprint-ready — needs architecture design. Key insight from critique: must do something a cron job can't. WebSocket health checks are trivially replicable. Upstream commit analysis + config breakage prediction is genuinely valuable and requires centralized infrastructure. Phase 1 can be technically simple (GitHub API + config diff) but the product design needs work first."
     },
     {
-      "id": "FEAT-021",
-      "title": "Integration tests for cloud provisioning engine — test real registry, health polling, and state transitions",
-      "intent": "The provisioning engine (engine.ts) is tested with every dependency mocked — credentials, provider adapter, health poller, and registry are all fakes. State transitions (provisioning → active → destroyed) have never been tested against real state persistence.",
-      "description": "src/cloud/provisioning/engine.test.ts mocks 4 modules. The test verifies that the engine calls the right mocks in the right order — it does not verify that the engine produces correct state.",
-      "priority": "should",
-      "category": "testing",
-      "steps": [
-        "Create integration test: engine.integration.test.ts",
-        "Use real filesystem (mkdtempSync) for registry state (instances.json)",
-        "Use real health polling against a local HTTP test server",
-        "Mock only the provider adapter (can't create real VMs in CI)",
-        "Test full state machine: provision → health check → register → status query → destroy → verify cleanup",
-        "Test error paths: provision succeeds but health fails, destroy fails, registry write fails",
-        "Run npm test to confirm no regression"
-      ],
-      "acceptanceCriteria": [
-        "Integration test exercises the full provisioning state machine with real filesystem and real HTTP",
-        "Only the cloud provider API is mocked — everything else is real",
-        "Registry state is verified by reading the actual instances.json file",
-        "Health polling is tested against a real local HTTP server",
-        "All existing engine unit tests continue to pass"
-      ],
-      "scope": [
-        "src/cloud/provisioning/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Most heavily mocked test file in the codebase. Real state machine testing deferred until after Gate 0 blockers.",
-      "lastFailAt": "2026-03-24T22:29:10-07:00",
-      "failCount": 1,
-      "passes": true,
-      "completedAt": "2026-03-29T19:16:47-07:00"
-    },
-    {
       "id": "FEAT-118",
       "title": "Extended identity files — USER.md, TOOLS.md, and domain-specific runbooks in blueprint config",
       "intent": "An agent that only knows its personality (SOUL.md) and capabilities (AGENTS.md) is incomplete. It must also understand its user's context, have a role-organized tool reference, and carry domain-specific operating procedures.",
