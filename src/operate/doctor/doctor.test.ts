@@ -273,7 +273,7 @@ describe("checks", { timeout: 30_000 }, () => {
 
   it("runs all 19 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(26);
+    expect(checks.length).toBe(27);
   });
 });
 
@@ -289,7 +289,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(26);
+    expect(report.checks.length).toBe(27);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -740,7 +740,7 @@ services:
 
   it("runs all 21 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(26);
+    expect(checks.length).toBe(27);
   });
 });
 

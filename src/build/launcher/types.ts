@@ -135,6 +135,8 @@ export interface FirewallOptions {
 export interface FirewallResult {
   readonly success: boolean;
   readonly rulesApplied: number;
+  /** Number of IPs resolved from domain DNS lookups into the ipset. */
+  readonly resolvedIps?: number;
   readonly error?: string;
 }
 
@@ -149,6 +151,23 @@ export interface FirewallVerifyResult {
   /** Rules that exist but shouldn't. */
   readonly extra: readonly import("./firewall.js").FirewallRuleDescriptor[];
   readonly error?: string;
+}
+
+/** Metadata for the ipset, written to ops/firewall/ipset-meta.json for staleness detection. */
+export interface IpsetMeta {
+  /** ISO 8601 timestamp of last DNS resolution refresh. */
+  readonly lastRefreshed: string;
+  /** Refresh interval in milliseconds. */
+  readonly refreshIntervalMs: number;
+  /** Domains that were resolved. */
+  readonly domains: readonly string[];
+  /** Count of resolved IPv4 addresses in the ipset. */
+  readonly resolvedV4: number;
+  /** Count of resolved IPv6 addresses in the ipset. */
+  readonly resolvedV6: number;
+  /** ipset set names. */
+  readonly setName: string;
+  readonly setNameV6: string;
 }
 
 // ── Connect (Channel Setup) ─────────────────────────────────────────────────

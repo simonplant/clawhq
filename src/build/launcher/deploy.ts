@@ -15,7 +15,7 @@ import { promisify } from "node:util";
 
 import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
 
-import { applyFirewall, removeFirewall, watchAndReapply } from "./firewall.js";
+import { applyFirewall, removeFirewall, startIpsetRefresh, watchAndReapply } from "./firewall.js";
 import { smokeTest, verifyHealth } from "./health.js";
 import { runPreflight } from "./preflight.js";
 import type {
@@ -137,6 +137,18 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
           }
         },
       );
+
+      // Start periodic ipset DNS re-resolution (keeps ipset current as IPs rotate)
+      if (!options.airGap) {
+        startIpsetRefresh(
+          { deployDir },
+          (refreshResult) => {
+            if (refreshResult.success) {
+              report("firewall", "done", `Ipset refreshed (${refreshResult.resolvedIps ?? 0} IPs resolved)`);
+            }
+          },
+        );
+      }
     }
   } else {
     report("firewall", "skipped", "Firewall skipped (--skip-firewall)");

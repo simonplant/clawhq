@@ -20,6 +20,7 @@ import { promisify } from "node:util";
 
 import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
+import { IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadIpsetMeta } from "../../build/launcher/firewall.js";
 import { isTimerActive } from "../automation/install.js";
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
 
@@ -137,6 +138,7 @@ export async function runChecks(
     checkGatewayReachable(signal),
     checkDiskSpace(deployDir, signal),
     checkAirGapActive(deployDir, signal),
+    checkIpsetEgressCurrent(deployDir, signal),
     checkToolAccessGrants(deployDir, version),
     checkMigrationState(deployDir, signal),
     checkUnderscoreToolMethods(deployDir, version),
@@ -1062,6 +1064,103 @@ async function checkAirGapActive(deployDir: string, signal?: AbortSignal): Promi
     }
   } catch {
     return ok(name, "Air-gap check inconclusive", "info");
+  }
+}
+
+// ── 19. Ipset Egress Current ─────────────────────────────────────────────────
+
+/** Verify the egress ipset exists, is populated, and was recently refreshed. */
+async function checkIpsetEgressCurrent(deployDir: string, signal?: AbortSignal): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "ipset-egress-current";
+
+  try {
+    // Check if ipset metadata exists (written during applyFirewall)
+    const meta = await loadIpsetMeta(deployDir);
+    if (!meta) {
+      return ok(name, "Ipset check skipped (no ipset metadata — firewall may use air-gap or not be applied)", "info");
+    }
+
+    // Check if the ipset exists in the kernel
+    try {
+      await execFileAsync("sudo", ["ipset", "list", IPSET_NAME, "-terse"], {
+        timeout: DOCTOR_EXEC_TIMEOUT_MS,
+        signal,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("does not exist") || msg.includes("The set with the given name does not exist")) {
+        return fail(
+          name,
+          "warning",
+          `Egress ipset '${IPSET_NAME}' not found — domain-based firewall is inactive`,
+          "Run: clawhq up (ipset is created during deploy)",
+        );
+      }
+      // Permission denied or ipset not installed
+      return ok(name, "Ipset check skipped (requires sudo/ipset)", "info");
+    }
+
+    // Check staleness: lastRefreshed should be within 2x the refresh interval
+    const lastRefreshed = new Date(meta.lastRefreshed).getTime();
+    const staleThresholdMs = (meta.refreshIntervalMs || IPSET_REFRESH_INTERVAL_MS) * 2;
+    const ageMs = Date.now() - lastRefreshed;
+
+    if (ageMs > staleThresholdMs) {
+      const ageMinutes = Math.floor(ageMs / 60_000);
+      return fail(
+        name,
+        "warning",
+        `Egress ipset is stale — last DNS refresh was ${ageMinutes} minutes ago (threshold: ${Math.floor(staleThresholdMs / 60_000)} min)`,
+        "Run: clawhq up (restarts the ipset refresh timer)",
+      );
+    }
+
+    // Check that resolved IPs exist
+    const totalIps = (meta.resolvedV4 || 0) + (meta.resolvedV6 || 0);
+    if (totalIps === 0 && meta.domains.length > 0) {
+      return fail(
+        name,
+        "warning",
+        `Egress ipset has 0 resolved IPs for ${meta.domains.length} domain(s) — DNS resolution may have failed`,
+        "Check DNS connectivity and run: clawhq up",
+      );
+    }
+
+    // Verify allowlist domains match current allowlist
+    const allowlistPath = join(deployDir, "ops", "firewall", "allowlist.yaml");
+    try {
+      const raw = await readFile(allowlistPath, "utf-8");
+      const { parse: yamlParse } = await import("yaml");
+      const parsed: unknown = yamlParse(raw);
+      if (Array.isArray(parsed)) {
+        const currentDomains = parsed
+          .filter((item): item is { domain: string } =>
+            typeof item === "object" && item !== null && "domain" in item && typeof item.domain === "string")
+          .map((item) => item.domain)
+          .sort();
+        const metaDomains = [...meta.domains].sort();
+
+        if (JSON.stringify(currentDomains) !== JSON.stringify(metaDomains)) {
+          return fail(
+            name,
+            "warning",
+            "Egress ipset domains don't match current allowlist — allowlist may have changed since last deploy",
+            "Run: clawhq up (recreates ipset from current allowlist)",
+          );
+        }
+      }
+    } catch {
+      // Can't read allowlist — skip domain comparison
+    }
+
+    const ageMinutes = Math.floor(ageMs / 60_000);
+    return ok(
+      name,
+      `Egress ipset current: ${totalIps} IPs from ${meta.domains.length} domain(s), refreshed ${ageMinutes}m ago`,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return fail(name, "warning", `Ipset check failed: ${msg}`);
   }
 }
 

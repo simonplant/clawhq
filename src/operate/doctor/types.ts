@@ -33,6 +33,7 @@ export type DoctorCheckName =
   | "underscore-tool-methods"
   | "onepassword-setup"
   | "sanitize-available"
+  | "ipset-egress-current"
   | "ops-autoupdate-active"
   | "ops-backup-recent"
   | "ops-security-monitor";

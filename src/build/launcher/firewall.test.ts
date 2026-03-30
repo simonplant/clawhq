@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -7,8 +7,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   buildAllowlistFromBlueprint,
   buildExpectedRules,
+  IPSET_NAME,
   loadAllowlist,
+  loadIpsetMeta,
   parseIptablesOutput,
+  resolveDomains,
   rulesMatch,
   serializeAllowlist,
 } from "./firewall.js";
@@ -279,63 +282,245 @@ describe("rulesMatch", () => {
   });
 });
 
-// ── parseIptablesOutput + buildExpectedRules + verifyFirewall destination tests ─
+// ── resolveDomains Tests ────────────────────────────────────────────────────
 
-describe("destination comparison in verification", () => {
-  it("buildExpectedRules includes destination for allowlisted domains", () => {
+describe("resolveDomains", () => {
+  it("resolves a real domain to at least one IPv4 address", async () => {
+    const result = await resolveDomains(["dns.google"]);
+    // dns.google has well-known IPs: 8.8.8.8, 8.8.4.4
+    expect(result.v4.length).toBeGreaterThan(0);
+  });
+
+  it("deduplicates IPs across duplicate domain entries", async () => {
+    const result = await resolveDomains(["dns.google", "dns.google"]);
+    // Should deduplicate — same set of IPs
+    const unique = new Set(result.v4);
+    expect(result.v4.length).toBe(unique.size);
+  });
+
+  it("handles non-existent domains gracefully", async () => {
+    const result = await resolveDomains(["this-domain-definitely-does-not-exist-clawhq.invalid"]);
+    expect(result.v4).toEqual([]);
+    expect(result.v6).toEqual([]);
+  });
+
+  it("handles mix of valid and invalid domains", async () => {
+    const result = await resolveDomains([
+      "dns.google",
+      "this-domain-definitely-does-not-exist-clawhq.invalid",
+    ]);
+    // Should still resolve the valid domain
+    expect(result.v4.length).toBeGreaterThan(0);
+  });
+
+  it("returns empty arrays for empty input", async () => {
+    const result = await resolveDomains([]);
+    expect(result.v4).toEqual([]);
+    expect(result.v6).toEqual([]);
+  });
+});
+
+// ── buildExpectedRules (ipset-based) Tests ──────────────────────────────────
+
+describe("buildExpectedRules (ipset-based)", () => {
+  it("includes ipset match rule for allowlisted domains", () => {
     const rules = buildExpectedRules(
-      [{ domain: "api.example.com", port: 443 }, { domain: "smtp.gmail.com", port: 587 }],
+      [{ domain: "api.example.com", port: 443 }],
       false,
     );
 
-    const apiRule = rules.find((r) => r.destination === "api.example.com");
-    const smtpRule = rules.find((r) => r.destination === "smtp.gmail.com");
+    // Should have: ESTABLISHED, DNS(udp), DNS(tcp), ipset match for port 443, LOG, DROP
+    expect(rules).toHaveLength(6);
 
-    expect(apiRule).toBeDefined();
-    expect(apiRule!.dport).toBe("443");
-    expect(smtpRule).toBeDefined();
-    expect(smtpRule!.dport).toBe("587");
+    const ipsetRule = rules.find((r) => r.extra.includes("match-set"));
+    expect(ipsetRule).toBeDefined();
+    expect(ipsetRule!.extra).toContain(`match-set ${IPSET_NAME} dst`);
+    expect(ipsetRule!.dport).toBe("443");
+    expect(ipsetRule!.destination).toBe("0.0.0.0/0");
   });
 
+  it("creates one ipset match rule per unique port", () => {
+    const rules = buildExpectedRules(
+      [
+        { domain: "api.example.com", port: 443 },
+        { domain: "smtp.gmail.com", port: 587 },
+        { domain: "api.other.com", port: 443 }, // duplicate port
+      ],
+      false,
+    );
+
+    const ipsetRules = rules.filter((r) => r.extra.includes("match-set"));
+    expect(ipsetRules).toHaveLength(2); // one for 443, one for 587
+    expect(ipsetRules.map((r) => r.dport).sort()).toEqual(["443", "587"]);
+  });
+
+  it("has no ipset rules in air-gap mode", () => {
+    const rules = buildExpectedRules(
+      [{ domain: "api.example.com", port: 443 }],
+      true,
+    );
+
+    const ipsetRules = rules.filter((r) => r.extra.includes("match-set"));
+    expect(ipsetRules).toHaveLength(0);
+
+    // Air-gap: ESTABLISHED + LOG + DROP only
+    expect(rules).toHaveLength(3);
+  });
+
+  it("has no DNS rules in air-gap mode", () => {
+    const rules = buildExpectedRules([], true);
+
+    const dnsRules = rules.filter((r) => r.dport === "53");
+    expect(dnsRules).toHaveLength(0);
+  });
+});
+
+// ── parseIptablesOutput + ipset verification ────────────────────────────────
+
+describe("destination comparison in verification (ipset-based)", () => {
   it("parseIptablesOutput extracts destination from iptables output", () => {
     const output = [
       "Chain CLAWHQ_FWD (1 references)",
       "num   target     prot opt source               destination",
-      "1     ACCEPT     tcp  --  0.0.0.0/0            10.0.0.1             tcp dpt:443",
-      "2     ACCEPT     tcp  --  0.0.0.0/0            10.0.0.2             tcp dpt:443",
+      "1     ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            match-set clawhq_egress dst tcp dpt:443",
+      "2     DROP       all  --  0.0.0.0/0            0.0.0.0/0",
     ].join("\n");
 
     const rules = parseIptablesOutput(output);
     expect(rules).toHaveLength(2);
-    expect(rules[0].destination).toBe("10.0.0.1");
-    expect(rules[1].destination).toBe("10.0.0.2");
+    expect(rules[0].destination).toBe("0.0.0.0/0");
+    expect(rules[0].dport).toBe("443");
+    expect(rules[1].target).toBe("DROP");
+  });
+});
+
+// ── Ipset Metadata Tests ────────────────────────────────────────────────────
+
+describe("loadIpsetMeta", () => {
+  it("loads valid metadata", async () => {
+    const meta = {
+      lastRefreshed: "2026-03-30T15:00:00.000Z",
+      refreshIntervalMs: 300000,
+      domains: ["api.example.com", "smtp.gmail.com"],
+      resolvedV4: 4,
+      resolvedV6: 2,
+      setName: "clawhq_egress",
+      setNameV6: "clawhq_egress_v6",
+    };
+    await writeFile(
+      join(testDir, "ops", "firewall", "ipset-meta.json"),
+      JSON.stringify(meta, null, 2),
+      "utf-8",
+    );
+
+    const loaded = await loadIpsetMeta(testDir);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.lastRefreshed).toBe("2026-03-30T15:00:00.000Z");
+    expect(loaded!.domains).toEqual(["api.example.com", "smtp.gmail.com"]);
+    expect(loaded!.resolvedV4).toBe(4);
+    expect(loaded!.resolvedV6).toBe(2);
   });
 
-  it("detects wrong destination when same port exists for different IP", () => {
-    // Expected: allow tcp to api.example.com:443
-    const expected = buildExpectedRules([{ domain: "api.example.com", port: 443 }], false);
+  it("returns null when metadata file doesn't exist", async () => {
+    const loaded = await loadIpsetMeta(testDir);
+    expect(loaded).toBeNull();
+  });
 
-    // Live: has a rule for wrong-ip.example.com:443 instead
-    const liveOutput = [
-      "Chain CLAWHQ_FWD (1 references)",
-      "num   target     prot opt source               destination",
-      "1     ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED",
-      "2     ACCEPT     udp  --  0.0.0.0/0            0.0.0.0/0            udp dpt:53",
-      "3     ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:53",
-      "4     ACCEPT     tcp  --  0.0.0.0/0            wrong-ip.example.com tcp dpt:443",
-      "5     LOG        all  --  0.0.0.0/0            0.0.0.0/0            LOG flags 0 level 4 prefix \"CLAWHQ_DROP: \"",
-      "6     DROP       all  --  0.0.0.0/0            0.0.0.0/0",
-    ].join("\n");
+  it("returns null for invalid JSON", async () => {
+    await writeFile(
+      join(testDir, "ops", "firewall", "ipset-meta.json"),
+      "not json",
+      "utf-8",
+    );
 
-    const liveRules = parseIptablesOutput(liveOutput);
+    const loaded = await loadIpsetMeta(testDir);
+    expect(loaded).toBeNull();
+  });
+});
 
-    // The expected rule for api.example.com should be missing
-    const missing = expected.filter((e) => !liveRules.some((l) => rulesMatch(e, l)));
-    const extra = liveRules.filter((l) => !expected.some((e) => rulesMatch(e, l)));
+// ── Stale Detection Tests ───────────────────────────────────────────────────
 
-    // api.example.com rule is missing (wrong destination doesn't match)
-    expect(missing.some((r) => r.destination === "api.example.com")).toBe(true);
-    // wrong-ip.example.com rule is extra
-    expect(extra.some((r) => r.destination === "wrong-ip.example.com")).toBe(true);
+describe("stale ipset detection", () => {
+  it("identifies fresh metadata (within threshold)", async () => {
+    const meta = {
+      lastRefreshed: new Date().toISOString(),
+      refreshIntervalMs: 300000, // 5 min
+      domains: ["api.example.com"],
+      resolvedV4: 2,
+      resolvedV6: 0,
+      setName: "clawhq_egress",
+      setNameV6: "clawhq_egress_v6",
+    };
+    await writeFile(
+      join(testDir, "ops", "firewall", "ipset-meta.json"),
+      JSON.stringify(meta),
+      "utf-8",
+    );
+
+    const loaded = await loadIpsetMeta(testDir);
+    expect(loaded).not.toBeNull();
+    const ageMs = Date.now() - new Date(loaded!.lastRefreshed).getTime();
+    const staleThresholdMs = loaded!.refreshIntervalMs * 2;
+    expect(ageMs).toBeLessThan(staleThresholdMs);
+  });
+
+  it("identifies stale metadata (beyond threshold)", async () => {
+    const staleDate = new Date(Date.now() - 20 * 60 * 1000); // 20 minutes ago
+    const meta = {
+      lastRefreshed: staleDate.toISOString(),
+      refreshIntervalMs: 300000, // 5 min → stale threshold = 10 min
+      domains: ["api.example.com"],
+      resolvedV4: 2,
+      resolvedV6: 0,
+      setName: "clawhq_egress",
+      setNameV6: "clawhq_egress_v6",
+    };
+    await writeFile(
+      join(testDir, "ops", "firewall", "ipset-meta.json"),
+      JSON.stringify(meta),
+      "utf-8",
+    );
+
+    const loaded = await loadIpsetMeta(testDir);
+    expect(loaded).not.toBeNull();
+    const ageMs = Date.now() - new Date(loaded!.lastRefreshed).getTime();
+    const staleThresholdMs = loaded!.refreshIntervalMs * 2; // 10 min
+    expect(ageMs).toBeGreaterThan(staleThresholdMs);
+  });
+
+  it("detects domain mismatch between metadata and allowlist", async () => {
+    // Metadata has domains A, B
+    const meta = {
+      lastRefreshed: new Date().toISOString(),
+      refreshIntervalMs: 300000,
+      domains: ["api.example.com", "old.example.com"],
+      resolvedV4: 4,
+      resolvedV6: 0,
+      setName: "clawhq_egress",
+      setNameV6: "clawhq_egress_v6",
+    };
+    await writeFile(
+      join(testDir, "ops", "firewall", "ipset-meta.json"),
+      JSON.stringify(meta),
+      "utf-8",
+    );
+
+    // Allowlist has domains A, C (different from metadata)
+    await writeFile(
+      join(testDir, "ops", "firewall", "allowlist.yaml"),
+      `- domain: api.example.com
+  port: 443
+- domain: new.example.com
+  port: 443
+`,
+      "utf-8",
+    );
+
+    const loaded = await loadIpsetMeta(testDir);
+    const allowlist = await (await import("./firewall.js")).loadAllowlist(testDir);
+    const currentDomains = allowlist.map((e) => e.domain).sort();
+    const metaDomains = [...loaded!.domains].sort();
+
+    expect(JSON.stringify(currentDomains)).not.toBe(JSON.stringify(metaDomains));
   });
 });
