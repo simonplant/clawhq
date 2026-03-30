@@ -289,6 +289,7 @@ export interface CronJobDefinition {
   readonly enabled: boolean;
   readonly delivery?: CronDelivery;
   readonly model?: string;
+  readonly fallbacks?: readonly string[];
   readonly session?: "main" | "isolated";
   readonly activeHours?: ActiveHours;
 }

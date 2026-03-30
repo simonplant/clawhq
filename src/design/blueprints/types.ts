@@ -69,11 +69,22 @@ export interface MemoryPolicy {
   readonly summarization: "aggressive" | "balanced" | "conservative";
 }
 
-/** Cron schedule configuration. */
+/** Per-job model routing — which model to use and fallback chain. */
+export interface CronModelRouting {
+  readonly model: string;
+  readonly fallbacks?: readonly string[];
+}
+
+/** Cron schedule configuration with optional per-job model routing. */
 export interface CronConfig {
   readonly heartbeat: string;
   readonly work_session: string;
   readonly morning_brief: string;
+  readonly model_routing?: {
+    readonly heartbeat?: CronModelRouting;
+    readonly work_session?: CronModelRouting;
+    readonly morning_brief?: CronModelRouting;
+  };
 }
 
 /** Autonomy model — what the agent does alone vs. asks permission. */

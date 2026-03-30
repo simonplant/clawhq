@@ -208,6 +208,75 @@ describe("generateBundle", () => {
     expect(() => generateBundle(answers)).toThrow(/Invalid morning brief time/);
   });
 
+  it("emits model and fallbacks from blueprint cron_config.model_routing", () => {
+    const loaded = loadBlueprint("email-manager");
+    const answers = makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+    });
+    const bundle = generateBundle(answers);
+
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.model).toBe("haiku");
+    expect(heartbeat?.fallbacks).toEqual(["sonnet"]);
+
+    const workSession = bundle.cronJobs.find((j) => j.id === "work-session");
+    expect(workSession?.model).toBe("opus");
+    expect(workSession?.fallbacks).toEqual(["sonnet"]);
+
+    const morningBrief = bundle.cronJobs.find((j) => j.id === "morning-brief");
+    expect(morningBrief?.model).toBe("sonnet");
+    expect(morningBrief?.fallbacks).toEqual(["haiku"]);
+  });
+
+  it("skill cron jobs inherit work_session model routing", () => {
+    const loaded = loadBlueprint("email-manager");
+    const answers = makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+    });
+    const bundle = generateBundle(answers);
+
+    const skillJob = bundle.cronJobs.find((j) => j.id === "skill-email-digest");
+    expect(skillJob?.model).toBe("opus");
+    expect(skillJob?.fallbacks).toEqual(["sonnet"]);
+  });
+
+  it("omits model and fallbacks when model_routing is not set", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = {
+      ...loaded.blueprint,
+      cron_config: { ...loaded.blueprint.cron_config, model_routing: undefined },
+    };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.model).toBeUndefined();
+    expect(heartbeat?.fallbacks).toBeUndefined();
+  });
+
+  it("uses cost-efficient defaults: cheap models for frequent jobs", () => {
+    // All 7 blueprints should route heartbeat to haiku (cheapest)
+    const blueprintNames = [
+      "email-manager", "family-hub", "founders-ops",
+      "replace-chatgpt-plus", "replace-google-assistant", "replace-my-pa",
+      "research-copilot",
+    ];
+
+    for (const name of blueprintNames) {
+      const loaded = loadBlueprint(name);
+      const answers = makeAnswers({
+        blueprint: loaded.blueprint,
+        blueprintPath: loaded.sourcePath,
+      });
+      const bundle = generateBundle(answers);
+      const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+      expect(heartbeat?.model, `${name}: heartbeat should use haiku`).toBe("haiku");
+      expect(heartbeat?.fallbacks, `${name}: heartbeat should fall back to sonnet`).toEqual(["sonnet"]);
+    }
+  });
+
   it("passes full validation for every built-in blueprint", () => {
     const blueprintNames = [
       "email-manager",

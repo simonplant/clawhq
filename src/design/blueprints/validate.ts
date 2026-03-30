@@ -228,12 +228,73 @@ function checkMemoryPolicy(raw: RawBlueprint): BlueprintValidationResult[] {
   ];
 }
 
-// ── cron_config (checks 35-37) ──────────────────────────────────────────────
+// ── Known Model Names ──────────────────────────────────────────────────────
+
+/** Model identifiers recognized by ClawHQ for cron job routing. */
+const KNOWN_MODELS = new Set([
+  // Anthropic Claude family
+  "haiku", "sonnet", "opus",
+  // OpenAI family
+  "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
+  // Local / Ollama models
+  "llama3:8b", "llama3:70b", "mistral:7b", "mixtral:8x7b", "codellama:7b", "codellama:34b",
+  "phi3:mini", "phi3:medium", "gemma:7b", "gemma:2b", "qwen2:7b",
+]);
+
+// ── cron_config (checks 35-37 + model_routing) ─────────────────────────────
+
+function checkModelRouting(
+  routing: Record<string, unknown>,
+  jobName: string,
+): BlueprintValidationResult[] {
+  const results: BlueprintValidationResult[] = [];
+  const prefix = `cron_config.model_routing.${jobName}`;
+
+  if (!isObj(routing)) {
+    results.push(fail(prefix, `${prefix} must be an object with model and optional fallbacks`));
+    return results;
+  }
+
+  // model is required within a routing entry
+  const model = routing.model;
+  if (!isNonEmptyStr(model)) {
+    results.push(fail(`${prefix}.model`, `${prefix}.model must be a non-empty string`));
+  } else {
+    if (!KNOWN_MODELS.has(model)) {
+      results.push(fail(`${prefix}.model`, `${prefix}.model "${model}" is not a recognized model — known models: ${[...KNOWN_MODELS].slice(0, 6).join(", ")}…`));
+    } else {
+      results.push(pass(`${prefix}.model`, `${prefix}.model is valid`));
+    }
+  }
+
+  // fallbacks is optional — if present, must be a string array with known models
+  const fallbacks = routing.fallbacks;
+  if (fallbacks !== undefined) {
+    if (!isStrArray(fallbacks)) {
+      results.push(fail(`${prefix}.fallbacks`, `${prefix}.fallbacks must be an array of strings`));
+    } else {
+      for (const fb of fallbacks) {
+        if (!KNOWN_MODELS.has(fb)) {
+          results.push(fail(
+            `${prefix}.fallbacks`,
+            `${prefix}.fallbacks contains unknown model "${fb}" — known models: ${[...KNOWN_MODELS].slice(0, 6).join(", ")}…`,
+          ));
+        }
+      }
+      if (results.every((r) => r.passed || !r.check.includes("fallbacks"))) {
+        results.push(pass(`${prefix}.fallbacks`, `${prefix}.fallbacks are valid`));
+      }
+    }
+  }
+
+  return results;
+}
 
 function checkCronConfig(raw: RawBlueprint): BlueprintValidationResult[] {
   const section = raw.cron_config;
   if (!isObj(section)) return [];
-  return [
+
+  const results: BlueprintValidationResult[] = [
     (() => {
       const check = "cron_config.heartbeat";
       const val = section.heartbeat;
@@ -256,6 +317,24 @@ function checkCronConfig(raw: RawBlueprint): BlueprintValidationResult[] {
       return pass(check, "cron_config.morning_brief is present");
     })(),
   ];
+
+  // Optional model_routing validation
+  const routing = section.model_routing;
+  if (routing !== undefined) {
+    if (!isObj(routing)) {
+      results.push(fail("cron_config.model_routing", "cron_config.model_routing must be an object"));
+    } else {
+      const JOB_NAMES = ["heartbeat", "work_session", "morning_brief"] as const;
+      for (const jobName of JOB_NAMES) {
+        const entry = routing[jobName];
+        if (entry !== undefined) {
+          results.push(...checkModelRouting(entry as Record<string, unknown>, jobName));
+        }
+      }
+    }
+  }
+
+  return results;
 }
 
 // ── autonomy_model (checks 38-39) ───────────────────────────────────────────

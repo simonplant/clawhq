@@ -349,6 +349,43 @@ describe("validateBlueprint", () => {
     );
     expect(idCheck?.passed).toBe(true);
   });
+
+  it("validates cron_config.model_routing with known models", () => {
+    const yaml = VALID_BLUEPRINT_YAML.replace(
+      'cron_config:\n  heartbeat: "*/10 waking"\n  work_session: "*/15 waking"\n  morning_brief: "08:00"',
+      'cron_config:\n  heartbeat: "*/10 waking"\n  work_session: "*/15 waking"\n  morning_brief: "08:00"\n  model_routing:\n    heartbeat:\n      model: haiku\n      fallbacks:\n        - sonnet\n    work_session:\n      model: opus\n      fallbacks:\n        - sonnet',
+    );
+    const raw = parseYaml(yaml) as Record<string, unknown>;
+    const report = validateBlueprint(raw);
+    expect(report.valid).toBe(true);
+    const modelChecks = report.results.filter((r) => r.check.includes("model_routing"));
+    expect(modelChecks.length).toBeGreaterThan(0);
+    expect(modelChecks.every((r) => r.passed)).toBe(true);
+  });
+
+  it("rejects unknown model in cron_config.model_routing", () => {
+    const yaml = VALID_BLUEPRINT_YAML.replace(
+      'cron_config:\n  heartbeat: "*/10 waking"\n  work_session: "*/15 waking"\n  morning_brief: "08:00"',
+      'cron_config:\n  heartbeat: "*/10 waking"\n  work_session: "*/15 waking"\n  morning_brief: "08:00"\n  model_routing:\n    heartbeat:\n      model: nonexistent-model',
+    );
+    const raw = parseYaml(yaml) as Record<string, unknown>;
+    const report = validateBlueprint(raw);
+    const modelCheck = report.errors.find((r) => r.check.includes("model_routing.heartbeat.model"));
+    expect(modelCheck).toBeDefined();
+    expect(modelCheck?.message).toContain("nonexistent-model");
+  });
+
+  it("rejects unknown model in fallbacks array", () => {
+    const yaml = VALID_BLUEPRINT_YAML.replace(
+      'cron_config:\n  heartbeat: "*/10 waking"\n  work_session: "*/15 waking"\n  morning_brief: "08:00"',
+      'cron_config:\n  heartbeat: "*/10 waking"\n  work_session: "*/15 waking"\n  morning_brief: "08:00"\n  model_routing:\n    heartbeat:\n      model: haiku\n      fallbacks:\n        - fake-model',
+    );
+    const raw = parseYaml(yaml) as Record<string, unknown>;
+    const report = validateBlueprint(raw);
+    const fbCheck = report.errors.find((r) => r.check.includes("fallbacks"));
+    expect(fbCheck).toBeDefined();
+    expect(fbCheck?.message).toContain("fake-model");
+  });
 });
 
 // ── templateToChoice Tests ──────────────────────────────────────────────────

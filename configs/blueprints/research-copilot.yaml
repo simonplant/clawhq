@@ -78,6 +78,10 @@ cron_config:
   heartbeat: "*/60 waking"
   work_session: ""
   morning_brief: ""
+  model_routing:
+    heartbeat:
+      model: haiku
+      fallbacks: [sonnet]
 
 autonomy_model:
   default: low

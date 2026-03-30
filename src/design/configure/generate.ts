@@ -282,11 +282,13 @@ function buildEnvVars(answers: WizardAnswers): Record<string, string> {
 function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
   const jobs: CronJobDefinition[] = [];
   const cron = blueprint.cron_config;
+  const routing = cron.model_routing;
 
   // Heartbeat — regular check-in
   if (cron.heartbeat) {
     const expr = normalizeCronExpr(cron.heartbeat);
     if (expr) {
+      const r = routing?.heartbeat;
       jobs.push({
         id: "heartbeat",
         kind: "cron",
@@ -294,6 +296,8 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
         task: "Run heartbeat check — verify all systems operational",
         enabled: true,
         delivery: "none",
+        model: r?.model,
+        fallbacks: r?.fallbacks,
         session: "main",
       });
     }
@@ -303,6 +307,7 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
   if (cron.work_session) {
     const expr = normalizeCronExpr(cron.work_session);
     if (expr) {
+      const r = routing?.work_session;
       jobs.push({
         id: "work-session",
         kind: "cron",
@@ -310,6 +315,8 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
         task: "Run scheduled work session — process pending tasks and check integrations",
         enabled: true,
         delivery: "none",
+        model: r?.model,
+        fallbacks: r?.fallbacks,
         session: "main",
       });
     }
@@ -318,6 +325,7 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
   // Morning brief
   if (cron.morning_brief) {
     const expr = normalizeMorningBrief(cron.morning_brief);
+    const r = routing?.morning_brief;
     jobs.push({
       id: "morning-brief",
       kind: "cron",
@@ -325,14 +333,18 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
       task: "Send morning briefing — summarize overnight activity and today's schedule",
       enabled: true,
       delivery: "announce",
+      model: r?.model,
+      fallbacks: r?.fallbacks,
       session: "main",
     });
   }
 
   // Skill-specific cron jobs — included skills run on the work-session schedule
+  // Skills inherit the work_session model routing for cost consistency
   if (cron.work_session && blueprint.skill_bundle?.included) {
     const skillExpr = normalizeCronExpr(cron.work_session);
     if (skillExpr) {
+      const r = routing?.work_session;
       for (const skillName of blueprint.skill_bundle.included) {
         jobs.push({
           id: `skill-${skillName}`,
@@ -341,6 +353,8 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
           task: `Run skill: ${skillName}`,
           enabled: true,
           delivery: "none",
+          model: r?.model,
+          fallbacks: r?.fallbacks,
           session: "main",
         });
       }
