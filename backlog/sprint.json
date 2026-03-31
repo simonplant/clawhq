@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1775000471",
   "startedAt": "2026-03-31T16:41:11-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-022",
     "title": "Integration tests for credential probes — test against real API endpoints with test keys",
@@ -24,6 +24,10 @@
     "scope": [
       "src/secure/credentials/probes.ts"
     ],
-    "startedAt": "2026-03-31T16:41:11-07:00"
-  }
+    "startedAt": "2026-03-31T16:41:11-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-31T16:45:56-07:00"
+  },
+  "completedAt": "2026-03-31T16:45:56-07:00",
+  "attempts": 1
 }

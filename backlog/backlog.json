@@ -167,12 +167,14 @@
       "scope": [
         "src/secure/credentials/probes.ts"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
       "groomingNotes": "Lower priority — probe API calls are simple HTTP and unlikely to break. Quick win for Ollama probe.",
       "lastFailAt": "2026-03-24T23:20:05-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "passes": true,
+      "completedAt": "2026-03-31T16:45:56-07:00"
     },
     {
       "id": "FEAT-117",
