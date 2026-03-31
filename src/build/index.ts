@@ -44,6 +44,7 @@ export type {
 export {
   applyFirewall,
   buildAllowlistFromBlueprint,
+  collectIntegrationDomains,
   CHAIN_NAME,
   deploy,
   loadAllowlist,

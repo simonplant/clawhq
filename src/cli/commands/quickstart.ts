@@ -128,7 +128,7 @@ export function registerQuickstartCommand(program: Command): void {
           throw new CommandError("", 1);
         }
 
-        const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers);
+        const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers, Object.keys(answers.integrations));
         writeBundle(answers.deployDir, files);
 
         spinner.succeed(`${phase("init")} Agent forged — all 14 landmine rules passed`);

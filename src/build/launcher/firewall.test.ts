@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   buildAllowlistFromBlueprint,
   buildExpectedRules,
+  collectIntegrationDomains,
   IPSET_NAME,
   loadAllowlist,
   loadIpsetMeta,
@@ -198,6 +199,42 @@ describe("buildAllowlistFromBlueprint", () => {
     const entries = buildAllowlistFromBlueprint([], ["api.anthropic.com"]);
     expect(entries).toHaveLength(1);
     expect(entries[0].domain).toBe("api.anthropic.com");
+  });
+});
+
+// ── collectIntegrationDomains Tests ────────────────────────────────────────
+
+describe("collectIntegrationDomains", () => {
+  it("returns egress domains for known integrations", () => {
+    const domains = collectIntegrationDomains(["telegram", "anthropic"]);
+    expect(domains).toContain("api.telegram.org");
+    expect(domains).toContain("api.anthropic.com");
+  });
+
+  it("returns empty array for integrations with no egress domains", () => {
+    const domains = collectIntegrationDomains(["ollama"]);
+    expect(domains).toEqual([]);
+  });
+
+  it("skips unknown integration names", () => {
+    const domains = collectIntegrationDomains(["nonexistent", "telegram"]);
+    expect(domains).toEqual(["api.telegram.org"]);
+  });
+
+  it("returns empty for empty input", () => {
+    expect(collectIntegrationDomains([])).toEqual([]);
+  });
+
+  it("handles case-insensitive lookup", () => {
+    const domains = collectIntegrationDomains(["Telegram"]);
+    expect(domains).toContain("api.telegram.org");
+  });
+
+  it("collects multiple domains from one integration", () => {
+    const domains = collectIntegrationDomains(["onepassword"]);
+    expect(domains).toContain("my.1password.com");
+    expect(domains).toContain("events.1password.com");
+    expect(domains).toHaveLength(2);
   });
 });
 

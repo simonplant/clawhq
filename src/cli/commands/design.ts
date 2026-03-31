@@ -183,7 +183,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         }
 
         // Step 4: Write files atomically
-        const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers);
+        const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers, Object.keys(answers.integrations));
         const result = writeBundle(answers.deployDir, files);
 
         spinner.succeed(`Config written to ${result.deployDir}`);

@@ -21,6 +21,7 @@ import { promisify } from "node:util";
 import { stringify as yamlStringify, parse as yamlParse } from "yaml";
 
 import { DOCTOR_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
+import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 
 import type {
   FirewallAllowEntry,
@@ -405,6 +406,25 @@ export function buildAllowlistFromBlueprint(
   }
 
   return entries;
+}
+
+/**
+ * Collect egress domains for a set of configured integrations.
+ *
+ * Looks up each integration name in the registry and returns all
+ * egressDomains they require. Unknown integration names are skipped.
+ */
+export function collectIntegrationDomains(integrationNames: readonly string[]): string[] {
+  const domains: string[] = [];
+  for (const name of integrationNames) {
+    const def = INTEGRATION_REGISTRY[name.toLowerCase()];
+    if (def) {
+      for (const d of def.egressDomains) {
+        domains.push(d);
+      }
+    }
+  }
+  return domains;
 }
 
 /**

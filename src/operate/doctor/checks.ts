@@ -1,5 +1,5 @@
 /**
- * Doctor diagnostic checks — 23 preventive checks covering all known failure modes.
+ * Doctor diagnostic checks — 24 preventive checks covering all known failure modes.
  *
  * Each check is async and independent (runs in parallel via Promise.all).
  * Checks never throw — they return a result with pass/fail + message + fix.
@@ -20,7 +20,8 @@ import { promisify } from "node:util";
 
 import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
-import { IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadIpsetMeta } from "../../build/launcher/firewall.js";
+import { collectIntegrationDomains, IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadAllowlist, loadIpsetMeta } from "../../build/launcher/firewall.js";
+import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 import { isTimerActive } from "../automation/install.js";
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
 
@@ -148,6 +149,7 @@ export async function runChecks(
     checkOpsBackupRecent(deployDir, signal),
     checkOpsSecurityMonitor(deployDir, signal),
     checkCredProxyHealthy(deployDir, signal),
+    checkEgressDomainsCoverage(deployDir),
   ]);
 }
 
@@ -1498,5 +1500,74 @@ async function checkCredProxyHealthy(
       "Credential proxy is configured but health check failed",
       "Run: clawhq up to start the proxy sidecar",
     );
+  }
+}
+
+// ── 28. Egress Domains Coverage ─────────────────────────────────────────────
+
+/**
+ * Verify that all configured integrations have their egress domains in the allowlist.
+ *
+ * Reads .env to detect which integrations are configured, looks up their
+ * required egress domains from the registry, and checks the allowlist covers them.
+ */
+async function checkEgressDomainsCoverage(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "egress-domains-coverage";
+
+  try {
+    // Read .env to detect configured integrations
+    const envPath = join(deployDir, "engine", ".env");
+    let envContent: string;
+    try {
+      envContent = await readFile(envPath, "utf-8");
+    } catch {
+      return ok(name, "No .env file — skipping egress domain coverage check", "info");
+    }
+
+    const envKeys = new Set(
+      envContent.split("\n")
+        .map((line) => line.split("=")[0]?.trim())
+        .filter((k): k is string => !!k && !k.startsWith("#")),
+    );
+
+    // Detect which integrations are configured by matching env key prefixes
+    const configuredIntegrations: string[] = [];
+    for (const [integrationName, def] of Object.entries(INTEGRATION_REGISTRY)) {
+      if (def.egressDomains.length === 0) continue; // skip integrations with no egress needs
+      const prefix = integrationName.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      const hasKeys = def.envKeys.some((ek) => envKeys.has(`${prefix}_${ek.key.toUpperCase()}`));
+      if (hasKeys) {
+        configuredIntegrations.push(integrationName);
+      }
+    }
+
+    if (configuredIntegrations.length === 0) {
+      return ok(name, "No integrations with egress requirements detected");
+    }
+
+    // Collect required domains
+    const requiredDomains = collectIntegrationDomains(configuredIntegrations);
+
+    // Load current allowlist
+    const allowlist = await loadAllowlist(deployDir);
+    const allowedDomains = new Set(allowlist.map((e) => e.domain));
+
+    // Find missing domains
+    const missing = requiredDomains.filter((d) => !allowedDomains.has(d));
+
+    if (missing.length > 0) {
+      return fail(
+        name,
+        "warning",
+        `Missing egress domains for configured integrations: ${missing.join(", ")}`,
+        "Run: clawhq init to regenerate the allowlist with current integrations",
+        true,
+      );
+    }
+
+    return ok(name, `All ${configuredIntegrations.length} integration(s) have required egress domains in allowlist`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return fail(name, "warning", `Cannot check egress domain coverage: ${msg}`);
   }
 }

@@ -271,9 +271,57 @@ describe("checks", { timeout: 30_000 }, () => {
     expect(check.passed).toBe(true);
   });
 
-  it("runs all 19 checks", async () => {
+  it("egress-domains-coverage passes when no .env present", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(28);
+    const check = findCheck(checks, "egress-domains-coverage");
+    expect(check.passed).toBe(true);
+    expect(check.message).toContain("No .env");
+  });
+
+  it("egress-domains-coverage detects missing integration domains", async () => {
+    // Write .env with anthropic credentials (prefix ANTHROPIC_)
+    await writeFile(
+      join(testDir, "engine", ".env"),
+      "ANTHROPIC_ANTHROPIC_API_KEY=sk-ant-test\n",
+    );
+    await chmod(join(testDir, "engine", ".env"), 0o600);
+
+    // Write allowlist WITHOUT api.anthropic.com
+    await mkdir(join(testDir, "ops", "firewall"), { recursive: true });
+    await writeFile(
+      join(testDir, "ops", "firewall", "allowlist.yaml"),
+      "- domain: api.example.com\n  port: 443\n",
+    );
+
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "egress-domains-coverage");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("api.anthropic.com");
+  });
+
+  it("egress-domains-coverage passes when all domains covered", async () => {
+    // Write .env with anthropic credentials
+    await writeFile(
+      join(testDir, "engine", ".env"),
+      "ANTHROPIC_ANTHROPIC_API_KEY=sk-ant-test\n",
+    );
+    await chmod(join(testDir, "engine", ".env"), 0o600);
+
+    // Write allowlist WITH api.anthropic.com
+    await mkdir(join(testDir, "ops", "firewall"), { recursive: true });
+    await writeFile(
+      join(testDir, "ops", "firewall", "allowlist.yaml"),
+      "- domain: api.anthropic.com\n  port: 443\n",
+    );
+
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "egress-domains-coverage");
+    expect(check.passed).toBe(true);
+  });
+
+  it("runs all checks", async () => {
+    const checks = await runChecks(testDir);
+    expect(checks.length).toBe(29);
   });
 });
 
@@ -289,7 +337,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(28);
+    expect(report.checks.length).toBe(29);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -740,7 +788,7 @@ services:
 
   it("runs all 21 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(28);
+    expect(checks.length).toBe(29);
   });
 });
 

@@ -4,7 +4,7 @@ import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
 import { loadBlueprint } from "../blueprints/loader.js";
 
-import { generateBundle, validateCronExpr } from "./generate.js";
+import { generateAllowlistContent, generateBundle, validateCronExpr } from "./generate.js";
 import type { WizardAnswers } from "./types.js";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -469,5 +469,47 @@ describe("validateCronExpr", () => {
   it("accepts boundary values at limits", () => {
     expect(validateCronExpr("0 0 1 1 0")).toHaveLength(0);
     expect(validateCronExpr("59 23 31 12 7")).toHaveLength(0);
+  });
+});
+
+// ── Allowlist Generation ────────────────────────────────────────────────────
+
+describe("generateAllowlistContent", () => {
+  it("compiles blueprint egress_domains into YAML allowlist", () => {
+    const answers = makeAnswers();
+    const content = generateAllowlistContent(answers.blueprint);
+
+    // Should be valid YAML with domain entries
+    expect(content).toContain("domain:");
+    expect(content).toContain("port:");
+  });
+
+  it("includes integration domains when integration names provided", () => {
+    const answers = makeAnswers();
+    const content = generateAllowlistContent(answers.blueprint, ["telegram"]);
+
+    expect(content).toContain("api.telegram.org");
+  });
+
+  it("deduplicates domains from blueprint and integrations", () => {
+    const { blueprint } = loadBlueprint("research-copilot");
+    // research-copilot has api.tavily.com in egress_domains
+    const content = generateAllowlistContent(blueprint, ["tavily"]);
+
+    // api.tavily.com should appear only once
+    const matches = content.match(/api\.tavily\.com/g);
+    expect(matches).toHaveLength(1);
+  });
+
+  it("returns air-gap comment for blueprint with no egress and no integrations", () => {
+    const answers = makeAnswers();
+    // Override blueprint to have no egress_domains
+    const emptyBp = {
+      ...answers.blueprint,
+      security_posture: { ...answers.blueprint.security_posture, egress_domains: [] as readonly string[] },
+    };
+    const content = generateAllowlistContent(emptyBp, []);
+
+    expect(content).toContain("air-gap");
   });
 });

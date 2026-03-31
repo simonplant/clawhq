@@ -35,6 +35,12 @@ import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../to
 import type { ToolFileContent } from "../tools/index.js";
 
 
+import {
+  buildAllowlistFromBlueprint,
+  collectIntegrationDomains,
+  serializeAllowlist,
+} from "../../build/launcher/firewall.js";
+
 import type { WizardAnswers } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -481,6 +487,28 @@ export function generateDelegatedRulesContent(blueprint: Blueprint): string | un
   };
 
   return JSON.stringify(compiled, null, 2);
+}
+
+// ── Domain Allowlist ────────────────────────────────────────────────────────
+
+/**
+ * Generate the egress domain allowlist content from a blueprint and its integrations.
+ *
+ * Compiles blueprint egress_domains + integration registry domains into
+ * a serialized YAML allowlist ready for writing to ops/firewall/allowlist.yaml.
+ *
+ * This is the single compilation point: blueprint → allowlist.
+ */
+export function generateAllowlistContent(
+  blueprint: Blueprint,
+  integrationNames: readonly string[] = [],
+): string {
+  const integrationDomains = collectIntegrationDomains(integrationNames);
+  const entries = buildAllowlistFromBlueprint(
+    blueprint.security_posture.egress_domains,
+    integrationDomains,
+  );
+  return serializeAllowlist(entries);
 }
 
 // ── ClawHQ Config ────────────────────────────────────────────────────────────

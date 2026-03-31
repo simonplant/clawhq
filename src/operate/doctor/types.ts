@@ -37,7 +37,8 @@ export type DoctorCheckName =
   | "ops-autoupdate-active"
   | "ops-backup-recent"
   | "ops-security-monitor"
-  | "cred-proxy-healthy";
+  | "cred-proxy-healthy"
+  | "egress-domains-coverage";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

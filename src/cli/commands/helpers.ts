@@ -2,11 +2,10 @@ import chalk from "chalk";
 import ora from "ora";
 import { stringify as yamlStringify } from "yaml";
 
-import { buildAllowlistFromBlueprint, serializeAllowlist } from "../../build/launcher/index.js";
 import type { DeployProgress } from "../../build/launcher/index.js";
 import type { PrereqCheckResult } from "../../build/installer/index.js";
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
-import { generateBundle, generateIdentityFiles } from "../../design/configure/index.js";
+import { generateAllowlistContent, generateBundle, generateIdentityFiles } from "../../design/configure/index.js";
 import { generateOpsAutomationFiles } from "../../operate/automation/index.js";
 
 export function formatPrereqCheck(check: PrereqCheckResult): void {
@@ -73,11 +72,9 @@ export function bundleToFiles(
   bundle: ReturnType<typeof generateBundle>,
   blueprint: import("../../design/blueprints/types.js").Blueprint,
   customizationAnswers: Readonly<Record<string, string>> = {},
+  integrationNames: readonly string[] = [],
 ) {
   const identityFiles = generateIdentityFiles(blueprint, customizationAnswers);
-
-  // Derive per-integration domain allowlist from blueprint egress_domains
-  const allowlist = buildAllowlistFromBlueprint(blueprint.security_posture.egress_domains);
 
   return [
     {
@@ -108,10 +105,10 @@ export function bundleToFiles(
       relativePath: "clawhq.yaml",
       content: yamlStringify(bundle.clawhqConfig),
     },
-    // Egress firewall allowlist (derived from blueprint egress_domains)
+    // Egress firewall allowlist (compiled from blueprint + integration domains)
     {
       relativePath: "ops/firewall/allowlist.yaml",
-      content: serializeAllowlist(allowlist),
+      content: generateAllowlistContent(blueprint, integrationNames),
     },
     // Identity files (SOUL.md, AGENTS.md)
     ...identityFiles.map((f) => ({

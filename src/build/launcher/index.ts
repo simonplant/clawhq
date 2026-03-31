@@ -15,6 +15,7 @@ export { runPreflight } from "./preflight.js";
 export {
   applyFirewall,
   buildAllowlistFromBlueprint,
+  collectIntegrationDomains,
   CHAIN_NAME,
   IPSET_NAME,
   IPSET_NAME_V6,
