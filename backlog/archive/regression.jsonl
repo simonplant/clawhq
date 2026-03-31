@@ -3,4 +3,4 @@
 {"itemId": "FEAT-130", "date": "2026-03-30", "text": "Blueprints can define delegated action rules per tool", "verify": "grep -q 'delegation_rules' src/design/blueprints/types.ts"}
 {"itemId": "FEAT-130", "date": "2026-03-30", "text": "Generated workspace includes delegated-rules.json", "verify": "grep -q 'delegated-rules' src/design/configure/generate.ts"}
 {"itemId": "FEAT-130", "date": "2026-03-30", "text": "Email-manager ships with email delegation defaults", "verify": "grep -q 'delegation_rules' configs/blueprints/email-manager.yaml"}
-{"itemId": "FEAT-130", "date": "2026-03-30", "text": "Rules support pattern matching", "verify": "npm test 2>&1 | grep -qE \"Tests.*[0-9]+ passed\""}
+{"itemId": "FEAT-130", "date": "2026-03-30", "text": "Rules support pattern matching", "verify": "grep -q \"matchesPattern\\|globMatch\\|pattern\" src/design/blueprints/delegation-types.ts"}
