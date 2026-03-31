@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774920244",
   "startedAt": "2026-03-30T18:24:04-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-130",
     "title": "Delegated action rules — blueprint-level pre-approved action categories with pattern matching",
@@ -39,6 +39,10 @@
       "src/design/configure/",
       "configs/blueprints/"
     ],
-    "startedAt": "2026-03-30T18:24:04-07:00"
-  }
+    "startedAt": "2026-03-30T18:24:04-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-30T18:34:05-07:00"
+  },
+  "completedAt": "2026-03-30T18:34:05-07:00",
+  "attempts": 1
 }

@@ -359,11 +359,12 @@
         "configs/blueprints/"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "Confirmed: Blueprint interface has no delegation_rules field. generate.ts does not emit delegated-rules.json. Implementation path: (1) Design delegated-action-rules schema — per-tool rule entries with: action name, pattern (glob or regex), auto_approve bool, escalation_contact optional. Add DelegationRules interface to src/design/blueprints/types.ts. (2) Add optional delegation_rules field to Blueprint interface. (3) Add rule generation to generate.ts: compile blueprint.delegation_rules into workspace/delegated-rules.json during init. (4) Add email-manager defaults: auto-approve read/triage/label, escalate send/delete/forward-external. (5) Tests: email-manager blueprint generates delegated-rules.json with expected entries; pattern matching test (glob-based action names). Sprint-ready: all scope files exist, no external dependencies, no ipset or Docker required."
+      "groomingNotes": "Confirmed: Blueprint interface has no delegation_rules field. generate.ts does not emit delegated-rules.json. Implementation path: (1) Design delegated-action-rules schema — per-tool rule entries with: action name, pattern (glob or regex), auto_approve bool, escalation_contact optional. Add DelegationRules interface to src/design/blueprints/types.ts. (2) Add optional delegation_rules field to Blueprint interface. (3) Add rule generation to generate.ts: compile blueprint.delegation_rules into workspace/delegated-rules.json during init. (4) Add email-manager defaults: auto-approve read/triage/label, escalate send/delete/forward-external. (5) Tests: email-manager blueprint generates delegated-rules.json with expected entries; pattern matching test (glob-based action names). Sprint-ready: all scope files exist, no external dependencies, no ipset or Docker required.",
+      "completedAt": "2026-03-30T18:34:05-07:00"
     },
     {
       "id": "FEAT-131",
