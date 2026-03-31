@@ -151,12 +151,12 @@ describe("fleet registry", () => {
 // ── Discovery Tests ─────────────────────────────────────────────────────────
 
 describe("fleet discovery", () => {
-  it("discovers configured agents", () => {
+  it("discovers configured agents", async () => {
     const deployDir = tmpDeployDir();
     const agentDir = tmpAgentDir({ configured: true });
 
     registerAgent(deployDir, "my-agent", agentDir);
-    const result = discoverFleet(deployDir);
+    const result = await discoverFleet(deployDir);
 
     expect(result.agents).toHaveLength(1);
     expect(result.agents[0].exists).toBe(true);
@@ -166,12 +166,12 @@ describe("fleet discovery", () => {
     expect(result.activeCount).toBe(1);
   });
 
-  it("marks unconfigured agents", () => {
+  it("marks unconfigured agents", async () => {
     const deployDir = tmpDeployDir();
     const agentDir = tmpAgentDir({ configured: false });
 
     registerAgent(deployDir, "unconfigured", agentDir);
-    const result = discoverFleet(deployDir);
+    const result = await discoverFleet(deployDir);
 
     expect(result.agents[0].exists).toBe(true);
     expect(result.agents[0].configured).toBe(false);
@@ -179,20 +179,20 @@ describe("fleet discovery", () => {
     expect(result.activeCount).toBe(0);
   });
 
-  it("marks missing agents", () => {
+  it("marks missing agents", async () => {
     const deployDir = tmpDeployDir();
 
     registerAgent(deployDir, "ghost", "/tmp/nonexistent-clawhq-agent");
-    const result = discoverFleet(deployDir);
+    const result = await discoverFleet(deployDir);
 
     expect(result.agents[0].exists).toBe(false);
     expect(result.agents[0].configured).toBe(false);
     expect(result.activeCount).toBe(0);
   });
 
-  it("returns empty result for empty registry", () => {
+  it("returns empty result for empty registry", async () => {
     const deployDir = tmpDeployDir();
-    const result = discoverFleet(deployDir);
+    const result = await discoverFleet(deployDir);
     expect(result.agents).toHaveLength(0);
     expect(result.activeCount).toBe(0);
     expect(result.totalCount).toBe(0);
@@ -202,47 +202,48 @@ describe("fleet discovery", () => {
 // ── Health Aggregation Tests ────────────────────────────────────────────────
 
 describe("fleet health", () => {
-  it("reports all healthy when all agents are running", () => {
+  it("reports unhealthy when Docker is unavailable (no false positives from file existence)", async () => {
     const deployDir = tmpDeployDir();
     const agentDir = tmpAgentDir();
 
-    registerAgent(deployDir, "healthy-agent", agentDir);
-    const health = getFleetHealth(deployDir);
+    registerAgent(deployDir, "agent", agentDir);
+    const health = await getFleetHealth(deployDir);
 
-    expect(health.healthyCount).toBe(1);
-    expect(health.unhealthyCount).toBe(0);
-    expect(health.unavailableCount).toBe(0);
-    expect(health.allHealthy).toBe(true);
+    // Docker is not available in test — configured agent should be unhealthy, not falsely healthy
+    expect(health.unhealthyCount).toBe(1);
+    expect(health.healthyCount).toBe(0);
+    expect(health.allHealthy).toBe(false);
   });
 
-  it("reports unavailable for missing agents", () => {
+  it("reports unavailable for missing agents", async () => {
     const deployDir = tmpDeployDir();
 
     registerAgent(deployDir, "ghost", "/tmp/nonexistent-clawhq-agent");
-    const health = getFleetHealth(deployDir);
+    const health = await getFleetHealth(deployDir);
 
     expect(health.healthyCount).toBe(0);
     expect(health.unavailableCount).toBe(1);
     expect(health.allHealthy).toBe(false);
   });
 
-  it("reports not all healthy with mixed agents", () => {
+  it("reports not all healthy with mixed agents", async () => {
     const deployDir = tmpDeployDir();
     const agentDir1 = tmpAgentDir({ configured: true });
     const agentDir2 = tmpAgentDir({ configured: false });
 
     registerAgent(deployDir, "good", agentDir1);
     registerAgent(deployDir, "bad", agentDir2);
-    const health = getFleetHealth(deployDir);
+    const health = await getFleetHealth(deployDir);
 
-    expect(health.healthyCount).toBe(1);
+    // Docker unavailable in test: configured agent is unhealthy, unconfigured is unavailable
+    expect(health.unhealthyCount).toBe(1);
     expect(health.unavailableCount).toBe(1);
     expect(health.allHealthy).toBe(false);
   });
 
-  it("reports not all healthy with empty fleet", () => {
+  it("reports not all healthy with empty fleet", async () => {
     const deployDir = tmpDeployDir();
-    const health = getFleetHealth(deployDir);
+    const health = await getFleetHealth(deployDir);
     expect(health.allHealthy).toBe(false);
   });
 });

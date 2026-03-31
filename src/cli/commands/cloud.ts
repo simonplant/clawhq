@@ -232,7 +232,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Output as JSON")
     .action(async (opts: { deployDir: string; json?: boolean }) => {
-      const health = getFleetHealth(opts.deployDir);
+      const health = await getFleetHealth(opts.deployDir);
 
       if (opts.json) {
         console.log(formatFleetHealthJson(health));

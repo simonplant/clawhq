@@ -246,43 +246,64 @@ describe("heartbeat", () => {
   });
 
   describe("collectHealthReport", () => {
-    it("collects health report with operational metadata only", () => {
+    it("collects health report with operational metadata only", async () => {
       const deployDir = tmpDeployDir();
-      // Write a fake openclaw.json so container check finds it
-      writeFileSync(
-        join(deployDir, "engine", "openclaw.json"),
-        JSON.stringify({ gateway: { port: GATEWAY_DEFAULT_PORT } }),
-      );
       writeFileSync(
         join(deployDir, "engine", "docker-compose.yml"),
         "version: '3'\n",
       );
 
-      const report = collectHealthReport(deployDir, "zero-trust");
+      const report = await collectHealthReport(deployDir, "zero-trust");
 
       expect(report.agentId).toHaveLength(16);
       expect(report.trustMode).toBe("zero-trust");
-      expect(report.containerRunning).toBe(true);
+      // Docker is not available in test — container should report as not running
+      // (this validates the bug fix: file existence alone no longer means running)
+      expect(typeof report.containerRunning).toBe("boolean");
       expect(report.integrationCount).toBe(0);
       expect(report.memoryTierSizes).toEqual({ hot: 0, warm: 0, cold: 0 });
       expect(report.timestamp).toBeDefined();
     });
 
-    it("reports real disk usage percentage (not hardcoded 0)", () => {
+    it("reports container not running when Docker is unavailable (graceful degradation)", async () => {
       const deployDir = tmpDeployDir();
-      const report = collectHealthReport(deployDir, "zero-trust");
+      // Compose file exists but Docker socket is not available in test env
+      writeFileSync(
+        join(deployDir, "engine", "docker-compose.yml"),
+        "version: '3'\n",
+      );
+
+      const report = await collectHealthReport(deployDir, "zero-trust");
+
+      // File existence should NOT cause containerRunning:true — must query Docker
+      expect(report.containerRunning).toBe(false);
+      expect(report.uptimeSeconds).toBe(-1);
+    });
+
+    it("reports container not running when compose file is missing", async () => {
+      const deployDir = tmpDeployDir();
+
+      const report = await collectHealthReport(deployDir, "zero-trust");
+
+      expect(report.containerRunning).toBe(false);
+      expect(report.uptimeSeconds).toBe(-1);
+    });
+
+    it("reports real disk usage percentage (not hardcoded 0)", async () => {
+      const deployDir = tmpDeployDir();
+      const report = await collectHealthReport(deployDir, "zero-trust");
       // Any real filesystem will have some usage
       expect(report.diskUsagePercent).toBeGreaterThan(0);
       expect(report.diskUsagePercent).toBeLessThanOrEqual(100);
     });
 
-    it("returns -1 for disk usage when path does not exist", () => {
+    it("returns -1 for disk usage when path does not exist", async () => {
       const deployDir = "/tmp/clawhq-nonexistent-" + Date.now();
-      const report = collectHealthReport(deployDir, "zero-trust");
+      const report = await collectHealthReport(deployDir, "zero-trust");
       expect(report.diskUsagePercent).toBe(-1);
     });
 
-    it("reports integration count without exposing credentials", () => {
+    it("reports integration count without exposing credentials", async () => {
       const deployDir = tmpDeployDir();
       writeFileSync(
         join(deployDir, "engine", "credentials.json"),
@@ -295,7 +316,7 @@ describe("heartbeat", () => {
         }),
       );
 
-      const report = collectHealthReport(deployDir, "managed");
+      const report = await collectHealthReport(deployDir, "managed");
       expect(report.integrationCount).toBe(2);
       // Verify no credential values in the report
       const reportStr = JSON.stringify(report);

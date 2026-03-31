@@ -1,34 +1,31 @@
 {
-  "sprintId": "sprint-1774995524",
-  "startedAt": "2026-03-31T15:18:44-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774999076",
+  "startedAt": "2026-03-31T16:17:56-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-133",
-    "title": "ClawWall coverage parity — audit sanitizer against Clawdius production firewall",
-    "intent": "ClawHQ sanitizer must match or exceed battle-tested production firewall. Gaps mean real injection vectors.",
-    "description": "Clawdius recon (2026-03-29): sanitize.py 1,329 lines, OWASP LLM01 Tier 1+2. ClawHQ has src/secure/sanitizer/ — audit delta.",
-    "sourceBacklog": "backlog.json",
+    "id": "BUG-120",
+    "title": "Heartbeat container check uses file existence as proxy — never queries Docker, uptime always 0",
+    "intent": "Cloud heartbeat must report whether the agent container is actually running and for how long. File existence does not mean the container is up.",
+    "description": "src/cloud/heartbeat/reporter.ts lines 132-146: checkContainerRunning() checks if compose file and config file exist on disk, returns running:true if both present. It never queries Docker. uptimeSeconds always returns 0 (hardcoded). Comment says 'Container state would normally be checked via Docker API; for now we check if the engine directory looks active'. This means: (1) a stopped container with files on disk is reported as running, (2) uptime is always 0 so operators can't tell how long an agent has been up, (3) a container restart is invisible to monitoring.",
+    "sourceBacklog": "bugs.json",
     "steps": [
-      "Catalog Clawdius sanitize.py detection patterns",
-      "Catalog ClawHQ sanitizer coverage",
-      "Identify gaps",
-      "Implement missing patterns",
-      "Add test cases"
+      "Read src/operate/doctor/checks.ts to find the real Docker container health check (it exists there)",
+      "Reuse or extract the Docker check logic — docker inspect or docker compose ps to get container state and start time",
+      "Calculate uptimeSeconds from container start time",
+      "Replace file-existence check with real Docker query",
+      "Fall back to file-existence check if Docker socket is unreachable (graceful degradation)",
+      "Add tests: container running returns real state, container stopped returns running:false, Docker unavailable falls back gracefully",
+      "Run npm test to confirm no regression"
     ],
     "acceptanceCriteria": [
-      "All detection categories covered",
-      "OWASP LLM01 Tier 1+2 tested",
-      "Obfuscation detection covered",
-      "No regression"
+      "checkContainerRunning() queries Docker for actual container state",
+      "uptimeSeconds reflects real container uptime, not hardcoded 0",
+      "A stopped container is reported as running:false even if config files exist on disk",
+      "If Docker socket is unreachable, function degrades gracefully (returns running:false with error, does not crash heartbeat)"
     ],
     "scope": [
-      "src/secure/sanitizer/",
-      "src/design/tools/sanitize.ts"
+      "src/cloud/heartbeat/reporter.ts"
     ],
-    "startedAt": "2026-03-31T15:18:44-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-31T15:52:55-07:00"
-  },
-  "completedAt": "2026-03-31T15:52:55-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-31T16:17:56-07:00"
+  }
 }

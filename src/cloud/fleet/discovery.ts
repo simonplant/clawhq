@@ -125,7 +125,7 @@ function isConfigured(agentDeployDir: string): boolean {
 }
 
 /** Discover a single agent — check existence, config, and collect health. */
-function discoverAgent(agent: FleetAgent): DiscoveredAgent {
+async function discoverAgent(agent: FleetAgent): Promise<DiscoveredAgent> {
   const exists = existsSync(agent.deployDir);
   if (!exists) {
     return { name: agent.name, deployDir: agent.deployDir, exists: false, configured: false };
@@ -138,7 +138,7 @@ function discoverAgent(agent: FleetAgent): DiscoveredAgent {
 
   // Collect health — uses the agent's own trust mode
   const trustState = readTrustModeState(agent.deployDir);
-  const health = collectHealthReport(agent.deployDir, trustState.mode);
+  const health = await collectHealthReport(agent.deployDir, trustState.mode);
 
   return {
     name: agent.name,
@@ -155,9 +155,9 @@ function discoverAgent(agent: FleetAgent): DiscoveredAgent {
  * Checks each registered directory for existence, valid config, and
  * collects health metadata. Never reads content.
  */
-export function discoverFleet(deployDir: string): FleetDiscoveryResult {
+export async function discoverFleet(deployDir: string): Promise<FleetDiscoveryResult> {
   const registry = readFleetRegistry(deployDir);
-  const agents = registry.agents.map(discoverAgent);
+  const agents = await Promise.all(registry.agents.map(discoverAgent));
 
   const activeCount = agents.filter((a) => a.exists && a.configured).length;
 

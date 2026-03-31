@@ -9,16 +9,17 @@
  * credential values, identity files.
  */
 
+import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { promisify } from "node:util";
 
 import { CLOUD_HEARTBEAT_RPC_TIMEOUT_MS, DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 import {
   DEPLOY_CLOUD_SUBDIR,
   DEPLOY_ENGINE_COMPOSE_FILE,
   DEPLOY_ENGINE_CREDENTIALS_JSON,
-  DEPLOY_ENGINE_OPENCLAW_JSON,
   DEPLOY_ENGINE_SUBDIR,
   DEPLOY_WORKSPACE_MEMORY_DIR,
   DEPLOY_WORKSPACE_SUBDIR,
@@ -28,7 +29,9 @@ import type { HeartbeatResult, HeartbeatState, HealthReport } from "../types.js"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
+const execFileAsync = promisify(execFile);
 const HEARTBEAT_FILE = "heartbeat.json";
+const CONTAINER_CHECK_TIMEOUT_MS = 10_000;
 
 // ── Path helpers ─────────────────────────────────────────────────────────────
 
@@ -132,23 +135,81 @@ function countIntegrations(deployDir: string): number {
 }
 
 /**
- * Check if the container is running by looking for the compose file
- * and checking docker state via the filesystem.
+ * Check if the container is actually running by querying Docker.
+ * Falls back gracefully if Docker socket is unreachable.
  */
-function checkContainerRunning(deployDir: string): { running: boolean; uptimeSeconds: number } {
-  // Check if compose file exists as a basic proxy
+async function checkContainerRunning(
+  deployDir: string,
+): Promise<{ running: boolean; uptimeSeconds: number; error?: string }> {
   const composePath = join(deployDir, DEPLOY_ENGINE_SUBDIR, DEPLOY_ENGINE_COMPOSE_FILE);
   if (!existsSync(composePath)) {
     return { running: false, uptimeSeconds: -1 };
   }
-  // Container state would normally be checked via Docker API;
-  // for now we check if the engine directory looks active
-  const configPath = join(deployDir, DEPLOY_ENGINE_SUBDIR, DEPLOY_ENGINE_OPENCLAW_JSON);
-  if (!existsSync(configPath)) {
-    return { running: false, uptimeSeconds: -1 };
+
+  try {
+    // Query actual container state via docker compose
+    const { stdout } = await execFileAsync(
+      "docker",
+      ["compose", "-f", composePath, "ps", "--format", "json"],
+      { timeout: CONTAINER_CHECK_TIMEOUT_MS },
+    );
+
+    if (!stdout.trim()) {
+      return { running: false, uptimeSeconds: -1 };
+    }
+
+    // docker compose ps --format json outputs one JSON object per line
+    const lines = stdout.trim().split("\n");
+    const svc = JSON.parse(lines[0]) as { State?: string };
+
+    if (svc.State !== "running") {
+      return { running: false, uptimeSeconds: -1 };
+    }
+
+    // Container is running — get start time for uptime calculation
+    const uptimeSeconds = await getContainerUptimeSeconds(composePath);
+    return { running: true, uptimeSeconds };
+  } catch (err) {
+    // Docker socket unreachable or docker not installed — degrade gracefully
+    return {
+      running: false,
+      uptimeSeconds: -1,
+      error: `Docker unreachable: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
-  // Report as running if config exists (actual docker check is in operate module)
-  return { running: true, uptimeSeconds: 0 };
+}
+
+/**
+ * Get container uptime in seconds by inspecting container start time.
+ * Returns 0 if start time cannot be determined.
+ */
+async function getContainerUptimeSeconds(composePath: string): Promise<number> {
+  try {
+    const { stdout: idOut } = await execFileAsync(
+      "docker",
+      ["compose", "-f", composePath, "ps", "-q"],
+      { timeout: CONTAINER_CHECK_TIMEOUT_MS },
+    );
+
+    const containerId = idOut.trim().split("\n")[0];
+    if (!containerId) return 0;
+
+    const { stdout: inspectOut } = await execFileAsync(
+      "docker",
+      ["inspect", "--format", "{{.State.StartedAt}}", containerId],
+      { timeout: CONTAINER_CHECK_TIMEOUT_MS },
+    );
+
+    const startedAt = inspectOut.trim();
+    if (!startedAt) return 0;
+
+    const startMs = new Date(startedAt).getTime();
+    if (Number.isNaN(startMs)) return 0;
+
+    return Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+  } catch {
+    return 0;
+  }
 }
 
 /**
@@ -171,11 +232,11 @@ function getDiskUsagePercent(deployDir: string): number {
 /**
  * Collect a health report. Never includes content — only operational metadata.
  */
-export function collectHealthReport(
+export async function collectHealthReport(
   deployDir: string,
   trustMode: TrustMode,
-): HealthReport {
-  const container = checkContainerRunning(deployDir);
+): Promise<HealthReport> {
+  const container = await checkContainerRunning(deployDir);
   const memoryDir = join(deployDir, DEPLOY_WORKSPACE_SUBDIR, DEPLOY_WORKSPACE_MEMORY_DIR);
 
   return {
@@ -208,7 +269,7 @@ export async function sendHeartbeat(
   cloudEndpoint?: string,
 ): Promise<HeartbeatResult> {
   const now = new Date().toISOString();
-  const report = collectHealthReport(deployDir, trustMode);
+  const report = await collectHealthReport(deployDir, trustMode);
 
   if (!cloudEndpoint) {
     // No endpoint configured — collect report but don't send

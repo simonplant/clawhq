@@ -13,8 +13,8 @@ import type { FleetHealthStatus } from "./types.js";
  *
  * Returns a single view with per-agent health and fleet-wide counts.
  */
-export function getFleetHealth(deployDir: string): FleetHealthStatus {
-  const discovery = discoverFleet(deployDir);
+export async function getFleetHealth(deployDir: string): Promise<FleetHealthStatus> {
+  const discovery = await discoverFleet(deployDir);
 
   let healthyCount = 0;
   let unhealthyCount = 0;
