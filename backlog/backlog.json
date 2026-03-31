@@ -1,11 +1,11 @@
 {
-  "description": "ClawHQ backlog \u2014 aligned with evolved strategy (2026-03-28). See docs/STRATEGY.md for strategic context.",
+  "description": "ClawHQ backlog — aligned with evolved strategy (2026-03-28). See docs/STRATEGY.md for strategic context.",
   "items": [
     {
       "id": "FEAT-122",
-      "title": "Sentinel monitoring service \u2014 upstream intelligence that a cron job can't replicate",
-      "intent": "ClawHQ must have a day-one revenue hypothesis. Sentinel is a paid monitoring service that provides upstream intelligence \u2014 pre-computing config breakage against incoming OpenClaw commits, tracking CVE impact per blueprint, and alerting on skill dependency changes. This must do something a local cron job cannot.",
-      "description": "The evolved strategy requires testing revenue from day one, not deferring it. Sentinel is the hypothesis: ~$19/month monitoring that enhances sovereignty rather than compromising it. CRITICAL DESIGN CONSTRAINT: this must NOT be 'clawhq doctor --watch' as a service \u2014 that's replicable with a cron job and the sovereignty audience will call it out immediately. The value is upstream intelligence: (1) monitor OpenClaw GitHub commits and pre-compute whether your specific config will break before you update, (2) track new CVEs and map them to your installed skills/tools, (3) detect when upstream dependencies of your skills change, (4) aggregate anonymized health signals across the fleet to identify emerging issues before they hit you. Phase 1 (MVP): OpenClaw commit monitoring + config breakage prediction. Phase 2: CVE mapping + skill dependency tracking.",
+      "title": "Sentinel monitoring service — upstream intelligence that a cron job can't replicate",
+      "intent": "ClawHQ must have a day-one revenue hypothesis. Sentinel is a paid monitoring service that provides upstream intelligence — pre-computing config breakage against incoming OpenClaw commits, tracking CVE impact per blueprint, and alerting on skill dependency changes. This must do something a local cron job cannot.",
+      "description": "The evolved strategy requires testing revenue from day one, not deferring it. Sentinel is the hypothesis: ~$19/month monitoring that enhances sovereignty rather than compromising it. CRITICAL DESIGN CONSTRAINT: this must NOT be 'clawhq doctor --watch' as a service — that's replicable with a cron job and the sovereignty audience will call it out immediately. The value is upstream intelligence: (1) monitor OpenClaw GitHub commits and pre-compute whether your specific config will break before you update, (2) track new CVEs and map them to your installed skills/tools, (3) detect when upstream dependencies of your skills change, (4) aggregate anonymized health signals across the fleet to identify emerging issues before they hit you. Phase 1 (MVP): OpenClaw commit monitoring + config breakage prediction. Phase 2: CVE mapping + skill dependency tracking.",
       "priority": "should",
       "category": "revenue",
       "steps": [
@@ -33,14 +33,14 @@
       "status": "done",
       "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: Phase 1 only. GitHub API polling (commits to openclaw main), config diff engine (compare commit changes against user blueprint compiled config), webhook alert delivery. Minimal Express endpoint for subscription management. No pricing page in Phase 1 \u2014 free tier validates demand. clawhq cloud sentinel connect stores webhook URL.",
+      "groomingNotes": "Design resolved: Phase 1 only. GitHub API polling (commits to openclaw main), config diff engine (compare commit changes against user blueprint compiled config), webhook alert delivery. Minimal Express endpoint for subscription management. No pricing page in Phase 1 — free tier validates demand. clawhq cloud sentinel connect stores webhook URL.",
       "passes": true,
       "completedAt": "2026-03-30T14:12:15-07:00"
     },
     {
       "id": "FEAT-112",
-      "title": "Construct meta-skill \u2014 autonomous self-improvement loop for agent capability growth",
-      "intent": "Agents must grow their capabilities over time without manual intervention. The construct skill is the mechanism: assess gaps \u2192 propose new skills \u2192 build \u2192 deploy \u2192 validate. This is THE differentiator for the 'agent grows' pillar.",
+      "title": "Construct meta-skill — autonomous self-improvement loop for agent capability growth",
+      "intent": "Agents must grow their capabilities over time without manual intervention. The construct skill is the mechanism: assess gaps → propose new skills → build → deploy → validate. This is THE differentiator for the 'agent grows' pillar.",
       "description": "Clawdius has a 'construct' skill that runs daily at 2am PT. Over 3 months it has autonomously built 7 skills. ClawHQ's skill system supports install/remove/update but has no autonomous growth mechanism.",
       "priority": "should",
       "category": "core",
@@ -49,13 +49,13 @@
         "Add construct to configs/skills/ as a built-in skill",
         "Implement state persistence (construct tracks what it has assessed, proposed, built)",
         "Wire construct into blueprint cron_config as an optional daily job",
-        "Add skill vetting integration \u2014 construct-built skills must pass the same vetting as manually installed skills",
+        "Add skill vetting integration — construct-built skills must pass the same vetting as manually installed skills",
         "Add construct to 'replace-my-pa', 'founders-ops', and 'research-copilot' blueprints by default",
         "Add tests for state machine transitions and skill output validation"
       ],
       "acceptanceCriteria": [
         "Construct skill is available as a built-in skill in configs/skills/",
-        "Construct follows Assess\u2192Propose\u2192Build\u2192Deploy\u2192Validate cycle",
+        "Construct follows Assess→Propose→Build→Deploy→Validate cycle",
         "Construct-built skills pass the same vetting pipeline as manually installed skills",
         "State is persisted across runs (no redundant assessments)",
         "Blueprints can opt-in to construct via skill_bundle configuration",
@@ -75,7 +75,7 @@
     },
     {
       "id": "FEAT-120",
-      "title": "Operational automation scripts \u2014 auto-update, security monitoring, workspace backup generation",
+      "title": "Operational automation scripts — auto-update, security monitoring, workspace backup generation",
       "intent": "A deployed agent must maintain itself. Auto-updates, security advisory monitoring, and workspace backups should be generated by ClawHQ, not hand-written by the operator.",
       "description": "Clawdius has 24 operational scripts. ClawHQ has doctor and backup commands but does not generate the operational automation layer.",
       "priority": "should",
@@ -110,7 +110,7 @@
     },
     {
       "id": "FEAT-116",
-      "title": "Domain-based egress firewall with ipset \u2014 upgrade from IP-based iptables to DNS-resolved allowlists",
+      "title": "Domain-based egress firewall with ipset — upgrade from IP-based iptables to DNS-resolved allowlists",
       "intent": "Agent egress must be restricted to explicitly allowed domains, not IP addresses. IP-based rules miss CDN rotations, multi-homed services, and IPv6.",
       "description": "ClawHQ's firewall module uses IP-based iptables rules. Clawdius uses domain-based egress: a domain allowlist resolved via DNS into an ipset, refreshed every 5 minutes.",
       "priority": "should",
@@ -146,7 +146,7 @@
     },
     {
       "id": "FEAT-022",
-      "title": "Integration tests for credential probes \u2014 test against real API endpoints with test keys",
+      "title": "Integration tests for credential probes — test against real API endpoints with test keys",
       "intent": "Credential health probes are tested with mocked fetch. If an API changes its auth error response, our probe will misinterpret it. Real probes against real APIs must be tested.",
       "description": "Live probe tests that run when test API keys are available. Ollama probe can always run locally.",
       "priority": "could",
@@ -170,15 +170,15 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Lower priority \u2014 probe API calls are simple HTTP and unlikely to break. Quick win for Ollama probe.",
+      "groomingNotes": "Lower priority — probe API calls are simple HTTP and unlikely to break. Quick win for Ollama probe.",
       "lastFailAt": "2026-03-24T23:20:05-07:00",
       "failCount": 1
     },
     {
       "id": "FEAT-117",
-      "title": "Stoic coach personality blueprint \u2014 purpose-built agent for philosophical mentorship",
-      "intent": "The stoic coach blueprint proves ClawHQ can forge agents with deep personality \u2014 not just task automation, but genuine character. This is the blueprint that makes people say 'this is different from ChatGPT'.",
-      "description": "Extract Clawdius's stoic identity patterns into a 'Stoic Coach' blueprint. Part of the '10 curated blueprints' strategy \u2014 this is blueprint #8.",
+      "title": "Stoic coach personality blueprint — purpose-built agent for philosophical mentorship",
+      "intent": "The stoic coach blueprint proves ClawHQ can forge agents with deep personality — not just task automation, but genuine character. This is the blueprint that makes people say 'this is different from ChatGPT'.",
+      "description": "Extract Clawdius's stoic identity patterns into a 'Stoic Coach' blueprint. Part of the '10 curated blueprints' strategy — this is blueprint #8.",
       "priority": "could",
       "category": "blueprints",
       "steps": [
@@ -195,7 +195,7 @@
         "Personality dimensions are distinct from other blueprints",
         "Blueprint includes at least one unique tool and one unique skill",
         "clawhq init --guided with stoic-coach produces a deployable agent config",
-        "The forged agent has a distinctive voice \u2014 tested by reading generated SOUL.md"
+        "The forged agent has a distinctive voice — tested by reading generated SOUL.md"
       ],
       "scope": [
         "configs/blueprints/",
@@ -209,7 +209,7 @@
     },
     {
       "id": "FEAT-114",
-      "title": "JMAP email backend \u2014 FastMail-compatible email tool as alternative to himalaya/IMAP",
+      "title": "JMAP email backend — FastMail-compatible email tool as alternative to himalaya/IMAP",
       "intent": "Users on FastMail (or any JMAP provider) must have a native email tool that uses JMAP instead of IMAP.",
       "description": "Clawdius has a battle-tested email-fastmail.py (stdlib Python, no deps) implementing JMAP. ClawHQ's email tool generator only produces himalaya-based IMAP scripts.",
       "priority": "could",
@@ -235,11 +235,11 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: JMAP backend is a separate generated script (email-jmap.py). email.ts tool generator takes backend param (himalaya|jmap). Account switching via --account flag routes to correct backend. No coexistence issue \u2014 one backend per account."
+      "groomingNotes": "Design resolved: JMAP backend is a separate generated script (email-jmap.py). email.ts tool generator takes backend param (himalaya|jmap). Account switching via --account flag routes to correct backend. No coexistence issue — one backend per account."
     },
     {
       "id": "FEAT-119",
-      "title": "News aggregator tool \u2014 multi-source scan with deduplication and interest-graph filtering",
+      "title": "News aggregator tool — multi-source scan with deduplication and interest-graph filtering",
       "intent": "Agents that monitor information sources need a unified news aggregator. Foundation for any monitoring or research blueprint.",
       "description": "Clawdius has a 'news' tool that scans X + Substack + Tavily by interest topic, deduplicates, and manages API budget.",
       "priority": "could",
@@ -264,11 +264,11 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: news tool wraps tavily + x tools. Dedup via URL hash set in news-state.json. Budget via max_calls_per_scan config. No new external deps needed \u2014 uses existing tool generators as backends."
+      "groomingNotes": "Design resolved: news tool wraps tavily + x tools. Dedup via URL hash set in news-state.json. Budget via max_calls_per_scan config. No new external deps needed — uses existing tool generators as backends."
     },
     {
       "id": "FEAT-128",
-      "title": "Approval gates in identity generation \u2014 three-tier execute/propose/approve delegation model",
+      "title": "Approval gates in identity generation — three-tier execute/propose/approve delegation model",
       "intent": "An agent with autonomy settings but no concrete action-level delegation rules will either over-ask or over-act. Generated AGENTS.md must include explicit approval gates with per-action examples.",
       "description": "Clawdius recon (2026-03-29): AGENTS.md has three-tier approval model with concrete per-action examples. ClawHQ generateAgents() only outputs tools/skills inventory.",
       "priority": "should",
@@ -294,12 +294,12 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "Sprint-ready after codebase analysis. generateAgents() in src/design/identity/agents.ts is 78 lines \u2014 confirmed gap: emits only name/role/tools/skills/autonomy-list. Missing: three-tier delegation (execute/propose/approve), per-action examples, heartbeat behavior section, communication rules. Blueprint autonomy_model must be extended with delegation_defaults[]. Implementation: (1) extend Blueprint type with delegation_defaults field, (2) add generateDelegationGates() function, (3) emit 3-section Approval Gates block in generateAgents(), (4) add test file. Scope is contained: agents.ts + blueprint types + tests. Autonomy level mapping: low=approve-most, medium=balanced, high=execute-most.",
+      "groomingNotes": "Sprint-ready after codebase analysis. generateAgents() in src/design/identity/agents.ts is 78 lines — confirmed gap: emits only name/role/tools/skills/autonomy-list. Missing: three-tier delegation (execute/propose/approve), per-action examples, heartbeat behavior section, communication rules. Blueprint autonomy_model must be extended with delegation_defaults[]. Implementation: (1) extend Blueprint type with delegation_defaults field, (2) add generateDelegationGates() function, (3) emit 3-section Approval Gates block in generateAgents(), (4) add test file. Scope is contained: agents.ts + blueprint types + tests. Autonomy level mapping: low=approve-most, medium=balanced, high=execute-most.",
       "completedAt": "2026-03-29T23:14:55-07:00"
     },
     {
       "id": "FEAT-129",
-      "title": "Credential proxy architecture \u2014 host-side token proxy so secrets never enter the container",
+      "title": "Credential proxy architecture — host-side token proxy so secrets never enter the container",
       "intent": "Storing API tokens inside the agent container is a single-exploit-away from credential theft. A host-side credential proxy means the container never holds tokens.",
       "description": "Clawdius recon (2026-03-29): cred-proxy on Docker bridge holds all API tokens on host, injects auth headers. ClawHQ has src/secure/credentials/ but no proxy architecture.",
       "priority": "should",
@@ -334,7 +334,7 @@
     },
     {
       "id": "FEAT-130",
-      "title": "Delegated action rules \u2014 blueprint-level pre-approved action categories with pattern matching",
+      "title": "Delegated action rules — blueprint-level pre-approved action categories with pattern matching",
       "intent": "Users must define what their agent can do without asking. Email delegation is the first use case but the pattern generalizes.",
       "description": "Clawdius recon (2026-03-29): delegated-send-rules.json defines pre-approved categories. ClawHQ has no action-level delegation config.",
       "priority": "should",
@@ -363,12 +363,12 @@
       "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "Confirmed: Blueprint interface has no delegation_rules field. generate.ts does not emit delegated-rules.json. Implementation path: (1) Design delegated-action-rules schema \u2014 per-tool rule entries with: action name, pattern (glob or regex), auto_approve bool, escalation_contact optional. Add DelegationRules interface to src/design/blueprints/types.ts. (2) Add optional delegation_rules field to Blueprint interface. (3) Add rule generation to generate.ts: compile blueprint.delegation_rules into workspace/delegated-rules.json during init. (4) Add email-manager defaults: auto-approve read/triage/label, escalate send/delete/forward-external. (5) Tests: email-manager blueprint generates delegated-rules.json with expected entries; pattern matching test (glob-based action names). Sprint-ready: all scope files exist, no external dependencies, no ipset or Docker required.",
+      "groomingNotes": "Confirmed: Blueprint interface has no delegation_rules field. generate.ts does not emit delegated-rules.json. Implementation path: (1) Design delegated-action-rules schema — per-tool rule entries with: action name, pattern (glob or regex), auto_approve bool, escalation_contact optional. Add DelegationRules interface to src/design/blueprints/types.ts. (2) Add optional delegation_rules field to Blueprint interface. (3) Add rule generation to generate.ts: compile blueprint.delegation_rules into workspace/delegated-rules.json during init. (4) Add email-manager defaults: auto-approve read/triage/label, escalate send/delete/forward-external. (5) Tests: email-manager blueprint generates delegated-rules.json with expected entries; pattern matching test (glob-based action names). Sprint-ready: all scope files exist, no external dependencies, no ipset or Docker required.",
       "completedAt": "2026-03-30T18:34:05-07:00"
     },
     {
       "id": "FEAT-131",
-      "title": "Interest graph config \u2014 topic-driven content filtering with multi-source routing",
+      "title": "Interest graph config — topic-driven content filtering with multi-source routing",
       "intent": "Agents scanning feeds need a structured interest graph to filter by relevance, not volume.",
       "description": "Clawdius recon (2026-03-29): interests.json defines topics with priority, frequency, per-topic source routing.",
       "priority": "could",
@@ -399,7 +399,7 @@
     },
     {
       "id": "FEAT-132",
-      "title": "Per-blueprint domain egress allowlists \u2014 blueprint-aware firewall defaults",
+      "title": "Per-blueprint domain egress allowlists — blueprint-aware firewall defaults",
       "intent": "Each blueprint knows what services it needs. Firewall allowlist should be generated from the blueprint.",
       "description": "Clawdius recon (2026-03-29): domain allowlist per integration. FEAT-116 covers ipset but not per-blueprint defaults.",
       "priority": "should",
@@ -424,17 +424,18 @@
       "dependsOn": [
         "FEAT-116"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "NOT BLOCKED BY FEAT-116. This item uses existing domain-based iptables rules already in firewall.ts \u2014 no ipset needed. FEAT-116 dependency is for the future periodic DNS-refresh upgrade only; this item is unblocked. dependsOn field will be cleared when CLI supports it. Implementation: in generate.ts, iterate blueprint.security_posture.egress_domains and emit allowlist.yaml (default port 443, MTA domains get 587/465). Add doctor check: each blueprint domain must exist in allowlist.yaml."
+      "groomingNotes": "NOT BLOCKED BY FEAT-116. This item uses existing domain-based iptables rules already in firewall.ts — no ipset needed. FEAT-116 dependency is for the future periodic DNS-refresh upgrade only; this item is unblocked. dependsOn field will be cleared when CLI supports it. Implementation: in generate.ts, iterate blueprint.security_posture.egress_domains and emit allowlist.yaml (default port 443, MTA domains get 587/465). Add doctor check: each blueprint domain must exist in allowlist.yaml.",
+      "completedAt": "2026-03-31T14:55:08-07:00"
     },
     {
       "id": "FEAT-133",
-      "title": "ClawWall coverage parity \u2014 audit sanitizer against Clawdius production firewall",
+      "title": "ClawWall coverage parity — audit sanitizer against Clawdius production firewall",
       "intent": "ClawHQ sanitizer must match or exceed battle-tested production firewall. Gaps mean real injection vectors.",
-      "description": "Clawdius recon (2026-03-29): sanitize.py 1,329 lines, OWASP LLM01 Tier 1+2. ClawHQ has src/secure/sanitizer/ \u2014 audit delta.",
+      "description": "Clawdius recon (2026-03-29): sanitize.py 1,329 lines, OWASP LLM01 Tier 1+2. ClawHQ has src/secure/sanitizer/ — audit delta.",
       "priority": "should",
       "category": "Security",
       "steps": [
@@ -463,9 +464,9 @@
     },
     {
       "id": "FEAT-134",
-      "title": "Cron model routing validation \u2014 verify FEAT-113 against Clawdius production model map",
+      "title": "Cron model routing validation — verify FEAT-113 against Clawdius production model map",
       "intent": "FEAT-113 defaults must be validated against real production patterns.",
-      "description": "Clawdius recon (2026-03-29): 11 jobs \u2014 haiku for fast, sonnet for medium, opus for complex.",
+      "description": "Clawdius recon (2026-03-29): 11 jobs — haiku for fast, sonnet for medium, opus for complex.",
       "priority": "could",
       "category": "testing",
       "steps": [
@@ -493,7 +494,7 @@
     },
     {
       "id": "FEAT-135",
-      "title": "Silence-is-competence identity pattern \u2014 operational philosophy in SOUL.md generation",
+      "title": "Silence-is-competence identity pattern — operational philosophy in SOUL.md generation",
       "intent": "An agent that narrates every action wastes attention. SOUL.md must encode execution philosophy.",
       "description": "Clawdius recon (2026-03-29): SOUL.md encodes silence-is-competence, quality gates, guardian model. ClawHQ generateSoul() lacks this layer.",
       "priority": "could",
@@ -519,7 +520,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "Sprint-ready after codebase analysis. generateSoul() in src/design/identity/soul.ts is 160 lines \u2014 confirmed gap: generates dimension prose (analyticalDepth, warmth, directness, verbosity, proactivity, creativity, structure) but no execution_philosophy section. The proactivity dimension (lines 26-41) is already computed \u2014 execution philosophy should map proactivity<=2 to 'ask before act', proactivity>=4 to 'silence is competence'. Guardian model section should be added for autonomy_model.default=high blueprints. Implementation: add generateExecutionPhilosophy(blueprint) helper, add guardian model conditional, wire into main generateSoul() output, add tests. Scope: soul.ts only. Token budget must still pass \u2014 add token budget test assertion."
+      "groomingNotes": "Sprint-ready after codebase analysis. generateSoul() in src/design/identity/soul.ts is 160 lines — confirmed gap: generates dimension prose (analyticalDepth, warmth, directness, verbosity, proactivity, creativity, structure) but no execution_philosophy section. The proactivity dimension (lines 26-41) is already computed — execution philosophy should map proactivity<=2 to 'ask before act', proactivity>=4 to 'silence is competence'. Guardian model section should be added for autonomy_model.default=high blueprints. Implementation: add generateExecutionPhilosophy(blueprint) helper, add guardian model conditional, wire into main generateSoul() output, add tests. Scope: soul.ts only. Token budget must still pass — add token budget test assertion."
     }
   ]
 }
