@@ -669,6 +669,108 @@ function checkRunbooks(raw: RawBlueprint): BlueprintValidationResult[] {
   return results;
 }
 
+// ── delegation_rules (optional) ─────────────────────────────────────────────
+
+const DELEGATION_RULE_TIERS = ["execute", "propose", "approve"] as const;
+
+function checkDelegationRules(raw: RawBlueprint): BlueprintValidationResult[] {
+  const section = raw.delegation_rules;
+
+  // Optional field — skip if absent
+  if (section === undefined) return [];
+
+  const results: BlueprintValidationResult[] = [];
+
+  if (!isObj(section)) {
+    results.push(fail("delegation_rules", "delegation_rules must be an object"));
+    return results;
+  }
+
+  results.push(pass("delegation_rules", "delegation_rules is an object"));
+
+  // categories is required
+  const categories = section.categories;
+  if (!Array.isArray(categories)) {
+    results.push(fail("delegation_rules.categories", "delegation_rules.categories must be an array"));
+    return results;
+  }
+
+  results.push(pass("delegation_rules.categories", "delegation_rules.categories is an array"));
+
+  // Per-category validation
+  for (let i = 0; i < categories.length; i++) {
+    const cat = categories[i] as unknown;
+    const prefix = `delegation_rules.categories[${i}]`;
+
+    if (!isObj(cat)) {
+      results.push(fail(prefix, `${prefix} must be an object`));
+      continue;
+    }
+
+    results.push(checkRequiredString(cat, "id", prefix));
+    results.push(checkRequiredString(cat, "name", prefix));
+    results.push(checkRequiredString(cat, "tool", prefix));
+
+    // rules is required and must be an array
+    const rules = cat.rules;
+    if (!Array.isArray(rules)) {
+      results.push(fail(`${prefix}.rules`, `${prefix}.rules must be an array`));
+      continue;
+    }
+
+    results.push(pass(`${prefix}.rules`, `${prefix}.rules is an array`));
+
+    // Per-rule validation
+    for (let j = 0; j < rules.length; j++) {
+      const rule = rules[j] as unknown;
+      const rulePrefix = `${prefix}.rules[${j}]`;
+
+      if (!isObj(rule)) {
+        results.push(fail(rulePrefix, `${rulePrefix} must be an object`));
+        continue;
+      }
+
+      results.push(checkRequiredString(rule, "action", rulePrefix));
+      results.push(checkEnum(rule, "tier", rulePrefix, [...DELEGATION_RULE_TIERS]));
+      results.push(checkRequiredString(rule, "description", rulePrefix));
+
+      // Optional match conditions
+      const match = rule.match;
+      if (match !== undefined) {
+        if (!Array.isArray(match)) {
+          results.push(fail(`${rulePrefix}.match`, `${rulePrefix}.match must be an array`));
+        } else {
+          results.push(pass(`${rulePrefix}.match`, `${rulePrefix}.match is an array`));
+          for (let k = 0; k < match.length; k++) {
+            const cond = match[k] as unknown;
+            const condPrefix = `${rulePrefix}.match[${k}]`;
+            if (!isObj(cond)) {
+              results.push(fail(condPrefix, `${condPrefix} must be an object`));
+              continue;
+            }
+            results.push(checkRequiredString(cond, "field", condPrefix));
+            results.push(checkRequiredString(cond, "pattern", condPrefix));
+          }
+        }
+      }
+    }
+  }
+
+  // Category IDs must be unique
+  const ids = categories.filter(isObj).map((c) => c.id).filter(isStr);
+  const idSet = new Set(ids);
+  if (idSet.size === ids.length) {
+    results.push(pass("delegation_rules.unique_category_ids", "All delegation category IDs are unique"));
+  } else {
+    const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+    results.push(
+      fail("delegation_rules.unique_category_ids", `Duplicate delegation category IDs: ${[...new Set(dupes)].join(", ")}`),
+    );
+  }
+
+  return results;
+}
+
 // ── Security Baseline Enforcement ───────────────────────────────────────────
 
 function checkSecurityBaseline(raw: RawBlueprint): BlueprintValidationResult[] {
@@ -915,6 +1017,7 @@ export function validateBlueprint(
     ...checkToolbelt(raw),
     ...checkCustomizationQuestions(raw),
     ...checkRunbooks(raw),
+    ...checkDelegationRules(raw),
     ...checkSecurityBaseline(raw),
     ...checkCrossSection(raw),
   ];

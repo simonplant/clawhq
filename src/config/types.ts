@@ -444,6 +444,16 @@ export interface DeploymentBundle {
   readonly identityFiles: readonly IdentityFileInfo[];
   readonly toolFiles: readonly ToolFileInfo[];
   readonly clawhqConfig: ClawHQConfig;
+  /** Compiled delegated action rules for workspace/delegated-rules.json (optional). */
+  readonly delegatedRulesFile?: DelegatedRulesFileInfo;
+}
+
+/** Metadata about the compiled delegated-rules.json workspace file. */
+export interface DelegatedRulesFileInfo {
+  readonly path: string;
+  readonly sizeBytes: number;
+  readonly categoryCount: number;
+  readonly ruleCount: number;
 }
 
 // ── Validation Types ────────────────────────────────────────────────────────

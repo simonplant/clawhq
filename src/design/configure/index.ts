@@ -25,7 +25,7 @@ export {
 export type { Prompter } from "./wizard.js";
 
 // Generator
-export { generateBundle, generateIdentityFiles, generateToolFiles } from "./generate.js";
+export { generateBundle, generateDelegatedRulesContent, generateIdentityFiles, generateToolFiles } from "./generate.js";
 export type { IdentityFileContent } from "../identity/index.js";
 export type { ToolFileContent } from "../tools/index.js";
 

@@ -1,37 +1,44 @@
 {
-  "sprintId": "sprint-1774913503",
-  "startedAt": "2026-03-30T16:31:43-07:00",
-  "status": "completed",
+  "sprintId": "sprint-1774920244",
+  "startedAt": "2026-03-30T18:24:04-07:00",
+  "status": "in_progress",
   "item": {
-    "id": "FEAT-129",
-    "title": "Credential proxy architecture — host-side token proxy so secrets never enter the container",
-    "intent": "Storing API tokens inside the agent container is a single-exploit-away from credential theft. A host-side credential proxy means the container never holds tokens.",
-    "description": "Clawdius recon (2026-03-29): cred-proxy on Docker bridge holds all API tokens on host, injects auth headers. ClawHQ has src/secure/credentials/ but no proxy architecture.",
+    "id": "FEAT-130",
+    "title": "Delegated action rules — blueprint-level pre-approved action categories with pattern matching",
+    "intent": "Users must define what their agent can do without asking. Email delegation is the first use case but the pattern generalizes.",
+    "description": "Clawdius recon (2026-03-29): delegated-send-rules.json defines pre-approved categories. ClawHQ has no action-level delegation config.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Design credential proxy service: Docker sidecar, route definitions, header injection",
-      "Add routes.json schema",
-      "Generate cred-proxy docker-compose service during clawhq init",
-      "Update tool generators to call cred-proxy URL",
-      "Add audit logging for proxied requests",
-      "Add doctor check: cred-proxy reachable, routes healthy"
+      "Create src/design/blueprints/delegation-types.ts with DelegationRule, DelegationCategory, DelegatedActionRules interfaces",
+      "Create src/design/blueprints/delegation-defaults.ts with email delegation defaults (appointment-confirm, vendor-reply, unsubscribe)",
+      "Add delegation_rules optional section to BlueprintSchema in src/design/blueprints/types.ts",
+      "Update generate.ts to compile delegation rules into workspace/delegated-rules.json",
+      "Add delegation defaults to configs/blueprints/email-manager.yaml",
+      "Add delegation tests"
     ],
     "acceptanceCriteria": [
-      "Credential proxy runs as host-side sidecar",
-      "API tokens never in agent container",
-      "Generated tools call proxy URL",
-      "Proxied requests audit-logged",
-      "clawhq doctor checks proxy health"
+      {
+        "text": "Blueprints can define delegated action rules per tool",
+        "verify": "grep -q 'delegation_rules' src/design/blueprints/types.ts"
+      },
+      {
+        "text": "Generated workspace includes delegated-rules.json",
+        "verify": "grep -q 'delegated-rules' src/design/configure/generate.ts"
+      },
+      {
+        "text": "Email-manager ships with email delegation defaults",
+        "verify": "grep -q 'delegation_rules' configs/blueprints/email-manager.yaml"
+      },
+      {
+        "text": "Rules support pattern matching",
+        "verify": "npm test 2>&1 | tail -5 | grep -q 'passed'"
+      }
     ],
     "scope": [
-      "src/secure/credentials/",
-      "src/build/docker/",
-      "src/design/tools/"
+      "src/design/blueprints/",
+      "src/design/configure/",
+      "configs/blueprints/"
     ],
-    "startedAt": "2026-03-30T16:31:43-07:00",
-    "status": "passed",
-    "completedAt": "2026-03-30T16:47:23-07:00"
-  },
-  "completedAt": "2026-03-30T16:47:23-07:00",
-  "attempts": 1
+    "startedAt": "2026-03-30T18:24:04-07:00"
+  }
 }

@@ -302,6 +302,47 @@ describe("generateBundle", () => {
   });
 });
 
+describe("delegated action rules", () => {
+  it("generates delegatedRulesFile for blueprints with delegation_rules", () => {
+    const loaded = loadBlueprint("email-manager");
+    const answers = makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+    });
+    const bundle = generateBundle(answers);
+
+    expect(bundle.delegatedRulesFile).toBeDefined();
+    expect(bundle.delegatedRulesFile!.path).toBe("workspace/delegated-rules.json");
+    expect(bundle.delegatedRulesFile!.categoryCount).toBeGreaterThan(0);
+    expect(bundle.delegatedRulesFile!.ruleCount).toBeGreaterThan(0);
+    expect(bundle.delegatedRulesFile!.sizeBytes).toBeGreaterThan(0);
+  });
+
+  it("omits delegatedRulesFile when blueprint has no delegation_rules", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, delegation_rules: undefined };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+
+    expect(bundle.delegatedRulesFile).toBeUndefined();
+  });
+
+  it("counts rules correctly across categories", () => {
+    const loaded = loadBlueprint("email-manager");
+    const answers = makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+    });
+    const bundle = generateBundle(answers);
+    const info = bundle.delegatedRulesFile!;
+
+    // email-manager has 3 categories (appointment-confirm, vendor-reply, unsubscribe)
+    expect(info.categoryCount).toBe(3);
+    // Total rules across all categories
+    expect(info.ruleCount).toBeGreaterThanOrEqual(8);
+  });
+});
+
 describe("multi-instance support", () => {
   it("uses default network name when instanceName is omitted", () => {
     const bundle = generateBundle(makeAnswers());

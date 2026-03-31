@@ -20,12 +20,14 @@ import type {
   ClawHQConfig,
   ComposeConfig,
   CronJobDefinition,
+  DelegatedRulesFileInfo,
   DeploymentBundle,
   IdentityFileInfo,
   OpenClawConfig,
   ToolFileInfo,
 } from "../../config/types.js";
 import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
+import type { CompiledDelegationRules } from "../blueprints/delegation-types.js";
 import type { UserContext } from "./types.js";
 import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../identity/index.js";
 import type { IdentityFileContent } from "../identity/index.js";
@@ -73,6 +75,7 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions, answers.userContext),
     toolFiles: buildToolFiles(answers.blueprint),
     clawhqConfig: buildClawHQConfig(answers),
+    delegatedRulesFile: buildDelegatedRulesFile(answers.blueprint),
   };
 }
 
@@ -430,6 +433,54 @@ function buildToolFiles(blueprint: Blueprint): ToolFileInfo[] {
     sizeBytes: Buffer.byteLength(f.content, "utf-8"),
     mode: f.mode,
   }));
+}
+
+// ── Delegated Rules ─────────────────────────────────────────────────────────
+
+/**
+ * Compile blueprint delegation rules into a delegated-rules.json workspace file.
+ *
+ * Returns metadata about the compiled file, or undefined if the blueprint
+ * has no delegation_rules section.
+ */
+function buildDelegatedRulesFile(blueprint: Blueprint): DelegatedRulesFileInfo | undefined {
+  if (!blueprint.delegation_rules?.categories?.length) return undefined;
+
+  const compiled: CompiledDelegationRules = {
+    version: "1.0",
+    generatedAt: new Date().toISOString(),
+    categories: blueprint.delegation_rules.categories,
+  };
+
+  const content = JSON.stringify(compiled, null, 2);
+  const ruleCount = blueprint.delegation_rules.categories.reduce(
+    (sum, cat) => sum + cat.rules.length,
+    0,
+  );
+
+  return {
+    path: "workspace/delegated-rules.json",
+    sizeBytes: Buffer.byteLength(content, "utf-8"),
+    categoryCount: blueprint.delegation_rules.categories.length,
+    ruleCount,
+  };
+}
+
+/**
+ * Generate the compiled delegated-rules.json content from a blueprint.
+ *
+ * Public API for the writer to get the actual file content.
+ */
+export function generateDelegatedRulesContent(blueprint: Blueprint): string | undefined {
+  if (!blueprint.delegation_rules?.categories?.length) return undefined;
+
+  const compiled: CompiledDelegationRules = {
+    version: "1.0",
+    generatedAt: new Date().toISOString(),
+    categories: blueprint.delegation_rules.categories,
+  };
+
+  return JSON.stringify(compiled, null, 2);
 }
 
 // ── ClawHQ Config ────────────────────────────────────────────────────────────

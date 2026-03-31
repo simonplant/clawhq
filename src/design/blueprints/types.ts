@@ -6,6 +6,8 @@
  * Both built-in and community blueprints must conform to this schema.
  */
 
+import type { DelegatedActionRules } from "./delegation-types.js";
+
 // ── Blueprint Sections ──────────────────────────────────────────────────────
 
 /** What the blueprint replaces and how it positions itself. */
@@ -236,6 +238,9 @@ export interface Blueprint {
 
   /** Optional domain-specific runbooks — additional identity files for the agent. */
   readonly runbooks?: readonly RunbookEntry[];
+
+  /** Optional delegated action rules — pre-approved action categories with pattern matching. */
+  readonly delegation_rules?: DelegatedActionRules;
 }
 
 // ── Validation Types ────────────────────────────────────────────────────────

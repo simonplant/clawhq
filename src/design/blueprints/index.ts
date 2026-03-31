@@ -30,6 +30,19 @@ export type {
   UseCaseMapping,
 } from "./types.js";
 
+// Delegation types
+export type {
+  CompiledDelegationRules,
+  DelegatedActionRules,
+  DelegationCategory,
+  DelegationMatch,
+  DelegationRuleEntry,
+} from "./delegation-types.js";
+export { matchGlob } from "./delegation-types.js";
+
+// Delegation defaults
+export { APPOINTMENT_CONFIRM, EMAIL_DELEGATION_DEFAULTS, UNSUBSCRIBE, VENDOR_REPLY } from "./delegation-defaults.js";
+
 // Loader
 export {
   BlueprintLoadError,
