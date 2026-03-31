@@ -1,0 +1,42 @@
+name: project-standup
+version: "1.0.0"
+description: "Daily async standup — yesterday done, today planned, blockers. Approval-gated."
+
+schedule:
+  cron: "30 9 * * 1-5"  # 09:30 weekdays
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  preferred: "llama3:70b"
+  cloud_escalation: false
+
+sources:
+  - tasks  # completed yesterday + today's queue
+  - memory  # daily logs for context
+
+format:
+  style: plain  # options: plain, slack, notion
+  sections:
+    - yesterday  # what got done
+    - today      # what's planned
+    - blockers   # BLOCKED tasks or overdue >2d
+
+output:
+  queue_for_approval: true
+  destination: null  # user configures: slack_channel, notion_page, etc.
+
+dependencies:
+  tools: [tasks, file]
+  skills: [task-digest]
+
+approval:
+  required: true
+  category: publish_content
+  auto_approve: false
+
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false

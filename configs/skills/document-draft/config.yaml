@@ -1,0 +1,40 @@
+name: document-draft
+version: "1.0.0"
+description: "On-demand structured document drafting — proposals, specs, memos, summaries"
+
+schedule:
+  triggered: on_demand_only
+
+model:
+  provider: cloud  # quality matters for documents
+  preferred: "claude-sonnet"
+  local_fallback: "llama3:70b"
+  cloud_escalation: true
+
+document_types:
+  - proposal
+  - sow
+  - spec
+  - memo
+  - executive_summary
+  - complex_email
+  - meeting_notes
+
+dependencies:
+  tools: [file, email]
+  skills: []
+
+approval:
+  required: true
+  category: publish_content
+  auto_approve: false
+
+output:
+  directory: "content/drafts/"
+  format: markdown
+
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false
