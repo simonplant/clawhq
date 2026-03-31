@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774995524",
   "startedAt": "2026-03-31T15:18:44-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-133",
     "title": "ClawWall coverage parity — audit sanitizer against Clawdius production firewall",
@@ -25,6 +25,10 @@
       "src/secure/sanitizer/",
       "src/design/tools/sanitize.ts"
     ],
-    "startedAt": "2026-03-31T15:18:44-07:00"
-  }
+    "startedAt": "2026-03-31T15:18:44-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-31T15:52:55-07:00"
+  },
+  "completedAt": "2026-03-31T15:52:55-07:00",
+  "attempts": 1
 }

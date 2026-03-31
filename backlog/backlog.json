@@ -456,11 +456,12 @@
         "src/design/tools/sanitize.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "Gap analysis complete: 11 gaps found. P0: egress secret scanning (last line of data sovereignty defense), indirect elicitation (credential leak via social engineering). P1: semantic override, soft instruction override, leetspeak normalization, extended unicode. P2: split-payload detection, context poisoning, self-integrity. P3: Q/A few-shot, LLM classifier (future). Sprint plan: P0 gaps first, then P1."
+      "groomingNotes": "Gap analysis complete: 11 gaps found. P0: egress secret scanning (last line of data sovereignty defense), indirect elicitation (credential leak via social engineering). P1: semantic override, soft instruction override, leetspeak normalization, extended unicode. P2: split-payload detection, context poisoning, self-integrity. P3: Q/A few-shot, LLM classifier (future). Sprint plan: P0 gaps first, then P1.",
+      "completedAt": "2026-03-31T15:52:55-07:00"
     },
     {
       "id": "FEAT-134",
