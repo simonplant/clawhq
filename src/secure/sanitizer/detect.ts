@@ -7,14 +7,20 @@ import {
   CONFUSABLE_MAP,
   DECODE_KEYWORDS,
   DELIMITER_PATTERNS,
+  ELICITATION_PATTERNS,
   ENCODING_PATTERNS,
+  EXTENDED_CONFUSABLE_MAP,
   EXFIL_INSTRUCTIONS,
   EXFIL_PATTERNS,
   FEWSHOT_PATTERNS,
   INJECTION_PATTERNS,
   INVISIBLE_RANGES,
+  LEETSPEAK_MAP,
   MORSE_PATTERN,
   MULTILINGUAL_INJECTION,
+  QA_FEWSHOT_PATTERNS,
+  SECRET_PATTERNS,
+  SEMANTIC_OVERRIDE_PATTERNS,
 } from "./patterns.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -31,7 +37,11 @@ export type ThreatCategory =
   | "morse_encoding"
   | "fewshot_spoof"
   | "multilingual_injection"
-  | "exfil_instruction";
+  | "exfil_instruction"
+  | "secret_leak"
+  | "indirect_elicitation"
+  | "semantic_override"
+  | "leetspeak_obfuscation";
 
 export type ThreatSeverity = "high" | "medium" | "low";
 
@@ -85,7 +95,7 @@ export function normalizeConfusables(text: string): NormalizeResult {
   let hadConfusables = false;
   const chars: string[] = [];
   for (const ch of text) {
-    const replacement = CONFUSABLE_MAP.get(ch);
+    const replacement = CONFUSABLE_MAP.get(ch) ?? EXTENDED_CONFUSABLE_MAP.get(ch);
     if (replacement !== undefined) {
       chars.push(replacement);
       hadConfusables = true;
@@ -94,6 +104,22 @@ export function normalizeConfusables(text: string): NormalizeResult {
     }
   }
   return { text: chars.join(""), hadConfusables };
+}
+
+/** Normalize leetspeak substitutions (0→o, 1→i, 3→e, etc.). */
+export function normalizeLeetspeak(text: string): NormalizeResult {
+  let hadLeetspeak = false;
+  const chars: string[] = [];
+  for (const ch of text) {
+    const replacement = LEETSPEAK_MAP.get(ch);
+    if (replacement !== undefined) {
+      chars.push(replacement);
+      hadLeetspeak = true;
+    } else {
+      chars.push(ch);
+    }
+  }
+  return { text: chars.join(""), hadConfusables: hadLeetspeak };
 }
 
 // ── Detection Engine ────────────────────────────────────────────────────────
@@ -254,6 +280,87 @@ export function detectThreats(text: string): Threat[] {
         ),
       );
     }
+  }
+
+  // Tier 1: Secret leak detection
+  for (const { pattern, type } of SECRET_PATTERNS) {
+    for (const m of matchAll(pattern, text)) {
+      threats.push(
+        threat(
+          "secret_leak",
+          1,
+          `Secret detected: ${type}`,
+          [m.index, m.index + m[0].length],
+          "high",
+        ),
+      );
+    }
+  }
+
+  // Tier 2: Indirect elicitation (social engineering for secrets)
+  for (const pat of ELICITATION_PATTERNS) {
+    for (const m of matchAll(pat, text)) {
+      threats.push(
+        threat(
+          "indirect_elicitation",
+          2,
+          `Elicitation attempt: "${m[0].slice(0, 60)}"`,
+          [m.index, m.index + m[0].length],
+          "high",
+        ),
+      );
+    }
+  }
+
+  // Tier 2: Semantic override (instruction hijacking via meaning)
+  for (const pat of SEMANTIC_OVERRIDE_PATTERNS) {
+    for (const m of matchAll(pat, text)) {
+      threats.push(
+        threat(
+          "semantic_override",
+          2,
+          `Semantic override: "${m[0].slice(0, 60)}"`,
+          [m.index, m.index + m[0].length],
+          "high",
+        ),
+      );
+    }
+  }
+
+  // Tier 2: Leetspeak obfuscation — normalize then re-check injection patterns
+  const leet = normalizeLeetspeak(text);
+  if (leet.hadConfusables) {
+    // Also apply confusable normalization on top of leetspeak
+    const leetNorm = normalizeConfusables(leet.text);
+    const leetText = leetNorm.text;
+    for (const pat of INJECTION_PATTERNS) {
+      for (const m of matchAll(pat, leetText)) {
+        threats.push(
+          threat(
+            "leetspeak_obfuscation",
+            2,
+            `Post-leetspeak: "${m[0].slice(0, 60)}"`,
+            [m.index, m.index + m[0].length],
+            "high",
+          ),
+        );
+      }
+    }
+  }
+
+  // Tier 2: Q/A few-shot conversation spoofing
+  const questionTurns = matchAll(QA_FEWSHOT_PATTERNS.question, text).length;
+  const answerTurns = matchAll(QA_FEWSHOT_PATTERNS.answer, text).length;
+  if (questionTurns >= 2 && answerTurns >= 1) {
+    threats.push(
+      threat(
+        "fewshot_spoof",
+        2,
+        `Q/A spoofing (${questionTurns}q + ${answerTurns}a turns)`,
+        [0, 0],
+        "medium",
+      ),
+    );
   }
 
   return threats;

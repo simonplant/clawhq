@@ -10,7 +10,7 @@ export { sanitizeContent, sanitizeContentSync, sanitizeJson } from "./sanitizer.
 export type { SanitizeContentOptions, SanitizeResult } from "./sanitizer.js";
 
 // Detection engine
-export { detectThreats, normalizeConfusables } from "./detect.js";
+export { detectThreats, normalizeConfusables, normalizeLeetspeak } from "./detect.js";
 export type { Threat, ThreatCategory, ThreatSeverity, NormalizeResult } from "./detect.js";
 
 // Sanitization primitives

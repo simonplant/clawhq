@@ -7,6 +7,7 @@ import { normalizeConfusables, type Threat, type ThreatSeverity } from "./detect
 import {
   DECODE_KEYWORDS,
   DELIMITER_PATTERNS,
+  ELICITATION_PATTERNS,
   ENCODING_PATTERNS,
   EXFIL_INSTRUCTIONS,
   EXFIL_PATTERNS,
@@ -14,6 +15,8 @@ import {
   INJECTION_PATTERNS,
   INVISIBLE_RANGES,
   MULTILINGUAL_INJECTION,
+  SECRET_PATTERNS,
+  SEMANTIC_OVERRIDE_PATTERNS,
 } from "./patterns.js";
 
 // ── Scoring ─────────────────────────────────────────────────────────────────
@@ -53,6 +56,12 @@ const ENCODING_GLOBAL = ENCODING_PATTERNS.map((e) => ({
   pattern: toGlobal(e.pattern),
   type: e.type,
 }));
+const SECRET_GLOBAL = SECRET_PATTERNS.map((s) => ({
+  pattern: toGlobal(s.pattern),
+  type: s.type,
+}));
+const ELICITATION_GLOBAL = ELICITATION_PATTERNS.map(toGlobal);
+const SEMANTIC_GLOBAL = SEMANTIC_OVERRIDE_PATTERNS.map(toGlobal);
 
 // ── Sanitization ────────────────────────────────────────────────────────────
 
@@ -99,6 +108,21 @@ export function sanitize(text: string, options: SanitizeOptions = {}): string {
   // Replace few-shot conversation spoofing markers
   result = result.replace(FEWSHOT_USER_GLOBAL, "$1[TURN REMOVED]");
   result = result.replace(FEWSHOT_ASST_GLOBAL, "$1[TURN REMOVED]");
+
+  // Redact secrets/credentials
+  for (const { pattern } of SECRET_GLOBAL) {
+    result = result.replace(pattern, "[SECRET REDACTED]");
+  }
+
+  // Replace indirect elicitation attempts
+  for (const pat of ELICITATION_GLOBAL) {
+    result = result.replace(pat, "[FILTERED]");
+  }
+
+  // Replace semantic override attempts
+  for (const pat of SEMANTIC_GLOBAL) {
+    result = result.replace(pat, "[FILTERED]");
+  }
 
   // Strict mode: also strip encoded payloads and decode keywords
   if (options.strict) {

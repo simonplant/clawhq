@@ -171,6 +171,48 @@ const EXFIL_INSTRUCTIONS = [
   /(api|secret|token|key|password|credential|session|cookie)\\s*.{0,10}\\s*(to|at|via)\\s+/gi,
 ];
 
+// ── Secret Leak Patterns ──────────────────────────────────────────────────
+
+const SECRET_PATTERNS = [
+  { pattern: /AKIA[0-9A-Z]{16}/g, type: "aws_access_key" },
+  { pattern: /(?:aws_secret_access_key|AWS_SECRET)\\s*[:=]\\s*[A-Za-z0-9/+=]{40}/g, type: "aws_secret" },
+  { pattern: /ghp_[A-Za-z0-9_]{36,}/g, type: "github_pat" },
+  { pattern: /ghs_[A-Za-z0-9_]{36,}/g, type: "github_server_token" },
+  { pattern: /xox[baprs]-[A-Za-z0-9\\-]{10,}/g, type: "slack_token" },
+  { pattern: /sk-[A-Za-z0-9]{20,}/g, type: "openai_api_key" },
+  { pattern: /-----BEGIN\\s+(?:RSA\\s+|EC\\s+|DSA\\s+|OPENSSH\\s+)?PRIVATE\\s+KEY-----/g, type: "private_key" },
+  { pattern: /eyJ[A-Za-z0-9_-]{10,}\\.eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]+/g, type: "jwt_token" },
+  { pattern: /Bearer\\s+[A-Za-z0-9\\-._~+/]{20,}=*/g, type: "bearer_token" },
+  { pattern: /(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token)\\s*[:=]\\s*['"]?[A-Za-z0-9\\-._~+/]{16,}['"]?/gi, type: "generic_api_key" },
+  { pattern: /(?:password|passwd|pwd)\\s*[:=]\\s*['"]?[^\\s'"]{8,}['"]?/gi, type: "password_assignment" },
+];
+
+// ── Indirect Elicitation Patterns ──────────────────────────────────────────
+
+const ELICITATION_PATTERNS = [
+  /(?:what\\s+is|show|tell|give|reveal|display|print|output|dump|list)\\s+(?:me\\s+)?(?:your|the)\\s+(?:api[_\\s-]?key|password|secret|token|credentials?|\\.env|system\\s+prompt|instructions?|config(?:uration)?)/gi,
+  /(?:show|tell|give|reveal|display)\\s+(?:me\\s+)?(?:all\\s+)?(?:your|the)\\s+(?:secrets?|keys?|tokens?|passwords?|credentials?)/gi,
+  /(?:read|cat|type|head|tail|more|less)\\s+(?:\\/etc\\/(?:shadow|passwd)|\\.env|credentials?\\.json|\\.(?:bash|zsh)_history)/gi,
+  /(?:repeat|recite|echo|reproduce)\\s+(?:your\\s+)?(?:system\\s+(?:prompt|message|instructions?)|initial\\s+(?:prompt|instructions?))/gi,
+  /(?:what|how)\\s+(?:are|were)\\s+you\\s+(?:instructed|programmed|configured|prompted|told)\\s+to/gi,
+  /(?:above|preceding)\\s+(?:text|content|prompt|instructions?)\\s+(?:verbatim|exactly|word.for.word)/gi,
+];
+
+// ── Semantic Override Patterns ─────────────────────────────────────────────
+
+const SEMANTIC_OVERRIDE_PATTERNS = [
+  /from\\s+now\\s+on\\s+(?:you\\s+)?(?:will|must|should|shall|are\\s+going\\s+to|need\\s+to)/gi,
+  /your\\s+(?:new|updated|revised|actual|real|true)\\s+(?:task|objective|goal|mission|purpose|instructions?|role)\\s+(?:is|are)\\b/gi,
+  /(?:for|during)\\s+the\\s+rest\\s+of\\s+this\\s+(?:conversation|session|chat|interaction)/gi,
+  /starting\\s+(?:now|immediately|from\\s+this\\s+point)\\s*,?\\s*(?:you|your)/gi,
+  /(?:the\\s+)?(?:above|previous|prior)\\s+(?:instructions?|rules?|prompt)\\s+(?:(?:is|are)\\s+)?(?:wrong|fake|outdated|invalid|superseded|overridden)/gi,
+  /here\\s+(?:are|is)\\s+your\\s+(?:actual|real|true|correct|updated|new)\\s+(?:instructions?|prompt|rules?|guidelines?)/gi,
+  /(?:I\\s+am|this\\s+is)\\s+(?:the|your|an?)\\s+(?:administrator|developer|creator|owner|operator|maintainer)/gi,
+  /(?:I\\s+have|with)\\s+(?:admin|administrator|root|sudo|elevated)\\s+(?:access|privileges?|permissions?|rights?)/gi,
+  /(?:security|admin|override|authorization)\\s+(?:code|token)\\s*[:=]/gi,
+  /(?:this\\s+is\\s+)?(?:an?\\s+)?(?:authorized|approved|permitted|sanctioned)\\s+(?:request|override|access)/gi,
+];
+
 // ── Severity Weights ───────────────────────────────────────────────────────
 
 const SEVERITY_WEIGHTS = { high: 0.4, medium: 0.2, low: 0.1 };
@@ -284,6 +326,33 @@ function detectThreats(text) {
     }
   }
 
+  // Tier 1: secret leak detection
+  for (const sec of SECRET_PATTERNS) {
+    sec.pattern.lastIndex = 0;
+    let m;
+    while ((m = sec.pattern.exec(text)) !== null) {
+      threats.push({ category: "secret_leak", tier: 1, detail: "Secret: " + sec.type, severity: "high" });
+    }
+  }
+
+  // Tier 2: indirect elicitation
+  for (const pat of ELICITATION_PATTERNS) {
+    pat.lastIndex = 0;
+    let m;
+    while ((m = pat.exec(text)) !== null) {
+      threats.push({ category: "indirect_elicitation", tier: 2, detail: m[0].slice(0, 60), severity: "high" });
+    }
+  }
+
+  // Tier 2: semantic override
+  for (const pat of SEMANTIC_OVERRIDE_PATTERNS) {
+    pat.lastIndex = 0;
+    let m;
+    while ((m = pat.exec(text)) !== null) {
+      threats.push({ category: "semantic_override", tier: 2, detail: m[0].slice(0, 60), severity: "high" });
+    }
+  }
+
   return threats;
 }
 
@@ -344,6 +413,24 @@ function sanitizeText(text, strict) {
   FEWSHOT_ASST.lastIndex = 0;
   result = result.replace(FEWSHOT_USER, "$1[TURN REMOVED]");
   result = result.replace(FEWSHOT_ASST, "$1[TURN REMOVED]");
+
+  // Redact secrets
+  for (const sec of SECRET_PATTERNS) {
+    sec.pattern.lastIndex = 0;
+    result = result.replace(sec.pattern, "[SECRET REDACTED]");
+  }
+
+  // Replace indirect elicitation
+  for (const pat of ELICITATION_PATTERNS) {
+    pat.lastIndex = 0;
+    result = result.replace(pat, "[FILTERED]");
+  }
+
+  // Replace semantic override
+  for (const pat of SEMANTIC_OVERRIDE_PATTERNS) {
+    pat.lastIndex = 0;
+    result = result.replace(pat, "[FILTERED]");
+  }
 
   // Strict mode: strip encoded payloads and decode keywords
   if (strict) {
