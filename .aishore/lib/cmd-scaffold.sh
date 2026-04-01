@@ -9,7 +9,7 @@ cmd_scaffold() {
 
     acquire_lock
     load_config
-    cd "$PROJECT_ROOT"
+    cd "$PROJECT_ROOT" || { log_error "Cannot cd to $PROJECT_ROOT"; return 1; }
 
     _load_module cmd-groom
 

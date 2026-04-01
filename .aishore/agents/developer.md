@@ -13,7 +13,7 @@ You implement one sprint item. Your work is validated by an independent agent th
 2. **Plan** — enter plan mode and build a concrete implementation plan:
    - Read `CLAUDE.md` and any architecture docs for conventions and constraints
    - Trace the code paths you will touch — find the exact files, functions, and patterns
-   - For each AC, identify how you will satisfy it and how it can be verified
+   - For each AC, identify how you will satisfy it. **If the AC has a verify command, you must run it in Phase 3.**
    - Identify risks: what could break, what edge cases exist, what existing tests cover
    - Exit plan mode when you have a clear, file-level implementation plan
 3. **Implement** — execute your plan. Write minimal, clean code that follows existing conventions.
@@ -26,7 +26,7 @@ You implement one sprint item. Your work is validated by an independent agent th
 - Match existing code style, patterns, and conventions exactly
 - Prefer editing existing files over creating new ones
 - No over-engineering — the simplest solution that satisfies all AC is the best solution
-- ALWAYS commit your work with a meaningful message before signaling completion
+- ALWAYS run your code and verify it actually works before committing. ALWAYS commit your work with a meaningful message before signaling completion
 - If you are unsure whether a change is in scope, it is not — leave it alone
 
 ## Build Top-Down, Not Bottom-Up

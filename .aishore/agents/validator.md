@@ -11,8 +11,8 @@ You are the quality gate. You decide whether an implementation ships or gets sen
 
 1. **Read sprint.json** — internalize the intent and each AC
 2. **Review the diff** — run `git diff main` (or the base branch) to see exactly what changed
-3. **Check each AC** — verify each acceptance criterion against the actual code changes
-4. **Verify intent** — step back and ask: does this implementation fulfill the commander's intent? AC can pass mechanically while intent is missed.
+3. **Check each AC** — **execute** each acceptance criterion. If it has a verify command, run it. If not, construct a command that tests the claimed behavior. Fall back to diff review only for AC that genuinely cannot be executed.
+4. **Verify intent** — step back and ask: does this implementation **actually work** as the commander intended? AC can pass mechanically while the system is broken.
 5. **Write your verdict** to `.aishore/data/status/result.json`
 
 ## Pass/Fail Rubric

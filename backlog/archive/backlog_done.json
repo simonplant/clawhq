@@ -2801,5 +2801,34 @@
     "groomedAt": "2026-03-29",
     "groomingNotes": "Gap analysis complete: 11 gaps found. P0: egress secret scanning (last line of data sovereignty defense), indirect elicitation (credential leak via social engineering). P1: semantic override, soft instruction override, leetspeak normalization, extended unicode. P2: split-payload detection, context poisoning, self-integrity. P3: Q/A few-shot, LLM classifier (future). Sprint plan: P0 gaps first, then P1.",
     "completedAt": "2026-03-31T15:52:55-07:00"
+  },
+  {
+    "id": "FEAT-149",
+    "title": "Document all Clawdius-to-ClawHQ hardening patterns for replication tracking",
+    "intent": "Every battle-tested security pattern from Clawdius must be tracked as a ClawHQ feature with clear replication status. The Clawdius reference implementation is the proving ground — ClawHQ must automate what Clawdius proved works.",
+    "description": "Create docs/CLAWDIUS-PATTERNS.md that catalogs every security enhancement from the Clawdius infrastructure repo, maps each to its ClawHQ equivalent (implemented, planned, or N/A), and links to the relevant backlog item. Categories: container hardening, network egress, credential isolation, prompt injection defense, egress scanning, monitoring/alerting, operational tooling. This is the living tracking document for replication completeness.",
+    "priority": "should",
+    "category": "documentation",
+    "steps": [
+      "Catalog all Clawdius security patterns (from 2026-03-31 code review)",
+      "Map each to ClawHQ implementation status: done, planned (with FEAT-ID), or N/A",
+      "For N/A items: document why they don't apply to ClawHQ",
+      "Add to docs/ and reference from CONTRIBUTING.md"
+    ],
+    "acceptanceCriteria": [
+      "CLAWDIUS-PATTERNS.md exists with complete pattern catalog",
+      "Each pattern has: Clawdius reference, ClawHQ status, backlog link if planned",
+      "No pattern is uncategorized or missing status"
+    ],
+    "scope": [
+      "docs/CLAWDIUS-PATTERNS.md"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "passes": true,
+    "readyForSprint": true,
+    "groomedAt": "2026-03-31",
+    "groomingNotes": "Meta-item: this tracks the entire Clawdius→ClawHQ replication effort. Size S. Should be done first to organize the remaining work.",
+    "completedAt": "2026-03-31"
   }
 ]

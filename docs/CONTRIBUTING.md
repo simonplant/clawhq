@@ -381,6 +381,12 @@ All contributions must respect the five architectural decisions documented in `d
 
 ---
 
+## Security Pattern Catalog
+
+See [CLAWDIUS-PATTERNS.md](CLAWDIUS-PATTERNS.md) for the complete catalog of battle-tested security patterns from the Clawdius reference deployment, mapped to their ClawHQ implementation status. This is the living tracking document for security replication completeness.
+
+---
+
 ## Security Requirements
 
 Contributed skills must meet these security requirements:

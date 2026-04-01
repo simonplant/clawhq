@@ -20,7 +20,7 @@ cmd_groom() {
 
     acquire_lock
     load_config
-    cd "$PROJECT_ROOT"
+    cd "$PROJECT_ROOT" || { log_error "Cannot cd to $PROJECT_ROOT"; return 1; }
 
     log_header "Grooming: Bugs, Features & Tech Debt"
 
@@ -85,7 +85,11 @@ protect_items_from_groom() {
                 } else . end
             ] + [$orig | to_entries[] | select(.key as $id | $live_ids | index($id) | not) | .value]) |
             ., "\($del) \($mod)"
-        ' "$live_file")
+        ' "$live_file") || {
+            log_error "Failed to parse $f after groom — restoring snapshot"
+            cp "$snap_file" "$live_file"
+            return 0
+        }
         # Last line is "del mod" counts; everything before is the protected JSON
         local counts
         counts=$(tail -n1 <<< "$output" | tr -d '"')
@@ -139,7 +143,7 @@ enforce_groom_limits() {
             [.items[] | select(.id as $id | $old | index($id) | not)] |
             sort_by($rank[.priority // "could"] // 2) |
             .[] | "\(.id) \(.priority // "could")"
-        ' "$live_file" 2>/dev/null || true)
+        ' "$live_file" 2>/dev/null || true)  # empty is valid — guarded by line 143
         [[ -z "$new_ids_with_prio" ]] && return 0
 
         local removed_ids=() id prio
@@ -201,7 +205,7 @@ run_groom_flow() {
         local successful_entries
         successful_entries=$(tail -20 "$ARCHIVE_DIR/sprints.jsonl" 2>/dev/null \
             | jq -r 'select(.status == "complete")' 2>/dev/null \
-            | jq -s '[ .[] ] | reverse | .[0:5]' 2>/dev/null || true)
+            | jq -s '[ .[] ] | reverse | .[0:5]' 2>/dev/null || true)  # empty is valid — guarded by line 205
         if [[ -n "$successful_entries" && "$successful_entries" != "[]" ]]; then
             # Build a lookup of item specs from archived backlogs
             local archive_lookup_jq='
@@ -212,7 +216,7 @@ run_groom_flow() {
             for done_file in "$ARCHIVE_DIR"/backlog_done.json "$ARCHIVE_DIR"/bugs_done.json; do
                 if [[ -f "$done_file" ]]; then
                     local partial
-                    partial=$(jq "$archive_lookup_jq" "$done_file" 2>/dev/null || true)
+                    partial=$(jq "$archive_lookup_jq" "$done_file" 2>/dev/null || true)  # empty is valid — guarded by line 216
                     [[ -n "$partial" && "$partial" != "{}" ]] && \
                         item_lookup=$(printf '%s\n%s' "$item_lookup" "$partial" | jq -s 'add' 2>/dev/null || echo "$item_lookup")
                 fi

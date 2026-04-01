@@ -102,7 +102,7 @@ TIMEOUT_MINUTES="0"
 SESSION_RETRIES="0"
 SESSION_LIMIT=""
 MAX_TURNS_DEVELOPER="25"
-MAX_TURNS_VALIDATOR="10"
+MAX_TURNS_VALIDATOR="15"
 MAX_TURNS_GROOMER="15"
 
 # Detect timeout command once at startup (macOS uses gtimeout from coreutils)
@@ -156,7 +156,7 @@ _generate_uuid() {
 }
 
 # Default permission sets per agent role
-PERMS_DEVELOPER="Bash,Edit,Write,Read,Glob,Grep,EnterPlanMode,ExitPlanMode"
+PERMS_DEVELOPER="Agent,Bash,Edit,Write,Read,Glob,Grep,EnterPlanMode,ExitPlanMode"
 PERMS_VALIDATOR="Bash,Read,Glob,Grep"
 PERMS_REVIEWER="Read,Glob,Grep"
 PERMS_REVIEWER_DOCS="Read,Glob,Grep,Edit,Write"
@@ -361,17 +361,17 @@ _safety_commit() {
         local summary
         summary=$(jq -r '.summary // ""' "$STATUS_DIR/result.json" 2>/dev/null || echo "")
         summary="${summary:0:500}"
-        git add -A
+        git add -A || { log_error "git add failed in safety commit"; return 1; }
         git commit -m "feat($item_id): ${summary:-implement sprint item}
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
+Co-Authored-By: Claude <noreply@anthropic.com>" || { log_error "git commit failed in safety commit"; return 1; }
     fi
 }
 
 # Remove a git worktree and optionally its branch
 _remove_worktree() {
     local wt_dir="$1" branch="${2:-}"
-    cd "$PROJECT_ROOT" 2>/dev/null || true
+    cd "$PROJECT_ROOT" || { log_error "Cannot cd to $PROJECT_ROOT"; return 1; }
     git worktree remove "$wt_dir" --force 2>/dev/null || true
     [[ -d "$wt_dir" ]] && rm -rf "$wt_dir" 2>/dev/null || true
     [[ -n "$branch" ]] && git branch -D "$branch" 2>/dev/null || true
@@ -393,7 +393,7 @@ _load_module() {
         return 1
     fi
     # shellcheck source=/dev/null
-    source "$mod_file"
+    source "$mod_file" || { log_error "Failed to load module $mod from $mod_file"; return 1; }
     _LOADED_MODULES[$mod]=1
 }
 
@@ -1260,7 +1260,11 @@ create_sprint() {
                 scope: ($item.scope // []),
                 startedAt: $startedAt
             }
-        }' > "$tmp_sprint"
+        }' > "$tmp_sprint" || {
+        log_error "Failed to create sprint JSON"
+        rm -f "$tmp_sprint"
+        return 1
+    }
     mv "$tmp_sprint" "$BACKLOG_DIR/sprint.json"
 
     ITEM_ID=$(jq -r '.item.id' "$BACKLOG_DIR/sprint.json")
@@ -1308,9 +1312,9 @@ mark_complete() {
     fi
     diffstat=$(git diff --shortstat "$diff_base" HEAD 2>/dev/null || true)
     if [[ -n "$diffstat" ]]; then
-        files_changed=$(printf '%s\n' "$diffstat" | sed -n 's/.*\([0-9][0-9]*\) file.*/\1/p')
-        lines_added=$(printf '%s\n' "$diffstat" | sed -n 's/.*\([0-9][0-9]*\) insertion.*/\1/p')
-        lines_removed=$(printf '%s\n' "$diffstat" | sed -n 's/.*\([0-9][0-9]*\) deletion.*/\1/p')
+        files_changed=$(printf '%s\n' "$diffstat" | sed -En 's/[^0-9]*([0-9]+) file.*/\1/p')
+        lines_added=$(printf '%s\n' "$diffstat" | sed -En 's/.*[^0-9]([0-9]+) insertion.*/\1/p')
+        lines_removed=$(printf '%s\n' "$diffstat" | sed -En 's/.*[^0-9]([0-9]+) deletion.*/\1/p')
     fi
     files_changed="${files_changed:-0}"
     lines_added="${lines_added:-0}"
@@ -1604,8 +1608,6 @@ build_agent_prompt() {
     local prompt_content
     if [[ "$agent_name" == "groomer" && "$mode" != "populate" ]]; then
         prompt_content="$(sed '/^## Populate Mode/,$d' "$prompt_file" | sed -e :a -e '/^[[:space:]]*$/{ $d; N; ba; }')"
-    elif [[ "$agent_name" == "product-owner" && "$mode" != "populate" ]]; then
-        prompt_content="$(sed '/^## Populate Mode/,$d' "$prompt_file" | sed -e :a -e '/^[[:space:]]*$/{ $d; N; ba; }')"
     elif [[ "$agent_name" == "architect" && "$mode" == "groom" ]]; then
         # Strip Review Mode section, keep Groom Mode section
         prompt_content="$(sed '/^## Review Mode/,/^## Groom Mode/{/^## Groom Mode/!d}' "$prompt_file")"
@@ -1655,9 +1657,9 @@ When your changes affect the project's public interface — CLI commands, flags,
 Do not create new documentation files. Only update existing docs that already cover the area you changed. If no relevant docs exist, skip this.
 
 ## Maturity Protocol (MANDATORY — complete all phases)
-**Phase 1 — Implement:** Write the code. Follow spec, match patterns.${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix failures.}
+**Phase 1 — Implement:** Write the code. Follow spec, match conventions.${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix failures.}
 **Phase 2 — Critique:** STOP coding. Re-read every changed file. Verify intent is fulfilled and each AC is provably met. Hunt bugs, edge cases, dead code, missing error handling. Fix everything found.
-**Phase 3 — Harden:**${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix any failures.} Re-verify all AC. Fix regressions. Only then commit and signal done.
+**Phase 3 — Harden:**${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix any failures.} **Run every AC verify command from the item spec and fix failures.** For AC without verify commands, manually execute the behavior. Fix regressions. Only then commit and signal done.
 Output phase markers: \`═══ PHASE 2: CRITIQUE ═══\` / \`═══ PHASE 3: HARDEN ═══\`"
     elif [[ "$agent_name" == "validator" ]]; then
         validate_hint=""
@@ -1680,25 +1682,20 @@ For every AC that claims observable behavior (\"error messages are clear\", \"co
 
 If the change added or modified CLI flags, commands, or configuration, check that help text and documentation files reflect the change.
 
-Do not just grep the code for error strings and call it verified. Execute the code path."
-    elif [[ "$agent_name" == "groomer" || "$agent_name" == "tech-lead" || "$agent_name" == "product-owner" || ("$agent_name" == "architect" && "$mode" == "groom") ]]; then
+Do not just grep the code for error strings and call it verified. Execute the code path.
+
+**If the item spec contains AC verify commands, run every one of them.** Their pass/fail results are your primary evidence. Diff review is secondary."
+    elif [[ "$agent_name" == "groomer" || ("$agent_name" == "architect" && "$mode" == "groom") ]]; then
         # CLI commands: shared preamble + role-specific examples
         local cli_role_lines
         if [[ "$agent_name" == "groomer" ]]; then
             cli_role_lines=".aishore/aishore backlog add --type feat --title \"...\" --desc \"...\" --priority should
 .aishore/aishore backlog add --type bug --title \"...\" --desc \"...\" --priority should
 .aishore/aishore backlog edit <ID> --ready --priority must --groomed-at --groomed-notes \"...\""
-        elif [[ "$agent_name" == "product-owner" ]]; then
-            cli_role_lines=".aishore/aishore backlog add --type feat --title \"...\" --desc \"...\" --priority should
-.aishore/aishore backlog edit <ID> --priority must --groomed-at --groomed-notes \"...\""
-        elif [[ "$agent_name" == "architect" ]]; then
+        else
             cli_role_lines=".aishore/aishore backlog add --type feat --title \"...\" --intent \"...\" --desc \"...\" --priority must --ready --step \"...\" --step \"...\" --ac \"...\" --ac \"...\"
 .aishore/aishore backlog edit <ID> --ready --groomed-at --groomed-notes \"...\"
 .aishore/aishore backlog edit <ID> --depends-on FEAT-XXX,FEAT-YYY"
-        else
-            cli_role_lines=".aishore/aishore backlog add --type bug --title \"...\" --desc \"...\" --priority should
-.aishore/aishore backlog edit <ID> --ready --groomed-at --groomed-notes \"...\"
-.aishore/aishore backlog edit <ID> --priority must"
         fi
         validate_hint="
 ## CLI Commands
@@ -1718,17 +1715,17 @@ Every item should have an \`intent\` field — a non-negotiable directive statin
 **Intent quality bar:** Intent must NOT be a restatement of the title. It must describe an observable outcome a user or system can verify. Bad: \"Implement error handling.\" Good: \"Every CLI command that fails must print a human-readable error message to stderr and exit non-zero — no stack traces, no silent failures.\"
 
 ## Executable Acceptance Criteria (MANDATORY)
-Every AC you write MUST have an \`--ac-verify\` command wherever the outcome is testable by a shell command. This is what separates an eval from an opinion.
+Every AC you write MUST have an \`--ac-verify\` command wherever the outcome is testable by a shell command. This is what separates an eval from an opinion. Verify commands must **execute the behavior and check the result**, not grep for code existence in source files.
 
 \`\`\`bash
 # Pattern: --ac \"what it does\" --ac-verify \"command that proves it\"
---ac \"CLI prints usage on --help\" --ac-verify \".aishore/aishore help | grep -q Usage\"
+--ac \"CLI prints usage on --help\" --ac-verify \".aishore/aishore help | head -1 | grep -qi usage\"
 --ac \"Invalid input returns exit code 1\" --ac-verify \"! .aishore/aishore backlog show NONEXISTENT\"
---ac \"Output contains expected field\" --ac-verify \".aishore/aishore status | grep -q 'Ready:'\"
---ac \"Config validation catches missing key\" --ac-verify \"echo '{}' > /tmp/bad.yaml && ! .aishore/aishore config check 2>/dev/null\"
+--ac \"New flag is wired end-to-end\" --ac-verify \".aishore/aishore run --dry-run 2>&1 | grep -q flag-output\"
+--ac \"Config rejects invalid input\" --ac-verify \"echo '{}' > /tmp/bad.yaml && ! tool validate /tmp/bad.yaml\"
 \`\`\`
 
-If you genuinely cannot write a verify command for an AC (e.g., \"code is readable\"), use a plain string AC — but this should be rare. Most real acceptance criteria describe observable behavior that a command can check. **If you cannot write a verify command, ask yourself whether the AC is specific enough to be useful.**
+If you genuinely cannot write a verify command for an AC (e.g., \"code is readable\"), use a plain string AC — but this should be rare. Most real acceptance criteria describe observable behavior that a command can check. **If you cannot write a verify command, ask yourself whether the AC is specific enough to be useful.** A verify command that only checks whether a string exists in a source file (e.g., \`grep -q 'functionName' file.sh\`) tests structure, not behavior. **Always test behavior.**
 
 ## Grooming Limits
 - **Maximum items per session:** $GROOM_MAX_ITEMS — stop adding new items after this cap. Focus on the highest-value items first.
@@ -1782,7 +1779,7 @@ run_agent() {
             else
                 agent_perms="${CFG_PERMS_REVIEWER:-$PERMS_REVIEWER}"
             fi ;;
-        groomer|tech-lead|product-owner)
+        groomer)
             # Groom agents need full permissions to update backlog files
             agent_perms="${CFG_PERMS_DEVELOPER:-$PERMS_DEVELOPER}" ;;
         *)
@@ -1796,7 +1793,7 @@ run_agent() {
             max_turns="$MAX_TURNS_DEVELOPER" ;;
         validator)
             max_turns="$MAX_TURNS_VALIDATOR" ;;
-        groomer|tech-lead|product-owner|architect)
+        groomer|architect)
             max_turns="$MAX_TURNS_GROOMER" ;;
         *)
             max_turns="$MAX_TURNS_DEVELOPER" ;;
@@ -2166,7 +2163,7 @@ print_batch_summary() {
 # Uses outer-scope locals: auto_mode, auto_scope, specific_id
 _run_dry_run() {
     load_config
-    cd "$PROJECT_ROOT"
+    cd "$PROJECT_ROOT" || { log_error "Cannot cd to $PROJECT_ROOT"; return 1; }
 
     # Resolve auto_priorities from auto_scope (normally done in setup_sprint_environment)
     local auto_priorities=""
@@ -2256,14 +2253,17 @@ _run_dry_run() {
 refine_item_spec() {
     local item_id="$1"
     local failure_context="$2"
+    local current_spec="${3:-}"
 
     log_info "Refining spec for $item_id based on failure context"
 
     local sprint_file="$BACKLOG_DIR/sprint.json"
-    [[ ! -f "$sprint_file" ]] && { log_error "No sprint.json for refinement"; return 1; }
 
-    local current_spec
-    current_spec=$(jq '.item' "$sprint_file" 2>/dev/null)
+    # Accept spec as arg 3 (preferred), fall back to sprint.json
+    if [[ -z "$current_spec" || "$current_spec" == "null" ]]; then
+        [[ ! -f "$sprint_file" ]] && { log_error "No sprint.json for refinement"; return 1; }
+        current_spec=$(jq '.item' "$sprint_file" 2>/dev/null)
+    fi
     [[ -z "$current_spec" || "$current_spec" == "null" ]] && { log_error "Cannot refine: sprint item spec is empty"; return 1; }
 
     local refinement_prompt
@@ -2332,18 +2332,19 @@ Output ONLY the JSON object, no markdown fences, no explanation."
         return 1
     fi
 
-    # Update sprint.json with refined spec
+    # Rebuild sprint.json with the refined spec
+    # sprint.json may already be reset to idle, so reconstruct from current_spec
     local tmp_sprint
     tmp_sprint="$(ensure_tmpdir)/sprint_refine.json"
-    if jq --argjson refined "$json_output" \
-        '.item.steps = $refined.steps | .item.acceptanceCriteria = $refined.acceptanceCriteria' \
-        "$sprint_file" > "$tmp_sprint" 2>/dev/null; then
+    if jq -n --argjson item "$current_spec" --argjson refined "$json_output" --arg now "$(date -Iseconds 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S')" \
+        '{sprintId: ("refined-" + now), startedAt: ($item.startedAt // now), status: "in_progress", item: ($item | .steps = $refined.steps | .acceptanceCriteria = $refined.acceptanceCriteria)}' \
+        > "$tmp_sprint" 2>/dev/null; then
         mv "$tmp_sprint" "$sprint_file"
         log_success "Spec refined for $item_id"
         return 0
     else
         rm -f "$tmp_sprint"
-        log_error "Failed to update sprint.json with refined spec"
+        log_error "Failed to write refined spec to sprint.json"
         return 1
     fi
 }
@@ -2626,12 +2627,15 @@ ${body}"
 _run_retry_loop() {
     local attempt=0
     sprint_passed=false
+    _retry_failure_reason=""
+    _retry_failure_detail=""
     initial_dev_context="$retry_extra_prompt"
     retry_extra_prompt=""
     retry_failure_history=()
 
     if ! _run_preflight; then
-        _record_sprint_failure "Pre-flight failed" "Baseline validation failed before developer ran"
+        _retry_failure_reason="Pre-flight failed"
+        _retry_failure_detail="Baseline validation failed before developer ran"
         return
     fi
 
@@ -2644,7 +2648,8 @@ _run_retry_loop() {
                 log_info "Will retry with failure context"
                 continue
             fi
-            _record_sprint_failure "Implementation failed" "Implementation failed"
+            _retry_failure_reason="Implementation failed"
+            _retry_failure_detail="Implementation failed"
             break
         fi
 
@@ -2654,7 +2659,8 @@ _run_retry_loop() {
                 log_info "Will retry with failure context"
                 continue
             fi
-            _record_sprint_failure "$_validation_failure" "$(_validation_failure_reason "$_validation_failure")"
+            _retry_failure_reason="$_validation_failure"
+            _retry_failure_detail="$(_validation_failure_reason "$_validation_failure")"
             break
         fi
 
@@ -2735,7 +2741,7 @@ _handle_sprint_success() {
         return 0
     fi
 
-    _safety_commit "$ITEM_ID"
+    _safety_commit "$ITEM_ID" || log_warning "Safety commit failed — continuing with merge"
 
     # Worktree mode: copy result.json back, then remove worktree and restore paths
     # The feature branch (with all commits) is shared via git, so merge works from original dir
@@ -2783,7 +2789,7 @@ _handle_sprint_success() {
             fi
         fi
 
-        git checkout "$base_branch"
+        git checkout "$base_branch" || { log_error "Cannot checkout $base_branch after no-merge push"; return 1; }
     else
         # Shared merge path: squash or no-ff, branching only on the git merge command
         local merge_summary
@@ -2791,7 +2797,18 @@ _handle_sprint_success() {
         merge_summary="${merge_summary:0:500}"
         local merge_msg="merge: $ITEM_ID ${merge_summary:-sprint branch}"
 
-        git checkout "$base_branch"
+        # Stash all uncommitted changes before checkout+merge
+        local _had_stash=false
+        if ! git diff --quiet 2>/dev/null; then
+            git stash push -q && _had_stash=true
+        fi
+
+        git checkout "$base_branch" || {
+            log_error "Cannot checkout $base_branch for merge"
+            [[ "$_had_stash" == "true" ]] && git stash pop -q 2>/dev/null || true
+            AISHORE_FEATURE_BRANCH=""
+            return 1
+        }
 
         if [[ "$MERGE_STRATEGY" == "squash" ]]; then
             log_info "Squash-merging $AISHORE_FEATURE_BRANCH → $base_branch"
@@ -2801,6 +2818,7 @@ _handle_sprint_success() {
 Co-Authored-By: Claude <noreply@anthropic.com>"
             else
                 log_error "Merge conflict on $AISHORE_FEATURE_BRANCH — resolve manually"
+                [[ "$_had_stash" == "true" ]] && git stash pop -q 2>/dev/null || true
                 AISHORE_FEATURE_BRANCH=""
                 return 1
             fi
@@ -2810,6 +2828,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 Co-Authored-By: Claude <noreply@anthropic.com>"; then
                 log_error "Merge conflict on $AISHORE_FEATURE_BRANCH — resolve manually"
+                [[ "$_had_stash" == "true" ]] && git stash pop -q 2>/dev/null || true
                 AISHORE_FEATURE_BRANCH=""
                 return 1
             fi
@@ -2820,6 +2839,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"; then
         [[ "$MERGE_STRATEGY" == "squash" ]] && delete_flag="-D"
         git branch "$delete_flag" "$AISHORE_FEATURE_BRANCH" 2>/dev/null || true
         log_success "Merged and cleaned up $AISHORE_FEATURE_BRANCH"
+
+        # Restore stashed backlog/tracking changes after merge
+        if [[ "$_had_stash" == "true" ]]; then
+            git stash pop -q 2>/dev/null || log_warning "Failed to restore stashed backlog changes — may need manual git stash pop"
+        fi
+
         _sync_remote "$base_branch"
     fi
     AISHORE_FEATURE_BRANCH=""
@@ -2857,7 +2882,7 @@ cmd_run_parse_args() {
 setup_sprint_environment() {
     acquire_lock
     load_config
-    cd "$PROJECT_ROOT"
+    cd "$PROJECT_ROOT" || { log_error "Cannot cd to $PROJECT_ROOT"; return 1; }
 
     # Apply timeout_minutes: config/env > default (0 = no override)
     if [[ "${TIMEOUT_MINUTES:-0}" -gt 0 ]]; then
@@ -3217,8 +3242,7 @@ run_sprint_loop() {
 
         # Worktree isolation: create a separate working directory for the sprint
         local wt_dir
-        wt_dir=$(mktemp -d "${TMPDIR:-/tmp}/aishore-wt-XXXXXX")
-        rmdir "$wt_dir"  # git worktree add needs a non-existing path
+        wt_dir="${TMPDIR:-/tmp}/aishore-wt-${ITEM_ID}-$$"
         git branch -D "$branch_name" 2>/dev/null || true
         git worktree add "$wt_dir" -b "$branch_name"
         AISHORE_WORKTREE_DIR="$wt_dir"
@@ -3234,7 +3258,11 @@ run_sprint_loop() {
         # Copy current sprint.json into worktree backlog (create_sprint wrote to original)
         cp "$PROJECT_ROOT/backlog/sprint.json" "$BACKLOG_DIR/sprint.json"
 
-        cd "$wt_dir"
+        # Capture sprint-shaped item for spec refinement (before sprint reset wipes it)
+        local sprint_item_json
+        sprint_item_json=$(jq -c '.item' "$BACKLOG_DIR/sprint.json" 2>/dev/null || echo "")
+
+        cd "$wt_dir" || { log_error "Cannot cd to $wt_dir"; return 1; }
         log_info "Worktree created: $wt_dir"
 
         # Developer → validation → validator (with retries)
@@ -3245,7 +3273,7 @@ run_sprint_loop() {
         _run_retry_loop
 
         if [[ "$sprint_passed" != "true" ]]; then
-            # Refinement: always refine spec and try once more before final failure
+            # Refinement: try once more before recording failure (worktree still alive)
             log_info "Attempting spec refinement after exhausting retries"
             local failure_ctx=""
             for sf in "${session_failures[@]}"; do
@@ -3253,9 +3281,8 @@ run_sprint_loop() {
             done
             [[ -n "$retry_extra_prompt" ]] && failure_ctx="${failure_ctx}Last failure context: ${retry_extra_prompt}"
 
-            if refine_item_spec "$ITEM_ID" "$failure_ctx"; then
+            if refine_item_spec "$ITEM_ID" "$failure_ctx" "$sprint_item_json"; then
                 log_info "Running one more developer → validate → validator cycle with refined spec"
-                # Reset failure tracking for this single refinement attempt
                 local saved_retries=$retries
                 local prior_attempts=$total_attempts
                 retries=0
@@ -3268,7 +3295,9 @@ run_sprint_loop() {
                 log_warning "Spec refinement failed — cannot retry"
             fi
 
+            # NOW record the failure and destroy the worktree (after refinement exhausted)
             if [[ "$sprint_passed" != "true" ]]; then
+                _record_sprint_failure "${_retry_failure_reason:-Unknown}" "${_retry_failure_detail:-Sprint failed}"
                 [[ "$auto_mode" == "true" ]] && log_info "Progress: $passed passed, $failed failed, $(_count_total_ready) remaining ready"
                 continue
             fi

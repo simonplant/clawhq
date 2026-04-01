@@ -208,7 +208,7 @@ cmd_update() {
 }
 
 cmd_checksums() {
-    cd "$PROJECT_ROOT"
+    cd "$PROJECT_ROOT" || { log_error "Cannot cd to $PROJECT_ROOT"; return 1; }
 
     local checksum_file="$AISHORE_ROOT/checksums.sha256"
     local files=()

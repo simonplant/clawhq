@@ -36,7 +36,7 @@ cmd_backlog_add() {
                     return 1
                 fi
                 local last_text="${ac_entries[-1]}"
-                ac_entries[-1]="{\"text\":$last_text,\"verify\":$(printf '%s' "$2" | jq -Rs .)}"
+                ac_entries[-1]="$(jq -n --argjson text "$last_text" --arg verify "$2" '{text: $text, verify: $verify}')"
                 shift 2 ;;
             *) log_error "Unknown option: $1"; return 1 ;;
         esac
@@ -210,7 +210,7 @@ cmd_backlog_edit() {
                     return 1
                 fi
                 local last_text="${ac_entries[-1]}"
-                ac_entries[-1]="{\"text\":$last_text,\"verify\":$(printf '%s' "$2" | jq -Rs .)}"
+                ac_entries[-1]="$(jq -n --argjson text "$last_text" --arg verify "$2" '{text: $text, verify: $verify}')"
                 shift 2 ;;
             --groomed-at)
                 local gdate

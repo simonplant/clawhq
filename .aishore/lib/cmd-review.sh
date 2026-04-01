@@ -14,7 +14,7 @@ cmd_review() {
     acquire_lock
     load_config
     _load_module cmd-groom
-    cd "$PROJECT_ROOT"
+    cd "$PROJECT_ROOT" || { log_error "Cannot cd to $PROJECT_ROOT"; return 1; }
 
     log_header "Architecture Review"
     echo "Mode: $([[ "$update_docs" == "true" ]] && echo "Update docs" || echo "Read-only")"

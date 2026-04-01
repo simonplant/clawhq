@@ -173,13 +173,17 @@
         "Messages containing secrets are replaced with [EGRESS BLOCKED] and audit-logged",
         "clawhq doctor verifies proxy health and cert validity"
       ],
-      "scope": ["src/secure/", "src/build/docker/compose.ts", "src/operate/doctor/"],
+      "scope": [
+        "src/secure/",
+        "src/build/docker/compose.ts",
+        "src/operate/doctor/"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. This is the single biggest security gap — Telegram is the primary exfiltration channel and currently has zero content inspection. Clawdius's implementation is battle-tested (running since SEC-024). Size M-L."
+      "groomingNotes": "M-L item. Phased approach: (1) compose.ts — add enableTelegramProxy option to ComposeOptions, add extra_hosts and NODE_EXTRA_CA_CERTS to ComposeServiceOutput when set. (2) src/secure/telegram-egress-proxy.py — stdlib Python, ~600 lines. HTTPS reverse proxy on bridge IP port 8443. Terminates TLS with self-signed CA. Inspects sendMessage/editMessageText/sendPhoto payload fields (text, caption). Secret detection: scan against same patterns as sanitizer (env var values, base64, token regexes). Blocked messages replaced with [EGRESS BLOCKED], appended to ops/audit/telegram-egress.log. (3) gen-telegram-certs.sh — openssl one-liner to generate CA + server cert. (4) systemd service generator in src/operate/automation/. (5) doctor check in src/operate/doctor/checks.ts. generateCompose() must accept enableTelegramProxy:boolean in ComposeOptions. Integration test: compose.test.ts checks extra_hosts when flag set."
     },
     {
       "id": "FEAT-137",
@@ -202,13 +206,16 @@
         "Alerts fire on detection via configured notification channel",
         "Monitor runs independently of the agent container"
       ],
-      "scope": ["src/operate/automation/", "src/operate/doctor/"],
+      "scope": [
+        "src/operate/automation/",
+        "src/operate/doctor/"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Independent of FEAT-136 — both should be deployed. The monitor catches what the proxy misses (proxy down, cert rotation, edge cases). Size S."
+      "groomingNotes": "Size S — Python script with stdlib only. Polls Telegram getUpdates API, filters for outgoing bot messages (from.is_bot=True or matching bot user_id), scans text/caption/photo_caption fields against SECRET_PATTERNS (same patterns as sanitizer). Alert via email (smtplib) or Telegram admin message. Cron schedule: */5 * * * * during configured waking hours. The script must have zero container dependencies — it calls the Telegram API directly from the host. Store state in ~/.clawhq/ops/telegram-monitor-state.json (last_update_id). Generator: add generateTelegramMonitor(config) to src/operate/automation/ module. Also generate a systemd timer as alternative to cron."
     },
     {
       "id": "FEAT-138",
@@ -231,13 +238,15 @@
         "POST requests with secret values in body are blocked with exit code 3",
         "All -d/--data/--json/--form variants are handled"
       ],
-      "scope": ["src/build/docker/dockerfile.ts"],
+      "scope": [
+        "src/build/docker/dockerfile.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. The cred proxy intercepts tool calls but not arbitrary curl. This closes the gap. Size S — the wrapper is ~130 lines of bash."
+      "groomingNotes": "Generator adds curl-egress-wrapper.sh to the Stage2 Docker image. Script location in generator: src/build/docker/curl-egress-wrapper.sh (static asset, not generated). Dockerfile copies to /usr/local/bin/curl with chmod 755. Real curl stays at /usr/bin/curl. Wrapper logic: parse argv for method (default GET), if GET/HEAD exec real curl. If POST/PUT/PATCH/DELETE: extract body from -d/--data-raw/--data-binary/--data-urlencode/--json/-F/-T/@- flags, pipe through /opt/clawwall/sanitize --egress, if exit 3 abort. Tests: unit tests for body extraction logic from bash (run with bats or inline node). Scope is only src/build/docker/dockerfile.ts + the new static wrapper script. Not added for minimal security posture."
     },
     {
       "id": "FEAT-139",
@@ -260,13 +269,16 @@
         "Sanitizer verifies its own integrity on every invocation",
         "Integrity check failure causes fail-closed abort (not silent passthrough)"
       ],
-      "scope": ["src/build/docker/dockerfile.ts", "src/secure/sanitizer/"],
+      "scope": [
+        "src/build/docker/dockerfile.ts",
+        "src/secure/sanitizer/"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Currently the sanitizer runs on the ClawHQ host, not in-container. This adds an immutable in-container copy for tools that need inline scanning. Size S-M."
+      "groomingNotes": "Two parts: (1) Dockerfile generator changes in generateStage2Dockerfile — add COPY sanitize /opt/clawwall/sanitize, RUN sha256sum /opt/clawwall/sanitize > /opt/clawwall/sanitize.sha256, chmod 444, chown root:root. (2) Sanitizer self-integrity check — on startup, re-compute sha256 of own file and compare to /opt/clawwall/sanitize.sha256. Mismatch = process.exit(1). The immutable /opt/clawwall/ path is separate from the workspace copy (which the agent can update). Tools should import from /opt/clawwall/ path for scanning. Check generateStage2Dockerfile signature carefully — it may need a new security posture param to conditionally include this block. Tests: dockerfile.test.ts for the COPY/chmod/sha256sum block. sanitizer.test.ts for the self-check behavior."
     },
     {
       "id": "FEAT-140",
@@ -290,13 +302,16 @@
         "clawhq update blocks on CRITICAL vulnerabilities",
         "--skip-scan flag bypasses scanning"
       ],
-      "scope": ["src/build/docker/build.ts", "src/operate/doctor/"],
+      "scope": [
+        "src/build/docker/build.ts",
+        "src/operate/doctor/"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Size S. Trivy outputs JSON — parsing is straightforward."
+      "groomingNotes": "Add scanImage(imageRef:string, opts:{blockOnCritical:boolean}):Promise<ScanResult> to build.ts. Detect trivy in PATH first — if absent, warn and skip (do not fail). Parse JSON output from trivy image --format json --exit-code 0. Extract Vulnerabilities array, count by Severity. For deploy: report counts as warnings. For update: if CRITICAL count > 0, throw and abort. skip-scan flag sets opts.blockOnCritical=false and skips scan entirely. Add trivy doctor check in src/operate/doctor/checks.ts. Tests in build.test.ts mock execSync for trivy invocations."
     },
     {
       "id": "FEAT-141",
@@ -317,13 +332,15 @@
         "Container can still resolve domains in the allowlist",
         "DNS queries to arbitrary resolvers are blocked"
       ],
-      "scope": ["src/build/launcher/firewall.ts"],
+      "scope": [
+        "src/build/launcher/firewall.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Size XS. Single change to firewall rule generation."
+      "groomingNotes": "XS scope change to firewall rule generation. buildExpectedRules() must accept optional dnsResolvers:string[] config (default ['1.1.1.1','8.8.8.8']). The blanket ACCEPT for port 53 dpt:domain to anywhere/0.0.0.0 is replaced with per-resolver ACCEPT rules. Add DNS resolver test cases to existing firewall.test.ts. residual risk note: tunneling via allowed resolvers is still theoretically possible — document in comments."
     },
     {
       "id": "FEAT-142",
@@ -344,7 +361,11 @@
         "Profile blocks ptrace, mount, keyctl for hardened; additionally bpf, kexec for paranoid",
         "Doctor verifies seccomp profile is applied"
       ],
-      "scope": ["src/secure/", "src/build/docker/compose.ts", "src/operate/doctor/"],
+      "scope": [
+        "src/secure/",
+        "src/build/docker/compose.ts",
+        "src/operate/doctor/"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
@@ -372,13 +393,16 @@
         "Both are configurable per-route",
         "Rejections are audit-logged"
       ],
-      "scope": ["src/secure/credentials/proxy-server.ts", "src/secure/credentials/proxy-routes.ts"],
+      "scope": [
+        "src/secure/credentials/proxy-server.ts",
+        "src/secure/credentials/proxy-routes.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Size S. Two independent guards, both straightforward."
+      "groomingNotes": "Two independent guards in proxy-server.ts. maxBodySize: check Content-Length header before reading body — reject 413 immediately, no buffering. timeout: wrap upstream fetch in Promise.race with AbortController. Both configurable in ProxyRoute type (new fields: maxBodySizeBytes?: number, timeoutMs?: number). Defaults: maxBodySize=10MB, timeout=30s. Per-route overrides: CalDAV route gets larger body (50MB), email route gets longer timeout (120s). Rejections call existing audit logger. Tests go in proxy.test.ts alongside existing route/config tests."
     },
     {
       "id": "FEAT-144",
@@ -399,13 +423,15 @@
         "Private IP ranges (RFC1918, link-local, loopback) are rejected as upstream targets",
         "SSRF attempts are audit-logged"
       ],
-      "scope": ["src/secure/credentials/proxy-server.ts"],
+      "scope": [
+        "src/secure/credentials/proxy-server.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Size S. Classic OWASP SSRF prevention at the one component that makes outbound requests."
+      "groomingNotes": "Three defenses in proxy-server.ts: (1) path canonicalization — new URL(path, base).pathname to resolve ../ sequences before route matching, (2) host validation — final URL host must equal configured upstream host, (3) private IP block — resolve final URL hostname with dns.lookup(), reject if in 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16 ranges. Private IP check is async (DNS lookup). Tests: path traversal attempts (../../etc/passwd), direct private IP targeting (http://192.168.1.1), DNS rebinding (hostname resolving to 127.0.0.1). All rejections call existing audit logger. Tests go in proxy.test.ts."
     },
     {
       "id": "FEAT-145",
@@ -426,8 +452,12 @@
         "Header count limited to 50, size limited to 8KB",
         "Connection: close forced on all responses"
       ],
-      "scope": ["src/secure/"],
-      "dependsOn": ["FEAT-136"],
+      "scope": [
+        "src/secure/"
+      ],
+      "dependsOn": [
+        "FEAT-136"
+      ],
       "status": "todo",
       "passes": false,
       "readyForSprint": false,
@@ -452,13 +482,15 @@
         "Test cases exist for each supported language",
         "No false positives on normal text in each language"
       ],
-      "scope": ["src/secure/sanitizer/detect.ts"],
+      "scope": [
+        "src/secure/sanitizer/detect.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Size S. Each pattern is one regex. Translation accuracy is the risk."
+      "groomingNotes": "MULTILINGUAL_INJECTION in patterns.ts has 8 patterns (French, Spanish, German, Japanese, Chinese, Korean, Russian, Arabic). Add 7 more: Italian, Turkish, Portuguese, Vietnamese, Thai, Indonesian, Hindi. Use word-order-correct regex — NOT machine translation of English regex. Each language needs correct verb-object order and script. Thai/Vietnamese need Unicode-aware patterns. Test file must have one describe block per new language with an injection string and a safe string. Verify commands test actual detection behavior, not source structure."
     },
     {
       "id": "FEAT-147",
@@ -479,13 +511,16 @@
         "Tests verify both allowed and blocked destinations from inside the container",
         "Deploy fails if firewall tests fail"
       ],
-      "scope": ["src/build/launcher/firewall.ts", "src/build/launcher/deploy.ts"],
+      "scope": [
+        "src/build/launcher/firewall.ts",
+        "src/build/launcher/deploy.ts"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Size S. High value — proves the firewall works rather than trusting iptables output."
+      "groomingNotes": "Add generateFirewallTest(allowlist) function to firewall.ts. Output: a Node.js one-liner script that docker exec runs inside the container. Test cases: (1) fetch allowed HTTPS domain returns 200, (2) fetch blocked domain throws ECONNREFUSED or times out, (3) dns.resolve() resolves allowed domain. Run after firewall apply in deploy.ts — if test exits non-zero, abort deploy and surface error. Use node -e one-liners (no curl dependency since curl may be wrapped by FEAT-138). Tests in firewall.test.ts verify generateFirewallTest() output contains correct test logic. Tests in launcher.test.ts verify deploy flow aborts on test failure."
     },
     {
       "id": "FEAT-148",
@@ -505,39 +540,15 @@
         "Architecture diagram shows all security layers and data flows",
         "Runbook has remediation steps for each alert type"
       ],
-      "scope": ["docs/"],
+      "scope": [
+        "docs/"
+      ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Size M. These three docs together are the security story for community adoption."
-    },
-    {
-      "id": "FEAT-149",
-      "title": "Document all Clawdius-to-ClawHQ hardening patterns for replication tracking",
-      "intent": "Every battle-tested security pattern from Clawdius must be tracked as a ClawHQ feature with clear replication status. The Clawdius reference implementation is the proving ground — ClawHQ must automate what Clawdius proved works.",
-      "description": "Create docs/CLAWDIUS-PATTERNS.md that catalogs every security enhancement from the Clawdius infrastructure repo, maps each to its ClawHQ equivalent (implemented, planned, or N/A), and links to the relevant backlog item. Categories: container hardening, network egress, credential isolation, prompt injection defense, egress scanning, monitoring/alerting, operational tooling. This is the living tracking document for replication completeness.",
-      "priority": "should",
-      "category": "documentation",
-      "steps": [
-        "Catalog all Clawdius security patterns (from 2026-03-31 code review)",
-        "Map each to ClawHQ implementation status: done, planned (with FEAT-ID), or N/A",
-        "For N/A items: document why they don't apply to ClawHQ",
-        "Add to docs/ and reference from CONTRIBUTING.md"
-      ],
-      "acceptanceCriteria": [
-        "CLAWDIUS-PATTERNS.md exists with complete pattern catalog",
-        "Each pattern has: Clawdius reference, ClawHQ status, backlog link if planned",
-        "No pattern is uncategorized or missing status"
-      ],
-      "scope": ["docs/CLAWDIUS-PATTERNS.md"],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-03-31",
-      "groomingNotes": "Meta-item: this tracks the entire Clawdius→ClawHQ replication effort. Size S. Should be done first to organize the remaining work."
+      "groomingNotes": "Three docs, one item. Write them together since they cross-reference. THREAT-MODEL.md: prompt injection via tool output, secret exfiltration via Telegram, DNS tunneling, container escape, supply chain (malicious skills). Defense column maps each threat to the layer that stops it. Residual risks: DNS tunneling via allowed resolvers, prompt injection in languages not yet covered, zero-day in base image. ARCHITECTURE-SECURITY.md: Mermaid flowchart showing host boundary vs container boundary, data flows through sanitizer (inbound), cred proxy (outbound API calls), curl wrapper (outbound arbitrary), Telegram proxy (outbound Telegram), egress firewall (outbound all). RUNBOOK.md: per-alert format = trigger, what to check (clawhq doctor commands), how to remediate, escalation path. Cross-reference from README.md security section with a one-line pointer."
     }
   ]
 }

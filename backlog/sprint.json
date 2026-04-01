@@ -1,1 +1,31 @@
-{"sprintId": null, "status": "idle", "item": null}
+{
+  "sprintId": "sprint-1775023385",
+  "startedAt": "2026-03-31T23:03:05-07:00",
+  "status": "in_progress",
+  "item": {
+    "id": "FEAT-137",
+    "title": "Post-hoc Telegram monitor — host-side secret scanner the agent cannot disable",
+    "intent": "Even if the egress proxy is somehow bypassed (cert issue, proxy crash), a host-side monitor must independently scan outbound Telegram messages and alert on secret detection. Defense-in-depth requires layers the agent cannot control.",
+    "description": "Clawdius pattern: a cron-driven Python script that polls Telegram getUpdates, filters for bot-sent messages, and scans them for secret patterns. Runs on the host (not in container) so the agent cannot disable it. Alerts via email on detection. Reference: clawdius/scripts/telegram-egress-monitor.py.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Add telegram-egress-monitor.py generator to src/operate/automation/",
+      "Generate cron schedule (every 5 min during configured waking hours)",
+      "Scan for: env var literal values, base64 variants, token regex patterns",
+      "Alert via configured notification channel on detection",
+      "Add systemd timer generator",
+      "Add doctor check: monitor running, last run recent"
+    ],
+    "acceptanceCriteria": [
+      "Host-side monitor script is generated for Telegram-enabled deployments",
+      "Monitor scans bot-sent messages for secret patterns",
+      "Alerts fire on detection via configured notification channel",
+      "Monitor runs independently of the agent container"
+    ],
+    "scope": [
+      "src/operate/automation/",
+      "src/operate/doctor/"
+    ],
+    "startedAt": "2026-03-31T23:03:05-07:00"
+  }
+}

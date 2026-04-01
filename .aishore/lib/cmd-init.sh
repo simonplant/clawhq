@@ -148,9 +148,15 @@ _init_scaffold_files() {
     log_success "Created directory structure"
 
     # Write config.yaml
+    # Escape sed metacharacters in user input (| is the delimiter, & and \ are special)
+    _sed_escape() { sed 's:[&\\|]:\\&:g'; }
+    local project_name_safe validate_cmd_safe
+    project_name_safe=$(printf '%s' "$project_name" | _sed_escape)
+    validate_cmd_safe=$(printf '%s' "$validate_cmd" | _sed_escape)
+
     if [[ ! -f "$CONFIG_FILE" || "$reinit" == true ]]; then
-        sed -e "s|\\\$PROJECT_NAME|$project_name|g" \
-            -e "s|\\\$VALIDATE_CMD|$validate_cmd|g" \
+        sed -e "s|\\\$PROJECT_NAME|$project_name_safe|g" \
+            -e "s|\\\$VALIDATE_CMD|$validate_cmd_safe|g" \
             "$AISHORE_ROOT/templates/config.yaml.tmpl" > "$CONFIG_FILE"
         log_success "Wrote .aishore/config.yaml"
     else
@@ -199,7 +205,7 @@ _init_scaffold_files() {
         log_info "Found existing product doc: $prd_found"
     else
         mkdir -p "$docs_dir"
-        sed "s|\\\$PROJECT_NAME|$project_name|g" \
+        sed "s|\\\$PROJECT_NAME|$project_name_safe|g" \
             "$AISHORE_ROOT/templates/PRODUCT.md.tmpl" > "$docs_dir/PRODUCT.md"
         log_success "Created docs/PRODUCT.md (fill in to help agents understand your product)"
         product_path="$docs_dir/PRODUCT.md"
@@ -211,7 +217,7 @@ _init_scaffold_files() {
         log_info "Found existing architecture doc: $arch_found"
     else
         mkdir -p "$docs_dir"
-        sed "s|\\\$PROJECT_NAME|$project_name|g" \
+        sed "s|\\\$PROJECT_NAME|$project_name_safe|g" \
             "$AISHORE_ROOT/templates/ARCHITECTURE.md.tmpl" > "$docs_dir/ARCHITECTURE.md"
         log_success "Created docs/ARCHITECTURE.md (fill in to guide agent implementation)"
         arch_path="$docs_dir/ARCHITECTURE.md"
@@ -282,7 +288,7 @@ cmd_init() {
             reinit=true
         else
             read -r -p "  Reinitialize? This preserves existing backlogs. [y/N] " c
-            [[ $c != [yY] ]] && exit 0
+            [[ $c != [yY] ]] && return 0
             reinit=true
         fi
         echo ""

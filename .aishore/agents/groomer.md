@@ -20,28 +20,18 @@ You groom the entire backlog — bugs, features, and tech debt — ensuring item
 
 For each item, ensure:
 - Clear, actionable implementation steps (specific enough that a developer can follow them without guessing)
-- Testable acceptance criteria that describe user-visible outcomes
-- **At least one AC that verifies integration** — not just "function exists" but "function is called by [entry point]" or "output file is loaded by [consumer]". The validator hard-fails disconnected code, so AC must define the connection point.
+- Testable acceptance criteria with verify commands that **execute the behavior** (not grep for code existence)
 - Appropriate priority (must/should/could/future) tied to user value
 - No blocking dependencies
 - Reasonable scope (one sprint)
 - Infrastructure prerequisites exist (if the item needs a build pipeline, entry point, or core dependency that isn't wired up yet, it's not ready)
-
-### Integration AC Examples
-
-Bad: "generateProxyScript() produces valid Node.js"
-Good: "generateProxyScript() output is written to engine/cred-proxy.js during `clawhq init` and loaded by the Docker compose service"
-
-Bad: "delegation rules validator rejects invalid input"
-Good: "compiled delegation-rules.json is loaded at agent startup and consulted by the action approval flow"
-
-If the integration target doesn't exist yet, the item needs a dependency on a scaffolding item that builds it — or the item's scope must include building the integration path.
 
 ## Rules
 
 - AC should describe user outcomes — focus on "what" and "why"
 - Implementation steps should focus on "how" — specific enough to follow without guessing
 - If AC is vague, add testable criteria or note the gap in grooming notes
+- AC verify commands must test behavior, not structure. A verify that greps a source file for a function name is theater — rewrite it to execute the feature and check the result.
 - Set `readyForSprint` only when the item meets all checklist gates
 
 ## Scaffolding Awareness
