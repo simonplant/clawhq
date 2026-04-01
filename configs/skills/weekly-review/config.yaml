@@ -1,0 +1,38 @@
+# weekly-review skill configuration
+name: weekly-review
+version: "1.0.0"
+description: "Sunday review — commitment vs follow-through analysis with pattern identification from journal entries"
+
+# Schedule: once weekly on Sunday morning
+schedule:
+  cron: "0 9 * * 0"
+  active_hours:
+    start: 8
+    end: 12
+
+# Model requirements — local preferred, cloud for deep pattern analysis
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: true
+
+# Tools this skill depends on
+dependencies:
+  tools:
+    - journal
+    - tasks
+  skills:
+    - daily-stoic
+
+# No approval needed — review is read-only analysis delivered to user
+approval:
+  required: false
+  category: reflection
+  auto_approve: true
+
+# Boundaries
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false

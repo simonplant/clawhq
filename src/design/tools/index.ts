@@ -16,6 +16,7 @@ import type { Blueprint } from "../blueprints/types.js";
 import { generateApproveActionTool } from "./approve-action.js";
 import { generateEmailTool } from "./email.js";
 import { generateIcalTool } from "./ical.js";
+import { generateJournalTool } from "./journal.js";
 import { generateQuoteTool } from "./quote.js";
 import { generateSanitizeTool } from "./sanitize.js";
 import { generateTasksTool } from "./tasks.js";
@@ -48,6 +49,7 @@ export interface ToolFileContent {
 const TOOL_GENERATORS: Readonly<Record<string, () => string>> = {
   email: generateEmailTool,
   ical: generateIcalTool,
+  journal: generateJournalTool,
   tasks: generateTasksTool,
   todoist: generateTodoistTool,
   "todoist-sync": generateTodoistSyncTool,

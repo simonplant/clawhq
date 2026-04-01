@@ -1,0 +1,37 @@
+# daily-stoic skill configuration
+name: daily-stoic
+version: "1.0.0"
+description: "Morning intention prompt and evening reflection — structured daily Stoic practice with journaling"
+
+# Schedule: twice daily — morning and evening at blueprint-configured times
+schedule:
+  cron: "30 6 * * *"
+  active_hours:
+    start: 5
+    end: 23
+
+# Model requirements — local only, philosophical prompts don't need cloud
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+# Tools this skill depends on
+dependencies:
+  tools:
+    - journal
+    - tasks
+  skills: []
+
+# No approval needed — prompts and journal writes are private
+approval:
+  required: false
+  category: reflection
+  auto_approve: true
+
+# Boundaries
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false
