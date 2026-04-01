@@ -9,33 +9,27 @@
 cmd_groom() {
     require_tool jq
 
-    local mode="bugs" _backlog=false _architect=false
+    # Legacy flag handling: --backlog is now a no-op, --architect redirects to scaffold
+    local _backlog=false _architect=false
     parse_opts "bool:_backlog:--backlog" "bool:_architect:--architect" -- "$@" || return 1
-    [[ "$_backlog" == "true" ]] && mode="backlog"
-    [[ "$_architect" == "true" ]] && mode="architect"
+    if [[ "$_architect" == "true" ]]; then
+        log_warning "'groom --architect' is now 'scaffold'. Redirecting..."
+        _load_module cmd-scaffold; cmd_scaffold; return $?
+    fi
+    [[ "$_backlog" == "true" ]] && log_info "Note: --backlog flag is no longer needed — groom now covers all items."
 
     acquire_lock
     load_config
     cd "$PROJECT_ROOT"
 
-    local agent
-    if [[ "$mode" == "architect" ]]; then
-        log_header "Architect: Scaffolding Review"
-        agent="architect"
-    elif [[ "$mode" == "backlog" ]]; then
-        log_header "Product Owner: Backlog Grooming"
-        agent="product-owner"
-    else
-        log_header "Tech Lead: Bugs/Tech Debt Grooming"
-        agent="tech-lead"
-    fi
+    log_header "Grooming: Bugs, Features & Tech Debt"
 
     print_groom_summary
 
     local -a context_args
     mapfile -t context_args < <(_build_groom_context)
 
-    run_groom_flow "$agent" "groom" context_args
+    run_groom_flow "groomer" "groom" context_args
 }
 
 print_groom_summary() {

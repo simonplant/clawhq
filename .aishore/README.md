@@ -71,9 +71,8 @@ All gates must pass (check with `backlog check <ID>`):
 Grooming adds steps, acceptance criteria, and marks items ready:
 
 ```bash
-.aishore/aishore groom              # Tech Lead: grooms bugs, marks items ready
-.aishore/aishore groom --backlog    # Product Owner: aligns feature priorities
-.aishore/aishore groom --architect  # Architect: detects missing scaffolding, adds skeleton items
+.aishore/aishore groom              # Groom bugs, features, and tech debt
+.aishore/aishore scaffold           # Detect missing scaffolding, add skeleton items
 ```
 
 Grooming doesn't guarantee readiness — check with `backlog check <ID>` if items aren't being picked.

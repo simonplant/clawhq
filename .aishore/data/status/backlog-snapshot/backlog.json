@@ -30,10 +30,12 @@
         "src/cloud/",
         "src/config/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: Phase 1 only. GitHub API polling (commits to openclaw main), config diff engine (compare commit changes against user blueprint compiled config), webhook alert delivery. Minimal Express endpoint for subscription management. No pricing page in Phase 1 — free tier validates demand. clawhq cloud sentinel connect stores webhook URL."
+      "groomingNotes": "Design resolved: Phase 1 only. GitHub API polling (commits to openclaw main), config diff engine (compare commit changes against user blueprint compiled config), webhook alert delivery. Minimal Express endpoint for subscription management. No pricing page in Phase 1 — free tier validates demand. clawhq cloud sentinel connect stores webhook URL.",
+      "passes": true,
+      "completedAt": "2026-03-30T14:12:15-07:00"
     },
     {
       "id": "FEAT-112",
@@ -64,10 +66,12 @@
         "configs/blueprints/",
         "src/evolve/skills/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: construct-built skills call vetSkill() from src/evolve/skills/. State in workspace/.construct-state.json. Assessed items tracked by ID+timestamp to avoid repeats."
+      "groomingNotes": "Design resolved: construct-built skills call vetSkill() from src/evolve/skills/. State in workspace/.construct-state.json. Assessed items tracked by ID+timestamp to avoid repeats.",
+      "passes": true,
+      "completedAt": "2026-03-30T15:07:40-07:00"
     },
     {
       "id": "FEAT-120",
@@ -97,10 +101,12 @@
         "src/operate/",
         "src/cli/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: systemd units use clawhq-<instance>-<service>.timer naming from deploy dir basename. Multi-instance safe. No shared state."
+      "groomingNotes": "Design resolved: systemd units use clawhq-<instance>-<service>.timer naming from deploy dir basename. Multi-instance safe. No shared state.",
+      "passes": true,
+      "completedAt": "2026-03-30T15:28:19-07:00"
     },
     {
       "id": "FEAT-116",
@@ -131,10 +137,12 @@
         "src/operate/doctor/",
         "configs/blueprints/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: ipset named clawhq_<instance>_egress per deploy dir basename. clawhq down destroys ipset. No shared state between instances. Multi-instance safe by construction."
+      "groomingNotes": "Design resolved: ipset named clawhq_<instance>_egress per deploy dir basename. clawhq down destroys ipset. No shared state between instances. Multi-instance safe by construction.",
+      "passes": true,
+      "completedAt": "2026-03-30T15:50:43-07:00"
     },
     {
       "id": "FEAT-022",
@@ -159,12 +167,14 @@
       "scope": [
         "src/secure/credentials/probes.ts"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
       "groomingNotes": "Lower priority — probe API calls are simple HTTP and unlikely to break. Quick win for Ollama probe.",
       "lastFailAt": "2026-03-24T23:20:05-07:00",
-      "failCount": 1
+      "failCount": 1,
+      "passes": true,
+      "completedAt": "2026-03-31T16:45:56-07:00"
     },
     {
       "id": "FEAT-117",
@@ -194,10 +204,12 @@
         "configs/skills/",
         "src/design/tools/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: journal tool is append-only markdown writer (workspace/journal/YYYY-MM-DD.md). daily-stoic skill uses morning prompt + evening reflection cron pattern from existing morning-brief. Blueprint #11 (10 exist after FEAT-126). Sprint-ready."
+      "groomingNotes": "Design resolved: journal tool is append-only markdown writer (workspace/journal/YYYY-MM-DD.md). daily-stoic skill uses morning prompt + evening reflection cron pattern from existing morning-brief. Blueprint #11 (10 exist after FEAT-126). Sprint-ready.",
+      "passes": true,
+      "completedAt": "2026-03-31T17:06:13-07:00"
     },
     {
       "id": "FEAT-114",
@@ -317,11 +329,12 @@
         "src/design/tools/"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "Design resolved: Docker sidecar on bridge (172.x.0.1:8900). routes.json: {tool: {backend_url, auth_header, token_env_var}}. Tools use CRED_PROXY_URL. /health for liveness. Doctor checks proxy reachable."
+      "groomingNotes": "Design resolved: Docker sidecar on bridge (172.x.0.1:8900). routes.json: {tool: {backend_url, auth_header, token_env_var}}. Tools use CRED_PROXY_URL. /health for liveness. Doctor checks proxy reachable.",
+      "completedAt": "2026-03-30T16:47:23-07:00"
     },
     {
       "id": "FEAT-130",
@@ -350,11 +363,12 @@
         "configs/blueprints/"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "Confirmed: Blueprint interface has no delegation_rules field. generate.ts does not emit delegated-rules.json. Implementation path: (1) Design delegated-action-rules schema — per-tool rule entries with: action name, pattern (glob or regex), auto_approve bool, escalation_contact optional. Add DelegationRules interface to src/design/blueprints/types.ts. (2) Add optional delegation_rules field to Blueprint interface. (3) Add rule generation to generate.ts: compile blueprint.delegation_rules into workspace/delegated-rules.json during init. (4) Add email-manager defaults: auto-approve read/triage/label, escalate send/delete/forward-external. (5) Tests: email-manager blueprint generates delegated-rules.json with expected entries; pattern matching test (glob-based action names). Sprint-ready: all scope files exist, no external dependencies, no ipset or Docker required."
+      "groomingNotes": "Confirmed: Blueprint interface has no delegation_rules field. generate.ts does not emit delegated-rules.json. Implementation path: (1) Design delegated-action-rules schema — per-tool rule entries with: action name, pattern (glob or regex), auto_approve bool, escalation_contact optional. Add DelegationRules interface to src/design/blueprints/types.ts. (2) Add optional delegation_rules field to Blueprint interface. (3) Add rule generation to generate.ts: compile blueprint.delegation_rules into workspace/delegated-rules.json during init. (4) Add email-manager defaults: auto-approve read/triage/label, escalate send/delete/forward-external. (5) Tests: email-manager blueprint generates delegated-rules.json with expected entries; pattern matching test (glob-based action names). Sprint-ready: all scope files exist, no external dependencies, no ipset or Docker required.",
+      "completedAt": "2026-03-30T18:34:05-07:00"
     },
     {
       "id": "FEAT-131",
@@ -414,11 +428,12 @@
       "dependsOn": [
         "FEAT-116"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "NOT BLOCKED BY FEAT-116. This item uses existing domain-based iptables rules already in firewall.ts — no ipset needed. FEAT-116 dependency is for the future periodic DNS-refresh upgrade only; this item is unblocked. dependsOn field will be cleared when CLI supports it. Implementation: in generate.ts, iterate blueprint.security_posture.egress_domains and emit allowlist.yaml (default port 443, MTA domains get 587/465). Add doctor check: each blueprint domain must exist in allowlist.yaml."
+      "groomingNotes": "NOT BLOCKED BY FEAT-116. This item uses existing domain-based iptables rules already in firewall.ts — no ipset needed. FEAT-116 dependency is for the future periodic DNS-refresh upgrade only; this item is unblocked. dependsOn field will be cleared when CLI supports it. Implementation: in generate.ts, iterate blueprint.security_posture.egress_domains and emit allowlist.yaml (default port 443, MTA domains get 587/465). Add doctor check: each blueprint domain must exist in allowlist.yaml.",
+      "completedAt": "2026-03-31T14:55:08-07:00"
     },
     {
       "id": "FEAT-133",
@@ -445,11 +460,12 @@
         "src/design/tools/sanitize.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-03-29",
-      "groomingNotes": "NOT sprint-ready — requires Clawdius sanitize.py source to perform the gap analysis. Pre-work: (1) obtain or reconstruct Clawdius sanitize.py detection pattern inventory — the description says 1,329 lines, OWASP LLM01 Tier 1+2. (2) Catalog current ClawHQ src/secure/sanitizer/ coverage. ClawHQ sanitizer.test.ts exists. Once the gap list is known this becomes sprint-ready quickly. Without the pattern inventory, the implementor has no spec to work from. Sprint-ready gate: gap analysis document listing specific detection categories missing from ClawHQ sanitizer."
+      "groomingNotes": "Gap analysis complete: 11 gaps found. P0: egress secret scanning (last line of data sovereignty defense), indirect elicitation (credential leak via social engineering). P1: semantic override, soft instruction override, leetspeak normalization, extended unicode. P2: split-payload detection, context poisoning, self-integrity. P3: Q/A few-shot, LLM classifier (future). Sprint plan: P0 gaps first, then P1.",
+      "completedAt": "2026-03-31T15:52:55-07:00"
     },
     {
       "id": "FEAT-134",

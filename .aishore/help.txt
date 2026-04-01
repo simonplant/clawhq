@@ -51,9 +51,8 @@ Commands:
     --pr            Create GitHub PR (implies --no-merge, requires gh CLI)
     --dry-run       Preview without running agents
 
-  groom             Groom bugs/tech debt (Tech Lead mode)
-    --backlog       Groom features instead (Product Owner mode)
-    --architect     Scaffolding review — detect fragment risk, inject skeleton items
+  groom             Groom bugs, features, and tech debt
+  scaffold          Detect fragment risk, inject scaffolding items (Architect)
 
   review            Architecture review (read-only)
     --update-docs   Allow updates to docs
@@ -73,8 +72,7 @@ Examples:
   .aishore/aishore run FEAT-001            # Run specific item
   .aishore/aishore run --no-merge 3        # Keep branches for PR review
   .aishore/aishore run --pr FEAT-001       # Create GitHub PR for review
-  .aishore/aishore groom --backlog         # Groom features
-  .aishore/aishore groom --architect       # Detect missing scaffolding, add skeleton items
+  .aishore/aishore scaffold                # Detect missing scaffolding, add skeleton items
   .aishore/aishore update --dry-run        # Check for updates
 
 Files:

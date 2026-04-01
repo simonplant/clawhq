@@ -14,7 +14,8 @@ cmd_help() {
         run)    _help_run ;;
         auto)   _help_auto ;;
         backlog) _help_backlog ;;
-        groom)  _help_groom ;;
+        groom)    _help_groom ;;
+        scaffold) _help_scaffold ;;
         review) _help_review ;;
         status) _help_status ;;
         update) _help_update ;;
@@ -34,7 +35,8 @@ Usage: aishore <command> [options]
 Commands:
   run [N|ID|scope] Run sprints, or drain backlog with scope (done|p0|p1|p2)
   backlog <sub>    Manage backlog (list|add|show|edit|check|rm)
-  groom            Groom bugs/features/architecture
+  groom            Groom bugs, features, and tech debt
+  scaffold         Detect fragment risk, inject scaffolding items
   review           Architecture review
   status           Backlog overview and sprint readiness
   init             Setup wizard
@@ -130,17 +132,28 @@ _help_groom() {
     cat <<EOF
 aishore groom — AI-assisted backlog grooming
 
-Usage: aishore groom [options]
+Usage: aishore groom
 
-Modes:
-  (default)         Tech Lead — groom bugs and tech debt
-  --backlog         Product Owner — groom features, set priorities
-  --architect       Architect — detect fragment risk, inject skeleton items
+Grooms the entire backlog — bugs, features, and tech debt. Adds steps,
+acceptance criteria, sets priorities, and marks items ready for sprint.
 
 Examples:
-  aishore groom                # Groom bugs (tech lead)
-  aishore groom --backlog      # Groom features (product owner)
-  aishore groom --architect    # Scaffolding review
+  aishore groom                # Groom entire backlog
+EOF
+}
+
+_help_scaffold() {
+    cat <<EOF
+aishore scaffold — Scaffolding review
+
+Usage: aishore scaffold
+
+Runs the architect agent to detect fragment risk — stub entry points,
+mock-only dependencies, disconnected modules — and creates scaffolding
+items to wire up the top-down skeleton before feature work continues.
+
+Examples:
+  aishore scaffold             # Detect missing scaffolding, add skeleton items
 EOF
 }
 

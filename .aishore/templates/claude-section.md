@@ -5,7 +5,8 @@ Iterative intent-based development with evals. Backlog lives in `backlog/`, tool
 
 ```bash
 .aishore/aishore run [N|ID]         # Run sprints (branch, commit, merge, push per item)
-.aishore/aishore groom [--backlog]  # Groom bugs or features
+.aishore/aishore groom              # Groom bugs, features, and tech debt
+.aishore/aishore scaffold           # Scaffolding review
 .aishore/aishore review             # Architecture review
 .aishore/aishore status             # Backlog overview
 ```

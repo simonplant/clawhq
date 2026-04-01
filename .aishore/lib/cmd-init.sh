@@ -131,7 +131,7 @@ _init_detect_project() {
         log_success "Found requirements doc: $prd_found"
     else
         log_info "No product requirements doc found (PRODUCT.md, PRD.md, etc.)"
-        echo "  Tip: a PRODUCT.md helps the product-owner agent prioritize features."
+        echo "  Tip: a PRODUCT.md helps the groomer agent prioritize features."
         echo "  Even a short description of what you're building is useful."
     fi
 

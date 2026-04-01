@@ -9,9 +9,8 @@
 # Commands:
 #   run [count|ID]  Run sprints (default: 1, feature branches, auto-commit)
 #   run <scope>     Autonomous mode — drain backlog (done, p0, p1, p2)
-#   groom           Groom bugs/tech debt (Tech Lead)
-#   groom --backlog Groom features (Product Owner)
-#   groom --architect Scaffolding review (Architect)
+#   groom           Groom bugs, features, and tech debt
+#   scaffold        Scaffolding review (Architect)
 #   review          Architecture review
 #   update          Update aishore from upstream (with checksum verification)
 #   init            Setup wizard (prerequisites, config, backlog)
@@ -102,6 +101,9 @@ CREATE_PR="false"
 TIMEOUT_MINUTES="0"
 SESSION_RETRIES="0"
 SESSION_LIMIT=""
+MAX_TURNS_DEVELOPER="25"
+MAX_TURNS_VALIDATOR="10"
+MAX_TURNS_GROOMER="15"
 
 # Detect timeout command once at startup (macOS uses gtimeout from coreutils)
 if command -v timeout &>/dev/null; then
@@ -155,7 +157,7 @@ _generate_uuid() {
 
 # Default permission sets per agent role
 PERMS_DEVELOPER="Bash,Edit,Write,Read,Glob,Grep,EnterPlanMode,ExitPlanMode"
-PERMS_VALIDATOR="Bash,Read,Write,Glob,Grep"
+PERMS_VALIDATOR="Bash,Read,Glob,Grep"
 PERMS_REVIEWER="Read,Glob,Grep"
 PERMS_REVIEWER_DOCS="Read,Glob,Grep,Edit,Write"
 
@@ -566,6 +568,9 @@ load_config() {
             ".timeout_minutes      TIMEOUT_MINUTES"
             ".run.retries          SESSION_RETRIES"
             ".run.limit            SESSION_LIMIT"
+            ".agent.max_turns.developer MAX_TURNS_DEVELOPER"
+            ".agent.max_turns.validator MAX_TURNS_VALIDATOR"
+            ".agent.max_turns.groomer   MAX_TURNS_GROOMER"
             ".permissions.developer CFG_PERMS_DEVELOPER"
             ".permissions.validator CFG_PERMS_VALIDATOR"
             ".permissions.reviewer  CFG_PERMS_REVIEWER"
@@ -630,6 +635,9 @@ _apply_env_overrides() {
         "AISHORE_TIMEOUT_MINUTES  TIMEOUT_MINUTES"
         "AISHORE_RETRIES          SESSION_RETRIES"
         "AISHORE_SESSION_LIMIT    SESSION_LIMIT"
+        "AISHORE_MAX_TURNS_DEVELOPER MAX_TURNS_DEVELOPER"
+        "AISHORE_MAX_TURNS_VALIDATOR MAX_TURNS_VALIDATOR"
+        "AISHORE_MAX_TURNS_GROOMER   MAX_TURNS_GROOMER"
     )
     local _env_name _target_var
     for _entry in "${_env_map[@]}"; do
@@ -1413,8 +1421,9 @@ run_agent_process() {
     local allowed_tools="$3"
     local output_format="$4"
     local prompt="$5"
+    local max_turns="${6:-}"
 
-    log_agent "$agent_label" "Starting (model: $model, timeout: ${AGENT_TIMEOUT}s)"
+    log_agent "$agent_label" "Starting (model: $model, timeout: ${AGENT_TIMEOUT}s${max_turns:+, max_turns: $max_turns})"
     local start_time
     start_time=$(date +%s)
 
@@ -1433,6 +1442,11 @@ run_agent_process() {
         --permission-mode acceptEdits
         --allowedTools "$allowed_tools"
     )
+
+    # Max turns limit
+    if [[ -n "$max_turns" ]] && [[ "$max_turns" -gt 0 ]] 2>/dev/null; then
+        claude_args+=(--max-turns "$max_turns")
+    fi
 
     # Session continuation support (warm retries)
     if [[ -n "${AGENT_RESUME_SESSION:-}" ]]; then
@@ -1588,7 +1602,9 @@ build_agent_prompt() {
 
     # Read prompt file; strip mode-specific sections when not in that mode
     local prompt_content
-    if [[ "$agent_name" == "product-owner" && "$mode" != "populate" ]]; then
+    if [[ "$agent_name" == "groomer" && "$mode" != "populate" ]]; then
+        prompt_content="$(sed '/^## Populate Mode/,$d' "$prompt_file" | sed -e :a -e '/^[[:space:]]*$/{ $d; N; ba; }')"
+    elif [[ "$agent_name" == "product-owner" && "$mode" != "populate" ]]; then
         prompt_content="$(sed '/^## Populate Mode/,$d' "$prompt_file" | sed -e :a -e '/^[[:space:]]*$/{ $d; N; ba; }')"
     elif [[ "$agent_name" == "architect" && "$mode" == "groom" ]]; then
         # Strip Review Mode section, keep Groom Mode section
@@ -1630,6 +1646,14 @@ After you finish, the orchestrator will automatically run \`$FIX_CMD\` to fix li
 
         validate_hint="$validate_hint
 
+## Documentation Maintenance
+When your changes affect the project's public interface — CLI commands, flags, environment variables, configuration keys, or observable behavior — update the relevant documentation in the same commit. Common targets:
+- Help text / usage output
+- README, CLAUDE.md, CONFIGURATION.md, ARCHITECTURE.md
+- Inline --help strings
+
+Do not create new documentation files. Only update existing docs that already cover the area you changed. If no relevant docs exist, skip this.
+
 ## Maturity Protocol (MANDATORY — complete all phases)
 **Phase 1 — Implement:** Write the code. Follow spec, match patterns.${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix failures.}
 **Phase 2 — Critique:** STOP coding. Re-read every changed file. Verify intent is fulfilled and each AC is provably met. Hunt bugs, edge cases, dead code, missing error handling. Fix everything found.
@@ -1654,11 +1678,17 @@ For every AC that claims observable behavior (\"error messages are clear\", \"co
 
 **When you cannot verify an AC from the diff alone, say so explicitly in your ac_results.** Write: \`\"issue\": \"cannot verify from diff — no verify command provided and manual probing inconclusive\"\`. This is not a fail, but it flags the gap.
 
+If the change added or modified CLI flags, commands, or configuration, check that help text and documentation files reflect the change.
+
 Do not just grep the code for error strings and call it verified. Execute the code path."
-    elif [[ "$agent_name" == "tech-lead" || "$agent_name" == "product-owner" || ("$agent_name" == "architect" && "$mode" == "groom") ]]; then
+    elif [[ "$agent_name" == "groomer" || "$agent_name" == "tech-lead" || "$agent_name" == "product-owner" || ("$agent_name" == "architect" && "$mode" == "groom") ]]; then
         # CLI commands: shared preamble + role-specific examples
         local cli_role_lines
-        if [[ "$agent_name" == "product-owner" ]]; then
+        if [[ "$agent_name" == "groomer" ]]; then
+            cli_role_lines=".aishore/aishore backlog add --type feat --title \"...\" --desc \"...\" --priority should
+.aishore/aishore backlog add --type bug --title \"...\" --desc \"...\" --priority should
+.aishore/aishore backlog edit <ID> --ready --priority must --groomed-at --groomed-notes \"...\""
+        elif [[ "$agent_name" == "product-owner" ]]; then
             cli_role_lines=".aishore/aishore backlog add --type feat --title \"...\" --desc \"...\" --priority should
 .aishore/aishore backlog edit <ID> --priority must --groomed-at --groomed-notes \"...\""
         elif [[ "$agent_name" == "architect" ]]; then
@@ -1752,11 +1782,24 @@ run_agent() {
             else
                 agent_perms="${CFG_PERMS_REVIEWER:-$PERMS_REVIEWER}"
             fi ;;
-        tech-lead|product-owner)
+        groomer|tech-lead|product-owner)
             # Groom agents need full permissions to update backlog files
             agent_perms="${CFG_PERMS_DEVELOPER:-$PERMS_DEVELOPER}" ;;
         *)
             agent_perms="${CFG_PERMS_DEVELOPER:-$PERMS_DEVELOPER}" ;;
+    esac
+
+    # Resolve max_turns based on agent role
+    local max_turns
+    case "$agent_name" in
+        developer)
+            max_turns="$MAX_TURNS_DEVELOPER" ;;
+        validator)
+            max_turns="$MAX_TURNS_VALIDATOR" ;;
+        groomer|tech-lead|product-owner|architect)
+            max_turns="$MAX_TURNS_GROOMER" ;;
+        *)
+            max_turns="$MAX_TURNS_DEVELOPER" ;;
     esac
 
     local prompt
@@ -1766,12 +1809,12 @@ run_agent() {
         AGENT_OUTPUT_FILE="$output_file" AGENT_MODE="$mode" run_agent_process "$agent_name" "$model" \
             "$agent_perms" "" \
             "$context_files
-$prompt"
+$prompt" "$max_turns"
     else
         AGENT_MODE="$mode" run_agent_process "$agent_name" "$model" \
             "$agent_perms" "text" \
             "$context_files
-$prompt"
+$prompt" "$max_turns"
     fi
 }
 
@@ -2433,7 +2476,7 @@ Fix the issues and ensure all acceptance criteria pass."
     [[ -n "$ac_report" ]] && validator_extra="
 ## AC Verification Results
 ${ac_report}"
-    run_agent "validator" "validate" "$MODEL_PRIMARY" "" "" "$validator_extra"
+    run_agent "validator" "validate" "$MODEL_FAST" "" "" "$validator_extra"
     if ! check_result; then
         log_error "Validation failed"
         local agent_fail_reason=""
@@ -2699,14 +2742,21 @@ _handle_sprint_success() {
     if [[ -n "$AISHORE_WORKTREE_DIR" ]]; then
         # Preserve result.json for PR body / squash message
         [[ -f "$STATUS_DIR/result.json" ]] && cp "$STATUS_DIR/result.json" "$DATA_DIR/status/result.json"
-        # Capture archive entry before worktree is destroyed
+        # Capture archive entry before worktree is destroyed (needed for --no-merge)
         local _wt_archive_entry
         _wt_archive_entry=$(tail -1 "$ARCHIVE_DIR/sprints.jsonl" 2>/dev/null || true)
         _cleanup_worktree
-        # Append the captured archive entry to the main repo's sprints.jsonl
-        if [[ -n "$_wt_archive_entry" ]]; then
-            mkdir -p "$ARCHIVE_DIR"
-            printf '%s\n' "$_wt_archive_entry" >> "$ARCHIVE_DIR/sprints.jsonl"
+        if [[ "$no_merge" == "true" ]]; then
+            # No merge will happen — manually replicate tracking data to main
+            if [[ -n "$_wt_archive_entry" ]]; then
+                mkdir -p "$ARCHIVE_DIR"
+                printf '%s\n' "$_wt_archive_entry" >> "$ARCHIVE_DIR/sprints.jsonl"
+            fi
+        else
+            # Merge will bring all worktree changes — discard stale uncommitted
+            # tracking files on main so the merge applies cleanly
+            git checkout -- "$BACKLOG_DIR/sprint.json" 2>/dev/null || true
+            git checkout -- "$ARCHIVE_DIR/sprints.jsonl" 2>/dev/null || true
         fi
     fi
 
@@ -3071,16 +3121,13 @@ run_sprint_loop() {
                 auto_groom_snap=$(mktemp -d)
                 snapshot_backlog_files "$auto_groom_snap"
                 # Architect runs first — detects fragment risk and creates scaffolding items
-                # before tech-lead/product-owner groom features that depend on the skeleton
+                # before the groomer prepares features that depend on the skeleton
                 GROOM_MONITOR=true run_agent "architect" "groom" "$MODEL_FAST" groom_context "" "$groom_combined_feedback" || true
                 GROOM_MONITOR=
                 check_result || log_warning "Architect groom did not pass — continuing"
-                GROOM_MONITOR=true run_agent "tech-lead" "groom" "$MODEL_FAST" groom_context "" "$groom_combined_feedback" || true
+                GROOM_MONITOR=true run_agent "groomer" "groom" "$MODEL_FAST" groom_context "" "$groom_combined_feedback" || true
                 GROOM_MONITOR=
-                check_result || log_warning "Tech-lead groom did not pass — continuing"
-                GROOM_MONITOR=true run_agent "product-owner" "groom" "$MODEL_FAST" groom_context "" "$groom_combined_feedback" || true
-                GROOM_MONITOR=
-                check_result || log_warning "Product-owner groom did not pass — continuing"
+                check_result || log_warning "Groomer did not pass — continuing"
                 # Protect existing items from groomer rewrites, then enforce limits
                 protect_items_from_groom "$auto_groom_snap"
                 local auto_groom_counts auto_groom_added auto_groom_skipped
@@ -3399,7 +3446,8 @@ main() {
     case "$cmd" in
         run|auto) cmd_run "$@" ;;
         backlog) _load_module cmd-backlog-read; cmd_backlog "$@" ;;
-        groom)   _load_module cmd-groom; cmd_groom "$@" ;;
+        groom)    _load_module cmd-groom; cmd_groom "$@" ;;
+        scaffold) _load_module cmd-scaffold; cmd_scaffold "$@" ;;
         review)  _load_module cmd-review; cmd_review "$@" ;;
         status)  _load_module cmd-status; cmd_status "$@" ;;
         update)  _load_module cmd-update; cmd_update "$@" ;;
