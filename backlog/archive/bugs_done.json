@@ -2302,6 +2302,40 @@
     "completedAt": "2026-03-24T23:01:37-07:00"
   },
   {
+    "id": "BUG-120",
+    "title": "Heartbeat container check uses file existence as proxy — never queries Docker, uptime always 0",
+    "intent": "Cloud heartbeat must report whether the agent container is actually running and for how long. File existence does not mean the container is up.",
+    "description": "src/cloud/heartbeat/reporter.ts lines 132-146: checkContainerRunning() checks if compose file and config file exist on disk, returns running:true if both present. It never queries Docker. uptimeSeconds always returns 0 (hardcoded). Comment says 'Container state would normally be checked via Docker API; for now we check if the engine directory looks active'. This means: (1) a stopped container with files on disk is reported as running, (2) uptime is always 0 so operators can't tell how long an agent has been up, (3) a container restart is invisible to monitoring.",
+    "priority": "should",
+    "category": "stub",
+    "steps": [
+      "Read src/operate/doctor/checks.ts to find the real Docker container health check (it exists there)",
+      "Reuse or extract the Docker check logic — docker inspect or docker compose ps to get container state and start time",
+      "Calculate uptimeSeconds from container start time",
+      "Replace file-existence check with real Docker query",
+      "Fall back to file-existence check if Docker socket is unreachable (graceful degradation)",
+      "Add tests: container running returns real state, container stopped returns running:false, Docker unavailable falls back gracefully",
+      "Run npm test to confirm no regression"
+    ],
+    "acceptanceCriteria": [
+      "checkContainerRunning() queries Docker for actual container state",
+      "uptimeSeconds reflects real container uptime, not hardcoded 0",
+      "A stopped container is reported as running:false even if config files exist on disk",
+      "If Docker socket is unreachable, function degrades gracefully (returns running:false with error, does not crash heartbeat)"
+    ],
+    "scope": [
+      "src/cloud/heartbeat/reporter.ts"
+    ],
+    "status": "done",
+    "readyForSprint": false,
+    "groomedAt": "2026-03-29",
+    "groomingNotes": "PO REVIEW 2026-03-29. Priority confirmed SHOULD. Implementation path is clear: use docker compose ps --format json (same pattern as src/operate/doctor/checks.ts:304 and src/operate/status/status.ts:104). For uptimeSeconds: docker inspect --format '{{.State.StartedAt}}' <container_id> returns an ISO timestamp; calculate elapsed seconds. The pattern in status.ts uses svc.RunningFor which is human-readable only — use docker inspect for numeric uptime. Graceful degradation: if execFileAsync throws (Docker socket unavailable), return running:false with an error note. DO NOT crash the heartbeat reporter. Sprint-ready: all implementation details are in-repo at the referenced lines.",
+    "lastFailAt": "2026-03-24T23:03:51-07:00",
+    "failCount": 1,
+    "passes": true,
+    "completedAt": "2026-03-31T16:36:36-07:00"
+  },
+  {
     "id": "BUG-121",
     "title": "Shell injection in generated bash tool wrappers — user-controlled vars interpolated without safe quoting",
     "intent": "Eliminate command injection risk in all generated tool scripts. Every variable must be safely quoted or the tool generation must switch to a safer language.",
