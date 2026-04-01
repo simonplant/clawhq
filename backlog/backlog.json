@@ -204,10 +204,12 @@
         "configs/skills/",
         "src/design/tools/"
       ],
-      "status": "todo",
-      "readyForSprint": true,
+      "status": "done",
+      "readyForSprint": false,
       "groomedAt": "2026-03-28",
-      "groomingNotes": "Design resolved: journal tool is append-only markdown writer (workspace/journal/YYYY-MM-DD.md). daily-stoic skill uses morning prompt + evening reflection cron pattern from existing morning-brief. Blueprint #11 (10 exist after FEAT-126). Sprint-ready."
+      "groomingNotes": "Design resolved: journal tool is append-only markdown writer (workspace/journal/YYYY-MM-DD.md). daily-stoic skill uses morning prompt + evening reflection cron pattern from existing morning-brief. Blueprint #11 (10 exist after FEAT-126). Sprint-ready.",
+      "passes": true,
+      "completedAt": "2026-03-31T17:06:13-07:00"
     },
     {
       "id": "FEAT-114",
