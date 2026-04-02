@@ -1,0 +1,31 @@
+name: social-digest
+version: "1.0.0"
+description: "Social monitoring — mentions, tracked accounts, signal-first, ClawWall-sanitized, silent by default"
+
+schedule:
+  cron: "0 8,17 * * *"
+  active_hours:
+    start: 7
+    end: 21
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - x
+    - sanitize
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: true
+  file_write: false
+  account_changes: false
+  auto_send: false

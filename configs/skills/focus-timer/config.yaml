@@ -1,0 +1,37 @@
+name: focus-timer
+version: "1.0.0"
+description: "Pomodoro focus sessions — guard, log, streak tracking. On-demand only."
+
+schedule:
+  triggered: on_demand_only
+
+session:
+  default_duration_min: 25
+  long_duration_min: 50
+  break_duration_min: 5
+  long_break_duration_min: 15
+  sessions_before_long_break: 4
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools: [calendar, file]
+  skills: [news-scanner, email-digest]  # these yield to focus sessions
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+log:
+  file: "memory/focus-log.md"
+  fields: [date, duration_min, interruptions, completed]
+
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false

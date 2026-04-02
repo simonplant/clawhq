@@ -1,0 +1,30 @@
+name: calendar-sync
+version: "1.0.0"
+description: "Calendar conflict detection — 48h window, focus-block aware, silent when clean"
+
+schedule:
+  cron: "0 7,13 * * *"
+  active_hours:
+    start: 6
+    end: 18
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - calendar
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false

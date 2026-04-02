@@ -1,0 +1,39 @@
+name: contact-follow-up
+version: "1.0.0"
+description: "Personal CRM — track touchpoints, surface overdue follow-ups, draft outreach"
+
+schedule:
+  cron_daily: "0 9 * * *"  # surface overdue at 9am
+  triggered: on_demand_only  # for drafting and logging
+
+model:
+  surface:
+    provider: local
+    minimum: "llama3:8b"
+  draft:
+    provider: cloud
+    preferred: "claude-sonnet"
+    local_fallback: "llama3:70b"
+
+default_cadences:
+  close_friend: 30      # days
+  friend: 60
+  professional: 90
+  networking: 180
+
+data_file: "memory/contacts-followup.json"
+
+dependencies:
+  tools: [email, file]
+  skills: [email-digest]
+
+approval:
+  required: true
+  category: send_email
+  auto_approve: false
+
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false

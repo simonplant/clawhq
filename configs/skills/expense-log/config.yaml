@@ -1,0 +1,47 @@
+name: expense-log
+version: "1.0.0"
+description: "Conversational expense capture, categorization, and weekly summary"
+
+schedule:
+  triggered: on_demand_only
+  cron_weekly: "0 20 * * 0"  # Sunday 8pm
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+categories:
+  - food
+  - transport
+  - housing
+  - health
+  - subscriptions
+  - business
+  - entertainment
+  - other
+
+budget_targets: {}  # user configures per category during init
+
+output:
+  json_log: "memory/expense-log.json"
+  monthly_md: "memory/expenses-{{YYYY-MM}}.md"
+
+anomaly:
+  threshold_multiplier: 3.0
+  lookback_days: 30
+
+dependencies:
+  tools: [file]
+  skills: []
+
+approval:
+  required: false
+  category: data_log
+  auto_approve: true
+
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false

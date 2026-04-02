@@ -1,0 +1,47 @@
+name: reading-list
+version: "1.0.0"
+description: "Capture, prioritize, and surface reading material. Daily digest. ClawWall on all URLs."
+
+schedule:
+  cron_daily: "15 8 * * *"  # 08:15, after morning brief
+  triggered: on_demand_only
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+queue:
+  data_file: "memory/reading-queue.json"
+  archive_after_days: 30
+  daily_surface_count: 3
+
+scoring:
+  recency_weight: 0.3
+  interest_match_weight: 0.5
+  read_time_budget_min: 30  # prefer items fitting in 30min budget
+
+source_types:
+  - article
+  - paper
+  - book
+  - newsletter
+  - thread
+
+security:
+  sanitize_urls: true  # ClawWall on all external content
+
+dependencies:
+  tools: [file, tavily]
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: true  # for URL enrichment only, ClawWall-gated
+  file_write: true
+  account_changes: false
+  auto_send: false

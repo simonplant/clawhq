@@ -1,0 +1,29 @@
+name: cooking-assistant
+version: "1.0.0"
+description: "Recipe matching and cooking guidance — pantry-first, nutrition-constrained, MASLD/pre-diabetes compliant"
+
+schedule:
+  on_demand: true
+  cron_hint: "0 17 * * *"
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - pantry
+    - meal_plan
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false

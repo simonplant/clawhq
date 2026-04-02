@@ -1,0 +1,31 @@
+name: task-digest
+version: "1.0.0"
+description: "Daily task prioritization — ≤5 focus items, calendar-aware, silent on light days"
+
+schedule:
+  cron: "0 9 * * 1-5"
+  active_hours:
+    start: 7
+    end: 11
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - tasks
+    - calendar
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false

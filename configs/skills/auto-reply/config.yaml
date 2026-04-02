@@ -1,0 +1,31 @@
+name: auto-reply
+version: "1.0.0"
+description: "Routine email replies — appointment confirmations, vendor replies, unsubscribes — always approval-gated"
+
+schedule:
+  cron: "0 */4 * * *"
+  active_hours:
+    start: 8
+    end: 20
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: true
+  cloud_condition: "tone_sensitive_reply"
+
+dependencies:
+  tools:
+    - email
+  skills: []
+
+approval:
+  required: true
+  category: send_email
+  auto_approve: false
+
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false

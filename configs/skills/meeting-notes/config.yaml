@@ -1,0 +1,28 @@
+name: meeting-notes
+version: "1.0.0"
+description: "Meeting notes capture — structure, decisions, action items extracted and routed to task queue"
+
+schedule:
+  on_demand: true
+
+model:
+  provider: cloud
+  minimum: "llama3:8b"
+  cloud_escalation: true
+  cloud_condition: "always"
+
+dependencies:
+  tools:
+    - tasks
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false

@@ -1,0 +1,32 @@
+name: price-alert
+version: "1.0.0"
+description: "Price monitoring — stocks, products — fires once per trigger level, informational only"
+
+schedule:
+  cron: "*/30 8-20 * * *"
+  active_hours:
+    start: 8
+    end: 20
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - quote
+    - web-search
+    - sanitize
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: true
+  file_write: true
+  account_changes: false
+  auto_send: false

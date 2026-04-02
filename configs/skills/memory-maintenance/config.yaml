@@ -1,0 +1,31 @@
+name: memory-maintenance
+version: "1.0.0"
+description: "MEMORY.md hygiene — stale entry removal, noise reduction, pattern promotion — approval-gated"
+
+schedule:
+  cron: "0 2 */3 * *"
+  active_hours:
+    start: 0
+    end: 6
+
+model:
+  provider: cloud
+  minimum: "llama3:8b"
+  cloud_escalation: true
+  cloud_condition: "always"
+
+dependencies:
+  tools:
+    - memory
+  skills: []
+
+approval:
+  required: true
+  category: memory_update
+  auto_approve: false
+
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false

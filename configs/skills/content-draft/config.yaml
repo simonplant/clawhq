@@ -1,0 +1,30 @@
+name: content-draft
+version: "1.0.0"
+description: "Blog, social, newsletter drafting — voice-matched, always approval-gated before publish"
+
+schedule:
+  on_demand: true
+
+model:
+  provider: cloud
+  minimum: "llama3:8b"
+  cloud_escalation: true
+  cloud_condition: "always"
+
+dependencies:
+  tools:
+    - web-search
+    - sanitize
+  skills:
+    - web-research
+
+approval:
+  required: true
+  category: publish_content
+  auto_approve: false
+
+boundaries:
+  network_access: true
+  file_write: true
+  account_changes: false
+  auto_send: false

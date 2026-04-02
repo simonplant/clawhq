@@ -1,0 +1,28 @@
+name: health-log
+version: "1.0.0"
+description: "Health metric tracking — weight, activity, sleep, nutrition — trend surfacing, weekly summary"
+
+schedule:
+  cron: "0 9 * * *"
+  weekly_summary: "0 18 * * 0"
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - health
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: false
+  file_write: false
+  account_changes: false
+  auto_send: false
