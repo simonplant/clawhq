@@ -1,0 +1,31 @@
+name: weather-check
+version: "1.0.0"
+description: "Plan-impact weather alerts — silent when unremarkable, surfaces only what changes your day"
+
+schedule:
+  cron: "0 7 * * *"
+  active_hours:
+    start: 6
+    end: 9
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - weather
+    - calendar
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: true
+  file_write: false
+  account_changes: false
+  auto_send: false

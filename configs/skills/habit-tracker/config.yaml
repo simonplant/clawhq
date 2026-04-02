@@ -1,0 +1,29 @@
+name: habit-tracker
+version: "1.0.0"
+description: "Daily habit check-ins and streak tracking — reminder without lecture, weekly summary"
+
+schedule:
+  cron: "0 20 * * *"
+  weekly_summary: "0 19 * * 0"
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: false
+
+dependencies:
+  tools:
+    - tasks
+    - health
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: false
+  file_write: true
+  account_changes: false
+  auto_send: false

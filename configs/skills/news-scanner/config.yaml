@@ -1,0 +1,32 @@
+name: news-scanner
+version: "1.0.0"
+description: "Interest-based news scanner — signal-first, ClawWall-sanitized, silent when nothing clears the bar"
+
+schedule:
+  cron: "30 7,15 * * *"
+  active_hours:
+    start: 6
+    end: 20
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: true
+  cloud_condition: "quality_summary_requested"
+
+dependencies:
+  tools:
+    - web-search
+    - sanitize
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: true
+  file_write: false
+  account_changes: false
+  auto_send: false

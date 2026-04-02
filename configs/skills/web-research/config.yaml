@@ -1,0 +1,33 @@
+name: web-research
+version: "1.0.0"
+description: "On-demand web research — Tavily-powered, ClawWall-sanitized, source-cited, budget-managed"
+
+schedule:
+  on_demand: true
+
+model:
+  provider: local
+  minimum: "llama3:8b"
+  cloud_escalation: true
+  cloud_condition: "complex_synthesis_requested"
+
+dependencies:
+  tools:
+    - web-search
+    - sanitize
+  skills: []
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+budget:
+  tavily_results_per_query: 5
+  max_queries_per_session: 3
+
+boundaries:
+  network_access: true
+  file_write: false
+  account_changes: false
+  auto_send: false

@@ -1,0 +1,31 @@
+name: travel-planner
+version: "1.0.0"
+description: "Pet-friendly travel research — hotels, policies, comparison, calendar suggestions"
+
+schedule:
+  on_demand: true
+
+model:
+  provider: cloud
+  minimum: "llama3:8b"
+  cloud_escalation: true
+  cloud_condition: "always"
+
+dependencies:
+  tools:
+    - web-search
+    - sanitize
+    - calendar
+  skills:
+    - web-research
+
+approval:
+  required: false
+  category: notification
+  auto_approve: true
+
+boundaries:
+  network_access: true
+  file_write: false
+  account_changes: false
+  auto_send: false
