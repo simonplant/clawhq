@@ -142,6 +142,20 @@ function buildOpenClawConfig(
             ? `ollama/${answers.localModel}`
             : undefined,
         },
+        memorySearch: {
+          provider: "ollama",
+          store: { vector: { enabled: true } },
+        },
+      },
+    },
+
+    // Ollama provider config — reachable from container via host alias
+    models: {
+      providers: {
+        ollama: {
+          baseUrl: "http://host.docker.internal:11434",
+          models: [],
+        },
       },
     },
 

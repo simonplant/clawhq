@@ -96,6 +96,10 @@ export interface AgentsConfig {
       readonly primary?: string;
       readonly fallbacks?: readonly string[];
     };
+    readonly memorySearch?: {
+      readonly provider?: string;
+      readonly store?: { readonly vector?: { readonly enabled?: boolean } };
+    };
   };
 }
 

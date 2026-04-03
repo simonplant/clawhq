@@ -62,6 +62,7 @@ interface ComposeServiceOutput {
   readonly ports: readonly string[];
   readonly environment: Record<string, string>;
   readonly init: boolean;
+  readonly extra_hosts: readonly string[];
   readonly healthcheck: {
     readonly test: readonly string[];
     readonly interval: string;
@@ -141,6 +142,8 @@ export function generateCompose(
     command: ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789"],
     ports: ["127.0.0.1:18789:18789"],
     init: true,
+    // Map host.docker.internal to the host gateway for Ollama access
+    extra_hosts: ["host.docker.internal:host-gateway"],
     environment: {
       HOME: "/home/node",
       TERM: "xterm-256color",

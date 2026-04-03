@@ -238,6 +238,9 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
   lines.push("    ports:");
   for (const p of svc.ports) lines.push(`      - "${p}"`);
 
+  lines.push("    extra_hosts:");
+  for (const h of svc.extra_hosts) lines.push(`      - "${h}"`);
+
   lines.push("    environment:");
   for (const [key, val] of Object.entries(svc.environment)) {
     lines.push(`      ${key}: "${val}"`);
