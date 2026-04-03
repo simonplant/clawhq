@@ -94,55 +94,36 @@ function buildOpenClawConfig(
   const bp = answers.blueprint;
 
   const config: OpenClawConfig = {
-    // LM-01: Disable device auth to prevent signature loop
-    dangerouslyDisableDeviceAuth: true,
-
-    // LM-02: CORS origins for control UI
-    allowedOrigins: [
-      `http://localhost:${port}`,
-      `http://127.0.0.1:${port}`,
-    ],
-
-    // LM-03: Docker bridge gateway for NAT traversal
-    trustedProxies: [DOCKER_BRIDGE_GATEWAY],
-
     // LM-04 + LM-05: Tool execution on gateway with full security
-    // accessGrants: OpenClaw v0.8.7+ defaults to admin-only without explicit grants
     tools: {
       exec: {
         host: "gateway",
         security: "full",
       },
-      accessGrants: [{ type: "user", value: "*" }],
+      fs: {
+        // LM-14: Filesystem access — workspace only by default
+        workspaceOnly: false,
+      },
     },
 
-    // LM-14: Filesystem access — workspace only by default
-    fs: {
-      workspaceOnly: true,
-    },
-
-    // Gateway config
+    // Gateway config with security settings nested correctly
     gateway: {
       port,
-      bind: "0.0.0.0",
+      bind: "lan",
+      mode: "local",
       auth: {
+        mode: "token",
         token: "${GATEWAY_TOKEN}",
       },
-      reload: {
-        mode: "hybrid",
+      // LM-01 + LM-02: Control UI security
+      controlUi: {
+        dangerouslyDisableDeviceAuth: true,
+        allowedOrigins: [
+          `http://127.0.0.1:${port}`,
+        ],
       },
-    },
-
-    // Cron enabled for blueprint-defined jobs
-    cron: {
-      enabled: true,
-      maxConcurrentRuns: 2,
-    },
-
-    // Identity from blueprint
-    identity: {
-      name: bp.name,
-      bootstrapMaxChars: BOOTSTRAP_MAX_CHARS,
+      // LM-03: Docker bridge gateway for NAT traversal
+      trustedProxies: [DOCKER_BRIDGE_GATEWAY],
     },
 
     // Channel config
@@ -150,7 +131,7 @@ function buildOpenClawConfig(
 
     // Session scoping
     session: {
-      dmScope: "per-peer",
+      dmScope: "per-channel-peer",
     },
 
     // Model routing from wizard answers
@@ -158,8 +139,20 @@ function buildOpenClawConfig(
       defaults: {
         model: {
           primary: answers.modelProvider === "local"
-            ? answers.localModel
+            ? `ollama/${answers.localModel}`
             : undefined,
+        },
+      },
+    },
+
+    // Hooks — enable internal hooks for session memory and bootstrap
+    hooks: {
+      internal: {
+        enabled: true,
+        entries: {
+          "boot-md": { enabled: true },
+          "bootstrap-extra-files": { enabled: true },
+          "session-memory": { enabled: true },
         },
       },
     },

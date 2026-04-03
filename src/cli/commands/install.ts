@@ -54,6 +54,11 @@ export function registerInstallCommands(program: Command, defaultDeployDir: stri
         console.log(chalk.green(`✔ Directory scaffolded at ${opts.deployDir}`));
         console.log(chalk.green(`✔ Config written to ${result.configPath}`));
 
+        // Engine clone result (always shown — engine is always cloned)
+        if (result.sourceBuild?.success && !isFromSource) {
+          console.log(chalk.green(`✔ Engine source cloned to ${result.sourceBuild.sourceDir}`));
+        }
+
         // From-source specific output
         if (isFromSource && result.sourceBuild) {
           if (result.sourceBuild.success) {

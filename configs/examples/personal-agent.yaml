@@ -5,7 +5,7 @@ blueprint: replace-my-pa
 channel: telegram
 model_provider: local
 local_model: "llama3:8b"
-deploy_dir: ~/.clawhq
+deploy_dir: ~/dev/clawdius
 
 user:
   name: Simon

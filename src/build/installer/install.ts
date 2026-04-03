@@ -1,14 +1,14 @@
 /**
  * Install orchestrator for `clawhq install`.
  *
- * Coordinates: prerequisite detection → scaffold → config write.
- * For --from-source: adds clone → build → verify steps.
+ * Coordinates: prerequisite detection → scaffold → config write → clone engine.
+ * For --from-source: adds build → verify steps.
  * Returns a structured result so the CLI can format output.
  */
 
 import { detectPrereqs } from "./prereqs.js";
 import { scaffoldDirs, writeInitialConfig } from "./scaffold.js";
-import { buildFromSource } from "./source.js";
+import { buildFromSource, cloneEngine } from "./source.js";
 import type { InstallOptions, InstallResult } from "./types.js";
 import { verifyArtifact } from "./verify.js";
 
@@ -16,23 +16,21 @@ import { verifyArtifact } from "./verify.js";
  * Run the full install sequence.
  *
  * Standard path:
- * 1. Detect prerequisites (Docker, Node >=22, Ollama)
- * 2. Create ~/.clawhq/ directory structure
+ * 1. Detect prerequisites (Docker, Node >=22, Ollama, Git)
+ * 2. Create deployment directory structure
  * 3. Write clawhq.yaml with sensible defaults
+ * 4. Clone OpenClaw repository to engine source dir
  *
  * From-source path (--from-source):
- * 1. Detect prerequisites (Docker, Node >=22, Ollama, Git)
- * 2. Create ~/.clawhq/ directory structure
- * 3. Write clawhq.yaml
- * 4. Clone OpenClaw repository
+ * 1–4. Same as standard
  * 5. Build Docker image from source (network disabled)
  * 6. Verify built artifact matches release artifact
  */
 export async function install(options: InstallOptions): Promise<InstallResult> {
   const fromSource = options.fromSource ?? false;
 
-  // Step 1: Check prerequisites (includes git check for --from-source)
-  const prereqs = await detectPrereqs({ fromSource });
+  // Step 1: Check prerequisites (always require git — need it for engine clone)
+  const prereqs = await detectPrereqs({ fromSource: true });
 
   if (!prereqs.passed) {
     return {
@@ -51,19 +49,42 @@ export async function install(options: InstallOptions): Promise<InstallResult> {
     installMethod: fromSource ? "source" : "cache",
   });
 
-  // Standard path: done
+  // Step 4: Clone OpenClaw source repository
+  const progress = options.onProgress ?? (() => {});
+  progress("clone", "Cloning OpenClaw engine…");
+
+  const cloneResult = await cloneEngine({
+    deployDir: options.deployDir,
+    repoUrl: options.repoUrl,
+    ref: options.ref,
+    onProgress: options.onProgress,
+  });
+
+  if (!cloneResult.success) {
+    return {
+      success: false,
+      prereqs,
+      scaffold,
+      configPath,
+      sourceBuild: cloneResult,
+      error: cloneResult.error,
+    };
+  }
+
+  // Standard path: engine cloned, ready for `clawhq build`
   if (!fromSource) {
     return {
       success: true,
       prereqs,
       scaffold,
       configPath,
+      sourceBuild: cloneResult,
     };
   }
 
-  // From-source path: clone, build, verify
+  // From-source path: also build the Docker image now
 
-  // Step 4–5: Clone and build from source
+  // Step 5: Build Docker image from source
   const sourceBuild = await buildFromSource({
     deployDir: options.deployDir,
     repoUrl: options.repoUrl,

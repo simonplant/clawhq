@@ -43,7 +43,9 @@ const INVALID_CRON_STEP = /^(\d+)\/(\d+)$/;
  * "device signature invalid" loop and the agent becomes inaccessible.
  */
 export function validateLM01(config: OpenClawConfig): ValidationResult {
-  const passed = config.dangerouslyDisableDeviceAuth === true;
+  // Check both legacy top-level and new nested location
+  const passed = config.dangerouslyDisableDeviceAuth === true
+    || config.gateway?.controlUi?.dangerouslyDisableDeviceAuth === true;
   return {
     rule: "LM-01",
     passed,
@@ -51,7 +53,7 @@ export function validateLM01(config: OpenClawConfig): ValidationResult {
     message: passed
       ? "Device auth correctly disabled"
       : "dangerouslyDisableDeviceAuth must be true — without it the agent enters a device signature loop and becomes inaccessible",
-    fix: 'Set "dangerouslyDisableDeviceAuth": true in openclaw.json',
+    fix: 'Set "gateway.controlUi.dangerouslyDisableDeviceAuth": true in openclaw.json',
   };
 }
 
@@ -62,7 +64,8 @@ export function validateLM01(config: OpenClawConfig): ValidationResult {
  * errors and the agent can't be managed via web.
  */
 export function validateLM02(config: OpenClawConfig): ValidationResult {
-  const origins = config.allowedOrigins;
+  // Check both legacy top-level and new nested location
+  const origins = config.allowedOrigins ?? config.gateway?.controlUi?.allowedOrigins;
   const passed = Array.isArray(origins) && origins.length > 0;
   return {
     rule: "LM-02",
@@ -71,7 +74,7 @@ export function validateLM02(config: OpenClawConfig): ValidationResult {
     message: passed
       ? `allowedOrigins has ${origins.length} origin(s)`
       : "allowedOrigins is empty or missing — the control UI will return CORS errors",
-    fix: `Add expected origins to "allowedOrigins" array (e.g. ["http://localhost:${GATEWAY_DEFAULT_PORT}"])`,
+    fix: `Add expected origins to "gateway.controlUi.allowedOrigins" array (e.g. ["http://127.0.0.1:${GATEWAY_DEFAULT_PORT}"])`,
   };
 }
 
@@ -82,7 +85,8 @@ export function validateLM02(config: OpenClawConfig): ValidationResult {
  * routed through Docker's NAT.
  */
 export function validateLM03(config: OpenClawConfig): ValidationResult {
-  const proxies = config.trustedProxies;
+  // Check both legacy top-level and new nested location
+  const proxies = config.trustedProxies ?? config.gateway?.trustedProxies;
   const passed = Array.isArray(proxies) && proxies.length > 0;
   return {
     rule: "LM-03",
@@ -91,7 +95,7 @@ export function validateLM03(config: OpenClawConfig): ValidationResult {
     message: passed
       ? `trustedProxies has ${proxies.length} entry/entries`
       : "trustedProxies is empty or missing — the Gateway will reject requests through Docker NAT",
-    fix: 'Add Docker bridge gateway IP to "trustedProxies" (e.g. ["172.17.0.1"])',
+    fix: 'Add Docker bridge gateway IP to "gateway.trustedProxies" (e.g. ["172.17.0.1"])',
   };
 }
 

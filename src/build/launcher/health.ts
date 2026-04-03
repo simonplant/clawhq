@@ -51,25 +51,24 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
     }
 
     attempts++;
-    const client = new GatewayClient({
-      token: options.gatewayToken,
-      host,
-      port,
-      timeoutMs: DEPLOY_RPC_TIMEOUT_MS,
-    });
 
     try {
-      await client.connect(options.signal);
-      await client.rpc("status", undefined, { timeoutMs: DEPLOY_RPC_TIMEOUT_MS });
-      client.close();
+      // Use the simple HTTP /healthz endpoint — no auth required, always works
+      const url = `http://${host}:${port}/healthz`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), DEPLOY_RPC_TIMEOUT_MS);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
 
-      return {
-        healthy: true,
-        attempts,
-        elapsedMs: Date.now() - start,
-      };
+      if (response.ok) {
+        return {
+          healthy: true,
+          attempts,
+          elapsedMs: Date.now() - start,
+        };
+      }
     } catch (e) {
-      client.close();
+      // Gateway not ready yet — retry
     }
 
     // Wait before retrying (exponential backoff capped at MAX_INTERVAL_MS)

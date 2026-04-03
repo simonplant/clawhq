@@ -26,6 +26,51 @@ const execFileAsync = promisify(execFile);
 /** Docker image tag for the from-source build. */
 const SOURCE_IMAGE_TAG = "openclaw:local";
 
+// ── Clone Only ──────────────────────────────────────────────────────────────
+
+/**
+ * Clone the OpenClaw repository without building.
+ *
+ * Used by `clawhq install` (default mode) to acquire the engine source.
+ * The user then runs `clawhq build` separately to build the Docker image.
+ */
+export async function cloneEngine(
+  options: SourceBuildOptions,
+): Promise<SourceBuildResult> {
+  const deployDir = resolve(options.deployDir);
+  const sourceDir = join(deployDir, "engine", "source");
+  const repoUrl = options.repoUrl ?? OPENCLAW_REPO_URL;
+  const progress = options.onProgress ?? (() => {});
+
+  progress("clone", `Cloning ${repoUrl}`);
+
+  const cloneResult = await cloneRepo(repoUrl, sourceDir);
+  if (!cloneResult.success) {
+    return {
+      success: false,
+      sourceDir,
+      error: cloneResult.error,
+    };
+  }
+
+  if (options.ref) {
+    progress("checkout", `Checking out ${options.ref}`);
+    const checkoutResult = await checkout(sourceDir, options.ref);
+    if (!checkoutResult.success) {
+      return {
+        success: false,
+        sourceDir,
+        error: checkoutResult.error,
+      };
+    }
+  }
+
+  return {
+    success: true,
+    sourceDir,
+  };
+}
+
 // ── Source Build ─────────────────────────────────────────────────────────────
 
 /**

@@ -58,6 +58,17 @@ interface ComposeServiceOutput {
   readonly networks: readonly string[];
   readonly env_file: readonly string[];
   readonly restart: string;
+  readonly command: readonly string[];
+  readonly ports: readonly string[];
+  readonly environment: Record<string, string>;
+  readonly init: boolean;
+  readonly healthcheck: {
+    readonly test: readonly string[];
+    readonly interval: string;
+    readonly timeout: string;
+    readonly retries: number;
+    readonly start_period: string;
+  };
   readonly secrets?: readonly string[];
   readonly deploy?: {
     readonly resources: {
@@ -126,20 +137,39 @@ export function generateCompose(
     cap_drop: [...posture.capDrop],
     security_opt: [...posture.securityOpt],
     read_only: posture.readOnlyRootfs,
-    tmpfs: [`/tmp:size=${posture.tmpfs.sizeMb}m,${posture.tmpfs.options}`],
+    // Gateway command — must use --bind lan for Docker bridge port forwarding
+    command: ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789"],
+    ports: ["127.0.0.1:18789:18789"],
+    init: true,
+    environment: {
+      HOME: "/home/node",
+      TERM: "xterm-256color",
+      TZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      PATH: "/home/node/.openclaw/workspace:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      XDG_CONFIG_HOME: "/home/node/.config",
+    },
+    healthcheck: {
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"],
+      interval: "30s",
+      timeout: "5s",
+      retries: 5,
+      start_period: "20s",
+    },
+    tmpfs: [
+      `/tmp:size=${posture.tmpfs.sizeMb}m,${posture.tmpfs.options}`,
+      "/home/node/.config/op:noexec,nosuid,size=10m,uid=1000,gid=1000",
+      "/home/node/.local:exec,nosuid,size=512m",
+      "/home/node/.cache:exec,nosuid,size=512m",
+    ],
     volumes: [
-      // Config files read-only (LM-12)
-      `${deployDir}/engine/openclaw.json:${OPENCLAW_CONTAINER_CONFIG}:ro`,
-      // Credentials read-only — when cred-proxy is enabled, the agent container
-      // still mounts credentials.json for OpenClaw runtime (model provider keys).
-      // Tool-level API tokens are proxied and never reach the container env.
+      // Full OpenClaw config directory
+      `${deployDir}:/home/node/.openclaw`,
+      // Config file (rw — control UI needs write access)
+      `${deployDir}/engine/openclaw.json:/home/node/.openclaw/openclaw.json`,
+      // Credentials read-only
       `${deployDir}/engine/credentials.json:${OPENCLAW_CONTAINER_CREDENTIALS}:ro`,
-      // Identity files read-only
-      `${deployDir}/workspace/identity:${OPENCLAW_CONTAINER_WORKSPACE}/identity:ro`,
-      // Workspace writable (tools, skills, memory)
-      `${deployDir}/workspace/tools:${OPENCLAW_CONTAINER_WORKSPACE}/tools`,
-      `${deployDir}/workspace/skills:${OPENCLAW_CONTAINER_WORKSPACE}/skills`,
-      `${deployDir}/workspace/memory:${OPENCLAW_CONTAINER_WORKSPACE}/memory`,
+      // Workspace writable
+      `${deployDir}/workspace:/home/node/.openclaw/workspace`,
       // Cron
       `${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`,
     ],

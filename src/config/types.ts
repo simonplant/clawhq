@@ -40,19 +40,27 @@ export interface ToolsConfig {
   readonly deny?: readonly string[];
   readonly exec: ToolExecConfig;
   readonly accessGrants?: readonly ToolAccessGrant[];
+  readonly fs?: FsConfig;
 }
 
 /** Gateway server configuration. */
 export interface GatewayConfig {
   readonly port: number;
   readonly bind: string;
+  readonly mode?: "local" | "remote";
   readonly auth?: {
+    readonly mode?: "token" | "password";
     readonly token?: string;
     readonly password?: string;
   };
   readonly reload?: {
     readonly mode?: "hybrid" | "hot" | "restart" | "off";
   };
+  readonly controlUi?: {
+    readonly allowedOrigins?: readonly string[];
+    readonly dangerouslyDisableDeviceAuth?: boolean;
+  };
+  readonly trustedProxies?: readonly string[];
 }
 
 /** Filesystem access configuration. */

@@ -69,7 +69,7 @@ export const CONTAINER_USER = "1000:1000";
 // ── Repository URLs ─────────────────────────────────────────────────────────
 
 /** Canonical OpenClaw repository URL (used by from-source installer). */
-export const OPENCLAW_REPO_URL = "https://github.com/nicepkg/openclaw.git";
+export const OPENCLAW_REPO_URL = "https://github.com/openclaw/openclaw.git";
 
 // ── File permission modes ────────────────────────────────────────────────────
 
