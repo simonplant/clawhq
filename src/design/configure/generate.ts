@@ -17,6 +17,7 @@ import {
   WEBSOCKET_EVENT_CALLER_TIMEOUT_MS,
 } from "../../config/defaults.js";
 import type {
+  ChannelConfig,
   ClawHQConfig,
   ComposeConfig,
   CronJobDefinition,
@@ -113,7 +114,7 @@ function buildOpenClawConfig(
       mode: "local",
       auth: {
         mode: "token",
-        token: "${GATEWAY_TOKEN}",
+        token: "${OPENCLAW_GATEWAY_TOKEN}",
       },
       // LM-01 + LM-02: Control UI security
       controlUi: {
@@ -159,6 +160,18 @@ function buildOpenClawConfig(
       },
     },
 
+    // Auth profiles for model providers
+    ...(answers.auth?.provider ? {
+      auth: {
+        profiles: {
+          [`${answers.auth.provider}:default`]: {
+            provider: answers.auth.provider,
+            mode: "token",
+          },
+        },
+      },
+    } : {}),
+
     // Hooks — enable internal hooks for session memory and bootstrap
     hooks: {
       internal: {
@@ -179,16 +192,26 @@ function buildOpenClawConfig(
 
 function buildChannelConfig(
   answers: WizardAnswers,
-): Record<string, { enabled: boolean; dmPolicy: "pairing" }> {
-  const channels: Record<string, { enabled: boolean; dmPolicy: "pairing" }> = {};
+): OpenClawConfig["channels"] {
+  const channels: Record<string, ChannelConfig & Record<string, unknown>> = {};
   const selectedChannel = answers.channel;
 
   // Enable selected channel, disable others from blueprint
   for (const ch of answers.blueprint.channels.supported) {
-    channels[ch] = {
+    const channelConf: ChannelConfig & Record<string, unknown> = {
       enabled: ch === selectedChannel,
-      dmPolicy: "pairing",
+      dmPolicy: "pairing" as const,
     };
+
+    // Merge channel-specific config (bot tokens, etc.) from config file
+    const extra = answers.channelConfig?.[ch];
+    if (extra) {
+      for (const [key, value] of Object.entries(extra)) {
+        channelConf[key] = value;
+      }
+    }
+
+    channels[ch] = channelConf;
   }
 
   return channels;
@@ -268,14 +291,21 @@ function buildComposeConfig(
 
 function buildEnvVars(answers: WizardAnswers): Record<string, string> {
   const env: Record<string, string> = {
-    // Gateway token (generated placeholder — user supplies real value)
-    GATEWAY_TOKEN: generateToken(),
+    // Gateway token — OpenClaw expects OPENCLAW_GATEWAY_TOKEN
+    OPENCLAW_GATEWAY_TOKEN: generateToken(),
     GATEWAY_PORT: String(answers.gatewayPort || DEFAULT_GATEWAY_PORT),
 
     // OpenClaw v0.8.6+ environment variable defaults
     WEBSOCKET_EVENT_CALLER_TIMEOUT: String(WEBSOCKET_EVENT_CALLER_TIMEOUT_MS),
     ENABLE_AUDIT_STDOUT,
   };
+
+  // Auth provider credentials (e.g. CLAUDE_AI_SESSION_KEY, ANTHROPIC_API_KEY)
+  if (answers.auth?.env) {
+    for (const [key, value] of Object.entries(answers.auth.env)) {
+      env[key] = value;
+    }
+  }
 
   // Flatten integration credentials into env vars
   // e.g. integrations.email.IMAP_HOST → EMAIL_IMAP_HOST

@@ -44,6 +44,26 @@ interface ConfigFile {
   customization?: Record<string, string>;
 
   integrations?: Record<string, Record<string, string>>;
+
+  /** Auth provider credentials (written to .env, referenced in openclaw.json). */
+  auth?: {
+    provider?: string;
+    env?: Record<string, string>;
+  };
+
+  /** Channel-specific credentials (bot tokens, etc.). */
+  channels?: {
+    telegram?: {
+      bot_token?: string;
+      dm_policy?: string;
+      group_policy?: string;
+      streaming?: string;
+    };
+    whatsapp?: {
+      phone_number_id?: string;
+      access_token?: string;
+    };
+  };
 }
 
 // ── Errors ──────────────────────────────────────────────────────────────────
@@ -129,10 +149,42 @@ export function loadConfigFile(configPath: string): WizardAnswers {
       ? config.personality as unknown as WizardAnswers["personalityDimensions"]
       : blueprint.personality.dimensions,
     userContext,
+    auth: config.auth ? {
+      provider: config.auth.provider,
+      env: config.auth.env,
+    } : undefined,
+    channelConfig: buildChannelConfig(config.channels),
   };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Build channel config from config file channels section. */
+function buildChannelConfig(
+  channels?: ConfigFile["channels"],
+): Record<string, Record<string, string>> | undefined {
+  if (!channels) return undefined;
+
+  const result: Record<string, Record<string, string>> = {};
+
+  if (channels.telegram) {
+    const tg: Record<string, string> = {};
+    if (channels.telegram.bot_token) tg["botToken"] = channels.telegram.bot_token;
+    if (channels.telegram.dm_policy) tg["dmPolicy"] = channels.telegram.dm_policy;
+    if (channels.telegram.group_policy) tg["groupPolicy"] = channels.telegram.group_policy;
+    if (channels.telegram.streaming) tg["streaming"] = channels.telegram.streaming;
+    if (Object.keys(tg).length > 0) result["telegram"] = tg;
+  }
+
+  if (channels.whatsapp) {
+    const wa: Record<string, string> = {};
+    if (channels.whatsapp.phone_number_id) wa["phoneNumberId"] = channels.whatsapp.phone_number_id;
+    if (channels.whatsapp.access_token) wa["accessToken"] = channels.whatsapp.access_token;
+    if (Object.keys(wa).length > 0) result["whatsapp"] = wa;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
 
 /** Expand ~ to the user's home directory. */
 function expandHome(path: string): string {

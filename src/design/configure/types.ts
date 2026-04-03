@@ -67,6 +67,15 @@ export interface WizardAnswers {
 
   /** User context collected during setup — drives USER.md generation. */
   readonly userContext?: UserContext;
+
+  /** Auth provider config (provider name + env vars for .env). */
+  readonly auth?: {
+    readonly provider?: string;
+    readonly env?: Readonly<Record<string, string>>;
+  };
+
+  /** Channel-specific credentials (bot tokens, etc.). */
+  readonly channelConfig?: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
 /** Options for the interactive wizard. */

@@ -154,7 +154,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       const { readEnvValue } = await import("../../secure/credentials/env-store.js");
       const token = opts.token
         ?? process.env["CLAWHQ_GATEWAY_TOKEN"]
-        ?? readEnvValue(join(opts.deployDir, "engine", ".env"), "GATEWAY_TOKEN")
+        ?? readEnvValue(join(opts.deployDir, "engine", ".env"), "OPENCLAW_GATEWAY_TOKEN")
         ?? "";
       if (!token) {
         console.error(chalk.red("Error: Gateway token required. Use --token or set CLAWHQ_GATEWAY_TOKEN"));
@@ -258,7 +258,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       const { readEnvValue } = await import("../../secure/credentials/env-store.js");
       const token = opts.token
         ?? process.env["CLAWHQ_GATEWAY_TOKEN"]
-        ?? readEnvValue(join(opts.deployDir, "engine", ".env"), "GATEWAY_TOKEN")
+        ?? readEnvValue(join(opts.deployDir, "engine", ".env"), "OPENCLAW_GATEWAY_TOKEN")
         ?? "";
       if (!token) {
         console.error(chalk.red("Error: Gateway token required. Use --token or set CLAWHQ_GATEWAY_TOKEN"));
@@ -334,7 +334,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         const envPath = join(opts.deployDir, "engine", ".env");
         const gatewayToken = opts.token
           ?? process.env["CLAWHQ_GATEWAY_TOKEN"]
-          ?? readEnvValue(envPath, "GATEWAY_TOKEN")
+          ?? readEnvValue(envPath, "OPENCLAW_GATEWAY_TOKEN")
           ?? "";
 
         if (!gatewayToken) {

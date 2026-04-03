@@ -1,15 +1,18 @@
 # Example non-interactive config for clawhq init --config
 # Usage: clawhq init --config configs/examples/personal-agent.yaml
+#
+# Copy this file to your deployment directory and fill in real values.
+# Never commit credentials to the clawhq repo.
 
 blueprint: replace-my-pa
 channel: telegram
 model_provider: local
-local_model: "gemma3:27b"
-deploy_dir: ~/dev/clawdius-hq
+local_model: "llama3:8b"
+deploy_dir: ~/.clawhq
 
 user:
-  name: Simon
-  timezone: Australia/Sydney
+  name: User
+  # timezone: America/New_York
   communication: brief
 
 customization:
@@ -17,7 +20,21 @@ customization:
   scheduling_preference: "Suggest options — propose solutions, I confirm"
   priority_contacts: ""
 
-# Integrations — fill in credentials before deploying
+# Auth — model provider credentials
+# auth:
+#   provider: anthropic
+#   env:
+#     ANTHROPIC_API_KEY: "sk-ant-..."
+#   # Or for Claude subscription:
+#   # env:
+#   #   CLAUDE_AI_SESSION_KEY: "your-session-key"
+
+# Channel credentials
+# channels:
+#   telegram:
+#     bot_token: "123456:ABC-DEF..."
+
+# Integrations — service credentials
 # integrations:
 #   messaging:
 #     BOT_TOKEN: "your-telegram-bot-token"

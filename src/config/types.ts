@@ -154,7 +154,7 @@ export interface OpenClawConfig {
   readonly fs?: FsConfig;
   readonly agents?: AgentsConfig;
   readonly identity?: IdentityConfig;
-  readonly channels?: Record<string, ChannelConfig>;
+  readonly channels?: Record<string, ChannelConfig & Record<string, unknown>>;
   readonly cron?: CronConfig;
   readonly session?: SessionConfig;
   readonly [key: string]: unknown;
