@@ -16,8 +16,10 @@ import {
 } from "../../design/blueprints/index.js";
 import type { Blueprint } from "../../design/blueprints/index.js";
 import {
+  ConfigFileError,
   createInquirerPrompter,
   generateBundle,
+  loadConfigFile,
   runSmartInference,
   runWizard,
   SmartInferenceAbortError,
@@ -139,6 +141,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
     .description("Interactive setup — choose blueprint, configure, forge agent")
     .option("--guided", "Run the guided setup wizard (default)")
     .option("--smart", "AI-powered config inference via local Ollama")
+    .option("-c, --config <file>", "Non-interactive: load config from YAML file")
     .option("-b, --blueprint <name>", "Pre-select a blueprint by name")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--air-gapped", "Run in air-gapped mode (no internet)")
@@ -146,25 +149,45 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
     .action(async (opts: {
       guided?: boolean;
       smart?: boolean;
+      config?: string;
       blueprint?: string;
       deployDir: string;
       airGapped?: boolean;
       ollamaModel?: string;
     }) => {
       try {
-        const prompter = await createInquirerPrompter();
+        let answers;
 
-        // Step 1: Collect answers via smart inference or guided wizard
-        const answers = opts.smart
-          ? await runSmartInference(prompter, {
-              deployDir: opts.deployDir,
-              ollamaModel: opts.ollamaModel,
-            })
-          : await runWizard(prompter, {
-              blueprintName: opts.blueprint,
-              deployDir: opts.deployDir,
-              airGapped: opts.airGapped,
-            });
+        if (opts.config) {
+          // Non-interactive: load from config file
+          try {
+            answers = loadConfigFile(opts.config);
+            console.log(chalk.green(`\n✔ Config loaded from ${opts.config}`));
+            console.log(chalk.dim(`  Blueprint: ${answers.blueprint.name}`));
+            console.log(chalk.dim(`  Channel:   ${answers.channel}`));
+            console.log(chalk.dim(`  Model:     ${answers.modelProvider === "local" ? answers.localModel : "cloud"}`));
+            console.log(chalk.dim(`  Deploy to: ${answers.deployDir}`));
+          } catch (error) {
+            if (error instanceof ConfigFileError) {
+              console.error(chalk.red(`\n  ✘ ${error.message}\n`));
+              throw new CommandError("", 1);
+            }
+            throw error;
+          }
+        } else {
+          // Interactive: wizard or smart inference
+          const prompter = await createInquirerPrompter();
+          answers = opts.smart
+            ? await runSmartInference(prompter, {
+                deployDir: opts.deployDir,
+                ollamaModel: opts.ollamaModel,
+              })
+            : await runWizard(prompter, {
+                blueprintName: opts.blueprint,
+                deployDir: opts.deployDir,
+                airGapped: opts.airGapped,
+              });
+        }
 
         // Step 2: Generate deployment bundle
         const spinner = ora("Generating config…");

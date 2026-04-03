@@ -1,0 +1,34 @@
+# Example non-interactive config for clawhq init --config
+# Usage: clawhq init --config configs/examples/personal-agent.yaml
+
+blueprint: replace-my-pa
+channel: telegram
+model_provider: local
+local_model: "llama3:8b"
+deploy_dir: ~/.clawhq
+
+user:
+  name: Simon
+  timezone: Australia/Sydney
+  communication: brief
+
+customization:
+  work_style: "Professional but casual — friendly yet competent"
+  scheduling_preference: "Suggest options — propose solutions, I confirm"
+  priority_contacts: ""
+
+# Integrations — fill in credentials before deploying
+# integrations:
+#   messaging:
+#     BOT_TOKEN: "your-telegram-bot-token"
+#   email:
+#     IMAP_HOST: "imap.gmail.com"
+#     IMAP_USER: "you@gmail.com"
+#     IMAP_PASS: "app-password"
+#     SMTP_HOST: "smtp.gmail.com"
+#     SMTP_USER: "you@gmail.com"
+#     SMTP_PASS: "app-password"
+#   calendar:
+#     CALDAV_URL: "https://caldav.icloud.com"
+#     CALDAV_USER: "you@icloud.com"
+#     CALDAV_PASS: "app-password"
