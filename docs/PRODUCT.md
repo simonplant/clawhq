@@ -2,7 +2,7 @@
 
 > Your AI agent runs on your hardware, talks to your services, and never sends a byte to anyone you didn't choose. ClawHQ makes that possible without a PhD in DevOps.
 
-**Owner:** Simon Plant · **Status:** Active Development · **Updated:** 2026-04-03
+**Owner:** Simon Plant · **Status:** Pre-launch (all code works, zero external users — community validation begins at publication) · **Updated:** 2026-04-03
 
 ---
 
@@ -93,10 +93,10 @@ Not everything ClawHQ does survives OpenClaw maturation equally. Being honest ab
 - **Intent preservation.** A blueprint records what you were trying to build. Drift detection is "does the current state still match?" OpenClaw records configuration, not intent.
 - **Longitudinal lifecycle.** How agents drift over time, what memory management looks like at 120 days, when credentials expire, where identity degrades. Operational knowledge that doesn't exist in framework docs.
 
-**Bridge value — important now, may get absorbed over 12-24 months:**
-- The 14 landmines. OpenClaw will fix these over time.
-- Basic security hardening. Community guides are proliferating. `openclaw security audit` exists.
-- Guided configuration. `openclaw onboard` and `openclaw configure` already exist and will improve.
+**Bridge value — important now, uncertain shelf life:**
+- The 14 landmines. OpenClaw will fix some over time — but open-source projects are notoriously slow at configuration UX even at scale. Kubernetes still has footguns a decade in. These may persist for years.
+- Basic security hardening. Community guides are proliferating. `openclaw security audit` exists. But opt-in hardening and default-on hardening are different products.
+- Guided configuration. `openclaw onboard` and `openclaw configure` already exist and will improve. The gap narrows but may never close to blueprint-level composition.
 - Individual feature patches (context pruning defaults, skill permission restriction).
 
 Bridge value earns credibility and buys time for the durable layers. But it's not the long-term bet.
@@ -114,6 +114,8 @@ Open-source tools + published blueprints + upstream contributions + content from
 - **Consulting/advisory** — for teams deploying at scale. Only if inbound inquiries materialize.
 
 **Hard constraint:** Don't build paid services before demand is validated. Publish knowledge first. If the knowledge creates demand for tooling, build the tooling.
+
+**Honest fallback:** If all revenue signals are negative at month 9, the body of work — blueprints, Persona Schema, configuration reference, security pattern catalog, 74 production hardening patterns — is a portfolio of deep technical work in AI agent infrastructure. Valuable for job applications, advisory roles, speaking, and credibility in the space even if ClawHQ never generates direct revenue. The work is not wasted; it's repositioned.
 
 ---
 

@@ -10,7 +10,7 @@
 
 | # | Assumption | Risk | Pass | Fail | Deadline |
 |---|---|---|---|---|---|
-| 1 | **Community Engagement** — The OpenClaw community values production-tested blueprints and operational knowledge enough to engage with it | CRITICAL | 200+ GitHub stars on blueprint repo, 5K+ article reads, upstream issues engaged | <50 stars, <1K reads, issues ignored | 90 days after first publication |
+| 1 | **Community Engagement** — The OpenClaw community values production-tested blueprints and operational knowledge enough to engage with it | CRITICAL | 100+ GitHub stars on blueprint repo, 3K+ article reads, upstream issues engaged | <25 stars, <500 reads, issues ignored | 90 days after first publication |
 | 2 | **Willingness to Pay** — sovereignty audience will pay for monitoring or premium services | CRITICAL | 10+ Sentinel signups or any consulting inbound | <3 signups and zero inbound | 60 days after Sentinel offered (gated behind Assumption 1 passing) |
 | 3 | **Foundation Composition Gap** — OpenClaw won't ship blueprint-level composition within 12 months. Note: `openclaw onboard`, `openclaw configure`, and the Control UI already ship. The remaining gap is use-case-level composition, not basic guided config. | CRITICAL | 0-1 PRs targeting template/blueprint composition in 6 months | 2+ PRs targeting template composition or a `blueprints/` directory in repo | Biweekly review, 12-month horizon |
 
@@ -39,9 +39,10 @@ Blueprint repo stars/forks → Article reads/shares → Upstream issue engagemen
 3. Track weekly in `assumptions.json` → `latestData`
 
 **Decision thresholds:**
-- **Strong signal:** 200+ stars, 5K+ reads, upstream issues engaged. Continue and invest more.
-- **Weak signal:** 50-200 stars, 1-5K reads, some engagement. Extend to 6 months, adjust content angle.
-- **No signal:** <50 stars, <1K reads, issues ignored. The community doesn't value this contribution. Reassess thesis.
+- **Strong signal:** 100+ stars, 3K+ reads, upstream issues engaged. Continue and invest more.
+- **Moderate signal:** 25-100 stars, 500-3K reads, some engagement. Extend to 6 months, adjust content angle or distribution.
+- **No signal:** <25 stars, <500 reads, issues ignored. The community doesn't value this contribution in its current form. Reassess: wrong audience, wrong content angle, or wrong thesis.
+- **Note:** Starting from zero presence. Cold-start dynamics are real — low numbers in the first 30 days don't disprove the thesis. Look for trajectory, not just absolute numbers.
 
 ### Assumption 2: Willingness to Pay
 

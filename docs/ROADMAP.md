@@ -8,9 +8,9 @@
 
 ## What's Built
 
-ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 test files across all major subsystems. Built with AI-assisted development (Claude Code).
+ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 test files across all major subsystems. Built with AI-assisted development (Claude Code). **Pre-launch: all code works but has zero external users. Community validation begins at publication.**
 
-- **Blueprint engine** — 6 mission profiles (Life Ops, Development, Research, Trading, Home, Business Ops) × 4 personality presets (Direct Operator, Thoughtful Advisor, Warm Companion, Philosophical Guide), with guided and AI-powered setup, blueprint-specific customization questions. Published compositions include Email Manager, Hardened PA, Replace ChatGPT Plus, Founder's Ops, Family Hub, Research Co-pilot, Replace my PA.
+- **Blueprint engine** — 7 working blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions. Current blueprints are monolithic (personality + operational config fused in single YAML). The composition model (6 mission profiles × 4 personality presets as independent, composable axes) is the design direction grounded in production experience and the Persona Schema — refactoring existing blueprints into composable components is in the "Next" track.
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
 - **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
@@ -44,10 +44,10 @@ Two parallel tracks: publish knowledge (reputation) and ship tools (utility). Ne
 - Identity drift across SOUL.md / IDENTITY.md / `identity.*` config
 - Symlink escape silently drops workspace files
 
-**Extract and publish 3 launch blueprints.** Standalone YAML/Markdown that works with stock OpenClaw — no ClawHQ CLI dependency. Each is a mission profile + personality composition. Start with the three most production-tested:
-1. **Hardened Personal Assistant** — Life Ops profile + Direct Operator personality. The Clawdius config, generalized.
-2. **Email Manager** — Life Ops profile (email-focused subset) + Direct Operator personality. The most commonly requested use case.
-3. **Sovereign ChatGPT Replacement** — Research & Knowledge profile + Thoughtful Advisor personality. Honest about local-vs-cloud tradeoffs.
+**Extract and publish 3 launch blueprints.** Standalone YAML/Markdown that works with stock OpenClaw — no ClawHQ CLI dependency. Start with the three most production-tested:
+1. **The Clawdius** — Life Ops + Trading + Research + Coaching under a Stoic/Buddhist personality. The multi-role composition Simon has the most production hours on. This is the most differentiated blueprint because it demonstrates the "one agent, many hats" pattern that most users actually run — and nobody else can publish because nobody else has operated it.
+2. **Email Manager** — Life Ops (email-focused subset) with a direct, no-filler personality. The most commonly requested use case.
+3. **Sovereign ChatGPT Replacement** — Research & Knowledge profile with an analytical personality. Honest about local-vs-cloud tradeoffs.
 
 **Write the first article.** "14 Ways Your OpenClaw Agent Is Silently Broken." Each landmine documented with evidence. Launches the personal website content series.
 
@@ -80,6 +80,8 @@ After launch tracks complete. Contribution and product development continue in p
 **OpenClaw incident tracker.** Curated security advisory tracking for the ecosystem. Authority builder.
 
 ### Product
+
+**Refactor blueprints into composable profiles + presets.** Current 7 blueprints are monolithic. Extract the operational stack (tools, cron, integrations, security, autonomy) into reusable mission profiles and the personality config into reusable presets grounded in the Persona Schema dimensions. This is the work that makes the composition model real, not just documented. Spec update needed: `profile_ref` and `personality_ref` fields for referencing reusable components.
 
 **Expand published compositions.** Each published blueprint is a mission profile + personality composition, and also a content piece — a deep-dive article explaining the configuration decisions and tradeoffs. Priority compositions after the launch three:
 - Life Ops + Warm Companion (Family Hub)
@@ -149,11 +151,11 @@ Decisions made. Do not revisit unless the underlying assumption is disproven.
 
 | Signal | What It Means | Target |
 |---|---|---|
-| GitHub stars on blueprint repo | Community finds blueprints useful | 200+ in 90 days, 500+ in 6 months |
+| GitHub stars on blueprint repo | Community finds blueprints useful | 100+ in 90 days (cold start — zero existing presence) |
 | Upstream issues/PRs engaged | OpenClaw team recognizes the contributions | 5+ issues engaged, 2+ PRs merged in 90 days |
-| Article reads | Content resonates | Lead article >5K reads |
+| Article reads | Content resonates | Lead article >3K reads |
 | Community references | Others cite the work | 3+ references in community guides/tutorials in 6 months |
 | Inbound inquiries | Authority converting to opportunity | Any consulting/advisory inbound by month 6 |
-| Blueprint repo forks/usage | People actually using the configs | 50+ forks in 6 months |
+| Blueprint repo forks/usage | People actually using the configs | 25+ forks in 6 months |
 
 **Honest check at 6 months:** Has this body of work created opportunities that wouldn't exist otherwise? If yes, continue and consider revenue experiments. If no, the thesis needs revision.

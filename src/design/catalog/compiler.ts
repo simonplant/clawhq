@@ -10,13 +10,27 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 import {
   BOOTSTRAP_MAX_CHARS,
+  FILE_MODE_EXEC,
   GATEWAY_DEFAULT_PORT,
 } from "../../config/defaults.js";
 import { renderDimensionProse, DIMENSION_META, ALWAYS_ON_BOUNDARIES } from "../blueprints/personality-presets.js";
 import type { PersonalityDimensions, DimensionId, DimensionValue } from "../blueprints/types.js";
+
+import { generateEmailTool } from "../tools/email.js";
+import { generateIcalTool } from "../tools/ical.js";
+import { generateJournalTool } from "../tools/journal.js";
+import { generateTasksTool } from "../tools/tasks.js";
+import { generateTodoistTool } from "../tools/todoist.js";
+import { generateTodoistSyncTool } from "../tools/todoist-sync.js";
+import { generateTavilyTool } from "../tools/tavily.js";
+import { generateQuoteTool } from "../tools/quote.js";
+import { generateSanitizeTool } from "../tools/sanitize.js";
+import { generateApproveActionTool } from "../tools/approve-action.js";
 
 import { loadProfile, loadPersonality } from "./loader.js";
 import type {
@@ -73,6 +87,12 @@ export function compile(
 
     // ClawHQ metadata
     { relativePath: "clawhq.yaml", content: renderClawhqYaml(profile, personality, deployDir) },
+
+    // Tool scripts (executable on PATH inside container)
+    ...generateToolScripts(profile),
+
+    // Bundled skills
+    ...loadBundledSkills(profile),
   ];
 
   return { files, profile, personality };
@@ -434,6 +454,99 @@ function renderClawhqYaml(
 
   // Simple YAML serialization
   return serializeSimpleYaml(config);
+}
+
+// ── Tool Scripts ────────────────────────────────────────────────────────────
+
+/** Registry of tool name → script generator function. */
+const TOOL_REGISTRY: Readonly<Record<string, () => string>> = {
+  email: generateEmailTool,
+  ical: generateIcalTool,
+  journal: generateJournalTool,
+  tasks: generateTasksTool,
+  todoist: generateTodoistTool,
+  "todoist-sync": generateTodoistSyncTool,
+  tavily: generateTavilyTool,
+  quote: generateQuoteTool,
+  sanitize: generateSanitizeTool,
+  "approve-action": generateApproveActionTool,
+};
+
+/**
+ * Generate executable tool scripts for the profile's tools.
+ * Tools are placed at workspace/ root so they're on PATH inside the container.
+ */
+function generateToolScripts(profile: MissionProfile): CompiledFile[] {
+  const files: CompiledFile[] = [];
+
+  for (const tool of profile.tools) {
+    const generator = TOOL_REGISTRY[tool.name];
+    if (generator) {
+      files.push({
+        relativePath: `workspace/${tool.name}`,
+        content: generator(),
+        mode: FILE_MODE_EXEC,
+      });
+    }
+  }
+
+  // Always include sanitize (ClawWall) — security platform tool
+  if (!files.some((f) => f.relativePath === "workspace/sanitize")) {
+    files.push({
+      relativePath: "workspace/sanitize",
+      content: generateSanitizeTool(),
+      mode: FILE_MODE_EXEC,
+    });
+  }
+
+  return files;
+}
+
+// ── Bundled Skills ──────────────────────────────────────────────────────────
+
+/**
+ * Load bundled skills from configs/skills/ based on the profile's skills list.
+ */
+function loadBundledSkills(profile: MissionProfile): CompiledFile[] {
+  const files: CompiledFile[] = [];
+  const configsDir = findConfigsDir();
+  const skillsDir = join(configsDir, "skills");
+
+  if (!existsSync(skillsDir)) return files;
+
+  for (const skillName of profile.skills) {
+    const skillDir = join(skillsDir, skillName);
+    if (!existsSync(skillDir)) continue;
+
+    // Read all files in the skill directory
+    try {
+      const entries = readdirSync(skillDir);
+      for (const entry of entries) {
+        const filePath = join(skillDir, entry);
+        try {
+          const content = readFileSync(filePath, "utf-8");
+          files.push({
+            relativePath: `workspace/skills/${skillName}/${entry}`,
+            content,
+          });
+        } catch {
+          // Skip unreadable files
+        }
+      }
+    } catch {
+      // Skip unreadable skill directories
+    }
+  }
+
+  return files;
+}
+
+/** Find the configs/ directory. */
+function findConfigsDir(): string {
+  let dir = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
+  const candidate = join(dir, "configs");
+  if (existsSync(candidate)) return candidate;
+  return join(process.cwd(), "configs");
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

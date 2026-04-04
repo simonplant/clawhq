@@ -45,6 +45,16 @@ ClawHQ is a community-first project in the OpenClaw ecosystem. The position is *
 
 **The content angle nobody else has:** The community guides are all "how to set up." Nobody is telling the production stories — 14 silent landmines, the 208K-token death spiral, the ClawHavoc malware campaign, the Snyk sandbox bypasses, what 120 days of memory management actually looks like, why your agent introduces itself by the wrong name. ClawHQ is the only project with months of production data to draw from. That's the content moat.
 
+**Distribution channels (content that nobody finds doesn't compound):**
+- **OpenClaw Discord** — #showcase and #development channels. Post blueprints, reference doc, and production findings directly where the community lives.
+- **Reddit** — r/openclaw. Long-form postmortems and landmine discoveries perform well here.
+- **X/Twitter** — Thread format for production stories. Tag @steipete and relevant community members.
+- **Hacker News** — The "14 ways my agent silently broke" article is HN-native content. One submission, not repeated.
+- **Personal website** — Home for the full content series. Each article published here first, then distributed to channels.
+- **GitHub Discussions** — On the blueprint repo. For ongoing conversation and community feedback.
+
+Content publishes to the personal website, then gets distributed through community channels. The website accumulates; the channels amplify.
+
 ### 3. Publish the Blueprint Specification
 
 **Problem:** ClawHQ's blueprint format exists only in TypeScript — it can't travel without documentation. Meanwhile, community conventions are forming: `aaronjmars/soul.md` defines a multi-file soul spec, OpenAgents.mom generates workspace bundles, the proposed skill `manifest.json` creates a permission declaration format. If ClawHQ doesn't formalize and publish its spec, competing conventions will harden.
@@ -104,7 +114,7 @@ These are dead. Do not resurrect.
 | 3 | **Revenue timing vs. runway** — solo, unfunded | HIGH | Revenue experiments gated behind traction, not launched speculatively. Hard check: any inbound revenue signal by month 9. |
 | 4 | **Trust paradox** — security-focused project with security bug is brand-killing | HIGH | End-to-end smoke test before any public claims. Published test matrix. Scope alpha explicitly. |
 | 5 | **Upstream security catches up** — `--allow-tools` per skill exists, `manifest.json` sandboxing proposed, sandbox bypasses patched within weeks | MEDIUM | ClawHQ's value is the compound problem (composition + security + lifecycle), not any single security feature. If upstream closes a gap, celebrate — that's contribution working. |
-| 6 | **Bridge value depreciates** — the 14 landmines get fixed upstream over 12-24 months | MEDIUM | Expected. Bridge value earns credibility now. Durable value (composition, coherence, lifecycle, intent preservation) doesn't depend on upstream gaps. |
+| 6 | **Bridge value depreciates** — the 14 landmines get fixed upstream eventually | MEDIUM | Timeline uncertain — open-source projects are slow on config UX even at scale. Bridge value may persist for years, not months. Either way, durable value (composition, coherence, lifecycle, intent preservation) doesn't depend on upstream gaps. |
 | 7 | **Content doesn't gain traction** | MEDIUM | Go deeper, not wider. Security and operational niches over generic guides. Quality over cadence. |
 
 ---
@@ -113,10 +123,11 @@ These are dead. Do not resurrect.
 
 ### Test 1: Community Engagement
 - **Assumption:** The OpenClaw community values production-tested blueprints and operational knowledge
-- **Test:** Publish 3 blueprints + configuration reference + first article. Measure GitHub stars, article reads, community references.
-- **Pass:** 200+ stars, 5K+ article reads in 60 days
-- **Fail:** <50 stars, <1K reads — thesis needs revision
-- **Deadline:** 60 days after first publication
+- **Test:** Publish 3 blueprints + configuration reference + Persona Schema + first article. Measure GitHub stars, article reads, community references.
+- **Pass:** 100+ stars, 3K+ article reads in 90 days
+- **Fail:** <25 stars, <500 reads — thesis needs revision
+- **Deadline:** 90 days after first publication
+- **Note:** Starting from zero community presence. aaronjmars/soul.md hit 310 stars with active promotion; that's a ceiling reference, not a baseline. Be honest about cold-start reality.
 
 ### Test 2: Upstream Receptivity
 - **Assumption:** OpenClaw project welcomes substantive contributions from power users
@@ -131,6 +142,7 @@ These are dead. Do not resurrect.
 - **Pass:** Any paying engagement or 10+ expressed interest in Sentinel
 - **Fail:** Zero inbound after 6 months of active contribution — monetization thesis is wrong
 - **Deadline:** Month 9
+- **Fallback if all three tests fail:** The body of work (blueprints, reference docs, Persona Schema, security patterns, production knowledge) becomes a portfolio of deep technical work in AI agent infrastructure. This has value for job applications, advisory roles, and speaking opportunities even if ClawHQ itself never generates direct revenue. The work is not wasted — it's repositioned as credentialing, not product.
 
 ---
 
