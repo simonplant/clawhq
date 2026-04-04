@@ -170,14 +170,18 @@ async function getConfigStatus(
     const raw = await readFile(configPath, "utf-8");
     const config = JSON.parse(raw) as Record<string, unknown>;
 
-    // Quick landmine spot-checks
-    if (config["dangerouslyDisableDeviceAuth"] !== true) {
+    // Quick landmine spot-checks (check both legacy top-level and new nested locations)
+    const gw = config["gateway"] as Record<string, unknown> | undefined;
+    const cui = (gw?.["controlUi"] ?? {}) as Record<string, unknown>;
+    if (config["dangerouslyDisableDeviceAuth"] !== true && cui["dangerouslyDisableDeviceAuth"] !== true) {
       errors.push("LM-01: dangerouslyDisableDeviceAuth not set");
     }
-    if (!Array.isArray(config["allowedOrigins"]) || (config["allowedOrigins"] as unknown[]).length === 0) {
+    const origins = config["allowedOrigins"] ?? cui["allowedOrigins"];
+    if (!Array.isArray(origins) || origins.length === 0) {
       errors.push("LM-02: allowedOrigins empty or missing");
     }
-    if (!Array.isArray(config["trustedProxies"]) || (config["trustedProxies"] as unknown[]).length === 0) {
+    const proxies = config["trustedProxies"] ?? gw?.["trustedProxies"];
+    if (!Array.isArray(proxies) || proxies.length === 0) {
       errors.push("LM-03: trustedProxies empty or missing");
     }
   } catch (err) {
