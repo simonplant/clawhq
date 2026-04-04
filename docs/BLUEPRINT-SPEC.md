@@ -19,7 +19,8 @@ OpenClaw auto-loads exactly 8 workspace files at boot: `SOUL.md`, `AGENTS.md`, `
 ### Design Principles
 
 - **Complete** — A blueprint is self-contained. It defines every dimension of the agent.
-- **Declarative** — Blueprints describe *what* the agent should be, not *how* to configure it. ClawHQ compiles the blueprint into flat runtime config.
+- **Composable** — Blueprints encode two independent axes: **mission profiles** (what the agent does — `toolbelt`, `cron_config`, `integration_requirements`, `security_posture`, `autonomy_model`, `memory_policy`) and **personality presets** (how the agent delivers — `personality`, `use_case_mapping`). These are orthogonal. The same mission profile works with different personalities. Multiple mission profiles can compose under one personality. This reflects how people actually use OpenClaw: one agent, multiple capabilities, unified character.
+- **Declarative** — Blueprints describe *what* the agent should be, not *how* to configure it. The compiler resolves the blueprint into flat runtime config.
 - **Secure by default** — Security constraints are enforced at the schema level. Identity files are always read-only. Dangerous defaults don't exist.
 - **Validated** — Every blueprint passes 70+ structural and security checks before compilation. Invalid blueprints are rejected with actionable error messages.
 
@@ -114,7 +115,7 @@ When present, `dimensions` must define all 7 axes. Each value is an integer from
 
 **Constraint:** If `dimensions` is present, all 7 dimensions must be provided. Partial dimensions are rejected.
 
-**Future extension:** The Persona Schema (v0.1) defines 17 dimensions across five research-grounded layers (Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, SDT). The current 7-dimension model is a practical subset for blueprint configuration. A future spec version may adopt the full schema as an optional extended personality model.
+**Foundation: the Persona Schema.** These 7 dimensions are the blueprint-facing subset of the Persona Schema (v0.1), a 17-dimension framework across five research-grounded layers: Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, and Self-Determination Theory. The full schema provides the theoretical grounding for why these dimensions interact the way they do — why high proactivity + high caution produces paralysis (T-01), why warmth + directness creates whiplash (T-02). The 7-dimension subset is the practical interface for blueprint configuration. See `docs/PERSONA-SCHEMA.md` for the full framework. A future spec version may expose additional schema dimensions as optional extended personality configuration.
 
 **Personality tensions** (warnings, never blocking):
 

@@ -10,7 +10,7 @@
 
 ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 test files across all major subsystems. Built with AI-assisted development (Claude Code).
 
-- **Blueprint engine** — 7 use-case blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions
+- **Blueprint engine** — 6 mission profiles (Life Ops, Development, Research, Trading, Home, Business Ops) × 4 personality presets (Direct Operator, Thoughtful Advisor, Warm Companion, Philosophical Guide), with guided and AI-powered setup, blueprint-specific customization questions. Published compositions include Email Manager, Hardened PA, Replace ChatGPT Plus, Founder's Ops, Family Hub, Research Co-pilot, Replace my PA.
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
 - **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
@@ -44,12 +44,14 @@ Two parallel tracks: publish knowledge (reputation) and ship tools (utility). Ne
 - Identity drift across SOUL.md / IDENTITY.md / `identity.*` config
 - Symlink escape silently drops workspace files
 
-**Extract and publish 3 launch blueprints.** Standalone YAML/Markdown that works with stock OpenClaw — no ClawHQ CLI dependency. Start with the three most production-tested:
-1. **Hardened Personal Assistant** — the Clawdius config, generalized
-2. **Email Manager** — the most commonly requested use case
-3. **Replace ChatGPT Plus** — honest about local-vs-cloud tradeoffs
+**Extract and publish 3 launch blueprints.** Standalone YAML/Markdown that works with stock OpenClaw — no ClawHQ CLI dependency. Each is a mission profile + personality composition. Start with the three most production-tested:
+1. **Hardened Personal Assistant** — Life Ops profile + Direct Operator personality. The Clawdius config, generalized.
+2. **Email Manager** — Life Ops profile (email-focused subset) + Direct Operator personality. The most commonly requested use case.
+3. **Sovereign ChatGPT Replacement** — Research & Knowledge profile + Thoughtful Advisor personality. Honest about local-vs-cloud tradeoffs.
 
 **Write the first article.** "14 Ways Your OpenClaw Agent Is Silently Broken." Each landmine documented with evidence. Launches the personal website content series.
+
+**Publish the Persona Schema.** The 17-dimension, five-layer personality framework as a standalone spec. This is the most original intellectual contribution in the project — applicable beyond OpenClaw to any agent framework. It's what makes the personality preset axis rigorous (research-grounded dimensions across Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, SDT) instead of the community's current approach of prose paragraphs. Zero maintenance — a published spec doesn't break when upstream ships a new release. Publish as: standalone document, an article ("A Research-Grounded Framework for Agent Personality Design"), or both.
 
 ### Track 2: Ship (tool readiness)
 
@@ -75,13 +77,18 @@ After launch tracks complete. Contribution and product development continue in p
 
 **Upstream PRs.** Where filed issues lead to clear fixes, submit PRs. Priority: documentation improvements, configuration defaults, warning messages for silent failures.
 
-**Persona schema publication.** 17 dimensions across five research-grounded layers. Standalone spec with value beyond OpenClaw.
-
 **OpenClaw incident tracker.** Curated security advisory tracking for the ecosystem. Authority builder.
 
 ### Product
 
-**Expand to 10 blueprints.** Each is a masterclass and also a content piece. Candidates: DevOps Assistant, Content Creator, Trading/Finance, Health & Fitness, Family Hub (expanded), Founder's Ops (expanded), Research Co-pilot (expanded).
+**Expand published compositions.** Each published blueprint is a mission profile + personality composition, and also a content piece — a deep-dive article explaining the configuration decisions and tradeoffs. Priority compositions after the launch three:
+- Life Ops + Warm Companion (Family Hub)
+- Life Ops + Philosophical Guide (Stoic PA — the full Clawdius)
+- Trading & Finance + Direct Operator
+- Development Partner + Thoughtful Advisor (DevOps/SRE)
+- Business Ops + Direct Operator (Founder's Ops)
+- Research & Knowledge + Philosophical Guide (Research with values filter)
+- Multi-profile composition example: Life Ops + Trading + Research under one personality (the "one agent, many hats" pattern most users actually run)
 
 **Identity coherence.** Triple-identity-sync across SOUL.md, IDENTITY.md, and `identity.*` in config. 8-file budget management (detecting `bootstrapMaxChars` approach/truncation). Staleness detection, contradiction flagging across workspace files.
 
@@ -116,7 +123,7 @@ These ideas stay alive. Each has a specific traction signal that triggers invest
 
 Decisions made. Do not revisit unless the underlying assumption is disproven.
 
-- ~~Community blueprint marketplace~~ — 10 curated, not 1,000 crowdsourced. ClawHub has a malware problem.
+- ~~Community blueprint marketplace~~ — 6 mission profiles × 4 personality presets, production-tested and composable. Community has 177 SOUL.md-only templates with no operational stack. Quality over quantity.
 - ~~Managed hosting as primary business~~ — 10+ funded competitors. Different layer entirely.
 - ~~Revenue before reputation~~ — Contribution first. Revenue follows traction.
 - ~~One-time launch events as growth strategy~~ — Development-as-content compounds. Launch events decay.

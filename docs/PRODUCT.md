@@ -35,15 +35,27 @@ Monitoring (upstream intelligence, config breakage prediction), premium blueprin
 
 ## What ClawHQ Does
 
-**Blueprints** — Opinionated, production-tested agent configurations. "I want an email manager" compiles into a coherent set of all 8 workspace files + runtime config + cron schedule + tool policy + security posture. Nobody else publishes complete, tested configurations for specific use cases. The community has dozens of generic setup guides. Zero that say "here's exactly how a production email agent should be configured, with every landmine pre-handled."
+**Blueprints** — Opinionated, production-tested agent configurations. A blueprint compiles into a coherent set of all 8 workspace files + runtime config + cron schedule + tool policy + security posture. The community has 177 SOUL.md templates across three repos — all personality files only. None include tool configuration, cron schedules, security posture, credential management, or egress policy. A personality without an operational stack is a character sheet for a game nobody set up.
 
-- "Email Manager" — inbox triage, morning digest, auto-reply with approval gates
-- "Hardened PA" — security-first personal assistant, the Clawdius configuration generalized
-- "Replace ChatGPT Plus" — sovereign alternative, honest about local-vs-cloud tradeoffs
-- "Founder's Ops" — inbox zero, investor updates, hiring pipeline
-- "Family Hub" — shared calendar, chores, meals, coordination
-- "Research Co-pilot" — research, analysis, writing
-- "Replace my PA" — full tool access personal assistant
+Blueprints separate two orthogonal axes:
+
+**Mission profiles** define what the agent can do — tools, integrations, cron jobs, autonomy rules, security posture, memory policy:
+- **Life Operations** — email, calendar, tasks, morning briefs, grocery/meal support
+- **Development Partner** — code, git, CI/CD, architecture, repo monitoring
+- **Research & Knowledge** — web research, synthesis, writing, analysis
+- **Trading & Finance** — market data, alerts, portfolio tracking, risk guardrails
+- **Home & Devices** — smart home, cameras, device control, automation
+- **Business Ops** — CRM, leads, metrics, competitor analysis, content pipeline
+
+**Personality presets** define how the agent delivers — tone, values, communication style, philosophical orientation. Built on the **Persona Schema** (v0.1): 17 dimensions across five research-grounded layers — Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, and Self-Determination Theory. This is the structured framework that makes personality presets rigorous instead of vibes-based. The community has 177 SOUL.md files that say "You are warm and helpful." The Persona Schema says exactly what "warm" means across measurable dimensions and how it interacts with directness, autonomy, analytical depth, and moral reasoning. Composable with any mission profile:
+- **Direct Operator** — Terse, competent, no filler. The Clawdius baseline.
+- **Thoughtful Advisor** — Analytical, explains reasoning, asks before acting.
+- **Warm Companion** — Conversational, remembers personal context, checks in proactively.
+- **Philosophical Guide** — Stoic/Buddhist filter, frames decisions through values. Claudius Maximus.
+
+A published blueprint is a specific composition: "Life Ops + Direct Operator" is the Hardened PA. "Life Ops + Warm Companion" is the Family Hub. "Trading + Philosophical Guide" is how Clawdius handles markets. Users can also combine multiple mission profiles under one personality — Simon's Clawdius runs Life Ops + Trading + Research + Coaching under a single Stoic/Buddhist character. The compiler resolves the composition into flat runtime config.
+
+This is grounded in how people actually use OpenClaw. The research shows most users run ONE agent with multiple capabilities under a unified personality — not separate agents per role. The multi-agent pattern exists but is the minority. The community's 177 role-personality fusions ("warm data analyst," "sassy marketing agent") are the wrong abstraction. Mission profiles and personalities are independent axes.
 
 **Config generation** — Every generated config prevents all 14 known landmines. Guided and AI-powered setup. Integration auto-detection.
 
@@ -76,7 +88,7 @@ Monitoring (upstream intelligence, config breakage prediction), premium blueprin
 Not everything ClawHQ does survives OpenClaw maturation equally. Being honest about this shapes where to invest.
 
 **Durable — framework structurally can't do these:**
-- **Opinionated composition.** "Here's what a good email agent looks like" is outside framework scope. Frameworks serve everyone and can't have opinions about specific use cases.
+- **Opinionated composition.** "Here's what a good email agent looks like" is outside framework scope. Frameworks serve everyone and can't have opinions about specific use cases. The two-axis model (mission profiles × personality presets) is a design insight the framework doesn't encode.
 - **Cross-surface coherence.** Validating that SOUL.md, TOOLS.md, `openclaw.json`, tool policy, and skill selection all agree with each other and with the user's intent. OpenClaw validates each surface against its own schema, not against each other.
 - **Intent preservation.** A blueprint records what you were trying to build. Drift detection is "does the current state still match?" OpenClaw records configuration, not intent.
 - **Longitudinal lifecycle.** How agents drift over time, what memory management looks like at 120 days, when credentials expire, where identity degrades. Operational knowledge that doesn't exist in framework docs.
@@ -111,13 +123,15 @@ Open-source tools + published blueprints + upstream contributions + content from
 - **A replacement for OpenClaw's built-in UI** — The Control UI handles config editing. ClawHQ's value is composition, lifecycle, and security — not forms.
 - **A model routing engine** — OpenClaw handles model calls. We set policy via config.
 - **Managed hosting as primary business** — 10+ funded competitors own this. Sovereignty is the position.
-- **A community blueprint marketplace** — 10 curated masterclass blueprints beat 1,000 crowdsourced ones. ClawHub already has a malware problem.
+- **A community blueprint marketplace** — 6 mission profiles and 4 personality presets, production-tested and composable, beat 177 untested SOUL.md-only templates. Quality over quantity.
 
 ---
 
 ## Links
 
+- Persona Schema: `docs/PERSONA-SCHEMA.md`
 - Configuration Reference: `docs/OPENCLAW-REFERENCE.md`
+- Blueprint Specification: `docs/BLUEPRINT-SPEC.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Strategy: `docs/STRATEGY.md`
 - Roadmap: `docs/ROADMAP.md`
