@@ -80,6 +80,7 @@ export interface PersonalityPreset {
 export interface CompositionConfig {
   readonly profile: string;
   readonly personality: string;
+  readonly providers?: Readonly<Record<string, string>>;
   readonly dimension_overrides?: Partial<PersonalityDimensions>;
   readonly soul_overrides?: string;
   readonly extra_tools?: readonly string[];

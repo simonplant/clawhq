@@ -58,6 +58,9 @@ interface ConfigFile {
     env?: Record<string, string>;
   };
 
+  /** Provider selections per capability domain. */
+  providers?: Record<string, string>;
+
   /** Channel-specific credentials (bot tokens, etc.). */
   channels?: {
     telegram?: {
@@ -129,6 +132,7 @@ export function loadAndCompileComposition(configPath: string): CompiledWorkspace
     {
       profile: config.profile,
       personality: config.personality,
+      providers: config.providers,
     },
     {
       name: config.user?.name ?? "User",
