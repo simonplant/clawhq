@@ -88,6 +88,10 @@ export function compile(
     // ClawHQ metadata
     { relativePath: "clawhq.yaml", content: renderClawhqYaml(profile, personality, deployDir) },
 
+    // ClawWall security assets (copied into Docker image at build time)
+    { relativePath: "engine/clawwall/sanitize", content: renderClawwallSanitize(), mode: FILE_MODE_EXEC },
+    { relativePath: "engine/clawwall/curl-egress-wrapper", content: renderCurlEgressWrapper(), mode: FILE_MODE_EXEC },
+
     // Tool scripts (executable on PATH inside container)
     ...generateToolScripts(profile),
 
@@ -457,6 +461,28 @@ function renderClawhqYaml(
 }
 
 // ── Tool Scripts ────────────────────────────────────────────────────────────
+
+// ── ClawWall Security Assets ────────────────────────────────────────────────
+
+function renderClawwallSanitize(): string {
+  // Use the same sanitize generator as the workspace tool
+  return generateSanitizeTool();
+}
+
+function renderCurlEgressWrapper(): string {
+  // Load from clawhq's secure module
+  const wrapperPath = resolve(findConfigsDir(), "..", "src", "secure", "clawwall", "curl-egress-wrapper");
+  if (existsSync(wrapperPath)) {
+    return readFileSync(wrapperPath, "utf-8");
+  }
+  // Fallback: try dist path
+  const distPath = resolve(import.meta.dirname ?? __dirname, "..", "..", "secure", "clawwall", "curl-egress-wrapper");
+  if (existsSync(distPath)) {
+    return readFileSync(distPath, "utf-8");
+  }
+  // Minimal passthrough if file not found
+  return '#!/bin/bash\nexec /usr/bin/curl "$@"\n';
+}
 
 /** Registry of tool name → script generator function. */
 const TOOL_REGISTRY: Readonly<Record<string, () => string>> = {

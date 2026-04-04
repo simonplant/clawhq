@@ -1,0 +1,100 @@
+#!/bin/bash
+# ClawWall curl egress wrapper — scans POST/PUT/PATCH bodies for leaked secrets
+#
+# GET/HEAD requests pass through to real curl with zero overhead.
+# POST/PUT/PATCH/DELETE: body data is scanned via ClawWall egress before forwarding.
+# Blocked requests exit 3; audit logged by sanitize to sanitize-egress-audit.jsonl.
+#
+# Real curl: /usr/bin/curl
+# Installed at /usr/local/bin/curl (shadows /usr/bin/curl on PATH)
+#
+# Part of ClawHQ's default security hardening — baked into every agent image.
+set -euo pipefail
+
+REAL_CURL="/usr/bin/curl"
+SANITIZE="/opt/clawwall/sanitize"
+
+# No ClawWall → passthrough (dev/test environments)
+[ -x "$SANITIZE" ] || exec "$REAL_CURL" "$@"
+
+# ── Parse arguments to detect method and extract body data ──────────────────
+method=""
+bodies=()
+has_stdin_body=false
+
+args=("$@")
+i=0
+while [ "$i" -lt "${#args[@]}" ]; do
+  a="${args[$i]}"
+  case "$a" in
+    -X|--request)
+      i=$((i + 1)); method="${args[$i]^^}" ;;
+    -X*)
+      method="${a:2}"; method="${method^^}" ;;
+    --request=*)
+      method="${a#*=}"; method="${method^^}" ;;
+    -G|--get)
+      method="GET" ;;
+    -I|--head)
+      method="HEAD" ;;
+    -d|--data|--data-raw|--data-binary|--data-ascii|--data-urlencode|--json)
+      i=$((i + 1)); v="${args[$i]}"
+      if [[ "$v" == @- ]]; then has_stdin_body=true
+      elif [[ "$v" == @* ]] && [ -r "${v:1}" ]; then bodies+=("$(< "${v:1}")")
+      else bodies+=("$v"); fi ;;
+    -d*)
+      v="${a:2}"
+      if [[ "$v" == @- ]]; then has_stdin_body=true
+      elif [[ "$v" == @* ]] && [ -r "${v:1}" ]; then bodies+=("$(< "${v:1}")")
+      else bodies+=("$v"); fi ;;
+    --data=*|--data-raw=*|--data-binary=*|--data-ascii=*|--data-urlencode=*|--json=*)
+      v="${a#*=}"
+      if [[ "$v" == @- ]]; then has_stdin_body=true
+      elif [[ "$v" == @* ]] && [ -r "${v:1}" ]; then bodies+=("$(< "${v:1}")")
+      else bodies+=("$v"); fi ;;
+    -F|--form) i=$((i + 1)); bodies+=("${args[$i]}") ;;
+    -F*) bodies+=("${a:2}") ;;
+    --form=*) bodies+=("${a#*=}") ;;
+    -T|--upload-file)
+      i=$((i + 1)); v="${args[$i]}"
+      if [ "$v" = "-" ]; then has_stdin_body=true
+      elif [ -r "$v" ]; then bodies+=("$(< "$v")"); fi ;;
+  esac
+  i=$((i + 1))
+done
+
+# ── Determine effective method ──
+has_body=false
+{ [ "${#bodies[@]}" -gt 0 ] || [ "$has_stdin_body" = true ]; } && has_body=true
+
+if [ -z "$method" ]; then
+  if [ "$has_body" = true ]; then method="POST"; else method="GET"; fi
+fi
+
+# ── GET/HEAD: zero-overhead passthrough ──
+case "$method" in GET|HEAD) exec "$REAL_CURL" "$@" ;; esac
+
+# ── Mutating methods: scan body through ClawWall egress ──
+if [ "$has_body" = true ]; then
+  scan=""
+  for b in "${bodies[@]+"${bodies[@]}"}"; do scan+="$b"$'\n'; done
+
+  stdin_data=""
+  if [ "$has_stdin_body" = true ] && ! [ -t 0 ]; then
+    stdin_data=$(cat)
+    scan+="$stdin_data"
+  fi
+
+  if [ -n "$scan" ]; then
+    if ! printf '%s' "$scan" | "$SANITIZE" --egress --source curl >/dev/null; then
+      exit 3
+    fi
+  fi
+
+  if [ "$has_stdin_body" = true ] && [ -n "$stdin_data" ]; then
+    printf '%s' "$stdin_data" | "$REAL_CURL" "$@"
+    exit $?
+  fi
+fi
+
+exec "$REAL_CURL" "$@"

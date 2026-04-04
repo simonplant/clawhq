@@ -175,6 +175,25 @@ export function generateStage2Dockerfile(
     lines.push("");
   }
 
+  // ClawWall — immutable security scanning layer
+  // Baked into read-only image layer: agent cannot modify, delete, or corrupt.
+  // /opt/clawwall/ is NOT on PATH — tools import by absolute path.
+  lines.push(
+    "# ClawWall — immutable prompt injection firewall (OWASP LLM01 defense)",
+    "COPY clawwall/sanitize /opt/clawwall/sanitize",
+    "COPY clawwall/sanitize /opt/clawwall/sanitize.py",
+    "RUN sha256sum /opt/clawwall/sanitize | cut -d' ' -f1 > /opt/clawwall/sanitize.sha256 && \\",
+    "    chown -R root:root /opt/clawwall/ && \\",
+    "    chmod 555 /opt/clawwall/ && \\",
+    "    chmod 444 /opt/clawwall/sanitize /opt/clawwall/sanitize.py /opt/clawwall/sanitize.sha256",
+    "",
+    "# curl egress wrapper — scans POST/PUT/PATCH bodies for secret leaks",
+    "# Sits at /usr/local/bin/curl (before /usr/bin/curl on PATH)",
+    "COPY clawwall/curl-egress-wrapper /usr/local/bin/curl",
+    "RUN chown root:root /usr/local/bin/curl && chmod 755 /usr/local/bin/curl",
+    "",
+  );
+
   lines.push(
     `USER ${CONTAINER_USER}`,
     "",
