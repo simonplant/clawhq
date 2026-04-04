@@ -30,6 +30,8 @@ import {
 } from "../../design/configure/index.js";
 import {
   compile,
+  getDomains,
+  getProvidersForDomain,
   loadAllPersonalities,
   loadAllProfiles,
 } from "../../design/catalog/index.js";
@@ -420,6 +422,34 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
       }
       console.log(chalk.dim(`  ${personalities.length} personalities available`));
       console.log(chalk.dim("  Preview: clawhq compose preview <profile> <personality>\n"));
+    });
+
+  compose
+    .command("providers")
+    .description("List available integration providers (a la carte menu)")
+    .argument("[domain]", "Filter by domain (email, calendar, tasks, search, etc.)")
+    .action(async (domain?: string) => {
+      const domains = domain ? [domain] : getDomains();
+
+      console.log(chalk.bold("\nIntegration Providers — A La Carte Menu\n"));
+
+      for (const d of domains) {
+        const providers = getProvidersForDomain(d);
+        if (providers.length === 0) continue;
+
+        console.log(chalk.bold(`  ${d.charAt(0).toUpperCase() + d.slice(1)}`));
+        for (const p of providers) {
+          const authLabel = p.auth === "none" ? chalk.green("no auth") : chalk.dim(p.auth);
+          const egress = p.egressDomains.length > 0 ? p.egressDomains.join(", ") : chalk.green("local");
+          console.log(`    ${chalk.cyan(p.id)}  ${chalk.dim("—")}  ${p.name} (${p.protocol})`);
+          console.log(chalk.dim(`      Auth: ${authLabel} · CLI: ${p.cli} · Egress: ${egress}`));
+        }
+        console.log("");
+      }
+
+      const totalProviders = getDomains().reduce((sum, d) => sum + getProvidersForDomain(d).length, 0);
+      console.log(chalk.dim(`  ${totalProviders} providers across ${getDomains().length} domains`));
+      console.log(chalk.dim("  Sovereign options marked with no auth / local egress\n"));
     });
 
   compose

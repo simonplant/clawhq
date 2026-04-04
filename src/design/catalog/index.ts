@@ -23,3 +23,13 @@ export {
 } from "./loader.js";
 
 export { compile } from "./compiler.js";
+
+export type { Provider, ProviderEnvVar } from "./providers.js";
+export {
+  PROVIDERS,
+  getBinariesForProviders,
+  getDomains,
+  getEgressForProviders,
+  getProvider,
+  getProvidersForDomain,
+} from "./providers.js";
