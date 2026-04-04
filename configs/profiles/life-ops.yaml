@@ -1,0 +1,97 @@
+id: life-ops
+name: Life Operations
+description: "Email triage, calendar management, morning briefs, task tracking, household coordination"
+replaces: "Personal Assistant / Google Assistant / disorganized phone habits"
+
+tools:
+  - name: email
+    category: communication
+    description: "Email reading, triage, and draft replies via himalaya"
+    required: true
+  - name: ical
+    category: productivity
+    description: "Calendar management, conflict detection, scheduling via CalDAV"
+    required: true
+  - name: todoist
+    category: productivity
+    description: "Task management and tracking via Todoist API"
+    required: true
+  - name: tasks
+    category: core
+    description: "Local work queue for autonomous task execution"
+    required: true
+  - name: tavily
+    category: research
+    description: "Web search for quick lookups and research"
+    required: false
+
+skills:
+  - morning-brief
+  - schedule-guard
+  - construct
+
+integrations:
+  required: [messaging, email, calendar]
+  recommended: [tasks]
+  optional: [notes]
+
+cron_defaults:
+  heartbeat: "*/10 * * * *"
+  work_session: "*/15 * * * *"
+  morning_brief: "30 7 * * *"
+
+cron_prompts:
+  heartbeat: "Run heartbeat: check email for urgent messages, check calendar for upcoming meetings in the next 2 hours, check tasks for overdue items. If nothing urgent, respond HEARTBEAT_OK."
+  work_session: "Run work session: check your task queue, pick the highest priority item, execute it. If blocked, move to the next item. Summarize what you accomplished."
+  morning_brief: "Deliver morning briefing: summarize today's calendar, overnight email highlights (urgent items first), top 3 tasks for today, any conflicts or deadlines."
+
+delegation:
+  - action: organize_inbox
+    tier: execute
+    example: "Sort and label emails by priority, archive routine notifications"
+  - action: prepare_meeting_brief
+    tier: execute
+    example: "Compile agenda and background notes before scheduled meetings"
+  - action: draft_email
+    tier: propose
+    example: "Draft professional email for review — never send without approval"
+  - action: propose_calendar_change
+    tier: propose
+    example: "Suggest rescheduling when conflicts detected — wait for confirmation"
+  - action: send_on_behalf
+    tier: approve
+    example: "Send email to client or external party — requires explicit approval"
+  - action: commit_to_event
+    tier: approve
+    example: "Accept meeting invite that creates obligations — user must confirm"
+
+egress_domains:
+  - imap.gmail.com
+  - smtp.gmail.com
+  - caldav.icloud.com
+  - api.todoist.com
+  - api.tavily.com
+
+security_posture: hardened
+autonomy_default: medium
+
+memory_policy:
+  hot_max: "100KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+monitoring:
+  heartbeat_frequency: "10min"
+  checks: [email, calendar, tasks]
+  quiet_hours: "22:00-06:00"
+  alert_on: [credential_expiry, memory_bloat, cron_failure]
+
+day_in_the_life: >
+  Your agent auto-schedules focus blocks around your meetings, notices a
+  conflict mentioned in email and proposes a reschedule, triages 40 emails
+  down to 6 that need you, and adds prep time before your client call.
+  Meeting notes are summarized and action items tracked automatically. At the
+  end of each day you get a brief: tasks completed, emails handled, tomorrow's
+  prep list.

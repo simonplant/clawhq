@@ -1,0 +1,75 @@
+id: dev-partner
+name: Development Partner
+description: "Code from your phone, autonomous PRs, architecture decisions, repo monitoring, CI debugging"
+replaces: "Late-night coding sessions / manual CI babysitting / context-switching to laptop"
+
+tools:
+  - name: tasks
+    category: core
+    description: "Local work queue for development tasks"
+    required: true
+  - name: tavily
+    category: research
+    description: "Web search for docs, Stack Overflow, API references"
+    required: false
+
+skills:
+  - construct
+
+integrations:
+  required: [messaging]
+  recommended: [code]
+  optional: [notes]
+
+cron_defaults:
+  heartbeat: "*/30 * * * *"
+  work_session: "0 */3 * * *"
+
+cron_prompts:
+  heartbeat: "Run heartbeat: check for CI failures, review open PRs for merge conflicts, check for dependency security alerts. If nothing urgent, respond HEARTBEAT_OK."
+  work_session: "Run work session: review your task queue for development items. Pick the most impactful one. If it's a bug fix, diagnose and propose a fix. If it's a feature, outline the approach first."
+
+delegation:
+  - action: read_code
+    tier: execute
+    example: "Read, analyze, and explain code in any repo you have access to"
+  - action: write_code
+    tier: execute
+    example: "Write code changes, create branches, commit to feature branches"
+  - action: create_pr
+    tier: propose
+    example: "Create pull request with description — user reviews and merges"
+  - action: merge_pr
+    tier: approve
+    example: "Merge to main/production — requires explicit approval"
+  - action: deploy
+    tier: approve
+    example: "Trigger deployment — requires explicit approval"
+
+egress_domains:
+  - github.com
+  - api.github.com
+  - api.tavily.com
+
+security_posture: hardened
+autonomy_default: medium
+
+memory_policy:
+  hot_max: "100KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+monitoring:
+  heartbeat_frequency: "30min"
+  checks: [code]
+  quiet_hours: "00:00-06:00"
+  alert_on: [credential_expiry, cron_failure]
+
+day_in_the_life: >
+  You're watching Netflix on the couch. A Telegram notification: "CI failed on
+  main — test_auth_flow assertion error. Root cause: the OAuth redirect was
+  changed in PR #142 but the test fixture wasn't updated. I've pushed a fix to
+  a branch. Want me to open a PR?" You reply "yes" and go back to your show.
+  The next morning, the PR is reviewed, tests pass, and it's waiting for your merge.

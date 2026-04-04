@@ -1,0 +1,71 @@
+id: research
+name: Research & Knowledge
+description: "Web research, source synthesis, writing assistance, competitor analysis, content drafting"
+replaces: "ChatGPT Plus / manual research / tab-hoarding"
+
+tools:
+  - name: tavily
+    category: research
+    description: "Web search and deep research via Tavily API"
+    required: true
+  - name: tasks
+    category: core
+    description: "Research task tracking and queue"
+    required: true
+
+skills:
+  - construct
+
+integrations:
+  required: [messaging]
+  recommended: [notes]
+  optional: [code]
+
+cron_defaults:
+  heartbeat: "*/30 * * * *"
+  work_session: "0 */4 * * *"
+
+cron_prompts:
+  heartbeat: "Run heartbeat: check for pending research tasks, review any ongoing monitoring topics. If nothing needs attention, respond HEARTBEAT_OK."
+  work_session: "Run work session: pick the highest priority research task. Search, synthesize sources, and produce a structured summary with confidence levels and citations."
+
+delegation:
+  - action: web_search
+    tier: execute
+    example: "Search for information on assigned topics without approval"
+  - action: compile_report
+    tier: execute
+    example: "Synthesize research into structured reports with citations"
+  - action: draft_content
+    tier: propose
+    example: "Draft articles, reports, or analyses — submit for review"
+  - action: publish_content
+    tier: approve
+    example: "Share research externally — requires user review first"
+
+egress_domains:
+  - api.tavily.com
+
+security_posture: hardened
+autonomy_default: low
+
+memory_policy:
+  hot_max: "150KB"
+  hot_retention: "14d"
+  warm_retention: "180d"
+  cold_retention: "365d"
+  summarization: thorough
+
+monitoring:
+  heartbeat_frequency: "30min"
+  checks: []
+  quiet_hours: "22:00-06:00"
+  alert_on: [credential_expiry]
+
+day_in_the_life: >
+  You message your agent: "What's the current state of open-source AI agent
+  frameworks? Compare the top 5." An hour later you get a structured report:
+  feature comparison, community size, security track record, licensing, and
+  a recommendation with confidence levels. Sources cited, conflicts between
+  sources flagged. You ask a follow-up and get a deeper dive with the same
+  rigor. No tab-hoarding, no context-switching.
