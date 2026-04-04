@@ -428,16 +428,37 @@ function renderEnv(port: number, providers: Provider[]): string {
 function renderCronJobs(profile: MissionProfile): string {
   const jobs: Record<string, unknown>[] = [];
 
-  for (const [id, schedule] of Object.entries(profile.cron_defaults)) {
-    const prompt = profile.cron_prompts[id] ?? `Run ${id}`;
+  for (const [id, expr] of Object.entries(profile.cron_defaults)) {
+    const task = profile.cron_prompts[id] ?? `Run ${id}`;
+    const isHeartbeat = id === "heartbeat";
+    const isBrief = id.includes("brief");
 
     jobs.push({
-      id,
-      schedule,
-      prompt,
+      id: id.replace(/_/g, "-"),
+      kind: "cron",
+      expr,
+      task,
       enabled: true,
-      delivery: id === "morning_brief" ? "announce" : "none",
-      model: id === "heartbeat" ? "haiku" : undefined,
+      delivery: isBrief ? "announce" : "none",
+      model: isHeartbeat ? "haiku" : isBrief ? "sonnet" : "opus",
+      fallbacks: isHeartbeat ? ["sonnet"] : ["sonnet", "haiku"],
+      session: "main",
+    });
+  }
+
+  // Add skill-based cron jobs
+  for (const skill of profile.skills) {
+    if (skill === "construct") continue; // construct runs on its own schedule
+    jobs.push({
+      id: `skill-${skill}`,
+      kind: "cron",
+      expr: "*/15 * * * *",
+      task: `Run skill: ${skill}`,
+      enabled: true,
+      delivery: "none",
+      model: "opus",
+      fallbacks: ["sonnet"],
+      session: "main",
     });
   }
 

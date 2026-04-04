@@ -60,7 +60,7 @@ Content publishes to the personal website, then gets distributed through communi
 
 **Problem:** ClawHQ's blueprint format exists only in TypeScript — it can't travel without documentation. Meanwhile, community conventions are forming: `aaronjmars/soul.md` defines a multi-file soul spec, OpenAgents.mom generates workspace bundles, the proposed skill `manifest.json` creates a permission declaration format. If ClawHQ doesn't formalize and publish its spec, competing conventions will harden.
 
-**Fix:** Publish the blueprint spec as a human-readable document. The architectural clarity that makes it tight: OpenClaw auto-loads exactly 8 files at boot. A blueprint is a complete specification of those 8 files + runtime config + cron + tool policy + security posture. That's a bounded, well-defined compilation target. The spec encodes a key design insight: mission profiles (what the agent does) and personality presets (how it delivers) are independent, composable axes — not 177 role-personality fusions.
+**Fix:** Publish the blueprint spec as a human-readable document. The architectural clarity that makes it tight: OpenClaw auto-loads exactly 8 files at boot. A blueprint is a complete specification of those 8 files + runtime config + cron + tool policy + security posture. That's a bounded, well-defined compilation target. The spec encodes a key design insight: mission profiles (what the agent does) and personality presets (how it delivers) are independent, composable axes — 10 a-la-carte profiles that users stack freely, not 177 role-personality fusions.
 
 **Why this is the foundation defense:** `openclaw onboard` and `openclaw configure` already handle basic guided config. The gap is blueprint-level composition — specifying an entire agent from intent. If that spec becomes the community standard, ClawHQ owns the reference implementation regardless of what the upstream project ships.
 
@@ -98,7 +98,7 @@ The 67K-line codebase is real and valuable. The question is what maintenance pat
 
 These are dead. Do not resurrect.
 
-- **"Community contributes blueprints at scale"** — Power law says no. Build 6 mission profiles and 4 personality presets yourself. Composable and production-tested beats 177 untested SOUL.md-only templates.
+- **"Community contributes blueprints at scale"** — Power law says no. Build 10 a-la-carte mission profiles and 4 personality presets yourself. Composable and production-tested beats 177 untested SOUL.md-only templates.
 - **"Managed hosting as primary business"** — 10+ funded competitors. Different game entirely.
 - **"One-time launch event as growth strategy"** — Content compounds. Launch events decay.
 - **"Skills marketplace"** — ClawHub exists and already has a malware problem. Curated beats open.

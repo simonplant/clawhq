@@ -10,7 +10,7 @@
 
 ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 test files across all major subsystems. Built with AI-assisted development (Claude Code). **Pre-launch: all code works but has zero external users. Community validation begins at publication.**
 
-- **Blueprint engine** — 7 working blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions. Current blueprints are monolithic (personality + operational config fused in single YAML). The composition model (6 mission profiles × 4 personality presets as independent, composable axes) is the design direction grounded in production experience and the Persona Schema — refactoring existing blueprints into composable components is in the "Next" track.
+- **Blueprint engine** — 7 working blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions. Current blueprints are monolithic (personality + operational config fused in single YAML). The composition model (10 a-la-carte mission profiles × 4 personality presets as independent, composable axes) is the design direction grounded in production experience and the Persona Schema — refactoring existing blueprints into composable components is in the "Next" track.
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
 - **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
@@ -58,7 +58,7 @@ The launch track has dependencies. This is the order that makes sense:
 - Symlink escape silently drops workspace files
 
 **Extract and publish 3 launch blueprints.** Standalone YAML/Markdown that works with stock OpenClaw — no ClawHQ CLI dependency. Start with the three most production-tested:
-1. **The Clawdius** — Life Ops + Trading + Research + Coaching under a Stoic/Buddhist personality. The multi-role composition Simon has the most production hours on. This is the most differentiated blueprint because it demonstrates the "one agent, many hats" pattern that most users actually run — and nobody else can publish because nobody else has operated it. **Validation needed:** confirm that cramming four mission domains into 8 workspace files doesn't exceed `bootstrapMaxChars` (20K per file, 150K aggregate). If it does, this discovery itself is valuable content.
+1. **The Clawdius** — LifeOps + Markets + Research under a Stoic/Buddhist personality. The multi-role composition Simon has the most production hours on. This is the most differentiated blueprint because it demonstrates the "one agent, many hats" pattern that most users actually run — and nobody else can publish because nobody else has operated it. **Validation needed:** confirm that cramming multiple mission profiles into 8 workspace files doesn't exceed `bootstrapMaxChars` (20K per file, 150K aggregate). If it does, this discovery itself is valuable content.
 2. **Email Manager** — Life Ops (email-focused subset) with a direct, no-filler personality. The most commonly requested use case.
 3. **Sovereign ChatGPT Replacement** — Research & Knowledge profile with an analytical personality. Honest about local-vs-cloud tradeoffs.
 
@@ -94,16 +94,19 @@ After launch tracks complete. Contribution and product development continue in p
 
 ### Product
 
-**Refactor blueprints into composable profiles + presets.** Current 7 blueprints are monolithic. Extract the operational stack (tools, cron, integrations, security, autonomy) into reusable mission profiles and the personality config into reusable presets grounded in the Persona Schema dimensions. This is the work that makes the composition model real, not just documented. Spec update needed: `profile_ref` and `personality_ref` fields for referencing reusable components.
+**Refactor blueprints into composable profiles + presets.** Current 7 blueprints are monolithic. Extract the operational stack (tools, cron, integrations, security, autonomy) into 10 reusable a-la-carte mission profiles (LifeOps, Dev, Research, Markets, Sales, Marketing, SiteOps, Home, Health, Media) and the personality config into reusable presets grounded in the Persona Schema dimensions. This is the work that makes the composition model real, not just documented. Spec update needed: `profile_ref` and `personality_ref` fields for referencing reusable components.
 
-**Expand published compositions.** Each published blueprint is a mission profile + personality composition, and also a content piece — a deep-dive article explaining the configuration decisions and tradeoffs. Priority compositions after the launch three:
-- Life Ops + Warm Companion (Family Hub)
-- Life Ops + Philosophical Guide (Stoic PA — the full Clawdius)
-- Trading & Finance + Direct Operator
-- Development Partner + Thoughtful Advisor (DevOps/SRE)
-- Business Ops + Direct Operator (Founder's Ops)
-- Research & Knowledge + Philosophical Guide (Research with values filter)
-- Multi-profile composition example: Life Ops + Trading + Research under one personality (the "one agent, many hats" pattern most users actually run)
+**Expand published compositions.** Each published blueprint is a stack of a-la-carte mission profiles + a personality preset, and also a content piece — a deep-dive article explaining the configuration decisions and tradeoffs. Priority compositions after the launch three:
+- LifeOps + Warm Companion (Family Hub)
+- LifeOps + Philosophical Guide (Stoic PA — the full Clawdius)
+- Markets + Direct Operator (Trading desk)
+- Dev + Thoughtful Advisor (DevOps/SRE)
+- LifeOps + Sales + Marketing + Direct Operator (Founder's Ops)
+- Research + Philosophical Guide (Research with values filter)
+- LifeOps + Dev + Marketing (Solo builder — the indie hacker stack)
+- Multi-profile composition example: LifeOps + Markets + Research under one personality (the "one agent, many hats" pattern most users actually run)
+- SiteOps + Marketing (Web presence on autopilot)
+- Health + LifeOps + Warm Companion (Wellness coach)
 
 **Identity coherence.** Triple-identity-sync across SOUL.md, IDENTITY.md, and `identity.*` in config. 8-file budget management (detecting `bootstrapMaxChars` approach/truncation). Staleness detection, contradiction flagging across workspace files.
 
@@ -138,7 +141,7 @@ These ideas stay alive. Each has a specific traction signal that triggers invest
 
 Decisions made. Do not revisit unless the underlying assumption is disproven.
 
-- ~~Community blueprint marketplace~~ — 6 mission profiles × 4 personality presets, production-tested and composable. Community has 177 SOUL.md-only templates with no operational stack. Quality over quantity.
+- ~~Community blueprint marketplace~~ — 10 a-la-carte mission profiles × 4 personality presets, production-tested and composable. Community has 177 SOUL.md-only templates with no operational stack. Quality over quantity.
 - ~~Managed hosting as primary business~~ — 10+ funded competitors. Different layer entirely.
 - ~~Revenue before reputation~~ — Contribution first. Revenue follows traction.
 - ~~One-time launch events as growth strategy~~ — Development-as-content compounds. Launch events decay.

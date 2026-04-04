@@ -39,13 +39,22 @@ Monitoring (upstream intelligence, config breakage prediction), premium blueprin
 
 Blueprints separate two orthogonal axes:
 
-**Mission profiles** define what the agent can do — tools, integrations, cron jobs, autonomy rules, security posture, memory policy:
-- **Life Operations** — email, calendar, tasks, morning briefs, grocery/meal support
-- **Development Partner** — code, git, CI/CD, architecture, repo monitoring
-- **Research & Knowledge** — web research, synthesis, writing, analysis
-- **Trading & Finance** — market data, alerts, portfolio tracking, risk guardrails
-- **Home & Devices** — smart home, cameras, device control, automation
-- **Business Ops** — CRM, leads, metrics, competitor analysis, content pipeline
+**Mission profiles** define what the agent can do — tools, integrations, cron jobs, autonomy rules, security posture, memory policy. Profiles are a-la-carte: users stack whichever combination fits their life. Most start with LifeOps and add from there. The 10 profiles, each with clean non-overlapping tool ownership:
+
+- **LifeOps** — email (Himalaya), calendar (khal/vdirsyncer), tasks (Todoist et al), weather (Open-Meteo), meal planning, grocery lists, morning/evening briefs, appointment coordination, reminders. The universal base — personal admin that everyone needs. Boundary: the moment it's about a business pipeline or a codebase, you're in another profile.
+- **Dev** — GitHub/GitLab (gh, glab), git, CI/CD monitoring, Sentry error tracking, Linear/Jira issue tracking, PR creation and review, repo monitoring, architecture decisions, deployment triggers. Boundary: building and maintaining software. Updating marketing site copy is Marketing; fixing site infrastructure is Dev.
+- **Research** — web search (Tavily, Brave, SearXNG), synthesis/analysis, long-form drafting, knowledge base management (Obsidian, Notion, Logseq), document summarization, competitive analysis, literature review. Boundary: produces knowledge artifacts (reports, summaries, analysis). Doesn't publish them — publishing is Marketing's job.
+- **Markets** — market data feeds (Yahoo Finance, Alpha Vantage, Polygon), portfolio tracking, charting (TradingView via browser), SEC filing monitoring, trading execution (Alpaca, IBKR), crypto (Coinbase), alerts on price/volume/filing events. Boundary: financial instruments and trading. Business financials (revenue, runway, invoicing) are a separate concern.
+- **Sales** — CRM (HubSpot, Salesforce, Pipedrive, Airtable), lead tracking, outreach drafting, follow-up sequences, deal stage management, contact enrichment, meeting prep from CRM data. Boundary: owns the relationship pipeline from lead to close. Marketing generates leads; Sales works them.
+- **Marketing** — social media posting/scheduling (X, LinkedIn, Instagram, YouTube — via browser automation or APIs), content calendar management, newsletter composition and sending, SEO monitoring, analytics, content repurposing (long-form → social), ad campaign monitoring. Boundary: creates and distributes content to attract attention. Doesn't write deep research (that's Research) or manage site infrastructure (that's SiteOps).
+- **SiteOps** — website content updates, deployment pipelines, uptime monitoring, SSL/domain management, CMS operations, page speed monitoring, broken link detection, SEO technical audit. Boundary: the webmaster. Maintains and deploys. Doesn't create content strategy (Marketing) or write articles (Research/Marketing).
+- **Home** — Home Assistant REST API, HomeKit, smart device control, camera monitoring, MQTT, lighting/thermostat/lock automations, presence-based routines. Boundary: physical space automation. Completely disjoint from everything else.
+- **Health** — WHOOP, Oura, Garmin, Apple Health export, Strava, nutrition tracking (Cronometer via browser), workout logging, sleep analysis, recovery recommendations, supplement/medication reminders. Boundary: tracks biometrics and fitness. Meal *planning* lives in LifeOps (daily logistics); Health owns nutritional *analysis* and body data. Cross-profile signaling: Health says "recovery is low, suggest lighter meals" and LifeOps adjusts.
+- **Media** — image generation (DALL-E, ComfyUI, fal.ai), video processing (FFmpeg, Sora), voice synthesis (ElevenLabs, Piper), image manipulation (ImageMagick), audio processing, creative asset production. Boundary: a production toolkit. Other profiles *request* from Media — Marketing needs a social image, Research needs a diagram, LifeOps needs a voice memo transcribed.
+
+**Not profiles — infrastructure layers:** Messaging channels (Telegram, WhatsApp, Discord, Slack, Signal, iMessage) are transport, configured at agent level. Files/cloud storage (rclone, Google Drive, Dropbox) are shared infrastructure any profile can use. Voice I/O (Whisper STT) is an input modality. **Sovereign mode** is a provider-preference overlay applied across all active profiles — swaps Tavily→SearXNG, OpenAI Whisper→Whisper.cpp, cloud notes→Obsidian, etc.
+
+**Identified gaps for future profiles:** Finance/Accounting (invoicing, bookkeeping, Stripe, QuickBooks — distinct from Markets), Comms/Community (Discord server management, moderation, forum monitoring), Travel (booking, itineraries, loyalty programs).
 
 **Personality presets** define how the agent delivers — tone, values, communication style, philosophical orientation. Built on the **Persona Schema** (v0.1): 17 dimensions across five research-grounded layers — Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, and Self-Determination Theory. This is the structured framework that makes personality presets rigorous instead of vibes-based. The community has 177 SOUL.md files that say "You are warm and helpful." The Persona Schema says exactly what "warm" means across measurable dimensions and how it interacts with directness, autonomy, analytical depth, and moral reasoning. Composable with any mission profile:
 - **Direct Operator** — Terse, competent, no filler. The Clawdius baseline.
@@ -53,7 +62,7 @@ Blueprints separate two orthogonal axes:
 - **Warm Companion** — Conversational, remembers personal context, checks in proactively.
 - **Philosophical Guide** — Stoic/Buddhist filter, frames decisions through values. Claudius Maximus.
 
-A published blueprint is a specific composition: "Life Ops + Direct Operator" is the Hardened PA. "Life Ops + Warm Companion" is the Family Hub. "Trading + Philosophical Guide" is how Clawdius handles markets. Users can also combine multiple mission profiles under one personality — Simon's Clawdius runs Life Ops + Trading + Research + Coaching under a single Stoic/Buddhist character. The compiler resolves the composition into flat runtime config.
+A published blueprint is a specific composition: pick one or more mission profiles, pick a personality preset, the compiler resolves the composition into flat runtime config. Simon's Clawdius runs LifeOps + Markets + Research under a single Stoic/Buddhist personality. A solo founder might stack LifeOps + Dev + Marketing + Sales. An investor stacks LifeOps + Markets + Research. Everyone starts with LifeOps and adds profiles until the agent earns its always-on cost.
 
 This is grounded in how people actually use OpenClaw. The research shows most users run ONE agent with multiple capabilities under a unified personality — not separate agents per role. The multi-agent pattern exists but is the minority. The community's 177 role-personality fusions ("warm data analyst," "sassy marketing agent") are the wrong abstraction. Mission profiles and personalities are independent axes.
 
@@ -125,7 +134,7 @@ Open-source tools + published blueprints + upstream contributions + content from
 - **A replacement for OpenClaw's built-in UI** — The Control UI handles config editing. ClawHQ's value is composition, lifecycle, and security — not forms.
 - **A model routing engine** — OpenClaw handles model calls. We set policy via config.
 - **Managed hosting as primary business** — 10+ funded competitors own this. Sovereignty is the position.
-- **A community blueprint marketplace** — 6 mission profiles and 4 personality presets, production-tested and composable, beat 177 untested SOUL.md-only templates. Quality over quantity.
+- **A community blueprint marketplace** — 10 a-la-carte mission profiles and 4 personality presets, production-tested and composable, beat 177 untested SOUL.md-only templates. Quality over quantity.
 
 ---
 
