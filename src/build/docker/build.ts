@@ -289,11 +289,15 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
   lines.push("", "networks:");
   for (const [name, net] of Object.entries(compose.networks)) {
     lines.push(`  ${name}:`);
-    lines.push(`    driver: ${net.driver}`);
-    if (net.driver_opts) {
-      lines.push("    driver_opts:");
-      for (const [key, val] of Object.entries(net.driver_opts)) {
-        lines.push(`      ${key}: "${val}"`);
+    if ("external" in net && (net as Record<string, unknown>).external) {
+      lines.push("    external: true");
+    } else {
+      lines.push(`    driver: ${net.driver}`);
+      if (net.driver_opts) {
+        lines.push("    driver_opts:");
+        for (const [key, val] of Object.entries(net.driver_opts)) {
+          lines.push(`      ${key}: "${val}"`);
+        }
       }
     }
   }

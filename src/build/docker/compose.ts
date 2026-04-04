@@ -83,8 +83,9 @@ interface ComposeServiceOutput {
 }
 
 interface ComposeNetworkOutput {
-  readonly driver: string;
+  readonly driver?: string;
   readonly driver_opts?: Record<string, string>;
+  readonly external?: boolean;
 }
 
 interface ComposeSecretOutput {
@@ -142,8 +143,8 @@ export function generateCompose(
     command: ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789"],
     ports: ["127.0.0.1:18789:18789"],
     init: true,
-    // Map host.docker.internal to the host gateway for Ollama access
-    extra_hosts: ["host.docker.internal:host-gateway"],
+    // Map hostnames to host gateway for Ollama and other host services
+    extra_hosts: ["host.docker.internal:host-gateway", "ollama:host-gateway"],
     environment: {
       HOME: "/home/node",
       TERM: "xterm-256color",
@@ -180,7 +181,7 @@ export function generateCompose(
       // Cron
       `${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`,
     ],
-    networks: [networkName],
+    networks: [networkName, "ollama-bridge"],
     env_file: [".env"],
     restart: "unless-stopped",
     // 1Password service account token via Docker secret (never in env vars)
@@ -211,6 +212,9 @@ export function generateCompose(
             },
           }
         : {}),
+    },
+    "ollama-bridge": {
+      external: true,
     },
   };
 

@@ -33,6 +33,19 @@ Separately: **Clawdius** — Simon's personal hardened OpenClaw agent, running i
 
 Two parallel tracks: publish knowledge (reputation) and ship tools (utility). Neither waits for the other.
 
+### Sequencing (what unblocks what)
+
+The launch track has dependencies. This is the order that makes sense:
+
+1. **Write the Persona Schema** — `docs/PERSONA-SCHEMA.md` is referenced in four docs and is currently a dead link. This is the most original contribution, requires the most intellectual work, has zero maintenance burden, and unblocks the personality preset axis of the blueprints. Do this first.
+2. **Join the OpenClaw Discord** — Engage with existing discussions, help people, build recognized presence. This is the relationship-building step before filing issues or publishing blueprints. Don't skip it.
+3. **Publish the configuration reference** — OPENCLAW-REFERENCE.md polished and published. Immediate authority signal.
+4. **Stand up the personal website** — Static site with markdown posts. The content distribution strategy depends on this. Doesn't need to be fancy — needs to exist.
+5. **Extract the first blueprint** — The Clawdius multi-role config generalized and tested against a clean OpenClaw install. Validate that multi-role composition doesn't exceed the 8-file context budget (20K per file, 150K aggregate).
+6. **Write the first article** — Grounded in the blueprint extraction and production evidence.
+7. **File upstream issues** — From a position of community presence, spaced out, not batched.
+8. **Remaining blueprints and code work** — In parallel after the above.
+
 ### Track 1: Publish (reputation engine)
 
 **Publish the configuration reference.** OPENCLAW-REFERENCE.md is already the most comprehensive mapping of OpenClaw's configuration surface. Polish for public consumption and publish. Immediate authority signal.
@@ -45,7 +58,7 @@ Two parallel tracks: publish knowledge (reputation) and ship tools (utility). Ne
 - Symlink escape silently drops workspace files
 
 **Extract and publish 3 launch blueprints.** Standalone YAML/Markdown that works with stock OpenClaw — no ClawHQ CLI dependency. Start with the three most production-tested:
-1. **The Clawdius** — Life Ops + Trading + Research + Coaching under a Stoic/Buddhist personality. The multi-role composition Simon has the most production hours on. This is the most differentiated blueprint because it demonstrates the "one agent, many hats" pattern that most users actually run — and nobody else can publish because nobody else has operated it.
+1. **The Clawdius** — Life Ops + Trading + Research + Coaching under a Stoic/Buddhist personality. The multi-role composition Simon has the most production hours on. This is the most differentiated blueprint because it demonstrates the "one agent, many hats" pattern that most users actually run — and nobody else can publish because nobody else has operated it. **Validation needed:** confirm that cramming four mission domains into 8 workspace files doesn't exceed `bootstrapMaxChars` (20K per file, 150K aggregate). If it does, this discovery itself is valuable content.
 2. **Email Manager** — Life Ops (email-focused subset) with a direct, no-filler personality. The most commonly requested use case.
 3. **Sovereign ChatGPT Replacement** — Research & Knowledge profile with an analytical personality. Honest about local-vs-cloud tradeoffs.
 
@@ -136,6 +149,9 @@ Decisions made. Do not revisit unless the underlying assumption is disproven.
 
 ## Known Limitations
 
+- **Persona Schema not yet written** — Referenced in PRODUCT, STRATEGY, ROADMAP, and BLUEPRINT-SPEC. `docs/PERSONA-SCHEMA.md` is a dead link. Highest-priority deliverable.
+- **No publishable blueprints yet** — 7 monolithic blueprints exist in the codebase. Zero are extractable as standalone configs for stock OpenClaw without generalization and testing work.
+- **Personal website doesn't exist yet** — Content distribution strategy depends on it. SITE_PLAN.md exists. The site doesn't. Static markdown site is sufficient but must exist before first article publishes.
 - **No distro installer yet** — users must clone the repo and build from source
 - **Single machine only** — no multi-machine or cluster deployment
 - **Linux and macOS only** — Windows requires WSL

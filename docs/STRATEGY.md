@@ -28,7 +28,8 @@ ClawHQ is a community-first project in the OpenClaw ecosystem. The position is *
 **Fix:** Lead with contributions that help the ecosystem. Upstream issues with production evidence. Published blueprints that work with stock OpenClaw. The configuration reference as a community resource. Content that documents what nobody else is documenting. The reputation this builds is the foundation for everything else.
 
 **What this looks like:**
-- 14 landmines filed as GitHub issues with reproduction steps
+- Join the OpenClaw Discord and engage with existing discussions first — a stranger appearing with 14 issues in a batch lands as noise, not contribution. Help a few people, build recognized presence, then contribute from that position.
+- 14 landmines filed as GitHub issues with reproduction steps — spaced out, not batched
 - OPENCLAW-REFERENCE.md published as the community's configuration bible
 - The Persona Schema published as a standalone spec — 17 dimensions across five research-grounded layers for agent personality design. This is the most original intellectual contribution in the project, applicable beyond OpenClaw, and the foundation that makes personality presets rigorous instead of "You are warm and helpful"
 - Blueprints published as standalone configs, no ClawHQ CLI dependency

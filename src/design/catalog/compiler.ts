@@ -373,7 +373,9 @@ function renderOpenclawJson(
     models: {
       providers: {
         ollama: {
-          baseUrl: `http://${DOCKER_HOST_GATEWAY}:11434`,
+          // Use ollama-bridge network — Ollama on host is reachable via bridge gateway
+          // Docker's host.docker.internal resolves to default bridge, not our network
+          baseUrl: "http://ollama:11434",
           models: [],
         },
       },
