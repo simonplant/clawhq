@@ -2,7 +2,7 @@
 
 > Your AI agent runs on your hardware, talks to your services, and never sends a byte to anyone you didn't choose. ClawHQ makes that possible without a PhD in DevOps.
 
-**Owner:** Simon Plant · **Status:** Active Development · **Updated:** 2026-03-27
+**Owner:** Simon Plant · **Status:** Active Development · **Updated:** 2026-04-03
 
 ---
 
@@ -10,267 +10,114 @@
 
 The big 4 AI companies are building personal agents that know everything about you — emails, calendar, tasks, health, finances, relationships. They store it on their servers. They train on it. They lose it in breaches. You have zero sovereignty.
 
-OpenClaw is the escape hatch — the most powerful open-source agent framework, running in a Docker container you control. But it's nearly impossible to operate. ~13,500 tokens of config across 11+ files. 14 silent landmines. Memory bloats to 360KB in 3 days. Credentials expire silently. Security is entirely opt-in. Most deployments are abandoned within a month.
+OpenClaw is the escape hatch — the most powerful open-source agent framework, running in a Docker container you control. But it's nearly impossible to operate. ~200+ configurable fields across 8 auto-loaded workspace files and a central JSON config. 14 silent landmines. Memory bloats to 360KB in 3 days. Credentials expire silently. Security is opt-in — the upstream sandbox has been bypassed twice (Snyk Labs, Feb 2026). The built-in tooling (`openclaw onboard`, `openclaw configure`, the Control UI) covers basic setup but not composition, hardening, or lifecycle. Most deployments are abandoned within a month.
 
-Today you choose between **surveillance AI** (polished, easy, you own nothing) or **raw framework** (sovereign, powerful, months of expertise required). Nobody makes the sovereign option usable. That's the gap.
+Today you choose between **surveillance AI** (polished, easy, you own nothing) or **raw framework** (sovereign, powerful, months of expertise required). ClawHQ bridges that gap — not by replacing OpenClaw, but by bringing the operational knowledge, tested configurations, and lifecycle tooling that make sovereignty practical.
 
 ---
 
-## The Solution
+## The Approach
 
-ClawHQ deploys, configures, and personalizes OpenClaw agents. Three things, done well: get the engine running (deployment), make it correct (configuration), and make it yours (personalization). It compiles blueprints — complete operational designs — into hardened, running agents.
+ClawHQ is a **community-first project** — tools, blueprints, and knowledge for the OpenClaw ecosystem, built from months of production operation. It contributes to the community and the upstream project rather than creating an alternative platform.
 
-The window is closing — not because big-tech AI will absorb features, but because 10+ hosting providers are commoditizing OpenClaw deployment right now. Blink, xCloud, AWS Lightsail, DigitalOcean, Hostinger, and others sell managed OpenClaw at $22-45/mo. They solve convenience but not sovereignty: default configs, no landmine prevention, no architectural security, no lifecycle management. ClawHQ's job is to own the sovereignty layer before the ecosystem consolidates around convenience-first platforms.
+The work has three layers:
 
-- "Run my emails" → email tools, triage skills, inbox-check cron, morning digest, auto-reply with approval gates
-- "Help with stock trading" → market data tools, research skills, pre-market alerts, portfolio monitoring, risk guardrails
-- "Plan meals for my family" → nutrition tools, shopping skills, weekly meal plan, dietary preferences
-- "Maintain a blog about AI" → research tools, writing skills, editorial cron, publish with approval
+**Layer 1: Knowledge (free, open, builds reputation)**
+Published blueprints, the configuration surface reference, security findings, production postmortems, upstream issue reports and PRs. This is what establishes authority in the ecosystem regardless of what happens with revenue. Content emerges from development and operation — not a separate calendar.
 
-Everything in OpenClaw is either a file or an API call. ClawHQ controls all of it programmatically. You get a Signal, Telegram, or Discord UI. We do the rest.
+**Layer 2: Tools (open-source, useful, moderate maintenance)**
+Blueprint compiler, config generation with landmine prevention, container hardening, diagnostics, deployment pipeline. 67K lines of TypeScript, 78 commands, 7 working blueprints. These exist and work. They help people. Maintenance stays sustainable by not wrapping upstream commands — generating configs and checking health, not reimplementing what OpenClaw already does.
 
-**Market reality:** 2M+ people already chose sovereign AI — OpenClaw has 250K+ stars and 42,000+ exposed instances. The demand is proven. The question is whether ClawHQ captures the sovereignty segment before competitors consolidate around convenience-first hosting.
+**Layer 3: Services (gated behind demand, not speculative)**
+Monitoring (upstream intelligence, config breakage prediction), premium blueprints, consulting. These only get built when Layer 1 and 2 have generated enough traction to validate demand. Not before.
+
+---
+
+## What ClawHQ Does
+
+**Blueprints** — Opinionated, production-tested agent configurations. "I want an email manager" compiles into a coherent set of all 8 workspace files + runtime config + cron schedule + tool policy + security posture. Nobody else publishes complete, tested configurations for specific use cases. The community has dozens of generic setup guides. Zero that say "here's exactly how a production email agent should be configured, with every landmine pre-handled."
+
+- "Email Manager" — inbox triage, morning digest, auto-reply with approval gates
+- "Hardened PA" — security-first personal assistant, the Clawdius configuration generalized
+- "Replace ChatGPT Plus" — sovereign alternative, honest about local-vs-cloud tradeoffs
+- "Founder's Ops" — inbox zero, investor updates, hiring pipeline
+- "Family Hub" — shared calendar, chores, meals, coordination
+- "Research Co-pilot" — research, analysis, writing
+- "Replace my PA" — full tool access personal assistant
+
+**Config generation** — Every generated config prevents all 14 known landmines. Guided and AI-powered setup. Integration auto-detection.
+
+**Container hardening** — `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists. Hardened by default, not opt-in.
+
+**Diagnostics** — `clawhq doctor` with 14+ checks, auto-fix, predictive health alerts. Extends OpenClaw's built-in `openclaw doctor` with landmine detection, firewall verification, credential probes, identity size enforcement, context pruning verification.
+
+**Deployment** — Two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests.
+
+**Operations** — Encrypted backup/restore, safe updates with rollback, status dashboard, audit trail, memory lifecycle management.
+
+**Security** — PII/secret scanning, skill vetting with sandboxed evaluation, credential health with expiry tracking, prompt injection defense.
 
 ---
 
 ## Design Principles
 
-**Local-first.** Ollama models are the default. Cloud APIs are opt-in per-task-category. The agent works fully air-gapped.
+**Community-first.** Contribute upstream. Publish openly. Build reputation through demonstrated expertise, not through lock-in. If OpenClaw absorbs a ClawHQ idea, that's success — not failure.
 
-**Transparent.** The user knows what their agent did, what data it touched, and what left their machine. Every outbound API call logged. Every tool execution audited.
+**Local-first, cloud-honest.** Ollama models are the default for privacy. Cloud APIs are opt-in per task. But OpenClaw's tool system requires function calling — small local models are less capable and less robust against prompt injection than frontier models. Blueprints are honest about this tradeoff.
 
-**Sovereign.** Self-operated is the primary product. `clawhq export` gives you everything portable. `clawhq destroy` proves it's gone. Zero lock-in.
+**Sovereign.** Self-operated is the primary path. `clawhq export` gives you everything portable. Zero lock-in. No data leaves your machine unless you configure it to.
 
-**Grows, doesn't stale.** Install new skills, connect new services, add providers — through a validated, sandboxed, rollback-capable pipeline. The agent at 6 months does more than at day 1.
-
----
-
-## What Your Day Looks Like
-
-**Without ClawHQ:** You wake up and check Gmail — Google reads every email. You ask ChatGPT to draft a response — OpenAI stores it. You check Google Calendar — Google knows your schedule. By 9 AM, four companies know more about your day than your spouse does.
-
-**With ClawHQ:** You wake up to a Telegram message: "Morning. 3 meetings today. I triaged 40 emails — 6 need you. John moved Thursday's standup, conflicts with your client call — I've drafted a reschedule for your approval. Focus block 10-12 is protected. Investor update due Friday — I've drafted an outline." You reply "yes" and get on with your morning. Zero data left your machine.
-
-**After 6 months:** The agent auto-sends routine replies in your voice. It knows your top clients are always priority. It preps investor updates unprompted. It built itself a tool for parsing your weekly analytics. You approved everything along the way, but you barely think about it anymore.
+**Sustainable.** Don't wrap upstream — generate configs and check health. Don't compete with built-in tooling — extend it. Don't build services for hypothetical demand — validate first. Every design decision answers: "Can one person maintain this without it becoming a full-time SRE job?"
 
 ---
 
-## Personas
+## What's Durable
 
-**Privacy Migrant** — Using ChatGPT/Google Assistant, increasingly uncomfortable. Not necessarily technical. Biggest headache: no alternative that doesn't require becoming a sysadmin.
+Not everything ClawHQ does survives OpenClaw maturation equally. Being honest about this shapes where to invest.
 
-**Tinkerer** — Technical user comfortable with Docker and CLI. Biggest headache: the gap between "I got it running" and "it actually works well."
+**Durable — framework structurally can't do these:**
+- **Opinionated composition.** "Here's what a good email agent looks like" is outside framework scope. Frameworks serve everyone and can't have opinions about specific use cases.
+- **Cross-surface coherence.** Validating that SOUL.md, TOOLS.md, `openclaw.json`, tool policy, and skill selection all agree with each other and with the user's intent. OpenClaw validates each surface against its own schema, not against each other.
+- **Intent preservation.** A blueprint records what you were trying to build. Drift detection is "does the current state still match?" OpenClaw records configuration, not intent.
+- **Longitudinal lifecycle.** How agents drift over time, what memory management looks like at 120 days, when credentials expire, where identity degrades. Operational knowledge that doesn't exist in framework docs.
 
-**Fleet Operator** — Manages agents for multiple people or use cases. Cares about fleet-wide visibility, consistent security, operational efficiency.
+**Bridge value — important now, may get absorbed over 12-24 months:**
+- The 14 landmines. OpenClaw will fix these over time.
+- Basic security hardening. Community guides are proliferating. `openclaw security audit` exists.
+- Guided configuration. `openclaw onboard` and `openclaw configure` already exist and will improve.
+- Individual feature patches (context pruning defaults, skill permission restriction).
 
----
-
-## What Success Looks Like
-
-- **Time to working agent:** < 5 minutes (AI inference) or < 30 minutes (guided)
-- **Config-related failures:** 0 silent landmines shipped
-- **Data leaving machine:** 0 bytes by default
-- **Agent capability growth:** Measurable increase in autonomous task completion at 30/60/90 days
-- **Churn at 30 days:** < 20%
-
----
-
-## What We're Building
-
-Six modules. One binary. Parallel development tracks. Items marked ✅ are already implemented.
-
-### design — The Blueprint Engine (THE PRODUCT)
-
-This is the product. Everything else is infrastructure.
-
-- [x] **Use-case blueprints** ✅
-  Blueprints organized by what you're replacing. Each configures: identity, tools, skills, cron, integrations, security, autonomy, memory, model routing, egress.
-  - "Email Manager" — inbox zero, triage, auto-reply, morning digest
-  - "Family Hub" — shared calendar, chores, meals, coordination
-  - "Founder's Ops" — inbox zero, investor updates, hiring pipeline
-  - "Replace Google Assistant" — email + calendar + tasks + full-day orchestration
-  - "Replace ChatGPT Plus" — sovereign alternative with local models
-  - "Replace my PA" — personal assistant with full tool access
-  - "Research Co-pilot" — research, analysis, writing
-
-- [x] **Blueprint customization** ✅
-  Blueprint-specific questions during setup: dietary restrictions, risk tolerance, communication style, priority contacts. 1-3 questions per blueprint.
-
-- [ ] **Capability and persona catalog** `must`
-  Composition is a compile-time problem. **Capabilities** are named tool+skill+integration bundles with `soul_fragments` (operational doctrine per domain — NOT personality). **Personas** are curated prose presets with `soul_template`, `voice_examples`, dimension defaults, and `anti_patterns`. The compiler resolves blueprint (persona + capabilities + overrides) into flat runtime config — no intermediate concepts survive into OpenClaw. Two escape hatches: `extra_tools[]` for tools outside any capability, `soul_overrides` for personality that doesn't fit a persona. See `docs/ARCHITECTURE.md` § "Compile-Time vs. Runtime" and `docs/CONFIGURATION.md` § "Planned: Capabilities and Personas".
-
-- [x] **AI-powered config inference** ✅
-  `clawhq init --smart` — describe what you need, system selects blueprint + configures integrations. Uses local Ollama.
-
-- [x] **Guided setup** ✅
-  `clawhq init --guided` — basics → blueprint selection → integrations with live validation → model routing.
-
-- [x] **Config generation with landmine prevention** ✅
-  Every forged config passes all 14 landmine rules. Generation cannot produce a broken config.
-
-- [x] **Integration auto-detection** ✅
-  iCloud email → suggest iCloud calendar. Ollama running → discover models, recommend routing.
-
-- [ ] **Community blueprints** `future`
-
-### build — Install and Deploy
-
-One command: working agent.
-
-- [ ] **Installer** `must`
-  `clawhq install` — pre-req detection, engine acquisition (source or trusted cache), deployment directory scaffold.
-
-- [x] **Two-stage Docker build** ✅
-- [x] **Full deploy sequence** ✅ — `clawhq up` → preflight → compose → firewall → health → smoke test.
-- [x] **Pre-flight checks** ✅
-- [x] **Graceful shutdown and restart** ✅
-- [x] **Channel connection** ✅
-- [x] **Post-deploy smoke test** ✅
-
-### secure — Security and Compliance
-
-Hardened by default. Every action auditable.
-
-- [x] **Container hardening** ✅ — `cap_drop: ALL`, read-only rootfs, non-root UID 1000, ICC disabled.
-- [x] **Egress firewall** ✅ — iptables `CLAWHQ_FWD`, per-integration domain allowlist.
-- [x] **Credentials management** ✅ — `credentials.json` (mode 0600) separate from `.env`, with `clawhq creds` health probes.
-- [x] **PII and secret scanning** ✅
-- [x] **Audit trail** ✅ — tool execution + secret lifecycle (HMAC-chained) + egress.
-- [x] **Data egress audit** ✅
-
-### operate — Keep It Alive
-
-Day-2 through day-365.
-
-- [x] **Doctor** ✅ — 14+ checks with auto-fix.
-- [x] **Predictive health alerts** ✅
-- [x] **Status dashboard** ✅
-- [x] **Encrypted backup and restore** ✅
-- [x] **Safe upstream updates** ✅
-- [ ] **Monitor daemon** `should` — background health loop with configurable alerts.
-- [x] **Activity digest** ✅
-- [x] **Health self-repair** ✅
-
-### evolve — Grow the Agent
-
-The retention mechanism.
-
-- [x] **Skill management** ✅ — sandboxed vetting, rollback snapshots.
-- [x] **Approval queue** ✅
-- [x] **Portable export** ✅
-- [x] **Verified destruction** ✅
-- [ ] **Identity governance** `could`
-- [x] **Memory lifecycle** ✅ — three tiers, LLM-powered summarization, PII masking.
-- [x] **Decision trace** ✅ — "why did you do that?" with preference learning.
-
-### cloud — The Business
-
-Optional. Zero-trust by design.
-
-- [x] **Trust mode management** ✅ — Paranoid / Zero-Trust / Managed. Kill switch.
-- [x] **Health heartbeat** ✅ — agent-initiated, never reports content.
-- [x] **Command queue** ✅ — pull, verify signature, execute or reject. Content access architecturally blocked.
-- [ ] **agentd daemon** `could`
-- [ ] **Managed hosting** `deprioritized` — _10+ funded competitors (Blink, AWS Lightsail, xCloud, DigitalOcean, Hostinger, etc.) already sell managed OpenClaw at $22-45/mo. ClawHQ competes on architectural depth and sovereignty, not hosting convenience. Revisit only after 1,000+ self-hosted users and clear signal on what managed should include beyond what competitors offer._
-- [ ] **Remote dashboard** `future`
-- [ ] **Blueprint library** `future`
-- [ ] **Migration tools** `future`
+Bridge value earns credibility and buys time for the durable layers. But it's not the long-term bet.
 
 ---
 
-## How the Agent Grows
+## Revenue
 
-**Week 1:** Baseline works. Email triage, calendar management, morning briefs. Local models.
+**Phase 1 (now): Build at $0, earn reputation.**
+Open-source tools + published blueprints + upstream contributions + content from production experience. No revenue expected. The work builds the profile that creates opportunities.
 
-**Month 1:** Install a Slack skill. Add OpenAI for research only. Email stays 100% local.
+**Phase 2 (with traction): Test willingness to pay.**
+- **Sentinel monitoring** — upstream intelligence: config breakage prediction against incoming commits, CVE mapping against your blueprint, skill reputation tracking. ~$19/month. Must do something a local cron job can't. Only built if community asks for it.
+- **Premium blueprints** — deeply customized, domain-specific configurations. Only if free blueprints prove valued.
+- **Consulting/advisory** — for teams deploying at scale. Only if inbound inquiries materialize.
 
-**Month 3:** Three new integrations. Egress dashboard shows exactly which providers get which data.
-
-**Month 6:** 12 skills, 6 integrations, 3 providers, 8 tools. Nothing runs that you can't trace. Rollback any change.
-
----
-
-## Build Order
-
-Parallel tracks. See `backlog/backlog.json` for sprint-ready items.
-
-**Track A (Blueprints)** — Use-case blueprints, customization, AI inference.
-**Track B (Installer)** — One-command install. Pre-reqs, scaffold, engine acquisition.
-**Track C (Skills)** — Email-digest, auto-reply, market-scan, meal-plan.
-**Track D (Cloud)** — Trust modes, heartbeat, command queue, agentd.
-**Track E (Source Reorg)** — Module barrel exports, then physical moves.
-**Track F (Polish)** — credentials.json, monitor daemon, web dashboard.
+**Hard constraint:** Don't build paid services before demand is validated. Publish knowledge first. If the knowledge creates demand for tooling, build the tooling.
 
 ---
 
-## What We're NOT Building
+## What We're Not Building
 
-- **A fork of OpenClaw** — We configure it. We don't modify it.
-- **A competing agent framework** — We're the platform, not the engine.
+- **A fork of OpenClaw** — We contribute to it, not compete with it.
+- **A replacement for OpenClaw's built-in UI** — The Control UI handles config editing. ClawHQ's value is composition, lifecycle, and security — not forms.
 - **A model routing engine** — OpenClaw handles model calls. We set policy via config.
-- **Multiple CLI tools** — One binary, flat commands. (AD-01)
-- **A cloud AI service** — We don't host models, don't train on data, don't see content.
-
----
-
-## Competitive Landscape
-
-The OpenClaw ecosystem is large (250K+ GitHub stars, 2M+ MAU) and contested. 10+ hosting providers sell managed OpenClaw. None solve the problems ClawHQ addresses.
-
-| Alternative | What It Offers | What It Doesn't |
-|---|---|---|
-| **Hosting providers** (Blink, xCloud, AWS Lightsail, DigitalOcean, Hostinger, RunMyClaw, LumaDock, OpenClaw Cloud) | Deploy OpenClaw on a VPS, $22-45/mo | Default config, no landmine prevention, no architectural security, no lifecycle management, no blueprints |
-| **Raw OpenClaw** | Full power, full control | Months of setup, ongoing SRE, 14 silent landmines, no memory management |
-| **Community dashboards** | Basic monitoring | No security, no lifecycle, no configuration management |
-| **Security point tools** (ClawSec) | Hardening guides, scanning | Fragmented, no unified platform, manual execution |
-| **Big-tech agents** (Google, Apple, Microsoft) | Polished, integrated, easy | Platform lock-in, no sovereignty, black box |
-
-### Market Gap
-
-| Domain | Current Coverage | Gap |
-|---|---|---|
-| Provisioning & Deploy | Well-served by 10+ hosting providers | Low |
-| Security Hardening | Fragmented: guides + point tools; no unified self-serve platform | **Critical** |
-| Configuration Management | Very weak: most config requires CLI/JSON editing | **Critical** |
-| Operations & Maintenance | Fragmented: updates manual, backups DIY | **Critical** |
-| Agent Lifecycle | Weak: most dashboards are read-only | High |
-| Governance & Compliance | Nearly nonexistent for self-hosted | **Critical** |
-
-### ClawHQ's Position
-
-ClawHQ is not a hosting provider. It's the operations and sovereignty layer — the cPanel for OpenClaw. Same analogy that played out for every successful open-source infrastructure engine:
-
-| Engine | Operational Burden | Control Panel |
-|---|---|---|
-| Linux | Server admin, security, mail, cron | cPanel, Plesk, Webmin |
-| WordPress | Hosting, updates, security, backups | WordPress.com, managed WP hosting |
-| Kubernetes | Container orchestration, networking | Rancher, OpenShift |
-| **OpenClaw** | **Agent config, security, monitoring, evolution** | **ClawHQ** |
-
----
-
-## Risks & Open Questions
-
-**Risks:**
-- Local model quality → mitigation: intelligent routing escalates to cloud
-- OpenClaw breaking changes → mitigation: pin versions, compatibility shims
-- Blueprint ecosystem → mitigation: ship excellent built-in blueprints covering 80% of use cases
-- Skill supply chain → mitigation: sandboxed vetting, AI scanning, allowlists, rollback
-
-**Open questions:**
-- [ ] Local model minimum bar — Which Ollama models for which tasks?
-- [ ] OpenClaw foundation relationship — Steinberger joined OpenAI Feb 2026, project at foundation. Governance unknown. Active contribution gives influence.
-
-**Directional decisions (from market analysis):**
-- **Early adopters:** OpenClaw community power users who self-host and care about security. Recruit through Discord, GitHub, Reddit, HackerNews — not through SEO competition with hosting providers.
-- **Revenue sequencing:** Open-source adoption builds community and reputation → premium blueprints and enterprise fleet management → security-vetted skill marketplace. Managed hosting deprioritized against 10+ funded competitors.
-- **Competitive positioning:** ClawHQ is the sovereignty platform. Hosting providers deploy default-config agents. ClawHQ does blueprint composition, architectural security, landmine prevention, and lifecycle management. Different layer entirely.
+- **Managed hosting as primary business** — 10+ funded competitors own this. Sovereignty is the position.
+- **A community blueprint marketplace** — 10 curated masterclass blueprints beat 1,000 crowdsourced ones. ClawHub already has a malware problem.
 
 ---
 
 ## Links
 
-- Solution Architecture: `docs/ARCHITECTURE.md`
-- OpenClaw Reference: `docs/OPENCLAW-REFERENCE.md`
-- Gap Analysis: `backlog/GAP-ANALYSIS.md`
-- Backlog: `backlog/backlog.json`
+- Configuration Reference: `docs/OPENCLAW-REFERENCE.md`
+- Architecture: `docs/ARCHITECTURE.md`
+- Strategy: `docs/STRATEGY.md`
+- Roadmap: `docs/ROADMAP.md`

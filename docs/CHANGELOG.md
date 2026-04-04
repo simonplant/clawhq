@@ -8,7 +8,7 @@ This project does not yet use version tags. Entries are organized by development
 
 ## Phase 4: Hardening & Documentation — 2026-03-23 to 2026-03-24
 
-Phase 4 focused on two things: making the platform harder to break, and making it possible for someone other than the author to understand it.
+Phase 4 focused on two things: making the project harder to break, and making it possible for someone other than the author to understand it.
 
 ### Cloud deploy updates without reprovisioning
 

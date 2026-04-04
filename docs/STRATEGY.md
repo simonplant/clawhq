@@ -1,83 +1,84 @@
 # ClawHQ Strategy
 
-> Direction is locked. Hypotheses are open. Execution starts now.
+> Contribute first. Build reputation. Let the product follow the community.
 
-**Updated:** 2026-03-28
-
----
-
-## One-Liner
-
-Ship the self-hosted sovereignty tool with a published blueprint spec, 10 curated-not-crowdsourced blueprints, a monitoring revenue experiment, and content that emerges from development — not from a separate calendar.
+**Updated:** 2026-04-03
 
 ---
 
 ## Strategic Position
 
-ClawHQ is the operational intelligence layer for OpenClaw's 2M-user ecosystem — the compiler between the raw framework and a production-grade agent. The only position 10+ hosting providers can't occupy is sovereignty. ClawHQ owns that layer.
+ClawHQ is a community-first project in the OpenClaw ecosystem. The position is **contributor and authority**, not alternative platform. The tools, blueprints, and knowledge help the community directly. Reputation and trust built through contribution create optionality for revenue — consulting, monitoring services, premium blueprints — when demand is proven, not before.
 
-**What converged across all analysis:**
-- Self-hosted sovereignty tool, shipped to the existing OpenClaw audience
-- Positioned above hosting providers (picks and shovels, not gold mining)
-- Standards capture via blueprint format is the durable moat
-- Revenue must be tested from day one, not deferred
+**What converged across all analysis and research:**
+- The durable value is in composition, coherence, and lifecycle — things the upstream framework structurally can't do
+- Bridge value (landmine fixes, hardening guides, basic config tooling) earns credibility but has a 12-24 month shelf life as upstream matures
+- `openclaw onboard`, `openclaw configure`, and the Control UI already exist — the basic guided config gap is narrowing
+- Community conventions are forming (soul.md repo, OpenAgents.mom, skill manifest.json proposal) — the window for standards influence is open but not indefinite
+- Revenue requires reputation. Reputation requires contribution. Contribution comes first.
 
 ---
 
-## Four Execution Fixes
+## Four Execution Priorities
 
-The strategy survived all stress testing. Four wounds were identified — all in execution, all fixable, all complementary.
+### 1. Lead with Contribution
 
-### 1. Discovery: Development-as-Content
+**Problem:** Positioning as a "platform" for OpenClaw creates an adversarial dynamic with the upstream project. Every feature you ship, they can absorb. Every release they make can break your abstractions.
 
-**Problem:** One-time launch events (HN post, Discord announcement) decay in 72 hours. Competitors publish compounding SEO content weekly.
+**Fix:** Lead with contributions that help the ecosystem. Upstream issues with production evidence. Published blueprints that work with stock OpenClaw. The configuration reference as a community resource. Content that documents what nobody else is documenting. The reputation this builds is the foundation for everything else.
+
+**What this looks like:**
+- 14 landmines filed as GitHub issues with reproduction steps
+- OPENCLAW-REFERENCE.md published as the community's configuration bible
+- Blueprints published as standalone configs, no ClawHQ CLI dependency
+- Security findings contributed upstream (context pruning default, bootstrapMaxChars warnings, identity sync)
+- Content from production experience: what breaks, what works, what the docs don't tell you
+
+**What this doesn't mean:** Stop building tools. The config generator, doctor, deploy pipeline, and hardening scripts are real tools that help real people. Keep building them — just don't frame them as a competing platform. Frame them as community tools from someone who runs agents in production and publishes what they learn.
+
+### 2. Development-as-Content
+
+**Problem:** One-time launch events decay in 72 hours. Competitors publish compounding content weekly. The ecosystem has dozens of generic "how to set up OpenClaw" guides but nobody publishing production operations knowledge.
 
 **Fix:** Every development action produces content. Bug fix → postmortem. New blueprint → tutorial. OpenClaw breaking change → "what broke and how we fixed it." Content is a byproduct of development, not a separate activity.
 
-**Implementation:** CHANGELOG as narrative (not version list). Each landmine fix is a technical article. Each blueprint is a use-case walkthrough. The HN post is the first commit in a content stream, not a one-time event.
+**The content angle nobody else has:** The community guides are all "how to set up." Nobody is telling the production stories — 14 silent landmines, the 208K-token death spiral, the ClawHavoc malware campaign, the Snyk sandbox bypasses, what 120 days of memory management actually looks like, why your agent introduces itself by the wrong name. ClawHQ is the only project with months of production data to draw from. That's the content moat.
 
-### 2. Community: 10 Curated, Not 1,000 Crowdsourced
+### 3. Publish the Blueprint Specification
 
-**Problem:** Community blueprint contribution at scale is fantasy. 1,000:10:1 ratio (users:reporters:contributors). Terraform took 4+ years with full-time DevRel.
+**Problem:** ClawHQ's blueprint format exists only in TypeScript — it can't travel without documentation. Meanwhile, community conventions are forming: `aaronjmars/soul.md` defines a multi-file soul spec, OpenAgents.mom generates workspace bundles, the proposed skill `manifest.json` creates a permission declaration format. If ClawHQ doesn't formalize and publish its spec, competing conventions will harden.
 
-**Fix:** Kill the marketplace expectation. Build 10 reference blueprints, each a masterclass. Position "small and secure" as the differentiator — 10 vetted vs. 1,000 ClawHub items (200+ malicious).
+**Fix:** Publish the blueprint spec as a human-readable document. The architectural clarity that makes it tight: OpenClaw auto-loads exactly 8 files at boot. A blueprint is a complete specification of those 8 files + runtime config + cron + tool policy + security posture. That's a bounded, well-defined compilation target.
 
-**Implementation:** Current 7 blueprints → 10 reference blueprints. Each one demonstrates deep understanding of the use case. Quality bar: reading the Email Manager blueprint should make you think "this person understands how I actually use email."
+**Why this is the foundation defense:** `openclaw onboard` and `openclaw configure` already handle basic guided config. The gap is blueprint-level composition — specifying an entire agent from intent. If that spec becomes the community standard, ClawHQ owns the reference implementation regardless of what the upstream project ships.
 
-### 3. Standards: Publish the Blueprint Specification
+### 4. Test Revenue Behind Traction
 
-**Problem:** Standards require specs. ClawHQ's blueprint format exists only in TypeScript — it can't travel without documentation. A competing format from the foundation could split the ecosystem.
+**Problem:** Open-source infrastructure monetization takes 2-4 years. Solo founder following the same playbook without funding is volunteering for unpaid work. But building paid services before demand exists is building for a hypothesis.
 
-**Fix:** Publish the Blueprint Specification as a human-readable document alongside the repo. If the format becomes the community default, ClawHQ owns the reference implementation.
+**Fix:** Earn reputation first. Test revenue when there's an audience to test with. The Sentinel monitoring experiment, premium blueprints, and consulting all stay on the table — but gated behind community traction signals, not launched into silence.
 
-**Why this is also the foundation absorption defense:** If OpenClaw ships `openclaw configure --guided`, they'd need to be compatible with the adopted spec. The spec IS the hedge against absorption — not surveillance of their PRs.
-
-**Implementation:** Formal spec document covering structure, fields, validation rules, security constraints. Not a weekend — estimate a week for something rigorous enough to drive third-party adoption.
-
-### 4. Revenue: Sentinel Monitoring Experiment
-
-**Problem:** Open-source infrastructure monetization takes 2-4 years. Every precedent required VC funding to bridge the gap. Solo founder following the same playbook without funding is volunteering for unpaid work.
-
-**Fix:** Launch with a paid monitoring service from day one. Test revenue hypothesis in 30 days, not 18 months.
-
-**Critical design constraint:** Must do something a local cron job can't. `clawhq doctor --watch` in cron is free. The value must be upstream intelligence — pre-computing whether your config will break against incoming OpenClaw commits before you update, tracking CVE impact across your specific blueprint, alerting on breaking changes in skills you depend on. That's genuinely useful. A WebSocket health check is not.
-
-**Pricing:** ~$19/month. Low enough to be impulse, high enough to validate demand. If nobody pays in 30 days, signal received.
+**Sentinel design constraint (when the time comes):** Must do something a local cron job can't. `clawhq doctor --watch` in cron is free, and `openclaw doctor --fix` exists upstream. Sentinel's value is upstream intelligence — pre-computing config breakage against incoming commits, CVE mapping against your blueprint, skill reputation tracking, sandbox bypass alerts. ~$19/month. Only build when the community is asking for it.
 
 ---
 
-## Launch Sequence
+## Maintenance Sustainability
 
-```
-1. Fix FEAT-018 (e2e smoke test)        — launch gate, no compromises
-2. Fix remaining Gate 0 blockers         — BUG-125, FEAT-110, FEAT-108
-3. Write Blueprint Specification         — highest-leverage documentation
-4. Start OpenClaw Incident Tracker       — authority building, runs in parallel
-5. Publish repo                          — GitHub public
-6. Announce Sentinel experiment          — revenue hypothesis test
-7. Write launch content                  — "14 ways my agent silently broke"
-8. Every subsequent commit → content     — development-as-content begins
-```
+The 67K-line codebase is real and valuable. The question is what maintenance patterns scale for a solo developer.
+
+**Sustainable — generate, don't wrap:**
+- Config generation: produces files once. If OpenClaw changes config schema, update the generator. Not a runtime dependency.
+- Blueprint compilation: YAML → workspace files + config. Static output, no wrapper.
+- Doctor checks: additive health verification. Doesn't intercept upstream operations.
+- Container hardening: Docker Compose generation. Produces files, doesn't maintain a runtime.
+
+**Unsustainable — don't do these:**
+- Wrapping upstream CLI commands (breaks on every release)
+- Reimplementing the Control UI (OpenClaw maintains their own)
+- Runtime interception of agent operations (tight coupling to internals)
+- Tracking every upstream config schema change on release day
+
+**The test:** If OpenClaw ships a new release tomorrow, does ClawHQ break? Config generators and doctor checks tolerate upstream changes gracefully. CLI wrappers and runtime hooks don't. Build the first kind.
 
 ---
 
@@ -85,65 +86,60 @@ The strategy survived all stress testing. Four wounds were identified — all in
 
 These are dead. Do not resurrect.
 
-- **"Community contributes blueprints at scale"** — power law says no. Build 10 masterclass blueprints yourself.
-- **"Revenue deferred indefinitely"** — test from day one or accept this is a hobby.
-- **"One-time launch event as growth strategy"** — HN front page lasts 12 hours. Content compounds.
-- **"Marketplace/hub for community skills"** — 20-36% of ClawHub skills are malicious. Curated beats open.
+- **"Community contributes blueprints at scale"** — Power law says no. Build 10 masterclass blueprints yourself.
+- **"Managed hosting as primary business"** — 10+ funded competitors. Different game entirely.
+- **"One-time launch event as growth strategy"** — Content compounds. Launch events decay.
+- **"Skills marketplace"** — ClawHub exists and already has a malware problem. Curated beats open.
+- **"Reimplementing OpenClaw's built-in config UI"** — They ship a Control UI. Compete on composition and lifecycle, not forms.
 
 ---
 
-## Root Vulnerabilities
+## Risks
 
-Ranked by blast radius. These are the things that could invalidate the strategy.
-
-| # | Vulnerability | Severity | Mitigation |
+| # | Risk | Severity | Response |
 |---|---|---|---|
-| 1 | **Foundation absorbs features** — OpenClaw ships `openclaw configure --guided` | CRITICAL | Blueprint spec as adopted standard. Upstream contribution from position of credibility. |
-| 2 | **2M users ≠ addressable demand** — each filter cuts 80-90% | CRITICAL | Test assumption: measure clone→install conversion in first 1,000 visitors. Pass/fail: >5%. |
-| 3 | **Revenue timing vs. runway** — 2-4 year gap with no funding | HIGH | Sentinel experiment from day one. Hard deadline: 3+ willing payers by month 9. |
-| 4 | **Trust paradox** — security tool with security bug is brand-killer | HIGH | FEAT-018 is the launch gate. Published test matrix. Alpha scoped explicitly. |
-| 5 | **Community contribution is article of faith** — 1,000 users yields ~1 contributor | MEDIUM | Expectations reset to 10-15 developer-built, 5-10 community over 12 months. |
+| 1 | **Upstream ships blueprint composition** — `openclaw onboard` and `openclaw configure` already exist. If they ship template-based agent configuration, the gap narrows further. | CRITICAL | Published spec becomes the standard. Contribution credibility means ClawHQ shapes what upstream builds, not races against it. Review: biweekly. |
+| 2 | **2M users ≠ addressable demand** — each filter cuts 80-90% | CRITICAL | Test: measure engagement with published blueprints and content. Pass: meaningful GitHub stars + article traction in 90 days. |
+| 3 | **Revenue timing vs. runway** — solo, unfunded | HIGH | Revenue experiments gated behind traction, not launched speculatively. Hard check: any inbound revenue signal by month 9. |
+| 4 | **Trust paradox** — security-focused project with security bug is brand-killing | HIGH | End-to-end smoke test before any public claims. Published test matrix. Scope alpha explicitly. |
+| 5 | **Upstream security catches up** — `--allow-tools` per skill exists, `manifest.json` sandboxing proposed, sandbox bypasses patched within weeks | MEDIUM | ClawHQ's value is the compound problem (composition + security + lifecycle), not any single security feature. If upstream closes a gap, celebrate — that's contribution working. |
+| 6 | **Bridge value depreciates** — the 14 landmines get fixed upstream over 12-24 months | MEDIUM | Expected. Bridge value earns credibility now. Durable value (composition, coherence, lifecycle, intent preservation) doesn't depend on upstream gaps. |
+| 7 | **Content doesn't gain traction** | MEDIUM | Go deeper, not wider. Security and operational niches over generic guides. Quality over cadence. |
 
 ---
 
 ## Assumption Tests
 
-Three highest-risk assumptions, with concrete pass/fail criteria.
+### Test 1: Community Engagement
+- **Assumption:** The OpenClaw community values production-tested blueprints and operational knowledge
+- **Test:** Publish 3 blueprints + configuration reference + first article. Measure GitHub stars, article reads, community references.
+- **Pass:** 200+ stars, 5K+ article reads in 60 days
+- **Fail:** <50 stars, <1K reads — thesis needs revision
+- **Deadline:** 60 days after first publication
 
-### Test 1: Addressable Demand
-- **Assumption:** OpenClaw's 2M+ users includes meaningful demand for a deployment tool
-- **Test:** Measure GitHub clone → `clawhq install` conversion in first 1,000 unique visitors
-- **Pass:** >5% conversion (50+ installs)
-- **Fail:** <2% conversion — thesis is wrong, pivot to authority play
-- **Deadline:** 30 days after repo goes public
+### Test 2: Upstream Receptivity
+- **Assumption:** OpenClaw project welcomes substantive contributions from power users
+- **Test:** File 5+ issues with production evidence, submit 2+ documentation PRs
+- **Pass:** Issues engaged by maintainers, PRs reviewed
+- **Fail:** Issues ignored, PRs rejected — contribution model doesn't work with this project
+- **Deadline:** 90 days
 
-### Test 2: Willingness to Pay
-- **Assumption:** Sovereignty audience will pay for monitoring that enhances (not compromises) sovereignty
-- **Test:** Sentinel landing page with pricing, measure signups
-- **Pass:** 10+ signups in 60 days
-- **Fail:** <3 signups — monitoring isn't the revenue model
-- **Deadline:** 60 days after Sentinel announced
-
-### Test 3: Foundation Absorption Risk
-- **Assumption:** OpenClaw foundation won't ship guided configuration within 12 months
-- **Test:** Monitor OpenClaw RFCs, PRs, and roadmap for configuration tooling
-- **Signal:** 2+ PRs targeting guided config = assumption under attack
-- **Response:** Accelerate spec publication, propose upstream collaboration
-- **Review:** Monthly
+### Test 3: Revenue Potential
+- **Assumption:** Reputation built through contribution creates revenue opportunities
+- **Test:** After 6 months of contribution, assess inbound inquiries (consulting, advisory, or monitoring interest)
+- **Pass:** Any paying engagement or 10+ expressed interest in Sentinel
+- **Fail:** Zero inbound after 6 months of active contribution — monetization thesis is wrong
+- **Deadline:** Month 9
 
 ---
 
-## Decision Frame
+## Decision Framework
 
-**Settled:** Self-hosted sovereignty tool for OpenClaw's existing audience. Blueprint compiler model. Standards capture via spec.
+**Settled:** Community-first contribution model. Blueprint compiler approach. Composition + coherence + lifecycle as the durable layer. Don't wrap upstream, generate and check.
 
-**Open after launch (decided by data from first 1,000 users):**
-- Managed hosting — build or partner?
-- Vertical specialization — which use cases convert?
-- Marketplace — if community contribution materializes
-- Operations SaaS — if monitoring demand validated
-
-**Execution gates:**
-1. Is FEAT-018 fixable? → Launch gate
-2. Is personal runway 12+ months? → Sentinel is experiment vs. survival
-3. Can blueprint spec be written in ~1 week? → If compiler model is clear, yes
+**Open (decided by traction):**
+- Sentinel monitoring — build if community asks, not before
+- Premium blueprints — offer if free blueprints prove valued
+- Consulting — pursue if inbound materializes
+- Blueprint spec as RFC — propose when reference blueprints demonstrate the concept
+- Web dashboard — only if it does something the Control UI doesn't, and demand exists

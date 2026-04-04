@@ -10,80 +10,93 @@
 
 | # | Assumption | Risk | Pass | Fail | Deadline |
 |---|---|---|---|---|---|
-| 1 | **Addressable Demand** — 2M users includes real demand for a deployment tool | CRITICAL | >5% clone→install conversion (50+ installs / 1,000 visitors) | <2% conversion | 30 days after public |
-| 2 | **Willingness to Pay** — sovereignty audience will pay for sovereign monitoring | CRITICAL | 10+ Sentinel signups in 60 days | <3 signups | 60 days after Sentinel announced |
-| 3 | **Foundation Absorption** — OpenClaw won't ship guided config within 12 months | CRITICAL | 0-1 config PRs in 6 months | 2+ PRs targeting guided config | Monthly review, 12-month horizon |
+| 1 | **Community Engagement** — The OpenClaw community values production-tested blueprints and operational knowledge enough to engage with it | CRITICAL | 200+ GitHub stars on blueprint repo, 5K+ article reads, upstream issues engaged | <50 stars, <1K reads, issues ignored | 90 days after first publication |
+| 2 | **Willingness to Pay** — sovereignty audience will pay for monitoring or premium services | CRITICAL | 10+ Sentinel signups or any consulting inbound | <3 signups and zero inbound | 60 days after Sentinel offered (gated behind Assumption 1 passing) |
+| 3 | **Foundation Composition Gap** — OpenClaw won't ship blueprint-level composition within 12 months. Note: `openclaw onboard`, `openclaw configure`, and the Control UI already ship. The remaining gap is use-case-level composition, not basic guided config. | CRITICAL | 0-1 PRs targeting template/blueprint composition in 6 months | 2+ PRs targeting template composition or a `blueprints/` directory in repo | Biweekly review, 12-month horizon |
 
 ---
 
 ## Measurement Methods
 
-### Assumption 1: Addressable Demand
+### Assumption 1: Community Engagement
 
-**What to measure:** GitHub clone → `clawhq install` conversion funnel.
+**What to measure:** Does the OpenClaw community engage with published blueprints, reference docs, and content?
 
 **Data sources:**
-- GitHub repo traffic (Settings → Traffic): unique visitors, unique clones
-- Install script hit counter: count `curl | bash` executions (count only, no PII)
+- GitHub: stars, forks, issues on blueprint repo
+- Article analytics: reads, shares, inbound links (Plausible or similar)
+- Upstream engagement: responses to filed issues and PRs on `openclaw/openclaw`
+- Community references: mentions in Discord, Reddit, other guides
 
-**Funnel:**
+**Signals:**
 ```
-Unique visitors → Unique clones → Install attempts → Successful installs → 7-day active
+Blueprint repo stars/forks → Article reads/shares → Upstream issue engagement → Community citations
 ```
 
 **How to set up:**
-1. GitHub traffic analytics are automatic once repo is public
-2. Add a lightweight counter to the install script endpoint (e.g., Plausible, or a simple Cloudflare Workers counter)
-3. Record weekly snapshots in `assumptions.json` → `latestData`
+1. Publish blueprint repo, configuration reference, and first article
+2. File 5+ upstream issues with production evidence
+3. Track weekly in `assumptions.json` → `latestData`
 
 **Decision thresholds:**
-- **>5%:** Demand validated. Continue execution.
-- **2-5%:** Inconclusive. Extend test to 2,000 visitors before deciding.
-- **<2%:** Thesis is wrong. Pivot to authority play (content, upstream contribution).
+- **Strong signal:** 200+ stars, 5K+ reads, upstream issues engaged. Continue and invest more.
+- **Weak signal:** 50-200 stars, 1-5K reads, some engagement. Extend to 6 months, adjust content angle.
+- **No signal:** <50 stars, <1K reads, issues ignored. The community doesn't value this contribution. Reassess thesis.
 
 ### Assumption 2: Willingness to Pay
 
-**What to measure:** Sentinel landing page signups.
+**Gated behind Assumption 1.** Don't test willingness to pay until community engagement is established. Offering paid services to an audience that doesn't exist yet produces a false negative.
+
+**What to measure:** Sentinel landing page signups and/or consulting inbound.
 
 **Data sources:**
 - Landing page analytics (visits, time on page)
 - Signup form submissions (email + commitment signal)
+- Inbound inquiries from content or contributions
 
 **Funnel:**
 ```
-Landing page visit → Read pricing → Submit signup → Confirm email
+Community engagement (Assumption 1 passed) → Sentinel announcement → Landing page visit → Signup/inquiry
 ```
 
 **How to set up:**
-1. Create Sentinel landing page with value proposition, pricing, and signup form
-2. Announce Sentinel through existing channels (GitHub repo, OpenClaw Discord, content)
-3. Track signups weekly in `assumptions.json` → `latestData`
+1. **Wait for Assumption 1 to pass** — meaningful community engagement established
+2. Create Sentinel landing page with value proposition and pricing
+3. Announce through channels built during Assumption 1 phase
+4. Track signups and inbound weekly in `assumptions.json` → `latestData`
 
 **Decision thresholds:**
-- **10+ signups:** Revenue model validated. Build Sentinel.
+- **10+ signups or any consulting engagement:** Revenue model validated. Build Sentinel.
 - **3-9 signups:** Weak signal. Extend 30 days, add direct user interviews.
-- **<3 signups:** Monitoring isn't the revenue model. Explore premium blueprints or marketplace.
+- **<3 signups and zero inbound after 60 days:** Monitoring isn't the revenue model. Explore premium blueprints or consulting.
 
-### Assumption 3: Foundation Absorption Risk
+### Assumption 3: Foundation Composition Gap
 
-**What to measure:** OpenClaw GitHub activity related to configuration tooling.
+**Current status: partially materialized.** `openclaw onboard` (full onboarding flow), `openclaw configure` (config wizard), and the Control UI (form-driven config editing with raw JSON escape hatch) already exist. Community conventions are forming: `aaronjmars/soul.md` defines a composable multi-file soul spec, OpenAgents.mom generates workspace bundles, and the proposed skill `manifest.json` (issue #28298) creates a permission declaration format.
+
+The remaining gap is **blueprint-level composition** — specifying an entire agent from a use-case intent across all 8 workspace files + runtime config + cron + tool policy + security posture simultaneously. Nobody ships this yet.
+
+**What to measure:** OpenClaw GitHub activity related to template/blueprint composition tooling.
 
 **Data sources:**
 - OpenClaw GitHub: PRs, issues, RFCs
 - OpenClaw Discord: #development channel
 - Foundation meeting notes (if public)
+- Community projects: soul.md repo, OpenAgents.mom, other workspace generators
 
-**Search terms:** `configure`, `guided`, `setup wizard`, `init`, `blueprint`, `template`, `config tool`
+**Search terms:** `blueprint`, `template`, `compose`, `scaffold`, `init --template`, `agent template`, `workspace bundle`, `config generator`
 
 **How to set up:**
 1. Watch OpenClaw repo on GitHub (custom notifications for PRs/issues)
-2. Set a monthly calendar reminder to search for config-related activity
-3. Record findings in `assumptions.json` → `latestData`
+2. Set a **biweekly** calendar reminder to search for composition-related activity
+3. Monitor community workspace generator projects for convergence with upstream
+4. Record findings in `assumptions.json` → `latestData`
 
 **Decision thresholds:**
-- **0-1 PRs in 6 months:** Foundation not prioritizing this. Continue as planned.
-- **1 PR, no follow-up:** Monitor closely, increase review to biweekly.
-- **2+ PRs:** Assumption under attack. Accelerate spec publication, propose upstream collaboration.
+- **0-1 composition PRs in 6 months:** Gap remains. Continue blueprint development and spec publication.
+- **1 PR with limited scope:** Monitor closely. Accelerate blueprint spec publication to establish prior art.
+- **2+ PRs or a `blueprints/` directory in the repo:** Gap closing. Accelerate spec publication, propose upstream collaboration from position of having reference implementation and published blueprints.
+- **Community convention hardens around a competing format:** Evaluate compatibility. Adapt if the competing format is better. Contribute if it's worse.
 
 ---
 
@@ -115,8 +128,8 @@ Landing page visit → Read pricing → Submit signup → Confirm email
 
 | Assumption | Fail Signal | Response |
 |---|---|---|
-| Addressable Demand | <2% conversion | Pivot to authority play: content, upstream contribution, reference implementation |
-| Willingness to Pay | <3 signups | Explore premium blueprints, enterprise fleet, or marketplace model |
-| Foundation Absorption | 2+ guided-config PRs | Accelerate spec publication, propose upstream collaboration |
+| Community Engagement | <50 stars, <1K reads, issues ignored | The community doesn't value this work in its current form. Reassess: wrong audience, wrong content angle, or wrong thesis entirely. |
+| Willingness to Pay | <3 signups and zero inbound | Monitoring isn't the revenue model. Explore premium blueprints, consulting, or accept this is a reputation-building project with indirect returns. |
+| Foundation Composition Gap | 2+ composition PRs or competing convention hardening | Good — means the concept was right. Accelerate spec publication, propose upstream collaboration. Contribute, don't compete. |
 
-Failure of one assumption doesn't kill the project — it redirects it. Failure of assumptions 1 AND 2 together means the product thesis needs fundamental rethinking.
+Failure of one assumption doesn't kill the project — it redirects it. Failure of assumptions 1 AND 2 together means the thesis that this body of work creates professional opportunities needs fundamental rethinking.

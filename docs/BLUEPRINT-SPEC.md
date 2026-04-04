@@ -2,15 +2,19 @@
 
 **Version:** 1.0.0
 **Status:** Draft
-**Updated:** 2026-03-28
+**Updated:** 2026-04-03
 
 ---
 
 ## Overview
 
-A **blueprint** is a complete agent design expressed as a single YAML file. It describes everything ClawHQ needs to forge a hardened, running OpenClaw agent: identity, personality, tools, skills, cron schedules, security posture, autonomy rules, memory policy, model routing, integrations, and messaging channels.
+A **blueprint** is a complete agent design expressed as a single YAML file. It describes everything needed to forge a hardened, running OpenClaw agent: identity, personality, tools, skills, cron schedules, security posture, autonomy rules, memory policy, model routing, integrations, and messaging channels.
 
-Blueprints are the primary interface between agent designers and the ClawHQ platform. A developer can create a valid blueprint from this specification alone, without reading ClawHQ source code.
+Blueprints are published as an open specification. Anyone can create a valid blueprint from this document alone, without reading ClawHQ source code. The ClawHQ compiler is the reference implementation, but the format is designed to be portable — any tool that emits the right workspace files and `openclaw.json` config can consume a blueprint.
+
+### Compilation Target
+
+OpenClaw auto-loads exactly 8 workspace files at boot: `SOUL.md`, `AGENTS.md`, `USER.md`, `TOOLS.md`, `IDENTITY.md`, `HEARTBEAT.md`, `BOOTSTRAP.md`, and `MEMORY.md`. A blueprint compiles into these 8 files plus `openclaw.json` (runtime config) plus `cron/jobs.json` (scheduled tasks) plus tool policy and security posture. That's a bounded, well-defined target — not an open-ended abstraction.
 
 ### Design Principles
 
@@ -109,6 +113,8 @@ When present, `dimensions` must define all 7 axes. Each value is an integer from
 | `analyticalDepth` | 1-5 | Action-oriented | Scholarly |
 
 **Constraint:** If `dimensions` is present, all 7 dimensions must be provided. Partial dimensions are rejected.
+
+**Future extension:** The Persona Schema (v0.1) defines 17 dimensions across five research-grounded layers (Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, SDT). The current 7-dimension model is a practical subset for blueprint configuration. A future spec version may adopt the full schema as an optional extended personality model.
 
 **Personality tensions** (warnings, never blocking):
 

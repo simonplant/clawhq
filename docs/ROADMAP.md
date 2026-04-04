@@ -1,8 +1,8 @@
 # ClawHQ Roadmap
 
-> Where the project is, where it's going, and what's honest aspiration vs shipped reality. See [STRATEGY.md](STRATEGY.md) for strategic context.
+> What's built, what's next, and what gates each decision. See [STRATEGY.md](STRATEGY.md) for strategic context.
 
-**Updated:** 2026-03-28
+**Updated:** 2026-04-03
 
 ---
 
@@ -13,75 +13,115 @@ ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 t
 - **Blueprint engine** — 7 use-case blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
-- **Container security** ��� hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
-- **Diagnostics** — `clawhq doctor` with 14+ checks and auto-fix, predictive health alerts, self-healing
-- **Skill system** — 6 built-in skills (email digest, morning brief, market scan, meal plan, schedule guard, investor update) with sandboxed vetting and rollback
+- **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
+- **Diagnostics** — `clawhq doctor` with 14+ checks and auto-fix, predictive health alerts, self-healing. Extends (not replaces) OpenClaw's built-in `openclaw doctor`
+- **Skill system** — 6 built-in skills with sandboxed vetting and rollback
 - **Workspace tools** — 7 CLI tool generators (email, tasks, todoist, iCal, market quotes, web search, todoist-sync)
-- **Operational tooling** — encrypted backup/restore, safe updates with rollback, status dashboard, audit trail (tool execution + egress + secrets), log streaming
+- **Operational tooling** — encrypted backup/restore, safe updates with rollback, status dashboard, audit trail, log streaming
 - **Agent lifecycle** — portable export with PII masking, verified destruction, approval queue, multi-channel notifications
 - **AI-powered setup** — `clawhq init --smart` uses local Ollama to infer configuration from a natural-language description
 - **Credential management** — separate `credentials.json` (mode 0600), health probes with expiry tracking
 - **Memory lifecycle** — hot/warm/cold tiers, LLM-powered summarization, PII masking
 - **Decision trace** — "why did you do that?" explanation system with preference learning
-- **Cloud provisioning** — 4 provider adapters (DigitalOcean, AWS, GCP, Hetzner), trust modes (Paranoid/Zero-Trust/Managed), health heartbeat, signed command queue
-- **Migration import** — ChatGPT and Google Assistant data export parsing with PII masking
+- **Configuration reference** — OPENCLAW-REFERENCE.md: the most comprehensive public mapping of OpenClaw's ~200+ field configuration surface
+
+Separately: **Clawdius** — Simon's personal hardened OpenClaw agent, running in production via Docker/Telegram. This is the operational environment that generates the production knowledge everything else builds on.
 
 ---
 
-## Now — Launch Sequence
+## Now — Contribution-First Launch
 
-Strategy is locked. See [STRATEGY.md](STRATEGY.md). Active focus is the launch sequence:
+Two parallel tracks: publish knowledge (reputation) and ship tools (utility). Neither waits for the other.
 
-### Gate 0: Ship-Ready (current sprint focus)
+### Track 1: Publish (reputation engine)
 
-- **FEAT-108** — Decompose 4,320-line CLI into per-command modules (unblocks everything)
-- **BUG-125** — Doctor auto-fix: YAML parser instead of regex (Gate 0 blocker for John)
-- **BUG-113** — SSH host key collection at provision time (security must)
-- **FEAT-110** — Multi-instance support (Gate 0 blocker for John's deploy)
-- **FEAT-018** — End-to-end smoke test (**THE LAUNCH GATE** — security tool with security bug is dead on arrival)
+**Publish the configuration reference.** OPENCLAW-REFERENCE.md is already the most comprehensive mapping of OpenClaw's configuration surface. Polish for public consumption and publish. Immediate authority signal.
 
-### Gate 1: Standards + Security
+**File upstream issues.** Take the 14 landmines and file them on `openclaw/openclaw` with reproduction steps, production evidence, and proposed fixes. Priority:
+- Context pruning not enabled by default (208K-token silent death spiral)
+- `bootstrapMaxChars` truncation with no warning
+- Cron stepping syntax `5/15` silently invalid
+- Identity drift across SOUL.md / IDENTITY.md / `identity.*` config
+- Symlink escape silently drops workspace files
 
-- **FEAT-121** — Blueprint Specification document (standards capture, foundation absorption defense)
-- **FEAT-111** — ClawWall content sanitization (security-by-default requirement)
-- **FEAT-115** — SHA256 binary pinning in Docker build (supply chain security)
+**Extract and publish 3 launch blueprints.** Standalone YAML/Markdown that works with stock OpenClaw — no ClawHQ CLI dependency. Start with the three most production-tested:
+1. **Hardened Personal Assistant** — the Clawdius config, generalized
+2. **Email Manager** — the most commonly requested use case
+3. **Replace ChatGPT Plus** — honest about local-vs-cloud tradeoffs
 
-### Gate 2: Discovery + Revenue
+**Write the first article.** "14 Ways Your OpenClaw Agent Is Silently Broken." Each landmine documented with evidence. Launches the personal website content series.
 
-- **FEAT-123** — OpenClaw Security Incident Tracker (authority building, SEO)
-- **FEAT-124** — Development-as-content pipeline (discovery fix)
-- **FEAT-122** — Sentinel monitoring service design (day-one revenue experiment)
-- **FEAT-125** — Assumption validation framework (strategic hypothesis tracking)
+### Track 2: Ship (tool readiness)
 
----
+**FEAT-018** — End-to-end smoke test. **The launch gate.** A security-focused project with an untested deploy pipeline is dead on arrival.
 
-## Next
+**FEAT-108** — Decompose 4,320-line CLI into per-command modules. Unblocks maintainability.
 
-Committed direction — immediate priorities after launch gates:
+**BUG-125** — Doctor auto-fix: YAML parser instead of regex.
 
-- **10 curated blueprints** — expand from 7 to 10 masterclass blueprints; "small and secure" positioning vs ClawHub's 1,000+ (200+ malicious)
-- **Extended identity files** — USER.md, TOOLS.md, domain-specific runbooks (FEAT-118)
-- **Model routing per cron job** — cost-efficient model selection per task (FEAT-113)
-- **1Password integration** — zero-trust credential vault (FEAT-109)
-- **Distro installer** — `curl -fsSL https://clawhq.com/install | sh` one-command install
+**FEAT-110** — Multi-instance support.
+
+**Context pruning enforcement** — Default config always enables `contextPruning` with `mode: "cache-ttl"`. Doctor verifies it's active. This is effectively landmine #15.
 
 ---
 
-## Later
+## Next — Standards + Growth
 
-Vision — directionally committed but data-dependent:
+After launch tracks complete. Contribution and product development continue in parallel.
 
-- **Sentinel monitoring service** — upstream intelligence (config breakage prediction, CVE mapping). Pricing and scope depend on willingness-to-pay signal from FEAT-125.
-- **Construct meta-skill** — autonomous self-improvement loop (FEAT-112). The "agent grows" differentiator.
-- **Operational automation** — auto-update, security monitoring, workspace backup generation (FEAT-120)
-- **Domain-based egress firewall** — DNS-resolved allowlists via ipset (FEAT-116)
-- **Web dashboard UI** — Hono server scaffolded, UI components not yet built out
+### Contribution
 
-**Kill list** (decisions made, do not revisit):
-- ~~Community blueprint marketplace~~ — replaced by 10 curated masterclass blueprints
-- ~~Managed hosting as primary business~~ — 10+ funded competitors own this; sovereignty is the position
-- ~~Revenue deferred until adoption~~ — test from day one via Sentinel
-- ~~One-time launch events as growth strategy~~ — development-as-content instead
+**Blueprint specification.** Formalize the blueprint format as a human-readable spec. Structure, fields, validation rules, security constraints. Community conventions are forming (`soul.md` repo, OpenAgents.mom, skill `manifest.json` proposal) — publish before competing formats harden. Precondition: 3 published blueprints as worked examples.
+
+**Upstream PRs.** Where filed issues lead to clear fixes, submit PRs. Priority: documentation improvements, configuration defaults, warning messages for silent failures.
+
+**Persona schema publication.** 17 dimensions across five research-grounded layers. Standalone spec with value beyond OpenClaw.
+
+**OpenClaw incident tracker.** Curated security advisory tracking for the ecosystem. Authority builder.
+
+### Product
+
+**Expand to 10 blueprints.** Each is a masterclass and also a content piece. Candidates: DevOps Assistant, Content Creator, Trading/Finance, Health & Fitness, Family Hub (expanded), Founder's Ops (expanded), Research Co-pilot (expanded).
+
+**Identity coherence.** Triple-identity-sync across SOUL.md, IDENTITY.md, and `identity.*` in config. 8-file budget management (detecting `bootstrapMaxChars` approach/truncation). Staleness detection, contradiction flagging across workspace files.
+
+**Auth profile generation.** Blueprints emit correct multi-profile auth configurations with provider failover chains. Currently unaddressed — real config complexity users get wrong.
+
+**ClawWall content sanitization.** Security-by-default prompt injection defense.
+
+**SHA256 binary pinning.** Supply chain security for Docker builds.
+
+**Model routing per cron job.** Cost-efficient model selection per task.
+
+---
+
+## Later — Gated Behind Evidence
+
+These ideas stay alive. Each has a specific traction signal that triggers investment. Don't build speculatively.
+
+| Idea | Gate | Signal Required |
+|---|---|---|
+| **Sentinel monitoring** | Community explicitly asks for upstream intelligence (config breakage prediction, CVE mapping, skill reputation) | 10+ expressed interest after 6 months of free tools/content |
+| **Premium blueprints** | Free blueprints prove valued | 500+ stars on blueprint repo, community references |
+| **Consulting/advisory** | Reputation creates inbound | Any consulting inquiry from content/contributions |
+| **Web dashboard** | Need identified beyond OpenClaw's built-in Control UI | Community request for composition/lifecycle UI, not config editing |
+| **1Password integration** | Users hitting credential management pain | Multiple requests or issues around secret management |
+| **Construct meta-skill** | Core agent lifecycle solid, users want autonomous improvement | Blueprinted agents running stably for 90+ days |
+| **Distro installer** | Enough users that repo-clone is a friction point | 50+ installs from source |
+| **Memory plugin awareness** | Users running QMD/Cognee/Mem0 hit lifecycle management gaps | Community reports of management issues with non-default backends |
+
+---
+
+## Kill List
+
+Decisions made. Do not revisit unless the underlying assumption is disproven.
+
+- ~~Community blueprint marketplace~~ — 10 curated, not 1,000 crowdsourced. ClawHub has a malware problem.
+- ~~Managed hosting as primary business~~ — 10+ funded competitors. Different layer entirely.
+- ~~Revenue before reputation~~ — Contribution first. Revenue follows traction.
+- ~~One-time launch events as growth strategy~~ — Development-as-content compounds. Launch events decay.
+- ~~Reimplementing the Control UI~~ — OpenClaw ships one. Compete on composition and lifecycle.
+- ~~Wrapping upstream CLI commands~~ — Breaks on every release. Generate configs, don't wrap commands.
 
 ---
 
@@ -91,19 +131,22 @@ Vision — directionally committed but data-dependent:
 - **Single machine only** — no multi-machine or cluster deployment
 - **Linux and macOS only** — Windows requires WSL
 - **Docker required** — no bare-metal option
-- **Cloud provisioning exists, managed hosting deprioritized** — 4 provider adapters work
-- **Web dashboard is scaffolded** — Hono server runs but UI components not built out
-- **Agent runtime integration pending** — memory, learning, autonomy, trace subsystems work standalone
+- **Web dashboard scaffolded, not built out** — Hono server runs but UI components pending. Must differentiate from OpenClaw's built-in Control UI on composition and lifecycle, not config editing.
+- **Guided config overlaps with upstream** — `openclaw onboard` and `openclaw configure` exist. ClawHQ's differentiation is blueprint-level composition + security + lifecycle.
+- **Memory lifecycle assumes default backend** — Hot/warm/cold tier management built for `memory-core`. Users on QMD, Cognee, or Mem0 will need adapted management.
+- **Auth profile generation not yet implemented** — Blueprints don't emit multi-profile auth with provider failover chains.
 
 ---
 
-## Risks
+## How Progress Is Measured
 
-| Risk | Severity | Mitigation |
+| Signal | What It Means | Target |
 |---|---|---|
-| **Foundation absorbs features** — OpenClaw ships guided config | CRITICAL | Blueprint spec as adopted standard + upstream contribution |
-| **2M users ≠ addressable demand** — conversion funnel too narrow | CRITICAL | Measure clone→install conversion; pivot if <2% |
-| **Trust paradox** — security tool with security bug | HIGH | FEAT-018 launch gate, published test matrix |
-| **Revenue timing vs. runway** — solo founder, no funding | HIGH | Sentinel experiment from day one |
-| **Local model quality** — small models not good enough | MEDIUM | Intelligent routing escalates to cloud APIs |
-| **OpenClaw breaking changes** — upstream updates break integration | MEDIUM | Pinned versions, compatibility shims, rollback |
+| GitHub stars on blueprint repo | Community finds blueprints useful | 200+ in 90 days, 500+ in 6 months |
+| Upstream issues/PRs engaged | OpenClaw team recognizes the contributions | 5+ issues engaged, 2+ PRs merged in 90 days |
+| Article reads | Content resonates | Lead article >5K reads |
+| Community references | Others cite the work | 3+ references in community guides/tutorials in 6 months |
+| Inbound inquiries | Authority converting to opportunity | Any consulting/advisory inbound by month 6 |
+| Blueprint repo forks/usage | People actually using the configs | 50+ forks in 6 months |
+
+**Honest check at 6 months:** Has this body of work created opportunities that wouldn't exist otherwise? If yes, continue and consider revenue experiments. If no, the thesis needs revision.

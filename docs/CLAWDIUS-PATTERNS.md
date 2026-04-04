@@ -1,10 +1,10 @@
-# Clawdius-to-ClawHQ Security Pattern Catalog
+# Clawdius Security Pattern Catalog
 
-Clawdius is ClawHQ's dogfooding agent — the first production-hardened OpenClaw instance managed by ClawHQ. Every security pattern listed here was battle-tested in the Clawdius deployment before being considered for ClawHQ automation.
+Clawdius is a production-hardened OpenClaw agent that has been running daily since early 2026. Every security pattern listed here was discovered or validated in real operation — not theoretical.
 
-This document tracks replication completeness: which Clawdius patterns ClawHQ already automates, which are planned, and which don't apply.
+This document serves two purposes: it tracks which patterns ClawHQ automates (for development reference), and it's a publishable catalog of production security practices for anyone hardening OpenClaw agents (community resource). Each category is a potential standalone article or guide.
 
-**Last updated:** 2026-03-31
+**Last updated:** 2026-04-03
 
 ---
 
@@ -13,12 +13,15 @@ This document tracks replication completeness: which Clawdius patterns ClawHQ al
 | Status | Meaning |
 |---|---|
 | **Done** | ClawHQ generates/enforces this automatically |
-| **Planned** | Backlog item exists with FEAT-ID |
-| **N/A** | Doesn't apply to ClawHQ (see rationale) |
+| **Planned** | Backlog item exists — build if demand validates, otherwise publish as guide |
+| **Upstream** | OpenClaw provides this natively (noted where applicable) |
+| **N/A** | Doesn't apply (see rationale) |
 
 ---
 
 ## 1. Container Hardening
+
+**Upstream context:** OpenClaw provides native sandboxing (`agents.defaults.sandbox.mode`) with Docker isolation, but the sandbox has been bypassed twice (Snyk Labs, Feb 2026 — policy merge gap on `/tools/invoke` + TOCTOU symlink race). The patterns below harden the host container itself, independent of OpenClaw's sandbox layer.
 
 | Pattern | Clawdius Reference | ClawHQ Status | Notes |
 |---|---|---|---|
@@ -68,6 +71,8 @@ This document tracks replication completeness: which Clawdius patterns ClawHQ al
 
 ## 4. Prompt Injection Defense (ClawWall)
 
+**Upstream context:** OpenClaw has no native content sanitization pipeline. The model's own instruction-following is the only defense. ClawWall sits between external content ingestion and LLM context assembly — everything below is additive to OpenClaw.
+
 | Pattern | Clawdius Reference | ClawHQ Status | Notes |
 |---|---|---|---|
 | Injection keyword detection (50+ patterns) | sanitize.py | **Done** | `src/secure/sanitizer/detect.ts` — Tier 1 high-confidence |
@@ -89,6 +94,8 @@ This document tracks replication completeness: which Clawdius patterns ClawHQ al
 
 ## 5. Egress Content Scanning
 
+**Sustainability note:** This is the most complex category — MITM TLS proxies, self-signed CAs, curl wrappers, request smuggling hardening. These are deep runtime integrations that couple tightly to the agent's execution environment and break when upstream changes transport or channel internals. Each item is significant engineering with ongoing maintenance cost. Under the sustainability test ("if OpenClaw ships a new release, does this break?"), these are the highest-risk items. **Recommendation:** Document as patterns first (high content value — "How to Inspect Your Agent's Outbound Traffic"). Build selectively if community demand validates the investment.
+
 | Pattern | Clawdius Reference | ClawHQ Status | Notes |
 |---|---|---|---|
 | Telegram egress proxy (MITM TLS, scan sendMessage payloads) | telegram-egress-proxy.py | **Planned** ([FEAT-136](../backlog/backlog.json)) | Primary exfiltration channel — currently zero content inspection |
@@ -100,6 +107,8 @@ This document tracks replication completeness: which Clawdius patterns ClawHQ al
 ---
 
 ## 6. Monitoring and Alerting
+
+**Upstream context:** OpenClaw provides `openclaw doctor` (basic config validation, `--fix` for invalid keys), `openclaw security audit` (security posture checks), and `openclaw status` (gateway health). The patterns below go deeper — HMAC-chained audit trails, PII scanning, CVE polling, and auto-recovery are not available upstream.
 
 | Pattern | Clawdius Reference | ClawHQ Status | Notes |
 |---|---|---|---|
@@ -172,29 +181,46 @@ This document tracks replication completeness: which Clawdius patterns ClawHQ al
 
 **Replication rate: 74% done, 26% planned.**
 
-The biggest gap is **egress content scanning** (0/5 done) — Telegram proxy, curl wrapper, and request smuggling hardening are all planned but not yet implemented. This is the primary exfiltration attack surface that Clawdius has covered but ClawHQ does not yet automate.
+### Gap Assessment
+
+The biggest gap is **egress content scanning** (0/5 done) — Telegram proxy, curl wrapper, and request smuggling hardening. This is also the highest-maintenance category, tightly coupled to upstream transport internals. These patterns are documented in Clawdius and have high value as published security guides, but building them as automated ClawHQ features should be gated behind community demand.
+
+The **incident response and documentation** gap (2/5 done) is the highest-leverage gap to close — threat model, architecture diagram, and operational runbook are pure knowledge artifacts with zero maintenance burden and high content value. These should be published as community resources regardless of product direction.
+
+### Content Opportunity
+
+Each category in this catalog maps to a publishable article or guide:
+- "74 Security Patterns for Production OpenClaw" (the full catalog)
+- "Container Hardening for OpenClaw: Drop ALL Capabilities and Survive" (§1)
+- "Domain-Based Egress Firewalls for AI Agents" (§2)
+- "Why Your Agent's Credentials Should Never Touch the Container" (§3)
+- "Building a Prompt Injection Defense Pipeline" (§4)
+- "Monitoring a Production OpenClaw Agent" (§6)
+- "The 10 Doctor Checks That Keep My Agent Alive" (§7)
+
+This is the production security content nobody else in the ecosystem is publishing.
 
 ---
 
 ## Backlog Coverage
 
-All planned patterns map to existing backlog items:
+All planned patterns map to existing backlog items. Categorized by sustainability: **Publish** items are pure knowledge with zero maintenance. **Build** items are sustainable (generate, don't wrap). **Gate** items are high-maintenance and should wait for demand signal.
 
-| FEAT | Pattern Category | Priority |
-|---|---|---|
-| [FEAT-135](../backlog/backlog.json) | Identity — execution philosophy | could |
-| [FEAT-136](../backlog/backlog.json) | Egress scanning — Telegram proxy | should |
-| [FEAT-137](../backlog/backlog.json) | Egress scanning — Telegram monitor | should |
-| [FEAT-138](../backlog/backlog.json) | Egress scanning — curl wrapper | should |
-| [FEAT-139](../backlog/backlog.json) | Container — immutable sanitizer | should |
-| [FEAT-140](../backlog/backlog.json) | Monitoring — Trivy scanning | should |
-| [FEAT-141](../backlog/backlog.json) | Network — DNS tunneling | should |
-| [FEAT-142](../backlog/backlog.json) | Container — seccomp profiles | could |
-| [FEAT-143](../backlog/backlog.json) | Credential — proxy limits | should |
-| [FEAT-144](../backlog/backlog.json) | Credential — anti-SSRF | should |
-| [FEAT-145](../backlog/backlog.json) | Egress scanning — request smuggling | should |
-| [FEAT-146](../backlog/backlog.json) | Injection defense — multilingual | should |
-| [FEAT-147](../backlog/backlog.json) | Network — firewall test suite | should |
-| [FEAT-148](../backlog/backlog.json) | Documentation — threat model + runbook | should |
+| FEAT | Pattern Category | Priority | Sustainability |
+|---|---|---|---|
+| [FEAT-148](../backlog/backlog.json) | Documentation — threat model + runbook | should | **Publish** — zero maintenance, high content value |
+| [FEAT-146](../backlog/backlog.json) | Injection defense — multilingual | should | **Build** — extends existing sanitizer, low coupling |
+| [FEAT-147](../backlog/backlog.json) | Network — firewall test suite | should | **Build** — validates existing firewall, low coupling |
+| [FEAT-141](../backlog/backlog.json) | Network — DNS tunneling | should | **Build** — iptables rule addition, low coupling |
+| [FEAT-143](../backlog/backlog.json) | Credential — proxy limits | should | **Build** — extends existing proxy, moderate coupling |
+| [FEAT-144](../backlog/backlog.json) | Credential — anti-SSRF | should | **Build** — extends existing proxy, moderate coupling |
+| [FEAT-140](../backlog/backlog.json) | Monitoring — Trivy scanning | should | **Build** — build-time only, no runtime coupling |
+| [FEAT-139](../backlog/backlog.json) | Container — immutable sanitizer | should | **Build** — Dockerfile change, low coupling |
+| [FEAT-135](../backlog/backlog.json) | Identity — execution philosophy | could | **Build** — extends soul generator, low coupling |
+| [FEAT-142](../backlog/backlog.json) | Container — seccomp profiles | could | **Build** — needs syscall audit first |
+| [FEAT-136](../backlog/backlog.json) | Egress scanning — Telegram proxy | should | **Gate** — MITM TLS, high coupling to upstream transport |
+| [FEAT-137](../backlog/backlog.json) | Egress scanning — Telegram monitor | should | **Gate** — depends on FEAT-136 |
+| [FEAT-138](../backlog/backlog.json) | Egress scanning — curl wrapper | should | **Gate** — PATH-level intercept, breaks on upstream changes |
+| [FEAT-145](../backlog/backlog.json) | Egress scanning — request smuggling | should | **Gate** — depends on FEAT-136 |
 
 No Clawdius pattern is untracked.
