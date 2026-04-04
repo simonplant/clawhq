@@ -19,6 +19,8 @@ import {
   ConfigFileError,
   createInquirerPrompter,
   generateBundle,
+  isCompositionConfig,
+  loadAndCompileComposition,
   loadConfigFile,
   runSmartInference,
   runWizard,
@@ -26,6 +28,11 @@ import {
   WizardAbortError,
   writeBundle,
 } from "../../design/configure/index.js";
+import {
+  compile,
+  loadAllPersonalities,
+  loadAllProfiles,
+} from "../../design/catalog/index.js";
 
 import { CommandError } from "../errors.js";
 import { renderError } from "../ux.js";
@@ -158,8 +165,39 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
       try {
         let answers;
 
-        if (opts.config) {
-          // Non-interactive: load from config file
+        if (opts.config && isCompositionConfig(opts.config)) {
+          // New path: profile + personality composition
+          try {
+            const compiled = loadAndCompileComposition(opts.config);
+            const deployDir = compiled.files.find((f) => f.relativePath === "clawhq.yaml")
+              ? opts.deployDir
+              : opts.deployDir;
+
+            console.log(chalk.green(`\n✔ Composition loaded from ${opts.config}`));
+            console.log(chalk.dim(`  Profile:     ${compiled.profile.name}`));
+            console.log(chalk.dim(`  Personality: ${compiled.personality.name}`));
+            console.log(chalk.dim(`  Deploy to:   ${opts.deployDir}`));
+
+            // Write all compiled files
+            const spinner = ora("Writing workspace…");
+            spinner.start();
+
+            const result = writeBundle(opts.deployDir, compiled.files);
+
+            spinner.succeed(`Workspace written to ${result.deployDir}`);
+            console.log(chalk.dim(`  ${result.written.length} files written`));
+            console.log(chalk.green(`\n✔ Agent forged: ${compiled.personality.name} × ${compiled.profile.name}`));
+            console.log(chalk.dim(`\n  Next: clawhq build -d ${opts.deployDir}`));
+            return;
+          } catch (error) {
+            if (error instanceof ConfigFileError) {
+              console.error(chalk.red(`\n  ✘ ${error.message}\n`));
+              throw new CommandError("", 1);
+            }
+            throw error;
+          }
+        } else if (opts.config) {
+          // Legacy path: blueprint-based config file
           try {
             answers = loadConfigFile(opts.config);
             console.log(chalk.green(`\n✔ Config loaded from ${opts.config}`));
@@ -334,6 +372,116 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         console.log(chalk.green(`\nBlueprint is valid`) + chalk.dim(` (${report.warnings.length} warning${report.warnings.length === 1 ? "" : "s"}).\n`));
       } else {
         console.log(chalk.green(`\nBlueprint is valid.\n`));
+      }
+    });
+
+  // ── Compose Commands (Mission Profile × Personality) ──────────────────────
+
+  const compose = program.command("compose").description("Mission profile × personality — design your agent");
+
+  compose
+    .command("profiles")
+    .description("List available mission profiles (WHAT your agent does)")
+    .action(async () => {
+      const profiles = loadAllProfiles();
+      if (profiles.length === 0) {
+        console.log(chalk.yellow("No profiles found."));
+        return;
+      }
+
+      console.log(chalk.bold("\nMission Profiles — WHAT your agent does\n"));
+      for (const p of profiles) {
+        console.log(`  ${chalk.bold.cyan(p.id)}  ${chalk.dim("—")}  ${p.description}`);
+        const toolNames = p.tools.map((t) => t.name).join(", ");
+        console.log(chalk.dim(`    Tools: ${toolNames} · Skills: ${p.skills.join(", ")} · Security: ${p.security_posture}`));
+        console.log("");
+      }
+      console.log(chalk.dim(`  ${profiles.length} profiles available`));
+      console.log(chalk.dim("  Preview: clawhq compose preview <profile> <personality>\n"));
+    });
+
+  compose
+    .command("personalities")
+    .description("List available personality presets (HOW your agent does it)")
+    .action(async () => {
+      const personalities = loadAllPersonalities();
+      if (personalities.length === 0) {
+        console.log(chalk.yellow("No personalities found."));
+        return;
+      }
+
+      console.log(chalk.bold("\nPersonality Presets — HOW your agent does it\n"));
+      for (const p of personalities) {
+        console.log(`  ${chalk.bold.cyan(p.id)}  ${chalk.dim("—")}  ${p.description}`);
+        if (p.voice_examples.length > 0) {
+          console.log(chalk.dim(`    "${p.voice_examples[0]}"`));
+        }
+        console.log("");
+      }
+      console.log(chalk.dim(`  ${personalities.length} personalities available`));
+      console.log(chalk.dim("  Preview: clawhq compose preview <profile> <personality>\n"));
+    });
+
+  compose
+    .command("preview")
+    .description("Preview a profile + personality composition")
+    .argument("<profile>", "Mission profile ID")
+    .argument("<personality>", "Personality preset ID")
+    .action(async (profileId: string, personalityId: string) => {
+      try {
+        const result = compile(
+          { profile: profileId, personality: personalityId },
+          { name: "User", timezone: "UTC", communication: "brief" },
+          "~/.clawhq",
+        );
+
+        const { profile, personality } = result;
+        const dim = chalk.dim;
+        const bold = chalk.bold;
+
+        console.log(bold(`\n${personality.name} × ${profile.name}`));
+        console.log(dim("═".repeat(60)));
+
+        console.log(bold("\nPersonality"));
+        console.log(`  ${personality.description}`);
+        console.log(`  ${dim(`Emoji: ${personality.identity.emoji}  Vibe: ${personality.identity.vibe}`)}`);
+
+        console.log(bold("\nMission"));
+        console.log(`  ${profile.description}`);
+        console.log(`  ${dim(`Replaces: ${profile.replaces}`)}`);
+
+        console.log(bold("\nTools"));
+        for (const t of profile.tools) {
+          const req = t.required ? chalk.green("required") : dim("optional");
+          console.log(`  ${chalk.cyan(t.name)} [${t.category}] ${req}`);
+        }
+
+        console.log(bold("\nSkills"));
+        console.log(`  ${profile.skills.join(", ") || dim("none")}`);
+
+        console.log(bold("\nAutonomy"));
+        console.log(`  Default: ${profile.autonomy_default}`);
+        for (const d of profile.delegation) {
+          const icon = d.tier === "execute" ? chalk.green("●") : d.tier === "propose" ? chalk.yellow("●") : chalk.red("●");
+          console.log(`  ${icon} ${d.action} [${d.tier}]`);
+        }
+
+        console.log(bold("\nSecurity"));
+        console.log(`  Posture: ${profile.security_posture}`);
+        console.log(`  Egress:  ${profile.egress_domains.join(", ") || dim("none")}`);
+
+        console.log(bold("\nVoice"));
+        for (const v of personality.voice_examples.slice(0, 3)) {
+          console.log(`  ${dim(">")} ${v}`);
+        }
+
+        console.log(bold("\nDay in the Life"));
+        console.log(`  ${profile.day_in_the_life.trim()}`);
+
+        console.log("");
+      } catch (error) {
+        console.error(renderError(error));
+        throw new CommandError("", 1);
       }
     });
 }

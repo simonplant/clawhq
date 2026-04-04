@@ -17,13 +17,20 @@ import { parse as yamlParse } from "yaml";
 
 import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
 import { loadBlueprint } from "../blueprints/loader.js";
+import { compile } from "../catalog/index.js";
+import type { CompiledWorkspace } from "../catalog/types.js";
 import type { WizardAnswers } from "./types.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 /** Shape of the YAML config file. */
 interface ConfigFile {
-  blueprint: string;
+  /** Legacy: direct blueprint reference. */
+  blueprint?: string;
+
+  /** New: mission profile + personality composition. */
+  profile?: string;
+  personality?: string;
   channel?: string;
   model_provider?: "local" | "cloud";
   local_model?: string;
@@ -39,7 +46,7 @@ interface ConfigFile {
     constraints?: string;
   };
 
-  personality?: Record<string, number>;
+  dimension_overrides?: Record<string, number>;
 
   customization?: Record<string, string>;
 
@@ -78,7 +85,64 @@ export class ConfigFileError extends Error {
 // ── Loader ──────────────────────────────────────────────────────────────────
 
 /**
- * Load wizard answers from a YAML config file.
+ * Check if a config file uses the new composition format (profile + personality).
+ */
+export function isCompositionConfig(configPath: string): boolean {
+  const resolved = resolve(configPath);
+  if (!existsSync(resolved)) return false;
+  const content = readFileSync(resolved, "utf-8");
+  const parsed = yamlParse(content) as ConfigFile | null;
+  return !!(parsed?.profile && parsed?.personality);
+}
+
+/**
+ * Load a composition config and compile it into workspace files.
+ *
+ * @param configPath — Path to the YAML config file with profile: + personality:
+ * @returns CompiledWorkspace with all files ready to write
+ */
+export function loadAndCompileComposition(configPath: string): CompiledWorkspace {
+  const resolved = resolve(configPath);
+  if (!existsSync(resolved)) {
+    throw new ConfigFileError(`Config file not found: ${resolved}`);
+  }
+
+  const content = readFileSync(resolved, "utf-8");
+  let parsed: unknown;
+  try {
+    parsed = yamlParse(content);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ConfigFileError(`YAML parse error: ${msg}`);
+  }
+
+  const config = parsed as ConfigFile;
+
+  if (!config.profile || !config.personality) {
+    throw new ConfigFileError("Composition config must specify 'profile' and 'personality'");
+  }
+
+  const deployDir = expandHome(config.deploy_dir ?? "~/.clawhq");
+  const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  return compile(
+    {
+      profile: config.profile,
+      personality: config.personality,
+    },
+    {
+      name: config.user?.name ?? "User",
+      timezone: config.user?.timezone ?? detectedTimezone,
+      communication: config.user?.communication ?? "brief",
+      constraints: config.user?.constraints,
+    },
+    deployDir,
+    config.gateway_port ?? GATEWAY_DEFAULT_PORT,
+  );
+}
+
+/**
+ * Load wizard answers from a YAML config file (legacy blueprint path).
  *
  * @param configPath — Path to the YAML config file
  * @returns WizardAnswers ready for generateBundle()
@@ -145,8 +209,8 @@ export function loadConfigFile(configPath: string): WizardAnswers {
     airGapped: config.air_gapped ?? false,
     integrations: config.integrations ?? {},
     customizationAnswers: config.customization ?? {},
-    personalityDimensions: config.personality
-      ? config.personality as unknown as WizardAnswers["personalityDimensions"]
+    personalityDimensions: config.dimension_overrides
+      ? config.dimension_overrides as unknown as WizardAnswers["personalityDimensions"]
       : blueprint.personality.dimensions,
     userContext,
     auth: config.auth ? {

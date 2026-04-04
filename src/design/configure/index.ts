@@ -40,7 +40,7 @@ export {
 export { isOllamaAvailable, OllamaError } from "./ollama.js";
 
 // Config file (non-interactive)
-export { loadConfigFile, ConfigFileError } from "./config-file.js";
+export { isCompositionConfig, loadAndCompileComposition, loadConfigFile, ConfigFileError } from "./config-file.js";
 
 // Writer
 export { writeBundle, writeFileAtomic, WriteError } from "./writer.js";
