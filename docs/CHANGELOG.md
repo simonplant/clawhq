@@ -16,7 +16,7 @@ Before this change, pushing a config update to a cloud-deployed agent meant repr
 
 ### Documentation that teaches, not just documents
 
-Five new docs shipped: a [quickstart guide](QUICKSTART.md) that gets you from zero to working agent in under 10 minutes, a [configuration reference](CONFIGURATION.md) covering every blueprint and skill option, a [problems guide](PROBLEMS.md) that explains why OpenClaw is hard (and what ClawHQ fixes), a public-facing [roadmap](ROADMAP.md), and a [contributing guide](../CONTRIBUTING.md). The architecture doc gained a full skill system section covering lifecycle, config schema, boundary enforcement, and built-in skill reference.
+Five new docs shipped: a [quickstart guide](QUICKSTART.md) that gets you from zero to working agent in under 10 minutes, a configuration reference (superseded by [BLUEPRINT-SPEC.md](BLUEPRINT-SPEC.md) and [OPENCLAW-REFERENCE.md](OPENCLAW-REFERENCE.md)), a [problems guide](PROBLEMS.md) that explains why OpenClaw is hard (and what we're building to help), a public-facing [roadmap](ROADMAP.md), and a [contributing guide](../CONTRIBUTING.md). The architecture doc gained a full skill system section covering lifecycle, config schema, boundary enforcement, and built-in skill reference.
 
 ### 35 file permission fixes
 

@@ -101,6 +101,9 @@ export function generateStage2Dockerfile(
     "# Stage 2: Custom tools + skills (fast rebuild layer)",
     "# Rebuilds when tools, skills, or integrations change",
     "",
+    "SHELL [\"/bin/bash\", \"-c\"]",
+    "USER root",
+    "",
   ];
 
   // Install 1Password CLI if enabled
@@ -121,13 +124,30 @@ export function generateStage2Dockerfile(
     validateBinaryUrl(binary.url);
     validateBinaryDestPath(binary.destPath);
     validateBinarySha256(binary.sha256);
-    lines.push(
-      `# Install ${binary.name} (SHA256: ${binary.sha256})`,
-      `RUN curl -fsSL "${binary.url}" -o "${binary.destPath}" && \\`,
-      `    echo "${binary.sha256}  ${binary.destPath}" | sha256sum -c - && \\`,
-      `    chmod +x "${binary.destPath}"`,
-      "",
-    );
+
+    if (binary.url.endsWith(".tgz") || binary.url.endsWith(".tar.gz")) {
+      // Tarball: download, verify, extract the binary
+      const binaryBasename = binary.destPath.split("/").pop() ?? binary.name;
+      lines.push(
+        `# Install ${binary.name} (SHA256: ${binary.sha256})`,
+        `RUN set -euo pipefail && \\`,
+        `    curl -fsSL "${binary.url}" -o /tmp/${binary.name}.tgz && \\`,
+        `    echo "${binary.sha256}  /tmp/${binary.name}.tgz" | sha256sum -c - && \\`,
+        `    tar -xzf /tmp/${binary.name}.tgz -C /usr/local/bin ${binaryBasename} && \\`,
+        `    chmod 755 "${binary.destPath}" && \\`,
+        `    rm /tmp/${binary.name}.tgz`,
+        "",
+      );
+    } else {
+      // Direct binary download
+      lines.push(
+        `# Install ${binary.name} (SHA256: ${binary.sha256})`,
+        `RUN curl -fsSL "${binary.url}" -o "${binary.destPath}" && \\`,
+        `    echo "${binary.sha256}  ${binary.destPath}" | sha256sum -c - && \\`,
+        `    chmod +x "${binary.destPath}"`,
+        "",
+      );
+    }
   }
 
   // Copy workspace tools
