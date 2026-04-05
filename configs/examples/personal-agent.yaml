@@ -1,51 +1,36 @@
-# Example non-interactive config for clawhq init --config
+# Example config for clawhq init --config
 # Usage: clawhq init --config configs/examples/personal-agent.yaml
 #
 # Copy this file to your deployment directory and fill in real values.
 # Never commit credentials to the clawhq repo.
+#
+# Browse options:
+#   clawhq compose profiles       — mission profiles (WHAT)
+#   clawhq compose personalities  — personality presets (HOW)
+#   clawhq compose providers      — integration providers (a la carte)
 
-blueprint: replace-my-pa
-channel: telegram
-model_provider: local
-local_model: "llama3:8b"
+profile: life-ops
+personality: direct-operator
 deploy_dir: ~/.clawhq
+
+providers:
+  email: gmail
+  calendar: icloud-cal
+  tasks: todoist
+  search: tavily
 
 user:
   name: User
   # timezone: America/New_York
   communication: brief
 
-customization:
-  work_style: "Professional but casual — friendly yet competent"
-  scheduling_preference: "Suggest options — propose solutions, I confirm"
-  priority_contacts: ""
+# Channel credentials (uncomment and fill)
+# channels:
+#   telegram:
+#     bot_token: "your-bot-token-from-@BotFather"
 
-# Auth — model provider credentials
+# Model credentials (uncomment for cloud models)
 # auth:
 #   provider: anthropic
 #   env:
-#     ANTHROPIC_API_KEY: "sk-ant-..."
-#   # Or for Claude subscription:
-#   # env:
-#   #   CLAUDE_AI_SESSION_KEY: "your-session-key"
-
-# Channel credentials
-# channels:
-#   telegram:
-#     bot_token: "123456:ABC-DEF..."
-
-# Integrations — service credentials
-# integrations:
-#   messaging:
-#     BOT_TOKEN: "your-telegram-bot-token"
-#   email:
-#     IMAP_HOST: "imap.gmail.com"
-#     IMAP_USER: "you@gmail.com"
-#     IMAP_PASS: "app-password"
-#     SMTP_HOST: "smtp.gmail.com"
-#     SMTP_USER: "you@gmail.com"
-#     SMTP_PASS: "app-password"
-#   calendar:
-#     CALDAV_URL: "https://caldav.icloud.com"
-#     CALDAV_USER: "you@icloud.com"
-#     CALDAV_PASS: "app-password"
+#     CLAUDE_AI_SESSION_KEY: "your-session-key"
