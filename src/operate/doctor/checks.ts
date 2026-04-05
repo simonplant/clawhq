@@ -175,16 +175,18 @@ async function checkConfigValid(deployDir: string): Promise<DoctorCheckResult> {
     const raw = await readFile(configPath, "utf-8");
     const config = JSON.parse(raw) as Record<string, unknown>;
 
-    // Check critical landmine fields
+    // Check critical landmine fields (both legacy top-level and new nested locations)
     const issues: string[] = [];
-    if (config["dangerouslyDisableDeviceAuth"] !== true) {
+    const gw = config["gateway"] as Record<string, unknown> | undefined;
+    const cui = (gw?.["controlUi"] ?? {}) as Record<string, unknown>;
+    if (config["dangerouslyDisableDeviceAuth"] !== true && cui["dangerouslyDisableDeviceAuth"] !== true) {
       issues.push("LM-01: dangerouslyDisableDeviceAuth must be true");
     }
-    const origins = config["allowedOrigins"];
+    const origins = config["allowedOrigins"] ?? cui["allowedOrigins"];
     if (!Array.isArray(origins) || origins.length === 0) {
       issues.push("LM-02: allowedOrigins is empty or missing");
     }
-    const proxies = config["trustedProxies"];
+    const proxies = config["trustedProxies"] ?? gw?.["trustedProxies"];
     if (!Array.isArray(proxies) || proxies.length === 0) {
       issues.push("LM-03: trustedProxies is empty or missing");
     }
@@ -647,23 +649,40 @@ async function checkEnvVars(deployDir: string): Promise<DoctorCheckResult> {
       return fail(name, "warning", "docker-compose.yml not found — cannot check env var references");
     }
 
-    const refPattern = /\$\{([A-Z_][A-Z0-9_]*?)(?::.*?)?\}/g;
-    const referenced = new Set<string>();
+    // Find ${VAR} references — ${VAR:-} means optional (has default fallback)
+    const requiredPattern = /\$\{([A-Z_][A-Z0-9_]*?)\}/g;
+    const optionalPattern = /\$\{([A-Z_][A-Z0-9_]*?):-[^}]*\}/g;
+
+    const required = new Set<string>();
+    const optional = new Set<string>();
+
     let match: RegExpExecArray | null;
-    while ((match = refPattern.exec(composeContent)) !== null) {
-      referenced.add(match[1]);
+    // Find optional vars first (they have :- defaults)
+    while ((match = optionalPattern.exec(composeContent)) !== null) {
+      optional.add(match[1]);
+    }
+    // Find all referenced vars
+    while ((match = requiredPattern.exec(composeContent)) !== null) {
+      if (!optional.has(match[1])) {
+        required.add(match[1]);
+      }
     }
 
-    const missing = Array.from(referenced).filter((v) => !envKeys.has(v));
+    const missing = Array.from(required).filter((v) => !envKeys.has(v));
+    const missingOptional = Array.from(optional).filter((v) => !envKeys.has(v));
+
     if (missing.length > 0) {
       return fail(
         name,
         "error",
-        `Missing .env variables: ${missing.join(", ")} — integrations will silently fail`,
+        `Missing required .env variables: ${missing.join(", ")}`,
         `Add missing variables to .env: ${missing.join(", ")}`,
       );
     }
-    return ok(name, `All ${referenced.size} referenced env variable(s) are set`);
+    if (missingOptional.length > 0) {
+      return ok(name, `All required env vars set. Optional not configured: ${missingOptional.join(", ")}`);
+    }
+    return ok(name, `All ${required.size + optional.size} referenced env variable(s) are set`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return fail(name, "warning", `Cannot check env vars: ${msg}`);
@@ -1266,16 +1285,20 @@ async function checkSanitizeAvailable(deployDir: string): Promise<DoctorCheckRes
   const name: DoctorCheckName = "sanitize-available";
 
   try {
-    // Check the tool exists and is executable
-    const sanitizePath = join(deployDir, "workspace", "tools", "sanitize");
-    try {
-      await access(sanitizePath, constants.X_OK);
-    } catch {
+    // Check the tool exists and is executable (check both legacy and new paths)
+    const paths = [
+      join(deployDir, "workspace", "sanitize"),
+      join(deployDir, "workspace", "tools", "sanitize"),
+    ];
+    const found = await Promise.all(paths.map(async (p) => {
+      try { await access(p, constants.X_OK); return true; } catch { return false; }
+    }));
+    if (!found.some(Boolean)) {
       return fail(
         name,
         "error",
-        "sanitize tool not found at workspace/tools/sanitize — prompt injection defense is inactive",
-        "Run 'clawhq build' to regenerate tools from blueprint",
+        "sanitize tool not found — prompt injection defense is inactive",
+        "Run 'clawhq init' to regenerate workspace tools",
         false,
       );
     }
