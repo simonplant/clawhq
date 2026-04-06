@@ -456,11 +456,14 @@ function renderOpenclawJson(
     agents: {
       defaults: {
         model: buildModelConfig(providers),
+        requestTimeout: 120000,
         subagents: {
           model: buildModelConfig(providers).primary,
+          requestTimeout: 60000,
         },
         heartbeat: {
           model: buildModelConfig(providers).primary,
+          requestTimeout: 60000,
         },
         memorySearch: {
           provider: "ollama",
