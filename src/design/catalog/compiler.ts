@@ -87,7 +87,7 @@ export function compile(
     { relativePath: "workspace/MEMORY.md", content: "" },
 
     // Runtime config
-    { relativePath: "engine/openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config) },
+    { relativePath: "engine/openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config), mode: 0o600 },
     { relativePath: "engine/.env", content: renderEnv(gatewayPort, resolvedProviders), mode: 0o600 },
     { relativePath: "engine/credentials.json", content: "{}\n", mode: 0o600 },
 
@@ -448,6 +448,12 @@ function renderOpenclawJson(
     agents: {
       defaults: {
         model: buildModelConfig(providers),
+        subagents: {
+          model: buildModelConfig(providers).primary,
+        },
+        heartbeat: {
+          model: buildModelConfig(providers).primary,
+        },
         memorySearch: {
           provider: "ollama",
           store: { vector: { enabled: true } },
