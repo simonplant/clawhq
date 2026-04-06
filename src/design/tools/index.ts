@@ -1,7 +1,7 @@
 /**
- * Tools module — generates workspace CLI tool wrappers from blueprints.
+ * Tools module - generates workspace CLI tool wrappers from blueprints.
  *
- * Tools are the agent's HANDS — what it can DO in the world. Each tool is
+ * Tools are the agent's HANDS - what it can DO in the world. Each tool is
  * a thin CLI wrapper (bash or python3) that delegates to an underlying
  * integration (himalaya, caldav, Todoist API, etc.).
  *
@@ -34,7 +34,7 @@ export interface ToolFileContent {
   readonly relativePath: string;
   /** Script content (bash or python3). */
   readonly content: string;
-  /** File permission mode — always FILE_MODE_EXEC (0o755, executable). */
+  /** File permission mode - always FILE_MODE_EXEC (0o755, executable). */
   readonly mode: number;
 }
 
@@ -88,7 +88,7 @@ export function generateToolWrappers(blueprint: Blueprint): ToolFileContent[] {
     });
   }
 
-  // Always include the approve-action platform tool — required for the
+  // Always include the approve-action platform tool - required for the
   // approval gate that high-stakes actions (send, reply, delete) route through.
   if (blueprint.autonomy_model.requires_approval.length > 0) {
     wrappers.push({
@@ -99,7 +99,7 @@ export function generateToolWrappers(blueprint: Blueprint): ToolFileContent[] {
     });
   }
 
-  // Always include the sanitize platform tool — ClawWall prompt injection
+  // Always include the sanitize platform tool - ClawWall prompt injection
   // firewall. Every deployment gets sanitize on PATH so external-facing
   // tools can pipe content through it.
   wrappers.push({

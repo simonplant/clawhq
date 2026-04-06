@@ -84,6 +84,7 @@ export function compile(
     { relativePath: "workspace/TOOLS.md", content: renderTools(profile) },
     { relativePath: "workspace/IDENTITY.md", content: renderIdentity(personality, profile) },
     { relativePath: "workspace/HEARTBEAT.md", content: renderHeartbeat(profile) },
+    { relativePath: "workspace/BOOTSTRAP.md", content: renderBootstrap(profile) },
     { relativePath: "workspace/MEMORY.md", content: "" },
 
     // Runtime config
@@ -412,6 +413,39 @@ function renderHeartbeat(profile: MissionProfile): string {
   }
   lines.push("\nIf nothing needs attention, respond `HEARTBEAT_OK`.");
   lines.push("");
+
+  return lines.join("\n");
+}
+
+// ── BOOTSTRAP.md ───────────────────────────────────────────────────────────
+
+function renderBootstrap(profile: MissionProfile): string {
+  const tools = profile.tools.filter((t) => t.required).map((t) => t.name);
+  const lines: string[] = [
+    "## Startup Sequence",
+    "",
+    "On every session start, execute this sequence before responding to any message:",
+    "",
+    "1. **Load identity**: Read SOUL.md, USER.md, AGENTS.md, IDENTITY.md",
+    "2. **Check tools**: Verify each tool is executable:",
+  ];
+
+  for (const tool of tools) {
+    lines.push(`   - \`which ${tool} && ${tool} help 2>/dev/null | head -1\``);
+  }
+
+  lines.push(
+    "3. **Sync memory**: Read MEMORY.md for context from previous sessions",
+    "4. **Check heartbeat**: If HEARTBEAT.md has checks, run them",
+    "",
+    "## Recovery",
+    "",
+    "If any tool fails the health check:",
+    "- Report the failure clearly to the user",
+    "- Continue operating with available tools",
+    "- Do not silently skip broken capabilities",
+    "",
+  );
 
   return lines.join("\n");
 }
