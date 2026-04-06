@@ -1,0 +1,81 @@
+id: trading
+name: Trading & Finance
+description: "Market data, portfolio monitoring, pre-market alerts, risk guardrails, trading journal"
+replaces: "Bloomberg Terminal / manual market monitoring / spreadsheet tracking"
+
+tools:
+  - name: quote
+    category: finance
+    description: "Stock and futures quotes via Yahoo Finance (no auth, ~15min delay)"
+    required: true
+  - name: tavily
+    category: research
+    description: "Market research and news via Tavily API"
+    required: false
+  - name: tasks
+    category: core
+    description: "Trading task and watchlist tracking"
+    required: true
+
+skills:
+  - construct
+
+integrations:
+  required: [messaging]
+  recommended: [notes]
+  optional: [code]
+
+cron_defaults:
+  heartbeat: "*/30 * * * *"
+  premarket_brief: "0 6 * * 1-5"
+  eod_review: "15 13 * * 1-5"
+
+cron_prompts:
+  heartbeat: "Run heartbeat: check watchlist prices against key levels, check for unusual moves (>2% from open), check for earnings/economic events today. If nothing notable, respond HEARTBEAT_OK."
+  premarket_brief: "Deliver pre-market brief: overnight futures action, key levels for today, any earnings/economic data due, positions to watch. Keep it actionable — ranked by confidence."
+  eod_review: "End-of-day review: how did today's key levels hold? What positions moved? What's the bias for tomorrow? Update daily trading log."
+
+delegation:
+  - action: check_prices
+    tier: execute
+    example: "Check current prices, levels, and market conditions"
+  - action: research_market
+    tier: execute
+    example: "Research market events, earnings, economic data"
+  - action: update_journal
+    tier: execute
+    example: "Update trading journal with observations and analysis"
+  - action: suggest_trade
+    tier: propose
+    example: "Propose a trade idea with reasoning — never execute without approval"
+  - action: execute_trade
+    tier: approve
+    example: "Place any order — always requires explicit approval"
+
+egress_domains:
+  - query1.finance.yahoo.com
+  - api.tavily.com
+
+security_posture: paranoid
+autonomy_default: low
+
+memory_policy:
+  hot_max: "150KB"
+  hot_retention: "14d"
+  warm_retention: "180d"
+  cold_retention: "365d"
+  summarization: thorough
+
+monitoring:
+  heartbeat_frequency: "30min"
+  checks: []
+  quiet_hours: "16:00-05:00"
+  alert_on: [credential_expiry]
+
+day_in_the_life: >
+  At 6am you get a pre-market brief: overnight futures action, Mancini's levels,
+  key earnings, and your watchlist ranked by signal strength. During market hours,
+  the agent monitors your levels and alerts on significant moves. You ask
+  "what's the setup on AAPL?" and get an analysis with entry, stop, and target.
+  After the close, you get an end-of-day review comparing what happened against
+  the morning plan. Your trading journal updates automatically.

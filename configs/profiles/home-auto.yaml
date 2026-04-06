@@ -1,0 +1,68 @@
+id: home-auto
+name: Home & Devices
+description: "Smart home control, device monitoring, automation, scene management"
+replaces: "Google Home / Alexa / manual Home Assistant dashboard"
+
+tools:
+  - name: tasks
+    category: core
+    description: "Automation task tracking and scheduling"
+    required: true
+
+skills:
+  - construct
+
+integrations:
+  required: [messaging]
+  recommended: []
+  optional: []
+
+cron_defaults:
+  heartbeat: "*/15 * * * *"
+  morning_routine: "0 7 * * *"
+  evening_routine: "0 22 * * *"
+
+cron_prompts:
+  heartbeat: "Run heartbeat: check device status, sensor readings, any alerts or anomalies. If everything normal, respond HEARTBEAT_OK."
+  morning_routine: "Good morning routine: adjust lights, check weather, set comfortable temperature, report any overnight alerts."
+  evening_routine: "Evening routine: lock doors, set night mode lights, arm security, set sleeping temperature."
+
+delegation:
+  - action: check_status
+    tier: execute
+    example: "Check device status, sensor readings, energy usage"
+  - action: adjust_settings
+    tier: execute
+    example: "Adjust lights, temperature, scenes within normal ranges"
+  - action: trigger_automation
+    tier: propose
+    example: "Propose running a non-routine automation — confirm first"
+  - action: security_changes
+    tier: approve
+    example: "Lock/unlock doors, arm/disarm security — requires explicit approval"
+
+egress_domains: []
+
+security_posture: hardened
+autonomy_default: medium
+
+memory_policy:
+  hot_max: "50KB"
+  hot_retention: "3d"
+  warm_retention: "30d"
+  cold_retention: "180d"
+  summarization: balanced
+
+monitoring:
+  heartbeat_frequency: "15min"
+  checks: []
+  quiet_hours: "23:00-06:00"
+  alert_on: [credential_expiry, cron_failure]
+
+day_in_the_life: >
+  You wake up to gentle lights fading in and a comfortable temperature.
+  The agent reports: "Good morning. 68°F inside, 45°F outside. No alerts
+  overnight. Garage door closed. Coffee maker started." During the day,
+  you text "I'm leaving" and the agent sets away mode. When you get home,
+  motion sensors trigger welcome lighting. At bedtime: "Doors locked,
+  thermostat set to 65°F, cameras armed. Good night."

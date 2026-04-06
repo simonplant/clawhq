@@ -1,0 +1,88 @@
+id: business-ops
+name: Business Operations
+description: "CRM, leads, metrics, competitor analysis, content pipeline, investor updates"
+replaces: "Scattered tools / manual reporting / hiring a VA"
+
+tools:
+  - name: email
+    category: communication
+    description: "Client and investor email management via himalaya"
+    required: true
+  - name: todoist
+    category: productivity
+    description: "Business task tracking and pipeline management via Todoist"
+    required: true
+  - name: tavily
+    category: research
+    description: "Competitor analysis, market research, lead research"
+    required: true
+  - name: tasks
+    category: core
+    description: "Internal work queue for business operations"
+    required: true
+
+skills:
+  - morning-brief
+  - construct
+
+integrations:
+  required: [messaging, email]
+  recommended: [tasks]
+  optional: [calendar, notes, code]
+
+cron_defaults:
+  heartbeat: "*/30 * * * *"
+  morning_brief: "0 8 * * 1-5"
+  weekly_review: "0 17 * * 5"
+
+cron_prompts:
+  heartbeat: "Run heartbeat: check email for client responses, check task pipeline for stalled items, check for any urgent business items. If nothing urgent, respond HEARTBEAT_OK."
+  morning_brief: "Deliver morning business brief: pipeline status, today's priorities, any client follow-ups due, key metrics if available."
+  weekly_review: "Weekly business review: summarize this week's wins, pipeline movement, outstanding client items, priorities for next week."
+
+delegation:
+  - action: research_lead
+    tier: execute
+    example: "Research a company or contact for sales/partnership context"
+  - action: draft_update
+    tier: execute
+    example: "Draft internal status updates, pipeline reports"
+  - action: draft_client_email
+    tier: propose
+    example: "Draft client or investor email — never send without approval"
+  - action: send_external
+    tier: approve
+    example: "Send any external communication — requires explicit approval"
+  - action: financial_commitment
+    tier: approve
+    example: "Agree to pricing, contracts, or spending — requires explicit approval"
+
+egress_domains:
+  - imap.gmail.com
+  - smtp.gmail.com
+  - api.todoist.com
+  - api.tavily.com
+
+security_posture: hardened
+autonomy_default: medium
+
+memory_policy:
+  hot_max: "100KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+monitoring:
+  heartbeat_frequency: "30min"
+  checks: [email, tasks]
+  quiet_hours: "20:00-07:00"
+  alert_on: [credential_expiry, cron_failure]
+
+day_in_the_life: >
+  Monday morning you get a brief: "3 pipeline deals advanced last week.
+  2 client follow-ups due today. Investor update draft ready for review.
+  Competitor X launched a new product — summary attached." You reply
+  "send the follow-ups" and the agent drafts personalized emails for
+  your approval. Friday evening: weekly review with metrics, wins, and
+  next week's priorities auto-generated from your task pipeline.
