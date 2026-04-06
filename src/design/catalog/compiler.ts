@@ -87,6 +87,14 @@ export function compile(
     { relativePath: "workspace/MEMORY.md", content: "" },
 
     // Runtime config
+    // openclaw.json at deploy root — OpenClaw reads ~/.openclaw/openclaw.json
+    { relativePath: "openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config), mode: 0o600 },
+    // Config at deploy root — OpenClaw reads ~/.openclaw/openclaw.json
+    { relativePath: "openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config), mode: 0o600 },
+    // .env at deploy root for OpenClaw + also in engine/ for compose env_file
+    { relativePath: ".env", content: renderEnv(gatewayPort, resolvedProviders, config.channels), mode: 0o600 },
+    { relativePath: "credentials.json", content: "{}\n", mode: 0o600 },
+    // Copies in engine/ for clawhq doctor/status and compose env_file
     { relativePath: "engine/openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config), mode: 0o600 },
     { relativePath: "engine/.env", content: renderEnv(gatewayPort, resolvedProviders, config.channels), mode: 0o600 },
     { relativePath: "engine/credentials.json", content: "{}\n", mode: 0o600 },
@@ -456,14 +464,11 @@ function renderOpenclawJson(
     agents: {
       defaults: {
         model: buildModelConfig(providers),
-        requestTimeout: 120000,
         subagents: {
           model: buildModelConfig(providers).primary,
-          requestTimeout: 60000,
         },
         heartbeat: {
           model: buildModelConfig(providers).primary,
-          requestTimeout: 60000,
         },
         memorySearch: {
           provider: "ollama",
@@ -677,6 +682,7 @@ function buildChannels(config: CompositionConfig): Record<string, unknown> {
   };
 
   // Merge user-provided channel config, replacing secrets with env var references
+  // and converting legacy fields to new format
   if (config.channels) {
     for (const [name, values] of Object.entries(config.channels)) {
       if (!channels[name]) {
@@ -686,6 +692,9 @@ function buildChannels(config: CompositionConfig): Record<string, unknown> {
         if (CHANNEL_SECRET_KEYS.has(key)) {
           // Replace literal secret with env var reference
           channels[name]![key] = CHANNEL_ENV_VARS[name]?.[key] ?? `\${${name.toUpperCase()}_${key.toUpperCase()}}`;
+        } else if (key === "streaming" && typeof value === "string") {
+          // Convert legacy scalar streaming to new object format
+          channels[name]![key] = { mode: value };
         } else {
           channels[name]![key] = value;
         }
