@@ -7,8 +7,8 @@
 
 // ── Security Posture ────────────────────────────────────────────────────────
 
-/** Security posture level. Includes "minimal" for development use. */
-export type BuildSecurityPosture = "minimal" | "standard" | "hardened" | "paranoid";
+/** Security posture level. */
+export type BuildSecurityPosture = "minimal" | "hardened" | "under-attack";
 
 /** Resource limits applied per security posture. */
 export interface ResourceLimits {
@@ -33,6 +33,16 @@ export interface PostureConfig {
   readonly iccDisabled: boolean;
   readonly resources: ResourceLimits;
   readonly tmpfs: TmpfsConfig;
+  /** OCI runtime override (e.g. "runsc" for gVisor kernel isolation). */
+  readonly runtime?: string;
+  /** Auto-enable egress firewall for this posture level. */
+  readonly autoFirewall: boolean;
+  /** Mark identity files immutable (chattr +i) after deploy. */
+  readonly immutableIdentity: boolean;
+  /** Block ALL egress including DNS — full network isolation. */
+  readonly airGap: boolean;
+  /** Healthcheck interval (seconds). Shorter under attack for faster detection. */
+  readonly healthcheckIntervalSecs: number;
 }
 
 // ── Build Configuration ─────────────────────────────────────────────────────

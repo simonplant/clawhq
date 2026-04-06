@@ -275,6 +275,10 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
     for (const s of svc.secrets) lines.push(`      - ${s}`);
   }
 
+  if (svc.runtime) {
+    lines.push(`    runtime: ${svc.runtime}`);
+  }
+
   if (svc.deploy) {
     lines.push("    deploy:");
     lines.push("      resources:");
@@ -282,6 +286,31 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
     lines.push(`          cpus: "${svc.deploy.resources.limits.cpus}"`);
     lines.push(`          memory: ${svc.deploy.resources.limits.memory}`);
     lines.push(`          pids: ${svc.deploy.resources.limits.pids}`);
+  }
+
+  // Tailscale sidecar
+  if (compose.services.tailscale) {
+    const ts = compose.services.tailscale;
+    lines.push("", "  tailscale:");
+    lines.push(`    image: ${ts.image}`);
+    lines.push(`    hostname: ${ts.hostname}`);
+    lines.push(`    restart: ${ts.restart}`);
+    lines.push("    cap_drop:");
+    for (const cap of ts.cap_drop) lines.push(`      - ${cap}`);
+    lines.push("    volumes:");
+    for (const v of ts.volumes) lines.push(`      - "${v}"`);
+    lines.push("    networks:");
+    for (const n of ts.networks) lines.push(`      - ${n}`);
+    lines.push("    environment:");
+    for (const [key, val] of Object.entries(ts.environment)) {
+      lines.push(`      ${key}: "${val}"`);
+    }
+    lines.push("    healthcheck:");
+    lines.push("      test:");
+    for (const t of ts.healthcheck.test) lines.push(`        - "${t}"`);
+    lines.push(`      interval: ${ts.healthcheck.interval}`);
+    lines.push(`      timeout: ${ts.healthcheck.timeout}`);
+    lines.push(`      retries: ${ts.healthcheck.retries}`);
   }
 
   lines.push("", "networks:");

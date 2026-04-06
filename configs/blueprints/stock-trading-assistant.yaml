@@ -55,7 +55,7 @@ personality:
     analyticalDepth: 5
 
 security_posture:
-  posture: paranoid
+  posture: hardened
   egress: allowlist-only
   egress_domains:
     - query1.finance.yahoo.com

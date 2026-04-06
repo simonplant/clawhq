@@ -39,7 +39,7 @@ export interface MissionProfile {
   readonly cron_prompts: Readonly<Record<string, string>>;
   readonly delegation: readonly ProfileDelegation[];
   readonly egress_domains: readonly string[];
-  readonly security_posture: "standard" | "hardened" | "paranoid";
+  readonly security_posture: "hardened" | "under-attack";
   readonly autonomy_default: "low" | "medium" | "high";
   readonly memory_policy: {
     readonly hot_max: string;

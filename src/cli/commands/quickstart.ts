@@ -7,7 +7,7 @@ import chalk from "chalk";
 import ora from "ora";
 
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
-import { build } from "../../build/docker/index.js";
+import { build, getPostureConfig } from "../../build/docker/index.js";
 import { install } from "../../build/installer/index.js";
 import { deploy } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
@@ -149,15 +149,14 @@ export function registerQuickstartCommand(program: Command): void {
 
       // ── Phase 3: Build ────────────────────────────────────────────────────
 
+      const bp = answers.blueprint;
+      const posture = (bp.security_posture.posture === "under-attack"
+        ? "under-attack"
+        : "hardened") as BuildSecurityPosture;
+
       spinner.start(`${phase("build")} Building Docker image…`);
 
       try {
-        const bp = answers.blueprint;
-        const posture = (bp.security_posture.posture === "paranoid"
-          ? "paranoid"
-          : bp.security_posture.posture === "hardened"
-            ? "hardened"
-            : "standard") as BuildSecurityPosture;
 
         const stage1: Stage1Config = {
           baseImage: "node:24-slim",
@@ -211,10 +210,15 @@ export function registerQuickstartCommand(program: Command): void {
       const deploySpinner = ora();
       const onDeployProgress = createProgressHandler(deploySpinner);
 
+      const postureConfig = getPostureConfig(posture);
       const deployResult = await deploy({
         deployDir,
         gatewayToken,
         gatewayPort,
+        runtime: postureConfig.runtime,
+        autoFirewall: postureConfig.autoFirewall,
+        immutableIdentity: postureConfig.immutableIdentity,
+        airGap: postureConfig.airGap,
         onProgress: onDeployProgress,
         signal: ac.signal,
       });

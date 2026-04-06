@@ -194,7 +194,7 @@ function checkSecurityPosture(raw: RawBlueprint): BlueprintValidationResult[] {
   const section = raw.security_posture;
   if (!isObj(section)) return [];
   return [
-    checkEnum(section, "posture", "security_posture", ["standard", "hardened", "paranoid"]),
+    checkEnum(section, "posture", "security_posture", ["hardened", "under-attack"]),
     checkEnum(section, "egress", "security_posture", ["default", "restricted", "allowlist-only"]),
     checkStringArray(section, "egress_domains", "security_posture"),
     checkEnum(section, "identity_mount", "security_posture", ["read-only"]),
@@ -790,25 +790,17 @@ function checkSecurityBaseline(raw: RawBlueprint): BlueprintValidationResult[] {
     results.push(pass("security.identity_mount_readonly", "Identity mount is read-only"));
   }
 
-  // 64: posture must not be below "hardened" for production safety (warning)
+  // 64: posture validation
   const posture = secPosture.posture;
-  if (isStr(posture) && posture === "standard") {
-    results.push(
-      fail(
-        "security.posture_minimum",
-        'Security posture is "standard" — consider "hardened" or "paranoid" for production use',
-        "warning",
-      ),
-    );
-  } else if (isStr(posture)) {
+  if (isStr(posture)) {
     results.push(pass("security.posture_minimum", `Security posture is "${posture}"`));
   }
 
-  // 65: egress must not be "default" for hardened/paranoid postures
+  // 65: egress must not be "default" for hardened/under-attack postures
   const egress = secPosture.egress;
   if (
     isStr(posture) &&
-    (posture === "hardened" || posture === "paranoid") &&
+    (posture === "hardened" || posture === "under-attack") &&
     isStr(egress) &&
     egress === "default"
   ) {

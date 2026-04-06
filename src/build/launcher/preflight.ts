@@ -22,13 +22,14 @@ const execFileAsync = promisify(execFile);
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Run all 6 preflight checks. Every check runs even if earlier ones fail,
+ * Run all preflight checks. Every check runs even if earlier ones fail,
  * so the user gets a complete picture in one pass.
  */
 export async function runPreflight(
   deployDir: string,
   signal?: AbortSignal,
   gatewayPort?: number,
+  runtime?: string,
 ): Promise<PreflightReport> {
   const port = gatewayPort ?? GATEWAY_DEFAULT_PORT;
   const checks = await Promise.all([
@@ -38,6 +39,7 @@ export async function runPreflight(
     checkSecrets(deployDir),
     checkPorts(port, signal),
     checkOllama(signal),
+    ...(runtime === "runsc" ? [checkGvisor(signal)] : []),
   ]);
 
   const warnings = checks.filter((c) => !c.passed && c.warning);
@@ -257,6 +259,57 @@ async function checkOllama(signal?: AbortSignal): Promise<PreflightCheckResult> 
       warning: true,
       message: "Ollama is not running — local model inference will not be available",
       fix: "Start Ollama with: ollama serve",
+    };
+  }
+}
+
+/**
+ * 7. gVisor (runsc) runtime is installed and registered with Docker.
+ *
+ * Only checked when the posture requests gVisor (hardened/under-attack).
+ * This is a **hard gate** — if you chose a posture with gVisor, it must
+ * be installed. Docker Compose will fail at `up` if runtime: runsc is set
+ * but runsc isn't registered. Better to fail fast with an actionable fix.
+ */
+async function checkGvisor(signal?: AbortSignal): Promise<PreflightCheckResult> {
+  const name: PreflightCheckName = "gvisor";
+  try {
+    // Check if runsc binary exists
+    await execFileAsync("runsc", ["--version"], {
+      timeout: PREFLIGHT_EXEC_TIMEOUT_MS,
+      signal,
+    });
+
+    // Verify Docker knows about the runtime
+    const { stdout } = await execFileAsync("docker", [
+      "info", "--format", "{{.Runtimes}}",
+    ], { timeout: PREFLIGHT_EXEC_TIMEOUT_MS, signal });
+
+    if (!stdout.includes("runsc")) {
+      return {
+        name,
+        passed: false,
+        message: "gVisor (runsc) is installed but not registered as a Docker runtime",
+        fix: "Add to /etc/docker/daemon.json: {\"runtimes\":{\"runsc\":{\"path\":\"/usr/bin/runsc\"}}} then restart Docker",
+      };
+    }
+
+    return { name, passed: true, message: "gVisor (runsc) runtime is available" };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("not found") || msg.includes("ENOENT")) {
+      return {
+        name,
+        passed: false,
+        message: "gVisor (runsc) is not installed — required by hardened posture",
+        fix: "Install gVisor: https://gvisor.dev/docs/user_guide/install/ — or use --posture minimal to skip",
+      };
+    }
+    return {
+      name,
+      passed: false,
+      message: `gVisor check failed: ${msg}`,
+      fix: "Install gVisor: https://gvisor.dev/docs/user_guide/install/",
     };
   }
 }

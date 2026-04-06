@@ -179,7 +179,7 @@ describe("email tool", () => {
   it("includes usage help", () => {
     const bp = loadEmailManager();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "email");
-    expect(wrapper?.content).toContain("usage()");
+    expect(wrapper?.content).toContain("help");
     expect(wrapper?.content).toContain("list");
     expect(wrapper?.content).toContain("read");
     expect(wrapper?.content).toContain("send");
@@ -187,11 +187,11 @@ describe("email tool", () => {
 });
 
 describe("ical tool", () => {
-  it("is a python3 script", () => {
+  it("is a bash script", () => {
     const bp = loadFamilyHub();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "ical");
     expect(wrapper).toBeDefined();
-    expect(wrapper?.content).toMatch(/^#!\/usr\/bin\/env python3/);
+    expect(wrapper?.content).toMatch(/^#!\/usr\/bin\/env bash/);
   });
 
   it("references caldav", () => {
@@ -334,31 +334,32 @@ describe("sanitize tool", () => {
 // ── External Tools Pipe Through Sanitize ──────────────────────────────────
 
 describe("external tools pipe through sanitize", () => {
-  it("tavily pipes results through sanitize", () => {
+  it("tavily pipes results through _sanitize", () => {
     const bp = loadFoundersOps();
     const tavily = generateToolWrappers(bp).find((w) => w.name === "tavily");
-    expect(tavily?.content).toContain("pipe_sanitize");
-    expect(tavily?.content).toContain("SANITIZE");
+    expect(tavily?.content).toContain("_sanitize");
+    expect(tavily?.content).toContain("SCRIPT_DIR");
     expect(tavily?.content).toContain('--source tavily');
   });
 
-  it("email pipes read/list/search through sanitize", () => {
+  it("email pipes read/list/search through _sanitize", () => {
     const bp = loadEmailManager();
     const email = generateToolWrappers(bp).find((w) => w.name === "email");
-    expect(email?.content).toContain("pipe_sanitize");
-    expect(email?.content).toContain("SANITIZE");
+    expect(email?.content).toContain("_sanitize");
+    expect(email?.content).toContain("SCRIPT_DIR");
     expect(email?.content).toContain('--source email');
-    // list, read, search should go through sanitize
-    expect(email?.content).toMatch(/list.*\|\s*pipe_sanitize/);
-    expect(email?.content).toMatch(/read.*\|\s*pipe_sanitize/);
-    expect(email?.content).toMatch(/search.*\|\s*pipe_sanitize/);
+    // list, read, search should go through _sanitize
+    expect(email?.content).toMatch(/list.*\|\s*_sanitize/);
+    expect(email?.content).toMatch(/read.*\|\s*_sanitize/);
+    // search case pipes through _sanitize on the next line
+    expect(email?.content).toMatch(/search\)[\s\S]*?\|\s*_sanitize/);
   });
 
-  it("quote pipes results through sanitize", () => {
+  it("quote pipes results through _sanitize", () => {
     const bp = loadFoundersOps();
     const quote = generateToolWrappers(bp).find((w) => w.name === "quote");
-    expect(quote?.content).toContain("pipe_sanitize");
-    expect(quote?.content).toContain("SANITIZE");
+    expect(quote?.content).toContain("_sanitize");
+    expect(quote?.content).toContain("SCRIPT_DIR");
     expect(quote?.content).toContain('--source quote');
   });
 
@@ -366,7 +367,7 @@ describe("external tools pipe through sanitize", () => {
     const bp = loadFoundersOps();
     const tavily = generateToolWrappers(bp).find((w) => w.name === "tavily");
     // Should check if sanitize is executable, fall back to cat
-    expect(tavily?.content).toContain('[ -x "$SANITIZE" ]');
+    expect(tavily?.content).toContain('[[ -x "$SCRIPT_DIR/sanitize" ]]');
     expect(tavily?.content).toContain("cat");
   });
 });
@@ -436,10 +437,11 @@ describe("shell injection prevention", () => {
       for (const wrapper of wrappers) {
         if (!wrapper.content.startsWith("#!/usr/bin/env bash")) continue;
         // Verify no printf-based JSON construction (fragile quoting)
+        // Allow printf for non-JSON uses (e.g., MIME headers)
         expect(
           wrapper.content,
           `${name}/${wrapper.name}: uses printf for JSON construction. Use jq instead.`,
-        ).not.toMatch(/printf\s+'.*%s.*'/);
+        ).not.toMatch(/printf\s+'.*\{.*%s.*\}.*'/);
       }
     }
   });

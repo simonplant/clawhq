@@ -426,7 +426,7 @@ function renderOpenclawJson(
   composition: CompositionConfig = { profile: "", personality: "" },
 ): string {
   // Security posture determines tool restrictions
-  const isParanoid = profile.security_posture === "paranoid";
+  const isUnderAttack = profile.security_posture === "under-attack";
 
   const config: Record<string, unknown> = {
     tools: {
@@ -436,7 +436,7 @@ function renderOpenclawJson(
       },
       // Explicit deny list — defense in depth against prompt injection
       // Even if model is confused, denied tools can't execute
-      deny: isParanoid
+      deny: isUnderAttack
         ? ["exec", "browser", "gateway", "nodes", "canvas", "image"]
         : ["browser", "gateway", "nodes"],
       fs: {

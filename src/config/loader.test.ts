@@ -21,7 +21,7 @@ describe("deepMerge", () => {
 
   it("deeply merges nested objects", () => {
     const result = deepMerge(
-      { security: { posture: "standard", egress: "default" } },
+      { security: { posture: "hardened", egress: "default" } },
       { security: { posture: "hardened" } },
     );
     expect(result).toEqual({
@@ -43,7 +43,7 @@ describe("deepMerge", () => {
   });
 
   it("merges three levels of precedence", () => {
-    const defaults = { version: "1", security: { posture: "standard" }, cloud: { enabled: false } };
+    const defaults = { version: "1", security: { posture: "hardened" }, cloud: { enabled: false } };
     const user = { security: { posture: "hardened" } };
     const project = { cloud: { enabled: true } };
     const result = deepMerge(defaults, user, project);
@@ -83,13 +83,13 @@ describe("loadConfig", () => {
   it("merges user config over defaults", () => {
     const tmp = mkdtempSync(join(tmpdir(), "clawhq-test-"));
     const userPath = join(tmp, "user.yaml");
-    writeFileSync(userPath, "security:\n  posture: paranoid\n");
+    writeFileSync(userPath, "security:\n  posture: under-attack\n");
 
     const config = loadConfig({
       userConfigPath: userPath,
       projectConfigPath: "/nonexistent/project.yaml",
     });
-    expect(config.security?.posture).toBe("paranoid");
+    expect(config.security?.posture).toBe("under-attack");
     expect(config.cloud?.enabled).toBe(false); // default preserved
   });
 
@@ -97,14 +97,15 @@ describe("loadConfig", () => {
     const tmp = mkdtempSync(join(tmpdir(), "clawhq-test-"));
     const userPath = join(tmp, "user.yaml");
     const projectPath = join(tmp, "project.yaml");
-    writeFileSync(userPath, "security:\n  posture: paranoid\n");
-    writeFileSync(projectPath, "security:\n  posture: standard\n");
+    writeFileSync(userPath, "security:\n  posture: under-attack\n");
+    writeFileSync(projectPath, "security:\n  posture: hardened\n");
 
     const config = loadConfig({
       userConfigPath: userPath,
       projectConfigPath: projectPath,
     });
-    expect(config.security?.posture).toBe("standard");
+    // Project config wins over user config
+    expect(config.security?.posture).toBe("hardened");
   });
 
   it("preserves nested defaults not overridden", () => {

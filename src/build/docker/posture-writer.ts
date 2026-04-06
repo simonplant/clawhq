@@ -78,6 +78,14 @@ export function generatePostureYaml(config: PostureConfig): string {
     `  size_mb: ${config.tmpfs.sizeMb}`,
     `  options: "${config.tmpfs.options}"`,
     "",
+    "# External hardening",
+    "external:",
+    `  runtime: ${config.runtime ?? "runc"}`,
+    `  auto_firewall: ${config.autoFirewall}`,
+    `  immutable_identity: ${config.immutableIdentity}`,
+    `  air_gap: ${config.airGap}`,
+    `  healthcheck_interval_secs: ${config.healthcheckIntervalSecs}`,
+    "",
   );
 
   return lines.join("\n");

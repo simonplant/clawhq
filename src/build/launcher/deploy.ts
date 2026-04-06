@@ -2,7 +2,7 @@
  * Deploy orchestrator for `clawhq up / down / restart`.
  *
  * Coordinates the full deploy sequence:
- *   preflight → compose up → firewall apply → health verify → smoke test
+ *   preflight → compose up → identity lock → firewall apply → health verify → smoke test
  *
  * Every step reports progress via callback. AbortSignal threads through
  * the entire pipeline for clean cancellation. On failure, the user gets
@@ -10,6 +10,7 @@
  */
 
 import { execFile } from "node:child_process";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -48,7 +49,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
   if (!options.skipPreflight) {
     report("preflight", "running", "Running preflight checks…");
 
-    const preflight = await runPreflight(deployDir, signal, options.gatewayPort);
+    const preflight = await runPreflight(deployDir, signal, options.gatewayPort, options.runtime);
 
     // Report warnings (non-blocking) before checking hard failures
     if (preflight.warnings.length > 0) {
@@ -127,12 +128,32 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     };
   }
 
-  // ── Step 3: Firewall ───────────────────────────────────────────────────
+  // ── Step 3: Identity Lock (chattr +i) ──────────────────────────────────
 
   if (signal?.aborted) {
     return aborted();
   }
 
+  if (options.immutableIdentity) {
+    report("identity-lock", "running", "Marking identity files immutable (chattr +i)…");
+
+    const identityResult = await lockIdentityFiles(deployDir);
+    if (identityResult.success) {
+      report("identity-lock", "done", `${identityResult.filesLocked} identity file(s) locked`);
+    } else {
+      // Non-fatal — agent still runs, just without persistence prevention
+      report("identity-lock", "skipped", `Identity lock skipped: ${identityResult.error}`);
+    }
+  }
+
+  // ── Step 4: Firewall ───────────────────────────────────────────────────
+
+  if (signal?.aborted) {
+    return aborted();
+  }
+
+  // Firewall: enabled by default, auto-enabled by posture (hardened/paranoid),
+  // only skipped with explicit --skip-firewall flag
   if (!options.skipFirewall) {
     const firewallOpts = { deployDir, airGap: options.airGap, signal };
     report("firewall", "running", options.airGap ? "Applying air-gap firewall (all egress blocked)…" : "Applying egress firewall…");
@@ -175,7 +196,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     report("firewall", "skipped", "Firewall skipped (--skip-firewall)");
   }
 
-  // ── Step 4: Health Verify ──────────────────────────────────────────────
+  // ── Step 5: Health Verify ──────────────────────────────────────────────
 
   if (signal?.aborted) {
     return aborted();
@@ -201,7 +222,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
 
   report("health-verify", "done", `Agent reachable (${healthResult.attempts} attempt(s), ${healthResult.elapsedMs}ms)`);
 
-  // ── Step 5: Smoke Test ─────────────────────────────────────────────────
+  // ── Step 6: Smoke Test ─────────────────────────────────────────────────
 
   if (signal?.aborted) {
     return aborted();
@@ -238,12 +259,15 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
 }
 
 /**
- * Graceful shutdown: compose down + firewall remove.
+ * Graceful shutdown: unlock identity → compose down → firewall remove.
  */
 export async function shutdown(options: ShutdownOptions): Promise<ShutdownResult> {
   const { deployDir, onProgress, signal } = options;
   const engineDir = join(deployDir, "engine");
   const report = progress(onProgress);
+
+  // Unlock identity files if they were locked (best-effort, won't fail shutdown)
+  await unlockIdentityFiles(deployDir);
 
   report("compose-up", "running", "Stopping containers…");
 
@@ -315,4 +339,61 @@ function aborted(): DeployResult {
     healthy: false,
     error: "Deploy aborted",
   };
+}
+
+// ── Identity File Immutability ────────────────────────────────────────────
+
+interface IdentityLockResult {
+  success: boolean;
+  filesLocked: number;
+  error?: string;
+}
+
+/**
+ * Mark identity files immutable with chattr +i.
+ *
+ * Prevents the agent from modifying its own identity files even if it
+ * gains write access through a prompt injection exploit. Requires sudo.
+ * Files: workspace/identity/*.md (SOUL.md, AGENTS.md, USER.md, TOOLS.md, etc.)
+ */
+async function lockIdentityFiles(deployDir: string): Promise<IdentityLockResult> {
+  const identityDir = join(deployDir, "workspace", "identity");
+
+  try {
+    const files = await readdir(identityDir);
+    const mdFiles = files.filter((f) => f.endsWith(".md"));
+
+    if (mdFiles.length === 0) {
+      return { success: true, filesLocked: 0 };
+    }
+
+    const paths = mdFiles.map((f) => join(identityDir, f));
+
+    await execFileAsync("sudo", ["chattr", "+i", ...paths], { timeout: 10_000 });
+    return { success: true, filesLocked: mdFiles.length };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // Directory doesn't exist yet — not an error, identity files just haven't been generated
+    if (msg.includes("ENOENT")) {
+      return { success: true, filesLocked: 0 };
+    }
+    return { success: false, filesLocked: 0, error: msg };
+  }
+}
+
+/**
+ * Remove immutable flag from identity files before shutdown.
+ * Required so files can be updated on next deploy cycle.
+ */
+async function unlockIdentityFiles(deployDir: string): Promise<void> {
+  const identityDir = join(deployDir, "workspace", "identity");
+  try {
+    const files = await readdir(identityDir);
+    const mdFiles = files.filter((f) => f.endsWith(".md"));
+    if (mdFiles.length === 0) return;
+    const paths = mdFiles.map((f) => join(identityDir, f));
+    await execFileAsync("sudo", ["chattr", "-i", ...paths], { timeout: 10_000 });
+  } catch {
+    // Best-effort unlock — don't fail shutdown for this
+  }
 }

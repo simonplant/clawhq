@@ -326,7 +326,7 @@ export interface ToolFileInfo {
 // ── ClawHQ Config (clawhq.yaml) ─────────────────────────────────────────────
 
 /** Security posture level. */
-export type SecurityPosture = "minimal" | "standard" | "hardened" | "paranoid";
+export type SecurityPosture = "minimal" | "hardened" | "under-attack";
 
 /** Cloud trust mode. */
 export type TrustMode = "paranoid" | "zero-trust" | "managed";

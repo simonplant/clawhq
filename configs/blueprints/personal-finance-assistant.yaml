@@ -53,7 +53,7 @@ personality:
     analyticalDepth: 5
 
 security_posture:
-  posture: paranoid
+  posture: hardened
   egress: allowlist-only
   egress_domains:
     - api.plaid.com

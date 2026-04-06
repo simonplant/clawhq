@@ -15,6 +15,7 @@ import type { BuildSecurityPosture, PostureConfig } from "./types.js";
 // ── Posture Definitions ─────────────────────────────────────────────────────
 
 const POSTURES: Record<BuildSecurityPosture, PostureConfig> = {
+  // Dev/testing — caps dropped but otherwise permissive
   minimal: {
     posture: "minimal",
     capDrop: ["ALL"],
@@ -23,18 +24,13 @@ const POSTURES: Record<BuildSecurityPosture, PostureConfig> = {
     user: CONTAINER_USER,
     iccDisabled: false,
     resources: { cpus: 0, memoryMb: 0, pidsLimit: 0 },
-    tmpfs: { sizeMb: 512, options: "noexec,nosuid" },
+    tmpfs: { sizeMb: 512, options: "nosuid" },
+    autoFirewall: false,
+    immutableIdentity: false,
+    airGap: false,
+    healthcheckIntervalSecs: 30,
   },
-  standard: {
-    posture: "standard",
-    capDrop: ["ALL"],
-    securityOpt: ["no-new-privileges"],
-    readOnlyRootfs: true,
-    user: CONTAINER_USER,
-    iccDisabled: true,
-    resources: { cpus: 4, memoryMb: 4096, pidsLimit: 512 },
-    tmpfs: { sizeMb: 256, options: "noexec,nosuid" },
-  },
+  // Default production — gVisor, egress firewall, immutable identity
   hardened: {
     posture: "hardened",
     capDrop: ["ALL"],
@@ -42,18 +38,31 @@ const POSTURES: Record<BuildSecurityPosture, PostureConfig> = {
     readOnlyRootfs: true,
     user: CONTAINER_USER,
     iccDisabled: true,
-    resources: { cpus: 2, memoryMb: 2048, pidsLimit: 256 },
-    tmpfs: { sizeMb: 128, options: "noexec,nosuid" },
+    resources: { cpus: 4, memoryMb: 4096, pidsLimit: 512 },
+    tmpfs: { sizeMb: 256, options: "nosuid" },
+    runtime: "runsc",
+    autoFirewall: true,
+    immutableIdentity: true,
+    airGap: false,
+    healthcheckIntervalSecs: 30,
   },
-  paranoid: {
-    posture: "paranoid",
+  // Active threat response — everything hardened + aggressive monitoring,
+  // full audit trail, noexec tmpfs, air-gapped egress, rapid healthchecks,
+  // alert on any suspicious pattern
+  "under-attack": {
+    posture: "under-attack",
     capDrop: ["ALL"],
     securityOpt: ["no-new-privileges"],
     readOnlyRootfs: true,
     user: CONTAINER_USER,
     iccDisabled: true,
-    resources: { cpus: 1, memoryMb: 1024, pidsLimit: 128 },
-    tmpfs: { sizeMb: 64, options: "noexec,nosuid" },
+    resources: { cpus: 4, memoryMb: 4096, pidsLimit: 512 },
+    tmpfs: { sizeMb: 256, options: "noexec,nosuid,nodev" },
+    runtime: "runsc",
+    autoFirewall: true,
+    immutableIdentity: true,
+    airGap: true,
+    healthcheckIntervalSecs: 10,
   },
 };
 
@@ -65,12 +74,11 @@ export function getPostureConfig(posture: BuildSecurityPosture): PostureConfig {
 }
 
 /** The default security posture applied without user configuration. */
-export const DEFAULT_POSTURE: BuildSecurityPosture = "standard";
+export const DEFAULT_POSTURE: BuildSecurityPosture = "hardened";
 
 /** All available posture levels, ordered from least to most restrictive. */
 export const POSTURE_LEVELS: readonly BuildSecurityPosture[] = [
   "minimal",
-  "standard",
   "hardened",
-  "paranoid",
+  "under-attack",
 ];

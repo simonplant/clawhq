@@ -15,7 +15,8 @@ export type PreflightCheckName =
   | "config"
   | "secrets"
   | "ports"
-  | "ollama";
+  | "ollama"
+  | "gvisor";
 
 /** Result of a single preflight check. */
 export interface PreflightCheckResult {
@@ -46,6 +47,7 @@ export interface PreflightReport {
 export type DeployStepName =
   | "preflight"
   | "compose-up"
+  | "identity-lock"
   | "firewall"
   | "health-verify"
   | "smoke-test";
@@ -79,6 +81,12 @@ export interface DeployOptions {
   readonly skipFirewall?: boolean;
   /** Block ALL egress including DNS (air-gap mode). */
   readonly airGap?: boolean;
+  /** OCI runtime (e.g. "runsc" for gVisor) — passed to preflight for runtime check. */
+  readonly runtime?: string;
+  /** Auto-enable firewall based on posture (hardened/paranoid). */
+  readonly autoFirewall?: boolean;
+  /** Mark identity files immutable (chattr +i) after deploy. */
+  readonly immutableIdentity?: boolean;
   /** Progress callback for step-by-step reporting. */
   readonly onProgress?: ProgressCallback;
   /** AbortSignal for cancellation. */

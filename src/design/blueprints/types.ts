@@ -48,7 +48,7 @@ export interface Personality {
 
 /** Security posture for the agent. */
 export interface BlueprintSecurityPosture {
-  readonly posture: "standard" | "hardened" | "paranoid";
+  readonly posture: "hardened" | "under-attack";
   readonly egress: "default" | "restricted" | "allowlist-only";
   readonly egress_domains: readonly string[];
   readonly identity_mount: "read-only";

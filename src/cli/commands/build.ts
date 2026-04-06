@@ -5,7 +5,7 @@ import type { Command } from "commander";
 import chalk from "chalk";
 import ora from "ora";
 
-import { build, DEFAULT_POSTURE, formatHashMismatch, readCurrentPosture, verifyBinaryHashes } from "../../build/docker/index.js";
+import { build, DEFAULT_POSTURE, formatHashMismatch, getPostureConfig, readCurrentPosture, verifyBinaryHashes } from "../../build/docker/index.js";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
 import { checkDocker } from "../../build/installer/index.js";
 import { deploy, restart, shutdown } from "../../build/launcher/index.js";
@@ -243,13 +243,20 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       const onProgress = createProgressHandler(spinner);
 
       try {
+        // Read posture to bridge posture-level controls into deploy options
+        const currentPosture = readCurrentPosture(opts.deployDir) ?? DEFAULT_POSTURE;
+        const postureConfig = getPostureConfig(currentPosture);
+
         const result = await deploy({
           deployDir: opts.deployDir,
           gatewayToken: token,
           gatewayPort,
           skipPreflight: opts.skipPreflight,
           skipFirewall: opts.skipFirewall,
-          airGap: opts.airGap,
+          airGap: opts.airGap || postureConfig.airGap,
+          runtime: postureConfig.runtime,
+          autoFirewall: postureConfig.autoFirewall,
+          immutableIdentity: postureConfig.immutableIdentity,
           onProgress,
           signal: ac.signal,
         });

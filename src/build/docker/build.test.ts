@@ -48,12 +48,12 @@ function stage2Config(): Stage2Config {
 // ── Posture Tests ───────────────────────────────────────────────────────────
 
 describe("posture", () => {
-  it("defaults to standard", () => {
-    expect(DEFAULT_POSTURE).toBe("standard");
+  it("defaults to hardened", () => {
+    expect(DEFAULT_POSTURE).toBe("hardened");  // hardened is the default;
   });
 
-  it("has four posture levels", () => {
-    expect(POSTURE_LEVELS).toEqual(["minimal", "standard", "hardened", "paranoid"]);
+  it("has three posture levels", () => {
+    expect(POSTURE_LEVELS).toEqual(["minimal", "hardened", "under-attack"]);
   });
 
   it("all postures drop ALL capabilities", () => {
@@ -77,8 +77,8 @@ describe("posture", () => {
     }
   });
 
-  it("standard posture has read-only rootfs", () => {
-    const config = getPostureConfig("standard");
+  it("hardened posture has read-only rootfs", () => {
+    const config = getPostureConfig("hardened");
     expect(config.readOnlyRootfs).toBe(true);
   });
 
@@ -87,15 +87,12 @@ describe("posture", () => {
     expect(config.readOnlyRootfs).toBe(false);
   });
 
-  it("resource limits decrease from standard to paranoid", () => {
-    const standard = getPostureConfig("standard");
+  it("all non-minimal postures have same resource limits", () => {
     const hardened = getPostureConfig("hardened");
-    const paranoid = getPostureConfig("paranoid");
+    const underAttack = getPostureConfig("under-attack");
 
-    expect(standard.resources.cpus).toBeGreaterThan(hardened.resources.cpus);
-    expect(hardened.resources.cpus).toBeGreaterThan(paranoid.resources.cpus);
-    expect(standard.resources.memoryMb).toBeGreaterThan(hardened.resources.memoryMb);
-    expect(hardened.resources.memoryMb).toBeGreaterThan(paranoid.resources.memoryMb);
+    expect(hardened.resources.cpus).toBe(underAttack.resources.cpus);
+    expect(hardened.resources.memoryMb).toBe(underAttack.resources.memoryMb);
   });
 
   it("minimal posture has no resource limits", () => {
@@ -104,11 +101,22 @@ describe("posture", () => {
     expect(config.resources.memoryMb).toBe(0);
   });
 
-  it("ICC disabled for standard and above", () => {
+  it("hardened and under-attack enable gVisor runtime", () => {
+    expect(getPostureConfig("minimal").runtime).toBeUndefined();
+    expect(getPostureConfig("hardened").runtime).toBe("runsc");
+    expect(getPostureConfig("under-attack").runtime).toBe("runsc");
+  });
+
+  it("under-attack enables air-gap and noexec tmpfs", () => {
+    expect(getPostureConfig("hardened").airGap).toBe(false);
+    expect(getPostureConfig("under-attack").airGap).toBe(true);
+    expect(getPostureConfig("under-attack").tmpfs.options).toContain("noexec");
+  });
+
+  it("ICC disabled for hardened and above", () => {
     expect(getPostureConfig("minimal").iccDisabled).toBe(false);
-    expect(getPostureConfig("standard").iccDisabled).toBe(true);
     expect(getPostureConfig("hardened").iccDisabled).toBe(true);
-    expect(getPostureConfig("paranoid").iccDisabled).toBe(true);
+    expect(getPostureConfig("under-attack").iccDisabled).toBe(true);
   });
 });
 
@@ -289,8 +297,8 @@ describe("generateStage2Dockerfile binary validation", () => {
 // ── Compose Tests ───────────────────────────────────────────────────────────
 
 describe("generateCompose", () => {
-  it("applies standard posture by default", () => {
-    const posture = getPostureConfig("standard");
+  it("applies hardened posture by default", () => {
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
 
     expect(compose.services.openclaw.cap_drop).toContain("ALL");
@@ -299,29 +307,25 @@ describe("generateCompose", () => {
     expect(compose.services.openclaw.user).toBe("1000:1000");
   });
 
-  it("mounts config files read-only (LM-12)", () => {
-    const posture = getPostureConfig("standard");
+  it("uses read-only rootfs for hardened posture (LM-12)", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
+
+    // Config and identity files are protected by read-only rootfs + chattr +i,
+    // not individual :ro volume mounts (catch-all dir mount used instead)
+    expect(compose.services.openclaw.read_only).toBe(true);
+  });
+
+  it("mounts deploy dir as writable volume", () => {
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
 
     const volumes = compose.services.openclaw.volumes;
-    const configVol = volumes.find((v) => v.includes("openclaw.json"));
-    const credsVol = volumes.find((v) => v.includes("credentials.json"));
-
-    expect(configVol).toContain(":ro");
-    expect(credsVol).toContain(":ro");
+    expect(volumes).toContain("/home/user/.clawhq:/home/node/.openclaw");
   });
 
-  it("mounts identity files read-only", () => {
-    const posture = getPostureConfig("standard");
-    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
-
-    const volumes = compose.services.openclaw.volumes;
-    const identityVol = volumes.find((v) => v.includes("identity"));
-    expect(identityVol).toContain(":ro");
-  });
-
-  it("disables ICC for standard posture (LM-13)", () => {
-    const posture = getPostureConfig("standard");
+  it("disables ICC for hardened posture (LM-13)", () => {
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
 
     const net = compose.networks["clawhq_net"];
@@ -336,8 +340,8 @@ describe("generateCompose", () => {
     expect(net.driver_opts).toBeUndefined();
   });
 
-  it("applies resource limits for standard posture", () => {
-    const posture = getPostureConfig("standard");
+  it("applies resource limits for hardened posture", () => {
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
 
     expect(compose.services.openclaw.deploy).toBeDefined();
@@ -353,7 +357,7 @@ describe("generateCompose", () => {
   });
 
   it("declares the network used by the service (LM-10)", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
 
     const serviceNetworks = compose.services.openclaw.networks;
@@ -366,8 +370,8 @@ describe("generateCompose", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
 
-    expect(compose.services.openclaw.tmpfs[0]).toContain("128m");
-    expect(compose.services.openclaw.tmpfs[0]).toContain("noexec");
+    expect(compose.services.openclaw.tmpfs[0]).toContain("256m");
+    expect(compose.services.openclaw.tmpfs[0]).toContain("nosuid");
   });
 });
 
@@ -403,7 +407,7 @@ describe("agentImageTag", () => {
 
 describe("generateCompose with custom networkName", () => {
   it("uses custom network name in service and network declaration", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:john", posture, "/home/user/.clawhq/john", "clawhq_john_net");
 
     expect(compose.services.openclaw.networks).toContain("clawhq_john_net");
@@ -412,7 +416,7 @@ describe("generateCompose with custom networkName", () => {
   });
 
   it("defaults to 'clawhq_net' when networkName is omitted", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
 
     expect(compose.services.openclaw.networks).toContain("clawhq_net");
@@ -420,7 +424,7 @@ describe("generateCompose with custom networkName", () => {
   });
 
   it("ICC is disabled on custom network", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:john", posture, "/home/user/.clawhq/john", "clawhq_john_net");
 
     const net = compose.networks["clawhq_john_net"];
@@ -428,7 +432,7 @@ describe("generateCompose with custom networkName", () => {
   });
 
   it("two instances produce non-colliding artifacts", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose1 = generateCompose("openclaw:john", posture, "/home/user/.clawhq/john", "clawhq_john_net");
     const compose2 = generateCompose("openclaw:jane", posture, "/home/user/.clawhq/jane", "clawhq_jane_net");
 
@@ -443,13 +447,13 @@ describe("generateCompose with custom networkName", () => {
 
 describe("generateCompose with credential proxy", () => {
   it("does not include cred-proxy service by default", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
     expect(compose.services["cred-proxy"]).toBeUndefined();
   });
 
   it("includes cred-proxy service when enableCredProxy is true", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
@@ -457,7 +461,7 @@ describe("generateCompose with credential proxy", () => {
   });
 
   it("cred-proxy runs as non-root with read-only rootfs", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
@@ -468,7 +472,7 @@ describe("generateCompose with credential proxy", () => {
   });
 
   it("cred-proxy mounts script and routes read-only", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
@@ -480,7 +484,7 @@ describe("generateCompose with credential proxy", () => {
   });
 
   it("cred-proxy has healthcheck", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
@@ -490,7 +494,7 @@ describe("generateCompose with credential proxy", () => {
   });
 
   it("cred-proxy shares the same network as openclaw", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
@@ -499,7 +503,7 @@ describe("generateCompose with credential proxy", () => {
   });
 
   it("enables ICC when cred-proxy is active (agent must reach proxy)", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
@@ -509,7 +513,7 @@ describe("generateCompose with credential proxy", () => {
   });
 
   it("cred-proxy gets env_file for API keys", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
@@ -518,7 +522,7 @@ describe("generateCompose with credential proxy", () => {
   });
 
   it("supports custom script and routes paths", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
       credProxyScriptPath: "/custom/proxy.js",
@@ -603,7 +607,7 @@ describe("createManifest", () => {
         { id: "layer1", stage: "stage1", sizeBytes: 100_000_000, createdAt: "2026-01-01T00:00:00Z" },
         { id: "layer2", stage: "stage2", sizeBytes: 50_000_000, createdAt: "2026-01-01T00:00:00Z" },
       ],
-      posture: "standard",
+      posture: "hardened",
       stage1Hash: "aaaa",
       stage2Hash: "bbbb",
     });
@@ -631,7 +635,7 @@ describe("createManifest", () => {
       imageTag: "openclaw:custom",
       imageHash: "abc123",
       layers: [],
-      posture: "standard",
+      posture: "hardened",
       stage1Hash: "stage1hash123456",
       stage2Hash: "stage2hash123456",
     });
@@ -647,7 +651,7 @@ describe("createManifest", () => {
       imageTag: "openclaw:custom",
       imageHash: "abc123",
       layers: [],
-      posture: "standard",
+      posture: "hardened",
       stage1Hash: "aaaa",
       stage2Hash: "bbbb",
     });
@@ -809,7 +813,7 @@ describe("1Password Docker integration", () => {
   });
 
   it("generates Docker secrets section when enableOnePasswordSecret is true", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableOnePasswordSecret: true,
     });
@@ -821,7 +825,7 @@ describe("1Password Docker integration", () => {
   });
 
   it("does not generate secrets section when not enabled", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
 
     expect(compose.secrets).toBeUndefined();
@@ -829,7 +833,7 @@ describe("1Password Docker integration", () => {
   });
 
   it("supports custom token file path", () => {
-    const posture = getPostureConfig("standard");
+    const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableOnePasswordSecret: true,
       onePasswordTokenFile: "/custom/path/token",

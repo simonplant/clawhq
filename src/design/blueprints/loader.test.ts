@@ -340,15 +340,14 @@ describe("validateBlueprint", () => {
     expect(dupeCheck?.message).toContain("email");
   });
 
-  it("warns when security posture is standard", () => {
+  it("rejects invalid security posture", () => {
     const yaml = VALID_BLUEPRINT_YAML.replace("posture: hardened", "posture: standard");
     const raw = parseYaml(yaml) as Record<string, unknown>;
     const report = validateBlueprint(raw);
-    const postureWarn = report.warnings.find(
-      (r) => r.check === "security.posture_minimum",
+    const postureCheck = report.results.find(
+      (r) => r.check === "security_posture.posture",
     );
-    expect(postureWarn).toBeDefined();
-    expect(postureWarn?.severity).toBe("warning");
+    expect(postureCheck?.passed).toBe(false);
   });
 
   it("enforces identity_mount read-only", () => {

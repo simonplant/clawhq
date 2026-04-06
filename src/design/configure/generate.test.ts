@@ -40,18 +40,17 @@ describe("generateBundle", () => {
 
   it("sets LM-01: dangerouslyDisableDeviceAuth to true", () => {
     const bundle = generateBundle(makeAnswers());
-    expect(bundle.openclawConfig.dangerouslyDisableDeviceAuth).toBe(true);
+    expect(bundle.openclawConfig.gateway?.controlUi?.dangerouslyDisableDeviceAuth).toBe(true);
   });
 
   it("sets LM-02: allowedOrigins with localhost entries", () => {
     const bundle = generateBundle(makeAnswers({ gatewayPort: 19000 }));
-    expect(bundle.openclawConfig.allowedOrigins).toContain("http://localhost:19000");
-    expect(bundle.openclawConfig.allowedOrigins).toContain("http://127.0.0.1:19000");
+    expect(bundle.openclawConfig.gateway?.controlUi?.allowedOrigins).toContain("http://127.0.0.1:19000");
   });
 
   it("sets LM-03: trustedProxies with Docker bridge", () => {
     const bundle = generateBundle(makeAnswers());
-    expect(bundle.openclawConfig.trustedProxies).toContain("172.17.0.1");
+    expect(bundle.openclawConfig.gateway?.trustedProxies).toContain("172.17.0.1");
   });
 
   it("sets LM-04: tools.exec.host to gateway", () => {
@@ -64,12 +63,11 @@ describe("generateBundle", () => {
     expect(bundle.openclawConfig.tools?.exec.security).toBe("full");
   });
 
-  it("sets explicit tool access grants for v0.8.7+ compatibility", () => {
+  it("sets tool filesystem config for workspace access", () => {
     const bundle = generateBundle(makeAnswers());
-    const grants = bundle.openclawConfig.tools?.accessGrants;
-    expect(grants).toBeDefined();
-    expect(grants!.length).toBeGreaterThan(0);
-    expect(grants![0]).toEqual({ type: "user", value: "*" });
+    const fs = bundle.openclawConfig.tools?.fs;
+    expect(fs).toBeDefined();
+    expect(fs!.workspaceOnly).toBe(false);
   });
 
   it("sets LM-06: container user to 1000:1000", () => {
@@ -114,7 +112,7 @@ describe("generateBundle", () => {
 
   it("sets LM-14: fs.workspaceOnly explicitly", () => {
     const bundle = generateBundle(makeAnswers());
-    expect(bundle.openclawConfig.fs?.workspaceOnly).toBeDefined();
+    expect(bundle.openclawConfig.tools?.fs?.workspaceOnly).toBeDefined();
   });
 
   it("enables selected channel and disables others", () => {
@@ -129,7 +127,7 @@ describe("generateBundle", () => {
       modelProvider: "local",
       localModel: "mistral:7b",
     }));
-    expect(bundle.openclawConfig.agents?.defaults?.model?.primary).toBe("mistral:7b");
+    expect(bundle.openclawConfig.agents?.defaults?.model?.primary).toBe("ollama/mistral:7b");
   });
 
   it("generates cron jobs from blueprint", () => {

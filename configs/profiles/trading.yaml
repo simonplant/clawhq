@@ -56,7 +56,7 @@ egress_domains:
   - query1.finance.yahoo.com
   - api.tavily.com
 
-security_posture: paranoid
+security_posture: hardened
 autonomy_default: low
 
 memory_policy:

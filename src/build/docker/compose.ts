@@ -34,6 +34,14 @@ export interface ComposeOptions {
   readonly credProxyScriptPath?: string;
   /** Host path to the proxy routes config file. */
   readonly credProxyRoutesPath?: string;
+  /** Enable Tailscale sidecar for secure remote access. */
+  readonly enableTailscale?: boolean;
+  /** Tailscale auth key for automatic node registration. */
+  readonly tailscaleAuthKey?: string;
+  /** Tailscale hostname for this agent. */
+  readonly tailscaleHostname?: string;
+  /** Host path to persist Tailscale state across restarts. */
+  readonly tailscaleStateDir?: string;
 }
 
 /** Generated docker-compose structure. */
@@ -42,6 +50,7 @@ export interface ComposeOutput {
   readonly services: {
     readonly openclaw: ComposeServiceOutput;
     readonly "cred-proxy"?: ComposeCredProxyServiceOutput;
+    readonly tailscale?: ComposeTailscaleServiceOutput;
   };
   readonly networks: Record<string, ComposeNetworkOutput>;
   readonly secrets?: Record<string, ComposeSecretOutput>;
@@ -71,6 +80,8 @@ interface ComposeServiceOutput {
     readonly start_period: string;
   };
   readonly secrets?: readonly string[];
+  /** OCI runtime override (e.g. "runsc" for gVisor). */
+  readonly runtime?: string;
   readonly deploy?: {
     readonly resources: {
       readonly limits: {
@@ -104,6 +115,23 @@ interface ComposeCredProxyServiceOutput {
   readonly command: readonly string[];
   readonly restart: string;
   readonly tmpfs: readonly string[];
+  readonly healthcheck: {
+    readonly test: readonly string[];
+    readonly interval: string;
+    readonly timeout: string;
+    readonly retries: number;
+  };
+}
+
+/** Tailscale sidecar service — secure remote access without exposing ports. Runs in userspace mode. */
+interface ComposeTailscaleServiceOutput {
+  readonly image: string;
+  readonly hostname: string;
+  readonly cap_drop: readonly string[];
+  readonly volumes: readonly string[];
+  readonly networks: readonly string[];
+  readonly environment: Record<string, string>;
+  readonly restart: string;
   readonly healthcheck: {
     readonly test: readonly string[];
     readonly interval: string;
@@ -158,7 +186,7 @@ export function generateCompose(
     },
     healthcheck: {
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"],
-      interval: "30s",
+      interval: `${posture.healthcheckIntervalSecs}s`,
       timeout: "5s",
       retries: 5,
       start_period: "20s",
@@ -180,6 +208,8 @@ export function generateCompose(
     networks: [networkName, "ollama-bridge"],
     env_file: [".env"],
     restart: "unless-stopped",
+    // OCI runtime override (gVisor kernel isolation for hardened/paranoid postures)
+    ...(posture.runtime ? { runtime: posture.runtime } : {}),
     // 1Password service account token via Docker secret (never in env vars)
     ...(enableOp ? { secrets: ["op_service_account_token"] } : {}),
     ...(hasResourceLimits(posture)
@@ -240,11 +270,42 @@ export function generateCompose(
       }
     : undefined;
 
+  // Build Tailscale sidecar if enabled — secure remote access without port exposure
+  const enableTailscale = options?.enableTailscale ?? false;
+  const tailscaleStateDir = options?.tailscaleStateDir ?? `${deployDir}/ops/tailscale`;
+  const tailscaleHostname = options?.tailscaleHostname ?? "clawhq-agent";
+
+  const tailscaleService: ComposeTailscaleServiceOutput | undefined = enableTailscale
+    ? {
+        image: "ghcr.io/tailscale/tailscale:latest",
+        hostname: tailscaleHostname,
+        cap_drop: ["ALL"],
+        volumes: [
+          `${tailscaleStateDir}:/var/lib/tailscale`,
+        ],
+        networks: [networkName],
+        environment: {
+          TS_AUTHKEY: "${TS_AUTHKEY:-}",
+          TS_HOSTNAME: tailscaleHostname,
+          TS_STATE_DIR: "/var/lib/tailscale",
+          TS_USERSPACE: "true",
+        },
+        restart: "unless-stopped",
+        healthcheck: {
+          test: ["CMD", "tailscale", "status", "--json"],
+          interval: "60s",
+          timeout: "10s",
+          retries: 3,
+        },
+      }
+    : undefined;
+
   return {
     version: "3.8",
     services: {
       openclaw: service,
       ...(credProxyService ? { "cred-proxy": credProxyService } : {}),
+      ...(tailscaleService ? { tailscale: tailscaleService } : {}),
     },
     networks,
     // Docker secrets: token file on host → /run/secrets/ in container

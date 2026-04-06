@@ -227,12 +227,8 @@ function buildComposeConfig(
   const bp = answers.blueprint;
   const posture = bp.security_posture.posture;
 
-  // Resource limits based on security posture
-  const resourceLimits = posture === "paranoid"
-    ? { cpus: "1", memory: "1g" }
-    : posture === "hardened"
-      ? { cpus: "2", memory: "2g" }
-      : { cpus: "4", memory: "4g" };
+  // Resource limits — same across postures, security is controls not starvation
+  const resourceLimits = { cpus: "4", memory: "4g" };
 
   return {
     services: {
@@ -560,11 +556,9 @@ function buildClawHQConfig(answers: WizardAnswers): ClawHQConfig {
       : {}),
     installMethod: "cache",
     security: {
-      posture: bp.security_posture.posture === "paranoid"
-        ? "paranoid"
-        : bp.security_posture.posture === "hardened"
-          ? "hardened"
-          : "standard",
+      posture: bp.security_posture.posture === "under-attack"
+        ? "under-attack"
+        : "hardened",
       egress: bp.security_posture.egress,
     },
     cloud: {
