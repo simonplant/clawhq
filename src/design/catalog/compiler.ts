@@ -417,12 +417,20 @@ function renderOpenclawJson(
   providers: Provider[] = [],
   composition: CompositionConfig = { profile: "", personality: "" },
 ): string {
+  // Security posture determines tool restrictions
+  const isParanoid = profile.security_posture === "paranoid";
+
   const config: Record<string, unknown> = {
     tools: {
       exec: {
         host: "gateway",
         security: "full",
       },
+      // Explicit deny list — defense in depth against prompt injection
+      // Even if model is confused, denied tools can't execute
+      deny: isParanoid
+        ? ["exec", "browser", "gateway", "nodes", "canvas", "image"]
+        : ["browser", "gateway", "nodes"],
       fs: {
         workspaceOnly: true,
       },
@@ -475,6 +483,7 @@ function renderOpenclawJson(
           "boot-md": { enabled: true },
           "bootstrap-extra-files": { enabled: true },
           "session-memory": { enabled: true },
+          "command-logger": { enabled: true },
         },
       },
     },
@@ -660,6 +669,7 @@ function buildChannels(config: CompositionConfig): Record<string, unknown> {
     telegram: {
       enabled: true,
       dmPolicy: "pairing",
+      groupPolicy: "disabled",
     },
   };
 
