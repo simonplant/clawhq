@@ -631,10 +631,10 @@ function buildModelConfig(providers: Provider[]): Record<string, unknown> {
   const modelProvider = providers.find((p) => p.domain === "models");
 
   if (!modelProvider) {
-    // Default: local Ollama
+    // Default: local Ollama with Gemma 4
     return {
-      primary: "ollama/gemma3:27b",
-      fallbacks: ["ollama/gemma3:12b", "ollama/llama3:8b"],
+      primary: "ollama/gemma4:31b",
+      fallbacks: ["ollama/gemma3:27b", "ollama/gemma4:26b"],
     };
   }
 
