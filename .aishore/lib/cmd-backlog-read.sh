@@ -226,5 +226,16 @@ cmd_backlog_rm() {
         return 1
     fi
 
+    # Clean stale dependsOn references to the removed item in all backlog files
+    local bf
+    for bf in "${BACKLOG_FILES[@]}"; do
+        [[ -f "$BACKLOG_DIR/$bf" ]] || continue
+        if jq -e --arg id "$id" '.items[] | select(.dependsOn[]? == $id)' "$BACKLOG_DIR/$bf" >/dev/null 2>&1; then
+            local tmp
+            tmp="$(ensure_tmpdir)/clean_deps.json"
+            jq --arg id "$id" '.items |= map(.dependsOn |= (if . then map(select(. != $id)) else . end))' "$BACKLOG_DIR/$bf" > "$tmp" && mv "$tmp" "$BACKLOG_DIR/$bf"
+        fi
+    done
+
     log_success "Removed $id: $title"
 }

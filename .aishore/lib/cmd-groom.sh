@@ -88,7 +88,7 @@ protect_items_from_groom() {
         ' "$live_file") || {
             log_error "Failed to parse $f after groom — restoring snapshot"
             cp "$snap_file" "$live_file"
-            return 0
+            return 1
         }
         # Last line is "del mod" counts; everything before is the protected JSON
         local counts

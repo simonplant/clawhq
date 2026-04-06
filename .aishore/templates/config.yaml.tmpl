@@ -7,6 +7,11 @@ validation:
   command: "$VALIDATE_CMD"
   timeout: 120
 
+# Setup command runs in each worktree before the sprint starts.
+# Use this to install dependencies that aren't in git (node_modules, venv, etc.)
+# setup:
+#   command: "npm install"
+
 # models:
 #   primary: "claude-opus-4-6"
 #   fast: "claude-sonnet-4-6"

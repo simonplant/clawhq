@@ -32,6 +32,7 @@ For each item, ensure:
 - Implementation steps should focus on "how" — specific enough to follow without guessing
 - If AC is vague, add testable criteria or note the gap in grooming notes
 - AC verify commands must test behavior, not structure. A verify that greps a source file for a function name is theater — rewrite it to execute the feature and check the result.
+- **Prefer structural verify commands over content greps on built output.** Build tools (Astro, Vite, Next.js, webpack) transform, bundle, and minify HTML/JS/CSS — `grep -qi 'subscribe' dist/index.html` will fail even when the feature exists because the content is in a bundled JS file or rendered differently. Instead use: `test -f dist/path/index.html`, `test -d dist/tags`, `ls dist/tags/*/index.html | grep -q .`, or run the dev server and `curl -s localhost:... | grep -qi pattern`. Only grep built output when the string is guaranteed to appear literally (e.g., `<title>` text, meta tags).
 - Set `readyForSprint` only when the item meets all checklist gates
 
 ## Scaffolding Awareness

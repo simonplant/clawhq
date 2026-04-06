@@ -43,7 +43,7 @@ Commands:
   help <command>   Show detailed help for a command
   help --full      Show complete reference
 
-Other: clean, update, version
+Other: clean, update, checksums, version
 EOF
 }
 
@@ -203,6 +203,13 @@ Usage: aishore clean [options]
 Options:
   --dry-run       Preview what would be removed
   --no-archive    Remove without archiving
+  --regression    Clear the regression suite (backup created before removal)
+                  Use with --dry-run to preview entry count by item
+
+Examples:
+  aishore clean                          # Archive and remove done items
+  aishore clean --regression --dry-run   # Preview regression suite entries
+  aishore clean --regression             # Backup and clear regression suite
 EOF
 }
 

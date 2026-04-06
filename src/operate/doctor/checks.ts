@@ -137,6 +137,7 @@ export async function runChecks(
     checkFirewallActive(deployDir, signal),
     checkWorkspaceExists(deployDir),
     checkGatewayReachable(signal),
+    checkOllamaReachable(deployDir, signal),
     checkDiskSpace(deployDir, signal),
     checkAirGapActive(deployDir, signal),
     checkIpsetEgressCurrent(deployDir, signal),
@@ -797,6 +798,70 @@ async function checkGatewayReachable(signal?: AbortSignal): Promise<DoctorCheckR
       "Run: clawhq up",
     );
   }
+}
+
+/** Check Ollama is reachable from inside the container. */
+async function checkOllamaReachable(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<DoctorCheckResult> {
+  const name = "ollama-reachable" as DoctorCheckName;
+
+  // Read config to check if Ollama is the configured model provider
+  try {
+    const configPath = join(deployDir, "engine", "openclaw.json");
+    const raw = await readFile(configPath, "utf-8");
+    const config = JSON.parse(raw) as Record<string, unknown>;
+    const agents = config["agents"] as Record<string, unknown> | undefined;
+    const defaults = agents?.["defaults"] as Record<string, unknown> | undefined;
+    const model = defaults?.["model"] as Record<string, unknown> | undefined;
+    const primary = (model?.["primary"] ?? "") as string;
+
+    if (!primary.startsWith("ollama/")) {
+      return ok(name, "Not using Ollama — skipped");
+    }
+  } catch {
+    return ok(name, "Cannot read config — skipped");
+  }
+
+  // Check from host side first
+  try {
+    await execFileAsync(
+      "curl",
+      ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "3", "http://localhost:11434/api/tags"],
+      { timeout: 5000, signal },
+    );
+  } catch {
+    return fail(
+      name,
+      "error",
+      "Ollama is not running on localhost:11434",
+      "Start Ollama: systemctl start ollama (or install from ollama.ai)",
+    );
+  }
+
+  // Check from inside container
+  try {
+    const { stdout } = await execFileAsync(
+      "docker",
+      ["exec", "engine-openclaw-1", "node", "-e",
+       "fetch('http://ollama:11434/api/tags',{signal:AbortSignal.timeout(3000)}).then(r=>r.ok?'OK':'FAIL').then(console.log).catch(()=>console.log('FAIL'))"],
+      { timeout: 8000, signal },
+    );
+    if (stdout.trim() === "OK") {
+      return ok(name, "Ollama reachable from container");
+    }
+  } catch {
+    // Fall through to failure
+  }
+
+  return fail(
+    name,
+    "error",
+    "Ollama runs on host but container cannot reach it — host firewall is blocking Docker bridge traffic on port 11434",
+    "Fix: sudo iptables -I INPUT -s 172.16.0.0/12 -p tcp --dport 11434 -j ACCEPT",
+    false,
+  );
 }
 
 /** 17. Sufficient disk space in deployment directory. */

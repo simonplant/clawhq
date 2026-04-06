@@ -7,8 +7,14 @@
 cmd_clean() {
     require_tool jq
 
-    local dry_run=false no_archive=false
-    parse_opts "bool:dry_run:--dry-run" "bool:no_archive:--no-archive" -- "$@" || return 1
+    local dry_run=false no_archive=false regression=false
+    parse_opts "bool:dry_run:--dry-run" "bool:no_archive:--no-archive" "bool:regression:--regression" -- "$@" || return 1
+
+    # Handle --regression: clean the regression suite
+    if [[ "$regression" == "true" ]]; then
+        _clean_regression "$dry_run"
+        return $?
+    fi
 
     local total=0
     local -A file_counts=()
@@ -46,6 +52,32 @@ cmd_clean() {
         else
             echo "Cleaned $cleaned done items ($total total archived and removed)"
         fi
+    fi
+}
+
+# Clean the regression suite (backup + remove, or dry-run report)
+_clean_regression() {
+    local dry_run="$1"
+    local regression_file="$ARCHIVE_DIR/regression.jsonl"
+
+    if [[ ! -f "$regression_file" || ! -s "$regression_file" ]]; then
+        echo "No regression entries to clean"
+        return 0
+    fi
+
+    local reg_count
+    reg_count=$(wc -l < "$regression_file")
+
+    if [[ "$dry_run" == "true" ]]; then
+        echo "Would remove $reg_count regression entries"
+        echo ""
+        echo "Entries by item:"
+        jq -r '.itemId // "unknown"' "$regression_file" | sort | uniq -c | sort -rn
+    else
+        local bak_file="${regression_file}.bak"
+        cp "$regression_file" "$bak_file" || { log_error "Backup failed — regression file not removed"; return 1; }
+        rm "$regression_file"
+        echo "Removed $reg_count regression entries (backup: $bak_file)"
     fi
 }
 

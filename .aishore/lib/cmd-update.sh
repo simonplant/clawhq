@@ -181,6 +181,7 @@ cmd_update() {
     printf "\r%40s\r" ""  # clear progress line
 
     # ── Phase 2: Install (only if all verified) ──
+    _unlock_tool_files
     if [[ "$all_verified" != "true" ]]; then
         log_error "Verification failed — no files were modified"
         return 1
@@ -203,11 +204,40 @@ cmd_update() {
     done
     chmod +x "$AISHORE_ROOT/aishore"
 
+    # ── Phase 3: Refresh CLAUDE.md aishore section ──
+    local claude_md
+    claude_md=$(find_claude_md)
+    local section_template="$AISHORE_ROOT/templates/claude-section.md"
+    if [[ -n "$claude_md" && -f "$section_template" ]]; then
+        if grep -q "## Sprint Orchestration (aishore)" "$claude_md" 2>/dev/null; then
+            local new_section
+            new_section=$(cat "$section_template")
+            local tmp_claude
+            tmp_claude="$(ensure_tmpdir)/claude_md_refresh.md"
+            # Replace everything from "## Sprint Orchestration (aishore)" to next "## " or EOF
+            awk -v new="$new_section" '
+                /^## Sprint Orchestration \(aishore\)/ { found=1; print new; next }
+                found && /^## / { found=0 }
+                !found { print }
+            ' "$claude_md" > "$tmp_claude"
+            if [[ -s "$tmp_claude" ]]; then
+                mv "$tmp_claude" "$claude_md"
+                log_success "Refreshed aishore section in CLAUDE.md"
+            else
+                rm -f "$tmp_claude"
+                log_warning "CLAUDE.md refresh failed — file unchanged"
+            fi
+        else
+            log_info "CLAUDE.md found but no aishore section — skipping refresh"
+        fi
+    fi
+
     echo ""
     log_success "Updated to $remote_version ($file_count files)"
 }
 
 cmd_checksums() {
+    _unlock_tool_files
     cd "$PROJECT_ROOT" || { log_error "Cannot cd to $PROJECT_ROOT"; return 1; }
 
     local checksum_file="$AISHORE_ROOT/checksums.sha256"
