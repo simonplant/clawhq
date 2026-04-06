@@ -82,7 +82,7 @@ export function compile(
     { relativePath: "workspace/AGENTS.md", content: renderAgents(profile) },
     { relativePath: "workspace/USER.md", content: renderUser(user) },
     { relativePath: "workspace/TOOLS.md", content: renderTools(profile) },
-    { relativePath: "workspace/IDENTITY.md", content: renderIdentity(personality) },
+    { relativePath: "workspace/IDENTITY.md", content: renderIdentity(personality, profile) },
     { relativePath: "workspace/HEARTBEAT.md", content: renderHeartbeat(profile) },
     { relativePath: "workspace/MEMORY.md", content: "" },
 
@@ -365,14 +365,28 @@ function renderTools(profile: MissionProfile): string {
 
 // ── IDENTITY.md ─────────────────────────────────────────────────────────────
 
-function renderIdentity(personality: PersonalityPreset): string {
+function renderIdentity(personality: PersonalityPreset, profile: MissionProfile): string {
   const lines: string[] = [];
 
   lines.push("# Identity\n");
   lines.push(`**Name:** ${personality.name}`);
   lines.push(`**Emoji:** ${personality.identity.emoji}`);
   lines.push(`**Vibe:** ${personality.identity.vibe}`);
-  lines.push(`**Creature:** AI assistant\n`);
+  lines.push(`**Creature:** AI assistant`);
+  lines.push(`**Built by:** ClawHQ\n`);
+
+  lines.push("## Composition\n");
+  lines.push(`**Mission Profile:** ${profile.name}`);
+  lines.push(`> ${profile.description}\n`);
+  lines.push(`**Personality:** ${personality.name}`);
+  lines.push(`> ${personality.description}\n`);
+
+  lines.push("## Capabilities\n");
+  const toolNames = profile.tools.map((t) => `\`${t.name}\``).join(", ");
+  lines.push(`**Tools:** ${toolNames}`);
+  lines.push(`**Skills:** ${profile.skills.join(", ")}`);
+  lines.push(`**Autonomy:** ${profile.autonomy_default}`);
+  lines.push(`**Security:** ${profile.security_posture}\n`);
 
   return lines.join("\n");
 }
