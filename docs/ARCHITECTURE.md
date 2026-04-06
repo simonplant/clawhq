@@ -287,7 +287,7 @@ Blueprint + user customization + credentials
 │                          format, cron syntax validated    │
 │                                                          │
 │ security/                                                │
-│   posture.yaml         ← standard/hardened/paranoid       │
+│   posture.yaml         ← minimal/hardened/under-attack    │
 │ ops/firewall/                                                │
 │   allowlist.yaml       ← per-integration domain allowlist │
 └─────────────────────────────────────────────────────────┘
@@ -435,6 +435,23 @@ acquired  forged     baseline   hands    brain    grade   agent    monitor
 
 Each phase produces a working state. The user gets value at every checkpoint.
 
+### Deploy Pipeline
+
+`clawhq up` executes a six-step deploy pipeline. Each step must pass before the next begins.
+
+```
+preflight → compose up → identity lock → firewall → health verify → smoke test
+```
+
+| Step | What Happens |
+|---|---|
+| **preflight** | Validate config, check prerequisites, verify images |
+| **compose up** | Start containers with posture-appropriate compose config |
+| **identity lock** | Apply `chattr +i` to identity files (hardened/under-attack) |
+| **firewall** | Apply egress rules via `CLAWHQ_FWD` iptables chain |
+| **health verify** | Wait for Gateway health endpoint to report ready |
+| **smoke test** | Verify tool execution, channel connectivity, cron registration |
+
 ### Engine Acquisition
 
 | Path | Trust Model | What Happens |
@@ -463,17 +480,22 @@ Message routing, model API calls, tool execution, session persistence, channel p
 
 ### Container Hardening (Applied Automatically)
 
-| Control | Minimal (dev only) | Standard | Hardened | Paranoid |
-|---|---|---|---|---|
-| Linux capabilities | None dropped | `cap_drop: ALL` | `cap_drop: ALL` | `cap_drop: ALL` |
-| Filesystem | Writable | Read-only rootfs | Read-only rootfs | Read-only rootfs + encrypted workspace |
-| Privilege escalation | Not restricted | `no-new-privileges` | `no-new-privileges` | `no-new-privileges` |
-| User | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) |
-| Network isolation | ICC allowed | ICC disabled | ICC disabled | ICC disabled + allowlist egress |
-| Resource limits | None | 4 CPU / 4GB RAM | 2 CPU / 2GB RAM | 1 CPU / 1GB RAM |
-| Identity files | Read-write | Read-only mount | Read-only mount | Read-only mount + integrity hash |
+Three security postures. Default is **hardened**.
 
-> **Note:** `minimal` is for development only and should never be used in production. Blueprint defaults are `standard` or `hardened`.
+| Control | Minimal (dev only) | Hardened (default) | Under-Attack |
+|---|---|---|---|
+| Linux capabilities | None dropped | `cap_drop: ALL` | `cap_drop: ALL` |
+| Filesystem | Writable | Read-only rootfs | Read-only rootfs + noexec tmpfs |
+| Privilege escalation | Not restricted | `no-new-privileges` | `no-new-privileges` |
+| User | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) |
+| Network isolation | ICC allowed | ICC disabled + allowlist egress | ICC disabled + air-gapped egress |
+| Resource limits | None | 2 CPU / 2GB RAM | 1 CPU / 1GB RAM |
+| Runtime sandbox | None | gVisor (`runsc`) | gVisor (`runsc`) |
+| Identity files | Read-write | Read-only mount + immutable (`chattr +i`) | Read-only mount + immutable (`chattr +i`) |
+| Tailscale sidecar | No | Opt-in | Opt-in |
+| Health checks | 30s interval | 30s interval | 10s interval |
+
+> **Note:** `minimal` is for development only and should never be used in production. Blueprint defaults are `hardened`.
 
 ### Egress Firewall
 

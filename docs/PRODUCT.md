@@ -68,7 +68,7 @@ This is grounded in how people actually use OpenClaw. The research shows most us
 
 **Config generation** — Every generated config prevents all 14 known landmines. Guided and AI-powered setup. Integration auto-detection.
 
-**Container hardening** — `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists. Hardened by default, not opt-in.
+**Container hardening** — Three security postures: **minimal** (development/testing), **hardened** (default — `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists, gVisor runtime, `chattr +i` identity files, Tailscale sidecar for encrypted networking), and **under-attack** (active threat response — kill non-essential processes, freeze config, restrict egress to known-good destinations, elevate logging). Hardened by default, not opt-in.
 
 **Diagnostics** — `clawhq doctor` with 14+ checks, auto-fix, predictive health alerts. Extends OpenClaw's built-in `openclaw doctor` with landmine detection, firewall verification, credential probes, identity size enforcement, context pruning verification.
 

@@ -83,9 +83,9 @@ Canonical terms — use these consistently:
 
 - **ClawHQ is the install** — Users don't install OpenClaw separately
 - **Two acquisition paths** — Trusted cache (signed) or from source (zero-trust)
-- **Security by default** — Container hardening applied automatically, not opt-in
+- **Security by default** — Container hardening applied automatically via 3-tier posture system (minimal/hardened/under-attack, default: hardened). Hardened includes gVisor runtime (when available), egress firewall auto-enable, and chattr +i on identity files. Under-attack adds air-gapped network, noexec tmpfs, and 10s healthchecks
 - **Config generation must be correct** — All 14+ landmines auto-handled
-- **Identity files are read-only** — Agents cannot modify their own personality
+- **Identity files are read-only** — 8 workspace identity files (including BOOTSTRAP.md) are immutable; agents cannot modify their own personality
 - **Credentials secured** — `credentials.json` mode 0600, `.env` mode 0600, never in config files
 - **Data sovereignty** — Full portability (`export`), verified deletion (`destroy`), zero lock-in
 - **Same platform everywhere** — User's PC, Mac Mini, DigitalOcean, Hetzner — same software, different host

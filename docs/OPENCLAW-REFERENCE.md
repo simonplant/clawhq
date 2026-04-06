@@ -1532,19 +1532,20 @@ services:
 
 ## Container Hardening Matrix
 
-Four postures from development-friendly to maximum lockdown. Standard is the default — users get hardened containers without knowing what `cap_drop` means. Implementation: `src/build/docker/posture.ts`.
+Three postures from development-friendly to maximum lockdown. Hardened is the default — users get hardened containers without knowing what `cap_drop` means. Implementation: `src/build/docker/posture.ts`.
 
-| Control | Minimal | Standard | Hardened | Paranoid |
-|---|---|---|---|---|
-| Linux capabilities | `cap_drop: ALL` | `cap_drop: ALL` | `cap_drop: ALL` | `cap_drop: ALL` |
-| Privilege escalation | `no-new-privileges` | `no-new-privileges` | `no-new-privileges` | `no-new-privileges` |
-| Filesystem | Writable rootfs | Read-only rootfs | Read-only rootfs | Read-only rootfs + encrypted workspace |
-| User | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) |
-| Temp storage | tmpfs 512MB, noexec/nosuid | tmpfs 256MB, noexec/nosuid | tmpfs 128MB, noexec/nosuid | tmpfs 64MB, noexec/nosuid |
-| Network isolation | ICC not enforced | ICC disabled | ICC disabled | ICC disabled + allowlist egress |
-| Resource limits | None | 4 CPU, 4GB RAM, 512 PIDs | 2 CPU, 2GB RAM, 256 PIDs | 1 CPU, 1GB RAM, 128 PIDs |
-| Identity files | — | Read-only mount | Read-only mount | Read-only mount + integrity hash |
-| Workspace | Writable | Writable (scoped) | Writable (scoped) | Writable (encrypted at rest) |
+| Control | Minimal | Hardened | Under-Attack |
+|---|---|---|---|
+| Linux capabilities | `cap_drop: ALL` | `cap_drop: ALL` | `cap_drop: ALL` |
+| Privilege escalation | `no-new-privileges` | `no-new-privileges` | `no-new-privileges` |
+| Filesystem | Writable rootfs | Read-only rootfs | Read-only rootfs + encrypted workspace |
+| User | Non-root (UID 1000) | Non-root (UID 1000) | Non-root (UID 1000) |
+| Temp storage | tmpfs 512MB, nosuid | tmpfs 256MB, nosuid | tmpfs 128MB, noexec/nosuid |
+| Network isolation | ICC not enforced | ICC disabled, auto-firewall | ICC disabled + air-gap egress |
+| Resource limits | None | 2 CPU, 2GB RAM, 256 PIDs | 1 CPU, 1GB RAM, 128 PIDs |
+| Runtime sandbox | — | gVisor | gVisor |
+| Identity files | — | Read-only mount, immutable identity | Read-only mount + integrity hash |
+| Workspace | Writable | Writable (scoped) | Writable (encrypted at rest) |
 
 ### Network & Access Hardening
 
@@ -1697,7 +1698,7 @@ Defined in `src/design/blueprints/types.ts`, validated by 70+ checks in `src/des
 | `use_case_mapping` | What the blueprint replaces, tagline, description, day-in-the-life narrative |
 | `customization_questions` | 1-3 questions asked during setup (select or free-text) |
 | `personality` | Tone, style, relationship model, boundaries |
-| `security_posture` | Hardening level (standard/hardened/paranoid), egress rules, identity mount |
+| `security_posture` | Hardening level (minimal/hardened/under-attack), egress rules, identity mount |
 | `monitoring` | Heartbeat frequency, health checks, quiet hours, alert triggers |
 | `memory_policy` | Hot/warm/cold tier sizes, retention periods, summarization aggressiveness |
 | `cron_config` | Heartbeat, work session, morning brief schedules |
