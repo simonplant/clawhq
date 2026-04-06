@@ -662,8 +662,8 @@ function buildModelConfig(providers: Provider[]): Record<string, unknown> {
     case "ollama-local":
     default:
       return {
-        primary: "ollama/gemma3:27b",
-        fallbacks: ["ollama/gemma3:12b", "ollama/llama3:8b"],
+        primary: "ollama/gemma4:31b",
+        fallbacks: ["ollama/gemma3:27b", "ollama/gemma4:26b"],
       };
   }
 }
