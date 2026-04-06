@@ -133,6 +133,7 @@ export function loadAndCompileComposition(configPath: string): CompiledWorkspace
       profile: config.profile,
       personality: config.personality,
       providers: config.providers,
+      channels: buildChannelConfig(config.channels),
     },
     {
       name: config.user?.name ?? "User",

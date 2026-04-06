@@ -87,7 +87,7 @@ export function compile(
     { relativePath: "workspace/MEMORY.md", content: "" },
 
     // Runtime config
-    { relativePath: "engine/openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders) },
+    { relativePath: "engine/openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config) },
     { relativePath: "engine/.env", content: renderEnv(gatewayPort, resolvedProviders), mode: 0o600 },
     { relativePath: "engine/credentials.json", content: "{}\n", mode: 0o600 },
 
@@ -415,6 +415,7 @@ function renderOpenclawJson(
   user: UserConfig,
   port: number,
   providers: Provider[] = [],
+  composition: CompositionConfig = { profile: "", personality: "" },
 ): string {
   const config: Record<string, unknown> = {
     tools: {
@@ -440,12 +441,7 @@ function renderOpenclawJson(
       },
       trustedProxies: ["172.17.0.1"],
     },
-    channels: {
-      telegram: {
-        enabled: true,
-        dmPolicy: "pairing",
-      },
-    },
+    channels: buildChannels(composition),
     session: {
       dmScope: "per-channel-peer",
     },
@@ -622,6 +618,32 @@ function renderCurlEgressWrapper(): string {
   }
   // Minimal passthrough if file not found
   return '#!/bin/bash\nexec /usr/bin/curl "$@"\n';
+}
+
+// ── Channel Config ──────────────────────────────────────────────────────────
+
+/** Build channel configuration, merging user-provided credentials. */
+function buildChannels(config: CompositionConfig): Record<string, unknown> {
+  const channels: Record<string, Record<string, unknown>> = {
+    telegram: {
+      enabled: true,
+      dmPolicy: "pairing",
+    },
+  };
+
+  // Merge user-provided channel config (bot tokens, etc.)
+  if (config.channels) {
+    for (const [name, values] of Object.entries(config.channels)) {
+      if (!channels[name]) {
+        channels[name] = { enabled: true };
+      }
+      for (const [key, value] of Object.entries(values)) {
+        channels[name]![key] = value;
+      }
+    }
+  }
+
+  return channels;
 }
 
 // ── Model Config ────────────────────────────────────────────────────────────
