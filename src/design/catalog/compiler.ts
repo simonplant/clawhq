@@ -656,7 +656,7 @@ function buildModelConfig(providers: Provider[]): Record<string, unknown> {
     // Default: local Ollama with Gemma 4
     return {
       primary: "ollama/gemma4:31b",
-      fallbacks: ["ollama/gemma3:27b", "ollama/gemma4:26b"],
+      fallbacks: [],
     };
   }
 
