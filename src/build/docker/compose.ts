@@ -151,10 +151,8 @@ export function generateCompose(
       TZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
       PATH: "/home/node/.openclaw/workspace:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
       XDG_CONFIG_HOME: "/home/node/.config",
-      // Gateway token and model credentials passed via env_file (.env)
-      // These are listed here to document what the container expects
+      // Gateway token passed via env_file (.env)
       OPENCLAW_GATEWAY_TOKEN: "${OPENCLAW_GATEWAY_TOKEN:-}",
-      CLAUDE_AI_SESSION_KEY: "${CLAUDE_AI_SESSION_KEY:-}",
     },
     healthcheck: {
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"],

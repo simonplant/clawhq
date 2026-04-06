@@ -87,7 +87,7 @@ export function compile(
     { relativePath: "workspace/MEMORY.md", content: "" },
 
     // Runtime config
-    { relativePath: "engine/openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort) },
+    { relativePath: "engine/openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders) },
     { relativePath: "engine/.env", content: renderEnv(gatewayPort, resolvedProviders), mode: 0o600 },
     { relativePath: "engine/credentials.json", content: "{}\n", mode: 0o600 },
 
@@ -414,6 +414,7 @@ function renderOpenclawJson(
   profile: MissionProfile,
   user: UserConfig,
   port: number,
+  providers: Provider[] = [],
 ): string {
   const config: Record<string, unknown> = {
     tools: {
@@ -450,9 +451,7 @@ function renderOpenclawJson(
     },
     agents: {
       defaults: {
-        model: {
-          primary: "ollama/gemma3:27b",
-        },
+        model: buildModelConfig(providers),
         memorySearch: {
           provider: "ollama",
           store: { vector: { enabled: true } },
@@ -462,8 +461,6 @@ function renderOpenclawJson(
     models: {
       providers: {
         ollama: {
-          // Use ollama-bridge network — Ollama on host is reachable via bridge gateway
-          // Docker's host.docker.internal resolves to default bridge, not our network
           baseUrl: "http://ollama:11434",
           models: [],
         },
@@ -625,6 +622,50 @@ function renderCurlEgressWrapper(): string {
   }
   // Minimal passthrough if file not found
   return '#!/bin/bash\nexec /usr/bin/curl "$@"\n';
+}
+
+// ── Model Config ────────────────────────────────────────────────────────────
+
+/** Build model configuration based on selected providers. */
+function buildModelConfig(providers: Provider[]): Record<string, unknown> {
+  const modelProvider = providers.find((p) => p.domain === "models");
+
+  if (!modelProvider) {
+    // Default: local Ollama
+    return {
+      primary: "ollama/gemma3:27b",
+      fallbacks: ["ollama/gemma3:12b", "ollama/llama3:8b"],
+    };
+  }
+
+  switch (modelProvider.id) {
+    case "anthropic-api":
+      return {
+        primary: "anthropic/claude-sonnet-4-6",
+        fallbacks: ["anthropic/claude-haiku-4-5-20251001"],
+      };
+    case "google-ai":
+      return {
+        primary: "google/gemini-2.5-pro",
+        fallbacks: ["google/gemini-2.5-flash"],
+      };
+    case "openai-api":
+      return {
+        primary: "openai/gpt-4o",
+        fallbacks: ["openai/gpt-4o-mini"],
+      };
+    case "openrouter":
+      return {
+        primary: "openrouter/anthropic/claude-sonnet-4-6",
+        fallbacks: ["openrouter/google/gemini-2.5-flash"],
+      };
+    case "ollama-local":
+    default:
+      return {
+        primary: "ollama/gemma3:27b",
+        fallbacks: ["ollama/gemma3:12b", "ollama/llama3:8b"],
+      };
+  }
 }
 
 /** Registry of tool name → script generator function. */

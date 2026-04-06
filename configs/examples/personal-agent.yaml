@@ -18,6 +18,11 @@ providers:
   calendar: icloud-cal
   tasks: todoist
   search: tavily
+  # models: ollama-local          — default, no config needed
+  # models: google-ai             — Gemini API (PAYG)
+  # models: anthropic-api         — Claude API (PAYG only, subscriptions NOT supported)
+  # models: openai-api            — OpenAI API
+  # models: openrouter            — 100+ models via one API key
 
 user:
   name: User
@@ -28,9 +33,3 @@ user:
 # channels:
 #   telegram:
 #     bot_token: "your-bot-token-from-@BotFather"
-
-# Model credentials (uncomment for cloud models)
-# auth:
-#   provider: anthropic
-#   env:
-#     CLAUDE_AI_SESSION_KEY: "your-session-key"

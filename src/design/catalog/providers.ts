@@ -323,6 +323,76 @@ export const PROVIDERS: readonly Provider[] = [
     auth: "token",
   },
 
+  // ── LLM Models ──────────────────────────────────────────────────────────
+  {
+    id: "ollama-local",
+    name: "Ollama (Local)",
+    domain: "models",
+    protocol: "REST",
+    cli: "curl",
+    binaries: [],
+    envVars: [],
+    egressDomains: [],
+    auth: "none",
+    setupNotes: "Local inference via Ollama. No data leaves your machine. Install: ollama.ai. Pull a model: ollama pull gemma3:27b",
+  },
+  {
+    id: "anthropic-api",
+    name: "Anthropic API (PAYG)",
+    domain: "models",
+    protocol: "REST",
+    cli: "curl",
+    binaries: [],
+    envVars: [
+      { key: "ANTHROPIC_API_KEY", label: "Anthropic API key", secret: true },
+    ],
+    egressDomains: ["api.anthropic.com"],
+    auth: "api-key",
+    setupNotes: "Pay-as-you-go API access. Get your key at console.anthropic.com. Note: Claude subscription keys are NOT supported for OpenClaw — API billing only.",
+  },
+  {
+    id: "google-ai",
+    name: "Google AI (Gemini API)",
+    domain: "models",
+    protocol: "REST",
+    cli: "curl",
+    binaries: [],
+    envVars: [
+      { key: "GOOGLE_AI_API_KEY", label: "Google AI API key", secret: true },
+    ],
+    egressDomains: ["generativelanguage.googleapis.com"],
+    auth: "api-key",
+    setupNotes: "Get your API key at aistudio.google.com. Free tier available. Gemini 2.5 Pro recommended.",
+  },
+  {
+    id: "openai-api",
+    name: "OpenAI API",
+    domain: "models",
+    protocol: "REST",
+    cli: "curl",
+    binaries: [],
+    envVars: [
+      { key: "OPENAI_API_KEY", label: "OpenAI API key", secret: true },
+    ],
+    egressDomains: ["api.openai.com"],
+    auth: "api-key",
+    setupNotes: "Get your API key at platform.openai.com.",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter (Multi-provider)",
+    domain: "models",
+    protocol: "REST",
+    cli: "curl",
+    binaries: [],
+    envVars: [
+      { key: "OPENROUTER_API_KEY", label: "OpenRouter API key", secret: true },
+    ],
+    egressDomains: ["openrouter.ai"],
+    auth: "api-key",
+    setupNotes: "Access 100+ models from one API key. Get your key at openrouter.ai. Useful for model comparison and fallback.",
+  },
+
   // ── Smart Home ───────────────────────────────────────────────────────────
   {
     id: "home-assistant",
