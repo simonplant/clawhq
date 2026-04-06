@@ -95,6 +95,27 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
       { timeout: DEPLOY_COMPOSE_TIMEOUT_MS, signal },
     );
     report("compose-up", "done", "Containers started");
+
+    // Ensure Ollama is reachable from container (iptables rule may be lost on network recreation)
+    try {
+      await execFileAsync(
+        "sudo",
+        ["iptables", "-C", "INPUT", "-s", "172.16.0.0/12", "-p", "tcp", "--dport", "11434", "-j", "ACCEPT"],
+        { timeout: 5000 },
+      );
+    } catch {
+      // Rule doesn't exist — add it
+      try {
+        await execFileAsync(
+          "sudo",
+          ["iptables", "-I", "INPUT", "-s", "172.16.0.0/12", "-p", "tcp", "--dport", "11434", "-j", "ACCEPT"],
+          { timeout: 5000 },
+        );
+        report("compose-up", "done", "Ollama firewall rule applied");
+      } catch {
+        // sudo not available — non-fatal, doctor will flag it
+      }
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     report("compose-up", "failed", "Failed to start containers");
