@@ -247,6 +247,18 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         const currentPosture = readCurrentPosture(opts.deployDir) ?? DEFAULT_POSTURE;
         const postureConfig = getPostureConfig(currentPosture);
 
+        // Only pass runtime if runsc is actually available on this host
+        let runtime = postureConfig.runtime;
+        if (runtime === "runsc") {
+          try {
+            const { execFile: ef } = await import("node:child_process");
+            const { promisify: p } = await import("node:util");
+            await p(ef)("runsc", ["--version"], { timeout: 5000 });
+          } catch {
+            runtime = undefined;
+          }
+        }
+
         const result = await deploy({
           deployDir: opts.deployDir,
           gatewayToken: token,
@@ -254,7 +266,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           skipPreflight: opts.skipPreflight,
           skipFirewall: opts.skipFirewall,
           airGap: opts.airGap || postureConfig.airGap,
-          runtime: postureConfig.runtime,
+          runtime,
           autoFirewall: postureConfig.autoFirewall,
           immutableIdentity: postureConfig.immutableIdentity,
           onProgress,

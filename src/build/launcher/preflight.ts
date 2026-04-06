@@ -267,9 +267,8 @@ async function checkOllama(signal?: AbortSignal): Promise<PreflightCheckResult> 
  * 7. gVisor (runsc) runtime is installed and registered with Docker.
  *
  * Only checked when the posture requests gVisor (hardened/under-attack).
- * This is a **hard gate** — if you chose a posture with gVisor, it must
- * be installed. Docker Compose will fail at `up` if runtime: runsc is set
- * but runsc isn't registered. Better to fail fast with an actionable fix.
+ * Warning, not a blocker - if runsc isn't installed, compose omits
+ * the runtime field and the container runs with default runc.
  */
 async function checkGvisor(signal?: AbortSignal): Promise<PreflightCheckResult> {
   const name: PreflightCheckName = "gvisor";
@@ -289,6 +288,7 @@ async function checkGvisor(signal?: AbortSignal): Promise<PreflightCheckResult> 
       return {
         name,
         passed: false,
+        warning: true,
         message: "gVisor (runsc) is installed but not registered as a Docker runtime",
         fix: "Add to /etc/docker/daemon.json: {\"runtimes\":{\"runsc\":{\"path\":\"/usr/bin/runsc\"}}} then restart Docker",
       };
@@ -301,13 +301,15 @@ async function checkGvisor(signal?: AbortSignal): Promise<PreflightCheckResult> 
       return {
         name,
         passed: false,
-        message: "gVisor (runsc) is not installed — required by hardened posture",
-        fix: "Install gVisor: https://gvisor.dev/docs/user_guide/install/ — or use --posture minimal to skip",
+        warning: true,
+        message: "gVisor (runsc) not installed - container will use default runc runtime",
+        fix: "Install gVisor: https://gvisor.dev/docs/user_guide/install/",
       };
     }
     return {
       name,
       passed: false,
+      warning: true,
       message: `gVisor check failed: ${msg}`,
       fix: "Install gVisor: https://gvisor.dev/docs/user_guide/install/",
     };

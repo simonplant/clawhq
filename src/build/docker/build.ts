@@ -48,7 +48,18 @@ const DEFAULT_APT_PACKAGES = "tmux ffmpeg jq ripgrep";
 export async function build(options: BuildOptions): Promise<BuildResult> {
   const { deployDir, stage1, stage2 } = options;
   const posture = options.posture ?? DEFAULT_POSTURE;
-  const postureConfig = getPostureConfig(posture);
+  let postureConfig = getPostureConfig(posture);
+
+  // If posture requests gVisor but runsc isn't installed, strip runtime
+  // so the compose file doesn't reference an unavailable runtime
+  if (postureConfig.runtime === "runsc") {
+    try {
+      await execFileAsync("runsc", ["--version"], { timeout: 5000 });
+    } catch {
+      postureConfig = { ...postureConfig, runtime: undefined };
+    }
+  }
+
   const engineDir = join(deployDir, "engine");
   const sourceDir = join(deployDir, "engine", "source");
   const stage2Tag = agentImageTag(options.instanceName);
