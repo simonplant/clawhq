@@ -14,7 +14,7 @@
 
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -100,11 +100,9 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 
   // Generate docker-compose.yml
   const compose = generateCompose(stage2Tag, postureConfig, deployDir, networkName);
-  await writeFile(
-    join(engineDir, "docker-compose.yml"),
-    serializeYaml(compose),
-    "utf-8",
-  );
+  const composePath = join(engineDir, "docker-compose.yml");
+  await writeFile(composePath, serializeYaml(compose), "utf-8");
+  await chmod(composePath, 0o600);
 
   // Write build manifest
   const manifest = createManifest({

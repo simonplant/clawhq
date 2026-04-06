@@ -170,16 +170,22 @@ export function generateCompose(
       "/home/node/.cache:exec,nosuid,size=512m",
     ],
     volumes: [
-      // Full OpenClaw config directory
-      `${deployDir}:/home/node/.openclaw`,
       // Config file (rw — control UI needs write access)
       `${deployDir}/engine/openclaw.json:/home/node/.openclaw/openclaw.json`,
       // Credentials read-only
       `${deployDir}/engine/credentials.json:${OPENCLAW_CONTAINER_CREDENTIALS}:ro`,
-      // Workspace writable
+      // Env file for secret injection
+      `${deployDir}/engine/.env:/home/node/.openclaw/.env:ro`,
+      // Workspace writable (identity files, tools, skills, memory)
       `${deployDir}/workspace:/home/node/.openclaw/workspace`,
       // Cron
       `${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`,
+      // Agent state (sessions, model routing, pairing)
+      `${deployDir}/agents:/home/node/.openclaw/agents`,
+      // Credentials directory (pairing allowlists, auth state)
+      `${deployDir}/credentials:/home/node/.openclaw/credentials`,
+      // Canvas (node displays)
+      `${deployDir}/canvas:/home/node/.openclaw/canvas`,
     ],
     networks: [networkName, "ollama-bridge"],
     env_file: [".env"],
