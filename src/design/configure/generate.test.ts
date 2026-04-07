@@ -254,6 +254,122 @@ describe("generateBundle", () => {
     expect(heartbeat?.fallbacks).toBeUndefined();
   });
 
+  it("sets posture-driven exec.ask to 'off' for hardened blueprints", () => {
+    const bundle = generateBundle(makeAnswers());
+    expect(bundle.openclawConfig.tools?.exec.ask).toBe("off");
+  });
+
+  it("sets posture-driven exec.ask to 'off' for under-attack posture", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = {
+      ...loaded.blueprint,
+      security_posture: { ...loaded.blueprint.security_posture, posture: "under-attack" as const },
+    };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    expect(bundle.openclawConfig.tools?.exec.ask).toBe("off");
+  });
+
+  it("sets heartbeat and skill cron jobs to session 'isolated'", () => {
+    const loaded = loadBlueprint("email-manager");
+    const answers = makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+    });
+    const bundle = generateBundle(answers);
+
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.session).toBe("isolated");
+
+    const skillJob = bundle.cronJobs.find((j) => j.id === "skill-email-digest");
+    expect(skillJob?.session).toBe("isolated");
+  });
+
+  it("sets work-session and morning-brief to session 'main'", () => {
+    const bundle = generateBundle(makeAnswers());
+    const workSession = bundle.cronJobs.find((j) => j.id === "work-session");
+    expect(workSession?.session).toBe("main");
+
+    const morningBrief = bundle.cronJobs.find((j) => j.id === "morning-brief");
+    expect(morningBrief?.session).toBe("main");
+  });
+
+  it("populates activeHours on cron jobs with 'waking' qualifier", () => {
+    // family-hub has quiet_hours "21:00-06:00" and heartbeat "*/15 waking"
+    const bundle = generateBundle(makeAnswers());
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.activeHours).toEqual({ start: 6, end: 21 });
+
+    const workSession = bundle.cronJobs.find((j) => j.id === "work-session");
+    expect(workSession?.activeHours).toEqual({ start: 6, end: 21 });
+  });
+
+  it("does not set activeHours on morning-brief (no waking qualifier)", () => {
+    const bundle = generateBundle(makeAnswers());
+    const morningBrief = bundle.cronJobs.find((j) => j.id === "morning-brief");
+    expect(morningBrief?.activeHours).toBeUndefined();
+  });
+
+  it("includes timezone in activeHours when userContext provides it", () => {
+    const answers = makeAnswers({
+      userContext: {
+        name: "Test",
+        timezone: "America/Los_Angeles",
+        communicationPreference: "brief",
+      },
+    });
+    const bundle = generateBundle(answers);
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.activeHours?.tz).toBe("America/Los_Angeles");
+  });
+
+  it("defaults morning-brief delivery to 'announce', others to 'none'", () => {
+    const bundle = generateBundle(makeAnswers());
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.delivery).toBe("none");
+
+    const workSession = bundle.cronJobs.find((j) => j.id === "work-session");
+    expect(workSession?.delivery).toBe("none");
+
+    const morningBrief = bundle.cronJobs.find((j) => j.id === "morning-brief");
+    expect(morningBrief?.delivery).toBe("announce");
+  });
+
+  it("allows blueprint to override delivery mode per job", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = {
+      ...loaded.blueprint,
+      cron_config: {
+        ...loaded.blueprint.cron_config,
+        delivery: { heartbeat: "errors" as const, morning_brief: "none" as const },
+      },
+    };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.delivery).toBe("errors");
+
+    const morningBrief = bundle.cronJobs.find((j) => j.id === "morning-brief");
+    expect(morningBrief?.delivery).toBe("none");
+  });
+
+  it("allows blueprint to override sessionTarget per job", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = {
+      ...loaded.blueprint,
+      cron_config: {
+        ...loaded.blueprint.cron_config,
+        session_target: { heartbeat: "main" as const },
+      },
+    };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.session).toBe("main");
+  });
+
   it("uses cost-efficient defaults: cheap models for frequent jobs", () => {
     // All 7 blueprints should route heartbeat to haiku (cheapest)
     const blueprintNames = [

@@ -77,7 +77,13 @@ export interface CronModelRouting {
   readonly fallbacks?: readonly string[];
 }
 
-/** Cron schedule configuration with optional per-job model routing. */
+/** Cron delivery mode. */
+export type BlueprintCronDelivery = "announce" | "none" | "errors";
+
+/** Cron session target. */
+export type BlueprintSessionTarget = "main" | "isolated";
+
+/** Cron schedule configuration with optional per-job model routing, delivery, and session target. */
 export interface CronConfig {
   readonly heartbeat: string;
   readonly work_session: string;
@@ -86,6 +92,16 @@ export interface CronConfig {
     readonly heartbeat?: CronModelRouting;
     readonly work_session?: CronModelRouting;
     readonly morning_brief?: CronModelRouting;
+  };
+  readonly delivery?: {
+    readonly heartbeat?: BlueprintCronDelivery;
+    readonly work_session?: BlueprintCronDelivery;
+    readonly morning_brief?: BlueprintCronDelivery;
+  };
+  readonly session_target?: {
+    readonly heartbeat?: BlueprintSessionTarget;
+    readonly work_session?: BlueprintSessionTarget;
+    readonly morning_brief?: BlueprintSessionTarget;
   };
 }
 

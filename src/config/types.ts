@@ -14,10 +14,14 @@ export type ExecHost = "gateway" | "sandbox" | "node";
 /** Exec tool security level. */
 export type ExecSecurity = "full" | "allowlist" | "ask" | "auto";
 
+/** Tool execution ask mode — whether the agent prompts before running commands. */
+export type ExecAsk = "off" | "auto";
+
 /** Tool execution settings. */
 export interface ToolExecConfig {
   readonly host: ExecHost;
   readonly security: ExecSecurity;
+  readonly ask?: ExecAsk;
   readonly safeBins?: readonly string[];
 }
 

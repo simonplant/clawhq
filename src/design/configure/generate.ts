@@ -17,12 +17,14 @@ import {
   WEBSOCKET_EVENT_CALLER_TIMEOUT_MS,
 } from "../../config/defaults.js";
 import type {
+  ActiveHours,
   ChannelConfig,
   ClawHQConfig,
   ComposeConfig,
   CronJobDefinition,
   DelegatedRulesFileInfo,
   DeploymentBundle,
+  ExecAsk,
   IdentityFileInfo,
   OpenClawConfig,
   ToolFileInfo,
@@ -78,7 +80,7 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     openclawConfig: buildOpenClawConfig(answers, port),
     composeConfig: buildComposeConfig(answers, port, networkName),
     envVars: buildEnvVars(answers),
-    cronJobs: buildCronJobs(answers.blueprint),
+    cronJobs: buildCronJobs(answers.blueprint, answers.userContext?.timezone),
     identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions, answers.userContext),
     toolFiles: buildToolFiles(answers.blueprint),
     clawhqConfig: buildClawHQConfig(answers),
@@ -94,12 +96,18 @@ function buildOpenClawConfig(
 ): OpenClawConfig {
   const bp = answers.blueprint;
 
+  // Posture-driven exec.ask: hardened/under-attack → 'off' (container IS the boundary per AD-05)
+  const execAsk: ExecAsk = bp.security_posture.posture === "hardened" || bp.security_posture.posture === "under-attack"
+    ? "off"
+    : "auto";
+
   const config: OpenClawConfig = {
     // LM-04 + LM-05: Tool execution on gateway with full security
     tools: {
       exec: {
         host: "gateway",
         security: "full",
+        ask: execAsk,
       },
       fs: {
         // LM-14: Filesystem access — workspace only by default
@@ -321,14 +329,30 @@ function buildEnvVars(answers: WizardAnswers): Record<string, string> {
  * Build cron jobs from blueprint cron_config.
  *
  * LM-09: All expressions use valid stepping syntax (no bare N/step).
+ *
+ * Session targets default to cost-efficient values per OPENCLAW-REFERENCE.md:
+ * - heartbeat → 'isolated' (lightweight check, no context bleed)
+ * - skill-* → 'isolated' (background tasks)
+ * - work-session → 'main' (needs full conversation context)
+ * - morning-brief → 'main' (delivers to user in active chat)
+ *
+ * Delivery modes default to sensible values:
+ * - heartbeat/work-session/skills → 'none' (background)
+ * - morning-brief → 'announce' (user-facing)
+ *
+ * Both can be overridden per job via blueprint cron_config.delivery / cron_config.session_target.
  */
-function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
+function buildCronJobs(blueprint: Blueprint, timezone?: string): CronJobDefinition[] {
   const jobs: CronJobDefinition[] = [];
   const cron = blueprint.cron_config;
   const routing = cron.model_routing;
 
+  // Compile activeHours from monitoring.quiet_hours for jobs with 'waking' qualifier
+  const wakingActiveHours = parseQuietHoursToActiveHours(blueprint.monitoring.quiet_hours, timezone);
+
   // Heartbeat — regular check-in
   if (cron.heartbeat) {
+    const isWaking = hasWakingQualifier(cron.heartbeat);
     const expr = normalizeCronExpr(cron.heartbeat);
     if (expr) {
       const r = routing?.heartbeat;
@@ -338,16 +362,18 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
         expr,
         task: "Run heartbeat check — verify all systems operational",
         enabled: true,
-        delivery: "none",
+        delivery: cron.delivery?.heartbeat ?? "none",
         model: r?.model,
         fallbacks: r?.fallbacks,
-        session: "main",
+        session: cron.session_target?.heartbeat ?? "isolated",
+        ...(isWaking && wakingActiveHours ? { activeHours: wakingActiveHours } : {}),
       });
     }
   }
 
   // Work session — periodic active work
   if (cron.work_session) {
+    const isWaking = hasWakingQualifier(cron.work_session);
     const expr = normalizeCronExpr(cron.work_session);
     if (expr) {
       const r = routing?.work_session;
@@ -357,10 +383,11 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
         expr,
         task: "Run scheduled work session — process pending tasks and check integrations",
         enabled: true,
-        delivery: "none",
+        delivery: cron.delivery?.work_session ?? "none",
         model: r?.model,
         fallbacks: r?.fallbacks,
-        session: "main",
+        session: cron.session_target?.work_session ?? "main",
+        ...(isWaking && wakingActiveHours ? { activeHours: wakingActiveHours } : {}),
       });
     }
   }
@@ -375,16 +402,17 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
       expr,
       task: "Send morning briefing — summarize overnight activity and today's schedule",
       enabled: true,
-      delivery: "announce",
+      delivery: cron.delivery?.morning_brief ?? "announce",
       model: r?.model,
       fallbacks: r?.fallbacks,
-      session: "main",
+      session: cron.session_target?.morning_brief ?? "main",
     });
   }
 
   // Skill-specific cron jobs — included skills run on the work-session schedule
   // Skills inherit the work_session model routing for cost consistency
   if (cron.work_session && blueprint.skill_bundle?.included) {
+    const isWaking = hasWakingQualifier(cron.work_session);
     const skillExpr = normalizeCronExpr(cron.work_session);
     if (skillExpr) {
       const r = routing?.work_session;
@@ -398,13 +426,42 @@ function buildCronJobs(blueprint: Blueprint): CronJobDefinition[] {
           delivery: "none",
           model: r?.model,
           fallbacks: r?.fallbacks,
-          session: "main",
+          session: "isolated",
+          ...(isWaking && wakingActiveHours ? { activeHours: wakingActiveHours } : {}),
         });
       }
     }
   }
 
   return jobs;
+}
+
+/**
+ * Check if a blueprint cron expression has the 'waking' qualifier.
+ */
+function hasWakingQualifier(expr: string): boolean {
+  return /\s+waking$/i.test(expr);
+}
+
+/**
+ * Parse monitoring.quiet_hours into activeHours by inverting the range.
+ *
+ * quiet_hours "23:00-06:00" → activeHours { start: 6, end: 23 }
+ * (active from 06:00 to 23:00, quiet from 23:00 to 06:00)
+ */
+function parseQuietHoursToActiveHours(quietHours: string, timezone?: string): ActiveHours | undefined {
+  const match = quietHours.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
+  if (!match) return undefined;
+
+  const quietStart = parseInt(match[1]!, 10);
+  const quietEnd = parseInt(match[3]!, 10);
+
+  // Invert: active hours run from quiet end to quiet start
+  return {
+    start: quietEnd,
+    end: quietStart,
+    ...(timezone ? { tz: timezone } : {}),
+  };
 }
 
 // ── Identity Files ───────────────────────────────────────────────────────────
