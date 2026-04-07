@@ -19,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # ClawWall: sanitize external content
 _sanitize() {
   if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
-    python3 "$SCRIPT_DIR/sanitize" --source quote --log
+    "$SCRIPT_DIR/sanitize" --source quote --log
   else
     cat
   fi

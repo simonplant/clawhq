@@ -51,7 +51,7 @@ fi
 # ClawWall: sanitize external content
 _sanitize() {
   if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
-    python3 "$SCRIPT_DIR/sanitize" --source tavily --log
+    "$SCRIPT_DIR/sanitize" --source tavily --log
   else
     cat
   fi

@@ -31,7 +31,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # ClawWall: sanitize untrusted inbound email content
 _sanitize() {
   if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
-    python3 "$SCRIPT_DIR/sanitize" --source email --log
+    "$SCRIPT_DIR/sanitize" --source email --log
   else
     cat
   fi
@@ -41,7 +41,7 @@ _sanitize() {
 _egress_check() {
   local text="$1"
   if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
-    if ! printf '%s' "$text" | python3 "$SCRIPT_DIR/sanitize" --egress --source email 2>&1; then
+    if ! printf '%s' "$text" | "$SCRIPT_DIR/sanitize" --egress --source email 2>&1; then
       echo "SEND ABORTED: ClawWall egress check failed." >&2
       exit 3
     fi

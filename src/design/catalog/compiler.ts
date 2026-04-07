@@ -101,7 +101,7 @@ export function compile(
     { relativePath: "engine/credentials.json", content: "{}\n", mode: 0o600 },
 
     // Cron
-    { relativePath: "cron/jobs.json", content: renderCronJobs(profile) },
+    { relativePath: "cron/jobs.json", content: renderCronJobs(profile, resolvedProviders, config.model) },
 
     // Ops — egress includes provider-specific domains
     { relativePath: "ops/firewall/allowlist.yaml", content: renderAllowlistFromDomains(profile, allEgress) },
@@ -580,14 +580,23 @@ function renderEnv(
 
 // ── cron/jobs.json ──────────────────────────────────────────────────────────
 
-function renderCronJobs(profile: MissionProfile): string {
+function renderCronJobs(
+  profile: MissionProfile,
+  providers: Provider[] = [],
+  modelOverride?: string,
+): string {
   const jobs: Record<string, unknown>[] = [];
+  const modelConfig = buildModelConfig(providers, modelOverride);
+  const primary = modelConfig.primary as string;
+  const isLocal = primary.startsWith("ollama/");
 
   for (const [id, expr] of Object.entries(profile.cron_defaults)) {
     const task = profile.cron_prompts[id] ?? `Run ${id}`;
     const isHeartbeat = id === "heartbeat";
     const isBrief = id.includes("brief");
 
+    // Local: all jobs use the same model (no alias routing available)
+    // Cloud: route by complexity (heartbeat=cheap, brief=mid, work=expensive)
     jobs.push({
       id: id.replace(/_/g, "-"),
       kind: "cron",
@@ -595,8 +604,12 @@ function renderCronJobs(profile: MissionProfile): string {
       task,
       enabled: true,
       delivery: isBrief ? "announce" : "none",
-      model: isHeartbeat ? "haiku" : isBrief ? "sonnet" : "opus",
-      fallbacks: isHeartbeat ? ["sonnet"] : ["sonnet", "haiku"],
+      model: isLocal
+        ? primary
+        : isHeartbeat ? "haiku" : isBrief ? "sonnet" : "opus",
+      fallbacks: isLocal
+        ? []
+        : isHeartbeat ? ["sonnet"] : ["sonnet", "haiku"],
       session: "main",
     });
   }
@@ -611,8 +624,8 @@ function renderCronJobs(profile: MissionProfile): string {
       task: `Run skill: ${skill}`,
       enabled: true,
       delivery: "none",
-      model: "opus",
-      fallbacks: ["sonnet"],
+      model: isLocal ? primary : "opus",
+      fallbacks: isLocal ? [] : ["sonnet"],
       session: "main",
     });
   }

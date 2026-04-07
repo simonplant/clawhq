@@ -12,9 +12,11 @@
 
 import {
   closeSync,
+  existsSync,
   fsyncSync,
   mkdirSync,
   openSync,
+  readFileSync,
   renameSync,
   unlinkSync,
   writeSync,
@@ -95,6 +97,70 @@ export function writeFileAtomic(
   }
 }
 
+// ── Env Merge ───────────────────────────────────────────────────────────────
+
+/** Placeholder value emitted by the compiler for unfilled credentials. */
+const ENV_PLACEHOLDER = "CHANGE_ME";
+
+/**
+ * Parse a .env file into a map of KEY → value (raw line value after '=').
+ * Skips comments and blank lines.
+ */
+function parseEnvFile(content: string): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx < 1) continue;
+    map.set(trimmed.slice(0, eqIdx), trimmed.slice(eqIdx + 1));
+  }
+  return map;
+}
+
+/**
+ * Merge a newly generated .env with an existing one on disk.
+ *
+ * Rules:
+ * - New keys/comments/structure always come from the generated content
+ * - If the existing file has a real value (not CHANGE_ME) for a key,
+ *   that value is preserved even if the generated file says CHANGE_ME
+ * - If the generated file has a new real value, it wins
+ */
+function mergeEnv(absolutePath: string, generated: string): string {
+  if (!existsSync(absolutePath)) return generated;
+
+  let existing: string;
+  try {
+    existing = readFileSync(absolutePath, "utf-8");
+  } catch {
+    return generated;
+  }
+
+  const existingVals = parseEnvFile(existing);
+  if (existingVals.size === 0) return generated;
+
+  // Walk the generated content line by line, substituting preserved values
+  const lines = generated.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line || line.startsWith("#")) continue;
+    const eqIdx = line.indexOf("=");
+    if (eqIdx < 1) continue;
+
+    const key = line.slice(0, eqIdx);
+    const newVal = line.slice(eqIdx + 1);
+    const oldVal = existingVals.get(key);
+
+    // Preserve existing real value when generated is a placeholder
+    if (oldVal && oldVal !== ENV_PLACEHOLDER && newVal === ENV_PLACEHOLDER) {
+      lines[i] = `${key}=${oldVal}`;
+    }
+  }
+
+  return lines.join("\n");
+}
+
 // ── Batch Write ──────────────────────────────────────────────────────────────
 
 /**
@@ -116,7 +182,10 @@ export function writeBundle(
 
   for (const file of files) {
     const absolutePath = join(resolvedDir, file.relativePath);
-    writeFileAtomic(absolutePath, file.content, file.mode);
+    const content = file.relativePath.endsWith(".env")
+      ? mergeEnv(absolutePath, file.content)
+      : file.content;
+    writeFileAtomic(absolutePath, content, file.mode);
     written.push(absolutePath);
   }
 

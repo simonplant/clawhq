@@ -32,6 +32,80 @@ else
   _curl() { curl -sS -u "$CALDAV_USER:$CALDAV_PASS" "$@"; }
 fi
 
+# CalDAV auto-discovery (required for iCloud which redirects to partition servers)
+# Discovers: base URL -> principal -> calendar-home, caches in /tmp for session
+_discover_home() {
+  local cache="/tmp/.caldav-home-\${CALDAV_USER:-proxy}"
+  if [[ -f "$cache" ]]; then
+    cat "$cache"
+    return
+  fi
+
+  # Step 1: find principal
+  local principal
+  principal=$(_curl -X PROPFIND -H "Content-Type: application/xml" -H "Depth: 0" \\
+    -d '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>' \\
+    "$CALDAV_BASE/" 2>/dev/null | python3 -c "
+import sys, re
+data = sys.stdin.read()
+m = re.search(r'<href[^>]*>(/[^<]*principal[^<]*)</href>', data)
+print(m.group(1) if m else '')
+"
+)
+
+  if [[ -z "$principal" ]]; then
+    # No discovery needed (non-iCloud server), use base URL
+    echo "$CALDAV_BASE" > "$cache"
+    cat "$cache"
+    return
+  fi
+
+  # Step 2: find calendar-home from principal
+  local home
+  home=$(_curl -X PROPFIND -H "Content-Type: application/xml" -H "Depth: 0" \\
+    -d '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><c:calendar-home-set/></d:prop></d:propfind>' \\
+    "$CALDAV_BASE$principal" 2>/dev/null | python3 -c "
+import sys, re
+data = sys.stdin.read()
+m = re.search(r'<href[^>]*>(https://[^<]+)</href>', data)
+print(m.group(1).rstrip('/') if m else '')
+"
+)
+
+  if [[ -z "$home" ]]; then
+    echo "$CALDAV_BASE" > "$cache"
+  else
+    # Remove trailing slash for consistency
+    echo "\${home%/}" > "$cache"
+  fi
+  cat "$cache"
+}
+
+# Discover all calendar collection URLs under the home
+_discover_calendars() {
+  local home
+  home=$(_discover_home)
+  _curl -X PROPFIND -H "Content-Type: application/xml" -H "Depth: 1" \\
+    -d '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:displayname/><d:resourcetype/></d:prop></d:propfind>' \\
+    "$home/" 2>/dev/null | python3 -c "
+import sys, re, json
+data = sys.stdin.read()
+cals = []
+for resp in re.finditer(r'<response[^>]*>(.*?)</response>', data, re.DOTALL):
+    block = resp.group(1)
+    if 'calendar' not in block:
+        continue
+    href = re.search(r'<href[^>]*>(.*?)</href>', block)
+    name = re.search(r'<displayname[^>]*>(.*?)</displayname>', block)
+    if href:
+        cals.append({
+            'name': name.group(1).strip() if name else '(unnamed)',
+            'href': href.group(1).strip(),
+        })
+print(json.dumps(cals))
+"
+}
+
 cmd="\${1:-help}"
 shift 2>/dev/null || true
 
@@ -40,7 +114,25 @@ case "$cmd" in
     days="\${1:-7}"
     start=$(date -u +%Y%m%dT000000Z)
     end=$(date -u -d "+$days days" +%Y%m%dT235959Z 2>/dev/null || date -u -v+\${days}d +%Y%m%dT235959Z)
-    body='<?xml version="1.0" encoding="utf-8"?>
+    home=$(_discover_home)
+    # Query all calendar collections
+    cals=$(_discover_calendars)
+    cal_paths=$(_discover_calendars | python3 -c "
+import sys, json
+for c in json.load(sys.stdin):
+    print(c['href'])
+"
+)
+    all_data=""
+    while IFS= read -r cal_href; do
+      [[ -z "$cal_href" ]] && continue
+      # Build full URL: if href is absolute path, prepend scheme+host from home
+      if [[ "$cal_href" == /* ]]; then
+        cal_url=$(echo "$home" | sed 's|\\(https\\?://[^/]*\\).*|\\1|')"\${cal_href}"
+      else
+        cal_url="$home/$cal_href"
+      fi
+      body='<?xml version="1.0" encoding="utf-8"?>
 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
   <d:prop><d:getetag/><c:calendar-data/></d:prop>
   <c:filter><c:comp-filter name="VCALENDAR">
@@ -49,11 +141,12 @@ case "$cmd" in
     </c:comp-filter>
   </c:comp-filter></c:filter>
 </c:calendar-query>'
-    _curl -X REPORT -H "Content-Type: application/xml" -H "Depth: 1" \\
-      -d "$body" "$CALDAV_BASE/" 2>/dev/null | \\
-      python3 -c "
+      result=$(_curl -X REPORT -H "Content-Type: application/xml" -H "Depth: 1" \\
+        -d "$body" "$cal_url" 2>/dev/null)
+      all_data+="\${result}"
+    done <<< "$cal_paths"
+    echo "$all_data" | python3 -c "
 import sys, re, json
-from datetime import datetime
 data = sys.stdin.read()
 events = []
 for m in re.finditer(r'BEGIN:VEVENT(.*?)END:VEVENT', data, re.DOTALL):
@@ -81,6 +174,23 @@ print()
     start="\${2:?Usage: ical add <title> <start> <end>}"
     end="\${3:?Usage: ical add <title> <start> <end>}"
     uid="clawhq-$(date +%s)-$$"
+    home=$(_discover_home)
+    # Add to first calendar found
+    first_cal=$(_discover_calendars | python3 -c "
+import sys, json
+cals = json.load(sys.stdin)
+print(cals[0]['href'] if cals else '')
+"
+)
+    if [[ -z "$first_cal" ]]; then
+      echo "ical: no calendars found" >&2
+      exit 1
+    fi
+    if [[ "$first_cal" == /* ]]; then
+      cal_url=$(echo "$home" | sed 's|\\(https\\?://[^/]*\\).*|\\1|')"\${first_cal}"
+    else
+      cal_url="$home/$first_cal"
+    fi
     vcal="BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//ClawHQ//EN
@@ -92,7 +202,7 @@ DTEND:$end
 END:VEVENT
 END:VCALENDAR"
     _curl -X PUT -H "Content-Type: text/calendar" \\
-      -d "$vcal" "$CALDAV_BASE/$uid.ics" >/dev/null
+      -d "$vcal" "\${cal_url}$uid.ics" >/dev/null
     echo '{"status":"created","title":"'"$title"'","start":"'"$start"'","end":"'"$end"'","uid":"'"$uid"'"}'
     ;;
   check)
@@ -100,14 +210,10 @@ END:VCALENDAR"
     exec "$0" list 1
     ;;
   calendars)
-    _curl -X PROPFIND -H "Content-Type: application/xml" -H "Depth: 1" \\
-      -d '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>' \\
-      "$CALDAV_BASE/" 2>/dev/null | \\
-      python3 -c "
-import sys, re, json
-data = sys.stdin.read()
-names = re.findall(r'<d:displayname>(.*?)</d:displayname>', data)
-json.dump([{'name': n} for n in names if n], sys.stdout, indent=2)
+    _discover_calendars | python3 -c "
+import sys, json
+cals = json.load(sys.stdin)
+json.dump(cals, sys.stdout, indent=2)
 print()
 "
     ;;
