@@ -48,6 +48,7 @@ import {
 } from "../../evolve/skills/index.js";
 import type { SkillProgress } from "../../evolve/skills/index.js";
 import {
+  addCustomTool,
   availableToolNames,
   formatToolList,
   formatToolListJson,
@@ -384,6 +385,44 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
           }
         } else {
           console.log(chalk.red(`Tool install failed: ${result.error}`));
+          throw new CommandError("", 1);
+        }
+      } finally {
+        spinner.stop();
+      }
+    });
+
+  tool
+    .command("add")
+    .description("Add a custom tool from a file path")
+    .argument("<path>", "Path to the tool script file")
+    .option("-n, --name <name>", "Override tool name (defaults to filename)")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .option("--skip-rebuild", "Skip Stage 2 Docker rebuild")
+    .action(async (sourcePath: string, opts: { name?: string; deployDir: string; skipRebuild?: boolean }) => {
+      ensureInstalled(opts.deployDir);
+      const { resolve } = await import("node:path");
+      const resolvedPath = resolve(sourcePath);
+      const spinner = ora(`Adding custom tool from "${sourcePath}"...`).start();
+      try {
+        const result = await addCustomTool({
+          deployDir: opts.deployDir,
+          sourcePath: resolvedPath,
+          name: opts.name,
+          skipRebuild: opts.skipRebuild,
+        });
+        spinner.stop();
+        if (result.success) {
+          console.log(chalk.green(`Tool "${result.toolName}" added.`));
+          if (result.rebuilt) {
+            console.log(chalk.dim("Stage 2 rebuild complete."));
+          } else if (result.error) {
+            console.log(chalk.yellow(result.error));
+          } else if (opts.skipRebuild) {
+            console.log(chalk.dim("Rebuild skipped. Run 'clawhq build' to apply changes."));
+          }
+        } else {
+          console.log(chalk.red(`Tool add failed: ${result.error}`));
           throw new CommandError("", 1);
         }
       } finally {

@@ -38,6 +38,18 @@ export interface ToolInstallOptions {
   readonly skipRebuild?: boolean;
 }
 
+/** Options for adding a custom tool from a file path. */
+export interface ToolAddOptions {
+  /** Path to the deployment directory (default: ~/.clawhq). */
+  readonly deployDir: string;
+  /** Path to the tool script file to add. */
+  readonly sourcePath: string;
+  /** Optional name override (defaults to filename). */
+  readonly name?: string;
+  /** Skip the Stage 2 rebuild after install. */
+  readonly skipRebuild?: boolean;
+}
+
 /** Result of a tool installation. */
 export interface ToolInstallResult {
   readonly success: boolean;

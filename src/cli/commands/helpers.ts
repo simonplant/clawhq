@@ -5,7 +5,7 @@ import { stringify as yamlStringify } from "yaml";
 import type { DeployProgress } from "../../build/launcher/index.js";
 import type { PrereqCheckResult } from "../../build/installer/index.js";
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
-import { generateAllowlistContent, generateBundle, generateIdentityFiles } from "../../design/configure/index.js";
+import { generateAllowlistContent, generateBundle, generateIdentityFiles, generateToolFiles } from "../../design/configure/index.js";
 import { generateOpsAutomationFiles } from "../../operate/automation/index.js";
 
 export function formatPrereqCheck(check: PrereqCheckResult): void {
@@ -114,6 +114,12 @@ export function bundleToFiles(
     ...identityFiles.map((f) => ({
       relativePath: f.relativePath,
       content: f.content,
+    })),
+    // Workspace tools (email, ical, todoist, sanitize, etc.)
+    ...generateToolFiles(blueprint).map((f) => ({
+      relativePath: f.relativePath,
+      content: f.content,
+      mode: f.mode,
     })),
     // Operational automation scripts + systemd units
     ...generateOpsAutomationFiles(

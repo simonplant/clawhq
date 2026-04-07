@@ -22,6 +22,7 @@ import {
 } from "./manifest.js";
 import { TOOL_REGISTRY } from "./registry.js";
 import type {
+  ToolAddOptions,
   ToolInstallOptions,
   ToolInstallResult,
   ToolListOptions,
@@ -100,6 +101,107 @@ export async function installTool(
         toolName: name,
         rebuilt: false,
         error: `Tool installed but Stage 2 rebuild failed: ${rebuildResult.error}`,
+      };
+    }
+    rebuilt = true;
+  }
+
+  return { success: true, toolName: name, rebuilt };
+}
+
+// ── Add Custom Tool ────────────────────────────────────────────────────────
+
+/**
+ * Add a custom tool from a file path.
+ *
+ * Unlike installTool (which uses the registry), this accepts any executable
+ * script. The tool is vetted for basic safety (shebang, no binary content),
+ * copied to workspace/tools/, tracked in the manifest as source: "custom",
+ * and triggers a Stage 2 rebuild.
+ */
+export async function addCustomTool(
+  options: ToolAddOptions,
+): Promise<ToolInstallResult> {
+  const { deployDir, sourcePath } = options;
+  const { basename } = await import("node:path");
+
+  // Derive tool name from filename (strip extension)
+  const fileName = basename(sourcePath);
+  const name = options.name ?? fileName.replace(/\.(sh|bash|py|js|ts)$/, "");
+
+  // Validate source exists and is readable
+  if (!existsSync(sourcePath)) {
+    return {
+      success: false,
+      toolName: name,
+      rebuilt: false,
+      error: `Source file not found: ${sourcePath}`,
+    };
+  }
+
+  // Read and validate content
+  const content = await readFile(sourcePath, "utf-8");
+
+  // Must have a shebang
+  if (!content.startsWith("#!")) {
+    return {
+      success: false,
+      toolName: name,
+      rebuilt: false,
+      error: `Tool script must start with a shebang (e.g. #!/usr/bin/env bash). Got: ${content.slice(0, 40)}`,
+    };
+  }
+
+  // Reject binary content (NUL bytes)
+  if (content.includes("\0")) {
+    return {
+      success: false,
+      toolName: name,
+      rebuilt: false,
+      error: "Tool script appears to contain binary content. Only text scripts are supported.",
+    };
+  }
+
+  // Check if already installed
+  const manifest = await loadToolManifest(deployDir);
+  const existing = manifest.tools.find((t) => t.name === name);
+  if (existing) {
+    return {
+      success: false,
+      toolName: name,
+      rebuilt: false,
+      error: `Tool "${name}" is already installed. Remove it first to reinstall.`,
+    };
+  }
+
+  // Write to workspace/tools/
+  const toolsDir = join(deployDir, "workspace", "tools");
+  mkdirSync(toolsDir, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(toolsDir, DIR_MODE_SECRET);
+
+  const toolPath = join(toolsDir, name);
+  await writeFile(toolPath, content, "utf-8");
+  await chmod(toolPath, FILE_MODE_EXEC);
+
+  // Update manifest
+  const entry: ToolManifestEntry = {
+    name,
+    source: `custom:${sourcePath}`,
+    installedAt: new Date().toISOString(),
+  };
+  const updated = upsertEntry(manifest, entry);
+  await saveToolManifest(deployDir, updated);
+
+  // Trigger Stage 2 rebuild
+  let rebuilt = false;
+  if (!options.skipRebuild) {
+    const rebuildResult = await triggerStage2Rebuild(deployDir, updated.tools.map((t) => t.name));
+    if (!rebuildResult.success) {
+      return {
+        success: true,
+        toolName: name,
+        rebuilt: false,
+        error: `Tool added but Stage 2 rebuild failed: ${rebuildResult.error}`,
       };
     }
     rebuilt = true;

@@ -7,7 +7,7 @@
  */
 
 // Lifecycle
-export { installTool, listTools, removeTool } from "./lifecycle.js";
+export { addCustomTool, installTool, listTools, removeTool } from "./lifecycle.js";
 
 // Registry
 export { availableToolNames, TOOL_REGISTRY } from "./registry.js";
@@ -20,6 +20,7 @@ export { formatToolList, formatToolListJson } from "./list.js";
 
 // Types
 export type {
+  ToolAddOptions,
   ToolInstallOptions,
   ToolInstallResult,
   ToolListOptions,
