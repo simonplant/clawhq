@@ -1,5 +1,6 @@
 name: Personal Finance Assistant
 version: "1.0.0"
+profile_ref: markets
 
 use_case_mapping:
   replaces: Mint / YNAB / Manual Spreadsheet Tracking

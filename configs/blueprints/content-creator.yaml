@@ -1,5 +1,6 @@
 name: Content Creator
 version: "1.0.0"
+profile_ref: marketing
 
 use_case_mapping:
   replaces: Manual Blog / Newsletter Workflow

@@ -416,6 +416,104 @@ describe("generateBundle", () => {
   });
 });
 
+describe("profile-driven tools.deny", () => {
+  it("blueprint with profile_ref 'dev' gets no tools denied", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, profile_ref: "dev" };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    expect(bundle.openclawConfig.tools?.deny).toBeUndefined();
+  });
+
+  it("blueprint with profile_ref 'lifeops' gets browser and nodes denied", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, profile_ref: "lifeops" };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    expect(bundle.openclawConfig.tools?.deny).toContain("browser");
+    expect(bundle.openclawConfig.tools?.deny).toContain("nodes");
+  });
+
+  it("blueprint-level deny adds to profile deny", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = {
+      ...loaded.blueprint,
+      profile_ref: "lifeops",
+      toolbelt: { ...loaded.blueprint.toolbelt, deny: ["gateway"] },
+    };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const deny = bundle.openclawConfig.tools?.deny;
+    expect(deny).toContain("browser");
+    expect(deny).toContain("nodes");
+    expect(deny).toContain("gateway");
+  });
+
+  it("blueprint-level allow overrides profile deny", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = {
+      ...loaded.blueprint,
+      profile_ref: "lifeops",
+      toolbelt: { ...loaded.blueprint.toolbelt, allow: ["browser"] },
+    };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const deny = bundle.openclawConfig.tools?.deny;
+    expect(deny).toContain("nodes");
+    expect(deny).not.toContain("browser");
+  });
+
+  it("deny-wins: tool in both blueprint deny and allow stays denied", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = {
+      ...loaded.blueprint,
+      profile_ref: "lifeops",
+      toolbelt: { ...loaded.blueprint.toolbelt, deny: ["browser"], allow: ["browser"] },
+    };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    expect(bundle.openclawConfig.tools?.deny).toContain("browser");
+  });
+
+  it("no profile_ref means no tools.deny", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, profile_ref: undefined };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    expect(bundle.openclawConfig.tools?.deny).toBeUndefined();
+  });
+
+  it("markets profile denies nodes but allows browser", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, profile_ref: "markets" };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const deny = bundle.openclawConfig.tools?.deny;
+    expect(deny).toContain("nodes");
+    expect(deny).not.toContain("browser");
+  });
+
+  it("existing blueprints with profile_ref still pass full validation", () => {
+    const blueprintNames = [
+      "email-manager", "family-hub", "founders-ops",
+      "replace-chatgpt-plus", "replace-google-assistant", "replace-my-pa",
+      "research-copilot",
+    ];
+
+    for (const name of blueprintNames) {
+      const loaded = loadBlueprint(name);
+      expect(loaded.blueprint.profile_ref).toBeDefined();
+      const answers = makeAnswers({
+        blueprint: loaded.blueprint,
+        blueprintPath: loaded.sourcePath,
+      });
+      const bundle = generateBundle(answers);
+      const report = validateBundle(bundle);
+      expect(report.valid, `Blueprint "${name}" should pass validation with profile_ref`).toBe(true);
+    }
+  });
+});
+
 describe("delegated action rules", () => {
   it("generates delegatedRulesFile for blueprints with delegation_rules", () => {
     const loaded = loadBlueprint("email-manager");

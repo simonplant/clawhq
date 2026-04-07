@@ -1,5 +1,6 @@
 name: Replace my PA
 version: "1.0.0"
+profile_ref: lifeops
 
 use_case_mapping:
   replaces: Personal Assistant

@@ -202,6 +202,10 @@ export interface Toolbelt {
   readonly description: string;
   readonly tools: readonly ToolEntry[];
   readonly skills: readonly SkillEntry[];
+  /** Additional tools to deny beyond profile defaults (optional). */
+  readonly deny?: readonly string[];
+  /** Tools to explicitly allow, overriding profile deny (optional). Deny-wins: if a tool appears in both deny and allow, it stays denied. */
+  readonly allow?: readonly string[];
 }
 
 /** A single customization question asked during setup. */
@@ -236,6 +240,9 @@ export interface Blueprint {
   readonly use_case_mapping: UseCaseMapping;
   readonly personality: Personality;
   readonly security_posture: BlueprintSecurityPosture;
+
+  /** Optional mission profile reference — drives default tool deny list and recommended integrations. */
+  readonly profile_ref?: string;
   readonly monitoring: Monitoring;
   readonly memory_policy: MemoryPolicy;
   readonly cron_config: CronConfig;

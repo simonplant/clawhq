@@ -395,6 +395,57 @@ describe("validateBlueprint", () => {
     expect(fbCheck).toBeDefined();
     expect(fbCheck?.message).toContain("fake-model");
   });
+
+  it("accepts valid profile_ref", () => {
+    const yaml = VALID_BLUEPRINT_YAML.replace(
+      'version: "1.0.0"',
+      'version: "1.0.0"\nprofile_ref: lifeops',
+    );
+    const raw = parseYaml(yaml) as Record<string, unknown>;
+    const report = validateBlueprint(raw);
+    const profileCheck = report.results.find((r) => r.check === "cross.profile_ref_valid");
+    expect(profileCheck).toBeDefined();
+    expect(profileCheck?.passed).toBe(true);
+  });
+
+  it("warns on invalid profile_ref", () => {
+    const yaml = VALID_BLUEPRINT_YAML.replace(
+      'version: "1.0.0"',
+      'version: "1.0.0"\nprofile_ref: nonexistent',
+    );
+    const raw = parseYaml(yaml) as Record<string, unknown>;
+    const report = validateBlueprint(raw);
+    const profileCheck = report.warnings.find((r) => r.check === "cross.profile_ref_valid");
+    expect(profileCheck).toBeDefined();
+    expect(profileCheck?.message).toContain("nonexistent");
+  });
+
+  it("warns when toolbelt references a tool denied by its profile", () => {
+    // Add profile_ref: lifeops (denies browser) and a tool named "browser" in the toolbelt
+    const yaml = VALID_BLUEPRINT_YAML
+      .replace('version: "1.0.0"', 'version: "1.0.0"\nprofile_ref: lifeops')
+      .replace(
+        "    - name: email\n      category: email\n      required: true\n      description: \"Email tool\"",
+        "    - name: email\n      category: email\n      required: true\n      description: \"Email tool\"\n    - name: browser\n      category: web\n      required: false\n      description: \"Web browser\"",
+      );
+    const raw = parseYaml(yaml) as Record<string, unknown>;
+    const report = validateBlueprint(raw);
+    const deniedCheck = report.warnings.find((r) => r.check === "cross.toolbelt_denied_tool.browser");
+    expect(deniedCheck).toBeDefined();
+    expect(deniedCheck?.message).toContain("denied by profile");
+  });
+
+  it("does not warn when toolbelt tools are not in profile deny list", () => {
+    const yaml = VALID_BLUEPRINT_YAML.replace(
+      'version: "1.0.0"',
+      'version: "1.0.0"\nprofile_ref: dev',
+    );
+    const raw = parseYaml(yaml) as Record<string, unknown>;
+    const report = validateBlueprint(raw);
+    const noConflict = report.results.find((r) => r.check === "cross.toolbelt_denied_tools");
+    expect(noConflict).toBeDefined();
+    expect(noConflict?.passed).toBe(true);
+  });
 });
 
 // ── templateToChoice Tests ──────────────────────────────────────────────────

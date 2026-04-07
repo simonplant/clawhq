@@ -1,5 +1,6 @@
 name: Stock Trading Assistant
 version: "1.0.0"
+profile_ref: markets
 
 use_case_mapping:
   replaces: Bloomberg Terminal / Manual Market Monitoring
