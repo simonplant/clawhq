@@ -497,12 +497,12 @@ function renderOpenclawJson(
     },
     agents: {
       defaults: {
-        model: buildModelConfig(providers),
+        model: buildModelConfig(providers, composition.model),
         subagents: {
-          model: buildModelConfig(providers).primary,
+          model: buildModelConfig(providers, composition.model).primary,
         },
         heartbeat: {
-          model: buildModelConfig(providers).primary,
+          model: buildModelConfig(providers, composition.model).primary,
         },
         memorySearch: {
           provider: "ollama",
@@ -742,15 +742,19 @@ function buildChannels(config: CompositionConfig): Record<string, unknown> {
 // ── Model Config ────────────────────────────────────────────────────────────
 
 /** Build model configuration based on selected providers. */
-function buildModelConfig(providers: Provider[]): Record<string, unknown> {
+/** Default local model - gemma4:26b (MoE, fits in 32GB VRAM without offloading). */
+const DEFAULT_LOCAL_MODEL = "ollama/gemma4:26b";
+
+function buildModelConfig(providers: Provider[], modelOverride?: string): Record<string, unknown> {
+  // User-specified model takes priority
+  if (modelOverride) {
+    return { primary: modelOverride, fallbacks: [] };
+  }
+
   const modelProvider = providers.find((p) => p.domain === "models");
 
   if (!modelProvider) {
-    // Default: local Ollama with Gemma 4
-    return {
-      primary: "ollama/gemma4:31b",
-      fallbacks: [],
-    };
+    return { primary: DEFAULT_LOCAL_MODEL, fallbacks: [] };
   }
 
   switch (modelProvider.id) {
@@ -776,10 +780,7 @@ function buildModelConfig(providers: Provider[]): Record<string, unknown> {
       };
     case "ollama-local":
     default:
-      return {
-        primary: "ollama/gemma4:31b",
-        fallbacks: [],
-      };
+      return { primary: DEFAULT_LOCAL_MODEL, fallbacks: [] };
   }
 }
 

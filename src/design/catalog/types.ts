@@ -85,6 +85,8 @@ export interface CompositionConfig {
   readonly dimension_overrides?: Partial<PersonalityDimensions>;
   readonly soul_overrides?: string;
   readonly extra_tools?: readonly string[];
+  /** Override the default model (e.g. "ollama/gemma4:26b"). */
+  readonly model?: string;
 }
 
 /** User context from config file. */
