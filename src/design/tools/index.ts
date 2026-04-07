@@ -15,14 +15,19 @@ import type { Blueprint } from "../blueprints/types.js";
 
 import { generateApproveActionTool } from "./approve-action.js";
 import { generateEmailTool } from "./email.js";
+import { generateGhTool } from "./gh.js";
+import { generateHaTool } from "./ha.js";
 import { generateIcalTool } from "./ical.js";
 import { generateJournalTool } from "./journal.js";
 import { generateQuoteTool } from "./quote.js";
 import { generateSanitizeTool } from "./sanitize.js";
+import { generateSubstackTool } from "./substack.js";
 import { generateTasksTool } from "./tasks.js";
 import { generateTavilyTool } from "./tavily.js";
 import { generateTodoistSyncTool } from "./todoist-sync.js";
 import { generateTodoistTool } from "./todoist.js";
+import { generateVaultTool } from "./vault.js";
+import { generateXTool } from "./x.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -48,13 +53,18 @@ export interface ToolFileContent {
  */
 const TOOL_GENERATORS: Readonly<Record<string, () => string>> = {
   email: generateEmailTool,
+  gh: generateGhTool,
+  ha: generateHaTool,
   ical: generateIcalTool,
   journal: generateJournalTool,
+  quote: generateQuoteTool,
+  substack: generateSubstackTool,
   tasks: generateTasksTool,
+  tavily: generateTavilyTool,
   todoist: generateTodoistTool,
   "todoist-sync": generateTodoistSyncTool,
-  tavily: generateTavilyTool,
-  quote: generateQuoteTool,
+  vault: generateVaultTool,
+  x: generateXTool,
 };
 
 // ── Generator ───────────────────────────────────────────────────────────────

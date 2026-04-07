@@ -4,6 +4,11 @@ import { loadBlueprint } from "../blueprints/loader.js";
 import type { Blueprint } from "../blueprints/types.js";
 import { generateAgents } from "../identity/agents.js";
 
+import { generateGhTool } from "./gh.js";
+import { generateHaTool } from "./ha.js";
+import { generateSubstackTool } from "./substack.js";
+import { generateVaultTool } from "./vault.js";
+import { generateXTool } from "./x.js";
 import { generateToolWrappers } from "./index.js";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -444,5 +449,212 @@ describe("shell injection prevention", () => {
         ).not.toMatch(/printf\s+'.*\{.*%s.*\}.*'/);
       }
     }
+  });
+});
+
+// ── GitHub Tool ─────────────────────────────────────────────────────────────
+
+describe("gh tool", () => {
+  it("generates a bash script", () => {
+    const content = generateGhTool();
+    expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
+  });
+
+  it("uses credential proxy with /github prefix", () => {
+    const content = generateGhTool();
+    expect(content).toContain("CRED_PROXY_URL");
+    expect(content).toContain("/github");
+  });
+
+  it("falls back to GH_TOKEN", () => {
+    const content = generateGhTool();
+    expect(content).toContain("GH_TOKEN");
+  });
+
+  it("pipes results through _sanitize", () => {
+    const content = generateGhTool();
+    expect(content).toContain("_sanitize");
+    expect(content).toContain("SCRIPT_DIR");
+    expect(content).toContain("--source gh");
+  });
+
+  it("supports repo, issue, pr, release subcommands", () => {
+    const content = generateGhTool();
+    expect(content).toContain("repo)");
+    expect(content).toContain("issue)");
+    expect(content).toContain("prs)");
+    expect(content).toContain("pr)");
+    expect(content).toContain("releases)");
+    expect(content).toContain("release)");
+  });
+
+  it("uses jq for JSON body construction", () => {
+    const content = generateGhTool();
+    expect(content).toContain("jq -n");
+  });
+
+  it("has non-trivial content", () => {
+    expect(generateGhTool().length).toBeGreaterThan(100);
+  });
+});
+
+// ── X/Twitter Tool ──────────────────────────────────────────────────────────
+
+describe("x tool", () => {
+  it("generates a bash script", () => {
+    const content = generateXTool();
+    expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
+  });
+
+  it("uses credential proxy with /x prefix", () => {
+    const content = generateXTool();
+    expect(content).toContain("CRED_PROXY_URL");
+    expect(content).toContain("/x");
+  });
+
+  it("falls back to X_BEARER_TOKEN", () => {
+    const content = generateXTool();
+    expect(content).toContain("X_BEARER_TOKEN");
+  });
+
+  it("pipes results through _sanitize", () => {
+    const content = generateXTool();
+    expect(content).toContain("_sanitize");
+    expect(content).toContain("SCRIPT_DIR");
+    expect(content).toContain("--source x");
+  });
+
+  it("is read-only — no posting commands", () => {
+    const content = generateXTool();
+    expect(content).toContain("Read-only");
+    expect(content).not.toContain("POST");
+  });
+
+  it("supports search, timeline, user subcommands", () => {
+    const content = generateXTool();
+    expect(content).toContain("search)");
+    expect(content).toContain("timeline)");
+    expect(content).toContain("user)");
+  });
+
+  it("uses jq for URL encoding", () => {
+    const content = generateXTool();
+    expect(content).toContain("jq -rn");
+    expect(content).toContain("@uri");
+  });
+});
+
+// ── Substack Tool ───────────────────────────────────────────────────────────
+
+describe("substack tool", () => {
+  it("generates a bash script", () => {
+    const content = generateSubstackTool();
+    expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
+  });
+
+  it("uses credential proxy with /substack prefix", () => {
+    const content = generateSubstackTool();
+    expect(content).toContain("CRED_PROXY_URL");
+    expect(content).toContain("/substack");
+  });
+
+  it("falls back to SUBSTACK_COOKIE", () => {
+    const content = generateSubstackTool();
+    expect(content).toContain("SUBSTACK_COOKIE");
+  });
+
+  it("pipes results through _sanitize", () => {
+    const content = generateSubstackTool();
+    expect(content).toContain("_sanitize");
+    expect(content).toContain("SCRIPT_DIR");
+    expect(content).toContain("--source substack");
+  });
+
+  it("supports latest, search, read subcommands", () => {
+    const content = generateSubstackTool();
+    expect(content).toContain("latest)");
+    expect(content).toContain("search)");
+    expect(content).toContain("read)");
+  });
+});
+
+// ── Home Assistant Tool ─────────────────────────────────────────────────────
+
+describe("ha tool", () => {
+  it("generates a bash script", () => {
+    const content = generateHaTool();
+    expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
+  });
+
+  it("uses credential proxy with /ha prefix", () => {
+    const content = generateHaTool();
+    expect(content).toContain("CRED_PROXY_URL");
+    expect(content).toContain("/ha");
+  });
+
+  it("falls back to HA_TOKEN and HA_URL", () => {
+    const content = generateHaTool();
+    expect(content).toContain("HA_TOKEN");
+    expect(content).toContain("HA_URL");
+  });
+
+  it("supports states, services, call-service, history subcommands", () => {
+    const content = generateHaTool();
+    expect(content).toContain("states)");
+    expect(content).toContain("state)");
+    expect(content).toContain("services)");
+    expect(content).toContain("call-service)");
+    expect(content).toContain("history)");
+  });
+
+  it("has entity allow/deny list for safety", () => {
+    const content = generateHaTool();
+    expect(content).toContain("HA_ENTITY_ALLOW");
+    expect(content).toContain("HA_ENTITY_DENY");
+    expect(content).toContain("_check_entity");
+  });
+
+  it("uses jq for JSON body construction in call-service", () => {
+    const content = generateHaTool();
+    expect(content).toContain("jq -n");
+  });
+});
+
+// ── Vault Tool ──────────────────────────────────────────────────────────────
+
+describe("vault tool", () => {
+  it("generates a bash script", () => {
+    const content = generateVaultTool();
+    expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
+  });
+
+  it("uses credential proxy with /op prefix", () => {
+    const content = generateVaultTool();
+    expect(content).toContain("CRED_PROXY_URL");
+    expect(content).toContain("/op");
+  });
+
+  it("falls back to op CLI with OP_SERVICE_ACCOUNT_TOKEN", () => {
+    const content = generateVaultTool();
+    expect(content).toContain("OP_SERVICE_ACCOUNT_TOKEN");
+    expect(content).toContain("op item get");
+    expect(content).toContain("op item list");
+  });
+
+  it("is read-only — no write commands", () => {
+    const content = generateVaultTool();
+    expect(content).toContain("Read-only");
+    expect(content).toContain("get)");
+    expect(content).toContain("list)");
+    // No create, update, delete subcommands
+    expect(content).not.toContain("create)");
+    expect(content).not.toContain("update)");
+    expect(content).not.toContain("delete)");
+  });
+
+  it("supports get and list subcommands", () => {
+    const content = generateVaultTool();
+    expect(content).toContain("get)");
+    expect(content).toContain("list)");
   });
 });

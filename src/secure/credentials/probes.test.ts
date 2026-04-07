@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { probe1Password, probeAnthropic, probeOpenAI, probeTelegram } from "./probes.js";
+import { probe1Password, probeAnthropic, probeGitHub, probeHomeAssistant, probeOpenAI, probeTelegram, probeX } from "./probes.js";
 
 // ── Fetch Mock ───────────────────────────────────────────────────────────────
 
@@ -266,5 +266,173 @@ describe("probe1Password", () => {
     expect(url).toBe("https://events.1password.com/api/v1/auditevents");
     const headers = init?.headers as Record<string, string>;
     expect(headers["Authorization"]).toBe("Bearer ops_mytoken");
+  });
+});
+
+// ── GitHub Probe ────────────────────────────────────────────────────────────
+
+describe("probeGitHub", () => {
+  it("returns missing when token is absent", async () => {
+    const result = await probeGitHub({});
+    expect(result.ok).toBe(false);
+    expect(result.message).toBe("Not configured");
+    expect(result.envKey).toBe("GH_TOKEN");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid token format", async () => {
+    const result = await probeGitHub({ GH_TOKEN: "bad-token" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("format invalid");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("passes with valid classic token and shows login", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { login: "octocat" }));
+
+    const result = await probeGitHub({ GH_TOKEN: "ghp_testtoken123" });
+    expect(result.ok).toBe(true);
+    expect(result.message).toContain("@octocat");
+  });
+
+  it("passes with valid fine-grained token", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { login: "user" }));
+
+    const result = await probeGitHub({ GH_TOKEN: "github_pat_testtoken" });
+    expect(result.ok).toBe(true);
+  });
+
+  it("fails with 401 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(401));
+
+    const result = await probeGitHub({ GH_TOKEN: "ghp_expired" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("401");
+    expect(result.fix).toContain("Regenerate");
+  });
+
+  it("handles network errors gracefully", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+
+    const result = await probeGitHub({ GH_TOKEN: "ghp_testtoken123" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("unreachable");
+  });
+
+  it("sends correct headers", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { login: "user" }));
+
+    await probeGitHub({ GH_TOKEN: "ghp_mytoken" });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.github.com/user");
+    const headers = init?.headers as Record<string, string>;
+    expect(headers["Authorization"]).toBe("Bearer ghp_mytoken");
+    expect(headers["Accept"]).toBe("application/vnd.github+json");
+  });
+});
+
+// ── X/Twitter Probe ─────────────────────────────────────────────────────────
+
+describe("probeX", () => {
+  it("returns missing when token is absent", async () => {
+    const result = await probeX({});
+    expect(result.ok).toBe(false);
+    expect(result.message).toBe("Not configured");
+    expect(result.envKey).toBe("X_BEARER_TOKEN");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("passes with valid token and 200 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { data: { id: "1" } }));
+
+    const result = await probeX({ X_BEARER_TOKEN: "AAAAAAAAAtest" });
+    expect(result.ok).toBe(true);
+    expect(result.message).toBe("Valid");
+  });
+
+  it("fails with 401 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(401));
+
+    const result = await probeX({ X_BEARER_TOKEN: "expired" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("401");
+  });
+
+  it("fails with 403 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(403));
+
+    const result = await probeX({ X_BEARER_TOKEN: "forbidden" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("403");
+    expect(result.fix).toContain("access");
+  });
+
+  it("sends correct authorization header", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { data: {} }));
+
+    await probeX({ X_BEARER_TOKEN: "mytoken" });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.twitter.com/2/users/me");
+    const headers = init?.headers as Record<string, string>;
+    expect(headers["Authorization"]).toBe("Bearer mytoken");
+  });
+});
+
+// ── Home Assistant Probe ────────────────────────────────────────────────────
+
+describe("probeHomeAssistant", () => {
+  it("returns missing when token is absent", async () => {
+    const result = await probeHomeAssistant({});
+    expect(result.ok).toBe(false);
+    expect(result.message).toBe("Not configured");
+    expect(result.envKey).toBe("HA_TOKEN");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fails when HA_URL is not set", async () => {
+    const result = await probeHomeAssistant({ HA_TOKEN: "sometoken" });
+    expect(result.ok).toBe(false);
+    expect(result.envKey).toBe("HA_URL");
+    expect(result.fix).toContain("HA_URL");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("passes with valid token and 200 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { message: "API running." }));
+
+    const result = await probeHomeAssistant({ HA_TOKEN: "mytoken", HA_URL: "http://ha.local:8123" });
+    expect(result.ok).toBe(true);
+    expect(result.message).toBe("Valid");
+  });
+
+  it("fails with 401 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(401));
+
+    const result = await probeHomeAssistant({ HA_TOKEN: "expired", HA_URL: "http://ha.local:8123" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("401");
+    expect(result.fix).toContain("Regenerate");
+  });
+
+  it("handles network errors gracefully", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+
+    const result = await probeHomeAssistant({ HA_TOKEN: "mytoken", HA_URL: "http://ha.local:8123" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("unreachable");
+    expect(result.fix).toContain("ha.local:8123");
+  });
+
+  it("sends correct headers and URL", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, {}));
+
+    await probeHomeAssistant({ HA_TOKEN: "mytoken", HA_URL: "http://ha.local:8123" });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://ha.local:8123/api/");
+    const headers = init?.headers as Record<string, string>;
+    expect(headers["Authorization"]).toBe("Bearer mytoken");
   });
 });
