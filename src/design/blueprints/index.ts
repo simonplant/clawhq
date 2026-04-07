@@ -40,6 +40,10 @@ export type {
 } from "./delegation-types.js";
 export { matchGlob } from "./delegation-types.js";
 
+// Profiles
+export type { MissionProfileDefaults, MissionProfileId } from "./profiles.js";
+export { isValidProfileId, mergeProfileDeny, MISSION_PROFILE_DEFAULTS, MISSION_PROFILE_IDS } from "./profiles.js";
+
 // Delegation defaults
 export { APPOINTMENT_CONFIRM, EMAIL_DELEGATION_DEFAULTS, UNSUBSCRIBE, VENDOR_REPLY } from "./delegation-defaults.js";
 

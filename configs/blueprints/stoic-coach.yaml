@@ -1,5 +1,6 @@
 name: Stoic Coach
 version: "1.0.0"
+profile_ref: lifeops
 
 use_case_mapping:
   replaces: Life Coaching Apps

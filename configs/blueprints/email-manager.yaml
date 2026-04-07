@@ -1,5 +1,6 @@
 name: Email Manager
 version: "1.0.0"
+profile_ref: lifeops
 
 use_case_mapping:
   replaces: Gmail / Outlook / Apple Mail (manual triage)

@@ -1,5 +1,6 @@
 name: Founder's Ops
 version: "1.0.0"
+profile_ref: lifeops
 
 use_case_mapping:
   replaces: Executive Assistant / Chief of Staff

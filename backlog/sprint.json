@@ -1,31 +1,38 @@
 {
-  "sprintId": "sprint-1775023385",
-  "startedAt": "2026-03-31T23:03:05-07:00",
+  "sprintId": "sprint-1775534092",
+  "startedAt": "2026-04-06T20:54:52-07:00",
   "status": "in_progress",
   "item": {
-    "id": "FEAT-137",
-    "title": "Post-hoc Telegram monitor — host-side secret scanner the agent cannot disable",
-    "intent": "Even if the egress proxy is somehow bypassed (cert issue, proxy crash), a host-side monitor must independently scan outbound Telegram messages and alert on secret detection. Defense-in-depth requires layers the agent cannot control.",
-    "description": "Clawdius pattern: a cron-driven Python script that polls Telegram getUpdates, filters for bot-sent messages, and scans them for secret patterns. Runs on the host (not in container) so the agent cannot disable it. Alerts via email on detection. Reference: clawdius/scripts/telegram-egress-monitor.py.",
+    "id": "FEAT-150",
+    "title": "Mission profile registry — profile-driven tool deny defaults and integration requirements",
+    "intent": "Blueprints must not hardcode tools.deny. Each mission profile (LifeOps, Dev, Research, Markets, Marketing) declares its own default deny list, required tools, and recommended integrations. Blueprint overrides profile defaults.",
+    "description": "Currently tools.deny is not set by the generator (managed clawdius has ['browser','gateway','nodes'] but that was manually applied). Different profiles need different built-in tools: Markets needs browser (charting), Home needs nodes (device control), Dev needs full runtime. A source registry maps profile names to defaults. Blueprints compose profiles; the compiler merges deny/allow lists with deny-wins semantics.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Add telegram-egress-monitor.py generator to src/operate/automation/",
-      "Generate cron schedule (every 5 min during configured waking hours)",
-      "Scan for: env var literal values, base64 variants, token regex patterns",
-      "Alert via configured notification channel on detection",
-      "Add systemd timer generator",
-      "Add doctor check: monitor running, last run recent"
+      "Create src/design/blueprints/profiles.ts with MISSION_PROFILE_DEFAULTS map",
+      "Define defaults for 5 proven profiles: LifeOps (deny: browser, nodes), Dev (deny: none — full access), Research (deny: nodes), Markets (deny: nodes — browser allowed for charting), Marketing (deny: nodes)",
+      "Add profile_ref optional field to Blueprint type in types.ts",
+      "Update buildOpenClawConfig() to merge profile deny defaults with any blueprint-level overrides",
+      "Implement merge logic: profile deny is base, blueprint toolbelt.deny overrides, deny-wins for conflicts",
+      "Add profile defaults for recommended integrations per profile",
+      "Update validate.ts to warn when blueprint toolbelt references tools that are denied by its profile",
+      "Add profile defaults to existing blueprints",
+      "Add unit tests for merge logic and validation warnings"
     ],
     "acceptanceCriteria": [
-      "Host-side monitor script is generated for Telegram-enabled deployments",
-      "Monitor scans bot-sent messages for secret patterns",
-      "Alerts fire on detection via configured notification channel",
-      "Monitor runs independently of the agent container"
+      "MISSION_PROFILE_DEFAULTS has entries for LifeOps, Dev, Research, Markets, Marketing",
+      "Generated openclaw.json tools.deny reflects profile defaults merged with blueprint overrides",
+      "Blueprint with profile_ref: 'dev' gets no tools denied",
+      "Blueprint with profile_ref: 'lifeops' gets browser and nodes denied",
+      "Blueprint-level deny overrides add to (never remove from) profile deny unless explicit allow",
+      "Validation warns when toolbelt references denied tools"
     ],
     "scope": [
-      "src/operate/automation/",
-      "src/operate/doctor/"
+      "src/design/blueprints/profiles.ts",
+      "src/design/blueprints/types.ts",
+      "src/design/blueprints/validate.ts",
+      "src/design/configure/generate.ts"
     ],
-    "startedAt": "2026-03-31T23:03:05-07:00"
+    "startedAt": "2026-04-06T20:54:52-07:00"
   }
 }

@@ -1,5 +1,6 @@
 name: Research Co-pilot
 version: "1.0.0"
+profile_ref: research
 
 use_case_mapping:
   replaces: Academic Research Tools

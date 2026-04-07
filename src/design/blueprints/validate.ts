@@ -15,6 +15,12 @@ import type {
   BlueprintValidationResult,
   BlueprintValidationSeverity,
 } from "./types.js";
+import {
+  isValidProfileId,
+  mergeProfileDeny,
+  MISSION_PROFILE_DEFAULTS,
+  MISSION_PROFILE_IDS,
+} from "./profiles.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -975,6 +981,51 @@ function checkCrossSection(raw: RawBlueprint): BlueprintValidationResult[] {
     results.push(
       fail("cross.unique_skill_names", `Duplicate skill names: ${[...new Set(dupes)].join(", ")}`),
     );
+  }
+
+  // 77: profile_ref validation (optional field)
+  const profileRef = raw.profile_ref;
+  if (profileRef !== undefined) {
+    if (!isStr(profileRef)) {
+      results.push(fail("cross.profile_ref_type", "profile_ref must be a string"));
+    } else if (!isValidProfileId(profileRef)) {
+      results.push(
+        fail(
+          "cross.profile_ref_valid",
+          `profile_ref "${profileRef}" is not a recognized profile — valid profiles: ${MISSION_PROFILE_IDS.join(", ")}`,
+          "warning",
+        ),
+      );
+    } else {
+      results.push(pass("cross.profile_ref_valid", `profile_ref "${profileRef}" is valid`));
+
+      // 78: warn when toolbelt references tools that are denied by its profile
+      const profileDefaults = MISSION_PROFILE_DEFAULTS[profileRef];
+      const bpDeny = isStrArray(toolbelt.deny) ? toolbelt.deny as string[] : [];
+      const bpAllow = isStrArray(toolbelt.allow) ? toolbelt.allow as string[] : [];
+      const effectiveDeny = new Set(mergeProfileDeny(profileDefaults.deny, bpDeny, bpAllow));
+
+      const referencedToolNames = toolbeltTools
+        .filter(isObj)
+        .map((t) => t.name)
+        .filter(isStr);
+
+      for (const toolName of referencedToolNames) {
+        if (effectiveDeny.has(toolName)) {
+          results.push(
+            fail(
+              `cross.toolbelt_denied_tool.${toolName}`,
+              `Toolbelt references tool "${toolName}" which is denied by profile "${profileRef}" — tool will be unusable at runtime`,
+              "warning",
+            ),
+          );
+        }
+      }
+
+      if (referencedToolNames.every((t) => !effectiveDeny.has(t))) {
+        results.push(pass("cross.toolbelt_denied_tools", "No toolbelt tools conflict with profile deny list"));
+      }
+    }
   }
 
   return results;

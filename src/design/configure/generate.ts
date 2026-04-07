@@ -30,6 +30,7 @@ import type {
   ToolFileInfo,
 } from "../../config/types.js";
 import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
+import { isValidProfileId, mergeProfileDeny, MISSION_PROFILE_DEFAULTS } from "../blueprints/profiles.js";
 import type { CompiledDelegationRules } from "../blueprints/delegation-types.js";
 import type { UserContext } from "./types.js";
 import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../identity/index.js";
@@ -101,6 +102,14 @@ function buildOpenClawConfig(
     ? "off"
     : "auto";
 
+  // Profile-driven tool deny list — merge profile defaults with blueprint overrides
+  const profileDeny = bp.profile_ref && isValidProfileId(bp.profile_ref)
+    ? MISSION_PROFILE_DEFAULTS[bp.profile_ref].deny
+    : [];
+  const blueprintDeny = bp.toolbelt.deny ?? [];
+  const blueprintAllow = bp.toolbelt.allow ?? [];
+  const mergedDeny = mergeProfileDeny(profileDeny, blueprintDeny, blueprintAllow);
+
   const config: OpenClawConfig = {
     // LM-04 + LM-05: Tool execution on gateway with full security
     tools: {
@@ -109,6 +118,8 @@ function buildOpenClawConfig(
         security: "full",
         ask: execAsk,
       },
+      // Profile-driven deny list (empty array omitted for cleanliness)
+      ...(mergedDeny.length > 0 ? { deny: mergedDeny } : {}),
       fs: {
         // LM-14: Filesystem access — workspace only by default
         workspaceOnly: false,
