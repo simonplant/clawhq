@@ -1,38 +1,42 @@
 {
-  "sprintId": "sprint-1775534092",
-  "startedAt": "2026-04-06T20:54:52-07:00",
+  "sprintId": "sprint-1775534781",
+  "startedAt": "2026-04-06T21:06:21-07:00",
   "status": "in_progress",
   "item": {
-    "id": "FEAT-150",
-    "title": "Mission profile registry — profile-driven tool deny defaults and integration requirements",
-    "intent": "Blueprints must not hardcode tools.deny. Each mission profile (LifeOps, Dev, Research, Markets, Marketing) declares its own default deny list, required tools, and recommended integrations. Blueprint overrides profile defaults.",
-    "description": "Currently tools.deny is not set by the generator (managed clawdius has ['browser','gateway','nodes'] but that was manually applied). Different profiles need different built-in tools: Markets needs browser (charting), Home needs nodes (device control), Dev needs full runtime. A source registry maps profile names to defaults. Blueprints compose profiles; the compiler merges deny/allow lists with deny-wins semantics.",
+    "id": "FEAT-153",
+    "title": "Identity enrichment — AGENTS.md standard operating procedures and runbook compilation",
+    "intent": "Every generated AGENTS.md must include standard operating procedures that make agents reliable: session startup ritual, memory discipline, data freshness rules, overnight batching, and cron role mapping. Runbooks defined in blueprints must compile into workspace identity files.",
+    "description": "Gap analysis showed the managed AGENTS.md is 2.4KB of minimal content. The manual prototype's is 15KB with procedures that every agent benefits from. These aren't personal — they're operational discipline extracted from production experience. Additionally, the blueprint schema already has a runbooks field but it never compiles to actual workspace files.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Create src/design/blueprints/profiles.ts with MISSION_PROFILE_DEFAULTS map",
-      "Define defaults for 5 proven profiles: LifeOps (deny: browser, nodes), Dev (deny: none — full access), Research (deny: nodes), Markets (deny: nodes — browser allowed for charting), Marketing (deny: nodes)",
-      "Add profile_ref optional field to Blueprint type in types.ts",
-      "Update buildOpenClawConfig() to merge profile deny defaults with any blueprint-level overrides",
-      "Implement merge logic: profile deny is base, blueprint toolbelt.deny overrides, deny-wins for conflicts",
-      "Add profile defaults for recommended integrations per profile",
-      "Update validate.ts to warn when blueprint toolbelt references tools that are denied by its profile",
-      "Add profile defaults to existing blueprints",
-      "Add unit tests for merge logic and validation warnings"
+      "Enrich generateAgents() in src/design/identity/agents.ts with standard operating procedures section",
+      "Add session startup ritual: read SOUL.md → USER.md → daily memory → (main session only) MEMORY.md. Order matters for context priming.",
+      "Add memory discipline: daily logs in memory/YYYY-MM-DD.md (raw), MEMORY.md (curated long-term), USER.md (static facts). Write it down or lose it.",
+      "Add data freshness rules: verify cached data before citing, stale data worse than no data, check tool output timestamps",
+      "Add overnight batching rule: when quiet_hours are configured, batch findings into files, deliver ONE digest at morning_brief time. Never spam overnight unless emergency (circuit breaker, critical alert, system failure).",
+      "Add cron role mapping: auto-generate a table from blueprint.cron_config showing which job does what, when it runs, which model it uses, and what delivery mode",
+      "Scale content by blueprint complexity: minimal blueprint (no cron, low autonomy) gets startup + memory discipline only. Full blueprint gets everything.",
+      "Implement runbook compilation: blueprint.runbooks[] → workspace/identity/*.md files with token budget enforcement",
+      "Add runbook token budget: each runbook file counts against bootstrapMaxChars aggregate, warn if total exceeds limit",
+      "Update TOOLS.md generator to include per-tool quirks from integration registry (not just names)",
+      "Add unit tests for each SOP section and runbook compilation"
     ],
     "acceptanceCriteria": [
-      "MISSION_PROFILE_DEFAULTS has entries for LifeOps, Dev, Research, Markets, Marketing",
-      "Generated openclaw.json tools.deny reflects profile defaults merged with blueprint overrides",
-      "Blueprint with profile_ref: 'dev' gets no tools denied",
-      "Blueprint with profile_ref: 'lifeops' gets browser and nodes denied",
-      "Blueprint-level deny overrides add to (never remove from) profile deny unless explicit allow",
-      "Validation warns when toolbelt references denied tools"
+      "Generated AGENTS.md includes session startup ritual with correct read order",
+      "Generated AGENTS.md includes memory discipline section",
+      "Generated AGENTS.md includes data freshness rules",
+      "Generated AGENTS.md includes overnight batching when quiet_hours configured",
+      "Generated AGENTS.md includes cron role mapping table when cron_config has jobs",
+      "Content scales: simple blueprints get 2-3 sections, complex blueprints get all 5",
+      "Blueprint runbooks compile to workspace/identity/*.md files",
+      "Total identity file size stays within bootstrapMaxChars (20,000 default)",
+      "TOOLS.md includes tool-specific quirks, not just names"
     ],
     "scope": [
-      "src/design/blueprints/profiles.ts",
-      "src/design/blueprints/types.ts",
-      "src/design/blueprints/validate.ts",
+      "src/design/identity/agents.ts",
+      "src/design/identity/tools.ts",
       "src/design/configure/generate.ts"
     ],
-    "startedAt": "2026-04-06T20:54:52-07:00"
+    "startedAt": "2026-04-06T21:06:21-07:00"
   }
 }

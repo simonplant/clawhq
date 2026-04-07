@@ -9,12 +9,13 @@
  */
 
 import type { Blueprint, ToolEntry } from "../blueprints/types.js";
+import { getQuirksForCategory } from "../../evolve/integrate/registry.js";
 
 /**
  * Generate TOOLS.md content from a blueprint's toolbelt.
  *
  * Produces a role-organized tool reference covering:
- * - Tools grouped by category
+ * - Tools grouped by category with per-tool quirks from integration registry
  * - Required vs optional indicators
  * - Descriptions for each tool
  * - Skills with their descriptions
@@ -44,6 +45,16 @@ export function generateTools(blueprint: Blueprint): string {
     for (const tool of tools) {
       const req = tool.required ? "**required**" : "optional";
       sections.push(`- **${tool.name}** (${req}) — ${tool.description}`);
+    }
+
+    // Include integration quirks for this category
+    const quirks = getQuirksForCategory(category);
+    if (quirks.length > 0) {
+      sections.push("");
+      sections.push(`**${formatCategory(category)} quirks:**`);
+      for (const quirk of quirks) {
+        sections.push(`- ${quirk}`);
+      }
     }
 
     sections.push("");
