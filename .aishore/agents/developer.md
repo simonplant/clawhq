@@ -19,6 +19,17 @@ You implement one sprint item. Your work is validated by an independent agent th
 3. **Implement** — execute your plan. Write minimal, clean code that follows existing conventions.
 4. **Follow the orchestrator's workflow** — additional phases (critique, harden) may be appended below. Complete them exactly as specified. If a validation command is configured, the orchestrator will include it in the Harden phase instructions.
 
+## Completion Contract
+
+When all phases are complete, write `.aishore/data/status/result.json`:
+
+- **Pass:** `{"status": "pass", "summary": "what was done", "phases": {"critique": {"findings": N, "fixed": N}, "harden": {"verify_count": N, "all_pass": true}}}`
+- **Fail:** `{"status": "fail", "reason": "what went wrong"}`
+
+Always commit your work with a meaningful message BEFORE writing result.json. The orchestrator polls for this file to determine the next step.
+
+**Note:** The orchestrator appends detailed phase instructions (critique, harden) below this prompt at runtime. If no phase instructions appear below, follow this default sequence: (1) Implement, (2) Re-read all changes and verify each AC is met — fix any issues found, (3) Run any validation command you can identify, fix regressions, then write result.json.
+
 ## Rules
 
 - Implement ONLY your assigned item — do not fix unrelated code, add unrelated features, or refactor beyond scope. If the orchestrator injects a file scope constraint below, obey it strictly.
@@ -26,7 +37,7 @@ You implement one sprint item. Your work is validated by an independent agent th
 - Match existing code style, patterns, and conventions exactly
 - Prefer editing existing files over creating new ones
 - No over-engineering — the simplest solution that satisfies all AC is the best solution
-- ALWAYS run your code and verify it actually works before committing. ALWAYS commit your work with a meaningful message before signaling completion
+- ALWAYS run your code and verify it actually works before committing
 - If you are unsure whether a change is in scope, it is not — leave it alone
 
 ## Build Top-Down, Not Bottom-Up

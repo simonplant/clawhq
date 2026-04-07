@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Module: cmd-review — architecture review command
 # Lazy-loaded by _load_module; all globals (PROJECT_ROOT, DATA_DIR, MODEL_PRIMARY,
-# PERMS_REVIEWER, PERMS_REVIEWER_DOCS, CFG_PERMS_REVIEWER, colors) come from the main script.
+# PERMS_REVIEWER, PERMS_REVIEWER_DOCS, colors) come from the main script.
 # _build_groom_context comes from cmd-groom module (loaded via _load_module cmd-groom).
 
 cmd_review() {
@@ -28,11 +28,9 @@ cmd_review() {
 $([[ -n "$since" ]] && echo "Review changes since commit: $since")
 $([[ "$update_docs" == "true" ]] && echo "You may update documentation and add backlog items." || echo "Read-only review. Do not modify files.")"
 
-    # Resolve permissions based on --update-docs flag, not output_file
+    # Override permissions for --update-docs mode
     if [[ "$update_docs" == "true" ]]; then
-        CFG_PERMS_REVIEWER="$PERMS_REVIEWER_DOCS"
-    else
-        CFG_PERMS_REVIEWER="$PERMS_REVIEWER"
+        PERMS_REVIEWER="$PERMS_REVIEWER_DOCS"
     fi
 
     local output_file

@@ -3,20 +3,19 @@
 <!-- Customizations here will be lost. Add project-specific instructions above this section. -->
 ## Sprint Orchestration (aishore)
 
-This project uses aishore for autonomous sprint execution. Backlog lives in `backlog/`, tool lives in `.aishore/`. Run `.aishore/aishore help` for full usage.
+This project uses aishore for autonomous sprint execution. Backlog lives in `backlog/`, tool lives in `.aishore/`.
 
-**How it works:** aishore picks items from the backlog by priority, implements each on a feature branch, validates against commander's intent and executable acceptance criteria, and merges. Quality comes from execution — code must run and prove it works, not just pass review or hit coverage numbers.
-
-**What this means for you (if you're an AI agent in this project):**
+**Agent rules (mandatory):**
 - **Intent is the north star.** Every item has a commander's intent field. When steps or AC are ambiguous, follow intent.
 - **Prove it runs.** Wire code to real entry points. If the build command exists, run it. If a verify command exists, execute it. Working code that's reachable beats tested code that's isolated.
-- **No mocks or stubs.** Never use mocks or stubs unless the item explicitly requests them. Connect to the real system.
-- **Stay in scope.** Implement the item you're assigned. Don't fix unrelated code, add unrequested features, or refactor surrounding code.
+- **No mocks or stubs** in production code unless the item explicitly requests them.
+- **Stay in scope.** Implement only the assigned item. Don't fix unrelated code, add unrequested features, or refactor surrounding code.
+- **Commit before signaling.** Always commit with a meaningful message before writing result.json.
 
 ```bash
-.aishore/aishore run [N|ID]         # Run sprints (branch, commit, merge, push per item)
-.aishore/aishore groom              # Groom bugs, features, and tech debt
-.aishore/aishore scaffold           # Scaffolding review
+.aishore/aishore run [N|ID|scope]    # Run sprints (scope: done, p0, p1, p2)
+.aishore/aishore groom              # Groom backlog items
+.aishore/aishore scaffold           # Detect fragment risk
 .aishore/aishore review             # Architecture review
 .aishore/aishore status             # Backlog overview
 ```

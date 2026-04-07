@@ -103,7 +103,7 @@ Every scaffolding item you add must be complete and sprint-ready. Include ALL of
 - **Title** — what gets wired up
 - **Intent** — the non-negotiable outcome (≥20 chars)
 - **Description** — enough context for a developer to implement without guessing
-- **Steps** — concrete implementation steps (use `--step` flag, repeatable)
+- **Steps** — concrete implementation steps (use `--steps` flag, repeatable)
 - **Acceptance criteria** — verifiable outcomes (use `--ac` flag, repeatable)
 - **Priority** — `must` (scaffolding blocks feature work)
 - **Ready** — mark `--ready` so it's immediately pickable

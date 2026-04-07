@@ -2,7 +2,7 @@ aishore - iterative intent-based development with evals (v__VERSION__)
 Copyright (C) 2025-2026 Simon Plant. Licensed under Apache-2.0. See LICENSE.
 
 Usage: .aishore/aishore <command> [options]
-       .aishore/aishore run [<count>|<ID>|<scope>] [--limit N] [--retries N] [--max-failures N] [--no-merge] [--pr] [--dry-run]
+       .aishore/aishore run [<count>|<ID>|<scope>] [--limit N] [--retries N] [--max-failures N] [--no-merge] [--dry-run]
 
 Commands:
   backlog list      List all items (features + bugs)
@@ -31,11 +31,13 @@ Commands:
     --steps "text"  Set implementation steps (repeatable, replaces all steps),
     --scope "glob"  Set scope globs (repeatable, replaces all scope),
     --ac "text", --ac-verify "cmd"  Set acceptance criteria (repeatable, replaces all AC),
-    --depends-on ID  Set dependencies (repeatable, replaces all deps)
+    --depends-on ID  Set dependencies (repeatable, replaces all deps),
+    --clear-depends  Remove all dependencies
   backlog check <ID> Check readiness gates (title, intent, steps, AC, step length)
     --all           Audit every non-done item and print a summary table
   backlog rm <ID>   Remove an item (with confirmation)
     --force         Skip confirmation
+  backlog populate  Populate backlog from PRODUCT.md (AI-assisted)
 
   run [count]       Run N sprints (default: 1, feature branches, push/pull)
   run <ID>          Run specific item by ID (e.g., TEST-006)
@@ -47,8 +49,7 @@ Commands:
     --limit N       Cap session at N successful items then exit cleanly
     --max-failures N  Consecutive failures before stopping (default: 5)
     --retries N     Per-item retry attempts on failure
-    --no-merge      Keep feature branches for PR review
-    --pr            Create GitHub PR (implies --no-merge, requires gh CLI)
+    --no-merge      Keep feature branches for review
     --dry-run       Preview without running agents
 
   groom             Groom bugs, features, and tech debt
@@ -59,8 +60,10 @@ Commands:
     --since <hash>  Review since specific commit
 
   status            Show backlog overview and sprint readiness
-  update            Update from upstream (--dry-run to check, --force to override)
+  update            Update from upstream (--dry-run to check, --force to override, --ref SHA)
   clean             Archive and remove done items (--dry-run to preview, --no-archive to skip)
+    --regression    Clear the regression suite (backup created before removal)
+  checksums         Regenerate checksums.sha256 manifest
   init              Setup wizard — checks prerequisites, configures project
     -y, --yes       Accept all detected defaults (non-interactive)
   version, -v, --version   Show version
@@ -70,8 +73,7 @@ Examples:
   .aishore/aishore run done                # Drain entire backlog
   .aishore/aishore run p1 --retries 2      # Complete must + should, with retries
   .aishore/aishore run FEAT-001            # Run specific item
-  .aishore/aishore run --no-merge 3        # Keep branches for PR review
-  .aishore/aishore run --pr FEAT-001       # Create GitHub PR for review
+  .aishore/aishore run --no-merge 3        # Keep branches for review
   .aishore/aishore scaffold                # Detect missing scaffolding, add skeleton items
   .aishore/aishore update --dry-run        # Check for updates
 

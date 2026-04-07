@@ -26,11 +26,14 @@ LAST_AGENT_LOG=""
 cleanup_exit() {
     # Restore tool file permissions on unexpected exit
     _unlock_tool_files 2>/dev/null || true
-    # Clean up worktree on unexpected exit
+    # Clean up worktree directory but KEEP the branch so work is recoverable
     if [[ -n "$AISHORE_WORKTREE_DIR" ]]; then
-        _remove_worktree "$AISHORE_WORKTREE_DIR" "$AISHORE_FEATURE_BRANCH"
+        _remove_worktree "$AISHORE_WORKTREE_DIR"
         AISHORE_WORKTREE_DIR=""
-        AISHORE_FEATURE_BRANCH=""
+        if [[ -n "$AISHORE_FEATURE_BRANCH" ]]; then
+            log_warning "Branch '$AISHORE_FEATURE_BRANCH' preserved — recover with: git checkout $AISHORE_FEATURE_BRANCH"
+            AISHORE_FEATURE_BRANCH=""
+        fi
     fi
     release_lock
     [[ -n "$AISHORE_TMPDIR" && -d "$AISHORE_TMPDIR" ]] && rm -rf "$AISHORE_TMPDIR"
@@ -41,14 +44,6 @@ trap cleanup_exit EXIT
 ensure_tmpdir() {
     [[ -z "$AISHORE_TMPDIR" ]] && AISHORE_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/aishore.XXXXXX")
     printf '%s\n' "$AISHORE_TMPDIR"
-}
-
-reverse_lines() {
-    if command -v tac &>/dev/null; then
-        tac
-    else
-        awk '{lines[NR]=$0} END{for(i=NR;i>=1;i--) print lines[i]}'
-    fi
 }
 
 # Convert a comma-separated or newline-separated string to a JSON array
@@ -101,7 +96,6 @@ STREAMING_ENABLED="true"
 STREAMING_MAX_LINES="20"
 OUTPUT_TRUNCATE_LINES="50"
 MERGE_STRATEGY="merge"
-CREATE_PR="false"
 TIMEOUT_MINUTES="0"
 SESSION_RETRIES="0"
 SESSION_LIMIT=""
@@ -144,21 +138,6 @@ portable_date_epoch() {
         echo 0
 }
 
-# Portable UUID v4 generator for session IDs
-_generate_uuid() {
-    if command -v uuidgen &>/dev/null; then
-        uuidgen | tr '[:upper:]' '[:lower:]'
-    elif [[ -r /proc/sys/kernel/random/uuid ]]; then
-        cat /proc/sys/kernel/random/uuid
-    elif command -v python3 &>/dev/null; then
-        python3 -c "import uuid; print(uuid.uuid4())"
-    else
-        # Fallback: hex from /dev/urandom
-        od -An -tx1 -N16 /dev/urandom 2>/dev/null | tr -d ' \n' | \
-            sed 's/^\(.\{8\}\)\(.\{4\}\).\(.\{3\}\).\(.\{3\}\)\(.\{12\}\)$/\1-\2-4\3-a\4-\5/'
-    fi
-}
-
 # Default permission sets per agent role
 PERMS_DEVELOPER="Agent,Bash,Edit,Write,Read,Glob,Grep,EnterPlanMode,ExitPlanMode"
 PERMS_VALIDATOR="Bash,Read,Glob,Grep"
@@ -166,13 +145,8 @@ PERMS_REVIEWER="Read,Glob,Grep"
 # shellcheck disable=SC2034 # used in cmd-review.sh (sourced at runtime)
 PERMS_REVIEWER_DOCS="Read,Glob,Grep,Edit,Write"
 
-# Config overrides (set by load_config if permissions section exists in config.yaml)
-CFG_PERMS_DEVELOPER=""
-CFG_PERMS_VALIDATOR=""
-CFG_PERMS_REVIEWER=""
-
-# Shared constants
-BACKLOG_FILES=("backlog.json" "bugs.json")
+# Shared constants (hardcoded — not configurable)
+readonly BACKLOG_FILES=("backlog.json" "bugs.json")
 ITEM_PROJECTION='{id, title, intent, description, steps, acceptanceCriteria, priority, scope, category, status: (.status // "todo"), passes: (.passes // false)}'
 # Shared jq function for priority ordering — used inline via string interpolation
 JQ_PRIO_RANK='def prio_rank: {"must":0,"should":1,"could":2}[.] // 3;'
@@ -359,14 +333,17 @@ run_validated_command() {
 }
 
 # Ensure agent's work is committed (safety net if agent missed it)
+# Excludes backlog/ and .aishore/ — only code changes belong on the feature branch.
 _safety_commit() {
     local item_id="$1"
-    if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null || [[ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ]]; then
+    if ! git diff -- ':!backlog/' ':!.aishore/' --quiet 2>/dev/null \
+        || ! git diff --cached -- ':!backlog/' ':!.aishore/' --quiet 2>/dev/null \
+        || [[ -n "$(git ls-files --others --exclude-standard -- ':!backlog/' ':!.aishore/' 2>/dev/null)" ]]; then
         log_warning "Agent left uncommitted changes — committing"
         local summary
         summary=$(jq -r '.summary // ""' "$STATUS_DIR/result.json" 2>/dev/null || echo "")
         summary="${summary:0:500}"
-        git add -A || { log_error "git add failed in safety commit"; return 1; }
+        git add -A -- ':!backlog/' ':!.aishore/' || { log_error "git add failed in safety commit"; return 1; }
         git commit -m "feat($item_id): ${summary:-implement sprint item}
 
 Co-Authored-By: Claude <noreply@anthropic.com>" || { log_error "git commit failed in safety commit"; return 1; }
@@ -378,8 +355,8 @@ _remove_worktree() {
     local wt_dir="$1" branch="${2:-}"
     cd "$PROJECT_ROOT" || { log_error "Cannot cd to $PROJECT_ROOT"; return 1; }
     git worktree remove "$wt_dir" --force 2>/dev/null || true
-    [[ -d "$wt_dir" ]] && rm -rf "$wt_dir" 2>/dev/null || true
-    [[ -n "$branch" ]] && git branch -D "$branch" 2>/dev/null || true
+    if [[ -d "$wt_dir" ]]; then rm -rf "$wt_dir" 2>/dev/null || true; fi
+    if [[ -n "$branch" ]]; then git branch -D "$branch" 2>/dev/null || true; fi
 }
 
 # ============================================================================
@@ -597,16 +574,12 @@ load_config() {
             ".streaming.max_lines  STREAMING_MAX_LINES"
             ".output.truncate_lines OUTPUT_TRUNCATE_LINES"
             ".merge.strategy        MERGE_STRATEGY"
-            ".pr.create             CREATE_PR"
             ".timeout_minutes      TIMEOUT_MINUTES"
             ".run.retries          SESSION_RETRIES"
             ".run.limit            SESSION_LIMIT"
             ".agent.max_turns.developer MAX_TURNS_DEVELOPER"
             ".agent.max_turns.validator MAX_TURNS_VALIDATOR"
             ".agent.max_turns.groomer   MAX_TURNS_GROOMER"
-            ".permissions.developer CFG_PERMS_DEVELOPER"
-            ".permissions.validator CFG_PERMS_VALIDATOR"
-            ".permissions.reviewer  CFG_PERMS_REVIEWER"
         )
         local cfg_val _key _var
         for _entry in "${_cfg_map[@]}"; do
@@ -625,24 +598,14 @@ load_config() {
         fi
     fi
 
-    # Read backlog_files list if present (yq path only)
-    if command -v yq &> /dev/null; then
-        local bf_count
-        bf_count=$(yq -r '.backlog_files // [] | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
-        if [[ "$bf_count" -gt 0 ]]; then
-            BACKLOG_FILES=()
-            local _bf_entry
-            while IFS= read -r _bf_entry; do
-                [[ -n "$_bf_entry" ]] && BACKLOG_FILES+=("$_bf_entry")
-            done < <(yq -r '.backlog_files[]' "$CONFIG_FILE" 2>/dev/null)
-        fi
-    fi
-
     # Env vars always win last
     _apply_env_overrides
 
-    # Validate declared backlog files exist
-    _validate_backlog_files
+    # Validate merge strategy
+    case "$MERGE_STRATEGY" in
+        merge|squash) ;;
+        *) log_error "Invalid merge.strategy: $MERGE_STRATEGY (must be: merge, squash)"; return 1 ;;
+    esac
 
     return 0
 }
@@ -665,7 +628,6 @@ _apply_env_overrides() {
         "AISHORE_STREAMING_MAX_LINES STREAMING_MAX_LINES"
         "AISHORE_OUTPUT_TRUNCATE_LINES OUTPUT_TRUNCATE_LINES"
         "AISHORE_MERGE_STRATEGY    MERGE_STRATEGY"
-        "AISHORE_CREATE_PR         CREATE_PR"
         "AISHORE_TIMEOUT_MINUTES  TIMEOUT_MINUTES"
         "AISHORE_RETRIES          SESSION_RETRIES"
         "AISHORE_SESSION_LIMIT    SESSION_LIMIT"
@@ -680,39 +642,7 @@ _apply_env_overrides() {
         [[ -n "$_val" ]] && printf -v "$_target_var" '%s' "$_val"
     done
 
-    # AISHORE_BACKLOG_FILES: comma-separated list overrides config/default
-    if [[ -n "${AISHORE_BACKLOG_FILES:-}" ]]; then
-        BACKLOG_FILES=()
-        local _bf_entry
-        IFS=',' read -ra _bf_parts <<< "$AISHORE_BACKLOG_FILES"
-        for _bf_entry in "${_bf_parts[@]}"; do
-            _bf_entry=$(printf '%s' "$_bf_entry" | xargs)  # trim whitespace
-            [[ -n "$_bf_entry" ]] && BACKLOG_FILES+=("$_bf_entry")
-        done
-    fi
-
     return 0
-}
-
-# Validate that declared backlog files exist; warn on missing, don't abort
-_validate_backlog_files() {
-    local f
-    for f in "${BACKLOG_FILES[@]}"; do
-        if [[ ! -f "$BACKLOG_DIR/$f" ]]; then
-            log_warning "Declared backlog file not found: $BACKLOG_DIR/$f"
-        fi
-    done
-}
-
-# ============================================================================
-# NOTIFICATIONS
-# ============================================================================
-
-send_session_notification() {
-    local message="$1"
-    # Terminal bell
-    tput bel 2>/dev/null || printf '\a'
-    log_info "Session notification: $message"
 }
 
 # ============================================================================
@@ -781,39 +711,29 @@ pick_item() {
     local done_ids_json
     done_ids_json=$(collect_done_ids)
 
-    # Warn about self-referencing dependencies
-    _warn_self_refs() {
-        local bf="$1"
-        local self_refs
-        self_refs=$(jq -r '.items[] | select(.dependsOn != null) | select(.id as $self | .dependsOn | index($self) != null) | .id' "$BACKLOG_DIR/$bf" 2>/dev/null || true)
-        if [[ -n "$self_refs" ]]; then
-            while IFS= read -r sid; do
-                log_warning "Item $sid has self-referencing dependency — skipping in auto-pick"
-            done <<< "$self_refs"
+    # Warn about items with bad intent or self-referencing deps
+    local _bf
+    for _bf in "${BACKLOG_FILES[@]}"; do
+        [[ -f "$BACKLOG_DIR/$_bf" ]] || continue
+        local _warnings
+        _warnings=$(jq -r --argjson skip "$skip_json" --argjson done_ids "$done_ids_json" '
+            .items[] |
+            select(.readyForSprint == true and (.passes == false or .passes == null) and (.status == "todo" or .status == null)) |
+            select(.id as $id | $skip | index($id) | not) |
+            if .dependsOn != null and (.id as $self | .dependsOn | index($self) != null) then
+                .id + "\tself-referencing dependency"
+            elif .intent == null or .intent == "" then
+                .id + "\tintent missing"
+            elif (.intent | length) < 20 then
+                .id + "\tintent \(.intent | length) chars, need >=20"
+            else empty end
+        ' "$BACKLOG_DIR/$_bf" 2>/dev/null || true)
+        if [[ -n "$_warnings" ]]; then
+            while IFS=$'\t' read -r _wid _wreason; do
+                log_warning "Skipping $_wid: $_wreason"
+            done <<< "$_warnings"
         fi
-    }
-    map_backlog_files _warn_self_refs
-
-    # Warn about items skipped due to missing or too-short intent
-    _warn_intent_skipped() {
-        local bf="$1"
-        [[ -f "$BACKLOG_DIR/$bf" ]] || return 0
-        local skipped
-        skipped=$(jq -r --argjson skip "$skip_json" --argjson done_ids "$done_ids_json" '
-            [.items[] |
-                select(.readyForSprint == true and (.passes == false or .passes == null) and (.status == "todo" or .status == null)) |
-                select(.id as $id | $skip | index($id) | not) |
-                select(.dependsOn == null or (.dependsOn | length == 0) or (.id as $self | .dependsOn | all(. != $self) and all(. as $dep | $done_ids | index($dep) != null))) |
-                select(.intent == null or .intent == "" or (.intent | length) < 20)] |
-            .[] | .id + "\t" + (if .intent == null or .intent == "" then "missing" else "\(.intent | length) chars, need >=20" end)
-        ' "$BACKLOG_DIR/$bf" 2>/dev/null || true)
-        if [[ -n "$skipped" ]]; then
-            while IFS=$'\t' read -r skip_id skip_reason; do
-                log_warning "Skipping $skip_id: intent $skip_reason"
-            done <<< "$skipped"
-        fi
-    }
-    map_backlog_files _warn_intent_skipped
+    done
 
     # Auto-pick: highest priority ready item across ALL declared backlog files
     local all_candidates="[]"
@@ -867,45 +787,6 @@ map_backlog_files() {
     done
 }
 
-# Search iterator: call callback(filename, ...) for each backlog file,
-# stop and return 0 on the first callback that succeeds (returns 0).
-# Returns 1 if no callback succeeds.
-find_first_backlog() {
-    local _ffb_cb="$1"; shift
-    local _ffb_f
-    for _ffb_f in "${BACKLOG_FILES[@]}"; do
-        if "$_ffb_cb" "$_ffb_f" "$@"; then
-            return 0
-        fi
-    done
-    return 1
-}
-
-# Copy each backlog file into dest_dir (for snapshot/backup).
-snapshot_backlog_files() {
-    local dest="$1"
-    _sbf_copy() { [[ -f "$BACKLOG_DIR/$1" ]] && cp "$BACKLOG_DIR/$1" "$dest/$1" || true; }
-    map_backlog_files _sbf_copy
-}
-
-# Restore backlog files from a snapshot directory.
-restore_backlog_files() {
-    local src="$1"
-    _rbf_copy() { [[ -f "$src/$1" ]] && cp "$src/$1" "$BACKLOG_DIR/$1" || true; }
-    map_backlog_files _rbf_copy
-}
-
-# Sum a per-file count function across all backlog files.
-# Usage: sum_backlog_count count_func  (count_func receives full path)
-sum_backlog_count() {
-    local _sbc_func="$1" _sbc_total=0
-    _sbc_add() {
-        [[ -f "$BACKLOG_DIR/$1" ]] && _sbc_total=$((_sbc_total + $("$_sbc_func" "$BACKLOG_DIR/$1")))
-    }
-    map_backlog_files _sbc_add
-    printf '%s\n' "$_sbc_total"
-}
-
 resolve_backlog_file() {
     local id="$1"
     local expected=""
@@ -919,18 +800,14 @@ resolve_backlog_file() {
         return 0
     fi
     # Fall through: search all files
-    _try_resolve() {
-        local f="$1" id="$2"
-        [[ "$f" == "$expected" ]] && return 1
-        if [[ -f "$BACKLOG_DIR/$f" ]] && jq -e --arg id "$id" '.items[] | select(.id == $id)' "$BACKLOG_DIR/$f" &>/dev/null; then
-            printf '%s\n' "$f"
+    local _rf
+    for _rf in "${BACKLOG_FILES[@]}"; do
+        [[ "$_rf" == "$expected" ]] && continue
+        if [[ -f "$BACKLOG_DIR/$_rf" ]] && jq -e --arg id "$id" '.items[] | select(.id == $id)' "$BACKLOG_DIR/$_rf" &>/dev/null; then
+            printf '%s\n' "$_rf"
             return 0
         fi
-        return 1
-    }
-    if find_first_backlog _try_resolve "$id"; then
-        return 0
-    fi
+    done
     log_error "Item not found in any backlog: $id"
     return 1
 }
@@ -1030,51 +907,6 @@ check_readiness_gates() {
     [[ -n "$warnings" ]] && printf '%s\n' "$warnings"
     if [[ "$has_warning" == "true" ]]; then
         log_error "Readiness gate check failed for $item_id"
-        return 1
-    fi
-    return 0
-}
-
-# Advisory complexity hints — not a gate, just informational warnings
-check_complexity_hints() {
-    local item_id="$1"
-    local item
-    item=$(find_item "$item_id") || return 0
-    local step_count has_scope ac_total ac_with_verify title item_intent
-    IFS=$'\t' read -r step_count has_scope ac_total ac_with_verify title item_intent < <(
-        printf '%s\n' "$item" | jq -r '[
-            ([.steps // [] | .[]] | length | tostring),
-            ([.scope // [] | .[]] | length | tostring),
-            ([.acceptanceCriteria // [] | .[]] | length | tostring),
-            ([.acceptanceCriteria // [] | .[] | select(type == "object" and .verify != null)] | length | tostring),
-            (.title // ""),
-            (.intent // "")
-        ] | @tsv'
-    )
-    local hints=""
-    if [[ "$step_count" -lt 3 && "$step_count" -gt 0 ]]; then
-        hints="${hints}    • Only $step_count step(s) — consider breaking the work into 3+ concrete steps\n"
-    fi
-    if [[ "$has_scope" -eq 0 ]]; then
-        hints="${hints}    • No scope defined — add file path globs to constrain where changes land\n"
-    fi
-    # AC verify coverage: executable evals are the difference between testing and hoping
-    if [[ "$ac_total" -gt 0 && "$ac_with_verify" -eq 0 ]]; then
-        hints="${hints}    • 0/$ac_total AC have verify commands — without executable checks, validation is just opinion. Use --ac-verify \"command\" to make AC testable\n"
-    elif [[ "$ac_total" -gt 2 && "$ac_with_verify" -gt 0 && "$ac_with_verify" -lt "$ac_total" ]]; then
-        hints="${hints}    • $ac_with_verify/$ac_total AC have verify commands — consider adding --ac-verify for the rest\n"
-    fi
-    # Intent quality: intent that duplicates the title adds zero signal
-    if [[ -n "$item_intent" && -n "$title" ]]; then
-        local norm_intent norm_title
-        norm_intent=$(printf '%s' "$item_intent" | tr '[:upper:]' '[:lower:]' | sed 's/[[:space:]]*$//' | sed 's/^[[:space:]]*//')
-        norm_title=$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[[:space:]]*$//' | sed 's/^[[:space:]]*//')
-        if [[ "$norm_intent" == "$norm_title" ]]; then
-            hints="${hints}    • Intent is identical to title — intent should be a directive (\"users must be able to X and see Y\"), not a label\n"
-        fi
-    fi
-    if [[ -n "$hints" ]]; then
-        printf '  - Item may be under-specified (advisory):\n%b\n' "$hints"
         return 1
     fi
     return 0
@@ -1212,18 +1044,6 @@ _build_ac_json() {
     printf '%s\n' "$@" | jq -s .
 }
 
-_append_array_field() {
-    # Append values from a bash array to a jq array field.
-    # Usage: _append_array_field <field> <jq_var> <val1> [val2...]
-    # Populates: jq_updates string and updates array (both must be declared in caller).
-    local field="$1" jqvar="$2"
-    shift 2
-    local arr_json
-    arr_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
-    jq_updates="$jq_updates | .$field = ((.$field // []) + \$$jqvar)"
-    updates+=("--argjson" "$jqvar" "$arr_json")
-}
-
 add_item() {
     local file="$1"
     shift
@@ -1341,10 +1161,11 @@ mark_complete() {
     local files_changed=0 lines_added=0 lines_removed=0
     local diffstat
     local diff_base="${AISHORE_BASE_BRANCH:-}"
+    local diff_target="${AISHORE_DIFF_TARGET:-HEAD}"
     if [[ -z "$diff_base" ]]; then
         diff_base="HEAD~1"
     fi
-    diffstat=$(git diff --shortstat "$diff_base" HEAD 2>/dev/null || true)
+    diffstat=$(git diff --shortstat "$diff_base" "$diff_target" 2>/dev/null || true)
     if [[ -n "$diffstat" ]]; then
         files_changed=$(printf '%s\n' "$diffstat" | sed -En 's/[^0-9]*([0-9]+) file.*/\1/p')
         lines_added=$(printf '%s\n' "$diffstat" | sed -En 's/.*[^0-9]([0-9]+) insertion.*/\1/p')
@@ -1486,15 +1307,6 @@ run_agent_process() {
         claude_args+=(--max-turns "$max_turns")
     fi
 
-    # Session continuation support (warm retries)
-    if [[ -n "${AGENT_RESUME_SESSION:-}" ]]; then
-        claude_args+=(--resume "$AGENT_RESUME_SESSION")
-    elif [[ -n "${AGENT_SESSION_ID:-}" ]]; then
-        claude_args+=(--session-id "$AGENT_SESSION_ID")
-    fi
-
-    # Determine prompt flag: --resume uses -p for the follow-up message,
-    # new sessions also use -p for the initial prompt — same flag either way.
     local _out_target="${AGENT_OUTPUT_FILE:-$agent_log}"
 
     if [[ -n "${AGENT_OUTPUT_FILE:-}" ]]; then
@@ -1690,18 +1502,13 @@ After you finish, the orchestrator will automatically run \`$FIX_CMD\` to fix li
 
         validate_hint="$validate_hint
 
-## Documentation Maintenance
-When your changes affect the project's public interface — CLI commands, flags, environment variables, configuration keys, or observable behavior — update the relevant documentation in the same commit. Common targets:
-- Help text / usage output
-- README, CLAUDE.md, CONFIGURATION.md, ARCHITECTURE.md
-- Inline --help strings
-
-Do not create new documentation files. Only update existing docs that already cover the area you changed. If no relevant docs exist, skip this.
-
 ## Maturity Protocol (MANDATORY — complete all phases)
 **Phase 1 — Implement:** Write the code. Follow spec, match conventions.${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix failures.}
 **Phase 2 — Critique:** STOP coding. Re-read every changed file. Verify intent is fulfilled and each AC is provably met. Hunt bugs, edge cases, dead code, missing error handling. Fix everything found.
-**Phase 3 — Harden:**${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix any failures.} **Run every AC verify command and fix failures.** AC verify commands are in sprint.json under \`acceptanceCriteria\` — entries with a \`verify\` field (e.g. \`{\"text\": \"...\", \"verify\": \"shell command\"}\`). Run each \`.verify\` command. For AC without verify commands, manually execute the behavior. Fix regressions. Only then commit and signal done.
+**Phase 3 — Harden:**${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix any failures.} **Run every AC verify command.** AC verify commands are in sprint.json under \`acceptanceCriteria\` — entries with a \`verify\` field (e.g. \`{\"text\": \"...\", \"verify\": \"shell command\"}\`). Run each \`.verify\` command. If a verify command fails:
+- **Your code is wrong** → fix your code and re-run.
+- **The verify command is wrong** (grepping bundled/minified output, wrong file path, pattern that can't match after build transforms) → the spec is broken, not your code. Use common sense: if the feature demonstrably works but the grep pattern doesn't match transformed output, report it as a bad verify command in your result.json summary and count it as passed. Do NOT waste retries fighting a broken grep.
+For AC without verify commands, manually execute the behavior. Fix regressions. Only then commit and signal done.
 Output phase markers: \`═══ PHASE 2: CRITIQUE ═══\` / \`═══ PHASE 3: HARDEN ═══\`
 
 ## Maturity Evidence (REQUIRED in result.json)
@@ -1742,7 +1549,7 @@ Do not just grep the code for error strings and call it verified. Execute the co
 .aishore/aishore backlog add --type bug --title \"...\" --desc \"...\" --priority should
 .aishore/aishore backlog edit <ID> --ready --priority must --groomed-at --groomed-notes \"...\""
         else
-            cli_role_lines=".aishore/aishore backlog add --type feat --title \"...\" --intent \"...\" --desc \"...\" --priority must --ready --step \"...\" --step \"...\" --ac \"...\" --ac \"...\"
+            cli_role_lines=".aishore/aishore backlog add --type feat --title \"...\" --intent \"...\" --desc \"...\" --priority must --ready --steps \"...\" --steps \"...\" --ac \"...\" --ac \"...\"
 .aishore/aishore backlog edit <ID> --ready --groomed-at --groomed-notes \"...\"
 .aishore/aishore backlog edit <ID> --depends-on FEAT-XXX,FEAT-YYY"
         fi
@@ -1767,14 +1574,18 @@ Every item should have an \`intent\` field — a non-negotiable directive statin
 Every AC you write MUST have an \`--ac-verify\` command wherever the outcome is testable by a shell command. This is what separates an eval from an opinion. Verify commands must **execute the behavior and check the result**, not grep for code existence in source files.
 
 \`\`\`bash
-# Pattern: --ac \"what it does\" --ac-verify \"command that proves it\"
+# Good: test behavior, exit codes, file existence
 --ac \"CLI prints usage on --help\" --ac-verify \".aishore/aishore help | head -1 | grep -qi usage\"
---ac \"Invalid input returns exit code 1\" --ac-verify \"! .aishore/aishore backlog show NONEXISTENT\"
---ac \"New flag is wired end-to-end\" --ac-verify \".aishore/aishore run --dry-run 2>&1 | grep -q flag-output\"
---ac \"Config rejects invalid input\" --ac-verify \"echo '{}' > /tmp/bad.yaml && ! tool validate /tmp/bad.yaml\"
+--ac \"Invalid input exits non-zero\" --ac-verify \"! .aishore/aishore backlog show NONEXISTENT\"
+--ac \"Build succeeds\" --ac-verify \"npm run build\"
+--ac \"New page exists after build\" --ac-verify \"test -f dist/new-page/index.html\"
+
+# BAD: greps built/bundled output (will fail after minification/bundling)
+# --ac \"Page has subscribe form\" --ac-verify \"grep -qi subscribe dist/index.html\"  ← WRONG
+# --ac \"Function exists\" --ac-verify \"grep -q 'myFunc' src/app.js\"  ← tests structure, not behavior
 \`\`\`
 
-If you genuinely cannot write a verify command for an AC (e.g., \"code is readable\"), use a plain string AC — but this should be rare. Most real acceptance criteria describe observable behavior that a command can check. **If you cannot write a verify command, ask yourself whether the AC is specific enough to be useful.** A verify command that only checks whether a string exists in a source file (e.g., \`grep -q 'functionName' file.sh\`) tests structure, not behavior. **Always test behavior.**
+**CRITICAL: verify commands must survive build transforms.** If the project uses a build tool (Astro, Vite, Next.js, webpack, etc.), NEVER grep built output for content strings — they are bundled, hashed, and minified. Test file existence, exit codes, HTTP responses, or run the code directly. Every broken verify command wastes an entire developer retry cycle.
 
 ## Grooming Limits
 - **Maximum items per session:** $GROOM_MAX_ITEMS — stop adding new items after this cap. Focus on the highest-value items first.
@@ -1818,21 +1629,16 @@ run_agent() {
     # Derive permissions based on agent role and mode
     local agent_perms
     case "$agent_name" in
-        developer)
-            agent_perms="${CFG_PERMS_DEVELOPER:-$PERMS_DEVELOPER}" ;;
-        validator)
-            agent_perms="${CFG_PERMS_VALIDATOR:-$PERMS_VALIDATOR}" ;;
+        developer)  agent_perms="$PERMS_DEVELOPER" ;;
+        validator)  agent_perms="$PERMS_VALIDATOR" ;;
         architect)
             if [[ "$mode" == "groom" ]]; then
-                agent_perms="${CFG_PERMS_DEVELOPER:-$PERMS_DEVELOPER}"
+                agent_perms="$PERMS_DEVELOPER"
             else
-                agent_perms="${CFG_PERMS_REVIEWER:-$PERMS_REVIEWER}"
+                agent_perms="$PERMS_REVIEWER"
             fi ;;
-        groomer)
-            # Groom agents need full permissions to update backlog files
-            agent_perms="${CFG_PERMS_DEVELOPER:-$PERMS_DEVELOPER}" ;;
-        *)
-            agent_perms="${CFG_PERMS_DEVELOPER:-$PERMS_DEVELOPER}" ;;
+        groomer)    agent_perms="$PERMS_DEVELOPER" ;;
+        *)          agent_perms="$PERMS_DEVELOPER" ;;
     esac
 
     # Resolve max_turns based on agent role
@@ -2086,16 +1892,6 @@ _run_regression_suite() {
 # FAILURE RECOVERY
 # ============================================================================
 
-save_backlog_snapshot() {
-    local snapshot_dir="$STATUS_DIR/backlog-snapshot"
-    mkdir -p "$snapshot_dir"
-    snapshot_backlog_files "$snapshot_dir"
-}
-
-restore_backlog_snapshot() {
-    local snapshot_dir="$STATUS_DIR/backlog-snapshot"
-    restore_backlog_files "$snapshot_dir"
-}
 
 mark_item_failed() {
     local item_id="$1"
@@ -2154,11 +1950,23 @@ handle_sprint_failure() {
     log_warning "Resetting working tree after sprint failure"
 
     if [[ -n "$AISHORE_WORKTREE_DIR" ]]; then
+        # Preserve diagnostics from worktree before it's destroyed
+        local _base_status="$DATA_DIR/status"
+        local _base_logs="$DATA_DIR/logs"
+        mkdir -p "$_base_status" "$_base_logs"
+        if [[ -f "$STATUS_DIR/result.json" ]]; then
+            cp "$STATUS_DIR/result.json" "$_base_status/result.json" 2>/dev/null || true
+        fi
+        if [[ -n "$LAST_AGENT_LOG" && -f "$LAST_AGENT_LOG" ]]; then
+            local _base_log="$_base_logs/$(basename "$LAST_AGENT_LOG")"
+            cp "$LAST_AGENT_LOG" "$_base_log" 2>/dev/null || true
+            LAST_AGENT_LOG="$_base_log"
+        fi
         # Worktree mode: remove worktree and delete the branch
         local fb="$AISHORE_FEATURE_BRANCH"
         AISHORE_FEATURE_BRANCH=""
         _cleanup_worktree
-        [[ -n "$fb" ]] && git branch -D "$fb" 2>/dev/null || true
+        if [[ -n "$fb" ]]; then git branch -D "$fb" 2>/dev/null || true; fi
     elif [[ -n "$AISHORE_FEATURE_BRANCH" && -n "$AISHORE_BASE_BRANCH" ]]; then
         # Fallback: switch back to base and delete the branch
         # (base branch still has backlog state from earlier successful sprints)
@@ -2177,7 +1985,7 @@ handle_sprint_failure() {
         git clean -fd -e '.aishore' 2>/dev/null || true
 
         if [[ "$has_snapshot" == true ]]; then
-            restore_backlog_snapshot
+            local _rbf; for _rbf in "${BACKLOG_FILES[@]}"; do [[ -f "$STATUS_DIR/backlog-snapshot/$_rbf" ]] && cp "$STATUS_DIR/backlog-snapshot/$_rbf" "$BACKLOG_DIR/$_rbf"; done
         fi
     fi
     reset_sprint
@@ -2187,68 +1995,6 @@ handle_sprint_failure() {
 # COMMANDS
 # ============================================================================
 
-print_batch_summary() {
-    local batch_start="$1"
-    local -n _results=$2
-    local -n _items=$3
-    local -n _times=$4
-    local -n _failed_ids=$5
-    local -n _skipped=$6
-
-    local batch_elapsed=$(( $(date +%s) - batch_start ))
-    local total=${#_results[@]}
-    local total_passed=0
-    local total_failed=0
-
-    for r in "${_results[@]}"; do
-        if [[ "$r" == "pass" ]]; then
-            total_passed=$((total_passed + 1))
-        else
-            total_failed=$((total_failed + 1))
-        fi
-    done
-
-    echo ""
-    log_header "Batch Summary"
-    printf "  %-8s %-12s %-8s %s\n" "Sprint" "Item" "Status" "Elapsed"
-    printf "  %-8s %-12s %-8s %s\n" "------" "----" "------" "-------"
-
-    for ((idx=0; idx<total; idx++)); do
-        local status_display
-        if [[ "${_results[$idx]}" == "pass" ]]; then
-            status_display="${GREEN}pass${NC}"
-        else
-            status_display="${RED}fail${NC}"
-        fi
-        local mins=$(( _times[idx] / 60 ))
-        local secs=$(( _times[idx] % 60 ))
-        printf "  %-8s %-12s " "$((idx + 1))" "${_items[$idx]}"
-        echo -e "${status_display}     ${mins}m${secs}s"
-    done
-
-    printf "  %-8s %-12s %-8s %s\n" "------" "----" "------" "-------"
-    local total_mins=$(( batch_elapsed / 60 ))
-    local total_secs=$(( batch_elapsed % 60 ))
-    local skipped_count=${#_skipped[@]}
-    printf "  Passed: %d  Failed: %d  Skipped: %d  Total: %dm%ds\n" "$total_passed" "$total_failed" "$skipped_count" "$total_mins" "$total_secs"
-
-    if [[ $total_failed -gt 0 ]]; then
-        echo ""
-        echo "  Failed items:"
-        for fid in "${!_failed_ids[@]}"; do
-            echo "    - $fid: ${_failed_ids[$fid]}"
-        done
-    fi
-
-    if [[ $skipped_count -gt 0 ]]; then
-        echo ""
-        echo "  Not attempted (aborted early):"
-        for sid in "${_skipped[@]}"; do
-            echo "    - $sid"
-        done
-    fi
-    echo ""
-}
 
 # Dry-run handler for cmd_run.
 # Uses outer-scope locals: auto_mode, auto_scope, specific_id
@@ -2300,14 +2046,6 @@ _run_dry_run() {
     printf '%s\n' "$item_json" | jq .
     echo ""
 
-    # Advisory complexity hints in dry-run
-    local hints
-    if ! hints=$(check_complexity_hints "$item_id"); then
-        log_warning "$item_id may be under-specified — consider adding more steps or scope"
-        printf '%b\n' "$hints"
-        echo ""
-    fi
-
     # Create temporary sprint.json so build_agent_prompt reads scope from the picked item
     local item_source
     item_source=$(cat "$STATUS_DIR/.item_source" 2>/dev/null || echo "backlog.json")
@@ -2338,128 +2076,6 @@ _run_dry_run() {
     echo "Would pick: $item_id ($item_title)"
     echo "Model: $MODEL_PRIMARY"
     echo "Validation: ${VALIDATE_CMD:-none}"
-    return 0
-}
-
-refine_item_spec() {
-    local item_id="$1"
-    local failure_context="$2"
-    local current_spec="${3:-}"
-
-    log_info "Refining spec for $item_id based on failure context"
-
-    local sprint_file="$BACKLOG_DIR/sprint.json"
-
-    # Accept spec as arg 3 (preferred), fall back to sprint.json
-    if [[ -z "$current_spec" || "$current_spec" == "null" ]]; then
-        [[ ! -f "$sprint_file" ]] && { log_error "No sprint.json for refinement"; return 1; }
-        current_spec=$(jq '.item' "$sprint_file" 2>/dev/null)
-    fi
-    [[ -z "$current_spec" || "$current_spec" == "null" ]] && { log_error "Cannot refine: sprint item spec is empty"; return 1; }
-
-    local refinement_prompt
-    refinement_prompt="You are refining a sprint item spec that failed implementation.
-
-## Current Spec
-\`\`\`json
-$current_spec
-\`\`\`
-
-## Failure Context
-$failure_context
-
-## Task
-Analyze the failures and output an improved spec as a JSON object with exactly these fields:
-- \"steps\": array of strings (improved implementation steps)
-- \"acceptanceCriteria\": array (strings or {\"text\": \"...\", \"verify\": \"...\"} objects)
-
-Output ONLY the JSON object, no markdown fences, no explanation."
-
-    local refine_output_file
-    refine_output_file="$(ensure_tmpdir)/refine_output.txt"
-
-    local -a _refine_cmd=()
-    command -v setsid &>/dev/null && _refine_cmd+=(setsid)
-    [[ -n "$TIMEOUT_CMD" ]] && _refine_cmd+=("$TIMEOUT_CMD" "${AGENT_TIMEOUT:-3600}")
-    _refine_cmd+=(env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT
-        claude --model "$MODEL_FAST" --permission-mode acceptEdits
-        --allowedTools "Read,Glob,Grep" --print
-        -p "$refinement_prompt")
-
-    "${_refine_cmd[@]}" > "$refine_output_file" 2>&1 || {
-        local exit_code=$?
-        if [[ $exit_code -eq 124 ]]; then
-            log_error "Refinement agent timed out after ${AGENT_TIMEOUT:-3600}s"
-            return 1
-        fi
-    }
-
-    local raw_output
-    raw_output=$(cat "$refine_output_file" 2>/dev/null || true)
-    rm -f "$refine_output_file"
-
-    # Extract JSON from output (handle indentation, markdown fences, surrounding text)
-    local json_output=""
-    # Strategy: strip markdown fences, then try each line starting with { as potential JSON start
-    local stripped
-    stripped=$(printf '%s\n' "$raw_output" | sed '/^[[:space:]]*```/d')
-    local line_num=0
-    while IFS= read -r line; do
-        line_num=$((line_num + 1))
-        if [[ "$line" =~ ^[[:space:]]*\{ ]]; then
-            local candidate
-            candidate=$(printf '%s\n' "$stripped" | tail -n +"$line_num" | jq '.' 2>/dev/null | head -500)
-            if [[ -n "$candidate" ]] && printf '%s\n' "$candidate" | jq -e '.steps and .acceptanceCriteria' &>/dev/null; then
-                json_output="$candidate"
-                break
-            fi
-        fi
-    done <<< "$stripped"
-    [[ -z "$json_output" ]] && { log_error "Refinement produced no valid JSON"; return 1; }
-
-    # Validate JSON structure
-    if ! printf '%s\n' "$json_output" | jq -e '.steps and .acceptanceCriteria' &>/dev/null; then
-        log_error "Refinement output missing required fields"
-        return 1
-    fi
-
-    # Rebuild sprint.json with the refined spec
-    # sprint.json may already be reset to idle, so reconstruct from current_spec
-    local tmp_sprint
-    tmp_sprint="$(ensure_tmpdir)/sprint_refine.json"
-    if jq -n --argjson item "$current_spec" --argjson refined "$json_output" --arg now "$(date -Iseconds 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S')" \
-        '{sprintId: ("refined-" + $now), startedAt: ($item.startedAt // $now), status: "in_progress", item: ($item | .steps = $refined.steps | .acceptanceCriteria = $refined.acceptanceCriteria)}' \
-        > "$tmp_sprint" 2>/dev/null; then
-        mv "$tmp_sprint" "$sprint_file"
-        log_success "Spec refined for $item_id"
-        return 0
-    else
-        rm -f "$tmp_sprint"
-        log_error "Failed to write refined spec to sprint.json"
-        return 1
-    fi
-}
-
-# Scope enforcement — warn on out-of-scope file modifications (advisory only).
-# Reads .item.scope from sprint.json, compares changed files against scope globs,
-# and calls log_warning for each file outside scope. Never fails the sprint.
-_check_scope_warnings() {
-    local _scope_globs
-    _scope_globs=$(jq -r '.item.scope // [] | .[]' "$BACKLOG_DIR/sprint.json" 2>/dev/null || true)
-    [[ -z "$_scope_globs" || -z "${AISHORE_BASE_BRANCH:-}" ]] && return 0
-    # Build combined regex from all scope globs
-    local _combined_re="" _sg _re
-    while IFS= read -r _sg; do
-        _re=$(printf '%s' "$_sg" | sed -e 's/\./\\./g' -e 's/\*\*/\x00/g' -e 's/\*/[^\/]*/g' -e 's/\x00/.*/g' -e 's/?/./g')
-        [[ -n "$_combined_re" ]] && _combined_re="${_combined_re}|"
-        _combined_re="${_combined_re}^${_re}\$"
-    done <<< "$_scope_globs"
-    # Compare changed files against scope globs and warn on mismatches
-    local _scope_diff _cf
-    _scope_diff=$(git diff --name-only "$AISHORE_BASE_BRANCH" 2>/dev/null || true)
-    while IFS= read -r _cf; do [[ -z "$_cf" ]] && continue
-        [[ "$_cf" =~ ${_combined_re} ]] || log_warning "Out-of-scope file modified: $_cf"
-    done <<< "$_scope_diff"
     return 0
 }
 
@@ -2499,7 +2115,7 @@ _run_developer_cycle() {
     local dev_extra_prompt=""
     [[ -n "$initial_dev_context" ]] && dev_extra_prompt="$initial_dev_context"
 
-    # Build prior failure context for retries (structured, capped at 2000 chars)
+    # Build prior failure context for retries (last 2 attempts)
     if [[ $attempt -gt 0 ]]; then
         dev_extra_prompt="${dev_extra_prompt:+${dev_extra_prompt}
 }$(_build_prior_failure_context)"
@@ -2572,9 +2188,6 @@ Fix the issues and ensure all acceptance criteria pass."
             return 1
         fi
     fi
-
-    # Scope enforcement — warn on out-of-scope file modifications (advisory only)
-    _check_scope_warnings
 
     # Run AC verification commands (report returned via stdout)
     local ac_report
@@ -2672,17 +2285,6 @@ Fix the issues identified above. Address each specific failure point."
     return 0
 }
 
-# Failure-reason labels for _record_sprint_failure, keyed by _validation_failure value.
-_validation_failure_reason() {
-    case "$1" in
-        "Scope violation")          echo "Files modified outside declared scope" ;;
-        "Validation failed")        echo "Validation command failed" ;;
-        "AC verification failed")   echo "Acceptance criteria verification commands failed" ;;
-        "Validator failed")         echo "Validator agent rejected implementation" ;;
-        *)                          printf '%s\n' "$1" ;;
-    esac
-}
-
 # Build targeted retry context from structured ac_results JSON.
 # Extracts only failed ACs with their issue and file:line references.
 # Args: $1 = ac_results JSON array string
@@ -2744,43 +2346,15 @@ ${diff_summary}
     retry_failure_history+=("$entry")
 }
 
-# Build a structured "Prior failure context" section from retry_failure_history.
-# Caps total output at 4000 chars. When entries would be dropped, preserves
-# compact AC failure references (file:line) instead of discarding entirely.
-# Returns empty string if history is empty.
+# Build prior failure context from retry_failure_history (last 2 entries).
 _build_prior_failure_context() {
     local count=${#retry_failure_history[@]}
     [[ $count -eq 0 ]] && return
-
-    local header="## Prior Failure Context
-**Read each prior attempt below and address the failures before coding.**
-"
-    local max_body_chars=$(( 4000 - ${#header} ))
-    [[ $max_body_chars -lt 100 ]] && max_body_chars=100
-
-    # Build body from newest to oldest, prepending each entry
-    local body="" entry_text
-    for ((i=count-1; i>=0; i--)); do
-        entry_text="${retry_failure_history[$i]}"
-        if [[ $(( ${#body} + ${#entry_text} + 2 )) -gt $max_body_chars && -n "$body" ]]; then
-            # Would exceed cap — extract compact AC failure refs before dropping
-            local compact_refs
-            compact_refs=$(printf '%s' "$entry_text" | grep -E '^AC[0-9]+ FAIL:|^\*\*AC Failures:\*\*' || true)
-            if [[ -n "$compact_refs" ]]; then
-                body="(Attempt $((i + 1)) condensed) ${compact_refs}
-${body}"
-            fi
-            break
-        fi
-        if [[ -n "$body" ]]; then
-            body="${entry_text}
-${body}"
-        else
-            body="$entry_text"
-        fi
+    local start=$(( count > 2 ? count - 2 : 0 ))
+    printf '## Prior Failure Context\n**Address these failures before coding.**\n'
+    for ((i=start; i<count; i++)); do
+        printf '%s\n' "${retry_failure_history[$i]}"
     done
-
-    printf '%s%s' "$header" "$body"
 }
 
 # Developer → validation cmd → validator agent retry loop.
@@ -2822,7 +2396,7 @@ _run_retry_loop() {
                 continue
             fi
             _retry_failure_reason="$_validation_failure"
-            _retry_failure_detail="$(_validation_failure_reason "$_validation_failure")"
+            _retry_failure_detail="$_validation_failure"
             break
         fi
 
@@ -2846,41 +2420,129 @@ _sync_remote() {
     fi
 }
 
-# Handle post-sprint success: mark complete, safety commit, merge/push.
+# Handle post-sprint success: safety commit, merge/push, then bookkeeping on base.
+# Backlog mutations (mark complete, archive, remove) happen AFTER merge on the base
+# branch — never inside the worktree. This prevents stash/pop merge conflicts on
+# JSON backlog files that previously corrupted sprints.
 # Uses outer-scope locals: ITEM_ID, item_source, total_attempts, sprint_start,
 #   passed, failed, consecutive_failures, groom_exhausted, no_merge, base_branch,
-#   sprint_results, sprint_items, sprint_times, FAILED_IDS, session_lines_added, session_lines_removed
+#   sprint_items, FAILED_IDS
 # Returns 1 on merge conflict (caller should break).
 _handle_sprint_success() {
+    # Phase 1: Commit code changes on feature branch (no backlog mutations)
+    _safety_commit "$ITEM_ID" || log_warning "Safety commit failed — continuing with merge"
+
+    # Phase 2: Capture data from worktree, then destroy it
+    if [[ -n "$AISHORE_WORKTREE_DIR" ]]; then
+        # Preserve result.json for merge message / PR body
+        if [[ -f "$STATUS_DIR/result.json" ]]; then
+            cp "$STATUS_DIR/result.json" "$DATA_DIR/status/result.json" 2>/dev/null || true
+        fi
+        _cleanup_worktree
+    fi
+
+    # Phase 3: Merge or push feature branch (code-only — no backlog files to conflict)
+    # Save pre-merge commit for diff stats in mark_complete
+    local _pre_merge_sha
+    _pre_merge_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
+
+    if [[ "$no_merge" == "true" ]]; then
+        log_info "Branch $AISHORE_FEATURE_BRANCH kept for review"
+        if git remote get-url origin &>/dev/null; then
+            git push -u origin "$AISHORE_FEATURE_BRANCH" 2>/dev/null || \
+                log_warning "Failed to push $AISHORE_FEATURE_BRANCH — push manually"
+        fi
+
+        git checkout "$base_branch" || { log_error "Cannot checkout $base_branch after no-merge push"; return 1; }
+    else
+        # Save sprint.json content (mark_complete needs it after merge), then reset
+        # the working copy to committed state so git merge doesn't refuse due to
+        # uncommitted changes. Restored after merge.
+        local _saved_sprint_json=""
+        _saved_sprint_json=$(cat "$BACKLOG_DIR/sprint.json" 2>/dev/null || true)
+        git checkout -- "$BACKLOG_DIR/sprint.json" 2>/dev/null || true
+
+        # Clean merge — no stash needed since backlog files are not mutated in worktree
+        local merge_summary
+        merge_summary=$(jq -r '.summary // ""' "$STATUS_DIR/result.json" 2>/dev/null || echo "")
+        merge_summary="${merge_summary:0:500}"
+        local merge_msg="merge: $ITEM_ID ${merge_summary:-sprint branch}"
+
+        git checkout "$base_branch" || {
+            log_error "Cannot checkout $base_branch for merge"
+            AISHORE_FEATURE_BRANCH=""
+            return 1
+        }
+
+        if [[ "$MERGE_STRATEGY" == "squash" ]]; then
+            log_info "Squash-merging $AISHORE_FEATURE_BRANCH → $base_branch"
+            if git merge --squash "$AISHORE_FEATURE_BRANCH"; then
+                git commit -m "feat($ITEM_ID): ${merge_summary:-implement sprint item}
+
+Co-Authored-By: Claude <noreply@anthropic.com>" || {
+                    log_error "Commit failed after squash merge"
+                    return 1
+                }
+            else
+                log_error "Merge conflict on $AISHORE_FEATURE_BRANCH — resolve manually"
+                git merge --abort 2>/dev/null || true
+                AISHORE_FEATURE_BRANCH=""
+                return 1
+            fi
+        else
+            log_info "Merging $AISHORE_FEATURE_BRANCH → $base_branch"
+            if ! git merge --no-ff "$AISHORE_FEATURE_BRANCH" -m "$merge_msg
+
+Co-Authored-By: Claude <noreply@anthropic.com>"; then
+                log_error "Merge conflict on $AISHORE_FEATURE_BRANCH — resolve manually"
+                git merge --abort 2>/dev/null || true
+                AISHORE_FEATURE_BRANCH=""
+                return 1
+            fi
+        fi
+
+        # -D for squash (git can't detect merge), -d for no-ff
+        local delete_flag="-d"
+        [[ "$MERGE_STRATEGY" == "squash" ]] && delete_flag="-D"
+        git branch "$delete_flag" "$AISHORE_FEATURE_BRANCH" 2>/dev/null || true
+        log_success "Merged and cleaned up $AISHORE_FEATURE_BRANCH"
+
+        _sync_remote "$base_branch"
+
+        # Restore sprint.json for mark_complete (was reset to clear the merge path)
+        if [[ -n "$_saved_sprint_json" ]]; then
+            printf '%s\n' "$_saved_sprint_json" > "$BACKLOG_DIR/sprint.json"
+        fi
+    fi
+    # Phase 4: Bookkeeping on the base branch (mark complete, archive, remove)
+    # Set diff base/target so mark_complete computes accurate line stats
+    local _saved_base="$AISHORE_BASE_BRANCH"
+    local _saved_diff_target="${AISHORE_DIFF_TARGET:-}"
+    if [[ -n "$_pre_merge_sha" ]]; then
+        AISHORE_BASE_BRANCH="$_pre_merge_sha"
+    fi
+    if [[ "$no_merge" == "true" && -n "$AISHORE_FEATURE_BRANCH" ]]; then
+        # --no-merge: HEAD is base (no merge happened), diff against feature branch tip
+        AISHORE_DIFF_TARGET="$AISHORE_FEATURE_BRANCH"
+    fi
+    AISHORE_FEATURE_BRANCH=""
+
     if mark_complete "$ITEM_ID" "$item_source" "$total_attempts"; then
         log_success "Sprint complete: $ITEM_ID"
         COMPLETED_IDS["$ITEM_ID"]=1
         passed=$((passed + 1))
         consecutive_failures=0
         groom_exhausted=false
-        sprint_results+=("pass")
         sprint_items+=("$ITEM_ID")
-        sprint_times+=("$(( $(date +%s) - sprint_start ))")
 
-        # Save verify commands to regression suite — evals compound across sprints
+        # Save verify commands to regression suite
         _save_regression_entries "$BACKLOG_DIR/sprint.json"
-
-        # Accumulate line stats from the archive entry just written
-        local _archive_lines
-        _archive_lines=$(tail -1 "$ARCHIVE_DIR/sprints.jsonl" 2>/dev/null || true)
-        if [[ -n "$_archive_lines" ]]; then
-            local _la _lr
-            _la=$(printf '%s' "$_archive_lines" | jq -r '.linesAdded // 0' 2>/dev/null || echo 0)
-            _lr=$(printf '%s' "$_archive_lines" | jq -r '.linesRemoved // 0' 2>/dev/null || echo 0)
-            session_lines_added=$((session_lines_added + _la))
-            session_lines_removed=$((session_lines_removed + _lr))
-        fi
 
         if [[ -n "$NOTIFY_CMD" ]]; then
             bash -c "$NOTIFY_CMD" -- "pass" "$ITEM_ID" 2>/dev/null || log_warning "Notification command failed (exit $?) — sprint outcome unaffected"
         fi
 
-        # Record compact success summary for groom agents (read before removing item)
+        # Record compact success summary for groom agents
         local _ss_title _ss_ac_count
         _ss_title=$(jq -r '.item.title // ""' "$BACKLOG_DIR/sprint.json" 2>/dev/null || true)
         _ss_ac_count=$(jq -r '.item.acceptanceCriteria | length' "$BACKLOG_DIR/sprint.json" 2>/dev/null || echo 0)
@@ -2893,146 +2555,23 @@ _handle_sprint_success() {
         log_error "Failed to mark $ITEM_ID complete"
         failed=$((failed + 1))
         FAILED_IDS["$ITEM_ID"]="Archival failed"
-        sprint_results+=("fail")
         sprint_items+=("$ITEM_ID")
-        sprint_times+=("$(( $(date +%s) - sprint_start ))")
         if [[ -n "$NOTIFY_CMD" ]]; then
             bash -c "$NOTIFY_CMD" -- "fail" "$ITEM_ID" 2>/dev/null || log_warning "Notification command failed (exit $?) — sprint outcome unaffected"
         fi
-        # Return to base branch so subsequent sprints branch correctly
-        log_warning "Abandoning feature branch $AISHORE_FEATURE_BRANCH due to archival failure"
-        git checkout "$base_branch" >/dev/null 2>&1 || true
-        git branch -D "$AISHORE_FEATURE_BRANCH" >/dev/null 2>&1 || true
-        AISHORE_FEATURE_BRANCH=""
-        return 0
     fi
 
-    _safety_commit "$ITEM_ID" || log_warning "Safety commit failed — continuing with merge"
-
-    # Worktree mode: copy result.json back, then remove worktree and restore paths
-    # The feature branch (with all commits) is shared via git, so merge works from original dir
-    if [[ -n "$AISHORE_WORKTREE_DIR" ]]; then
-        # Preserve result.json for PR body / squash message
-        [[ -f "$STATUS_DIR/result.json" ]] && cp "$STATUS_DIR/result.json" "$DATA_DIR/status/result.json"
-        # Capture archive entry before worktree is destroyed (needed for --no-merge)
-        local _wt_archive_entry
-        _wt_archive_entry=$(tail -1 "$ARCHIVE_DIR/sprints.jsonl" 2>/dev/null || true)
-        _cleanup_worktree
-        if [[ "$no_merge" == "true" ]]; then
-            # No merge will happen — manually replicate tracking data to main
-            if [[ -n "$_wt_archive_entry" ]]; then
-                mkdir -p "$ARCHIVE_DIR"
-                printf '%s\n' "$_wt_archive_entry" >> "$ARCHIVE_DIR/sprints.jsonl"
-            fi
-        else
-            # Merge will bring all worktree changes — discard stale uncommitted
-            # tracking files on main so the merge applies cleanly
-            git checkout -- "$BACKLOG_DIR/sprint.json" 2>/dev/null || true
-            git checkout -- "$ARCHIVE_DIR/sprints.jsonl" 2>/dev/null || true
-        fi
-    fi
-
-    # Merge feature branch back to base, push, and pull before next item
-    # no-merge: push branch for review, optionally create PR, then return
-    if [[ "$no_merge" == "true" ]]; then
-        log_info "Branch $AISHORE_FEATURE_BRANCH kept for review"
-        if git remote get-url origin &>/dev/null; then
-            git push -u origin "$AISHORE_FEATURE_BRANCH" 2>/dev/null || \
-                log_warning "Failed to push $AISHORE_FEATURE_BRANCH — push manually"
-        fi
-
-        # Create GitHub PR if requested
-        if [[ "$create_pr" == "true" ]]; then
-            local pr_title pr_body dev_summary
-            pr_title="$ITEM_ID: $(jq -r '.item.title // ""' "$BACKLOG_DIR/sprint.json" 2>/dev/null)"
-            dev_summary=$(jq -r '.summary // ""' "$STATUS_DIR/result.json" 2>/dev/null || echo "")
-            pr_body="## Summary"$'\n\n'"$dev_summary"
-            if gh pr create --base "$base_branch" --head "$AISHORE_FEATURE_BRANCH" \
-                --title "$pr_title" --body "$pr_body" 2>/dev/null; then
-                log_success "GitHub PR created for $ITEM_ID"
-            else
-                log_warning "Failed to create PR — branch pushed for manual review"
-            fi
-        fi
-
-        git checkout "$base_branch" || { log_error "Cannot checkout $base_branch after no-merge push"; return 1; }
-    else
-        # Shared merge path: squash or no-ff, branching only on the git merge command
-        local merge_summary
-        merge_summary=$(jq -r '.summary // ""' "$STATUS_DIR/result.json" 2>/dev/null || echo "")
-        merge_summary="${merge_summary:0:500}"
-        local merge_msg="merge: $ITEM_ID ${merge_summary:-sprint branch}"
-
-        # Stash all uncommitted changes before checkout+merge
-        local _had_stash=false
-        if ! git diff --quiet 2>/dev/null; then
-            git stash push -q && _had_stash=true
-        fi
-
-        git checkout "$base_branch" || {
-            log_error "Cannot checkout $base_branch for merge"
-            [[ "$_had_stash" == "true" ]] && git stash pop -q 2>/dev/null || true
-            AISHORE_FEATURE_BRANCH=""
-            return 1
-        }
-
-        if [[ "$MERGE_STRATEGY" == "squash" ]]; then
-            log_info "Squash-merging $AISHORE_FEATURE_BRANCH → $base_branch"
-            if git merge --squash "$AISHORE_FEATURE_BRANCH"; then
-                git commit -m "feat($ITEM_ID): ${merge_summary:-implement sprint item}
-
-Co-Authored-By: Claude <noreply@anthropic.com>" || {
-                    log_error "Commit failed after squash merge — worktree may need manual cleanup"
-                    return 1
-                }
-            else
-                log_error "Merge conflict on $AISHORE_FEATURE_BRANCH — resolve manually"
-                if ! git merge --abort 2>/dev/null; then
-                    log_warning "git merge --abort failed — worktree may need manual cleanup"
-                fi
-                [[ "$_had_stash" == "true" ]] && git stash pop -q 2>/dev/null || true
-                AISHORE_FEATURE_BRANCH=""
-                return 1
-            fi
-        else
-            log_info "Merging $AISHORE_FEATURE_BRANCH → $base_branch"
-            if ! git merge --no-ff "$AISHORE_FEATURE_BRANCH" -m "$merge_msg
-
-Co-Authored-By: Claude <noreply@anthropic.com>"; then
-                log_error "Merge conflict on $AISHORE_FEATURE_BRANCH — resolve manually"
-                if ! git merge --abort 2>/dev/null; then
-                    log_warning "git merge --abort failed — worktree may need manual cleanup"
-                fi
-                [[ "$_had_stash" == "true" ]] && git stash pop -q 2>/dev/null || true
-                AISHORE_FEATURE_BRANCH=""
-                return 1
-            fi
-        fi
-
-        # -D for squash (git can't detect merge), -d for no-ff
-        local delete_flag="-d"
-        [[ "$MERGE_STRATEGY" == "squash" ]] && delete_flag="-D"
-        git branch "$delete_flag" "$AISHORE_FEATURE_BRANCH" 2>/dev/null || true
-        log_success "Merged and cleaned up $AISHORE_FEATURE_BRANCH"
-
-        # Restore stashed backlog/tracking changes after merge
-        if [[ "$_had_stash" == "true" ]]; then
-            git stash pop -q 2>/dev/null || log_warning "Failed to restore stashed backlog changes — may need manual git stash pop"
-        fi
-
-        _sync_remote "$base_branch"
-    fi
-    AISHORE_FEATURE_BRANCH=""
+    AISHORE_BASE_BRANCH="$_saved_base"
+    AISHORE_DIFF_TARGET="$_saved_diff_target"
     return 0
 }
 
 # Parse command-line arguments for cmd_run.
 # Sets outer-scope locals: count, dry_run, specific_id, retries, no_merge,
-#   create_pr, auto_mode, auto_scope,
-#   max_consecutive_failures
+#   auto_mode, auto_scope, max_consecutive_failures
 cmd_run_parse_args() {
     parse_opts --positional \
-        "bool:dry_run:--dry-run" "bool:no_merge:--no-merge" "bool:create_pr:--pr" \
+        "bool:dry_run:--dry-run" "bool:no_merge:--no-merge" \
         "num:max_consecutive_failures:--max-failures" "num:retries:--retries" "num:session_limit:--limit" \
         -- "$@" || return 1
     local _arg
@@ -3053,7 +2592,7 @@ cmd_run_parse_args() {
 # initialize tracking variables, and build the item queue.
 # Sets outer-scope locals: scope_label, auto_priorities, base_branch,
 #   passed, failed, batch_start, consecutive_failures, groom_exhausted,
-#   sprint_results, sprint_items, sprint_times, session_failures, queued_ids, skipped_ids
+#   sprint_items, session_failures, queued_ids, skipped_ids
 setup_sprint_environment() {
     acquire_lock
     load_config
@@ -3065,11 +2604,6 @@ setup_sprint_environment() {
         log_info "Agent timeout set to ${TIMEOUT_MINUTES} minutes (${AGENT_TIMEOUT}s)"
     fi
 
-    # Config-driven PR creation (--pr flag overrides)
-    if [[ "$create_pr" != "true" && "$CREATE_PR" == "true" ]]; then
-        create_pr=true
-    fi
-
     # Config-driven retries (--retries flag overrides)
     if [[ "$retries" -eq 0 && "${SESSION_RETRIES:-0}" -gt 0 ]]; then
         retries="$SESSION_RETRIES"
@@ -3078,16 +2612,6 @@ setup_sprint_environment() {
     # Config-driven session_limit (--limit flag overrides)
     if [[ -z "$session_limit" && -n "$SESSION_LIMIT" ]]; then
         session_limit="$SESSION_LIMIT"
-    fi
-
-    # --pr implies --no-merge
-    if [[ "$create_pr" == "true" ]]; then
-        no_merge=true
-        # Fall back to no-merge if gh is not available
-        if ! command -v gh &>/dev/null; then
-            log_warning "gh CLI not found — falling back to --no-merge (no PR will be created)"
-            create_pr=false
-        fi
     fi
 
     # Resolve max_consecutive_failures: flag > config > default
@@ -3127,17 +2651,12 @@ setup_sprint_environment() {
     passed=0
     failed=0
     batch_start=$(date +%s)
-    sprint_results=()
     sprint_items=()
-    sprint_times=()
     consecutive_failures=0
     groom_exhausted=false
     session_failures=()
     queued_ids=()
     skipped_ids=()
-    session_lines_added=0
-    session_lines_removed=0
-
     # Pre-build ordered list of all items that could be attempted in this batch
     if [[ -n "$specific_id" ]]; then
         queued_ids=("$specific_id")
@@ -3145,110 +2664,43 @@ setup_sprint_environment() {
         mapfile -t queued_ids < <(list_pickable_ids "" "$auto_priorities")
     fi
 
-    # Auto mode: log queued item count with per-priority breakdown
+    # Auto mode: log queued item count
     if [[ "$auto_mode" == "true" && -z "$specific_id" ]]; then
-        local total=${#queued_ids[@]}
-        if [[ "$total" -eq 0 ]]; then
+        if [[ ${#queued_ids[@]} -eq 0 ]]; then
             log_info "No items to run"
             return 0
         fi
-
-        # Count items per priority tier from backlogs
-        local ids_json n_must=0 n_should=0 n_could=0
-        ids_json=$(printf '%s\n' "${queued_ids[@]}" | jq -R . | jq -s .)
-        local _prio_counts
-        _prio_counts="$(ensure_tmpdir)/prio_counts.txt"
-        : > "$_prio_counts"
-        _count_prios_one() {
-            local f="$1"
-            [[ -f "$BACKLOG_DIR/$f" ]] || return 0
-            jq -r --argjson ids "$ids_json" '
-                [.items[] | select(.id as $id | $ids | index($id) != null)] |
-                group_by(.priority // "should") |
-                .[] | "\(.[0].priority // "should") \(length)"
-            ' "$BACKLOG_DIR/$f" 2>/dev/null >> "$_prio_counts" || true
-        }
-        map_backlog_files _count_prios_one
-
-        local prio cnt
-        while read -r prio cnt; do
-            [[ -z "$prio" ]] && continue
-            case "$prio" in
-                must)   n_must=$((n_must + cnt)) ;;
-                should) n_should=$((n_should + cnt)) ;;
-                could)  n_could=$((n_could + cnt)) ;;
-            esac
-        done < "$_prio_counts"
-
-        # Build breakdown string, omitting tiers with zero count
-        local parts=()
-        [[ "$n_must" -gt 0 ]] && parts+=("must=$n_must")
-        [[ "$n_should" -gt 0 ]] && parts+=("should=$n_should")
-        [[ "$n_could" -gt 0 ]] && parts+=("could=$n_could")
-
-        if [[ ${#parts[@]} -gt 0 ]]; then
-            local breakdown
-            breakdown=$(IFS=' '; echo "${parts[*]}")
-            log_info "Queuing $total item(s): $breakdown"
-        else
-            log_info "Queuing $total item(s)"
-        fi
+        log_info "Queuing ${#queued_ids[@]} item(s)"
     fi
 }
 
-# Count total ready items across all backlogs
-# Build combined failure+success feedback for groom agents.
-# Reads outer-scope: session_failures, session_successes arrays.
-# Outputs the combined feedback string to stdout.
+# Build session feedback for groom agents (last 5 failures/successes).
 _build_groom_feedback() {
-    local feedback=""
+    local out=""
     if [[ ${#session_failures[@]} -gt 0 ]]; then
-        feedback="## Recent Sprint Failures
-Items below failed during implementation or validation. Use these patterns to write better specs — clearer steps, more specific AC, tighter scope.
-"
-        local start=$(( ${#session_failures[@]} > 5 ? ${#session_failures[@]} - 5 : 0 ))
-        local idx
-        for ((idx=start; idx<${#session_failures[@]}; idx++)); do
-            feedback="${feedback}
-- ${session_failures[$idx]}"
-        done
+        out="## Recent Sprint Failures"
+        local i start=$(( ${#session_failures[@]} > 5 ? ${#session_failures[@]} - 5 : 0 ))
+        for ((i=start; i<${#session_failures[@]}; i++)); do out="$out
+- ${session_failures[$i]}"; done
     fi
-    local success_fb=""
     if [[ ${#session_successes[@]} -gt 0 ]]; then
-        success_fb="## Recent Sprint Successes
-These items passed on implementation. Learn from their spec patterns — clear intent, right-sized steps, testable AC.
-"
-        local start=$(( ${#session_successes[@]} > 5 ? ${#session_successes[@]} - 5 : 0 ))
-        local idx
-        for ((idx=start; idx<${#session_successes[@]}; idx++)); do
-            success_fb="${success_fb}
-- ${session_successes[$idx]}"
-        done
-    fi
-    if [[ -f "$ARCHIVE_DIR/sprints.jsonl" ]]; then
-        local specs
-        specs=$(tail -10 "$ARCHIVE_DIR/sprints.jsonl" 2>/dev/null | jq -r \
-            'select(.status == "complete") | "- \(.itemId) (\(.attempts) attempt(s)): \(.title // .itemId)"' 2>/dev/null || true)
-        if [[ -n "$specs" ]]; then
-            success_fb="${success_fb:+${success_fb}
+        [[ -n "$out" ]] && out="$out
 
-}## Specs That Worked
-Recent completed items — these spec structures produced passing sprints. Emulate their patterns.
-${specs}"
-        fi
+"
+        out="${out}## Recent Sprint Successes"
+        local i start=$(( ${#session_successes[@]} > 5 ? ${#session_successes[@]} - 5 : 0 ))
+        for ((i=start; i<${#session_successes[@]}; i++)); do out="$out
+- ${session_successes[$i]}"; done
     fi
-    [[ -n "$feedback" ]] && printf '%s' "$feedback"
-    if [[ -n "$success_fb" ]]; then
-        [[ -n "$feedback" ]] && printf '\n\n'
-        printf '%s' "$success_fb"
-    fi
+    [[ -n "$out" ]] && printf '%s' "$out"
 }
 
 _count_total_ready() {
-    sum_backlog_count count_ready_items
+    local _ctr=0 _cf; for _cf in "${BACKLOG_FILES[@]}"; do [[ -f "$BACKLOG_DIR/$_cf" ]] && _ctr=$((_ctr + $(count_ready_items "$BACKLOG_DIR/$_cf"))); done; printf '%s\n' "$_ctr"
 }
 
-# Record a sprint failure: update counters, mark item, store context, notify
+# Record a sprint failure: destroy worktree first, then update counters and
+# write metadata on the base branch (so failure tracking persists).
 # Uses outer-scope locals from cmd_run and setup_sprint_environment.
 _record_sprint_failure() {
     local reason="$1" detail="$2"
@@ -3256,20 +2708,82 @@ _record_sprint_failure() {
     consecutive_failures=$((consecutive_failures + 1))
     FAILED_IDS["$ITEM_ID"]="$reason"
     session_failures+=("$ITEM_ID: $reason")
-    mark_item_failed "$ITEM_ID" "$detail" "$item_source"
-    sprint_results+=("fail")
     sprint_items+=("$ITEM_ID")
-    sprint_times+=("$(( $(date +%s) - sprint_start ))")
 
-    # Store failure context for later diagnosis
+    # Destroy worktree (preserves diagnostics internally, resets paths to base)
+    handle_sprint_failure
+
+    # Now paths point to base — write failure metadata here so it persists
     _store_failure_context "$ITEM_ID" "$reason" "$detail"
+    mark_item_failed "$ITEM_ID" "$detail" "$item_source"
 
     if [[ -n "$NOTIFY_CMD" ]]; then
         bash -c "$NOTIFY_CMD" -- "fail" "$ITEM_ID" 2>/dev/null || log_warning "Notification command failed (exit $?) — sprint outcome unaffected"
     fi
-    handle_sprint_failure
 }
 
+
+# Auto-groom when ready items are low. Runs architect + groomer, protects
+# existing items, enforces limits, refreshes the item queue.
+# Uses outer-scope locals from cmd_run and setup_sprint_environment.
+_maybe_auto_groom() {
+    [[ "$auto_mode" != "true" || "$groom_exhausted" == "true" ]] && return 0
+    local total_ready
+    total_ready=$(_count_total_ready)
+    [[ "$total_ready" -ge "$AUTO_GROOM_THRESHOLD" ]] && return 0
+
+    log_info "Auto: ready buffer low ($total_ready < $AUTO_GROOM_THRESHOLD) — grooming"
+    _load_module cmd-clean; cmd_clean 2>/dev/null || true
+    _load_module cmd-groom
+    local -a groom_context
+    # shellcheck disable=SC2034  # used via nameref in run_agent
+    mapfile -t groom_context < <(_build_groom_context)
+    local groom_combined_feedback
+    groom_combined_feedback=$(_build_groom_feedback)
+
+    local snap_dir
+    snap_dir=$(mktemp -d)
+    local _sbf; for _sbf in "${BACKLOG_FILES[@]}"; do [[ -f "$BACKLOG_DIR/$_sbf" ]] && cp "$BACKLOG_DIR/$_sbf" "$snap_dir/$_sbf"; done
+
+    GROOM_MONITOR=true run_agent "architect" "groom" "$MODEL_FAST" groom_context "" "$groom_combined_feedback" || true
+    GROOM_MONITOR=
+    check_result || log_warning "Architect groom did not pass — continuing"
+    GROOM_MONITOR=true run_agent "groomer" "groom" "$MODEL_FAST" groom_context "" "$groom_combined_feedback" || true
+    GROOM_MONITOR=
+    check_result || log_warning "Groomer did not pass — continuing"
+
+    protect_items_from_groom "$snap_dir"
+    local counts added skipped
+    counts=$(enforce_groom_limits "$snap_dir")
+    read -r added skipped <<< "$counts"
+    rm -rf "$snap_dir"
+    [[ "$skipped" -gt 0 ]] && log_info "Auto-groom: $added item(s) added, $skipped skipped (limits: max=$GROOM_MAX_ITEMS, min_priority=$GROOM_MIN_PRIORITY)"
+
+    if [[ "$(_count_total_ready)" -le "$total_ready" ]]; then
+        log_warning "Groom did not produce new ready items — pausing auto-groom"
+        groom_exhausted=true
+    fi
+
+    # Refresh queue with newly groomed items
+    local _skip_csv _k
+    _skip_csv=$(for _k in "${!FAILED_IDS[@]}" "${!COMPLETED_IDS[@]}"; do printf '%s,' "$_k"; done)
+    local _uid
+    while IFS= read -r _uid; do
+        [[ -z "$_uid" ]] && continue
+        local _found=false _qid
+        for _qid in "${queued_ids[@]}"; do [[ "$_qid" == "$_uid" ]] && { _found=true; break; }; done
+        [[ "$_found" == "false" ]] && queued_ids+=("$_uid")
+    done < <(list_pickable_ids "${_skip_csv%,}" "$auto_priorities")
+}
+
+# Build comma-separated skip list from failed + completed items.
+_build_skip_list() {
+    local _k
+    local -a _keys=()
+    for _k in "${!FAILED_IDS[@]}"; do _keys+=("$_k"); done
+    for _k in "${!COMPLETED_IDS[@]}"; do _keys+=("$_k"); done
+    IFS=,; printf '%s' "${_keys[*]}"
+}
 
 # Execute the core pick-implement-validate-merge cycle.
 # Uses and modifies outer-scope locals from cmd_run and setup_sprint_environment.
@@ -3281,20 +2795,10 @@ run_sprint_loop() {
         fi
 
         if [[ "$auto_mode" == "true" ]]; then
-            # Session progress line
-            local elapsed_secs elapsed_min progress_count
-            elapsed_secs=$(( $(date +%s) - batch_start ))
-            elapsed_min=$(( elapsed_secs / 60 ))
-            if [[ ${#queued_ids[@]} -gt 0 ]]; then
-                local display_total="${#queued_ids[@]}"
-                if [[ -n "$session_limit" && "$session_limit" -lt "$display_total" ]]; then
-                    display_total="$session_limit"
-                fi
-                progress_count="$passed/$display_total complete"
-            else
-                progress_count="$passed complete"
-            fi
-            log_info "Sprint session: $progress_count | $failed failed | ${elapsed_min}m elapsed"
+            local elapsed_min=$(( ($(date +%s) - batch_start) / 60 ))
+            local display_total="${#queued_ids[@]}"
+            [[ -n "$session_limit" && "$session_limit" -lt "$display_total" ]] && display_total="$session_limit"
+            log_info "Sprint session: $passed/$display_total complete | $failed failed | ${elapsed_min}m elapsed"
             log_subheader "Sprint $i (passed: $passed, failed: $failed)"
         else
             [[ $count -gt 1 ]] && log_subheader "Sprint $i/$count"
@@ -3302,77 +2806,10 @@ run_sprint_loop() {
         local sprint_start
         sprint_start=$(date +%s)
 
-        # Auto mode: auto-groom when ready items are low
-        if [[ "$auto_mode" == "true" && "$groom_exhausted" != "true" ]]; then
-            local total_ready
-            total_ready=$(_count_total_ready)
-            if [[ "$total_ready" -lt "$AUTO_GROOM_THRESHOLD" ]]; then
-                log_info "Auto: ready buffer low ($total_ready < $AUTO_GROOM_THRESHOLD) — grooming"
-                # Auto-clean done items so groom agents see lean backlogs
-                _load_module cmd-clean; cmd_clean 2>/dev/null || true
-                _load_module cmd-groom
-                local -a groom_context
-                # shellcheck disable=SC2034  # used via nameref in run_agent
-                mapfile -t groom_context < <(_build_groom_context)
-                local groom_combined_feedback
-                groom_combined_feedback=$(_build_groom_feedback)
-                # Snapshot for groom limit enforcement
-                local auto_groom_snap
-                auto_groom_snap=$(mktemp -d)
-                snapshot_backlog_files "$auto_groom_snap"
-                # Architect runs first — detects fragment risk and creates scaffolding items
-                # before the groomer prepares features that depend on the skeleton
-                GROOM_MONITOR=true run_agent "architect" "groom" "$MODEL_FAST" groom_context "" "$groom_combined_feedback" || true
-                GROOM_MONITOR=
-                check_result || log_warning "Architect groom did not pass — continuing"
-                GROOM_MONITOR=true run_agent "groomer" "groom" "$MODEL_FAST" groom_context "" "$groom_combined_feedback" || true
-                GROOM_MONITOR=
-                check_result || log_warning "Groomer did not pass — continuing"
-                # Protect existing items from groomer rewrites, then enforce limits
-                protect_items_from_groom "$auto_groom_snap"
-                local auto_groom_counts auto_groom_added auto_groom_skipped
-                auto_groom_counts=$(enforce_groom_limits "$auto_groom_snap")
-                read -r auto_groom_added auto_groom_skipped <<< "$auto_groom_counts"
-                rm -rf "$auto_groom_snap"
-                if [[ "$auto_groom_skipped" -gt 0 ]]; then
-                    log_info "Auto-groom: $auto_groom_added item(s) added, $auto_groom_skipped skipped (limits: max=$GROOM_MAX_ITEMS, min_priority=$GROOM_MIN_PRIORITY)"
-                fi
-                if [[ "$(_count_total_ready)" -le "$total_ready" ]]; then
-                    log_warning "Groom did not produce new ready items — pausing auto-groom"
-                    groom_exhausted=true
-                fi
-                # Refresh queued_ids so progress denominator reflects newly groomed items
-                local -a _skip_for_refresh=()
-                for _k in "${!FAILED_IDS[@]}"; do _skip_for_refresh+=("$_k"); done
-                for _k in "${!COMPLETED_IDS[@]}"; do _skip_for_refresh+=("$_k"); done
-                local _refresh_skip
-                _refresh_skip=$(IFS=,; printf '%s' "${_skip_for_refresh[*]}")
-                local -a _updated_ids
-                mapfile -t _updated_ids < <(list_pickable_ids "$_refresh_skip" "$auto_priorities")
-                local _uid
-                for _uid in "${_updated_ids[@]}"; do
-                    local _already_queued=false
-                    local _qid
-                    for _qid in "${queued_ids[@]}"; do
-                        if [[ "$_qid" == "$_uid" ]]; then
-                            _already_queued=true
-                            break
-                        fi
-                    done
-                    if [[ "$_already_queued" == "false" ]]; then
-                        queued_ids+=("$_uid")
-                    fi
-                done
-            fi
-        fi
+        _maybe_auto_groom
 
-        # Build exclusion list from failed and already-completed items
-        local -a _skip_keys=()
-        local _k
-        for _k in "${!FAILED_IDS[@]}"; do _skip_keys+=("$_k"); done
-        for _k in "${!COMPLETED_IDS[@]}"; do _skip_keys+=("$_k"); done
         local skip_list
-        skip_list=$(IFS=,; printf '%s' "${_skip_keys[*]}")
+        skip_list=$(_build_skip_list)
 
         local item_json
         if ! item_json=$(pick_item "$specific_id" "$skip_list"); then
@@ -3401,14 +2838,9 @@ run_sprint_loop() {
         [[ -z "$item_source" ]] && { log_error "Failed to determine item source. Ensure the item exists in backlog/backlog.json or backlog/bugs.json and retry"; break; }
 
         create_sprint "$item_json" "$item_source"
-        save_backlog_snapshot
-
-        # Advisory complexity hints (does not block sprint)
-        local hints
-        if ! hints=$(check_complexity_hints "$ITEM_ID"); then
-            log_warning "$ITEM_ID may be under-specified — consider adding more steps or scope"
-            printf '%b\n' "$hints"
-        fi
+        local _snap_dir="$STATUS_DIR/backlog-snapshot"
+        mkdir -p "$_snap_dir"
+        local _sbf; for _sbf in "${BACKLOG_FILES[@]}"; do [[ -f "$BACKLOG_DIR/$_sbf" ]] && cp "$BACKLOG_DIR/$_sbf" "$_snap_dir/$_sbf"; done
 
         # Create feature branch
         local branch_name="aishore/${ITEM_ID}"
@@ -3434,10 +2866,6 @@ run_sprint_loop() {
         # Copy current sprint.json into worktree backlog (create_sprint wrote to original)
         cp "$PROJECT_ROOT/backlog/sprint.json" "$BACKLOG_DIR/sprint.json"
 
-        # Capture sprint-shaped item for spec refinement (before sprint reset wipes it)
-        local sprint_item_json
-        sprint_item_json=$(jq -c '.item' "$BACKLOG_DIR/sprint.json" 2>/dev/null || echo "")
-
         cd "$wt_dir" || { log_error "Cannot cd to $wt_dir"; return 1; }
         log_info "Worktree created: $wt_dir"
 
@@ -3446,14 +2874,8 @@ run_sprint_loop() {
             log_info "Running setup: $SETUP_CMD"
             if ! bash -c "$SETUP_CMD" 2>&1; then
                 log_error "Setup command failed — aborting sprint"
-                _record_sprint_failure "$ITEM_ID" "$item_source" "Setup failed" "Setup command '$SETUP_CMD' failed in worktree"
-                _cleanup_worktree
-                cd "$PROJECT_ROOT" || { log_error "Cannot return to project root"; break; }
-                failed=$((failed + 1))
-                FAILED_IDS["$ITEM_ID"]="Setup failed"
-                sprint_results+=("fail")
-                sprint_items+=("$ITEM_ID")
-                sprint_times+=("$(( $(date +%s) - sprint_start ))")
+                _record_sprint_failure "Setup failed" "Setup command '$SETUP_CMD' failed in worktree"
+                cd "$PROJECT_ROOT" 2>/dev/null || true
                 continue
             fi
         fi
@@ -3466,34 +2888,9 @@ run_sprint_loop() {
         _run_retry_loop
 
         if [[ "$sprint_passed" != "true" ]]; then
-            # Refinement: try once more before recording failure (worktree still alive)
-            log_info "Attempting spec refinement after exhausting retries"
-            local failure_ctx=""
-            for sf in "${session_failures[@]}"; do
-                failure_ctx="${failure_ctx}${sf}"$'\n'
-            done
-            [[ -n "$retry_extra_prompt" ]] && failure_ctx="${failure_ctx}Last failure context: ${retry_extra_prompt}"
-
-            if refine_item_spec "$ITEM_ID" "$failure_ctx" "$sprint_item_json"; then
-                log_info "Running one more developer → validate → validator cycle with refined spec"
-                local saved_retries=$retries
-                local prior_attempts=$total_attempts
-                retries=0
-                retry_extra_prompt="This is a REFINED spec after previous failures. Pay close attention to the updated steps and acceptance criteria."
-                sprint_passed=false
-                _run_retry_loop
-                retries=$saved_retries
-                total_attempts=$((prior_attempts + total_attempts))
-            else
-                log_warning "Spec refinement failed — cannot retry"
-            fi
-
-            # NOW record the failure and destroy the worktree (after refinement exhausted)
-            if [[ "$sprint_passed" != "true" ]]; then
-                _record_sprint_failure "${_retry_failure_reason:-Unknown}" "${_retry_failure_detail:-Sprint failed}"
-                [[ "$auto_mode" == "true" ]] && log_info "Progress: $passed passed, $failed failed, $(_count_total_ready) remaining ready"
-                continue
-            fi
+            _record_sprint_failure "${_retry_failure_reason:-Unknown}" "${_retry_failure_detail:-Sprint failed}"
+            [[ "$auto_mode" == "true" ]] && log_info "Progress: $passed passed, $failed failed, $(_count_total_ready) remaining ready"
+            continue
         fi
 
         # Success: mark complete, commit, merge/push
@@ -3525,45 +2922,22 @@ run_sprint_loop() {
     done
 }
 
-# Print end-of-session summary table with counts, duration, and lines changed.
-# Uses outer-scope locals from cmd_run and setup_sprint_environment.
-print_session_summary_table() {
-    local batch_elapsed=$(( $(date +%s) - batch_start ))
-    local total_mins=$(( batch_elapsed / 60 ))
-    local total_secs=$(( batch_elapsed % 60 ))
-    local attempted=$((passed + failed))
-
-    echo ""
-    echo -e "${CYAN}--------------------------------------${NC}"
-    echo -e "${CYAN}  Session Summary${NC}"
-    echo -e "${CYAN}--------------------------------------${NC}"
-    echo "  Items attempted   $(printf '%14s' "$attempted")"
-    echo "  Items passed      $(printf '%14s' "$passed")"
-    echo "  Items failed      $(printf '%14s' "$failed")"
-    echo "  Total duration    $(printf '%14s' "${total_mins}m ${total_secs}s")"
-    echo "  Lines added       $(printf '%14s' "+${session_lines_added}")"
-    echo "  Lines removed     $(printf '%14s' "-${session_lines_removed}")"
-    echo -e "${CYAN}--------------------------------------${NC}"
-    echo ""
-}
-
-# Print batch summary, offer architecture review, and print final status.
+# Print batch summary and print final status.
 # Uses outer-scope locals from cmd_run and setup_sprint_environment.
 print_sprint_summary() {
-    # Print batch summary for auto mode or multi-sprint runs
-    if [[ "$auto_mode" == "true" || $count -gt 1 ]]; then
-        print_batch_summary "$batch_start" sprint_results sprint_items sprint_times FAILED_IDS skipped_ids
-    fi
-
-    # Print end-of-session summary table
-    if [[ $((passed + failed)) -gt 0 ]]; then
-        print_session_summary_table
+    # Failed items detail
+    if [[ ${#FAILED_IDS[@]} -gt 0 ]]; then
+        echo ""
+        echo "  Failed items:"
+        for fid in "${!FAILED_IDS[@]}"; do
+            echo "    - $fid: ${FAILED_IDS[$fid]}"
+        done
     fi
 
     # Zero-items-processed warning: when auto mode processes nothing but backlog has items
     if [[ "$auto_mode" == "true" && $passed -eq 0 && $failed -eq 0 ]]; then
         local total_backlog_items
-        total_backlog_items=$(sum_backlog_count count_items)
+        local _tbi=0 _tbf; for _tbf in "${BACKLOG_FILES[@]}"; do [[ -f "$BACKLOG_DIR/$_tbf" ]] && _tbi=$((_tbi + $(count_items "$BACKLOG_DIR/$_tbf"))); done; total_backlog_items=$_tbi
         if [[ "$total_backlog_items" -gt 0 ]]; then
             log_warning "Session ended: 0 items processed. $total_backlog_items item(s) in backlog were not ready — run '.aishore/aishore backlog check --all' to audit readiness."
         fi
@@ -3572,13 +2946,13 @@ print_sprint_summary() {
     if [[ "$auto_mode" == "true" ]]; then
         if [[ $failed -eq 0 && $passed -gt 0 ]]; then
             log_header "Mission complete: $passed items done"
-            send_session_notification "Sprint session complete: $passed items done"
+            tput bel 2>/dev/null || printf '\a'
         elif [[ "$consecutive_failures" -ge "$max_consecutive_failures" ]]; then
             log_header "Mission aborted: circuit breaker ($passed passed, $failed failed)"
-            send_session_notification "Sprint session stopped: $consecutive_failures consecutive failures ($passed passed, $failed failed)"
+            tput bel 2>/dev/null || printf '\a'
         else
             log_header "Mission ended: $passed passed, $failed failed"
-            send_session_notification "Sprint session ended: $passed passed, $failed failed"
+            tput bel 2>/dev/null || printf '\a'
         fi
     else
         log_header "Results: $passed passed, $failed failed"
@@ -3595,7 +2969,7 @@ cmd_run() {
     require_tool git
 
     local count=1 dry_run=false specific_id="" retries=0
-    local no_merge=false create_pr=false
+    local no_merge=false
     local auto_mode=false auto_scope="" auto_priorities=""
     local max_consecutive_failures="" session_limit=""
 
@@ -3615,11 +2989,10 @@ cmd_run() {
     fi
 
     local scope_label="" base_branch
-    local session_lines_added=0 session_lines_removed=0
     local passed=0 failed=0
     declare -A FAILED_IDS
     declare -A COMPLETED_IDS
-    local batch_start sprint_results=() sprint_items=() sprint_times=()
+    local batch_start sprint_items=()
     local consecutive_failures=0 groom_exhausted=false
     local -a session_failures=() session_successes=() queued_ids=() skipped_ids=()
 
@@ -3648,7 +3021,8 @@ cmd_version() {
 
 # ============================================================================
 # BACKLOG CRUD — extracted to .aishore/lib/cmd-backlog-read.sh (lazy-loaded via _load_module)
-# Write commands (add, edit, populate) in .aishore/lib/cmd-backlog-write.sh
+# Write commands (add, edit) in .aishore/lib/cmd-backlog-write.sh
+# Populate command in .aishore/lib/cmd-populate.sh
 # ============================================================================
 
 # cmd_clean, _archive_done_items — extracted to .aishore/lib/cmd-clean.sh (lazy-loaded via _load_module)
@@ -3666,7 +3040,7 @@ main() {
     shift || true
 
     case "$cmd" in
-        run|auto) cmd_run "$@" ;;
+        run) cmd_run "$@" ;;
         backlog) _load_module cmd-backlog-read; cmd_backlog "$@" ;;
         groom)    _load_module cmd-groom; cmd_groom "$@" ;;
         scaffold) _load_module cmd-scaffold; cmd_scaffold "$@" ;;

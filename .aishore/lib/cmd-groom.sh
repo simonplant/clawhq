@@ -3,7 +3,7 @@
 # Lazy-loaded by _load_module; all globals (BACKLOG_DIR, BACKLOG_FILES, ARCHIVE_DIR,
 # PROJECT_ROOT, GROOM_MAX_ITEMS, GROOM_MIN_PRIORITY, GROOM_SAFE_FIELDS, GROOM_MONITOR,
 # jq, count_items, count_ready_items, count_items, log_*, parse_opts, acquire_lock,
-# load_config, run_agent, check_result, recent_sprints_file, snapshot_backlog_files,
+# load_config, run_agent, check_result, recent_sprints_file,
 # map_backlog_files, ensure_tmpdir, _build_groom_feedback) come from the main script.
 
 cmd_groom() {
@@ -246,7 +246,7 @@ ${formatted_specs}"
 
     local snap_dir
     snap_dir=$(mktemp -d)
-    snapshot_backlog_files "$snap_dir"
+    local _sbf; for _sbf in "${BACKLOG_FILES[@]}"; do [[ -f "$BACKLOG_DIR/$_sbf" ]] && cp "$BACKLOG_DIR/$_sbf" "$snap_dir/$_sbf"; done
 
     log_info "Running $agent agent..."
     echo ""

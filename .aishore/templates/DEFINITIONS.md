@@ -11,7 +11,7 @@ An item is ready for sprint when:
 | 3 | **Testable AC**       | Acceptance criteria can be verified                |
 | 4 | **No Blockers**       | Dependencies are resolved                          |
 | 5 | **Right Size**        | Can be completed in one sprint                     |
-| 6 | **readyForSprint**    | Tech Lead has marked it ready                      |
+| 6 | **readyForSprint**    | Groomer has marked it ready                        |
 
 ## Definition of Done (DoD)
 
@@ -49,10 +49,12 @@ An item is done when:
 Intent is a non-negotiable directive — what must be true when the work is done.
 Write it like an order, not a description. State the outcome, not the implementation.
 
-Good: "Webhooks must deliver or tell the user why not. Silent failure is not acceptable."
-Bad:  "Improve webhook reliability" (vague, no bar, no consequence)
-
-See the full examples in this file after updating via groom or manually.
+| Good | Bad (and why) |
+|------|---------------|
+| "Ops must know instantly if the service is alive or dead." | "Add health check endpoint" (implementation, not outcome) |
+| "Users authenticate securely or are told why not. Never a blank screen." | "Improve auth" (vague, no bar) |
+| "Large uploads complete or give clear progress. No frozen screens." | "Make it faster" (no specific bar) |
+| "Webhooks deliver or tell the user why not. Silent failure is unacceptable." | "Improve webhook reliability" (vague) |
 
 ## Backlog Item Structure
 
