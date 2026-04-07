@@ -242,6 +242,100 @@ describe("generateAgents", () => {
     const highContent = generateAgents(highBp);
     expect(highContent).toContain("Act autonomously on routine tasks");
   });
+
+  // ── Standard Operating Procedures ────────────────────────────────────────
+
+  it("includes session startup ritual with correct read order", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    expect(content).toContain("### Session Startup Ritual");
+    expect(content).toContain("1. **SOUL.md**");
+    expect(content).toContain("2. **USER.md**");
+    expect(content).toContain("3. **Daily memory**");
+    expect(content).toContain("4. **MEMORY.md**");
+    // Verify order: SOUL before USER before daily before MEMORY
+    const soulIdx = content.indexOf("1. **SOUL.md**");
+    const userIdx = content.indexOf("2. **USER.md**");
+    const dailyIdx = content.indexOf("3. **Daily memory**");
+    const memoryIdx = content.indexOf("4. **MEMORY.md**");
+    expect(soulIdx).toBeLessThan(userIdx);
+    expect(userIdx).toBeLessThan(dailyIdx);
+    expect(dailyIdx).toBeLessThan(memoryIdx);
+  });
+
+  it("includes memory discipline section", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    expect(content).toContain("### Memory Discipline");
+    expect(content).toContain("memory/YYYY-MM-DD.md");
+    expect(content).toContain("MEMORY.md");
+    expect(content).toContain("USER.md");
+    expect(content).toContain("Write it down or lose it");
+  });
+
+  it("includes data freshness rules for complex blueprints", () => {
+    const bp = loadEmailManager();  // medium autonomy, has cron
+    const content = generateAgents(bp);
+    expect(content).toContain("### Data Freshness");
+    expect(content).toContain("Verify before citing");
+    expect(content).toContain("Stale data is worse than no data");
+  });
+
+  it("includes overnight batching when quiet_hours configured", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    expect(content).toContain("### Overnight Batching");
+    expect(content).toContain(bp.monitoring.quiet_hours);
+    expect(content).toContain("Deliver ONE digest");
+    expect(content).toContain("Never interrupt overnight");
+  });
+
+  it("includes cron role mapping table when cron_config has jobs", () => {
+    const bp = loadEmailManager();
+    const content = generateAgents(bp);
+    expect(content).toContain("### Scheduled Jobs");
+    expect(content).toContain("| Job | Schedule | Model | Session | Delivery |");
+    expect(content).toContain("Heartbeat");
+    expect(content).toContain("Work Session");
+    expect(content).toContain("Morning Brief");
+  });
+
+  it("simple blueprints get 2 SOP sections, not all 5", () => {
+    const bp = loadBlueprint("research-copilot").blueprint;
+    const content = generateAgents(bp);
+    // Simple: startup + memory discipline (2 sections)
+    expect(content).toContain("### Session Startup Ritual");
+    expect(content).toContain("### Memory Discipline");
+    // Should NOT have complex sections
+    expect(content).not.toContain("### Data Freshness");
+    expect(content).not.toContain("### Overnight Batching");
+    expect(content).not.toContain("### Scheduled Jobs");
+  });
+
+  it("complex blueprints get all 5 SOP sections", () => {
+    const bp = loadEmailManager();  // medium autonomy, cron, quiet_hours
+    const content = generateAgents(bp);
+    expect(content).toContain("### Session Startup Ritual");
+    expect(content).toContain("### Memory Discipline");
+    expect(content).toContain("### Data Freshness");
+    expect(content).toContain("### Overnight Batching");
+    expect(content).toContain("### Scheduled Jobs");
+  });
+
+  it("SOP section is present in all blueprints", () => {
+    const blueprintNames = [
+      "email-manager", "family-hub", "founders-ops",
+      "research-copilot", "stock-trading-assistant",
+    ];
+    for (const name of blueprintNames) {
+      const bp = loadBlueprint(name).blueprint;
+      const content = generateAgents(bp);
+      expect(content, `${name} should have SOP section`).toContain("## Standard Operating Procedures");
+      // All blueprints get at least startup + memory
+      expect(content, `${name} should have startup ritual`).toContain("### Session Startup Ritual");
+      expect(content, `${name} should have memory discipline`).toContain("### Memory Discipline");
+    }
+  });
 });
 
 // ── USER.md Tests ──────────────────────────────────────────────────────────
@@ -327,6 +421,29 @@ describe("generateTools", () => {
     const content = generateTools(bp);
     expect(content).toContain("**required**");
     expect(content).toContain("optional");
+  });
+
+  it("includes tool-specific quirks from integration registry", () => {
+    const bp = loadEmailManager();
+    const content = generateTools(bp);
+    // Email manager has tools in the "email" category → should get email quirks
+    expect(content).toContain("Email quirks:");
+    expect(content).toContain("IMAP connections may drop silently");
+  });
+
+  it("includes calendar quirks when calendar tools present", () => {
+    const bp = loadEmailManager();
+    const content = generateTools(bp);
+    // Email manager also has calendar tools
+    expect(content).toContain("Calendar quirks:");
+    expect(content).toContain("CalDAV sync can lag");
+  });
+
+  it("omits quirks for categories without known integrations", () => {
+    const bp = loadEmailManager();
+    const content = generateTools(bp);
+    // Core tools have no matching integration → no quirks
+    expect(content).not.toContain("Core quirks:");
   });
 });
 

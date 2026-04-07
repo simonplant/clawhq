@@ -27,6 +27,7 @@ const AUTONOMY_LABELS: Record<string, string> = {
  * - Three-tier approval gates with per-action examples
  * - Heartbeat behavior patterns
  * - Communication rules
+ * - Standard operating procedures (scaled by blueprint complexity)
  */
 export function generateAgents(blueprint: Blueprint): string {
   const { toolbelt, use_case_mapping: useCase } = blueprint;
@@ -48,6 +49,7 @@ export function generateAgents(blueprint: Blueprint): string {
     ...formatApprovalGates(blueprint),
     ...formatHeartbeatBehavior(blueprint),
     ...formatCommunicationRules(blueprint),
+    ...formatStandardOperatingProcedures(blueprint),
   ];
 
   return sections.join("\n");
@@ -221,5 +223,172 @@ function formatSkills(blueprint: Blueprint): string[] {
     const req = skill.required ? "required" : "optional";
     lines.push(`- **${skill.name}** _(${req})_ — ${skill.description}`);
   }
+  return lines;
+}
+
+// ── Standard Operating Procedures ─────────────────────────────────────────
+
+/**
+ * Determine whether a blueprint is "complex" for SOP scaling.
+ *
+ * Complex = has active cron jobs (work_session or morning_brief) OR
+ *           autonomy level is medium/high.
+ * Simple (minimal) = low autonomy, no cron beyond heartbeat.
+ */
+function isComplexBlueprint(blueprint: Blueprint): boolean {
+  const { cron_config: cron, autonomy_model: autonomy } = blueprint;
+  const hasCronJobs = !!(cron.work_session || cron.morning_brief);
+  const hasHighAutonomy = autonomy.default !== "low";
+  return hasCronJobs || hasHighAutonomy;
+}
+
+/** Whether quiet_hours are configured (not empty/none). */
+function hasQuietHours(blueprint: Blueprint): boolean {
+  const qh = blueprint.monitoring.quiet_hours;
+  return !!qh && qh !== "none" && /^\d{1,2}:\d{2}-\d{1,2}:\d{2}$/.test(qh);
+}
+
+/** Whether cron_config has active jobs beyond heartbeat. */
+function hasActiveCronJobs(blueprint: Blueprint): boolean {
+  const cron = blueprint.cron_config;
+  return !!(cron.work_session || cron.morning_brief);
+}
+
+/**
+ * Format standard operating procedures section.
+ *
+ * Content scales by blueprint complexity:
+ * - Simple (low autonomy, no cron): startup ritual + memory discipline (2 sections)
+ * - Complex: all 5 sections (startup, memory, data freshness, overnight batching, cron mapping)
+ *
+ * AC4: overnight batching only when quiet_hours configured.
+ * AC5: cron role mapping only when cron_config has jobs.
+ */
+function formatStandardOperatingProcedures(blueprint: Blueprint): string[] {
+  const lines: string[] = [
+    "## Standard Operating Procedures",
+    "",
+  ];
+
+  // Always included: session startup ritual
+  lines.push(...formatSessionStartup());
+
+  // Always included: memory discipline
+  lines.push(...formatMemoryDiscipline());
+
+  // Complex blueprints get additional sections
+  if (isComplexBlueprint(blueprint)) {
+    lines.push(...formatDataFreshness());
+
+    if (hasQuietHours(blueprint)) {
+      lines.push(...formatOvernightBatching(blueprint));
+    }
+
+    if (hasActiveCronJobs(blueprint)) {
+      lines.push(...formatCronRoleMapping(blueprint));
+    }
+  }
+
+  return lines;
+}
+
+/** Session startup ritual — read order matters for context priming. */
+function formatSessionStartup(): string[] {
+  return [
+    "### Session Startup Ritual",
+    "",
+    "On every session start, read files in this exact order:",
+    "",
+    "1. **SOUL.md** — who you are, personality, boundaries",
+    "2. **USER.md** — who you serve, their preferences and constraints",
+    "3. **Daily memory** (`memory/YYYY-MM-DD.md`) — today's raw context",
+    "4. **MEMORY.md** _(main session only)_ — curated long-term memory",
+    "",
+    "Order matters: identity before user, today before history. Skipping a file means operating without that context — never acceptable.",
+    "",
+  ];
+}
+
+/** Memory discipline — where to write, what goes where. */
+function formatMemoryDiscipline(): string[] {
+  return [
+    "### Memory Discipline",
+    "",
+    "Three memory tiers — use the right one:",
+    "",
+    "| Tier | File | What goes here |",
+    "|------|------|---------------|",
+    "| **Daily** | `memory/YYYY-MM-DD.md` | Raw observations, decisions, events — everything from today |",
+    "| **Curated** | `MEMORY.md` | Patterns, preferences, long-term facts distilled from daily logs |",
+    "| **Static** | `USER.md` | User identity facts that rarely change (name, timezone, constraints) |",
+    "",
+    "**Rule:** Write it down or lose it. If you learn something about the user, a decision was made, or context will matter tomorrow — log it in the daily file immediately. Curate into MEMORY.md at end of day.",
+    "",
+  ];
+}
+
+/** Data freshness rules — verify before citing. */
+function formatDataFreshness(): string[] {
+  return [
+    "### Data Freshness",
+    "",
+    "- **Verify before citing** — cached data may be stale. Check tool output timestamps before presenting as current.",
+    "- **Stale data is worse than no data** — if you cannot verify freshness, say so. Never present yesterday's data as today's.",
+    "- **Re-fetch on doubt** — when a user asks about current state, always query the live source rather than relying on memory.",
+    "",
+  ];
+}
+
+/** Overnight batching — batch findings during quiet hours. */
+function formatOvernightBatching(blueprint: Blueprint): string[] {
+  const quietHours = blueprint.monitoring.quiet_hours;
+
+  return [
+    "### Overnight Batching",
+    "",
+    `During quiet hours (**${quietHours}**):`,
+    "",
+    "- **Batch all findings** into files — do not send notifications.",
+    "- **Deliver ONE digest** at the next morning brief time. Consolidate overnight observations into a single summary.",
+    "- **Never interrupt overnight** unless it is an emergency: circuit breaker tripped, critical alert, or system failure.",
+    "",
+  ];
+}
+
+/** Cron role mapping — table showing what each job does. */
+function formatCronRoleMapping(blueprint: Blueprint): string[] {
+  const cron = blueprint.cron_config;
+  const routing = cron.model_routing;
+
+  const lines: string[] = [
+    "### Scheduled Jobs",
+    "",
+    "| Job | Schedule | Model | Session | Delivery |",
+    "|-----|----------|-------|---------|----------|",
+  ];
+
+  if (cron.heartbeat) {
+    const r = routing?.heartbeat;
+    lines.push(
+      `| Heartbeat | \`${cron.heartbeat}\` | ${r?.model ?? "default"} | ${cron.session_target?.heartbeat ?? "isolated"} | ${cron.delivery?.heartbeat ?? "none"} |`,
+    );
+  }
+
+  if (cron.work_session) {
+    const r = routing?.work_session;
+    lines.push(
+      `| Work Session | \`${cron.work_session}\` | ${r?.model ?? "default"} | ${cron.session_target?.work_session ?? "main"} | ${cron.delivery?.work_session ?? "none"} |`,
+    );
+  }
+
+  if (cron.morning_brief) {
+    const r = routing?.morning_brief;
+    lines.push(
+      `| Morning Brief | \`${cron.morning_brief}\` | ${r?.model ?? "default"} | ${cron.session_target?.morning_brief ?? "main"} | ${cron.delivery?.morning_brief ?? "announce"} |`,
+    );
+  }
+
+  lines.push("");
+
   return lines;
 }

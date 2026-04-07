@@ -24,6 +24,8 @@ export interface IntegrationDefinition {
   readonly envKeys: readonly IntegrationEnvKey[];
   /** Egress domains needed for firewall allowlist. */
   readonly egressDomains: readonly string[];
+  /** Operational quirks — gotchas and tips for using this integration. */
+  readonly quirks?: readonly string[];
 }
 
 /** Category of an integration. */

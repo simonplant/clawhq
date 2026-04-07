@@ -27,6 +27,11 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "SMTP_PASS", label: "SMTP password", secret: true },
     ],
     egressDomains: [],  // dynamic — depends on IMAP/SMTP host
+    quirks: [
+      "IMAP connections may drop silently — always re-check connection before batch operations",
+      "Some providers rate-limit IMAP SEARCH — batch queries, avoid rapid-fire searches",
+      "SMTP send failures are silent in some configs — verify send status via IMAP Sent folder",
+    ],
   },
   calendar: {
     name: "calendar",
@@ -39,6 +44,10 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "CALDAV_PASS", label: "CalDAV password", secret: true },
     ],
     egressDomains: [],
+    quirks: [
+      "CalDAV sync can lag 1-5 minutes — re-fetch before confirming availability",
+      "Recurring event modifications require updating the entire series or creating an exception",
+    ],
   },
   telegram: {
     name: "telegram",
@@ -50,6 +59,10 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "TELEGRAM_CHAT_ID", label: "Telegram chat ID", secret: false },
     ],
     egressDomains: ["api.telegram.org"],
+    quirks: [
+      "Messages over 4096 chars are rejected — split long responses",
+      "Bot API rate limit: ~30 messages/second globally, 1 message/second per chat",
+    ],
   },
   anthropic: {
     name: "anthropic",
@@ -60,6 +73,9 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "ANTHROPIC_API_KEY", label: "Anthropic API key", secret: true },
     ],
     egressDomains: ["api.anthropic.com"],
+    quirks: [
+      "API keys have per-minute and per-day token limits — monitor usage to avoid 429 errors",
+    ],
   },
   openai: {
     name: "openai",
@@ -70,6 +86,9 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "OPENAI_API_KEY", label: "OpenAI API key", secret: true },
     ],
     egressDomains: ["api.openai.com"],
+    quirks: [
+      "API keys have tier-based rate limits — check your tier at platform.openai.com",
+    ],
   },
   ollama: {
     name: "ollama",
@@ -80,6 +99,10 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "OLLAMA_HOST", label: "Ollama host", secret: false, defaultValue: OLLAMA_DEFAULT_URL },
     ],
     egressDomains: [],
+    quirks: [
+      "First request after idle loads the model into VRAM — expect 5-30s cold start",
+      "Models unload after 5min idle by default — set OLLAMA_KEEP_ALIVE for persistent loading",
+    ],
   },
   tavily: {
     name: "tavily",
@@ -90,6 +113,9 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "TAVILY_API_KEY", label: "Tavily API key", secret: true },
     ],
     egressDomains: ["api.tavily.com"],
+    quirks: [
+      "Free tier: 1000 searches/month — use search_depth='basic' for routine queries, 'advanced' only when needed",
+    ],
   },
   whatsapp: {
     name: "whatsapp",
@@ -101,6 +127,10 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "WHATSAPP_ACCESS_TOKEN", label: "Access Token", secret: true },
     ],
     egressDomains: ["graph.facebook.com"],
+    quirks: [
+      "Access tokens expire every 24h unless using a System User token",
+      "Template messages required for initiating conversations — free-form only within 24h window",
+    ],
   },
   onepassword: {
     name: "onepassword",
@@ -112,6 +142,10 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "OP_VAULT", label: "1Password vault name or ID (optional)", secret: false, defaultValue: "" },
     ],
     egressDomains: ["my.1password.com", "events.1password.com"],
+    quirks: [
+      "Service account tokens cannot create or modify items — read-only by design",
+      "op CLI must be installed in the container — included in ClawHQ base image",
+    ],
   },
 };
 
@@ -123,4 +157,15 @@ export function availableIntegrationNames(): string[] {
 /** Look up an integration definition. Returns undefined if not found. */
 export function getIntegrationDef(name: string): IntegrationDefinition | undefined {
   return INTEGRATION_REGISTRY[name.toLowerCase()];
+}
+
+/**
+ * Get operational quirks for a tool category.
+ *
+ * Maps tool categories (e.g. "email", "calendar") to integration registry
+ * quirks. Returns empty array if no quirks are known for the category.
+ */
+export function getQuirksForCategory(category: string): readonly string[] {
+  const def = INTEGRATION_REGISTRY[category.toLowerCase()];
+  return def?.quirks ?? [];
 }
