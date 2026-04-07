@@ -86,6 +86,60 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
       envVar: "OPENAI_API_KEY",
     },
   },
+  {
+    id: "github",
+    pathPrefix: "/github",
+    upstream: "https://api.github.com",
+    auth: {
+      type: "header",
+      header: "Authorization",
+      prefix: "Bearer ",
+      envVar: "GH_TOKEN",
+    },
+  },
+  {
+    id: "x",
+    pathPrefix: "/x",
+    upstream: "https://api.twitter.com/2",
+    auth: {
+      type: "header",
+      header: "Authorization",
+      prefix: "Bearer ",
+      envVar: "X_BEARER_TOKEN",
+    },
+  },
+  {
+    id: "substack",
+    pathPrefix: "/substack",
+    upstream: "https://substack.com",
+    auth: {
+      type: "header",
+      header: "Cookie",
+      envVar: "SUBSTACK_COOKIE",
+    },
+  },
+  {
+    id: "ha",
+    pathPrefix: "/ha",
+    upstream: "https://homeassistant.local:8123/api",
+    auth: {
+      type: "header",
+      header: "Authorization",
+      prefix: "Bearer ",
+      envVar: "HA_TOKEN",
+    },
+  },
+  {
+    id: "op",
+    pathPrefix: "/op",
+    upstream: "https://my.1password.com",
+    auth: {
+      type: "header",
+      header: "Authorization",
+      prefix: "Bearer ",
+      envVar: "OP_SERVICE_ACCOUNT_TOKEN",
+    },
+  },
 ];
 
 // ── Route File Generation ──────────────────────────────────────────────────

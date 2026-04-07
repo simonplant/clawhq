@@ -247,6 +247,144 @@ export const probe1Password: CredentialProbe = async (env) => {
   return fail(integration, envKey, `Unexpected status ${response.status}`, "Check your 1Password service account status");
 };
 
+// ── GitHub Probe ────────────────────────────────────────────────────────────
+
+/**
+ * Validate a GitHub personal access token by calling the /user endpoint.
+ *
+ * Key format: `ghp_...` (classic) or `github_pat_...` (fine-grained).
+ */
+export const probeGitHub: CredentialProbe = async (env) => {
+  const integration = "GitHub";
+  const envKey = "GH_TOKEN";
+  const key = env[envKey];
+
+  if (!key) {
+    return missing(integration, envKey, `Set ${envKey} in your .env file. Create a token at https://github.com/settings/tokens`);
+  }
+
+  if (!key.startsWith("ghp_") && !key.startsWith("github_pat_")) {
+    return fail(integration, envKey, "Token format invalid (expected ghp_... or github_pat_... prefix)", `Check ${envKey} — it should start with ghp_ or github_pat_`);
+  }
+
+  const result = await probeFetch("https://api.github.com/user", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      Accept: "application/vnd.github+json",
+    },
+  });
+
+  if ("error" in result) {
+    return fail(integration, envKey, `API unreachable: ${result.error}`, "Check your network connection or try again later");
+  }
+
+  const { response } = result;
+
+  if (response.status === 200) {
+    try {
+      const body = (await response.json()) as { login?: string };
+      if (body.login) {
+        return pass(integration, envKey, `Valid (@${body.login})`);
+      }
+    } catch {
+      // Response parsing failed — still a valid token
+    }
+    return pass(integration, envKey, "Valid");
+  }
+
+  if (response.status === 401) {
+    return fail(integration, envKey, "Token rejected (401 Unauthorized)", `Regenerate ${envKey} at https://github.com/settings/tokens`);
+  }
+
+  return fail(integration, envKey, `Unexpected status ${response.status}`, "Check your GitHub token permissions");
+};
+
+// ── X/Twitter Probe ─────────────────────────────────────────────────────────
+
+/**
+ * Validate an X/Twitter bearer token by calling the /2/users/me endpoint.
+ *
+ * Bearer tokens don't have a standard prefix.
+ */
+export const probeX: CredentialProbe = async (env) => {
+  const integration = "X/Twitter";
+  const envKey = "X_BEARER_TOKEN";
+  const key = env[envKey];
+
+  if (!key) {
+    return missing(integration, envKey, `Set ${envKey} in your .env file. Get a bearer token from https://developer.twitter.com/`);
+  }
+
+  const result = await probeFetch("https://api.twitter.com/2/users/me", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${key}` },
+  });
+
+  if ("error" in result) {
+    return fail(integration, envKey, `API unreachable: ${result.error}`, "Check your network connection or try again later");
+  }
+
+  const { response } = result;
+
+  if (response.status === 200) {
+    return pass(integration, envKey, "Valid");
+  }
+
+  if (response.status === 401) {
+    return fail(integration, envKey, "Token rejected (401 Unauthorized)", `Regenerate ${envKey} at https://developer.twitter.com/`);
+  }
+
+  if (response.status === 403) {
+    return fail(integration, envKey, "Token forbidden (403) — check API access level", "Ensure your X developer account has the required access tier");
+  }
+
+  return fail(integration, envKey, `Unexpected status ${response.status}`, "Check your X developer account status");
+};
+
+// ── Home Assistant Probe ────────────────────────────────────────────────────
+
+/**
+ * Validate a Home Assistant long-lived access token by calling the /api/ endpoint.
+ *
+ * Requires HA_URL to be set alongside HA_TOKEN.
+ */
+export const probeHomeAssistant: CredentialProbe = async (env) => {
+  const integration = "Home Assistant";
+  const envKey = "HA_TOKEN";
+  const token = env[envKey];
+  const url = env["HA_URL"];
+
+  if (!token) {
+    return missing(integration, envKey, `Set ${envKey} in your .env file. Create a long-lived access token in HA → Profile → Security`);
+  }
+
+  if (!url) {
+    return fail(integration, "HA_URL", "HA_URL not configured", "Set HA_URL to your Home Assistant base URL (e.g. http://homeassistant.local:8123)");
+  }
+
+  const result = await probeFetch(`${url}/api/`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if ("error" in result) {
+    return fail(integration, envKey, `API unreachable: ${result.error}`, `Check HA_URL (${url}) and your network connection`);
+  }
+
+  const { response } = result;
+
+  if (response.status === 200) {
+    return pass(integration, envKey, "Valid");
+  }
+
+  if (response.status === 401) {
+    return fail(integration, envKey, "Token rejected (401 Unauthorized)", `Regenerate ${envKey} in HA → Profile → Security`);
+  }
+
+  return fail(integration, envKey, `Unexpected status ${response.status}`, "Check your Home Assistant configuration");
+};
+
 // ── Probe Registry ───────────────────────────────────────────────────────────
 
 /**
@@ -260,4 +398,7 @@ export const builtinProbes: readonly CredentialProbe[] = [
   probeOpenAI,
   probeTelegram,
   probe1Password,
+  probeGitHub,
+  probeX,
+  probeHomeAssistant,
 ];

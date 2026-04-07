@@ -147,6 +147,66 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       "op CLI must be installed in the container — included in ClawHQ base image",
     ],
   },
+  github: {
+    name: "github",
+    label: "GitHub",
+    description: "GitHub REST API for repo, issue, PR, and release management",
+    category: "productivity",
+    envKeys: [
+      { key: "GH_TOKEN", label: "GitHub personal access token", secret: true },
+    ],
+    egressDomains: ["api.github.com"],
+    quirks: [
+      "Fine-grained PATs scope to specific repos — use repo-level tokens, not classic tokens",
+      "REST API rate limit: 5000 req/hour with auth, 60 req/hour without",
+    ],
+  },
+  x: {
+    name: "x",
+    label: "X/Twitter (read-only)",
+    description: "X/Twitter API v2 read-only scanner — search, timeline, user lookup",
+    category: "data",
+    envKeys: [
+      { key: "X_BEARER_TOKEN", label: "X/Twitter API v2 bearer token", secret: true },
+    ],
+    egressDomains: ["api.twitter.com"],
+    quirks: [
+      "Free tier: 500K tweets/month read, 10K tweets/month search — monitor usage",
+      "Read-only by design — no posting capability in this tool",
+    ],
+  },
+  substack: {
+    name: "substack",
+    label: "Substack",
+    description: "Substack newsletter reader — latest posts, search, full article read",
+    category: "data",
+    envKeys: [
+      { key: "SUBSTACK_COOKIE", label: "Substack session cookie (for paid content)", secret: true },
+    ],
+    egressDomains: ["substack.com"],
+    quirks: [
+      "Session cookies expire — re-authenticate periodically for paid content access",
+      "Without cookies, only free posts are accessible",
+    ],
+  },
+  homeassistant: {
+    name: "homeassistant",
+    label: "Home Assistant",
+    description: "Home Assistant REST API for smart home control and monitoring",
+    category: "data",
+    envKeys: [
+      { key: "HA_URL", label: "Home Assistant base URL", secret: false },
+      { key: "HA_TOKEN", label: "Home Assistant long-lived access token", secret: true },
+      { key: "HA_ENTITY_ALLOW", label: "Allowed entity prefixes (comma-separated, optional)", secret: false, defaultValue: "" },
+      { key: "HA_ENTITY_DENY", label: "Denied entity prefixes (comma-separated, optional)", secret: false, defaultValue: "" },
+    ],
+    egressDomains: [],  // dynamic — depends on HA_URL
+    quirks: [
+      "Long-lived access tokens do not expire — but can be revoked from the HA UI",
+      "Use HA_ENTITY_ALLOW/HA_ENTITY_DENY to restrict which entities the agent can control",
+      "call-service is a write operation — consider adding entity prefixes like 'lock.' to HA_ENTITY_DENY",
+    ],
+  },
 };
 
 /** List all known integration names. */
