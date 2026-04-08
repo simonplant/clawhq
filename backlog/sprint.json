@@ -1,34 +1,34 @@
 {
-  "sprintId": "sprint-1775686893",
-  "startedAt": "2026-04-08T15:21:33-07:00",
-  "status": "in_progress",
+  "sprintId": "sprint-1775687753",
+  "startedAt": "2026-04-08T15:35:53-07:00",
+  "status": "completed",
   "item": {
-    "id": "FEAT-161",
-    "title": "Harden .env merge parser — handle quoted values and inline comments",
-    "intent": "Credentials flow through the .env merge path. A quoted value like API_KEY=\"sk-ant-abc123\" must survive merge intact, not be corrupted by naive parsing that includes the quotes as literal value characters.",
-    "description": "parseEnvFile() in writer.ts handles only bare KEY=VALUE lines. Real .env files commonly use quoted values (KEY=\"value with spaces\"), inline comments (KEY=value # comment), and the dotenv convention of stripping surrounding quotes. The mergeEnv() function is used during clawhq init to preserve existing credentials when regenerating config — corrupting credentials during merge means the agent silently loses API access.",
+    "id": "FEAT-163",
+    "title": "Extract known models list to single source of truth — eliminate duplication between config and blueprint validation",
+    "intent": "Adding a new model to the system must require changing one file, not hunting through multiple hardcoded lists. Model list duplication between blueprint validation and config defaults is a divergence risk.",
+    "description": "The known model list (haiku, sonnet, opus, gpt-4, llama3:8b, etc.) is hardcoded in at least two places: src/design/blueprints/validate.ts and referenced in config validation. Adding a new model requires finding and updating all locations. Extract to a single KNOWN_MODELS constant in src/config/defaults.ts and import it wherever needed.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Update parseEnvFile() to strip surrounding single or double quotes from values",
-      "Update parseEnvFile() to strip inline comments (# preceded by whitespace, outside quotes)",
-      "Preserve the raw line format when not substituting (don't normalize quotes)",
-      "In mergeEnv(), when preserving an old value, use the raw line format from the existing file",
-      "Add test: KEY=\"value with spaces\" parses as KEY → value with spaces",
-      "Add test: KEY=value # comment parses as KEY → value",
-      "Add test: KEY='single quoted' parses as KEY → single quoted",
-      "Add test: merge preserves quoted format from existing file",
-      "Add test: KEY=value#nospace is NOT treated as a comment (# must be preceded by space)"
+      "Add KNOWN_MODELS constant to src/config/defaults.ts with the complete model list",
+      "Update src/design/blueprints/validate.ts to import KNOWN_MODELS instead of maintaining its own list",
+      "Search for any other hardcoded model lists in the codebase and replace with imports",
+      "Add test: KNOWN_MODELS contains all expected model families (haiku, sonnet, opus, gpt-4*, llama3*, mistral*, phi3*, gemma*, qwen2*)",
+      "Verify all existing validation tests still pass"
     ],
     "acceptanceCriteria": [
-      "parseEnvFile('API_KEY=\"sk-ant-abc123\"') returns Map with API_KEY → sk-ant-abc123 (quotes stripped)",
-      "parseEnvFile('KEY=value # this is a comment') returns Map with KEY → value",
-      "parseEnvFile('URL=https://example.com#anchor') returns Map with URL → https://example.com#anchor (no space before #, not a comment)",
-      "mergeEnv preserves existing real values in their original format (including surrounding quotes if present)",
-      "TypeScript compiles cleanly"
+      "A single KNOWN_MODELS constant exists in src/config/defaults.ts",
+      "src/design/blueprints/validate.ts imports and uses KNOWN_MODELS instead of a local list",
+      "No other file in src/ defines its own model list that duplicates KNOWN_MODELS",
+      "Existing validation tests pass unchanged"
     ],
     "scope": [
-      "src/design/configure/writer.ts"
+      "src/config/defaults.ts",
+      "src/design/blueprints/validate.ts"
     ],
-    "startedAt": "2026-04-08T15:21:33-07:00"
-  }
+    "startedAt": "2026-04-08T15:35:53-07:00",
+    "status": "passed",
+    "completedAt": "2026-04-08T15:38:55-07:00"
+  },
+  "completedAt": "2026-04-08T15:38:55-07:00",
+  "attempts": 1
 }

