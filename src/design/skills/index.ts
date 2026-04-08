@@ -9,6 +9,7 @@ export type { SkillFileEntry } from "./loader.js";
 export {
   listConfigSkillNames,
   listPlatformSkillNames,
+  listProfileSkillNames,
   loadBlueprintSkills,
   loadPlatformSkills,
 } from "./loader.js";

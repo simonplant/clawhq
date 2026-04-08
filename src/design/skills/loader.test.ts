@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   listConfigSkillNames,
   listPlatformSkillNames,
+  listProfileSkillNames,
   loadBlueprintSkills,
   loadPlatformSkills,
 } from "./loader.js";
@@ -47,6 +48,76 @@ describe("listPlatformSkillNames", () => {
     const names = listPlatformSkillNames();
     expect(names).toContain("cron-doctor");
     expect(names).toContain("scanner-triage");
+  });
+});
+
+// ── Profile Skills ─────────────────────────────────────────────────────────
+
+const PROFILE_SKILL_NAMES = [
+  "content-seed",
+  "eod-review",
+  "meal-planner",
+  "trade-journal",
+  "trip-planner",
+] as const;
+
+describe("listProfileSkillNames", () => {
+  it("includes all 5 profile skills", () => {
+    const names = listProfileSkillNames();
+    for (const name of PROFILE_SKILL_NAMES) {
+      expect(names).toContain(name);
+    }
+  });
+});
+
+describe("loadBlueprintSkills — profile skills", () => {
+  it("loads profile skills by name via loadBlueprintSkills", () => {
+    for (const name of PROFILE_SKILL_NAMES) {
+      const skills = loadBlueprintSkills([name]);
+      expect(skills.length, `${name}: should return at least one file`).toBeGreaterThan(0);
+
+      const names = [...new Set(skills.map((s) => s.skillName))];
+      expect(names).toEqual([name]);
+    }
+  });
+
+  it("includes SKILL.md for each profile skill", () => {
+    const skills = loadBlueprintSkills([...PROFILE_SKILL_NAMES]);
+    for (const name of PROFILE_SKILL_NAMES) {
+      const skillFiles = skills.filter((s) => s.skillName === name);
+      expect(
+        skillFiles.some((f) => f.relativePath.endsWith("SKILL.md")),
+        `${name}: should include SKILL.md`,
+      ).toBe(true);
+    }
+  });
+
+  it("sets relativePath under workspace/skills/ for profile skills", () => {
+    const skills = loadBlueprintSkills([...PROFILE_SKILL_NAMES]);
+    for (const skill of skills) {
+      expect(skill.relativePath).toMatch(/^workspace\/skills\//);
+    }
+  });
+
+  it("returns non-empty SKILL.md content with behavioral guidance", () => {
+    const skills = loadBlueprintSkills([...PROFILE_SKILL_NAMES]);
+    for (const name of PROFILE_SKILL_NAMES) {
+      const skillMd = skills.find(
+        (s) => s.skillName === name && s.relativePath.endsWith("SKILL.md"),
+      );
+      expect(skillMd, `${name}: SKILL.md should exist`).toBeDefined();
+      expect(skillMd!.content).toContain("## Behavior");
+      expect(skillMd!.content).toContain("## Boundaries");
+    }
+  });
+
+  it("loads all 5 profile skills together", () => {
+    const skills = loadBlueprintSkills([...PROFILE_SKILL_NAMES]);
+    const loaded = [...new Set(skills.map((s) => s.skillName))];
+    expect(loaded).toHaveLength(5);
+    for (const name of PROFILE_SKILL_NAMES) {
+      expect(loaded).toContain(name);
+    }
   });
 });
 
