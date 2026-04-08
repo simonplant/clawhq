@@ -4,7 +4,7 @@ import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
 import { loadBlueprint } from "../blueprints/loader.js";
 
-import { generateAllowlistContent, generateBundle, generateSkillFiles, validateCronExpr } from "./generate.js";
+import { generateAllowlistContent, generateBundle, generateDelegatedRulesContent, generateSkillFiles, validateCronExpr } from "./generate.js";
 import type { WizardAnswers } from "./types.js";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -553,6 +553,36 @@ describe("delegated action rules", () => {
     // Total rules across all categories
     expect(info.ruleCount).toBeGreaterThanOrEqual(8);
   });
+
+  it("metadata sizeBytes matches actual content size", () => {
+    const loaded = loadBlueprint("email-manager");
+    const content = generateDelegatedRulesContent(loaded.blueprint);
+    const bundle = generateBundle(makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+    }));
+    const info = bundle.delegatedRulesFile!;
+
+    expect(content).toBeDefined();
+    expect(info.sizeBytes).toBe(Buffer.byteLength(content!, "utf-8"));
+  });
+
+  it("metadata ruleCount matches rules in generated content", () => {
+    const loaded = loadBlueprint("email-manager");
+    const content = generateDelegatedRulesContent(loaded.blueprint);
+    const bundle = generateBundle(makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+    }));
+    const info = bundle.delegatedRulesFile!;
+
+    const parsed = JSON.parse(content!);
+    const contentRuleCount = parsed.categories.reduce(
+      (sum: number, cat: { rules: unknown[] }) => sum + cat.rules.length, 0,
+    );
+    expect(info.ruleCount).toBe(contentRuleCount);
+    expect(info.categoryCount).toBe(parsed.categories.length);
+  });
 });
 
 describe("multi-instance support", () => {
@@ -681,6 +711,90 @@ describe("validateCronExpr", () => {
   it("accepts boundary values at limits", () => {
     expect(validateCronExpr("0 0 1 1 0")).toHaveLength(0);
     expect(validateCronExpr("59 23 31 12 7")).toHaveLength(0);
+  });
+});
+
+// ── BUG-001: fixCronField uses correct range per field position ────────────
+
+describe("bare N/step cron fix uses correct field ranges", () => {
+  it("fixes bare N/step in hour field to 0-23 range, not 0-59", () => {
+    const loaded = loadBlueprint("family-hub");
+    // Inject a bare N/step in a 5-field expression where field 1 (hour) has the bare step
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, heartbeat: "0 5/3 * * *" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.expr).toBe("0 0-23/3 * * *");
+  });
+
+  it("fixes bare N/step in day-of-month field to 1-31 range", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, heartbeat: "0 0 5/10 * *" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.expr).toBe("0 0 1-31/10 * *");
+  });
+
+  it("fixes bare N/step in minute field to 0-59 range", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, heartbeat: "5/15 * * * *" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.expr).toContain("0-59/15");
+  });
+
+  it("fixes bare N/step in day-of-week field to 0-7 range", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, heartbeat: "0 0 * * 1/2" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.expr).toContain("0-7/2");
+  });
+});
+
+// ── BUG-002: normalizeMorningBrief throws on invalid input ─────────────────
+
+describe("morning brief rejects invalid time formats", () => {
+  it("throws on '7:00 AM' format", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, morning_brief: "7:00 AM" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    expect(() => generateBundle(answers)).toThrow(/Invalid morning brief time.*expected HH:MM/);
+  });
+
+  it("throws on '07:00 UTC' format", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, morning_brief: "07:00 UTC" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    expect(() => generateBundle(answers)).toThrow(/Invalid morning brief time/);
+  });
+
+  it("throws on '7h00' format", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, morning_brief: "7h00" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    expect(() => generateBundle(answers)).toThrow(/Invalid morning brief time/);
+  });
+
+  it("still accepts valid HH:MM format", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, morning_brief: "06:30" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const brief = bundle.cronJobs.find((j) => j.id === "morning-brief");
+    expect(brief?.expr).toBe("30 6 * * *");
+  });
+
+  it("accepts edge case 23:59", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, morning_brief: "23:59" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const brief = bundle.cronJobs.find((j) => j.id === "morning-brief");
+    expect(brief?.expr).toBe("59 23 * * *");
   });
 });
 

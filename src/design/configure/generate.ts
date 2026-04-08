@@ -590,12 +590,12 @@ function buildSkillFiles(blueprint: Blueprint): SkillFileInfo[] {
 // ── Delegated Rules ─────────────────────────────────────────────────────────
 
 /**
- * Compile blueprint delegation rules into a delegated-rules.json workspace file.
+ * Compile delegation rules once — returns both content and metadata.
  *
- * Returns metadata about the compiled file, or undefined if the blueprint
- * has no delegation_rules section.
+ * Single compilation point ensures the metadata (ruleCount, sizeBytes)
+ * is always consistent with the content.
  */
-function buildDelegatedRulesFile(blueprint: Blueprint): DelegatedRulesFileInfo | undefined {
+function compileDelegationRules(blueprint: Blueprint): { content: string; metadata: DelegatedRulesFileInfo } | undefined {
   if (!blueprint.delegation_rules?.categories?.length) return undefined;
 
   const compiled: CompiledDelegationRules = {
@@ -611,11 +611,21 @@ function buildDelegatedRulesFile(blueprint: Blueprint): DelegatedRulesFileInfo |
   );
 
   return {
-    path: "workspace/delegated-rules.json",
-    sizeBytes: Buffer.byteLength(content, "utf-8"),
-    categoryCount: blueprint.delegation_rules.categories.length,
-    ruleCount,
+    content,
+    metadata: {
+      path: "workspace/delegated-rules.json",
+      sizeBytes: Buffer.byteLength(content, "utf-8"),
+      categoryCount: blueprint.delegation_rules.categories.length,
+      ruleCount,
+    },
   };
+}
+
+/**
+ * Build delegated rules metadata for the deployment bundle.
+ */
+function buildDelegatedRulesFile(blueprint: Blueprint): DelegatedRulesFileInfo | undefined {
+  return compileDelegationRules(blueprint)?.metadata;
 }
 
 /**
@@ -624,15 +634,7 @@ function buildDelegatedRulesFile(blueprint: Blueprint): DelegatedRulesFileInfo |
  * Public API for the writer to get the actual file content.
  */
 export function generateDelegatedRulesContent(blueprint: Blueprint): string | undefined {
-  if (!blueprint.delegation_rules?.categories?.length) return undefined;
-
-  const compiled: CompiledDelegationRules = {
-    version: "1.0",
-    generatedAt: new Date().toISOString(),
-    categories: blueprint.delegation_rules.categories,
-  };
-
-  return JSON.stringify(compiled, null, 2);
+  return compileDelegationRules(blueprint)?.content;
 }
 
 // ── Domain Allowlist ────────────────────────────────────────────────────────
@@ -791,7 +793,7 @@ function normalizeCronExpr(blueprintExpr: string): string | null {
     expr = `${cleaned} * * * *`;
   } else if (cleaned.split(/\s+/).length === 5) {
     // If it's already 5 fields, fix any bare N/step (LM-09)
-    expr = cleaned.split(/\s+/).map(fixCronField).join(" ");
+    expr = cleaned.split(/\s+/).map((f, i) => fixCronField(f, i)).join(" ");
   } else if (/^\d+$/.test(cleaned)) {
     // Single number — treat as minutes past the hour
     expr = `${cleaned} * * * *`;
@@ -833,19 +835,22 @@ function normalizeMorningBrief(timeStr: string): string {
 
     return expr;
   }
-  // Fallback: 7am
-  return "0 7 * * *";
+  throw new Error(
+    `Invalid morning brief time "${timeStr}" — expected HH:MM format (e.g. "07:00")`,
+  );
 }
 
 /**
  * Fix a single cron field to prevent LM-09 violations.
  *
- * Bare "N/step" → "0-59/step" for minute field (safe expansion).
+ * Bare "N/step" → "min-max/step" using the correct range for that field position.
  */
-function fixCronField(field: string): string {
+function fixCronField(field: string, fieldIndex: number): string {
   const match = field.match(/^(\d+)\/(\d+)$/);
   if (match) {
-    return `0-59/${match[2]}`;
+    const range = CRON_FIELD_RANGES[fieldIndex];
+    if (!range) return field;
+    return `${range.min}-${range.max}/${match[2]}`;
   }
   return field;
 }

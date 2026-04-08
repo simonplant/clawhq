@@ -13,6 +13,7 @@ import { join } from "node:path";
 
 import chalk from "chalk";
 
+import { sanitizeContentSync } from "../../secure/sanitizer/index.js";
 import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
 import { loadAllBuiltinBlueprints, loadBlueprint } from "../blueprints/loader.js";
 import type { LoadedBlueprint } from "../blueprints/loader.js";
@@ -109,10 +110,11 @@ export async function runSmartInference(
     );
   }
 
-  // Step 5: Run inference
+  // Step 5: Run inference — sanitize user input before LLM prompt interpolation
   console.log(chalk.dim("\nAnalyzing your description…"));
+  const sanitized = sanitizeContentSync(description, { source: "user-input" });
   const ollamaOpts: OllamaOptions = { baseUrl: ollamaUrl, model };
-  const result = await infer(description, blueprints, ollamaOpts);
+  const result = await infer(sanitized.text, blueprints, ollamaOpts);
 
   // Step 6: Load selected blueprint
   const slug = result.blueprint.toLowerCase().replace(/\s+/g, "-");
