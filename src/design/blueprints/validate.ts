@@ -21,6 +21,7 @@ import {
   MISSION_PROFILE_DEFAULTS,
   MISSION_PROFILE_IDS,
 } from "./profiles.js";
+import { KNOWN_MODELS } from "../../config/defaults.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -233,19 +234,6 @@ function checkMemoryPolicy(raw: RawBlueprint): BlueprintValidationResult[] {
     checkEnum(section, "summarization", "memory_policy", ["aggressive", "balanced", "conservative"]),
   ];
 }
-
-// ── Known Model Names ──────────────────────────────────────────────────────
-
-/** Model identifiers recognized by ClawHQ for cron job routing. */
-const KNOWN_MODELS = new Set([
-  // Anthropic Claude family
-  "haiku", "sonnet", "opus",
-  // OpenAI family
-  "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
-  // Local / Ollama models
-  "llama3:8b", "llama3:70b", "mistral:7b", "mixtral:8x7b", "codellama:7b", "codellama:34b",
-  "phi3:mini", "phi3:medium", "gemma:7b", "gemma:2b", "qwen2:7b",
-]);
 
 // ── cron_config (checks 35-37 + model_routing) ─────────────────────────────
 
