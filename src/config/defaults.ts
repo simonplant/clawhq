@@ -38,6 +38,24 @@ export const TELEGRAM_API_BASE = "https://api.telegram.org";
 /** Base URL for the 1Password Events API (no trailing slash). */
 export const ONEPASSWORD_API_BASE = "https://events.1password.com";
 
+// ── Known model identifiers ────────────────────────────────────────────────
+
+/**
+ * Canonical set of model identifiers recognized by ClawHQ.
+ *
+ * Single source of truth — import this wherever model validation is needed
+ * instead of maintaining local lists.
+ */
+export const KNOWN_MODELS: ReadonlySet<string> = new Set([
+  // Anthropic Claude family
+  "haiku", "sonnet", "opus",
+  // OpenAI family
+  "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
+  // Local / Ollama models
+  "llama3:8b", "llama3:70b", "mistral:7b", "mixtral:8x7b", "codellama:7b", "codellama:34b",
+  "phi3:mini", "phi3:medium", "gemma:7b", "gemma:2b", "qwen2:7b",
+]);
+
 // ── Multi-instance helpers ──────────────────────────────────────────────────
 
 /**
