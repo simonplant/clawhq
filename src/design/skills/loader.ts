@@ -1,8 +1,10 @@
 /**
  * Pre-built skill loader — reads skill directories and returns them as FileEntry arrays.
  *
- * Skills are organized under src/design/skills/platform/ (always included)
- * and the configs/skills/ directory (selectable via blueprint.skill_bundle.included).
+ * Skills are organized under src/design/skills/platform/ (always included),
+ * src/design/skills/profiles/ (profile-specific pre-built skills), and
+ * configs/skills/ (config-level skills). Profile and config skills are
+ * selectable via blueprint.skill_bundle.included.
  *
  * Each skill is a directory containing at minimum a SKILL.md file.
  * The loader reads all files in the directory and returns them with
@@ -43,7 +45,13 @@ function platformSkillsDir(): string {
   return resolve(thisDir, "platform");
 }
 
-/** Resolve the configs/skills/ directory (profile-specific skills). */
+/** Resolve the src/design/skills/profiles/ directory (profile-specific pre-built skills). */
+function profileSkillsDir(): string {
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  return resolve(thisDir, "profiles");
+}
+
+/** Resolve the configs/skills/ directory (config-level skills). */
 function configSkillsDir(): string {
   const thisDir = dirname(fileURLToPath(import.meta.url));
   return resolve(thisDir, "..", "..", "..", "configs", "skills");
@@ -110,22 +118,28 @@ export function loadPlatformSkills(): SkillFileEntry[] {
 }
 
 /**
- * Load specific skills by name from the configs/skills/ directory.
+ * Load specific skills by name from profile and config skill directories.
  *
- * Used to resolve blueprint.skill_bundle.included — each name maps to
- * a directory under configs/skills/.
+ * Used to resolve blueprint.skill_bundle.included — each name is looked up
+ * first in src/design/skills/profiles/, then in configs/skills/.
  *
- * Skills that don't exist in configs/skills/ are silently skipped
+ * Skills that don't exist in either location are silently skipped
  * (they may be external skills installed at runtime via `clawhq skill install`).
  */
 export function loadBlueprintSkills(skillNames: readonly string[]): SkillFileEntry[] {
-  const dir = configSkillsDir();
-  if (!existsSync(dir)) return [];
+  const profileDir = profileSkillsDir();
+  const configDir = configSkillsDir();
 
   const entries: SkillFileEntry[] = [];
   for (const name of skillNames) {
-    const skillDir = join(dir, name);
-    entries.push(...readSkillDirectory(skillDir, name));
+    // Check profile skills first, then config skills
+    const profilePath = join(profileDir, name);
+    if (existsSync(profilePath)) {
+      entries.push(...readSkillDirectory(profilePath, name));
+      continue;
+    }
+    const configPath = join(configDir, name);
+    entries.push(...readSkillDirectory(configPath, name));
   }
   return entries;
 }
@@ -135,6 +149,18 @@ export function loadBlueprintSkills(skillNames: readonly string[]): SkillFileEnt
  */
 export function listPlatformSkillNames(): string[] {
   const dir = platformSkillsDir();
+  if (!existsSync(dir)) return [];
+
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+}
+
+/**
+ * List available profile skill names (from src/design/skills/profiles/).
+ */
+export function listProfileSkillNames(): string[] {
+  const dir = profileSkillsDir();
   if (!existsSync(dir)) return [];
 
   return readdirSync(dir, { withFileTypes: true })
