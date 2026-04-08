@@ -513,6 +513,7 @@ function buildIdentityFiles(
     name: f.name,
     path: f.relativePath,
     sizeBytes: Buffer.byteLength(f.content, "utf-8"),
+    content: f.content,
   }));
 }
 

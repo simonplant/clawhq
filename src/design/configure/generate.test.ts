@@ -146,6 +146,16 @@ describe("generateBundle", () => {
     expect(names).toContain("AGENTS.md");
   });
 
+  it("identity files include content with sizeBytes matching Buffer.byteLength", () => {
+    const bundle = generateBundle(makeAnswers());
+    expect(bundle.identityFiles.length).toBeGreaterThan(0);
+    for (const f of bundle.identityFiles) {
+      expect(f.content).toBeDefined();
+      expect(f.content.length).toBeGreaterThan(0);
+      expect(f.sizeBytes).toBe(Buffer.byteLength(f.content, "utf-8"));
+    }
+  });
+
   it("sets cloud to paranoid in air-gapped mode", () => {
     const bundle = generateBundle(makeAnswers({ airGapped: true }));
     expect(bundle.clawhqConfig.cloud?.enabled).toBe(false);

@@ -92,9 +92,9 @@ function validCronJobs(): CronJobDefinition[] {
 
 function validIdentityFiles(): IdentityFileInfo[] {
   return [
-    { name: "SOUL.md", path: "workspace/identity/SOUL.md", sizeBytes: 3000 },
-    { name: "AGENTS.md", path: "workspace/identity/AGENTS.md", sizeBytes: 2000 },
-    { name: "USER.md", path: "workspace/identity/USER.md", sizeBytes: 1000 },
+    { name: "SOUL.md", path: "workspace/identity/SOUL.md", sizeBytes: 3000, content: "x".repeat(3000) },
+    { name: "AGENTS.md", path: "workspace/identity/AGENTS.md", sizeBytes: 2000, content: "x".repeat(2000) },
+    { name: "USER.md", path: "workspace/identity/USER.md", sizeBytes: 1000, content: "x".repeat(1000) },
   ];
 }
 
@@ -259,8 +259,8 @@ describe("LM-08: bootstrapMaxChars", () => {
   it("passes when within limit", () => {
     const config: OpenClawConfig = { identity: { bootstrapMaxChars: 20000 } };
     const files: IdentityFileInfo[] = [
-      { name: "SOUL.md", path: "identity/SOUL.md", sizeBytes: 5000 },
-      { name: "AGENTS.md", path: "identity/AGENTS.md", sizeBytes: 3000 },
+      { name: "SOUL.md", path: "identity/SOUL.md", sizeBytes: 5000, content: "x".repeat(5000) },
+      { name: "AGENTS.md", path: "identity/AGENTS.md", sizeBytes: 3000, content: "x".repeat(3000) },
     ];
     expect(validateLM08(config, files).passed).toBe(true);
   });
@@ -268,8 +268,8 @@ describe("LM-08: bootstrapMaxChars", () => {
   it("fails when exceeding limit", () => {
     const config: OpenClawConfig = { identity: { bootstrapMaxChars: 5000 } };
     const files: IdentityFileInfo[] = [
-      { name: "SOUL.md", path: "identity/SOUL.md", sizeBytes: 3000 },
-      { name: "AGENTS.md", path: "identity/AGENTS.md", sizeBytes: 3000 },
+      { name: "SOUL.md", path: "identity/SOUL.md", sizeBytes: 3000, content: "x".repeat(3000) },
+      { name: "AGENTS.md", path: "identity/AGENTS.md", sizeBytes: 3000, content: "x".repeat(3000) },
     ];
     const result = validateLM08(config, files);
     expect(result.passed).toBe(false);
@@ -279,7 +279,7 @@ describe("LM-08: bootstrapMaxChars", () => {
 
   it("uses default 20K limit when not specified", () => {
     const files: IdentityFileInfo[] = [
-      { name: "SOUL.md", path: "identity/SOUL.md", sizeBytes: 10000 },
+      { name: "SOUL.md", path: "identity/SOUL.md", sizeBytes: 10000, content: "x".repeat(10000) },
     ];
     expect(validateLM08({}, files).passed).toBe(true);
   });
