@@ -312,11 +312,12 @@ export interface CronJobDefinition {
 
 // ── Identity File Info (for bootstrap char validation) ──────────────────────
 
-/** Metadata about a workspace identity file. */
+/** Metadata and content of a workspace identity file. */
 export interface IdentityFileInfo {
   readonly name: string;
   readonly path: string;
   readonly sizeBytes: number;
+  readonly content: string;
 }
 
 /** Metadata about a generated workspace tool wrapper. */

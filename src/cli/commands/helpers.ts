@@ -5,7 +5,7 @@ import { stringify as yamlStringify } from "yaml";
 import type { DeployProgress } from "../../build/launcher/index.js";
 import type { PrereqCheckResult } from "../../build/installer/index.js";
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
-import { generateAllowlistContent, generateBundle, generateIdentityFiles, generateSkillFiles, generateToolFiles } from "../../design/configure/index.js";
+import { generateAllowlistContent, generateBundle, generateSkillFiles, generateToolFiles } from "../../design/configure/index.js";
 import { generateOpsAutomationFiles } from "../../operate/automation/index.js";
 
 export function formatPrereqCheck(check: PrereqCheckResult): void {
@@ -71,11 +71,9 @@ function stepLabel(step: string): string {
 export function bundleToFiles(
   bundle: ReturnType<typeof generateBundle>,
   blueprint: import("../../design/blueprints/types.js").Blueprint,
-  customizationAnswers: Readonly<Record<string, string>> = {},
+  _customizationAnswers: Readonly<Record<string, string>> = {},
   integrationNames: readonly string[] = [],
 ) {
-  const identityFiles = generateIdentityFiles(blueprint, customizationAnswers);
-
   return [
     {
       relativePath: "engine/openclaw.json",
@@ -110,9 +108,9 @@ export function bundleToFiles(
       relativePath: "ops/firewall/allowlist.yaml",
       content: generateAllowlistContent(blueprint, integrationNames),
     },
-    // Identity files (SOUL.md, AGENTS.md)
-    ...identityFiles.map((f) => ({
-      relativePath: f.relativePath,
+    // Identity files (SOUL.md, AGENTS.md) — content from bundle, not regenerated
+    ...bundle.identityFiles.map((f) => ({
+      relativePath: f.path,
       content: f.content,
     })),
     // Workspace tools (email, ical, todoist, sanitize, etc.)
