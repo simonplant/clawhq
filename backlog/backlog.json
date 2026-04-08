@@ -551,216 +551,44 @@
       "groomingNotes": "Three docs, one item. Write them together since they cross-reference. THREAT-MODEL.md: prompt injection via tool output, secret exfiltration via Telegram, DNS tunneling, container escape, supply chain (malicious skills). Defense column maps each threat to the layer that stops it. Residual risks: DNS tunneling via allowed resolvers, prompt injection in languages not yet covered, zero-day in base image. ARCHITECTURE-SECURITY.md: Mermaid flowchart showing host boundary vs container boundary, data flows through sanitizer (inbound), cred proxy (outbound API calls), curl wrapper (outbound arbitrary), Telegram proxy (outbound Telegram), egress firewall (outbound all). RUNBOOK.md: per-alert format = trigger, what to check (clawhq doctor commands), how to remediate, escalation path. Cross-reference from README.md security section with a one-line pointer."
     },
     {
-      "id": "FEAT-149",
-      "title": "Pipeline fixes — correct hardcoded config values that diverge from OpenClaw best practices",
-      "intent": "The config generator hardcodes values that break agents or contradict our own OPENCLAW-REFERENCE.md. Fix them so every generated config is correct by construction.",
-      "description": "Gap analysis against a production manual prototype revealed: (1) fs.workspaceOnly hardcoded to true — breaks tools that need to read cron logs, media dir, or anything outside workspace. (2) tools.exec.ask not set — should be posture-driven: hardened/under-attack → 'off' (container IS the boundary per AD-05), standard → 'auto'. (3) Cron 'waking' keyword stripped but activeHours never populated — OpenClaw supports activeHours in cron job config, we just don't set it. (4) Cron sessionTarget hardcoded to 'main' — our own reference doc warns this is a cost trap (170k-210k input tokens per heartbeat run); heartbeat and skill jobs should default to 'isolated'. (5) Cron delivery modes hardcoded — should be blueprint-driven.",
-      "priority": "must",
-      "category": "core",
-      "steps": [
-        "Fix fs.workspaceOnly to false in src/design/configure/generate.ts buildOpenClawConfig()",
-        "Add posture-driven exec.ask: read security posture from blueprint, hardened/under-attack → 'off', standard → 'auto'",
-        "Implement activeHours compilation: invert monitoring.quiet_hours (e.g. '23:00-06:00' → activeHours start:'06:00' end:'23:00') and set on all cron jobs with 'waking' qualifier",
-        "Change default sessionTarget: heartbeat → 'isolated', skill-* jobs → 'isolated', work-session → 'main', morning-brief → 'main'",
-        "Make cron delivery mode configurable: add delivery field to CronConfig type, default heartbeat/work-session/skills to 'none', morning-brief to 'announce'",
-        "Update CronConfig type in src/design/blueprints/types.ts to include optional delivery and sessionTarget per job type",
-        "Update all existing blueprints to pass validation with new defaults",
-        "Add unit tests for each fix"
-      ],
-      "acceptanceCriteria": [
-        "Generated openclaw.json has fs.workspaceOnly: false",
-        "Generated openclaw.json has tools.exec.ask set based on security posture",
-        "Cron jobs with 'waking' qualifier have activeHours populated from monitoring.quiet_hours",
-        "Heartbeat and skill cron jobs use sessionTarget: 'isolated'",
-        "Morning-brief uses delivery: 'announce', other jobs use 'none' by default",
-        "All existing blueprints still pass validation"
-      ],
-      "scope": [
-        "src/design/configure/generate.ts",
-        "src/design/blueprints/types.ts",
-        "src/design/blueprints/*.yaml"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-06",
-      "groomingNotes": "Five independent fixes in one item because they're all in generate.ts and all follow the same pattern: replace a hardcoded value with a blueprint-driven one. fs.workspaceOnly is the simplest (one-line change). exec.ask requires reading the posture from the blueprint — already available in generateBundle(). activeHours requires inverting quiet_hours string and attaching to each CronJobDefinition — OpenClaw's cron schema accepts activeHours: { start, end, timezone }. sessionTarget is a new field on CronJobDefinition — default logic: job.id starts with 'skill-' or equals 'heartbeat' → 'isolated', else 'main'. Test each fix in isolation.",
-      "lastFailReason": "Baseline validation failed before developer ran",
-      "lastFailAt": "2026-04-06T20:45:14-07:00",
-      "failCount": 2
-    },
-    {
-      "id": "FEAT-150",
-      "title": "Mission profile registry — profile-driven tool deny defaults and integration requirements",
-      "intent": "Blueprints must not hardcode tools.deny. Each mission profile (LifeOps, Dev, Research, Markets, Marketing) declares its own default deny list, required tools, and recommended integrations. Blueprint overrides profile defaults.",
-      "description": "Currently tools.deny is not set by the generator (managed clawdius has ['browser','gateway','nodes'] but that was manually applied). Different profiles need different built-in tools: Markets needs browser (charting), Home needs nodes (device control), Dev needs full runtime. A source registry maps profile names to defaults. Blueprints compose profiles; the compiler merges deny/allow lists with deny-wins semantics.",
-      "priority": "must",
-      "category": "core",
-      "steps": [
-        "Create src/design/blueprints/profiles.ts with MISSION_PROFILE_DEFAULTS map",
-        "Define defaults for 5 proven profiles: LifeOps (deny: browser, nodes), Dev (deny: none — full access), Research (deny: nodes), Markets (deny: nodes — browser allowed for charting), Marketing (deny: nodes)",
-        "Add profile_ref optional field to Blueprint type in types.ts",
-        "Update buildOpenClawConfig() to merge profile deny defaults with any blueprint-level overrides",
-        "Implement merge logic: profile deny is base, blueprint toolbelt.deny overrides, deny-wins for conflicts",
-        "Add profile defaults for recommended integrations per profile",
-        "Update validate.ts to warn when blueprint toolbelt references tools that are denied by its profile",
-        "Add profile defaults to existing blueprints",
-        "Add unit tests for merge logic and validation warnings"
-      ],
-      "acceptanceCriteria": [
-        "MISSION_PROFILE_DEFAULTS has entries for LifeOps, Dev, Research, Markets, Marketing",
-        "Generated openclaw.json tools.deny reflects profile defaults merged with blueprint overrides",
-        "Blueprint with profile_ref: 'dev' gets no tools denied",
-        "Blueprint with profile_ref: 'lifeops' gets browser and nodes denied",
-        "Blueprint-level deny overrides add to (never remove from) profile deny unless explicit allow",
-        "Validation warns when toolbelt references denied tools"
-      ],
-      "scope": [
-        "src/design/blueprints/profiles.ts",
-        "src/design/blueprints/types.ts",
-        "src/design/blueprints/validate.ts",
-        "src/design/configure/generate.ts"
-      ],
-      "dependsOn": [
-        "FEAT-149"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-06",
-      "groomingNotes": "Profile registry is a const map, not YAML files — keeps it in source, avoids a new file format. The 5 profiles should also declare recommended_integrations (e.g., Dev recommends 'code', Markets recommends 'finance') and default_egress_domains per profile. Merge semantics: profile deny is the starting set. Blueprint can add to deny via toolbelt.deny (new field). Blueprint can remove from deny via toolbelt.allow_override (new field). deny-wins is the final resolution when both lists are populated. Future profiles (Home, Health, Sales, SiteOps, Media) added as simple map entries — no schema change needed."
-    },
-    {
-      "id": "FEAT-151",
-      "title": "New tool generators — gh, x, substack, ha, vault for proven mission profiles",
-      "intent": "Agents running Dev, Markets, Marketing, and Home profiles need workspace CLI tools that clawhq doesn't generate yet. All tools use credential-proxy-first pattern: CRED_PROXY_URL when available, fallback to direct env vars.",
-      "description": "Gap analysis found 18 workspace tools in the manual prototype that clawhq can't generate. After filtering Simon-specific tools (dp-brief, vtf-parse, fm, substack-auth-check, task-cache) and tools already in backlog (FEAT-114 JMAP email, FEAT-119 news, FEAT-131 interests), 5 new generic tool generators are needed. Each follows the existing pattern: generator function in src/design/tools/, registered in TOOL_GENERATORS map, proxy-first auth, sanitize integration for inbound content.",
-      "priority": "should",
-      "category": "tools",
-      "steps": [
-        "Add src/design/tools/gh.ts — GitHub CLI wrapper: routes API calls through cred-proxy /github prefix, fallback to GH_TOKEN env var. Subcommands: repo, issue, pr, release. Scope: read + write (repo-level PAT).",
-        "Add src/design/tools/x.ts — X/Twitter read-only scanner: routes through cred-proxy /x prefix, fallback to X_BEARER_TOKEN. Subcommands: search, timeline, user. All results piped through sanitize. Read-only only — no posting via this tool.",
-        "Add src/design/tools/substack.ts — Substack reader: routes through cred-proxy /substack prefix with cookie auth. Subcommands: latest, search, read. Results piped through sanitize. Handles paid content via session cookies.",
-        "Add src/design/tools/ha.ts — Home Assistant REST API wrapper: routes through cred-proxy /ha prefix, fallback to HA_TOKEN. Subcommands: states, services, call-service, history. Entity-based allow/deny list for safety.",
-        "Add src/design/tools/vault.ts — 1Password CLI wrapper: routes through cred-proxy /op prefix, fallback to op CLI with OP_SERVICE_ACCOUNT_TOKEN. Subcommands: get, list. Read-only, never write.",
-        "Register all 5 in TOOL_GENERATORS map in src/design/tools/index.ts",
-        "Add integration registry entries for each (domain, port, egress requirements)",
-        "Add credential proxy route definitions for each tool's backend",
-        "Add doctor health checks for each (probe connectivity, validate auth)",
-        "Add unit tests for each generator"
-      ],
-      "acceptanceCriteria": [
-        "Each tool generator produces a self-contained bash or python3 script with no external dependencies beyond stdlib",
-        "Each tool uses CRED_PROXY_URL when set, falls back to direct env var auth",
-        "Tools that ingest external content (x, substack) pipe results through sanitize",
-        "Each tool is registered in TOOL_GENERATORS and generates when its integration is selected",
-        "Integration registry has correct egress domains for each tool",
-        "Doctor checks validate connectivity for each configured tool"
-      ],
-      "scope": [
-        "src/design/tools/gh.ts",
-        "src/design/tools/x.ts",
-        "src/design/tools/substack.ts",
-        "src/design/tools/ha.ts",
-        "src/design/tools/vault.ts",
-        "src/design/tools/index.ts",
-        "src/secure/credentials/probes.ts"
-      ],
-      "dependsOn": [
-        "FEAT-150"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-06",
-      "groomingNotes": "Follow the existing pattern exactly — look at email.ts and todoist.ts as templates. Each tool generator is a pure function returning a string (the script content). Proxy-first pattern: check CRED_PROXY_URL env var → if set, rewrite API base URL to proxy prefix; if not, use direct env var. ha.ts needs entity allow/deny because Home Assistant controls physical devices — blueprint should list allowed entity domains (light, switch, climate) and deny dangerous ones (lock, alarm) by default. vault.ts is read-only by design — the op CLI wrapper should only support 'item get' and 'item list', never 'item create/edit/delete'. x.ts is read-only — the x-poster skill handles writing, this tool is for scanning. Existing FEAT-119 (news) and FEAT-131 (interests) are separate items that depend on x.ts and substack.ts as backends."
-    },
-    {
       "id": "FEAT-152",
-      "title": "Pre-built skill assets — 7 skill templates shipped with clawhq for blueprint inclusion",
-      "intent": "Blueprints declare skills in skill_bundle.included but clawhq can only install external skills, not generate them. Ship pre-built skill directories as static assets that get copied into the workspace during init.",
-      "description": "The manual prototype has 13 skills; the managed deployment has 3 (simplified). After filtering Simon-specific skills (mancini, mancini-fetch, focus25-fetch), 7 generic skills need to be shipped as pre-built assets: 2 platform skills (cron-doctor, scanner-triage) always included like sanitize, and 5 profile skills (content-seed, meal-planner, eod-review, trade-journal, trip-planner) included by blueprint selection. Also enrich the existing morning-brief and construct skills from their simplified versions to match production quality.",
+      "title": "Pre-built skill infrastructure + platform skills — wire blueprint skill_bundle into workspace deployment",
+      "intent": "Blueprints declare skills in skill_bundle.included but clawhq can only install external skills, not ship them. Create the infrastructure to copy pre-built skill directories into workspace/skills/ during init, and ship 2 platform skills (cron-doctor, scanner-triage) always included.",
+      "description": "Split from original FEAT-152 (hit 75-turn limit). This is the infrastructure half: create src/design/skills/ for pre-built assets, wire generateBundle() to include them, add 2 platform skills that every agent gets. Profile-specific skills (content-seed, meal-planner, eod-review, trade-journal, trip-planner) are in FEAT-156.",
       "priority": "should",
       "category": "skills",
       "steps": [
-        "Create src/design/skills/ directory for pre-built skill assets",
-        "Create src/design/skills/platform/ for always-included skills",
-        "Add cron-doctor skill: SKILL.md + scripts/audit.py — diagnoses cron job health, detects failures, suggests fixes. Platform skill, always included.",
-        "Add scanner-triage skill: SKILL.md + scripts/scanner-triage.py — deduplicates security scanner alerts, reduces noise. Platform skill, always included.",
-        "Add content-seed skill: SKILL.md + scripts/content-seed.py — weekly content idea generation from interest graph + trending topics. Marketing profile.",
-        "Add meal-planner skill: SKILL.md + config.yaml — calendar-based meal planning with approval workflow. Health/LifeOps profile.",
-        "Add eod-review skill: SKILL.md + scripts/eod-review.py — end-of-day market review with portfolio mark-to-market. Markets profile.",
-        "Add trade-journal skill: SKILL.md + scripts/trade-journal.py — paper trading journal with multi-strategy comparison. Markets profile.",
-        "Add trip-planner skill: SKILL.md — multi-source hotel/travel research with pet-friendly filtering. LifeOps profile.",
-        "Enrich existing morning-brief skill: add executable script + prompt templates matching manual prototype quality",
-        "Enrich existing construct skill: add state management, 5-phase cycle, persistent state tracking",
-        "Update skill installation in src/evolve/skills/ to support copying pre-built assets from clawhq package",
-        "Wire blueprint skill_bundle.included to copy matching pre-built skills into workspace/skills/",
-        "Add skill manifest entries for pre-built skills"
+        "Create src/design/skills/ directory structure with platform/ subdirectory",
+        "Add cron-doctor skill: SKILL.md that teaches the agent to diagnose cron failures using cron/runs/ logs",
+        "Add scanner-triage skill: SKILL.md that teaches the agent to deduplicate security scanner alerts",
+        "Create src/design/skills/loader.ts — function to read pre-built skill directories and return them as FileEntry arrays",
+        "Update generateBundle() to include platform skills in every deployment",
+        "Update bundleToFiles() to include skill directories from the bundle",
+        "Wire blueprint.skill_bundle.included to select additional profile skills from src/design/skills/",
+        "Add tests"
       ],
       "acceptanceCriteria": [
-        "Pre-built skills exist as static directories under src/design/skills/",
-        "Platform skills (cron-doctor, scanner-triage) are always included in generated workspace",
-        "Profile skills are included only when blueprint.skill_bundle.included lists them",
-        "Each skill has SKILL.md with behavioral guidance and any required scripts",
-        "Skills that need tools declare them in SKILL.md frontmatter requires field",
-        "Enriched morning-brief and construct match manual prototype capability",
-        "All pre-built skills pass the existing skill vetting pipeline"
+        "src/design/skills/platform/ contains cron-doctor and scanner-triage skill directories",
+        "Platform skills are always included in generated workspace regardless of blueprint",
+        "generateBundle() returns skill files as part of the deployment bundle",
+        "bundleToFiles() writes skill directories to workspace/skills/",
+        "blueprint.skill_bundle.included selects additional skills from the pre-built set"
       ],
       "scope": [
         "src/design/skills/",
-        "src/evolve/skills/install.ts",
-        "src/design/configure/generate.ts"
+        "src/design/configure/generate.ts",
+        "src/cli/commands/helpers.ts"
       ],
       "dependsOn": [
         "FEAT-151"
       ],
       "status": "todo",
       "readyForSprint": true,
-      "groomedAt": "2026-04-06",
-      "groomingNotes": "Pre-built skills are static assets — no template rendering, no dynamic generation. Each skill directory is copied verbatim into workspace/skills/ during init. The skill vetting pipeline should still run on them (for consistency and to catch regressions if someone edits the assets). Platform skills go in a separate subdirectory and are always copied — they're the skill equivalent of the sanitize tool. trade-journal needs to be generic — not tied to specific brokerages. The manual prototype's trade-journal uses tradier but the generic version should support any broker API via the vault tool or direct config. meal-planner needs to be generic — not tied to specific dietary requirements. The manual prototype has MASLD/Mediterranean constraints but the generic version uses blueprint customization questions to set dietary preferences."
-    },
-    {
-      "id": "FEAT-153",
-      "title": "Identity enrichment — AGENTS.md standard operating procedures and runbook compilation",
-      "intent": "Every generated AGENTS.md must include standard operating procedures that make agents reliable: session startup ritual, memory discipline, data freshness rules, overnight batching, and cron role mapping. Runbooks defined in blueprints must compile into workspace identity files.",
-      "description": "Gap analysis showed the managed AGENTS.md is 2.4KB of minimal content. The manual prototype's is 15KB with procedures that every agent benefits from. These aren't personal — they're operational discipline extracted from production experience. Additionally, the blueprint schema already has a runbooks field but it never compiles to actual workspace files.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Enrich generateAgents() in src/design/identity/agents.ts with standard operating procedures section",
-        "Add session startup ritual: read SOUL.md → USER.md → daily memory → (main session only) MEMORY.md. Order matters for context priming.",
-        "Add memory discipline: daily logs in memory/YYYY-MM-DD.md (raw), MEMORY.md (curated long-term), USER.md (static facts). Write it down or lose it.",
-        "Add data freshness rules: verify cached data before citing, stale data worse than no data, check tool output timestamps",
-        "Add overnight batching rule: when quiet_hours are configured, batch findings into files, deliver ONE digest at morning_brief time. Never spam overnight unless emergency (circuit breaker, critical alert, system failure).",
-        "Add cron role mapping: auto-generate a table from blueprint.cron_config showing which job does what, when it runs, which model it uses, and what delivery mode",
-        "Scale content by blueprint complexity: minimal blueprint (no cron, low autonomy) gets startup + memory discipline only. Full blueprint gets everything.",
-        "Implement runbook compilation: blueprint.runbooks[] → workspace/identity/*.md files with token budget enforcement",
-        "Add runbook token budget: each runbook file counts against bootstrapMaxChars aggregate, warn if total exceeds limit",
-        "Update TOOLS.md generator to include per-tool quirks from integration registry (not just names)",
-        "Add unit tests for each SOP section and runbook compilation"
-      ],
-      "acceptanceCriteria": [
-        "Generated AGENTS.md includes session startup ritual with correct read order",
-        "Generated AGENTS.md includes memory discipline section",
-        "Generated AGENTS.md includes data freshness rules",
-        "Generated AGENTS.md includes overnight batching when quiet_hours configured",
-        "Generated AGENTS.md includes cron role mapping table when cron_config has jobs",
-        "Content scales: simple blueprints get 2-3 sections, complex blueprints get all 5",
-        "Blueprint runbooks compile to workspace/identity/*.md files",
-        "Total identity file size stays within bootstrapMaxChars (20,000 default)",
-        "TOOLS.md includes tool-specific quirks, not just names"
-      ],
-      "scope": [
-        "src/design/identity/agents.ts",
-        "src/design/identity/tools.ts",
-        "src/design/configure/generate.ts"
-      ],
-      "dependsOn": [
-        "FEAT-149"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-06",
-      "groomingNotes": "The SOPs are generic wisdom from production — not Simon-specific. Session startup ritual is from OPENCLAW-REFERENCE.md line 384. Memory discipline from line 680. These are documented best practices we should enforce by default. Overnight batching is the single most impactful behavior rule — without it, agents spam Telegram at 3am. The cron role mapping table is auto-generated from the same data that builds cron/jobs.json — no new input needed. Runbook compilation: each RunbookEntry has a name and content string. Compile to workspace/identity/{name}.md. Token budget: sum all identity files including runbooks, warn if over bootstrapMaxChars, truncate largest first. Per-tool quirks: the integration registry should have a 'notes' field per integration with known gotchas (e.g., 'himalaya: -a flag goes AFTER subcommand', 'CalDAV: iCloud requires app-specific password')."
+      "groomedAt": "2026-04-07",
+      "groomingNotes": "Reduced scope — infrastructure + 2 platform skills only. The loader reads skill directories from the clawhq package (src/design/skills/) and returns FileEntry arrays. Platform skills go in platform/ subdirectory and are always included. Profile skills go in profiles/ subdirectory and are selected by blueprint.skill_bundle.included matching directory names. Keep SKILL.md files concise — behavioral guidance only, no scripts needed for these two.",
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-04-07T15:18:38-07:00",
+      "failCount": 1
     },
     {
       "id": "FEAT-154",
@@ -849,6 +677,39 @@
       "readyForSprint": true,
       "groomedAt": "2026-04-06",
       "groomingNotes": "FEAT-136 defines the proxy itself. This item is about compose generation and cert infrastructure. The proxy script is a static Python3 asset (~600 lines from the manual prototype, generalized). Secret patterns to scan: look for env var values from .env file, common token patterns (sk-ant-*, ghp_*, Bearer tokens). The extra_hosts trick works because Docker resolves it before DNS — the container thinks it's talking to api.telegram.org but traffic goes to the local proxy. The proxy terminates TLS, scans the HTTP payload, then forwards to the real api.telegram.org. Cert generation runs once during clawhq init, not on every build. Certs stored in ops/security/telegram-proxy-certs/. Only generated for Telegram — other channels don't have this attack surface (WhatsApp uses a different protocol, Discord uses webhooks)."
+    },
+    {
+      "id": "FEAT-156",
+      "title": "Profile skill assets — 5 domain-specific skills for Markets, Marketing, Health, and LifeOps",
+      "intent": "Ship pre-built skill directories for domain-specific capabilities that blueprints select via skill_bundle.included.",
+      "description": "Split from FEAT-152. With the skill infrastructure in place, add 5 profile-specific skills: content-seed (Marketing), meal-planner (Health/LifeOps), eod-review (Markets), trade-journal (Markets), trip-planner (LifeOps). Each is a SKILL.md + optional scripts/ directory. Also enrich existing morning-brief and construct to match manual prototype quality.",
+      "priority": "should",
+      "category": "skills",
+      "steps": [
+        "Add content-seed skill: SKILL.md teaching weekly content idea generation from interests + trends",
+        "Add meal-planner skill: SKILL.md teaching calendar-based meal planning with approval workflow",
+        "Add eod-review skill: SKILL.md teaching end-of-day market review with portfolio comparison",
+        "Add trade-journal skill: SKILL.md teaching paper trading journal with multi-strategy tracking",
+        "Add trip-planner skill: SKILL.md teaching multi-source travel research",
+        "Enrich morning-brief: add prompt templates for email/calendar/tasks/trading gathering and composition",
+        "Enrich construct: add 5-phase cycle detail (assess, propose, build, deploy, validate)",
+        "Add tests verifying skills are selectable by blueprint"
+      ],
+      "acceptanceCriteria": [
+        "5 new skill directories exist under src/design/skills/profiles/",
+        "Each skill has SKILL.md with clear behavioral guidance",
+        "Existing morning-brief enriched with gather/compose prompt templates",
+        "Existing construct enriched with 5-phase cycle documentation",
+        "Skills are selectable via blueprint.skill_bundle.included"
+      ],
+      "scope": [
+        "src/design/skills/profiles/"
+      ],
+      "dependsOn": ["FEAT-152"],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-07",
+      "groomingNotes": "Content-only item — no infrastructure changes. Each skill is a directory with SKILL.md (and optionally scripts/). trade-journal must be generic (not Tradier-specific). meal-planner must be generic (not MASLD-specific). eod-review covers any market, not just ES. morning-brief enrichment: add the gather template (what to check) and compose template (how to format) from the manual prototype, generalized for any blueprint profile."
     }
   ]
 }
