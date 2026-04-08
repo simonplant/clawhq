@@ -726,10 +726,11 @@
         "src/design/configure/generate.ts",
         "src/config/types.ts"
       ],
-      "status": "todo",
+      "status": "done",
       "readyForSprint": true,
       "groomedAt": "2026-04-08",
-      "groomingNotes": "Confirmed: buildIdentityFiles() (generate.ts:506-517) calls generateIdentityFiles() then maps to metadata-only. The writer path must regenerate independently. Fix approach: extend IdentityFileInfo to include an optional content field, or create IdentityFileBundleEntry = IdentityFileInfo & { content: string }. The same pattern applies to buildToolFiles() and buildSkillFiles() \u2014 consider fixing all three for consistency, but scope this item to identity files only."
+      "groomingNotes": "Confirmed: buildIdentityFiles() (generate.ts:506-517) calls generateIdentityFiles() then maps to metadata-only. The writer path must regenerate independently. Fix approach: extend IdentityFileInfo to include an optional content field, or create IdentityFileBundleEntry = IdentityFileInfo & { content: string }. The same pattern applies to buildToolFiles() and buildSkillFiles() \u2014 consider fixing all three for consistency, but scope this item to identity files only.",
+      "passes": true
     },
     {
       "id": "FEAT-160",
