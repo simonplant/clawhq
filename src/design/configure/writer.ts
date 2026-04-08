@@ -103,17 +103,43 @@ export function writeFileAtomic(
 const ENV_PLACEHOLDER = "CHANGE_ME";
 
 /**
- * Parse a .env file into a map of KEY → value (raw line value after '=').
- * Skips comments and blank lines.
+ * Parse a raw .env value: strip surrounding quotes and inline comments.
+ *
+ * - Quoted values (`"val"` or `'val'`): return content between quotes
+ * - Unquoted values: strip inline comments (`#` preceded by whitespace)
+ * - `#` without preceding whitespace is NOT a comment (e.g. URL anchors)
  */
-function parseEnvFile(content: string): Map<string, string> {
+function parseEnvValue(raw: string): string {
+  const first = raw.charAt(0);
+
+  // Quoted value — extract content between matching quotes
+  if ((first === '"' || first === "'") && raw.length >= 2) {
+    const end = raw.indexOf(first, 1);
+    if (end !== -1) return raw.slice(1, end);
+  }
+
+  // Unquoted — strip inline comment (# preceded by whitespace)
+  const commentIdx = raw.search(/\s#/);
+  if (commentIdx !== -1) {
+    return raw.slice(0, commentIdx).trimEnd();
+  }
+
+  return raw;
+}
+
+/**
+ * Parse a .env file into a map of KEY → parsed value.
+ * Strips surrounding quotes and inline comments from values.
+ * Skips comment lines and blank lines.
+ */
+export function parseEnvFile(content: string): Map<string, string> {
   const map = new Map<string, string>();
   for (const line of content.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
     const eqIdx = trimmed.indexOf("=");
     if (eqIdx < 1) continue;
-    map.set(trimmed.slice(0, eqIdx), trimmed.slice(eqIdx + 1));
+    map.set(trimmed.slice(0, eqIdx), parseEnvValue(trimmed.slice(eqIdx + 1)));
   }
   return map;
 }
@@ -137,8 +163,18 @@ function mergeEnv(absolutePath: string, generated: string): string {
     return generated;
   }
 
-  const existingVals = parseEnvFile(existing);
-  if (existingVals.size === 0) return generated;
+  const existingParsed = parseEnvFile(existing);
+  if (existingParsed.size === 0) return generated;
+
+  // Build a map of KEY → raw line from the existing file (preserves quotes)
+  const existingRawLines = new Map<string, string>();
+  for (const line of existing.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx < 1) continue;
+    existingRawLines.set(trimmed.slice(0, eqIdx), trimmed);
+  }
 
   // Walk the generated content line by line, substituting preserved values
   const lines = generated.split("\n");
@@ -149,12 +185,13 @@ function mergeEnv(absolutePath: string, generated: string): string {
     if (eqIdx < 1) continue;
 
     const key = line.slice(0, eqIdx);
-    const newVal = line.slice(eqIdx + 1);
-    const oldVal = existingVals.get(key);
+    const newVal = parseEnvValue(line.slice(eqIdx + 1));
+    const oldParsed = existingParsed.get(key);
 
     // Preserve existing real value when generated is a placeholder
-    if (oldVal && oldVal !== ENV_PLACEHOLDER && newVal === ENV_PLACEHOLDER) {
-      lines[i] = `${key}=${oldVal}`;
+    if (oldParsed && oldParsed !== ENV_PLACEHOLDER && newVal === ENV_PLACEHOLDER) {
+      const rawLine = existingRawLines.get(key);
+      if (rawLine) lines[i] = rawLine;
     }
   }
 
