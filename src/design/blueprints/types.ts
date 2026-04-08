@@ -25,6 +25,12 @@ export type DimensionValue = 1 | 2 | 3 | 4 | 5;
 export type DimensionId = "directness" | "warmth" | "verbosity"
   | "proactivity" | "caution" | "formality" | "analyticalDepth";
 
+/** All 7 required dimension keys. */
+const DIMENSION_KEYS: readonly DimensionId[] = [
+  "directness", "warmth", "verbosity",
+  "proactivity", "caution", "formality", "analyticalDepth",
+];
+
 /** Slider-based personality dimensions (7 dimensions, 1-5 scale). */
 export interface PersonalityDimensions {
   readonly directness: DimensionValue;
@@ -34,6 +40,44 @@ export interface PersonalityDimensions {
   readonly caution: DimensionValue;
   readonly formality: DimensionValue;
   readonly analyticalDepth: DimensionValue;
+}
+
+/**
+ * Parse and validate a raw record into PersonalityDimensions.
+ *
+ * Validates: all 7 required keys present, no extra keys, each value integer 1-5.
+ * @throws Error listing all invalid/missing fields
+ */
+export function parseDimensions(input: Record<string, number>): PersonalityDimensions {
+  const errors: string[] = [];
+
+  // Check for missing keys
+  const inputKeys = new Set(Object.keys(input));
+  const requiredKeys = new Set<string>(DIMENSION_KEYS);
+
+  for (const key of DIMENSION_KEYS) {
+    if (!(key in input)) {
+      errors.push(`missing key: ${key}`);
+    } else {
+      const val = input[key]!;
+      if (!Number.isInteger(val) || val < 1 || val > 5) {
+        errors.push(`${key}: value must be an integer 1-5 (got ${val})`);
+      }
+    }
+  }
+
+  // Check for extra keys
+  for (const key of inputKeys) {
+    if (!requiredKeys.has(key)) {
+      errors.push(`unknown key: ${key}`);
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid personality dimensions: ${errors.join("; ")}`);
+  }
+
+  return input as unknown as PersonalityDimensions;
 }
 
 /** Agent personality configuration. */

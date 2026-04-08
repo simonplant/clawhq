@@ -28,6 +28,7 @@ import {
 } from "../blueprints/loader.js";
 import { DIMENSION_META, PERSONALITY_PRESETS, type DimensionMeta } from "../blueprints/personality-presets.js";
 import { detectTensions, hasConflicts, type DetectedTension } from "../blueprints/personality-tensions.js";
+import { parseDimensions } from "../blueprints/types.js";
 import type { Blueprint, BlueprintChoice, PersonalityDimensions, DimensionValue } from "../blueprints/types.js";
 
 import type { UserContext, WizardAnswers, WizardOptions } from "./types.js";
@@ -276,7 +277,7 @@ async function configurePersonality(
     dims[meta.id] = value;
   }
 
-  const result = dims as unknown as PersonalityDimensions;
+  const result = parseDimensions(dims as Record<string, number>);
 
   // Tension detection
   const tensions = detectTensions(result);

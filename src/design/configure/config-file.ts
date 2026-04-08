@@ -17,6 +17,7 @@ import { parse as yamlParse } from "yaml";
 
 import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
 import { loadBlueprint } from "../blueprints/loader.js";
+import { parseDimensions } from "../blueprints/types.js";
 import { compile } from "../catalog/index.js";
 import type { CompiledWorkspace } from "../catalog/types.js";
 import type { WizardAnswers } from "./types.js";
@@ -215,7 +216,7 @@ export function loadConfigFile(configPath: string): WizardAnswers {
     integrations: config.integrations ?? {},
     customizationAnswers: config.customization ?? {},
     personalityDimensions: config.dimension_overrides
-      ? config.dimension_overrides as unknown as WizardAnswers["personalityDimensions"]
+      ? (() => { try { return parseDimensions(config.dimension_overrides); } catch (err) { throw new ConfigFileError((err as Error).message); } })()
       : blueprint.personality.dimensions,
     userContext,
     auth: config.auth ? {
