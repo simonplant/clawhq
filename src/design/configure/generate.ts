@@ -27,6 +27,7 @@ import type {
   ExecAsk,
   IdentityFileInfo,
   OpenClawConfig,
+  SkillFileInfo,
   ToolFileInfo,
 } from "../../config/types.js";
 import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
@@ -37,7 +38,8 @@ import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../
 import type { IdentityFileContent } from "../identity/index.js";
 import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../tools/index.js";
 import type { ToolFileContent } from "../tools/index.js";
-
+import { loadBlueprintSkills, loadPlatformSkills } from "../skills/index.js";
+import type { SkillFileEntry } from "../skills/index.js";
 
 import {
   buildAllowlistFromBlueprint,
@@ -84,6 +86,7 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     cronJobs: buildCronJobs(answers.blueprint, answers.userContext?.timezone),
     identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions, answers.userContext),
     toolFiles: buildToolFiles(answers.blueprint),
+    skillFiles: buildSkillFiles(answers.blueprint),
     clawhqConfig: buildClawHQConfig(answers),
     delegatedRulesFile: buildDelegatedRulesFile(answers.blueprint),
   };
@@ -539,6 +542,48 @@ function buildToolFiles(blueprint: Blueprint): ToolFileInfo[] {
     path: f.relativePath,
     sizeBytes: Buffer.byteLength(f.content, "utf-8"),
     mode: f.mode,
+  }));
+}
+
+// ── Skill Files ────────────────────────────────────────────────────────────
+
+// Re-export for consumers that import from configure/index.
+export type { SkillFileEntry } from "../skills/index.js";
+
+/**
+ * Generate pre-built skill files for a blueprint.
+ *
+ * Always includes platform skills (cron-doctor, scanner-triage).
+ * Additionally includes skills listed in blueprint.skill_bundle.included
+ * that exist in the configs/skills/ directory.
+ *
+ * Returns the actual file entries for writing to disk.
+ */
+export function generateSkillFiles(blueprint: Blueprint): SkillFileEntry[] {
+  // Platform skills — always included regardless of blueprint
+  const platformFiles = loadPlatformSkills();
+
+  // Blueprint-selected skills from configs/skills/
+  const blueprintSkillNames = blueprint.skill_bundle?.included ?? [];
+  const blueprintFiles = loadBlueprintSkills(blueprintSkillNames);
+
+  // Deduplicate: platform wins if a skill appears in both
+  const platformNames = new Set(platformFiles.map((f) => f.skillName));
+  const deduped = blueprintFiles.filter((f) => !platformNames.has(f.skillName));
+
+  return [...platformFiles, ...deduped];
+}
+
+/**
+ * Build skill file metadata from blueprint.
+ *
+ * Returns SkillFileInfo entries for inclusion in the deployment bundle.
+ */
+function buildSkillFiles(blueprint: Blueprint): SkillFileInfo[] {
+  return generateSkillFiles(blueprint).map((f) => ({
+    skillName: f.skillName,
+    path: f.relativePath,
+    sizeBytes: Buffer.byteLength(f.content, "utf-8"),
   }));
 }
 

@@ -4,7 +4,7 @@ import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
 import { loadBlueprint } from "../blueprints/loader.js";
 
-import { generateAllowlistContent, generateBundle, validateCronExpr } from "./generate.js";
+import { generateAllowlistContent, generateBundle, generateSkillFiles, validateCronExpr } from "./generate.js";
 import type { WizardAnswers } from "./types.js";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -681,6 +681,87 @@ describe("validateCronExpr", () => {
   it("accepts boundary values at limits", () => {
     expect(validateCronExpr("0 0 1 1 0")).toHaveLength(0);
     expect(validateCronExpr("59 23 31 12 7")).toHaveLength(0);
+  });
+});
+
+// ── Skill Files in Bundle ──────────────────────────────────────────────────
+
+describe("skill files in deployment bundle", () => {
+  it("includes platform skill files (cron-doctor, scanner-triage) in every bundle", () => {
+    const bundle = generateBundle(makeAnswers());
+    const skillNames = [...new Set(bundle.skillFiles.map((f) => f.skillName))];
+    expect(skillNames).toContain("cron-doctor");
+    expect(skillNames).toContain("scanner-triage");
+  });
+
+  it("includes platform skills regardless of blueprint", () => {
+    const blueprintNames = [
+      "email-manager", "family-hub", "founders-ops",
+      "replace-chatgpt-plus", "replace-google-assistant", "replace-my-pa",
+      "research-copilot",
+    ];
+
+    for (const name of blueprintNames) {
+      const loaded = loadBlueprint(name);
+      const answers = makeAnswers({
+        blueprint: loaded.blueprint,
+        blueprintPath: loaded.sourcePath,
+      });
+      const bundle = generateBundle(answers);
+      const skillNames = [...new Set(bundle.skillFiles.map((f) => f.skillName))];
+      expect(skillNames, `${name}: should include cron-doctor`).toContain("cron-doctor");
+      expect(skillNames, `${name}: should include scanner-triage`).toContain("scanner-triage");
+    }
+  });
+
+  it("includes blueprint-selected skills from skill_bundle.included", () => {
+    const loaded = loadBlueprint("email-manager");
+    const bundle = generateBundle(makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+    }));
+    // email-manager includes email-digest and morning-brief skills
+    const skillNames = [...new Set(bundle.skillFiles.map((f) => f.skillName))];
+    for (const included of loaded.blueprint.skill_bundle.included) {
+      expect(skillNames, `should include ${included}`).toContain(included);
+    }
+  });
+
+  it("skill files target workspace/skills/ path", () => {
+    const bundle = generateBundle(makeAnswers());
+    for (const f of bundle.skillFiles) {
+      expect(f.path).toMatch(/^workspace\/skills\//);
+    }
+  });
+
+  it("skill files have non-zero sizeBytes", () => {
+    const bundle = generateBundle(makeAnswers());
+    for (const f of bundle.skillFiles) {
+      expect(f.sizeBytes).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("generateSkillFiles", () => {
+  it("always returns platform skills", () => {
+    const loaded = loadBlueprint("family-hub");
+    const files = generateSkillFiles(loaded.blueprint);
+    const names = [...new Set(files.map((f) => f.skillName))];
+    expect(names).toContain("cron-doctor");
+    expect(names).toContain("scanner-triage");
+  });
+
+  it("deduplicates platform skills if also listed in skill_bundle.included", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = {
+      ...loaded.blueprint,
+      skill_bundle: { ...loaded.blueprint.skill_bundle, included: ["cron-doctor"] },
+    };
+    const files = generateSkillFiles(bp);
+    const cronDoctorFiles = files.filter((f) => f.skillName === "cron-doctor");
+    // Should have exactly 1 SKILL.md, not duplicated
+    const skillMds = cronDoctorFiles.filter((f) => f.relativePath.endsWith("SKILL.md"));
+    expect(skillMds).toHaveLength(1);
   });
 });
 

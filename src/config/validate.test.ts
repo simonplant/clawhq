@@ -106,6 +106,7 @@ function validBundle(): DeploymentBundle {
     cronJobs: validCronJobs(),
     identityFiles: validIdentityFiles(),
     toolFiles: [],
+    skillFiles: [],
     clawhqConfig: { version: "1" },
   };
 }
