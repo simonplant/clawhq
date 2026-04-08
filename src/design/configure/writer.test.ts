@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { FileEntry } from "./types.js";
-import { writeBundle, writeFileAtomic } from "./writer.js";
+import { parseEnvFile, writeBundle, writeFileAtomic } from "./writer.js";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -78,6 +78,63 @@ describe("writeFileAtomic", () => {
     const files = readdirSync(readOnlyDir);
     const tmpFiles = files.filter((f: string) => f.startsWith(".clawhq-tmp-"));
     expect(tmpFiles).toHaveLength(0);
+  });
+});
+
+// ── parseEnvFile ────────────────────────────────────────────────────────────
+
+describe("parseEnvFile", () => {
+  it("strips surrounding double quotes from values", () => {
+    const result = parseEnvFile('API_KEY="sk-ant-abc123"');
+    expect(result.get("API_KEY")).toBe("sk-ant-abc123");
+  });
+
+  it("strips surrounding single quotes from values", () => {
+    const result = parseEnvFile("KEY='single quoted'");
+    expect(result.get("KEY")).toBe("single quoted");
+  });
+
+  it("parses double-quoted value with spaces", () => {
+    const result = parseEnvFile('KEY="value with spaces"');
+    expect(result.get("KEY")).toBe("value with spaces");
+  });
+
+  it("strips inline comments (# preceded by whitespace)", () => {
+    const result = parseEnvFile("KEY=value # this is a comment");
+    expect(result.get("KEY")).toBe("value");
+  });
+
+  it("does NOT treat # without preceding space as comment", () => {
+    const result = parseEnvFile("URL=https://example.com#anchor");
+    expect(result.get("URL")).toBe("https://example.com#anchor");
+  });
+
+  it("handles bare KEY=VALUE unchanged", () => {
+    const result = parseEnvFile("KEY=value");
+    expect(result.get("KEY")).toBe("value");
+  });
+});
+
+// ── mergeEnv (via writeBundle) ──────────────────────────────────────────────
+
+describe("mergeEnv preserves format", () => {
+  it("preserves quoted format from existing file", () => {
+    const envPath = join(tempDir, "engine", ".env");
+
+    // Write an existing .env with quoted values
+    writeFileAtomic(join(tempDir, "engine", ".env"), 'API_KEY="sk-real-key"\nOTHER=val\n', 0o600);
+
+    // Write a generated .env where API_KEY is placeholder
+    const files: FileEntry[] = [
+      { relativePath: "engine/.env", content: "API_KEY=CHANGE_ME\nOTHER=CHANGE_ME\n", mode: 0o600 },
+    ];
+
+    writeBundle(tempDir, files);
+
+    const merged = readFileSync(envPath, "utf-8");
+    // Should preserve the quoted format from the existing file
+    expect(merged).toContain('API_KEY="sk-real-key"');
+    expect(merged).toContain("OTHER=val");
   });
 });
 
