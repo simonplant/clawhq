@@ -327,6 +327,13 @@ export interface ToolFileInfo {
   readonly mode: number;
 }
 
+/** Metadata about a pre-built skill file included in the deployment. */
+export interface SkillFileInfo {
+  readonly skillName: string;
+  readonly path: string;
+  readonly sizeBytes: number;
+}
+
 // ── ClawHQ Config (clawhq.yaml) ─────────────────────────────────────────────
 
 /** Security posture level. */
@@ -459,6 +466,8 @@ export interface DeploymentBundle {
   readonly cronJobs: readonly CronJobDefinition[];
   readonly identityFiles: readonly IdentityFileInfo[];
   readonly toolFiles: readonly ToolFileInfo[];
+  /** Pre-built skill files (platform + blueprint-selected) for workspace/skills/. */
+  readonly skillFiles: readonly SkillFileInfo[];
   readonly clawhqConfig: ClawHQConfig;
   /** Compiled delegated action rules for workspace/delegated-rules.json (optional). */
   readonly delegatedRulesFile?: DelegatedRulesFileInfo;

@@ -25,8 +25,9 @@ export {
 export type { Prompter } from "./wizard.js";
 
 // Generator
-export { generateAllowlistContent, generateBundle, generateDelegatedRulesContent, generateIdentityFiles, generateToolFiles } from "./generate.js";
+export { generateAllowlistContent, generateBundle, generateDelegatedRulesContent, generateIdentityFiles, generateSkillFiles, generateToolFiles } from "./generate.js";
 export type { IdentityFileContent } from "../identity/index.js";
+export type { SkillFileEntry } from "../skills/index.js";
 export type { ToolFileContent } from "../tools/index.js";
 
 // Smart inference
