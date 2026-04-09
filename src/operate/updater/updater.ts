@@ -29,14 +29,94 @@ const execFileAsync = promisify(execFile);
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Check for available updates by comparing local image digest to remote.
+ * Check for available updates.
+ *
+ * - source installs: git fetch + compare HEAD to origin/main
+ * - cache installs: docker pull + compare image digests
  */
 export async function checkForUpdates(options: UpdateOptions): Promise<UpdateCheckResult> {
   const { deployDir, signal } = options;
   const report = progress(options.onProgress);
+  const installMethod = await detectInstallMethod(deployDir);
 
   report("check", "running", "Checking for updates…");
 
+  if (installMethod === "source") {
+    return checkForSourceUpdates(deployDir, signal, report);
+  }
+
+  return checkForCacheUpdates(deployDir, signal, report);
+}
+
+/** Check for updates in a from-source installation (git fetch + compare). */
+async function checkForSourceUpdates(
+  deployDir: string,
+  signal: AbortSignal | undefined,
+  report: ReturnType<typeof progress>,
+): Promise<UpdateCheckResult> {
+  const sourceDir = join(deployDir, "engine", "source");
+  const image = await getImageName(deployDir) ?? "openclaw:custom";
+
+  try {
+    await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags"], {
+      timeout: UPDATER_PULL_TIMEOUT_MS,
+      signal,
+    });
+
+    const { stdout: localHead } = await execFileAsync(
+      "git", ["-C", sourceDir, "rev-parse", "HEAD"],
+      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+    );
+
+    const { stdout: remoteHead } = await execFileAsync(
+      "git", ["-C", sourceDir, "rev-parse", "origin/main"],
+      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+    );
+
+    const { stdout: behindCount } = await execFileAsync(
+      "git", ["-C", sourceDir, "rev-list", "--count", "HEAD..origin/main"],
+      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+    );
+
+    const behind = parseInt(behindCount.trim(), 10);
+    const available = behind > 0;
+
+    // Get latest tag for display
+    let latestTag = "";
+    try {
+      const { stdout: tagOut } = await execFileAsync(
+        "git", ["-C", sourceDir, "describe", "--tags", "--abbrev=0", "origin/main"],
+        { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+      );
+      latestTag = tagOut.trim();
+    } catch { /* no tags */ }
+
+    const status = available
+      ? `${behind} commit(s) behind${latestTag ? ` (latest: ${latestTag})` : ""}`
+      : "Already up to date";
+    report("check", "done", status);
+
+    return {
+      available,
+      currentImage: image,
+      latestDigest: remoteHead.trim(),
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (signal?.aborted) {
+      return { available: false, currentImage: image, error: "Check aborted" };
+    }
+    report("check", "failed", `Update check failed: ${message}`);
+    return { available: false, currentImage: image, error: message };
+  }
+}
+
+/** Check for updates in a cache installation (docker pull + digest compare). */
+async function checkForCacheUpdates(
+  deployDir: string,
+  signal: AbortSignal | undefined,
+  report: ReturnType<typeof progress>,
+): Promise<UpdateCheckResult> {
   const image = await getImageName(deployDir);
   if (!image) {
     report("check", "failed", "Cannot determine image name from docker-compose.yml");
@@ -44,7 +124,6 @@ export async function checkForUpdates(options: UpdateOptions): Promise<UpdateChe
   }
 
   try {
-    // Get local image digest
     let localDigest: string | undefined;
     try {
       const { stdout } = await execFileAsync(
@@ -57,14 +136,12 @@ export async function checkForUpdates(options: UpdateOptions): Promise<UpdateChe
       // Local image may not exist yet
     }
 
-    // Pull to check for updates (dry-run style: pull and compare)
     await execFileAsync(
       "docker",
       ["pull", "--quiet", image],
       { timeout: UPDATER_PULL_TIMEOUT_MS, signal },
     );
 
-    // Get new digest after pull
     const { stdout: newDigestOut } = await execFileAsync(
       "docker",
       ["image", "inspect", image, "--format", "{{.Id}}"],
@@ -131,24 +208,67 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     return { success: false, error: "Update aborted", backupId };
   }
 
-  // ── Step 2: Pull latest image ─────────────────────────────────────────
+  // ── Step 2: Pull source / image ────────────────────────────────────────
 
-  const image = await getImageName(deployDir);
-  if (!image) {
-    return { success: false, error: "Cannot determine image from docker-compose.yml", backupId };
-  }
+  const installMethod = await detectInstallMethod(deployDir);
 
-  report("pull", "running", `Pulling ${image}…`);
-  try {
-    await execFileAsync("docker", ["pull", image], {
-      timeout: UPDATER_PULL_TIMEOUT_MS,
-      signal,
-    });
-    report("pull", "done", "Image pulled");
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    report("pull", "failed", `Pull failed: ${message}`);
-    return { success: false, error: `Image pull failed: ${message}`, backupId };
+  if (installMethod === "source") {
+    // From-source: git pull + rebuild
+    const sourceDir = join(deployDir, "engine", "source");
+
+    report("pull", "running", "Pulling latest source…");
+    try {
+      await execFileAsync("git", ["-C", sourceDir, "pull", "--ff-only"], {
+        timeout: UPDATER_PULL_TIMEOUT_MS,
+        signal,
+      });
+      report("pull", "done", "Source updated");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      report("pull", "failed", `Git pull failed: ${message}`);
+      return { success: false, error: `Source pull failed: ${message}`, backupId };
+    }
+
+    if (signal?.aborted) {
+      return { success: false, error: "Update aborted", backupId };
+    }
+
+    report("build", "running", "Rebuilding image from source…");
+    try {
+      // Shell out to `clawhq build` — it handles stage1+stage2 config resolution
+      // from the deploy dir's build manifest and clawhq.yaml
+      const composePath = join(deployDir, "engine", "docker-compose.yml");
+      const sourceDir = join(deployDir, "engine", "source");
+      await execFileAsync(
+        "docker",
+        ["build", "-t", await getImageName(deployDir) ?? "openclaw:custom", "-f", join(sourceDir, "Dockerfile"), sourceDir],
+        { timeout: 600_000, signal },
+      );
+      report("build", "done", "Image rebuilt from source");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      report("build", "failed", `Build failed: ${message}`);
+      return { success: false, error: `Build failed: ${message}`, backupId };
+    }
+  } else {
+    // Cache install: docker pull
+    const image = await getImageName(deployDir);
+    if (!image) {
+      return { success: false, error: "Cannot determine image from docker-compose.yml", backupId };
+    }
+
+    report("pull", "running", `Pulling ${image}…`);
+    try {
+      await execFileAsync("docker", ["pull", image], {
+        timeout: UPDATER_PULL_TIMEOUT_MS,
+        signal,
+      });
+      report("pull", "done", "Image pulled");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      report("pull", "failed", `Pull failed: ${message}`);
+      return { success: false, error: `Image pull failed: ${message}`, backupId };
+    }
   }
 
   if (signal?.aborted) {
@@ -275,6 +395,30 @@ async function getImageName(deployDir: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Detect install method from clawhq.yaml or presence of engine/source/.
+ *
+ * Falls back to "cache" if no config found.
+ */
+async function detectInstallMethod(deployDir: string): Promise<"cache" | "source"> {
+  try {
+    const configPath = join(deployDir, "clawhq.yaml");
+    const raw = await readFile(configPath, "utf-8");
+    if (raw.includes("installMethod: source") || raw.includes("installMethod: from-source")) {
+      return "source";
+    }
+  } catch { /* no config file */ }
+
+  // Also detect by presence of source directory
+  try {
+    const { stat } = await import("node:fs/promises");
+    await stat(join(deployDir, "engine", "source", "package.json"));
+    return "source";
+  } catch { /* no source dir */ }
+
+  return "cache";
 }
 
 function progress(callback?: UpdateProgressCallback) {

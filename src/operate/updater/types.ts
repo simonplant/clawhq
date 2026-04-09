@@ -1,9 +1,12 @@
 /**
  * Types for safe upstream updates with automatic rollback.
  *
- * `clawhq update [--check]` pulls the latest container image, creates a
- * pre-update backup, restarts, and runs doctor. On failure, rolls back
- * to the pre-update state automatically.
+ * `clawhq update [--check]` updates the OpenClaw engine and restarts.
+ * Two modes based on installMethod:
+ *   - "cache": docker pull latest image
+ *   - "source": git pull + clawhq build (rebuild from source)
+ *
+ * Pipeline: check → backup → pull/build → restart → verify → (rollback on failure)
  */
 
 // ── Pipeline Steps ──────────────────────────────────────────────────────────
@@ -13,6 +16,7 @@ export type UpdateStep =
   | "check"
   | "backup"
   | "pull"
+  | "build"
   | "restart"
   | "verify"
   | "rollback";
