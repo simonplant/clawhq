@@ -472,6 +472,10 @@ export interface DeploymentBundle {
   readonly clawhqConfig: ClawHQConfig;
   /** Compiled delegated action rules for workspace/delegated-rules.json (optional). */
   readonly delegatedRulesFile?: DelegatedRulesFileInfo;
+  /** Generated credential proxy server script (optional — present when proxy is enabled). */
+  readonly proxyServerScript?: string;
+  /** Generated credential proxy routes config JSON (optional — present when proxy is enabled). */
+  readonly proxyRoutesConfig?: string;
 }
 
 /** Metadata about the compiled delegated-rules.json workspace file. */

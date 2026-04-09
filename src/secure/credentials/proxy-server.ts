@@ -55,7 +55,10 @@ const routes = routesConfig.routes || [];
 
 console.log(\`[cred-proxy] Loaded \${routes.length} route(s) from \${ROUTES_PATH}\`);
 for (const r of routes) {
-  console.log(\`  \${r.pathPrefix} → \${r.upstream} (auth: \${r.auth.type}, env: \${r.auth.envVar})\`);
+  const envLabel = r.auth.type === "basic"
+    ? \`\${r.auth.userEnvVar}+\${r.auth.passEnvVar}\`
+    : r.auth.type === "none" ? "none" : r.auth.envVar;
+  console.log(\`  \${r.pathPrefix} → \${r.upstream} (auth: \${r.auth.type}, env: \${envLabel})\`);
 }
 
 // ── Audit Logging ─────────────────────────────────────────────────────────
@@ -110,12 +113,28 @@ function matchRoute(urlPath) {
 // ── Credential Injection ──────────────────────────────────────────────────
 
 function injectCredential(route, headers, bodyBuffer) {
-  const credValue = process.env[route.auth.envVar];
+  const auth = route.auth;
+
+  // No-auth routes (public APIs routed through proxy for egress control)
+  if (auth.type === "none") {
+    return { headers, body: bodyBuffer, injected: true };
+  }
+
+  // Basic auth — user:pass base64-encoded
+  if (auth.type === "basic") {
+    const user = process.env[auth.userEnvVar] || "";
+    const pass = process.env[auth.passEnvVar] || "";
+    if (!user) {
+      return { headers, body: bodyBuffer, injected: false };
+    }
+    headers["authorization"] = "Basic " + Buffer.from(user + ":" + pass).toString("base64");
+    return { headers, body: bodyBuffer, injected: true };
+  }
+
+  const credValue = process.env[auth.envVar];
   if (!credValue) {
     return { headers, body: bodyBuffer, injected: false };
   }
-
-  const auth = route.auth;
 
   if (auth.type === "header") {
     const headerValue = (auth.prefix || "") + credValue;
@@ -198,7 +217,9 @@ function handleHealth(res) {
     id: r.id,
     pathPrefix: r.pathPrefix,
     upstream: r.upstream,
-    credConfigured: !!process.env[r.auth.envVar],
+    credConfigured: r.auth.type === "none" ? true
+      : r.auth.type === "basic" ? !!(process.env[r.auth.userEnvVar])
+      : !!process.env[r.auth.envVar],
   }));
 
   const body = JSON.stringify({

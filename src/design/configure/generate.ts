@@ -12,6 +12,7 @@ import {
   agentNetworkName,
   BOOTSTRAP_MAX_CHARS,
   CONTAINER_USER,
+  CRED_PROXY_PORT,
   ENABLE_AUDIT_STDOUT,
   GATEWAY_DEFAULT_PORT,
   WEBSOCKET_EVENT_CALLER_TIMEOUT_MS,
@@ -47,6 +48,8 @@ import {
   serializeAllowlist,
 } from "../../build/launcher/firewall.js";
 
+import { BUILTIN_ROUTES, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv, buildRoutesConfig } from "../../secure/credentials/proxy-routes.js";
+import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
 import type { WizardAnswers } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -78,17 +81,32 @@ const DOCKER_BRIDGE_GATEWAY = "172.17.0.1";
 export function generateBundle(answers: WizardAnswers): DeploymentBundle {
   const port = answers.gatewayPort || DEFAULT_GATEWAY_PORT;
   const networkName = agentNetworkName(answers.instanceName);
+  const envVars = buildEnvVars(answers);
+
+  // Auto-detect proxy: enabled when any integration env vars match builtin routes
+  const activeRoutes = filterRoutesForEnv(BUILTIN_ROUTES, envVars);
+  const proxyEnabled = activeRoutes.length > 0;
+
+  // If proxy enabled, add CRED_PROXY_URL to env vars so tools use it
+  if (proxyEnabled) {
+    envVars.CRED_PROXY_URL = `http://${CRED_PROXY_SERVICE_NAME}:${CRED_PROXY_PORT}`;
+    envVars.CRED_PROXY_PORT = String(CRED_PROXY_PORT);
+  }
 
   return {
     openclawConfig: buildOpenClawConfig(answers, port),
     composeConfig: buildComposeConfig(answers, port, networkName),
-    envVars: buildEnvVars(answers),
+    envVars,
     cronJobs: buildCronJobs(answers.blueprint, answers.userContext?.timezone),
     identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions, answers.userContext),
     toolFiles: buildToolFiles(answers.blueprint),
     skillFiles: buildSkillFiles(answers.blueprint),
     clawhqConfig: buildClawHQConfig(answers),
     delegatedRulesFile: buildDelegatedRulesFile(answers.blueprint),
+    ...(proxyEnabled ? {
+      proxyServerScript: generateProxyServerScript(),
+      proxyRoutesConfig: JSON.stringify(buildRoutesConfig(activeRoutes), null, 2),
+    } : {}),
   };
 }
 

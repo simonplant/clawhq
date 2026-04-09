@@ -29,8 +29,27 @@ export interface BodyJsonAuth {
   readonly envVar: string;
 }
 
+/** Inject HTTP Basic auth (user:pass base64-encoded). */
+export interface BasicAuth {
+  readonly type: "basic";
+  /** Environment variable name holding the username. */
+  readonly userEnvVar: string;
+  /** Environment variable name holding the password. */
+  readonly passEnvVar: string;
+}
+
+/** No credential injection — passthrough proxy (e.g. public APIs). */
+export interface NoAuth {
+  readonly type: "none";
+  /**
+   * Dummy envVar for filterRoutesForEnv compatibility.
+   * Set to a sentinel value that always passes filtering.
+   */
+  readonly envVar: string;
+}
+
 /** Union of credential injection strategies. */
-export type ProxyAuthConfig = HeaderAuth | BodyJsonAuth;
+export type ProxyAuthConfig = HeaderAuth | BodyJsonAuth | BasicAuth | NoAuth;
 
 // ── Route Definition ───────────────────────────────────────────────────────
 

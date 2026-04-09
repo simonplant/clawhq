@@ -3,6 +3,7 @@
  *
  * Generates a bash script that fetches stock quotes, historical data,
  * and market summaries using Yahoo Finance's public API endpoints.
+ * Routes through cred-proxy /yahoo prefix when available for egress control.
  * No API key required - uses public Yahoo Finance endpoints.
  */
 
@@ -13,7 +14,12 @@ export function generateQuoteTool(): string {
 # All results piped through ClawWall sanitizer for prompt injection defense.
 set -euo pipefail
 
-API="https://query1.finance.yahoo.com/v8/finance"
+# Auth: prefer credential proxy (egress control), fall back to direct
+if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
+  API="\${CRED_PROXY_URL}/yahoo/v8/finance"
+else
+  API="https://query1.finance.yahoo.com/v8/finance"
+fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # ClawWall: sanitize external content
@@ -52,7 +58,7 @@ cmd_batch() {
 cmd_history() {
   local symbol="$1"
   local range="\${2:-1mo}"
-  curl -sS "https://query1.finance.yahoo.com/v8/finance/chart/$(echo "$symbol" | tr '[:lower:]' '[:upper:]')?range=$range&interval=1d" \\
+  curl -sS "$API/chart/$(echo "$symbol" | tr '[:lower:]' '[:upper:]')?range=$range&interval=1d" \\
     -H "User-Agent: ClawHQ/1.0" | _sanitize
 }
 

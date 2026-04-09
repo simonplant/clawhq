@@ -93,6 +93,33 @@ describe("BUILTIN_ROUTES", () => {
     const prefixes = BUILTIN_ROUTES.map((r) => r.pathPrefix);
     expect(new Set(prefixes).size).toBe(prefixes.length);
   });
+
+  it("includes yahoo route with no-auth (public API)", () => {
+    const yahoo = BUILTIN_ROUTES.find((r) => r.id === "yahoo");
+    expect(yahoo).toBeDefined();
+    expect(yahoo?.pathPrefix).toBe("/yahoo");
+    expect(yahoo?.upstream).toContain("finance.yahoo.com");
+    expect(yahoo?.auth.type).toBe("none");
+  });
+
+  it("includes caldav route with basic auth", () => {
+    const caldav = BUILTIN_ROUTES.find((r) => r.id === "caldav");
+    expect(caldav).toBeDefined();
+    expect(caldav?.pathPrefix).toBe("/caldav");
+    expect(caldav?.auth.type).toBe("basic");
+    if (caldav?.auth.type === "basic") {
+      expect(caldav.auth.userEnvVar).toBe("CALDAV_USER");
+      expect(caldav.auth.passEnvVar).toBe("CALDAV_PASS");
+    }
+  });
+
+  it("includes tradier route with bearer auth", () => {
+    const tradier = BUILTIN_ROUTES.find((r) => r.id === "tradier");
+    expect(tradier).toBeDefined();
+    expect(tradier?.pathPrefix).toBe("/tradier");
+    expect(tradier?.upstream).toBe("https://api.tradier.com");
+    expect(tradier?.auth.type).toBe("header");
+  });
 });
 
 // ── Route Config Building ───────────────────────────────────────────────────
@@ -114,16 +141,19 @@ describe("buildRoutesConfig", () => {
 // ── Route Filtering ─────────────────────────────────────────────────────────
 
 describe("filterRoutesForEnv", () => {
-  it("filters to only routes with configured env vars", () => {
+  // "none" auth routes (e.g. yahoo) always pass filtering
+  const alwaysIncluded = BUILTIN_ROUTES.filter((r) => r.auth.type === "none").length;
+
+  it("filters to only routes with configured env vars (plus always-on routes)", () => {
     const env = { TAVILY_API_KEY: "test-key" };
     const filtered = filterRoutesForEnv(BUILTIN_ROUTES, env);
-    expect(filtered).toHaveLength(1);
-    expect(filtered[0].id).toBe("tavily");
+    expect(filtered).toHaveLength(1 + alwaysIncluded);
+    expect(filtered.map((r) => r.id)).toContain("tavily");
   });
 
-  it("returns empty array when no env vars match", () => {
+  it("returns only always-on routes when no env vars match", () => {
     const filtered = filterRoutesForEnv(BUILTIN_ROUTES, {});
-    expect(filtered).toHaveLength(0);
+    expect(filtered).toHaveLength(alwaysIncluded);
   });
 
   it("returns multiple routes when multiple env vars set", () => {
@@ -133,8 +163,14 @@ describe("filterRoutesForEnv", () => {
       ANTHROPIC_API_KEY: "key2",
     };
     const filtered = filterRoutesForEnv(BUILTIN_ROUTES, env);
-    // Todoist and todoist-sync share the same env var
-    expect(filtered.length).toBe(4);
+    // Todoist and todoist-sync share the same env var, plus always-on routes
+    expect(filtered.length).toBe(4 + alwaysIncluded);
+  });
+
+  it("includes basic auth routes when user env var is set", () => {
+    const env = { CALDAV_USER: "user@example.com" };
+    const filtered = filterRoutesForEnv(BUILTIN_ROUTES, env);
+    expect(filtered.map((r) => r.id)).toContain("caldav");
   });
 });
 
@@ -233,5 +269,18 @@ describe("generateProxyServerScript", () => {
   it("tracks whether credentials were injected in audit log", () => {
     const script = generateProxyServerScript();
     expect(script).toContain("credInjected");
+  });
+
+  it("includes credential injection for basic auth", () => {
+    const script = generateProxyServerScript();
+    expect(script).toContain('"basic"');
+    expect(script).toContain("auth.userEnvVar");
+    expect(script).toContain("auth.passEnvVar");
+    expect(script).toContain("Basic ");
+  });
+
+  it("includes passthrough for no-auth routes", () => {
+    const script = generateProxyServerScript();
+    expect(script).toContain('"none"');
   });
 });

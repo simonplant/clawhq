@@ -133,5 +133,15 @@ export function bundleToFiles(
       content: f.content,
       mode: f.mode,
     })),
+    // Credential proxy files (when integrations use proxy routes)
+    ...(bundle.proxyServerScript ? [{
+      relativePath: "engine/cred-proxy.js",
+      content: bundle.proxyServerScript,
+    }] : []),
+    ...(bundle.proxyRoutesConfig ? [{
+      relativePath: "engine/cred-proxy-routes.json",
+      content: bundle.proxyRoutesConfig,
+      mode: FILE_MODE_SECRET,
+    }] : []),
   ];
 }

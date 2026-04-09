@@ -262,6 +262,13 @@ describe("quote tool", () => {
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "quote");
     expect(wrapper?.content).toContain("batch");
   });
+
+  it("uses credential proxy with /yahoo prefix when available", () => {
+    const bp = loadFoundersOps();
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "quote");
+    expect(wrapper?.content).toContain("CRED_PROXY_URL");
+    expect(wrapper?.content).toContain("/yahoo");
+  });
 });
 
 // ── Sanitize Tool (ClawWall) ───────────────────────────────────────────────

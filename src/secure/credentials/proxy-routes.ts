@@ -140,6 +140,36 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
       envVar: "OP_SERVICE_ACCOUNT_TOKEN",
     },
   },
+  {
+    id: "yahoo",
+    pathPrefix: "/yahoo",
+    upstream: "https://query1.finance.yahoo.com",
+    auth: {
+      type: "none",
+      envVar: "_ALWAYS_ENABLED",
+    },
+  },
+  {
+    id: "caldav",
+    pathPrefix: "/caldav",
+    upstream: "https://caldav.icloud.com",
+    auth: {
+      type: "basic",
+      userEnvVar: "CALDAV_USER",
+      passEnvVar: "CALDAV_PASS",
+    },
+  },
+  {
+    id: "tradier",
+    pathPrefix: "/tradier",
+    upstream: "https://api.tradier.com",
+    auth: {
+      type: "header",
+      header: "Authorization",
+      prefix: "Bearer ",
+      envVar: "TRADIER_TOKEN",
+    },
+  },
 ];
 
 // ── Route File Generation ──────────────────────────────────────────────────
@@ -171,7 +201,11 @@ export function filterRoutesForEnv(
   routes: readonly ProxyRoute[],
   envVars: Record<string, string>,
 ): ProxyRoute[] {
-  return routes.filter((r) => envVars[r.auth.envVar] !== undefined);
+  return routes.filter((r) => {
+    if (r.auth.type === "none") return true;
+    if (r.auth.type === "basic") return envVars[r.auth.userEnvVar] !== undefined;
+    return envVars[r.auth.envVar] !== undefined;
+  });
 }
 
 /**
