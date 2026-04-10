@@ -60,12 +60,16 @@ const DOCKER_HOST_GATEWAY = "host.docker.internal";
 
 /**
  * Compile a composition into a complete workspace.
+ *
+ * @param existingEnv — Existing env vars from the deployment (for detecting
+ *   integrations added via `clawhq integrate add` that aren't in the template).
  */
 export function compile(
   config: CompositionConfig,
   user: UserConfig,
   deployDir: string,
   gatewayPort: number = GATEWAY_DEFAULT_PORT,
+  existingEnv: Record<string, string> = {},
 ): CompiledWorkspace {
   const profile = loadProfile(config.profile);
   const personality = loadPersonality(config.personality);
@@ -78,7 +82,7 @@ export function compile(
 
   // Compute egress domains: profile defaults + provider-specific
   const providerEgress = getEgressForProviders(providerIds);
-  const allEgress = [...new Set([...profile.egress_domains, ...providerEgress])];
+  const egressSet = new Set([...profile.egress_domains, ...providerEgress]);
 
   // Apply dimension overrides
   const dims = applyOverrides(personality.dimensions, config.dimension_overrides);
@@ -86,8 +90,9 @@ export function compile(
   // Generate .env content (needed for both writing and proxy route detection)
   const envContent = renderEnv(gatewayPort, resolvedProviders, config.channels);
 
-  // Detect proxy routes from .env template — routes whose env vars are configured
-  const envVarsForProxy = parseEnvForProxy(envContent);
+  // Detect proxy routes — merge generated env template with existing env vars
+  // (existing env has credentials from `clawhq integrate add` not in the template)
+  const envVarsForProxy = { ...parseEnvForProxy(envContent), ...existingEnv };
   const activeRoutes = filterRoutesForEnv(BUILTIN_ROUTES, envVarsForProxy);
   const proxyEnabled = activeRoutes.length > 0;
 
@@ -108,8 +113,20 @@ export function compile(
       posture = { ...posture, runtime: undefined };
     }
   }
+  // Detect Tailscale — enabled when TS_AUTHKEY is in .env
+  const tailscaleEnabled = envVarsForProxy["TS_AUTHKEY"] !== undefined;
+  const tailscaleHostname = envVarsForProxy["TS_HOSTNAME"] || "clawhq-agent";
+
+  // Add infrastructure egress domains
+  if (tailscaleEnabled) {
+    egressSet.add("controlplane.tailscale.com");
+    egressSet.add("login.tailscale.com");
+  }
+
   const composeOutput = generateCompose("openclaw:custom", posture, deployDir, networkName, {
     enableCredProxy: proxyEnabled,
+    enableTailscale: tailscaleEnabled,
+    tailscaleHostname,
   });
   const composeYaml = yamlStringify(composeOutput);
 
@@ -141,7 +158,7 @@ export function compile(
     { relativePath: "cron/jobs.json", content: renderCronJobs(profile, resolvedProviders, config.model) },
 
     // Ops — egress includes provider-specific domains
-    { relativePath: "ops/firewall/allowlist.yaml", content: renderAllowlistFromDomains(profile, allEgress) },
+    { relativePath: "ops/firewall/allowlist.yaml", content: renderAllowlistFromDomains(profile, [...egressSet]) },
 
     // ClawHQ metadata
     { relativePath: "clawhq.yaml", content: renderClawhqYaml(profile, personality, deployDir, config.providers) },

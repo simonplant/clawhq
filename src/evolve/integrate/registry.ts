@@ -207,6 +207,22 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       "call-service is a write operation — consider adding entity prefixes like 'lock.' to HA_ENTITY_DENY",
     ],
   },
+  tailscale: {
+    name: "tailscale",
+    label: "Tailscale",
+    description: "Secure remote access to the agent via Tailscale mesh VPN — no port forwarding needed",
+    category: "security",
+    envKeys: [
+      { key: "TS_AUTHKEY", label: "Tailscale auth key (Settings → Keys → Generate auth key)", secret: true },
+      { key: "TS_HOSTNAME", label: "Tailscale device hostname", secret: false, defaultValue: "clawhq-agent" },
+    ],
+    egressDomains: ["controlplane.tailscale.com", "login.tailscale.com"],
+    quirks: [
+      "Auth keys can be single-use or reusable — use reusable for auto-restart resilience",
+      "Ephemeral keys auto-remove the device when it goes offline — use non-ephemeral for persistent agents",
+      "The agent is accessible at http://<hostname>:18789 from any device on your tailnet",
+    ],
+  },
 };
 
 /** List all known integration names. */

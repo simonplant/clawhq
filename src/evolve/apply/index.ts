@@ -67,7 +67,10 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
     // 2. Extract user context from existing USER.md
     const user = readUserContext(deployDir);
 
-    // 3. Compile
+    // 3. Read existing env (needed for proxy/Tailscale detection and credential preservation)
+    const existingEnv = readExistingEnv(deployDir);
+
+    // 4. Compile — pass existing env so compiler detects integrations from `integrate add`
     report("compile", "running", "Compiling workspace…");
     const gatewayPort = options.gatewayPort ?? GATEWAY_DEFAULT_PORT;
     const compiled = compile(
@@ -79,23 +82,28 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
       user,
       deployDir,
       gatewayPort,
+      existingEnv,
     );
     report("compile", "done", `${compiled.files.length} files compiled`);
 
-    // 4. Filter stateful files
+    // 5. Filter stateful files
     let files: CompiledFile[] = compiled.files.filter((f) => !SKIP_PATHS.has(f.relativePath));
 
-    // 5. Report proxy status (compiler handles proxy detection + wiring)
+    // 6. Report proxy/Tailscale status
     const proxyFiles = files.filter((f) => f.relativePath.includes("cred-proxy"));
+    const hasComposeTailscale = files.some((f) =>
+      f.relativePath === "engine/docker-compose.yml" && f.content.includes("tailscale"),
+    );
     if (proxyFiles.length > 0) {
-      report("proxy", "done", `Proxy configured (${proxyFiles.length} files)`);
+      report("proxy", "done", `Proxy configured (${proxyFiles.length} files)${hasComposeTailscale ? " + Tailscale" : ""}`);
+    } else if (hasComposeTailscale) {
+      report("proxy", "done", "Tailscale configured");
     } else {
-      report("proxy", "done", "No proxy routes needed");
+      report("proxy", "done", "No proxy or Tailscale");
     }
 
-    // 6. Protect existing credentials — replace generated real values with
+    // 7. Protect existing credentials — replace generated real values with
     //    CHANGE_ME so the writer's merge preserves existing .env values
-    const existingEnv = readExistingEnv(deployDir);
     files = files.map((f) =>
       f.relativePath.endsWith(".env") ? protectCredentials(f, existingEnv) : f,
     );
