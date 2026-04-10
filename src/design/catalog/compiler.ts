@@ -15,9 +15,15 @@ import { join, resolve } from "node:path";
 
 import {
   BOOTSTRAP_MAX_CHARS,
+  CRED_PROXY_PORT,
   FILE_MODE_EXEC,
   GATEWAY_DEFAULT_PORT,
 } from "../../config/defaults.js";
+import { generateCompose } from "../../build/docker/compose.js";
+import { getPostureConfig } from "../../build/docker/posture.js";
+import { BUILTIN_ROUTES, buildRoutesConfig, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv } from "../../secure/credentials/proxy-routes.js";
+import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
+import { stringify as yamlStringify } from "yaml";
 import { renderDimensionProse, DIMENSION_META, ALWAYS_ON_BOUNDARIES } from "../blueprints/personality-presets.js";
 import type { PersonalityDimensions, DimensionId, DimensionValue } from "../blueprints/types.js";
 
@@ -76,6 +82,29 @@ export function compile(
   // Apply dimension overrides
   const dims = applyOverrides(personality.dimensions, config.dimension_overrides);
 
+  // Generate .env content (needed for both writing and proxy route detection)
+  const envContent = renderEnv(gatewayPort, resolvedProviders, config.channels);
+
+  // Detect proxy routes from .env template — routes whose env vars are configured
+  const envVarsForProxy = parseEnvForProxy(envContent);
+  const activeRoutes = filterRoutesForEnv(BUILTIN_ROUTES, envVarsForProxy);
+  const proxyEnabled = activeRoutes.length > 0;
+
+  // Inject CRED_PROXY_URL into .env when proxy is enabled
+  const envWithProxy = proxyEnabled
+    ? envContent.trimEnd() + `\n\n# ── Credential Proxy ──\nCRED_PROXY_URL=http://${CRED_PROXY_SERVICE_NAME}:${CRED_PROXY_PORT}\nCRED_PROXY_PORT=${CRED_PROXY_PORT}\n`
+    : envContent;
+
+  // Generate docker-compose.yml with security posture + optional proxy sidecar
+  const networkName = "clawhq_net";
+  const posture = getPostureConfig(profile.security_posture === "under-attack" ? "under-attack" : "hardened");
+  const composeOutput = generateCompose("openclaw:custom", posture, deployDir, networkName, {
+    enableCredProxy: proxyEnabled,
+  });
+  const composeYaml = yamlStringify(composeOutput);
+
+  const openclawJson = renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config);
+
   const files: CompiledFile[] = [
     // 8 workspace files
     { relativePath: "workspace/SOUL.md", content: renderSoul(personality, dims, config.soul_overrides) },
@@ -88,17 +117,15 @@ export function compile(
     { relativePath: "workspace/MEMORY.md", content: "" },
 
     // Runtime config
-    // openclaw.json at deploy root — OpenClaw reads ~/.openclaw/openclaw.json
-    { relativePath: "openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config), mode: 0o600 },
-    // Config at deploy root — OpenClaw reads ~/.openclaw/openclaw.json
-    { relativePath: "openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config), mode: 0o600 },
-    // .env at deploy root for OpenClaw + also in engine/ for compose env_file
-    { relativePath: ".env", content: renderEnv(gatewayPort, resolvedProviders, config.channels), mode: 0o600 },
+    { relativePath: "openclaw.json", content: openclawJson, mode: 0o600 },
+    { relativePath: ".env", content: envWithProxy, mode: 0o600 },
     { relativePath: "credentials.json", content: "{}\n", mode: 0o600 },
     // Copies in engine/ for clawhq doctor/status and compose env_file
-    { relativePath: "engine/openclaw.json", content: renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config), mode: 0o600 },
-    { relativePath: "engine/.env", content: renderEnv(gatewayPort, resolvedProviders, config.channels), mode: 0o600 },
+    { relativePath: "engine/openclaw.json", content: openclawJson, mode: 0o600 },
+    { relativePath: "engine/.env", content: envWithProxy, mode: 0o600 },
     { relativePath: "engine/credentials.json", content: "{}\n", mode: 0o600 },
+    // Docker Compose
+    { relativePath: "engine/docker-compose.yml", content: composeYaml },
 
     // Cron
     { relativePath: "cron/jobs.json", content: renderCronJobs(profile, resolvedProviders, config.model) },
@@ -112,6 +139,12 @@ export function compile(
     // ClawWall security assets (copied into Docker image at build time)
     { relativePath: "engine/clawwall/sanitize", content: renderClawwallSanitize(), mode: FILE_MODE_EXEC },
     { relativePath: "engine/clawwall/curl-egress-wrapper", content: renderCurlEgressWrapper(), mode: FILE_MODE_EXEC },
+
+    // Credential proxy (when integrations warrant it)
+    ...(proxyEnabled ? [
+      { relativePath: "engine/cred-proxy.js", content: generateProxyServerScript() },
+      { relativePath: "engine/cred-proxy-routes.json", content: JSON.stringify(buildRoutesConfig(activeRoutes), null, 2) + "\n" },
+    ] : []),
 
     // Tool scripts (executable on PATH inside container)
     ...generateToolScripts(profile),
@@ -904,6 +937,22 @@ function applyOverrides(
     formality: overrides.formality ?? base.formality,
     analyticalDepth: overrides.analyticalDepth ?? base.analyticalDepth,
   };
+}
+
+/** Parse env content into a Record for proxy route filtering. */
+function parseEnvForProxy(envContent: string): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq < 1) continue;
+    const val = trimmed.slice(eq + 1);
+    if (val && val !== "CHANGE_ME") {
+      env[trimmed.slice(0, eq)] = val;
+    }
+  }
+  return env;
 }
 
 function serializeSimpleYaml(obj: Record<string, unknown>, indent = 0): string {

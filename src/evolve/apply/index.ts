@@ -10,22 +10,13 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { parse as yamlParse, stringify as yamlStringify } from "yaml";
+import { parse as yamlParse } from "yaml";
 
-import {
-  CRED_PROXY_AUDIT_DIR,
-  CRED_PROXY_IMAGE,
-  CRED_PROXY_PORT,
-  CRED_PROXY_ROUTES_PATH,
-  CRED_PROXY_SCRIPT_PATH,
-  GATEWAY_DEFAULT_PORT,
-} from "../../config/defaults.js";
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { compile } from "../../design/catalog/index.js";
 import type { CompiledFile } from "../../design/catalog/types.js";
 import type { UserConfig } from "../../design/catalog/types.js";
 import { writeBundle } from "../../design/configure/writer.js";
-import { BUILTIN_ROUTES, buildRoutesConfig, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv } from "../../secure/credentials/proxy-routes.js";
-import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
 
 import type { ApplyOptions, ApplyProgress, ApplyReport, ApplyResult } from "./types.js";
 
@@ -94,61 +85,17 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
     // 4. Filter stateful files
     let files: CompiledFile[] = compiled.files.filter((f) => !SKIP_PATHS.has(f.relativePath));
 
-    // 5. Proxy files — detect from existing .env credentials
-    report("proxy", "running", "Checking proxy routes…");
-    const existingEnv = readExistingEnv(deployDir);
-    const activeRoutes = filterRoutesForEnv(BUILTIN_ROUTES, existingEnv);
-
-    if (activeRoutes.length > 0) {
-      const proxyUrl = `http://${CRED_PROXY_SERVICE_NAME}:${CRED_PROXY_PORT}`;
-
-      // Inject CRED_PROXY_URL into .env files so tools use the proxy
-      files = files.map((f) => {
-        if (f.relativePath.endsWith(".env") && !f.content.includes("CRED_PROXY_URL")) {
-          return { ...f, content: f.content.trimEnd() + `\nCRED_PROXY_URL=${proxyUrl}\nCRED_PROXY_PORT=${CRED_PROXY_PORT}\n` };
-        }
-        return f;
-      });
-
-      // Add proxy script + routes files
-      files = [
-        ...files,
-        { relativePath: "engine/cred-proxy.js", content: generateProxyServerScript() },
-        {
-          relativePath: "engine/cred-proxy-routes.json",
-          content: JSON.stringify(buildRoutesConfig(activeRoutes), null, 2) + "\n",
-        },
-      ];
-
-      // Inject cred-proxy sidecar into docker-compose.yml
-      // The compose file may come from the compiler or already exist on disk
-      const composePath = "engine/docker-compose.yml";
-      const hasCompose = files.some((f) => f.relativePath === composePath);
-      if (hasCompose) {
-        files = files.map((f) =>
-          f.relativePath === composePath
-            ? { ...f, content: injectProxySidecar(f.content, deployDir) }
-            : f,
-        );
-      } else {
-        // Compose not in compiled output — read from disk and inject
-        const diskComposePath = join(deployDir, composePath);
-        if (existsSync(diskComposePath)) {
-          const existing = readFileSync(diskComposePath, "utf-8");
-          files = [...files, {
-            relativePath: composePath,
-            content: injectProxySidecar(existing, deployDir),
-          }];
-        }
-      }
-
-      report("proxy", "done", `${activeRoutes.length} proxy route(s) configured`);
+    // 5. Report proxy status (compiler handles proxy detection + wiring)
+    const proxyFiles = files.filter((f) => f.relativePath.includes("cred-proxy"));
+    if (proxyFiles.length > 0) {
+      report("proxy", "done", `Proxy configured (${proxyFiles.length} files)`);
     } else {
       report("proxy", "done", "No proxy routes needed");
     }
 
     // 6. Protect existing credentials — replace generated real values with
     //    CHANGE_ME so the writer's merge preserves existing .env values
+    const existingEnv = readExistingEnv(deployDir);
     files = files.map((f) =>
       f.relativePath.endsWith(".env") ? protectCredentials(f, existingEnv) : f,
     );
@@ -321,58 +268,3 @@ function progress(callback?: (event: ApplyProgress) => void) {
   };
 }
 
-// ── Compose Proxy Injection ────────────────────────────────────────────────
-
-/**
- * Inject cred-proxy sidecar service into docker-compose.yml.
- *
- * Parses the YAML, adds the cred-proxy service definition if not present,
- * and returns the updated YAML string.
- */
-function injectProxySidecar(composeYaml: string, deployDir: string): string {
-  const doc = yamlParse(composeYaml) as Record<string, unknown>;
-  const services = (doc.services ?? {}) as Record<string, unknown>;
-
-  // Find the network name from existing services
-  const firstService = Object.values(services)[0] as Record<string, unknown> | undefined;
-  const networkName = (firstService?.networks as string[] | undefined)?.[0] ?? "clawhq_net";
-
-  // Enable ICC on the shared network — proxy + agent must communicate
-  const networks = (doc.networks ?? {}) as Record<string, Record<string, unknown>>;
-  for (const net of Object.values(networks)) {
-    const driverOpts = net.driver_opts as Record<string, string> | undefined;
-    if (driverOpts?.["com.docker.network.bridge.enable_icc"] === "false") {
-      driverOpts["com.docker.network.bridge.enable_icc"] = "true";
-    }
-  }
-  doc.networks = networks;
-
-  services["cred-proxy"] = {
-    image: CRED_PROXY_IMAGE,
-    user: "1000:1000",
-    read_only: true,
-    cap_drop: ["ALL"],
-    volumes: [
-      `${deployDir}/engine/cred-proxy.js:${CRED_PROXY_SCRIPT_PATH}:ro`,
-      `${deployDir}/engine/cred-proxy-routes.json:${CRED_PROXY_ROUTES_PATH}:ro`,
-      `${deployDir}/ops/audit:${CRED_PROXY_AUDIT_DIR}`,
-    ],
-    networks: [networkName],
-    env_file: [".env"],
-    command: ["node", CRED_PROXY_SCRIPT_PATH],
-    restart: "unless-stopped",
-    tmpfs: ["/tmp:size=16m,noexec,nosuid"],
-    healthcheck: {
-      test: [
-        "CMD", "node", "-e",
-        `require("http").get("http://localhost:${CRED_PROXY_PORT}/health",(r)=>{process.exit(r.statusCode===200?0:1)}).on("error",()=>process.exit(1))`,
-      ],
-      interval: "30s",
-      timeout: "5s",
-      retries: 3,
-    },
-  };
-
-  doc.services = services;
-  return yamlStringify(doc);
-}
