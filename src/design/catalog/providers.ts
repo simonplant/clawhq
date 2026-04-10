@@ -110,6 +110,20 @@ export const PROVIDERS: readonly Provider[] = [
     setupNotes: "Generate an App Password at fastmail.com → Settings → Privacy & Security → Integrations → New App Password.",
   },
   {
+    id: "fastmail-jmap",
+    name: "Fastmail (JMAP)",
+    domain: "email",
+    protocol: "JMAP",
+    cli: "email-fastmail",
+    binaries: [],
+    envVars: [
+      { key: "FASTMAIL_API_TOKEN", label: "API token", secret: true },
+    ],
+    egressDomains: ["api.fastmail.com", "www.fastmailusercontent.com"],
+    auth: "api-key",
+    setupNotes: "Generate an API token at fastmail.com → Settings → Privacy & Security → Integrations → API tokens.",
+  },
+  {
     id: "outlook",
     name: "Outlook / Microsoft 365",
     domain: "email",

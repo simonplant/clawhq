@@ -495,22 +495,18 @@ function writeQuarantine(source, text, threats) {
 
 // ── Main Pipeline ──────────────────────────────────────────────────────────
 
-// Sources that represent agent-requested data (tool output).
-// These are sanitized (dangerous patterns stripped) but never quarantined,
-// because the agent intentionally fetched this data through an approved tool.
-// Quarantine is reserved for unsolicited external content (email, messages).
-var TOOL_SOURCES = [
-  "tavily", "quote", "substack", "x", "github", "todoist",
-  "ha", "tradier", "caldav", "fastmail"
-];
+// Sources that trigger full quarantine. "external" = unsolicited content
+// (inbound email body, message from unknown sender). Any named source
+// (e.g. --source tavily, --source substack) is agent-requested tool output —
+// sanitized (dangerous patterns stripped) but never quarantined, because the
+// agent intentionally fetched this data through an approved tool.
+var QUARANTINE_SOURCES = ["external"];
 
 function processText(text) {
   const threats = detectThreats(text);
   const score = threatScore(threats);
-  // Tool-sourced content: sanitize but don't quarantine.
-  // The agent requested this data — blocking it defeats the tool's purpose.
-  var isToolSource = TOOL_SOURCES.indexOf(SOURCE) >= 0;
-  const shouldQuarantine = !isToolSource && score >= QUARANTINE_THRESHOLD;
+  var canQuarantine = QUARANTINE_SOURCES.indexOf(SOURCE) >= 0;
+  const shouldQuarantine = canQuarantine && score >= QUARANTINE_THRESHOLD;
 
   if (threats.length > 0) {
     const action = shouldQuarantine ? "quarantined" : "sanitized";

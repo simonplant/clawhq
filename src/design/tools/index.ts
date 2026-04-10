@@ -51,7 +51,7 @@ export interface ToolFileContent {
  * Every tool referenced in any blueprint YAML must have an entry here.
  * The generator returns the full script content for the tool wrapper.
  */
-const TOOL_GENERATORS: Readonly<Record<string, () => string>> = {
+export const TOOL_GENERATORS: Readonly<Record<string, () => string>> = {
   email: generateEmailTool,
   gh: generateGhTool,
   ha: generateHaTool,

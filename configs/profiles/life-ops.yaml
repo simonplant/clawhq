@@ -77,17 +77,15 @@ delegation:
     tier: approve
     example: "Accept meeting invite that creates obligations — user must confirm"
 
+# Egress domains for tools built into this profile.
+# Provider-specific domains (gmail, icloud, fastmail, etc.) are added
+# automatically by the compiler from the selected providers.
 egress_domains:
-  - imap.gmail.com
-  - smtp.gmail.com
-  - caldav.icloud.com
   - api.todoist.com
   - api.tavily.com
   - query1.finance.yahoo.com
   - api.twitter.com
   - substack.com
-  - api.fastmail.com
-  - www.fastmailusercontent.com
 
 security_posture: hardened
 autonomy_default: high 

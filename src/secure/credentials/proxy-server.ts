@@ -51,7 +51,22 @@ try {
 
 const HOST = routesConfig.host || "0.0.0.0";
 const PORT = routesConfig.port || 9876;
-const routes = routesConfig.routes || [];
+const routes = (routesConfig.routes || []).map(function(r) {
+  // Resolve "env:VAR_NAME" upstream references from environment
+  if (r.upstream && r.upstream.startsWith("env:")) {
+    const envVar = r.upstream.slice(4);
+    const resolved = process.env[envVar];
+    if (resolved) {
+      return Object.assign({}, r, { upstream: resolved });
+    }
+    console.warn(\`[cred-proxy] Route \${r.id}: env:\${envVar} not set — route disabled\`);
+    return null;
+  }
+  return r;
+}).filter(Boolean);
+
+// Sort longest prefix first for greedy matching
+routes.sort(function(a, b) { return b.pathPrefix.length - a.pathPrefix.length; });
 
 console.log(\`[cred-proxy] Loaded \${routes.length} route(s) from \${ROUTES_PATH}\`);
 for (const r of routes) {

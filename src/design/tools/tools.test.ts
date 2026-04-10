@@ -559,15 +559,10 @@ describe("substack tool", () => {
     expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
   });
 
-  it("uses credential proxy with /substack prefix", () => {
-    const content = generateSubstackTool();
-    expect(content).toContain("CRED_PROXY_URL");
-    expect(content).toContain("/substack");
-  });
-
-  it("falls back to SUBSTACK_COOKIE", () => {
+  it("calls publication APIs directly with cookie auth", () => {
     const content = generateSubstackTool();
     expect(content).toContain("SUBSTACK_COOKIE");
+    expect(content).toContain(".substack.com/api/v1/posts");
   });
 
   it("pipes results through _sanitize", () => {

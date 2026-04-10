@@ -113,7 +113,8 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
   {
     id: "ha",
     pathPrefix: "/ha",
-    upstream: "https://homeassistant.local:8123/api",
+    // Upstream resolved from HA_URL env var at proxy startup.
+    upstream: "env:HA_URL",
     auth: {
       type: "header",
       header: "Authorization",
@@ -144,7 +145,8 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
   {
     id: "caldav",
     pathPrefix: "/caldav",
-    upstream: "https://caldav.icloud.com",
+    // Upstream resolved from CALDAV_URL env var at proxy startup.
+    upstream: "env:CALDAV_URL",
     auth: {
       type: "basic",
       userEnvVar: "CALDAV_USER",
