@@ -6,7 +6,10 @@
  * can be supplied via --credentials flag or collected interactively.
  */
 
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
 import {
   deleteIntegrationCredentials,
@@ -86,16 +89,18 @@ export async function addIntegration(
   // Create rollback snapshot before making changes
   await createCapabilitySnapshot(deployDir, "integrations", `pre-add: ${name}`);
 
-  // Store credentials in both .env (for runtime) and credentials.json (for management)
+  // Store credentials in both .env files (root + engine) and credentials.json
   progress(onProgress, "credentials", "running", `Storing credentials for ${def.label}`);
-  const envPath = join(deployDir, "engine", ".env");
+  const engineEnvPath = join(deployDir, "engine", ".env");
+  const rootEnvPath = join(deployDir, ".env");
   const storedKeys: string[] = [];
   const credValues: Record<string, string> = {};
 
   for (const envKey of def.envKeys) {
     const value = credentials?.[envKey.key] ?? envKey.defaultValue;
     if (value) {
-      writeEnvValue(envPath, envKey.key, value);
+      writeEnvValue(engineEnvPath, envKey.key, value);
+      writeEnvValue(rootEnvPath, envKey.key, value);
       storedKeys.push(envKey.key);
       if (envKey.secret) {
         credValues[envKey.key] = value;
@@ -113,7 +118,7 @@ export async function addIntegration(
   let validated = false;
   if (!skipValidation) {
     progress(onProgress, "validate", "running", `Validating ${def.label} connection`);
-    const env = getAllEnvValues(readEnv(envPath));
+    const env = getAllEnvValues(readEnv(engineEnvPath));
     const result = await validateIntegration(name, env);
     validated = result.ok;
 
@@ -138,9 +143,13 @@ export async function addIntegration(
   };
   const updated = upsertIntegration(manifest, entry);
   saveIntegrationManifest(deployDir, updated);
+
+  // Update clawhq.yaml — record channel integrations so apply can enable them
+  updateClawhqYaml(deployDir, name, def.category);
+
   progress(onProgress, "manifest", "done", "Manifest updated");
 
-  return { success: true, integrationName: name, validated };
+  return { success: true, integrationName: name, validated, needsApply: true };
 }
 
 // ── Remove Integration ─────────────────────────────────────────────────────
@@ -246,4 +255,57 @@ export function listIntegrations(
     integrations: manifest.integrations,
     total: manifest.integrations.length,
   };
+}
+
+// ── clawhq.yaml Update ───────────────────────────────────────────────────
+
+/** Channel integration names that map to openclaw.json channels. */
+const CHANNEL_INTEGRATIONS = new Set(["telegram", "whatsapp", "discord", "signal"]);
+
+/**
+ * Update clawhq.yaml to record an integration.
+ *
+ * For channel integrations (telegram, whatsapp), records them under
+ * composition.channels so that `clawhq apply` enables the channel
+ * in openclaw.json.
+ *
+ * For provider integrations, records them under composition.providers
+ * so that proxy routes and allowlists include them.
+ */
+function updateClawhqYaml(
+  deployDir: string,
+  integrationName: string,
+  category: string,
+): void {
+  const configPath = join(deployDir, "clawhq.yaml");
+  if (!existsSync(configPath)) return;
+
+  try {
+    const raw = readFileSync(configPath, "utf-8");
+    const config = yamlParse(raw) as Record<string, unknown>;
+
+    if (!config.composition || typeof config.composition !== "object") return;
+    const comp = config.composition as Record<string, unknown>;
+
+    if (CHANNEL_INTEGRATIONS.has(integrationName)) {
+      // Record channel in composition.channels
+      const channels = (comp.channels ?? {}) as Record<string, Record<string, string>>;
+      if (!channels[integrationName]) {
+        channels[integrationName] = {};
+        comp.channels = channels;
+      }
+    } else if (category === "productivity" || category === "data" || category === "communication") {
+      // Record as a provider in composition.providers
+      const providers = (comp.providers ?? {}) as Record<string, string>;
+      if (!providers[integrationName]) {
+        providers[integrationName] = integrationName;
+        comp.providers = providers;
+      }
+    }
+
+    config.composition = comp;
+    writeFileSync(configPath, yamlStringify(config), "utf-8");
+  } catch {
+    // Best effort — don't fail the integration add because of yaml update
+  }
 }

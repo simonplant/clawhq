@@ -86,6 +86,8 @@ export interface IntegrationAddResult {
   readonly integrationName: string;
   readonly validated: boolean;
   readonly error?: string;
+  /** Whether clawhq apply should be run to regenerate config. */
+  readonly needsApply?: boolean;
 }
 
 /** Options for removing an integration. */

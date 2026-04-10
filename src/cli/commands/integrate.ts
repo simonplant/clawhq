@@ -133,6 +133,18 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
           } else if (!opts.skipValidation) {
             console.log(chalk.yellow("⚠ Live validation failed — credentials stored, retry with: clawhq integrate test " + name));
           }
+
+          // Auto-apply to regenerate config with new integration
+          if (result.needsApply) {
+            console.log(chalk.dim("\nRegenerating config to include new integration…"));
+            const { apply } = await import("../../evolve/apply/index.js");
+            const applyResult = await apply({ deployDir: opts.deployDir });
+            if (applyResult.success) {
+              const changed = applyResult.report.added.length + applyResult.report.changed.length;
+              console.log(chalk.green(`✔ Config updated (${changed} file(s))`));
+              console.log(chalk.dim("  Run: clawhq apply --restart to activate"));
+            }
+          }
         } else {
           console.error(chalk.red(`\n✘ ${result.error}`));
           throw new CommandError("", 1);
