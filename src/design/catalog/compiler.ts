@@ -29,14 +29,19 @@ import { renderDimensionProse, DIMENSION_META, ALWAYS_ON_BOUNDARIES } from "../b
 import type { PersonalityDimensions, DimensionId, DimensionValue } from "../blueprints/types.js";
 
 import { generateEmailTool } from "../tools/email.js";
+import { generateGhTool } from "../tools/gh.js";
+import { generateHaTool } from "../tools/ha.js";
 import { generateIcalTool } from "../tools/ical.js";
 import { generateJournalTool } from "../tools/journal.js";
-import { generateTasksTool } from "../tools/tasks.js";
-import { generateTodoistTool } from "../tools/todoist.js";
-import { generateTodoistSyncTool } from "../tools/todoist-sync.js";
-import { generateTavilyTool } from "../tools/tavily.js";
 import { generateQuoteTool } from "../tools/quote.js";
 import { generateSanitizeTool } from "../tools/sanitize.js";
+import { generateSubstackTool } from "../tools/substack.js";
+import { generateTasksTool } from "../tools/tasks.js";
+import { generateTavilyTool } from "../tools/tavily.js";
+import { generateTodoistTool } from "../tools/todoist.js";
+import { generateTodoistSyncTool } from "../tools/todoist-sync.js";
+import { generateVaultTool } from "../tools/vault.js";
+import { generateXTool } from "../tools/x.js";
 import { generateApproveActionTool } from "../tools/approve-action.js";
 
 import { loadProfile, loadPersonality } from "./loader.js";
@@ -860,13 +865,18 @@ function buildModelConfig(providers: Provider[], modelOverride?: string): Record
 /** Registry of tool name → script generator function. */
 const TOOL_REGISTRY: Readonly<Record<string, () => string>> = {
   email: generateEmailTool,
+  gh: generateGhTool,
+  ha: generateHaTool,
   ical: generateIcalTool,
   journal: generateJournalTool,
+  quote: generateQuoteTool,
+  substack: generateSubstackTool,
   tasks: generateTasksTool,
+  tavily: generateTavilyTool,
   todoist: generateTodoistTool,
   "todoist-sync": generateTodoistSyncTool,
-  tavily: generateTavilyTool,
-  quote: generateQuoteTool,
+  vault: generateVaultTool,
+  x: generateXTool,
   sanitize: generateSanitizeTool,
   "approve-action": generateApproveActionTool,
 };

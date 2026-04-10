@@ -24,6 +24,18 @@ tools:
     category: research
     description: "Web search for quick lookups and research"
     required: false
+  - name: quote
+    category: data
+    description: "Market quotes and financial data via Yahoo Finance"
+    required: false
+  - name: x
+    category: data
+    description: "X/Twitter read-only — search, timeline, user lookup"
+    required: false
+  - name: substack
+    category: data
+    description: "Substack newsletter reader — latest posts, search, full articles"
+    required: false
 
 skills:
   - morning-brief
@@ -71,6 +83,9 @@ egress_domains:
   - caldav.icloud.com
   - api.todoist.com
   - api.tavily.com
+  - query1.finance.yahoo.com
+  - api.twitter.com
+  - substack.com
 
 security_posture: hardened
 autonomy_default: medium
