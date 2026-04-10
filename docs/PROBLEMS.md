@@ -23,7 +23,27 @@ A working OpenClaw agent requires ~13,500 tokens of configuration spread across 
 
 OpenClaw doesn't tell you when your config is wrong. It just stops working — silently.
 
-Every landmine below was discovered running a production agent. None produces an error message. LM-01: omitting `dangerouslyDisableDeviceAuth: true` causes a "device signature invalid" loop that makes the agent permanently inaccessible. LM-02: `allowedOrigins` gets stripped after onboarding, producing CORS errors that block the management UI. LM-03: `trustedProxies` doesn't include the Docker bridge gateway IP, so the Gateway rejects every request through Docker NAT. LM-04: setting `tools.exec.host` to `"node"` or `"sandbox"` instead of `"gateway"` silently disables tool execution. LM-09: writing `5/15` instead of `3-58/15` in a cron expression causes jobs to silently never run. LM-13: after every `docker compose down`, Docker destroys the bridge interface and invalidates your iptables egress firewall — the agent runs completely unfiltered until someone manually reapplies it.
+Every landmine below was discovered running a production agent. None produces an error message.
+
+| ID | Landmine | What Breaks | Security? |
+|:--:|----------|-------------|:---------:|
+| LM-01 | `dangerouslyDisableDeviceAuth` not set to `true` | Agent enters "device signature invalid" loop — permanently locked out | |
+| LM-02 | `allowedOrigins` empty after onboard | Control UI CORS errors — web management broken | CVE-2026-25253 |
+| LM-03 | `trustedProxies` missing Docker bridge IP | Gateway rejects all requests through Docker NAT | |
+| LM-04 | `tools.exec.host` not `"gateway"` | Tool sandbox escape — `"node"` and `"sandbox"` silently fail | CVE-2026-25267 |
+| LM-05 | `tools.exec.security` not `"full"` | Tool execution silently restricted without warning | |
+| LM-06 | Container user not UID 1000 | Volume mount permission errors on all mounted filesystems | |
+| LM-07 | Missing `cap_drop: ALL` + `no-new-privileges` | Container escape vulnerability, ICC lateral movement | CVE-2026-25204 |
+| LM-08 | Identity files exceed `bootstrapMaxChars` (20K) | Agent personality silently truncated — loses identity | |
+| LM-09 | Invalid cron stepping syntax (`5/15` not `3-58/15`) | Scheduled jobs silently never run | |
+| LM-10 | External Docker networks not declared in compose | Compose deployment fails — containers can't reach services | |
+| LM-11 | `.env` missing variables referenced in compose | Integrations silently fail at runtime — no error | |
+| LM-12 | Config files mounted writable (not `:ro`) | Agent can modify its own config at runtime | CVE-2026-25232 |
+| LM-13 | Firewall lost after `docker compose down` | Egress filtering silently disabled — agent runs unfiltered | |
+| LM-14 | `fs.workspaceOnly` not explicitly set | Filesystem either too permissive (host access) or too restrictive | |
+
+4 of the 14 are CVE-linked security vulnerabilities. The other 10 are silent operational failures — things that break without any error message. Every hosting provider deploying OpenClaw at $22-45/mo ships default configs that hit multiple landmines.
+
 *(Source: docs/OPENCLAW-REFERENCE.md — Section 12: The 14 Configuration Landmines)*
 
 **What ClawHQ contributes:** The config generator (`src/design/configure/generate.ts`) prevents all 14 landmines by construction — it is impossible for the generator to produce a broken config. The validator (`src/config/validate.ts`) enforces the rules continuously. `clawhq doctor` checks every landmine on every run, and `clawhq doctor --fix` auto-remediates any that drift. The firewall chain (`CLAWHQ_FWD`) is automatically reapplied after every container restart.
@@ -72,7 +92,7 @@ Getting OpenClaw running is a weekend project. Keeping it running is an SRE job.
 **What OpenClaw provides:** `openclaw doctor` runs basic config validation and can auto-fix invalid per-agent keys with `--fix`. `openclaw status` and `openclaw channels status --probe` provide basic health checks. These cover "is the config valid and is the gateway running" but not "are your credentials still working, is your memory bloating, has your identity drifted, is your firewall still applied after the last container restart."
 *(Source: docs/OPENCLAW-REFERENCE.md — Production Discoveries; docs/PRODUCT.md — The Problem)*
 
-**What ClawHQ contributes:** `clawhq doctor` runs 14+ diagnostic checks covering every known failure mode — including the landmine checks, firewall verification, credential probes, identity size enforcement, and context pruning verification that upstream doesn't cover — with `--fix` for auto-remediation. `clawhq status --watch` provides a single-pane health dashboard. Credential health probes test each integration on schedule (IMAP, CalDAV, Todoist, GitHub, Tavily, Yahoo Finance) with 10-second timeouts, specific remediation steps on failure, and 7-day advance expiry warnings. Heartbeat uses isolated cron sessions instead of the main-session token sink. `clawhq backup create` produces encrypted snapshots. `clawhq update` handles upstream upgrades with automatic rollback on failure. Day-2 through day-365 operations tooling, published as open-source community tools.
+**What ClawHQ contributes:** `clawhq doctor` runs 30 diagnostic checks covering every known failure mode — including the landmine checks, firewall verification, credential probes, identity size enforcement, and context pruning verification that upstream doesn't cover — with `--fix` for auto-remediation. `clawhq status --watch` provides a single-pane health dashboard. Credential health probes test each integration on schedule (IMAP, CalDAV, Todoist, GitHub, Tavily, Yahoo Finance) with 10-second timeouts, specific remediation steps on failure, and 7-day advance expiry warnings. Heartbeat uses isolated cron sessions instead of the main-session token sink. `clawhq backup create` produces encrypted snapshots. `clawhq update` handles upstream upgrades with automatic rollback on failure. Day-2 through day-365 operations tooling, published as open-source community tools.
 
 ---
 
