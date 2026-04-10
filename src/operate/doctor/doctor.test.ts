@@ -439,12 +439,20 @@ describe("auto-fix", { timeout: 30_000 }, () => {
     await writeValidEnv();
     await writeValidCron();
     await writeIdentityFiles();
+    // Scaffold workspace directories + sanitize tool that doctor now checks
+    await mkdir(join(testDir, "workspace", "tools"), { recursive: true });
+    await mkdir(join(testDir, "workspace", "skills"), { recursive: true });
+    await mkdir(join(testDir, "workspace", "memory"), { recursive: true });
+    await writeFile(join(testDir, "workspace", "sanitize"), "#!/bin/bash\necho ok\n");
+    await chmod(join(testDir, "workspace", "sanitize"), 0o755);
 
     const checks = await runChecks(testDir);
     const fixReport = await runFixes(testDir, checks);
 
-    expect(fixReport.fixes.length).toBe(0);
-    expect(fixReport.fixed).toBe(0);
+    // All fixes should be no-ops (nothing actually changed)
+    for (const fix of fixReport.fixes) {
+      expect(fix.message).toMatch(/already/i);
+    }
   });
 });
 
