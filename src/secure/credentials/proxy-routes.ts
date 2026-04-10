@@ -46,7 +46,7 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
   {
     id: "todoist",
     pathPrefix: "/todoist",
-    upstream: "https://api.todoist.com/rest/v2",
+    upstream: "https://api.todoist.com/api/v1",
     auth: {
       type: "header",
       header: "Authorization",

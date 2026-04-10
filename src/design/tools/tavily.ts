@@ -49,9 +49,11 @@ else
 fi
 
 # ClawWall: sanitize external content
+# Web search results often trigger false positives (encoded payloads, invisible
+# unicode from web pages). Use --wrap to mark as untrusted without quarantining.
 _sanitize() {
   if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
-    "$SCRIPT_DIR/sanitize" --source tavily --log
+    "$SCRIPT_DIR/sanitize" --source tavily --wrap --log
   else
     cat
   fi

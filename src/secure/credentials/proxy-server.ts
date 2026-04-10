@@ -164,8 +164,11 @@ function injectCredential(route, headers, bodyBuffer) {
 function forwardRequest(route, req, bodyBuffer, injectedHeaders) {
   return new Promise((resolve, reject) => {
     // Strip the route path prefix to get the upstream path
-    const upstreamPath = req.url.slice(route.pathPrefix.length) || "/";
-    const upstreamUrl = new URL(upstreamPath, route.upstream);
+    const remainingPath = req.url.slice(route.pathPrefix.length) || "";
+    // Concatenate upstream base + remaining path (URL constructor discards
+    // base path when given an absolute path like "/tasks")
+    const base = route.upstream.replace(/\\/+$/, "");
+    const upstreamUrl = new URL(base + remainingPath);
 
     const mod = upstreamUrl.protocol === "https:" ? https : http;
 
