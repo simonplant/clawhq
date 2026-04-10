@@ -352,7 +352,7 @@ async function checkCapDrop(
   try {
     const { stdout } = await execFileAsync(
       "docker",
-      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q"],
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", "openclaw"],
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
@@ -392,7 +392,7 @@ async function checkNoNewPrivileges(
   try {
     const { stdout } = await execFileAsync(
       "docker",
-      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q"],
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", "openclaw"],
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
@@ -434,7 +434,7 @@ async function checkUserUid(
   try {
     const { stdout } = await execFileAsync(
       "docker",
-      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q"],
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", "openclaw"],
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
@@ -953,7 +953,7 @@ async function checkMigrationState(
     // Get container ID
     const { stdout } = await execFileAsync(
       "docker",
-      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q"],
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", "openclaw"],
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];

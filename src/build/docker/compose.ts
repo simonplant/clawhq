@@ -109,6 +109,7 @@ interface ComposeCredProxyServiceOutput {
   readonly user: string;
   readonly read_only: boolean;
   readonly cap_drop: readonly string[];
+  readonly security_opt: readonly string[];
   readonly volumes: readonly string[];
   readonly networks: readonly string[];
   readonly env_file: readonly string[];
@@ -251,6 +252,7 @@ export function generateCompose(
         user: "1000:1000",
         read_only: true,
         cap_drop: ["ALL"],
+        security_opt: ["no-new-privileges"],
         volumes: [
           `${credProxyScriptPath}:${CRED_PROXY_SCRIPT_PATH}:ro`,
           `${credProxyRoutesPath}:${CRED_PROXY_ROUTES_PATH}:ro`,
