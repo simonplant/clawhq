@@ -108,16 +108,8 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
       envVar: "X_BEARER_TOKEN",
     },
   },
-  {
-    id: "substack",
-    pathPrefix: "/substack",
-    upstream: "https://substack.com",
-    auth: {
-      type: "header",
-      header: "Cookie",
-      envVar: "SUBSTACK_COOKIE",
-    },
-  },
+  // Substack has no proxy route — each publication is a different subdomain
+  // (pub.substack.com). Cookie auth is injected directly by the tool.
   {
     id: "ha",
     pathPrefix: "/ha",

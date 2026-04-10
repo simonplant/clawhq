@@ -23,11 +23,9 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # ClawWall: sanitize external content
-# Financial data contains encoded numbers and unicode that trigger false positives.
-# Use --wrap to mark as untrusted without quarantining.
 _sanitize() {
   if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
-    "$SCRIPT_DIR/sanitize" --source quote --wrap --log
+    "$SCRIPT_DIR/sanitize" --source quote --log
   else
     cat
   fi

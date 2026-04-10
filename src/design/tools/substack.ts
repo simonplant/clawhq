@@ -1,11 +1,11 @@
 /**
- * Substack tool wrapper generator — Substack reader via credential proxy.
+ * Substack tool wrapper generator — Substack reader with cookie auth.
  *
- * Routes through cred-proxy /substack prefix with cookie auth for paid
- * content. Subcommands: latest, search, read. Results piped through
- * sanitize. Handles paid content via session cookies.
+ * Each Substack publication has its own subdomain (pub.substack.com),
+ * so this tool calls publication APIs directly (not through the proxy).
+ * Cookie auth is injected from SUBSTACK_COOKIE env var for paid content.
  *
- * Auth: credential proxy (preferred) or direct SUBSTACK_COOKIE fallback.
+ * Subcommands: latest, search, read. Results piped through sanitize.
  */
 
 export function generateSubstackTool(): string {
@@ -21,21 +21,15 @@ export function generateSubstackTool(): string {
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "\$0")" && pwd)"
+COOKIE="\${SUBSTACK_COOKIE:-}"
 
-# Auth: prefer credential proxy, fall back to direct cookie
-if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
-  API="\${CRED_PROXY_URL}/substack"
-  _curl() { curl -sS "\$@"; }
-else
-  COOKIE="\${SUBSTACK_COOKIE:-}"
-  _curl() {
-    if [[ -n "\$COOKIE" ]]; then
-      curl -sS -H "Cookie: \$COOKIE" "\$@"
-    else
-      curl -sS "\$@"
-    fi
-  }
-fi
+_curl() {
+  if [[ -n "\$COOKIE" ]]; then
+    curl -sS -H "Cookie: \$COOKIE" "\$@"
+  else
+    curl -sS "\$@"
+  fi
+}
 
 # ClawWall: sanitize external content
 _sanitize() {
@@ -52,31 +46,19 @@ shift 2>/dev/null || true
 case "\$cmd" in
   latest)
     pub="\${1:?Usage: substack latest <publication>}"
-    if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
-      _curl "\$API/\$pub/api/v1/posts?limit=10"
-    else
-      _curl "https://\$pub.substack.com/api/v1/posts?limit=10"
-    fi | _sanitize
+    _curl "https://\$pub.substack.com/api/v1/posts?limit=10" | _sanitize
     ;;
   search)
     pub="\${1:?Usage: substack search <publication> <query>}"
     query="\${*:2}"
     [[ -z "\$query" ]] && { echo "Usage: substack search <publication> <query>" >&2; exit 1; }
     encoded=\$(jq -rn --arg q "\$query" '\$q | @uri')
-    if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
-      _curl "\$API/\$pub/api/v1/posts?query=\$encoded&limit=10"
-    else
-      _curl "https://\$pub.substack.com/api/v1/posts?query=\$encoded&limit=10"
-    fi | _sanitize
+    _curl "https://\$pub.substack.com/api/v1/posts?query=\$encoded&limit=10" | _sanitize
     ;;
   read)
     pub="\${1:?Usage: substack read <publication> <slug>}"
     slug="\${2:?Usage: substack read <publication> <slug>}"
-    if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
-      _curl "\$API/\$pub/api/v1/posts/\$slug"
-    else
-      _curl "https://\$pub.substack.com/api/v1/posts/\$slug"
-    fi | _sanitize
+    _curl "https://\$pub.substack.com/api/v1/posts/\$slug" | _sanitize
     ;;
   help|--help|-h|"")
     sed -n '2,10p' "\$0" | sed 's/^# \\\\?//'
