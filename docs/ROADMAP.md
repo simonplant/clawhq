@@ -10,11 +10,11 @@
 
 ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 test files across all major subsystems. Built with AI-assisted development (Claude Code). **Pre-launch: all code works but has zero external users. Community validation begins at publication.**
 
-- **Blueprint engine** — 7 working blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions. Current blueprints are monolithic (personality + operational config fused in single YAML). The composition model (10 a-la-carte mission profiles with tools, skills, and operational playbooks) is the design direction — refactoring existing blueprints into composable components is in the "Next" track.
+- **Blueprint engine** — 7 working blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions. Current blueprints are monolithic and not yet publishable as standalone configs. The composition model (10 a-la-carte mission profiles with tools, skills, and operational playbooks) is the design direction — refactoring existing blueprints into composable components is in the "Next" track.
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
 - **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
-- **Diagnostics** — `clawhq doctor` with 14+ checks and auto-fix, predictive health alerts, self-healing. Extends (not replaces) OpenClaw's built-in `openclaw doctor`
+- **Diagnostics** — `clawhq doctor` with 30 checks and auto-fix, predictive health alerts, self-healing. Extends (not replaces) OpenClaw's built-in `openclaw doctor`
 - **Skill system** — 6 built-in skills with sandboxed vetting and rollback
 - **Workspace tools** — 7 CLI tool generators (email, tasks, todoist, iCal, market quotes, web search, todoist-sync)
 - **Operational tooling** — encrypted backup/restore, safe updates with rollback, status dashboard, audit trail, log streaming

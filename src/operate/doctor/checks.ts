@@ -110,7 +110,7 @@ export async function detectOpenClawVersion(
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Run all 21 diagnostic checks. Every check runs even if earlier ones fail,
+ * Run all 30 diagnostic checks. Every check runs even if earlier ones fail,
  * so the user gets a complete picture in one pass.
  */
 export async function runChecks(

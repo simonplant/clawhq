@@ -89,7 +89,7 @@ use_case_mapping:
 
 ### `personality`
 
-Defines the agent's communication style and behavioral boundaries. **Note:** Personality is not a product axis — one professional default ships with all ClawHQ blueprints. This section exists in the schema for legacy blueprints and for users who want to override the default. Most users should use `soul_overrides` in their config instead.
+> **DEPRECATED.** Personality is not a product axis. One professional default tone ships with all ClawHQ blueprints. New blueprints should omit this section entirely and use `soul_overrides` (free text) for tone customization. This section remains for legacy blueprint compatibility only.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -268,6 +268,8 @@ Controls what the agent does autonomously vs. what requires user approval.
 | `medium` | Agent handles routine tasks autonomously. Escalates exceptions. |
 | `high` | Agent acts proactively. Only escalates sensitive or high-risk actions. |
 
+**Cross-profile signaling:** When multiple profiles are stacked, inter-profile communication is configured via AGENTS.md operational playbooks. See `docs/MISSION-PROFILES.md § Cross-Profile Signaling` for the standard signaling matrix.
+
 ```yaml
 autonomy_model:
   default: medium
@@ -385,12 +387,14 @@ The agent's tools and skills — the concrete capabilities it can execute.
 | `tools` | ToolEntry[] | Yes | List of tools (see below). |
 | `skills` | SkillEntry[] | Yes | List of skills (see below). |
 
+**Integration categories:** Tools are organized by category (email, calendar, tasks, research, etc.). Profiles declare which categories they need. Users pick which provider fills each category during setup — the compiler generates the right tool script, egress rules, and credential config. Same CLI interface regardless of provider. See `docs/PRODUCT.md § Integration Categories` for the full category table and `src/design/catalog/providers.ts` for the provider registry.
+
 #### ToolEntry
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | Yes | Tool identifier. Must be unique within the toolbelt. |
-| `category` | string | Yes | Tool category (e.g., `"email"`, `"calendar"`, `"core"`). |
+| `category` | string | Yes | Tool category (e.g., `"email"`, `"calendar"`, `"core"`, `"research"`). |
 | `required` | boolean | Yes | Whether this tool is required for the blueprint to function. |
 | `description` | string | Yes | What the tool does. |
 

@@ -10,7 +10,7 @@
 
 OpenClaw is the fastest-growing open-source project in GitHub history — 250K+ stars, 2M+ monthly active users, and a security crisis: 42,000+ exposed instances, 9+ CVEs in the first 2 months, and 20-36% of community skills on ClawHub found malicious. Microsoft, Cisco, and Nvidia have all published security guidance. The creator joined OpenAI in February 2026 and the project moved to a foundation.
 
-The demand for sovereign AI is proven. But OpenClaw is nearly impossible to operate correctly: ~13,500 tokens of config across 11+ files, 14 silent landmines, memory that bloats to 360KB in 3 days, and most deployments abandoned within a month. 1,000+ people queued outside Tencent HQ just for installation help.
+The demand for sovereign AI is proven. But OpenClaw is nearly impossible to operate correctly: ~13,500 tokens of config across 11+ files (8 auto-loaded workspace files + runtime config, Docker, credentials, cron), 14 silent landmines, memory that bloats to 360KB in 3 days, and most deployments abandoned within a month. 1,000+ people queued outside Tencent HQ just for installation help.
 
 10+ hosting providers (Blink, xCloud, AWS Lightsail, DigitalOcean, Hostinger, and others) now sell managed OpenClaw at $22-45/mo — but they deploy default-config agents on a VPS with no lifecycle management, no landmine prevention, and no architectural security. They solve convenience. Nobody solves sovereignty.
 
@@ -46,7 +46,7 @@ clawhq init --guided           # Pick a blueprint, connect services
 clawhq up                      # Deploy your agent
 ```
 
-Security hardening is automatic — no opt-in required. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the full walkthrough (development preview).
+Security hardening is automatic — no opt-in required. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the full walkthrough (pre-launch preview).
 
 ## Blueprints
 
@@ -77,9 +77,9 @@ Hosting providers deploy OpenClaw on a VPS with default or lightly-hardened conf
 
 ## Status
 
-**Active development.** Built with AI-assisted development (Claude Code). The market is large and contested — 10+ hosting providers are capturing the OpenClaw ecosystem. ClawHQ competes on architectural depth and sovereignty, not hosting convenience.
+**Pre-launch.** Built with AI-assisted development (Claude Code). The market is large and contested — 10+ hosting providers are capturing the OpenClaw ecosystem. ClawHQ competes on architectural depth and sovereignty, not hosting convenience.
 
-**Working:** Blueprint engine with 7 use-case blueprints, config generation with 14-landmine prevention, full deploy pipeline with container security hardening, diagnostics + auto-fix (`clawhq doctor`), skill system with sandboxed vetting, encrypted backup/restore, credential health probes, memory lifecycle, cloud provisioning (4 providers), trust modes, audit trail.
+**Working:** Blueprint engine with 7 internal blueprints (extracting 3 as standalone publishable configs in progress), config generation with 14-landmine prevention, full deploy pipeline with container security hardening, diagnostics + auto-fix (`clawhq doctor` — 30 checks), skill system with sandboxed vetting, encrypted backup/restore, credential health probes, memory lifecycle, cloud provisioning (4 providers), trust modes, audit trail.
 
 **In progress:** Agent runtime integration (wiring subsystems to the running agent), web dashboard UI, distro installer (`curl | sh`).
 

@@ -39,7 +39,7 @@ Monitoring (upstream intelligence, config breakage prediction), premium blueprin
 
 Blueprints define complete operational stacks:
 
-**Mission profiles** define what the agent can do — tools, integrations, cron jobs, autonomy rules, security posture, memory policy. Profiles are a-la-carte: users stack whichever combination fits their life. Most start with LifeOps and add from there. The 10 profiles, each with clean non-overlapping tool ownership:
+**Mission profiles** define what the agent can do — tools, integrations, cron jobs, autonomy rules, security posture, memory policy. Profiles are a-la-carte: users stack whichever combination fits their life. Most start with LifeOps and add from there. **Launch scope:** LifeOps, Dev, and Marketing ship first (covering the top 3 adoption cohorts). Remaining profiles ship post-traction. The 10 profiles, each with clean non-overlapping tool ownership:
 
 - **LifeOps** — email (Himalaya), calendar (khal/vdirsyncer), tasks (Todoist et al), weather (Open-Meteo), meal planning, grocery lists, morning/evening briefs, appointment coordination, reminders. The universal base — personal admin that everyone needs. Boundary: the moment it's about a business pipeline or a codebase, you're in another profile.
 - **Dev** — GitHub/GitLab (gh, glab), git, CI/CD monitoring, Sentry error tracking, Linear/Jira issue tracking, PR creation and review, repo monitoring, architecture decisions, deployment triggers. Boundary: building and maintaining software. Updating marketing site copy is Marketing; fixing site infrastructure is Dev.
@@ -48,7 +48,7 @@ Blueprints define complete operational stacks:
 - **Sales** — CRM (HubSpot, Salesforce, Pipedrive, Airtable), lead tracking, outreach drafting, follow-up sequences, deal stage management, contact enrichment, meeting prep from CRM data. Boundary: owns the relationship pipeline from lead to close. Marketing generates leads; Sales works them.
 - **Marketing** — social media posting/scheduling (X, LinkedIn, Instagram, YouTube — via browser automation or APIs), content calendar management, newsletter composition and sending, SEO monitoring, analytics, content repurposing (long-form → social), ad campaign monitoring. Boundary: creates and distributes content to attract attention. Doesn't write deep research (that's Research) or manage site infrastructure (that's SiteOps).
 - **SiteOps** — website content updates, deployment pipelines, uptime monitoring, SSL/domain management, CMS operations, page speed monitoring, broken link detection, SEO technical audit. Boundary: the webmaster. Maintains and deploys. Doesn't create content strategy (Marketing) or write articles (Research/Marketing).
-- **Home** — Home Assistant REST API, HomeKit, smart device control, camera monitoring, MQTT, lighting/thermostat/lock automations, presence-based routines. Boundary: physical space automation. Completely disjoint from everything else.
+- **Home** — Home Assistant REST API, HomeKit, smart device control, camera monitoring, MQTT, lighting/thermostat/lock automations, presence-based routines. Boundary: physical space automation. Disjoint from other profiles except LifeOps (presence-based routine triggers).
 - **Health** — WHOOP, Oura, Garmin, Apple Health export, Strava, nutrition tracking (Cronometer via browser), workout logging, sleep analysis, recovery recommendations, supplement/medication reminders. Boundary: tracks biometrics and fitness. Meal *planning* lives in LifeOps (daily logistics); Health owns nutritional *analysis* and body data. Cross-profile signaling: Health says "recovery is low, suggest lighter meals" and LifeOps adjusts.
 - **Media** — image generation (DALL-E, ComfyUI, fal.ai), video processing (FFmpeg, Sora), voice synthesis (ElevenLabs, Piper), image manipulation (ImageMagick), audio processing, creative asset production. Boundary: a production toolkit. Other profiles *request* from Media — Marketing needs a social image, Research needs a diagram, LifeOps needs a voice memo transcribed.
 
@@ -79,7 +79,7 @@ Blueprints define complete operational stacks:
 
 **80/20 for launch:** Email (himalaya), Calendar (khal/vdirsyncer), Tasks (Todoist), Research (Tavily), Weather (Open-Meteo), Code (GitHub), Models (Ollama + one cloud). These 7 categories cover the top 3 adoption cohorts (Daily Briefing, Content Engine, Dev Workflow). Everything else is post-launch expansion driven by user demand.
 
-**Sovereign mode** is a provider-preference overlay: swap cloud providers for self-hosted alternatives across all active profiles — Tavily→SearXNG, cloud notes→Obsidian, OpenAI→Ollama, Google Calendar→local CalDAV.
+**Sovereign mode** is a provider-preference overlay: swap cloud providers for self-hosted alternatives across all active profiles — Tavily→SearXNG, cloud notes→Obsidian, OpenAI→Ollama, Google Calendar→local CalDAV. Provider mappings are in `src/design/catalog/providers.ts`. Sovereign mode is currently applied by selecting self-hosted providers during setup; a dedicated `--sovereign` flag is planned.
 
 **Agent tone: "LifeOps, no BS."** Every ClawHQ blueprint ships one opinionated SOUL.md — the fourth option OpenClaw doesn't have. OpenClaw ships three defaults: empty (model slop), C-3PO (helpful, eager, grating within hours), and Architect/CEO (too stiff for daily use). ClawHQ's default is the agent you'd actually want running your life: supportive without flattery, direct without being cruel, competent enough to disappear into the work. Ten lines of SOUL.md. Not a product feature — a quality-of-life detail that comes free with the operational config you actually came for.
 
@@ -89,13 +89,13 @@ Users who want something different use **`soul_overrides`** — free text in the
 
 A published blueprint is a specific composition: pick one or more mission profiles, the compiler resolves everything — tools, skills, cron, security, identity, tone — into flat runtime config. A solo founder might stack LifeOps + Dev + Marketing + Sales. An investor stacks LifeOps + Markets + Research. A busy parent runs LifeOps with warmth turned up. Everyone starts with LifeOps and adds profiles until the agent earns its always-on cost.
 
-This is grounded in how people actually use OpenClaw. Cohort analysis of 3.2M monthly active users identified 10 distinct behavior clusters (Morning Briefing, Content/Social, Email Triage, Solo Founder Ops, Dev Workflow, Research/Intel, Home/Family, SEO Pipeline, CRM/Sales, Companion). The top 3 adoption cohorts — daily briefing, content automation, and inbox management — all map to LifeOps and Marketing, which is why those profiles ship first. The research shows most users run ONE agent with multiple capabilities — not separate agents per role. ClawHQ builds operational agents, not conversational companions. Companion/relationship agents are explicitly out of scope — different product, different safety requirements.
+This is grounded in how people actually use OpenClaw. Cohort research across 3.2M monthly active users (April 2026 data) identified 10 distinct behavior clusters (Morning Briefing, Content/Social, Email Triage, Solo Founder Ops, Dev Workflow, Research/Intel, Home/Family, SEO Pipeline, CRM/Sales, Companion). The top 3 adoption cohorts — daily briefing, content automation, and inbox management — all map to LifeOps and Marketing, which is why those profiles ship first. The research shows most users run ONE agent with multiple capabilities — not separate agents per role. ClawHQ builds operational agents, not conversational companions. Companion/relationship agents are explicitly out of scope — different product, different safety requirements.
 
 **Config generation** — Every generated config prevents all 14 known landmines. Guided and AI-powered setup. Integration auto-detection.
 
 **Container hardening** — Three security postures: **minimal** (development/testing), **hardened** (default — `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists, gVisor runtime, `chattr +i` identity files, Tailscale sidecar for encrypted networking), and **under-attack** (active threat response — kill non-essential processes, freeze config, restrict egress to known-good destinations, elevate logging). Hardened by default, not opt-in.
 
-**Diagnostics** — `clawhq doctor` with 14+ checks, auto-fix, predictive health alerts. Extends OpenClaw's built-in `openclaw doctor` with landmine detection, firewall verification, credential probes, identity size enforcement, context pruning verification.
+**Diagnostics** — `clawhq doctor` with 30 diagnostic checks, auto-fix, predictive health alerts. Extends OpenClaw's built-in `openclaw doctor` with landmine detection, firewall verification, credential probes, identity size enforcement, context pruning verification.
 
 **Deployment** — Two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests.
 
@@ -201,6 +201,8 @@ Open-source tools + published blueprints + upstream contributions + content from
 - **Managed hosting as primary business** — 10+ funded competitors own this. Sovereignty is the position.
 - **A community blueprint marketplace** — 10 a-la-carte mission profiles with production-tested tools, skills, and operational playbooks beat 177 untested SOUL.md-only templates. Quality over quantity.
 - **A personality menu** — 95% of users want the same thing: a competent professional that doesn't waste their time. One good default + a warmth slider + free-text overrides. Domain behavior lives in skills, not personality.
+
+See [ROADMAP.md § Known Limitations](ROADMAP.md#known-limitations) for current constraints (Docker required, Linux/macOS only, single machine, blueprints not yet publishable, etc.).
 
 ---
 
