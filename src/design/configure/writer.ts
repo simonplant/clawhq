@@ -178,6 +178,7 @@ function mergeEnv(absolutePath: string, generated: string): string {
 
   // Walk the generated content line by line, substituting preserved values
   const lines = generated.split("\n");
+  const generatedKeys = new Set<string>();
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line || line.startsWith("#")) continue;
@@ -193,6 +194,26 @@ function mergeEnv(absolutePath: string, generated: string): string {
       const rawLine = existingRawLines.get(key);
       if (rawLine) lines[i] = rawLine;
     }
+
+    // Track which existing keys appear in the generated template
+    generatedKeys.add(key);
+  }
+
+  // Append existing keys that aren't in the generated template.
+  // These are credentials added after init (e.g. via `clawhq integrate add`)
+  // that the template doesn't know about.
+  const orphanedLines: string[] = [];
+  for (const [key, rawLine] of existingRawLines) {
+    if (!generatedKeys.has(key)) {
+      const parsed = existingParsed.get(key);
+      if (parsed && parsed !== ENV_PLACEHOLDER) {
+        orphanedLines.push(rawLine);
+      }
+    }
+  }
+
+  if (orphanedLines.length > 0) {
+    lines.push("", "# Preserved from previous configuration", ...orphanedLines);
   }
 
   return lines.join("\n");
