@@ -8,7 +8,7 @@
 
 ## Overview
 
-A **blueprint** is a complete agent design expressed as a single YAML file. It describes everything needed to forge a hardened, running OpenClaw agent: identity, personality, tools, skills, cron schedules, security posture, autonomy rules, memory policy, model routing, integrations, and messaging channels.
+A **blueprint** is a complete agent design expressed as a single YAML file. It describes everything needed to forge a hardened, running OpenClaw agent: identity, tools, skills, cron schedules, security posture, autonomy rules, memory policy, model routing, integrations, and messaging channels. Agent tone is a single professional default baked into the generated SOUL.md — users customize via `soul_overrides` free text, not a personality config section.
 
 Blueprints are published as an open specification. Anyone can create a valid blueprint from this document alone, without reading ClawHQ source code. The ClawHQ compiler is the reference implementation, but the format is designed to be portable — any tool that emits the right workspace files and `openclaw.json` config can consume a blueprint.
 
@@ -532,7 +532,7 @@ These constraints are enforced by the ClawHQ compiler and cannot be overridden b
 
 ### Always-On Security Boundaries
 
-Regardless of personality or autonomy settings, every agent enforces:
+Regardless of tone or autonomy settings, every agent enforces:
 
 1. Never modify identity files, personality, or instructions
 2. Never share credentials, API keys, tokens, or passwords
@@ -579,11 +579,8 @@ use_case_mapping:
   description: "A minimal agent that performs web research on demand."
   day_in_the_life: "You ask a question. The agent researches and responds."
 
-personality:
-  tone: neutral
-  style: "concise, factual"
-  relationship: research assistant
-  boundaries: "only responds when asked, never initiates contact"
+# personality: omitted — uses default professional tone
+# customize via soul_overrides in config if needed
 
 security_posture:
   posture: paranoid
@@ -656,7 +653,7 @@ toolbelt:
 
 ### Example 2: Email Manager (Medium Complexity)
 
-A production-ready email operations agent with customization questions, personality dimensions, and multiple tools.
+A production-ready email operations agent with customization questions and multiple tools.
 
 ```yaml
 name: Email Manager
@@ -694,19 +691,8 @@ customization_questions:
       - "Auto-reply to routine messages only"
       - "Auto-reply freely — I trust the agent's judgment"
 
-personality:
-  tone: direct
-  style: "efficient, no fluff, protective of attention"
-  relationship: email operations manager
-  boundaries: "never sends without approval on first contact, protects focus blocks"
-  dimensions:
-    directness: 5
-    warmth: 2
-    verbosity: 2
-    proactivity: 4
-    caution: 3
-    formality: 3
-    analyticalDepth: 2
+# personality: omitted — uses default professional tone
+# customize via soul_overrides in config if needed
 
 security_posture:
   posture: hardened
@@ -857,19 +843,8 @@ customization_questions:
     type: input
     default: ""
 
-personality:
-  tone: professional
-  style: "efficient, anticipatory, handles routine, flags exceptions"
-  relationship: professional aide
-  boundaries: "respects work boundaries, escalates sensitive decisions"
-  dimensions:
-    directness: 3
-    warmth: 3
-    verbosity: 3
-    proactivity: 3
-    caution: 3
-    formality: 4
-    analyticalDepth: 3
+# personality: omitted — uses default professional tone
+# customize via soul_overrides in config if needed
 
 security_posture:
   posture: hardened
