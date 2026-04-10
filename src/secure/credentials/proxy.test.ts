@@ -55,7 +55,7 @@ describe("BUILTIN_ROUTES", () => {
     if (todoist?.auth.type === "header") {
       expect(todoist.auth.header).toBe("Authorization");
       expect(todoist.auth.prefix).toBe("Bearer ");
-      expect(todoist.auth.envVar).toBe("TODOIST_API_TOKEN");
+      expect(todoist.auth.envVar).toBe("TODOIST_API_KEY");
     }
   });
 
@@ -159,7 +159,7 @@ describe("filterRoutesForEnv", () => {
   it("returns multiple routes when multiple env vars set", () => {
     const env = {
       TAVILY_API_KEY: "key1",
-      TODOIST_API_TOKEN: "token1",
+      TODOIST_API_KEY: "token1",
       ANTHROPIC_API_KEY: "key2",
     };
     const filtered = filterRoutesForEnv(BUILTIN_ROUTES, env);

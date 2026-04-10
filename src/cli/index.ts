@@ -15,6 +15,7 @@ import { join } from "node:path";
 
 import { Command } from "commander";
 
+import { registerApplyCommand } from "./commands/apply.js";
 import { registerBuildCommands } from "./commands/build.js";
 import { registerCloudCommands } from "./commands/cloud.js";
 import { registerDemoCommand } from "./commands/demo.js";
@@ -54,6 +55,7 @@ registerDemoCommand(program);
 registerQuickstartCommand(program);
 registerInstallCommands(program, DEFAULT_DEPLOY_DIR);
 registerDesignCommands(program, DEFAULT_DEPLOY_DIR);
+registerApplyCommand(program, DEFAULT_DEPLOY_DIR);
 registerBuildCommands(program, DEFAULT_DEPLOY_DIR);
 registerSecureCommands(program, DEFAULT_DEPLOY_DIR);
 registerOperateCommands(program, DEFAULT_DEPLOY_DIR);

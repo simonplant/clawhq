@@ -428,6 +428,12 @@ export interface OpsAutomationConfig {
  */
 export interface ClawHQConfig {
   readonly version?: string;
+  /** Composition config: profile + personality + providers. Source of truth for `clawhq apply`. */
+  readonly composition?: {
+    readonly profile?: string;
+    readonly personality?: string;
+    readonly providers?: Readonly<Record<string, string>>;
+  };
   /** Instance name for multi-agent deployments. Defaults to 'default'. */
   readonly instanceName?: string;
   readonly installMethod?: InstallMethod;

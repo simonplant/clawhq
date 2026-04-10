@@ -51,7 +51,7 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
       type: "header",
       header: "Authorization",
       prefix: "Bearer ",
-      envVar: "TODOIST_API_TOKEN",
+      envVar: "TODOIST_API_KEY",
     },
   },
   {
@@ -62,7 +62,7 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
       type: "header",
       header: "Authorization",
       prefix: "Bearer ",
-      envVar: "TODOIST_API_TOKEN",
+      envVar: "TODOIST_API_KEY",
     },
   },
   {
