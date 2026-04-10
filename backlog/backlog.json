@@ -824,6 +824,73 @@
       "readyForSprint": false,
       "groomedAt": "2026-04-09",
       "groomingNotes": "Personality explored extensively (2026-04-09): domain archetypes, professional stereotypes, Persona Schema, 10 archetype YAMLs. Conclusion: premature abstraction. 95% of users want competent+terse. Domain behavior (outreach tone, report structure, email triage strategy) belongs in skills and AGENTS.md playbooks, not personality. The archetype research wasn't wasted — the best communication disciplines from each domain (structured findings from clinical, brevity from engineering, anticipation from EA, BLUF from military) are blended into the one default. But the user doesn't choose between them."
+    },
+    {
+      "id": "FEAT-165",
+      "title": "Standardize tool output JSON schema — uniform events and mutation results",
+      "intent": "The agent shouldn't learn 50 different output formats. Every tool should emit data in the same shape so the agent's triage, reporting, and decision logic is provider-independent.",
+      "description": "Define and implement a standard JSON output contract for all generated tools. Observations (inbox check, calendar list, market quote) emit: { source, type: 'observation', items: [...], ts, priority }. Mutations (email send, task complete, event create) emit: { source, type: 'mutation', target, change, result, ts }. Errors emit: { source, type: 'error', code, message, ts }. Update all tool generators in src/design/tools/ to conform. This is the 80/20 step toward the agent-centric 3-layer model (Observe → Contextualize → Mutate) documented in ARCHITECTURE.md.",
+      "priority": "should",
+      "category": "tools",
+      "steps": [
+        "Define the 3 JSON schemas (observation, mutation, error) as TypeScript types in src/design/tools/output-schema.ts",
+        "Update email tool generator (src/design/tools/email.ts) to emit standardized JSON",
+        "Update ical tool generator (src/design/tools/ical.ts) to emit standardized JSON",
+        "Update todoist tool generator (src/design/tools/todoist.ts) to emit standardized JSON",
+        "Update tasks tool generator (src/design/tools/tasks.ts) to emit standardized JSON",
+        "Update tavily tool generator (src/design/tools/tavily.ts) to emit standardized JSON",
+        "Update quote tool generator (src/design/tools/quote.ts) to emit standardized JSON",
+        "Add tests verifying each tool's output conforms to the schema"
+      ],
+      "acceptanceCriteria": [
+        "All 7 tool generators produce JSON matching the standardized schema",
+        "Every observation includes source, type, items, ts fields",
+        "Every mutation result includes source, type, target, change, result, ts fields",
+        "Errors include source, type, code, message, ts fields",
+        "Existing tool functionality unchanged — only output format standardized",
+        "TypeScript compiles cleanly"
+      ],
+      "scope": [
+        "src/design/tools/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-04-09",
+      "groomingNotes": "From agent-centric architecture feedback (2026-04-09). The 80/20 of the 3-layer model: standardize tool output now, unified knowledge graph later. Half-day estimated scope per tool. Enables uniform triage/reporting logic in skills regardless of provider. Does not require OpenClaw changes — tools are bash scripts on PATH that print to stdout."
+    },
+    {
+      "id": "FEAT-166",
+      "title": "Universal calendar via khal/vdirsyncer — replace raw CalDAV curl",
+      "intent": "The calendar tool must work with every calendar provider out of the box. Raw CalDAV curl only works with iCloud. khal/vdirsyncer handles Google, iCloud, Outlook, and any CalDAV provider with one integration point.",
+      "description": "Replace the current ical tool (raw CalDAV over curl, provider-specific) with khal + vdirsyncer. vdirsyncer syncs any calendar source into a local vdir store. khal reads from that store with a clean CLI. The generated tool script talks to khal — adding a new calendar provider is a vdirsyncer config change, not a new tool. Same CLI interface: ical list, ical add, ical check. Update the Dockerfile to install khal and vdirsyncer. Update the provider registry to map calendar providers to vdirsyncer config templates.",
+      "priority": "should",
+      "category": "tools",
+      "steps": [
+        "Add khal and vdirsyncer to the Dockerfile build stage (pip install)",
+        "Create vdirsyncer config templates per calendar provider in src/design/catalog/providers.ts",
+        "Rewrite ical tool generator (src/design/tools/ical.ts) to use khal CLI instead of raw CalDAV curl",
+        "Add vdirsyncer sync as a pre-step in the ical tool (sync before read operations)",
+        "Update provider registry entries for icloud-cal, google-cal, fastmail-cal, generic-caldav",
+        "Test with at least 2 providers (iCloud + Google)",
+        "Update TOOLS.md generation to reflect khal-based usage"
+      ],
+      "acceptanceCriteria": [
+        "ical tool uses khal CLI for all calendar operations",
+        "vdirsyncer handles provider-specific sync (iCloud, Google, CalDAV)",
+        "Same CLI interface: ical list, ical add, ical check",
+        "At least 2 providers tested and working",
+        "Dockerfile includes khal and vdirsyncer",
+        "Provider registry updated with vdirsyncer config templates"
+      ],
+      "scope": [
+        "src/design/tools/ical.ts",
+        "src/design/catalog/providers.ts",
+        "engine/Dockerfile"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-04-09",
+      "groomingNotes": "Build-once-for-many-users principle. Current ical tool does raw CalDAV over curl through cred-proxy — works for iCloud but brittle, hand-rolled, single-provider. khal/vdirsyncer is the industry standard for CLI calendar management. vdirsyncer handles the provider complexity; khal provides the uniform interface. Same pattern as himalaya for email — one universal tool, provider configured separately."
     }
   ]
 }

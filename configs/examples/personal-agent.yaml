@@ -5,12 +5,13 @@
 # Never commit credentials to the clawhq repo.
 #
 # Browse options:
-#   clawhq compose profiles       — mission profiles (WHAT)
-#   clawhq compose personalities  — personality presets (HOW)
+#   clawhq compose profiles       — mission profiles
 #   clawhq compose providers      — integration providers (a la carte)
 
 profile: life-ops
-personality: direct-operator
+# personality: digital-assistant  — default, omit to use the standard professional tone
+soul_overrides: |
+  Be direct. No filler.
 deploy_dir: ~/.clawhq
 
 providers:

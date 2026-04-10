@@ -246,6 +246,42 @@ The provider registry (`src/design/catalog/providers.ts`) maps each provider to:
 
 **Post-launch expansion:** Notes, Passwords, Contacts, CRM, CI/CD, Errors, Social, Market Data, Storage — driven by user demand.
 
+### Design Direction: Agent-Centric Data Model
+
+The current tool architecture is human-centric — "connect Gmail," "connect Todoist." The north star is agent-centric: the agent doesn't care about providers. It cares about what it can observe, what it knows, and what it can change.
+
+**Three layers:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. OBSERVE — Inbound Event Streams                         │
+│  Every tool emits uniform JSON events:                      │
+│  { source, type, items[], ts, priority }                    │
+│  Whether it's a Sentry error or a Telegram message,         │
+│  the agent's triage logic is identical.                     │
+├─────────────────────────────────────────────────────────────┤
+│  2. CONTEXTUALIZE — Unified Memory                          │
+│  Tasks, emails, CRM entries are nodes in a queryable        │
+│  graph. One memory_search across all domains, not           │
+│  "search email" then "search notes" then "search tasks."   │
+├─────────────────────────────────────────────────────────────┤
+│  3. MUTATE — Atomic State Changes                           │
+│  mutate(target, change) — the fact that it's "Todoist"      │
+│  is irrelevant. The agent needs: what can I change,         │
+│  what's the impact radius, do I have permission.            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**What's actionable now:**
+- Standardize tool output JSON schema — every tool emits events (observations) or mutation results in the same shape. Half-day change to tool generators.
+- Standardize tool input — every mutation follows `tool action target [params]`. Already mostly true, make it explicit.
+
+**What's later:**
+- Unified knowledge graph across all domains. Blocked on OpenClaw's memory architecture (file-based markdown today).
+- Auto-discovery of new capabilities from event stream schemas.
+
+The category/provider model is the bridge: it gives us uniform tool interfaces now, and the standardized JSON output contract prepares for the agent-centric model without requiring it.
+
 ### What a Blueprint Configures (current)
 
 | Dimension | What Gets Generated | Example: "Stock Trading Assistant" |
