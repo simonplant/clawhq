@@ -9,6 +9,7 @@
  * for the deployment directory.
  */
 
+import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -97,7 +98,16 @@ export function compile(
 
   // Generate docker-compose.yml with security posture + optional proxy sidecar
   const networkName = "clawhq_net";
-  const posture = getPostureConfig(profile.security_posture === "under-attack" ? "under-attack" : "hardened");
+  let posture = getPostureConfig(profile.security_posture === "under-attack" ? "under-attack" : "hardened");
+
+  // Strip gVisor runtime if not installed — same logic as build.ts
+  if (posture.runtime === "runsc") {
+    try {
+      execFileSync("runsc", ["--version"], { timeout: 5000 });
+    } catch {
+      posture = { ...posture, runtime: undefined };
+    }
+  }
   const composeOutput = generateCompose("openclaw:custom", posture, deployDir, networkName, {
     enableCredProxy: proxyEnabled,
   });
