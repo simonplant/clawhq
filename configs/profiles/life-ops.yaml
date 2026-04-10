@@ -86,9 +86,11 @@ egress_domains:
   - query1.finance.yahoo.com
   - api.twitter.com
   - substack.com
+  - api.fastmail.com
+  - www.fastmailusercontent.com
 
 security_posture: hardened
-autonomy_default: medium
+autonomy_default: high 
 
 memory_policy:
   hot_max: "100KB"

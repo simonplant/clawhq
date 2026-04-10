@@ -207,6 +207,20 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       "call-service is a write operation — consider adding entity prefixes like 'lock.' to HA_ENTITY_DENY",
     ],
   },
+  fastmail: {
+    name: "fastmail",
+    label: "FastMail (JMAP)",
+    description: "Email access via FastMail JMAP API — read, search, send, triage",
+    category: "communication",
+    envKeys: [
+      { key: "FASTMAIL_API_TOKEN", label: "FastMail API token (Settings → Privacy & Security → API tokens)", secret: true },
+    ],
+    egressDomains: ["api.fastmail.com", "www.fastmailusercontent.com"],
+    quirks: [
+      "JMAP session endpoint must be called first to discover mailbox IDs",
+      "Attachment downloads go through fastmailusercontent.com, not api.fastmail.com",
+    ],
+  },
   tailscale: {
     name: "tailscale",
     label: "Tailscale",

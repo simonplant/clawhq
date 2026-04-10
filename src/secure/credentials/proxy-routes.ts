@@ -160,6 +160,28 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
     },
   },
   {
+    id: "fastmail",
+    pathPrefix: "/fastmail",
+    upstream: "https://api.fastmail.com",
+    auth: {
+      type: "header",
+      header: "Authorization",
+      prefix: "Bearer ",
+      envVar: "FASTMAIL_API_TOKEN",
+    },
+  },
+  {
+    id: "fastmail-dl",
+    pathPrefix: "/fastmail-dl",
+    upstream: "https://www.fastmailusercontent.com",
+    auth: {
+      type: "header",
+      header: "Authorization",
+      prefix: "Bearer ",
+      envVar: "FASTMAIL_API_TOKEN",
+    },
+  },
+  {
     id: "tradier",
     pathPrefix: "/tradier",
     upstream: "https://api.tradier.com",
