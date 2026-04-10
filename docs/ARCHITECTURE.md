@@ -143,20 +143,20 @@ CATALOG ENTITIES (planned — compiler concepts, not runtime):
   bundle with operational doctrine (soul_fragments). Does NOT
   carry personality or autonomy — those are agent-level.
 
-  Persona = how does it talk. Curated prose bundle with
-  voice examples, slider defaults, and anti-patterns. NOT
-  MBTI. NOT 16P. Just well-crafted presets. ClawHQ ships
-  8-12; users can start blank and write their own SOUL.md.
+  Tone = how does it talk. One professional default ships
+  with all blueprints: direct, competent, no BS. Users
+  customize via soul_overrides (free text). Personality is
+  not a product axis — the operational stack is the product.
 
 COMPOSITION:
 
   Blueprint
   ┌──────────────────────────────────────────────┐
   │ name                                         │
-  │ persona ─────────→ Persona          (planned)│
+  │ tone ────────────→ default + overrides        │
   │ capabilities[] ──→ Capability[]     (planned)│
   │ extra_tools[] ───→ Tool[]     (escape hatch) │
-  │ dimension_overrides   (fine-tune persona)    │
+  │ dimension_overrides   (power-user, optional) │
   │ soul_overrides        (free-text append)     │
   │ toolbelt.tools[] ─→ Tool[]          (current)│
   │ skill_bundle[] ───→ Skill[]         (current)│
@@ -212,7 +212,7 @@ COMPOSITION:
    └── tool configs + skill definitions + cron + egress allowlist
 ```
 
-Two escape hatches: `extra_tools[]` for tools outside any capability, `soul_overrides` for personality that doesn't fit a persona. Power users can bypass the whole compiler and write flat config directly.
+Two escape hatches: `extra_tools[]` for tools outside any capability, `soul_overrides` for custom tone preferences appended to SOUL.md. Power users can bypass the whole compiler and write flat config directly.
 
 **Marketplace security constraint (security by default):** Catalog items (capabilities and personas) are config-only — tool references, skill references, and prose. No scripts or custom code. The runtime sandbox is the security boundary. Custom code requires self-hosting or ClawHQ verification. This is AD-05 applied to the ecosystem: security is architectural (no code path for community-injected scripts), not policy (a flag that could be disabled).
 
@@ -228,6 +228,23 @@ Two escape hatches: `extra_tools[]` for tools outside any capability, `soul_over
 | Cron schedule | skill.schedule + capability.suggested_crons |
 | Docker compose | security posture + integrations |
 | .env secrets | integration.envKeys[] |
+
+### Integration Categories and Providers
+
+Profiles declare which **categories** they need (email, calendar, tasks, research). Users pick which **provider** fills each category during setup. The compiler generates the right tool script, egress rules, and credential config. Same CLI interface regardless of provider.
+
+```
+Profile says:     "I need email, calendar, tasks"
+User picks:       email=gmail, calendar=icloud, tasks=todoist
+Compiler emits:   himalaya-based email tool, CalDAV calendar tool, Todoist API tool
+                  + correct egress domains + credential templates + Dockerfile binaries
+```
+
+The provider registry (`src/design/catalog/providers.ts`) maps each provider to: protocol, CLI tool, required binaries, env vars, egress domains, and auth method. Adding a new provider is a registry entry + tool script, not an architecture change.
+
+**Launch categories (80/20):** Email, Calendar, Tasks, Research, Weather, Code, Models — covers top 3 adoption cohorts.
+
+**Post-launch expansion:** Notes, Passwords, Contacts, CRM, CI/CD, Errors, Social, Market Data, Storage — driven by user demand.
 
 ### What a Blueprint Configures (current)
 

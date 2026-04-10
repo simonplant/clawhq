@@ -2,7 +2,7 @@
 
 > The à la carte menu. Every tool category an OpenClaw agent can use, which providers serve each, what CLIs exist, and what a standardized integration looks like.
 
-**Updated:** 2026-04-03 · **Source:** OpenClaw docs, ClawHub registry (13,700+ skills), awesome-openclaw-skills (5,200+), awesome-openclaw-agents (177 templates), production operation of Clawdius.
+**Updated:** 2026-04-03 · **Source:** OpenClaw docs, ClawHub registry (13,700+ skills), awesome-openclaw-skills (5,200+), awesome-openclaw-agents (177 templates), production operation experience.
 
 ---
 
@@ -145,7 +145,7 @@ These are OpenClaw's built-in channel adapters — not external tools. Configure
 | **Coinbase** | Crypto | Coinbase SDK | API Key | `api.coinbase.com` | |
 | **SEC EDGAR** | Filings | `sec-filing-watcher` skill | None | `efts.sec.gov` | ClawHub skill exists for filing monitoring |
 
-**Simon's pattern:** Yahoo Finance for quotes (free, no auth), TradingView via browser automation for charts/analysis, custom scripts for portfolio tracking.
+**Recommended starter pattern:** Yahoo Finance for quotes (free, no auth), TradingView via browser automation for charts/analysis, custom scripts for portfolio tracking.
 
 ---
 

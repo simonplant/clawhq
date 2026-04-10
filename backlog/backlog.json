@@ -587,7 +587,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-08",
-      "groomingNotes": "Split from original FEAT-154 (5 blueprints was too large for one sprint). LifeOps is the universal base — most users start here. Dev is the most natural for the self-hosted community. Each should feel polished and opinionated, not a generic template. Use personality dimensions: LifeOps warm/helpful, Dev terse/technical. Check existing blueprints for overlap before creating new ones."
+      "groomingNotes": "Split from original FEAT-154 (5 blueprints was too large for one sprint). LifeOps is the universal base — most users start here. Dev is the most natural for the self-hosted community. Each should feel polished and opinionated, not a generic template. Use one professional default tone for SOUL.md — competent, terse, anticipatory. Domain behavior lives in skills and AGENTS.md playbook, not personality. Focus on complete operational stacks: tools, skills, cron, security, autonomy. Check existing blueprints for overlap before creating new ones."
     },
     {
       "id": "FEAT-158",
@@ -627,7 +627,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-08",
-      "groomingNotes": "Split from original FEAT-154. Depends on FEAT-156 (profile skills) since markets.yaml needs eod-review/trade-journal and marketing.yaml needs content-seed. Research appeals to the 85% who use LLMs for research — analytical personality. Markets is niche but proves the domain-specific pattern. Marketing covers content creators — creative personality. Use personality dimensions system for each."
+      "groomingNotes": "Split from original FEAT-154. Depends on FEAT-156 (profile skills) since markets.yaml needs eod-review/trade-journal and marketing.yaml needs content-seed. Use one professional default tone for SOUL.md. Domain behavior lives in skills: Research needs synthesis/citation skills, Markets needs eod-review/trade-journal, Marketing needs content-seed and social engagement skills. Focus on complete operational stacks, not personality."
     },
     {
       "id": "FEAT-155",
@@ -789,6 +789,41 @@
       "groomedAt": "2026-04-08",
       "groomingNotes": "Confirmed: smart.ts:227 uses raw ${description} in template literal. sanitizeContentSync is already used in soul.ts (line 148) for customization answers. Import path: '../../secure/sanitizer/index.js'. Apply before buildInferencePrompt call, not inside it — keeps the prompt builder pure. Tests go in smart.test.ts. XS scope.",
       "passes": true
+    },
+    {
+      "id": "FEAT-164",
+      "title": "One default tone ('LifeOps, no BS') — back out personality as product axis",
+      "intent": "Ship one opinionated SOUL.md with every blueprint — the fourth option OpenClaw doesn't have (beyond empty, C-3PO, Architect/CEO). Supportive without flattery. The product is the operational stack — tools, skills, cron, security. Personality is a quality-of-life detail, not a feature.",
+      "description": "Remove personality archetypes, persona presets, and personality-per-profile pairings as product concepts. The SOUL.md compiler produces one professional default tone for all profiles. Users customize via soul_overrides (free text) and a warmth slider. Domain-specific behavior (how the agent drafts outreach, structures reports, triages email) lives in skills and AGENTS.md playbooks, not personality config. Clean up legacy personality YAMLs in configs/personalities/ — keep digital-assistant as the default, archive the rest. Remove personality as a required field in CompositionConfig. The compiler should work without a personality field.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Make personality optional in CompositionConfig (src/design/catalog/types.ts) — default to built-in professional tone when omitted",
+        "Update compiler (src/design/catalog/compiler.ts) to generate a standard professional SOUL.md when no personality specified",
+        "Archive configs/personalities/ files except digital-assistant.yaml (rename to professional-default.yaml)",
+        "Remove personality as a required config-file field in src/design/configure/config-file.ts",
+        "Update wizard to skip personality selection — use default, offer soul_overrides free text",
+        "Expose warmth as the single user-facing slider (optional, defaults to 3)",
+        "Update FEAT-154 and FEAT-158 to not reference personality archetypes"
+      ],
+      "acceptanceCriteria": [
+        "clawhq init --config with no personality field produces a valid workspace with professional default SOUL.md",
+        "soul_overrides in config are appended to the generated SOUL.md",
+        "Warmth slider adjusts SOUL.md tone (1=clinical, 5=warm)",
+        "No personality archetype selection in wizard flow",
+        "TypeScript compiles cleanly, existing tests pass"
+      ],
+      "scope": [
+        "src/design/catalog/types.ts",
+        "src/design/catalog/compiler.ts",
+        "src/design/configure/config-file.ts",
+        "src/design/configure/wizard.ts",
+        "configs/personalities/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "groomedAt": "2026-04-09",
+      "groomingNotes": "Personality explored extensively (2026-04-09): domain archetypes, professional stereotypes, Persona Schema, 10 archetype YAMLs. Conclusion: premature abstraction. 95% of users want competent+terse. Domain behavior (outreach tone, report structure, email triage strategy) belongs in skills and AGENTS.md playbooks, not personality. The archetype research wasn't wasted — the best communication disciplines from each domain (structured findings from clinical, brevity from engineering, anticipation from EA, BLUF from military) are blended into the one default. But the user doesn't choose between them."
     }
   ]
 }

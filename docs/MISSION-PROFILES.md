@@ -10,7 +10,7 @@
 
 ## How Profiles Work
 
-A mission profile defines **what** the agent can do in a specific domain. Users compose their agent by stacking one or more profiles under a single personality preset (which defines **how** the agent delivers).
+A mission profile defines **what** the agent can do in a specific domain. Users compose their agent by stacking one or more profiles. Each profile brings its own tools, skills, cron jobs, security posture, and operational playbook. Agent tone is a single professional default — domain-specific behavior lives in skills and playbooks, not personality config.
 
 **Organizing principle:** Two profiles should never fight over who owns a tool. If a tool could belong to two profiles, that's a boundary problem. Each profile owns specific tools, cron patterns, integrations, and egress domains. Cross-profile collaboration happens through signaling, not shared ownership.
 
@@ -284,7 +284,7 @@ Profiles don't share tool ownership, but they do communicate. The signaling mode
 | Home | LifeOps | Presence events → schedule and routine adjustments |
 | Any | Media | Asset requests → creative production |
 
-This signaling is currently implemented through the agent's reasoning — the personality and SOUL.md understand the relationships between active profiles. A future spec version may formalize signaling as explicit inter-profile contracts.
+This signaling is currently implemented through the agent's reasoning — SOUL.md and AGENTS.md describe the relationships between active profiles. A future spec version may formalize signaling as explicit inter-profile contracts.
 
 ---
 
@@ -302,7 +302,7 @@ Recommended starting compositions by audience. These are entry points, not produ
 | Content creator | LifeOps + Marketing + Media | Create and distribute with asset production. |
 | Homelab enthusiast | LifeOps + Home + Dev | Smart home meets agent infrastructure. |
 | Health optimizer | LifeOps + Health | Biometrics-informed daily operations. |
-| The Clawdius | LifeOps + Markets + Research | Simon's production stack. Stoic/Buddhist personality. |
+| Power user | LifeOps + Markets + Research | Multi-profile daily driver — one agent, many hats. |
 
 ---
 

@@ -31,7 +31,7 @@ ClawHQ is a community-first project in the OpenClaw ecosystem. The position is *
 - Join the OpenClaw Discord and engage with existing discussions first — a stranger appearing with 14 issues in a batch lands as noise, not contribution. Help a few people, build recognized presence, then contribute from that position.
 - 14 landmines filed as GitHub issues with reproduction steps — spaced out, not batched
 - OPENCLAW-REFERENCE.md published as the community's configuration bible
-- The Persona Schema published as a standalone spec — 17 dimensions across five research-grounded layers for agent personality design. This is the most original intellectual contribution in the project, applicable beyond OpenClaw, and the foundation that makes personality presets rigorous instead of "You are warm and helpful"
+- Complete blueprints published as standalone operational configs — the full 8-file workspace set + openclaw.json, with every landmine pre-patched. The community has 177 SOUL.md-only templates. Nobody has published a complete, working operational config. That's the gap
 - Blueprints published as standalone configs, no ClawHQ CLI dependency
 - Security findings contributed upstream (context pruning default, bootstrapMaxChars warnings, identity sync)
 - Content from production experience: what breaks, what works, what the docs don't tell you
@@ -60,7 +60,7 @@ Content publishes to the personal website, then gets distributed through communi
 
 **Problem:** ClawHQ's blueprint format exists only in TypeScript — it can't travel without documentation. Meanwhile, community conventions are forming: `aaronjmars/soul.md` defines a multi-file soul spec, OpenAgents.mom generates workspace bundles, the proposed skill `manifest.json` creates a permission declaration format. If ClawHQ doesn't formalize and publish its spec, competing conventions will harden.
 
-**Fix:** Publish the blueprint spec as a human-readable document. The architectural clarity that makes it tight: OpenClaw auto-loads exactly 8 files at boot. A blueprint is a complete specification of those 8 files + runtime config + cron + tool policy + security posture. That's a bounded, well-defined compilation target. The spec encodes a key design insight: mission profiles (what the agent does) and personality presets (how it delivers) are independent, composable axes — 10 a-la-carte profiles that users stack freely, not 177 role-personality fusions.
+**Fix:** Publish the blueprint spec as a human-readable document. The architectural clarity that makes it tight: OpenClaw auto-loads exactly 8 files at boot. A blueprint is a complete specification of those 8 files + runtime config + cron + tool policy + security posture. That's a bounded, well-defined compilation target. The spec encodes a key design insight: mission profiles are a-la-carte operational stacks (tools, skills, cron, security, playbook) that users stack freely — not the community's 177 role-personality fusions where SOUL.md is the whole config.
 
 **Why this is the foundation defense:** `openclaw onboard` and `openclaw configure` already handle basic guided config. The gap is blueprint-level composition — specifying an entire agent from intent. If that spec becomes the community standard, ClawHQ owns the reference implementation regardless of what the upstream project ships.
 
@@ -98,7 +98,8 @@ The 67K-line codebase is real and valuable. The question is what maintenance pat
 
 These are dead. Do not resurrect.
 
-- **"Community contributes blueprints at scale"** — Power law says no. Build 10 a-la-carte mission profiles and 4 personality presets yourself. Composable and production-tested beats 177 untested SOUL.md-only templates.
+- **"Community contributes blueprints at scale"** — Power law says no. Build 10 a-la-carte mission profiles with complete operational stacks yourself. Production-tested beats 177 untested SOUL.md-only templates.
+- **"Personality as a product axis"** — Tested and rejected. 95% of users want the same thing: competent, terse, professional. One default tone + free-text overrides. Domain behavior lives in skills, not personality config.
 - **"Managed hosting as primary business"** — 10+ funded competitors. Different game entirely.
 - **"One-time launch event as growth strategy"** — Content compounds. Launch events decay.
 - **"Skills marketplace"** — ClawHub exists and already has a malware problem. Curated beats open.
@@ -111,7 +112,7 @@ These are dead. Do not resurrect.
 | # | Risk | Severity | Response |
 |---|---|---|---|
 | 1 | **Upstream ships blueprint composition** — `openclaw onboard` and `openclaw configure` already exist. If they ship template-based agent configuration, the gap narrows further. | CRITICAL | Published spec becomes the standard. Contribution credibility means ClawHQ shapes what upstream builds, not races against it. Review: biweekly. |
-| 2 | **2M users ≠ addressable demand** — each filter cuts 80-90% | CRITICAL | Test: measure engagement with published blueprints and content. Pass: meaningful GitHub stars + article traction in 90 days. |
+| 2 | **3.2M users ≠ addressable demand** — cohort research shows most users start with content automation (ClawHQ's lowest-priority profile). The operational complexity cohorts (solo founders, dev workflow, home/family, CRM/sales) are a subset of a subset. Realistic addressable pool: ~30-50K users who want sovereign + secure + lifecycle-managed agents. That's fine for reputation-building and solo-founder economics, but success metrics must be calibrated to it. | CRITICAL | Test: measure engagement with published blueprints and content. Pass: meaningful GitHub stars + article traction in 90 days. 100 stars from a 30-50K pool with zero presence is aggressive but achievable if content is good. |
 | 3 | **Revenue timing vs. runway** — solo, unfunded | HIGH | Revenue experiments gated behind traction, not launched speculatively. Hard check: any inbound revenue signal by month 9. |
 | 4 | **Trust paradox** — security-focused project with security bug is brand-killing | HIGH | End-to-end smoke test before any public claims. Published test matrix. Scope alpha explicitly. |
 | 5 | **Upstream security catches up** — `--allow-tools` per skill exists, `manifest.json` sandboxing proposed, sandbox bypasses patched within weeks | MEDIUM | ClawHQ's value is the compound problem (composition + security + lifecycle), not any single security feature. If upstream closes a gap, celebrate — that's contribution working. |
@@ -124,7 +125,7 @@ These are dead. Do not resurrect.
 
 ### Test 1: Community Engagement
 - **Assumption:** The OpenClaw community values production-tested blueprints and operational knowledge
-- **Test:** Publish 3 blueprints + configuration reference + Persona Schema + first article. Measure GitHub stars, article reads, community references.
+- **Test:** Publish 3 complete blueprints + configuration reference + first article. Measure GitHub stars, article reads, community references.
 - **Pass:** 100+ stars, 3K+ article reads in 90 days
 - **Fail:** <25 stars, <500 reads — thesis needs revision
 - **Deadline:** 90 days after first publication
@@ -143,7 +144,7 @@ These are dead. Do not resurrect.
 - **Pass:** Any paying engagement or 10+ expressed interest in Sentinel
 - **Fail:** Zero inbound after 6 months of active contribution — monetization thesis is wrong
 - **Deadline:** Month 9
-- **Fallback if all three tests fail:** The body of work (blueprints, reference docs, Persona Schema, security patterns, production knowledge) becomes a portfolio of deep technical work in AI agent infrastructure. This has value for job applications, advisory roles, and speaking opportunities even if ClawHQ itself never generates direct revenue. The work is not wasted — it's repositioned as credentialing, not product.
+- **Fallback if all three tests fail:** The body of work (blueprints, reference docs, security patterns, production knowledge) becomes a portfolio of deep technical work in AI agent infrastructure. This has value for job applications, advisory roles, and speaking opportunities even if ClawHQ itself never generates direct revenue. The work is not wasted — it's repositioned as credentialing, not product.
 
 ---
 

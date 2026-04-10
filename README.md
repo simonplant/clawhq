@@ -94,7 +94,7 @@ Hosting providers deploy OpenClaw on a VPS with default or lightly-hardened conf
 | [Roadmap](docs/ROADMAP.md) | What's built, what's next, honest assessment |
 | [Contributing](docs/CONTRIBUTING.md) | How to contribute blueprints, skills, and code |
 | [Changelog](docs/CHANGELOG.md) | Development history and notable changes |
-| [Product](docs/PRODUCT.md) | Product design: problem, personas, user stories |
+| [Product](docs/PRODUCT.md) | Product design: problem, profiles, blueprints |
 | [OpenClaw Reference](docs/OPENCLAW-REFERENCE.md) | Engine internals, 14 landmines, integration surfaces |
 
 ## Author

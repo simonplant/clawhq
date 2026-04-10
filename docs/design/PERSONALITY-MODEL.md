@@ -1,65 +1,24 @@
-# Personality Model — Capabilities and Personas
+# Personality Model — Deprioritized
 
-> **Status: Design only.** This document describes the planned compiler catalog for capability and persona composition. None of these fields exist in the current blueprint schema. The current schema uses `toolbelt.tools[]`, `skill_bundle.included[]`, and `personality.dimensions` directly. See `docs/ARCHITECTURE.md` for the full compile-time vs. runtime model.
+> **Status: Deprioritized.** Personality is not a product axis. One professional default tone ships with all blueprints. Domain-specific behavior lives in skills and operational playbooks (AGENTS.md), not personality config.
 
 ---
 
-Personality composition is a compile-time problem. OpenClaw never sees capabilities or personas — it gets flat, resolved config. These are ClawHQ compiler concepts.
+## What Shipped
 
-## Capability — What the agent can do
+- One professional default tone baked into SOUL.md generation: competent, terse, anticipatory. Reports findings, not process. Acts without narrating.
+- 7 dimension sliders exist in the compiler (directness, warmth, verbosity, proactivity, caution, formality, analyticalDepth) for power users who want fine-tuning.
+- `soul_overrides` field in config for free-text personal preferences ("Humor is welcome. Swear when it fits. Be brutally honest.").
+- Warmth slider exposed as the one axis that matters for differentiation (family vs trading desk).
 
-A named tool+skill+integration bundle with operational doctrine:
+## What Was Explored and Rejected
 
-```typescript
-interface Capability {
-  id: string                    // "inbox-manager"
-  name: string                  // "Inbox Manager"
-  description: string           // one-line description
-  tools: string[]               // ["fm", "email", "contacts"]
-  skills: string[]              // ["scanner-triage"]
-  integrations: string[]        // ["fastmail", "icloud"]
-  soul_fragments: string[]      // prose injected into SOUL.md — operational
-                                // doctrine for this domain, NOT personality
-  suggested_crons: CronDef[]    // defaults, user can override
-}
-```
+- **Personality archetypes** — domain stereotypes (Analyst, Executive Assistant, Senior Engineer) as a product axis. Research showed 95% of users want the same professional default. The archetypes were interesting design heuristics — the default tone blends the best from each — but they don't justify a user-facing selection menu.
+- **Persona Schema** — 17-dimension framework across Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, SDT. Academic contribution, not product. May publish separately.
+- **Personality-per-profile default pairings** — each profile shipping a different archetype. Rejected: the operational stack (tools, skills, cron, security) is the product. Personality is three paragraphs in SOUL.md.
 
-Capability does NOT carry personality or autonomy. Those are agent-level concerns. `soul_fragments` is domain-specific behavioral guidance (e.g., a trader capability's fragment: "singles mentality, never execute trades directly"), not personality style.
+## Where Domain Behavior Actually Lives
 
-## Persona — How the agent talks
-
-A curated prose bundle, not an MBTI code:
-
-```typescript
-interface Persona {
-  id: string                    // "stoic-operator"
-  name: string                  // "Stoic Operator"
-  description: string
-  soul_template: string         // SOUL.md skeleton with {{slots}} for capability fragments
-  voice_examples: string[]      // 3-5 concrete example responses showing tone
-  dimensions: Dimensions        // the 7 slider defaults
-  anti_patterns: string[]       // "never use exclamation marks"
-}
-```
-
-ClawHQ ships 8-12 curated personas. Users can also start blank and write their own SOUL.md — the persona is a starting point, not a constraint. `voice_examples` are the key differentiator from abstract sliders: concrete samples of how this persona actually responds.
-
-## Blueprint with catalog references
-
-```yaml
-# Planned schema — not yet implemented
-persona: stoic-operator
-capabilities:
-  - inbox-manager
-  - trader
-  - meal-planner
-extra_tools: [weather]          # escape hatch, outside any capability
-dimension_overrides:
-  warmth: 3                     # fine-tune persona defaults
-soul_overrides: |               # free-text appended to SOUL.md
-  Always greet with the user's name.
-```
-
-## Compile step
-
-persona.soul_template + capability.soul_fragments -> assembled SOUL.md -> dimension overrides applied -> flat runtime config emitted. No intermediate concepts survive into `config.yaml` or `SOUL.md`.
+- **Skills** — structured behavior templates for recurring tasks (morning brief, outreach drafting, research synthesis). This is where domain language and workflow patterns belong.
+- **AGENTS.md** — operational playbook per profile. "When triaging email, flag don't summarize. Urgent = needs action today."
+- **SOUL.md** — three paragraphs of professional tone + user's soul_overrides. Not a product surface.

@@ -8,7 +8,7 @@ Today you choose between **surveillance AI** (polished, easy, you own nothing) a
 
 **Market reality:** 2M+ people already chose sovereign AI — OpenClaw has 250K+ GitHub stars, 2M+ monthly active users, and 42,000+ exposed instances. The demand is proven. But most of those users are struggling: 9+ CVEs in the first 2 months, 20-36% of ClawHub skills found malicious, 14 silent config landmines, and most deployments abandoned within a month. 10+ hosting providers (Blink, xCloud, AWS Lightsail, DigitalOcean, etc.) are selling managed OpenClaw at $22-45/mo — but they deploy default-config agents with no lifecycle management. Nobody makes the sovereign option secure, correctly configured, and operationally viable. ClawHQ closes that gap.
 
-**What ClawHQ is:** The sovereign operations platform for OpenClaw. It deploys, configures correctly, and personalizes agents — compiling blueprints into hardened, running systems. Identity, personality, capabilities, security, all compiled from high-level intent into flat runtime config. The user trusts ClawHQ with their agent. That trust is earned through integrity: open source, local-first, no data exfiltration, no dark patterns.
+**What ClawHQ is:** The sovereign operations platform for OpenClaw. It deploys, configures correctly, and personalizes agents — compiling blueprints into hardened, running systems. Identity, tools, skills, security, all compiled from high-level intent into flat runtime config. The user trusts ClawHQ with their agent. That trust is earned through integrity: open source, local-first, no data exfiltration, no dark patterns.
 
 **The window is closing.** Not because big-tech AI will absorb features — because 10+ hosting providers are capturing the OpenClaw ecosystem right now. Every day ClawHQ is invisible, competitors commoditize deployment and capture mindshare. ClawHQ's role is to own the sovereignty layer — the one position no hosting provider can occupy — before the ecosystem consolidates around convenience-first platforms that treat security and lifecycle as afterthoughts.
 
@@ -27,7 +27,7 @@ Everything in OpenClaw is a file or API call. ClawHQ controls all of it programm
 
 **Current status: Active development.** Full CLI implementation with operational tooling. Key docs:
 - `README.md` — Executive summary and positioning
-- `docs/PRODUCT.md` — Product design: problem, personas, user stories by module, build order
+- `docs/PRODUCT.md` — Product design: problem, profiles, blueprints, build order
 - `docs/ARCHITECTURE.md` — Solution architecture: six modules, zero-trust remote admin
 - `docs/OPENCLAW-REFERENCE.md` — Engineering reference: OpenClaw internals, 14 landmines, config surface
 
@@ -76,8 +76,7 @@ Canonical terms — use these consistently:
 | The product layers | **Platform / Blueprints / Cloud** | Distro / Template Engine / Cloud Service |
 | The six modules | **design, build, secure, operate, evolve, cloud** | ClawSmith, ClawForge, ClawAdmin, ClawOps, ClawConstruct |
 | Tool+skill+integration bundle (planned) | **capability** | role, job, function |
-| Curated personality preset (planned) | **persona** | personality type, temperament, character |
-| 7-axis personality values (1-5) | **dimension sliders** / **dimensions** | personality settings, traits |
+| Agent tone customization | **soul_overrides** | personality settings, persona config |
 
 ## Key Design Constraints
 
@@ -212,6 +211,9 @@ src/
 
 **Note:** Current source layout differs from target in other modules. The module reorganization is planned work (Track E).
 
+
+<!-- This section is managed by aishore and will be overwritten on `aishore update`. -->
+<!-- Customizations here will be lost. Add project-specific instructions above this section. -->
 
 <!-- This section is managed by aishore and will be overwritten on `aishore update`. -->
 <!-- Customizations here will be lost. Add project-specific instructions above this section. -->

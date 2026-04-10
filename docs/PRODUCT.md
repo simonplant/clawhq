@@ -37,7 +37,7 @@ Monitoring (upstream intelligence, config breakage prediction), premium blueprin
 
 **Blueprints** — Opinionated, production-tested agent configurations. A blueprint compiles into a coherent set of all 8 workspace files + runtime config + cron schedule + tool policy + security posture. The community has 177 SOUL.md templates across three repos — all personality files only. None include tool configuration, cron schedules, security posture, credential management, or egress policy. A personality without an operational stack is a character sheet for a game nobody set up.
 
-Blueprints separate two orthogonal axes:
+Blueprints define complete operational stacks:
 
 **Mission profiles** define what the agent can do — tools, integrations, cron jobs, autonomy rules, security posture, memory policy. Profiles are a-la-carte: users stack whichever combination fits their life. Most start with LifeOps and add from there. The 10 profiles, each with clean non-overlapping tool ownership:
 
@@ -52,19 +52,44 @@ Blueprints separate two orthogonal axes:
 - **Health** — WHOOP, Oura, Garmin, Apple Health export, Strava, nutrition tracking (Cronometer via browser), workout logging, sleep analysis, recovery recommendations, supplement/medication reminders. Boundary: tracks biometrics and fitness. Meal *planning* lives in LifeOps (daily logistics); Health owns nutritional *analysis* and body data. Cross-profile signaling: Health says "recovery is low, suggest lighter meals" and LifeOps adjusts.
 - **Media** — image generation (DALL-E, ComfyUI, fal.ai), video processing (FFmpeg, Sora), voice synthesis (ElevenLabs, Piper), image manipulation (ImageMagick), audio processing, creative asset production. Boundary: a production toolkit. Other profiles *request* from Media — Marketing needs a social image, Research needs a diagram, LifeOps needs a voice memo transcribed.
 
-**Not profiles — infrastructure layers:** Messaging channels (Telegram, WhatsApp, Discord, Slack, Signal, iMessage) are transport, configured at agent level. Files/cloud storage (rclone, Google Drive, Dropbox) are shared infrastructure any profile can use. Voice I/O (Whisper STT) is an input modality. **Sovereign mode** is a provider-preference overlay applied across all active profiles — swaps Tavily→SearXNG, OpenAI Whisper→Whisper.cpp, cloud notes→Obsidian, etc.
+**Not profiles — infrastructure layers:** Messaging channels (Telegram, WhatsApp, Discord, Slack, Signal, iMessage) are transport, configured at agent level. Files/cloud storage (rclone, Google Drive, Dropbox) are shared infrastructure any profile can use. Voice I/O (Whisper STT) is an input modality.
 
 **Identified gaps for future profiles:** Finance/Accounting (invoicing, bookkeeping, Stripe, QuickBooks — distinct from Markets), Comms/Community (Discord server management, moderation, forum monitoring), Travel (booking, itineraries, loyalty programs).
 
-**Personality presets** define how the agent delivers — tone, values, communication style, philosophical orientation. Built on the **Persona Schema** (v0.1): 17 dimensions across five research-grounded layers — Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, and Self-Determination Theory. This is the structured framework that makes personality presets rigorous instead of vibes-based. The community has 177 SOUL.md files that say "You are warm and helpful." The Persona Schema says exactly what "warm" means across measurable dimensions and how it interacts with directness, autonomy, analytical depth, and moral reasoning. Composable with any mission profile:
-- **Direct Operator** — Terse, competent, no filler. The Clawdius baseline.
-- **Thoughtful Advisor** — Analytical, explains reasoning, asks before acting.
-- **Warm Companion** — Conversational, remembers personal context, checks in proactively.
-- **Philosophical Guide** — Stoic/Buddhist filter, frames decisions through values. Claudius Maximus.
+**Integration categories** — profiles declare which categories they need (email, calendar, tasks). Users pick which provider fills each category during setup. The compiler generates the right tool script, egress rules, and credential config. Same CLI interface regardless of provider — `email inbox` works the same whether the backend is Gmail or ProtonMail.
 
-A published blueprint is a specific composition: pick one or more mission profiles, pick a personality preset, the compiler resolves the composition into flat runtime config. Simon's Clawdius runs LifeOps + Markets + Research under a single Stoic/Buddhist personality. A solo founder might stack LifeOps + Dev + Marketing + Sales. An investor stacks LifeOps + Markets + Research. Everyone starts with LifeOps and adds profiles until the agent earns its always-on cost.
+| Category | Providers | Interface |
+|---|---|---|
+| **Email** | Gmail, Outlook, FastMail, ProtonMail, generic IMAP | himalaya (universal IMAP/JMAP/Notmuch) |
+| **Calendar** | Google, iCloud, Outlook, any CalDAV | khal + vdirsyncer (universal sync) |
+| **Tasks** | Todoist, TickTick, Things, Apple Reminders, Linear, markdown | Provider-specific API scripts |
+| **Notes** | Obsidian, Notion, Logseq, Apple Notes, markdown files | Provider-specific, local preferred |
+| **Passwords** | 1Password, Bitwarden, pass, KeePass | Provider CLI |
+| **Contacts** | Google, iCloud, CardDAV | vdirsyncer (universal sync) |
+| **Research** | Tavily, Brave Search, SearXNG, Perplexity | Provider-specific API scripts |
+| **Weather** | Open-Meteo, OpenWeatherMap | REST API (no auth for Open-Meteo) |
+| **CRM** | HubSpot, Salesforce, Pipedrive, Airtable | Provider-specific API scripts |
+| **Code** | GitHub, GitLab, Bitbucket | gh/glab CLI |
+| **CI/CD** | GitHub Actions, GitLab CI, CircleCI | Provider-specific API scripts |
+| **Errors** | Sentry, Datadog, PagerDuty | Provider-specific API scripts |
+| **Social** | X, LinkedIn, Instagram, Threads, Reddit | Browser automation or API |
+| **Market Data** | Yahoo Finance, Alpha Vantage, Polygon | REST API scripts |
+| **Models** | Ollama (local), Anthropic, OpenAI, Google, OpenRouter | OpenClaw model routing |
+| **Storage** | Google Drive, Dropbox, iCloud, S3, rclone | rclone (universal) |
 
-This is grounded in how people actually use OpenClaw. The research shows most users run ONE agent with multiple capabilities under a unified personality — not separate agents per role. The multi-agent pattern exists but is the minority. The community's 177 role-personality fusions ("warm data analyst," "sassy marketing agent") are the wrong abstraction. Mission profiles and personalities are independent axes.
+**80/20 for launch:** Email (himalaya), Calendar (khal/vdirsyncer), Tasks (Todoist), Research (Tavily), Weather (Open-Meteo), Code (GitHub), Models (Ollama + one cloud). These 7 categories cover the top 3 adoption cohorts (Daily Briefing, Content Engine, Dev Workflow). Everything else is post-launch expansion driven by user demand.
+
+**Sovereign mode** is a provider-preference overlay: swap cloud providers for self-hosted alternatives across all active profiles — Tavily→SearXNG, cloud notes→Obsidian, OpenAI→Ollama, Google Calendar→local CalDAV.
+
+**Agent tone: "LifeOps, no BS."** Every ClawHQ blueprint ships one opinionated SOUL.md — the fourth option OpenClaw doesn't have. OpenClaw ships three defaults: empty (model slop), C-3PO (helpful, eager, grating within hours), and Architect/CEO (too stiff for daily use). ClawHQ's default is the agent you'd actually want running your life: supportive without flattery, direct without being cruel, competent enough to disappear into the work. Ten lines of SOUL.md. Not a product feature — a quality-of-life detail that comes free with the operational config you actually came for.
+
+The community has 177 SOUL.md templates that say "You are warm and helpful." None include an operational stack. A personality without tools, skills, and security is a character sheet for a game nobody set up. ClawHQ ships the whole game.
+
+Users who want something different use **`soul_overrides`** — free text in the config ("Humor is welcome. Swear when it fits. Be brutally honest."). Three sentences of personal preference do more than a personality menu. Domain-specific behavior — how the agent drafts outreach, structures reports, triages email — lives in **skills** and **operational playbooks** (AGENTS.md), not in tone config.
+
+A published blueprint is a specific composition: pick one or more mission profiles, the compiler resolves everything — tools, skills, cron, security, identity, tone — into flat runtime config. A solo founder might stack LifeOps + Dev + Marketing + Sales. An investor stacks LifeOps + Markets + Research. A busy parent runs LifeOps with warmth turned up. Everyone starts with LifeOps and adds profiles until the agent earns its always-on cost.
+
+This is grounded in how people actually use OpenClaw. Cohort analysis of 3.2M monthly active users identified 10 distinct behavior clusters (Morning Briefing, Content/Social, Email Triage, Solo Founder Ops, Dev Workflow, Research/Intel, Home/Family, SEO Pipeline, CRM/Sales, Companion). The top 3 adoption cohorts — daily briefing, content automation, and inbox management — all map to LifeOps and Marketing, which is why those profiles ship first. The research shows most users run ONE agent with multiple capabilities — not separate agents per role. ClawHQ builds operational agents, not conversational companions. Companion/relationship agents are explicitly out of scope — different product, different safety requirements.
 
 **Config generation** — Every generated config prevents all 14 known landmines. Guided and AI-powered setup. Integration auto-detection.
 
@@ -77,6 +102,46 @@ This is grounded in how people actually use OpenClaw. The research shows most us
 **Operations** — Encrypted backup/restore, safe updates with rollback, status dashboard, audit trail, memory lifecycle management.
 
 **Security** — PII/secret scanning, skill vetting with sandboxed evaluation, credential health with expiry tracking, prompt injection defense.
+
+---
+
+## Onboarding — What It Actually Looks Like
+
+The gap between "here's a YAML" and "my agent works differently now" is where most people drop off. This is the literal journey:
+
+**Path 1: ClawHQ CLI (full lifecycle)**
+```
+git clone clawhq && cd clawhq && npm install
+clawhq init --guided              # Pick profile, connect services, 5 minutes
+clawhq build                      # Two-stage Docker build
+clawhq up                         # Deploy with pre-flight checks + firewall
+```
+Result: hardened OpenClaw agent running in Docker, connected to Telegram/Signal/Discord, with correct config, egress firewall, and identity files. `clawhq doctor` keeps it healthy.
+
+**Path 2: Standalone blueprint (no ClawHQ dependency)**
+Download a published blueprint (YAML + 8 workspace files). Copy into an existing OpenClaw install's workspace directory. Restart. The agent reads the new identity files on next session. This is the community-first path — works with stock OpenClaw, no tooling required.
+
+**Path 3: Config file (CI/headless)**
+```yaml
+# config.yaml
+profile: life-ops
+providers:
+  email: gmail
+  calendar: icloud-cal
+  tasks: todoist
+channels:
+  telegram:
+    bot_token: "..."
+user:
+  name: Alex
+  timezone: America/New_York
+```
+```
+clawhq init --config config.yaml -d ~/.clawhq
+clawhq build && clawhq up
+```
+
+The setup story must be as tight as the architecture. If it takes more than 10 minutes from clone to working agent, something is wrong.
 
 ---
 
@@ -97,7 +162,7 @@ This is grounded in how people actually use OpenClaw. The research shows most us
 Not everything ClawHQ does survives OpenClaw maturation equally. Being honest about this shapes where to invest.
 
 **Durable — framework structurally can't do these:**
-- **Opinionated composition.** "Here's what a good email agent looks like" is outside framework scope. Frameworks serve everyone and can't have opinions about specific use cases. The two-axis model (mission profiles × personality presets) is a design insight the framework doesn't encode.
+- **Opinionated composition.** "Here's what a good email agent looks like" is outside framework scope. Frameworks serve everyone and can't have opinions about specific use cases. Complete operational blueprints — profiles, tools, skills, security, cron, autonomy — are a design insight the framework doesn't encode.
 - **Cross-surface coherence.** Validating that SOUL.md, TOOLS.md, `openclaw.json`, tool policy, and skill selection all agree with each other and with the user's intent. OpenClaw validates each surface against its own schema, not against each other.
 - **Intent preservation.** A blueprint records what you were trying to build. Drift detection is "does the current state still match?" OpenClaw records configuration, not intent.
 - **Longitudinal lifecycle.** How agents drift over time, what memory management looks like at 120 days, when credentials expire, where identity degrades. Operational knowledge that doesn't exist in framework docs.
@@ -124,7 +189,7 @@ Open-source tools + published blueprints + upstream contributions + content from
 
 **Hard constraint:** Don't build paid services before demand is validated. Publish knowledge first. If the knowledge creates demand for tooling, build the tooling.
 
-**Honest fallback:** If all revenue signals are negative at month 9, the body of work — blueprints, Persona Schema, configuration reference, security pattern catalog, 74 production hardening patterns — is a portfolio of deep technical work in AI agent infrastructure. Valuable for job applications, advisory roles, speaking, and credibility in the space even if ClawHQ never generates direct revenue. The work is not wasted; it's repositioned.
+**Honest fallback:** If all revenue signals are negative at month 9, the body of work — blueprints, configuration reference, security pattern catalog, 74 production hardening patterns — is a portfolio of deep technical work in AI agent infrastructure. Valuable for job applications, advisory roles, speaking, and credibility in the space even if ClawHQ never generates direct revenue. The work is not wasted; it's repositioned.
 
 ---
 
@@ -134,13 +199,13 @@ Open-source tools + published blueprints + upstream contributions + content from
 - **A replacement for OpenClaw's built-in UI** — The Control UI handles config editing. ClawHQ's value is composition, lifecycle, and security — not forms.
 - **A model routing engine** — OpenClaw handles model calls. We set policy via config.
 - **Managed hosting as primary business** — 10+ funded competitors own this. Sovereignty is the position.
-- **A community blueprint marketplace** — 10 a-la-carte mission profiles and 4 personality presets, production-tested and composable, beat 177 untested SOUL.md-only templates. Quality over quantity.
+- **A community blueprint marketplace** — 10 a-la-carte mission profiles with production-tested tools, skills, and operational playbooks beat 177 untested SOUL.md-only templates. Quality over quantity.
+- **A personality menu** — 95% of users want the same thing: a competent professional that doesn't waste their time. One good default + a warmth slider + free-text overrides. Domain behavior lives in skills, not personality.
 
 ---
 
 ## Links
 
-- Persona Schema: `docs/PERSONA-SCHEMA.md`
 - Configuration Reference: `docs/OPENCLAW-REFERENCE.md`
 - Blueprint Specification: `docs/BLUEPRINT-SPEC.md`
 - Architecture: `docs/ARCHITECTURE.md`

@@ -10,7 +10,7 @@
 
 ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 test files across all major subsystems. Built with AI-assisted development (Claude Code). **Pre-launch: all code works but has zero external users. Community validation begins at publication.**
 
-- **Blueprint engine** — 7 working blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions. Current blueprints are monolithic (personality + operational config fused in single YAML). The composition model (10 a-la-carte mission profiles × 4 personality presets as independent, composable axes) is the design direction grounded in production experience and the Persona Schema — refactoring existing blueprints into composable components is in the "Next" track.
+- **Blueprint engine** — 7 working blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions. Current blueprints are monolithic (personality + operational config fused in single YAML). The composition model (10 a-la-carte mission profiles with tools, skills, and operational playbooks) is the design direction — refactoring existing blueprints into composable components is in the "Next" track.
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
 - **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
@@ -25,7 +25,7 @@ ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 t
 - **Decision trace** — "why did you do that?" explanation system with preference learning
 - **Configuration reference** — OPENCLAW-REFERENCE.md: the most comprehensive public mapping of OpenClaw's ~200+ field configuration surface
 
-Separately: **Clawdius** — Simon's personal hardened OpenClaw agent, running in production via Docker/Telegram. This is the operational environment that generates the production knowledge everything else builds on.
+Separately: the author runs a personal hardened OpenClaw agent in production via Docker/Telegram. This is the operational environment that generates the production knowledge everything else builds on.
 
 ---
 
@@ -37,14 +37,13 @@ Two parallel tracks: publish knowledge (reputation) and ship tools (utility). Ne
 
 The launch track has dependencies. This is the order that makes sense:
 
-1. **Write the Persona Schema** — `docs/PERSONA-SCHEMA.md` is referenced in four docs and is currently a dead link. This is the most original contribution, requires the most intellectual work, has zero maintenance burden, and unblocks the personality preset axis of the blueprints. Do this first.
-2. **Join the OpenClaw Discord** — Engage with existing discussions, help people, build recognized presence. This is the relationship-building step before filing issues or publishing blueprints. Don't skip it.
-3. **Publish the configuration reference** — OPENCLAW-REFERENCE.md polished and published. Immediate authority signal.
-4. **Stand up the personal website** — Static site with markdown posts. The content distribution strategy depends on this. Doesn't need to be fancy — needs to exist.
-5. **Extract the first blueprint** — The Clawdius multi-role config generalized and tested against a clean OpenClaw install. Validate that multi-role composition doesn't exceed the 8-file context budget (20K per file, 150K aggregate).
-6. **Write the first article** — Grounded in the blueprint extraction and production evidence.
-7. **File upstream issues** — From a position of community presence, spaced out, not batched.
-8. **Remaining blueprints and code work** — In parallel after the above.
+1. **Join the OpenClaw Discord** — Engage with existing discussions, help people, build recognized presence. This is the relationship-building step before filing issues or publishing blueprints. Don't skip it.
+2. **Publish the configuration reference** — OPENCLAW-REFERENCE.md polished and published. Immediate authority signal.
+3. **Stand up the personal website** — Static site with markdown posts. The content distribution strategy depends on this. Doesn't need to be fancy — needs to exist.
+4. **Extract the first blueprint** — Chief of Staff / Daily Briefing (LifeOps profile). The #1 adoption cohort. Morning brief, email triage, calendar management, task coordination. Validate that composition doesn't exceed the 8-file context budget (20K per file, 150K aggregate).
+5. **Write the first article** — Grounded in the blueprint extraction and production evidence.
+6. **File upstream issues** — From a position of community presence, spaced out, not batched.
+7. **Remaining blueprints and code work** — In parallel after the above.
 
 ### Track 1: Publish (reputation engine)
 
@@ -57,14 +56,14 @@ The launch track has dependencies. This is the order that makes sense:
 - Identity drift across SOUL.md / IDENTITY.md / `identity.*` config
 - Symlink escape silently drops workspace files
 
-**Extract and publish 3 launch blueprints.** Standalone YAML/Markdown that works with stock OpenClaw — no ClawHQ CLI dependency. Start with the three most production-tested:
-1. **The Clawdius** — LifeOps + Markets + Research under a Stoic/Buddhist personality. The multi-role composition Simon has the most production hours on. This is the most differentiated blueprint because it demonstrates the "one agent, many hats" pattern that most users actually run — and nobody else can publish because nobody else has operated it. **Validation needed:** confirm that cramming multiple mission profiles into 8 workspace files doesn't exceed `bootstrapMaxChars` (20K per file, 150K aggregate). If it does, this discovery itself is valuable content.
-2. **Email Manager** — Life Ops (email-focused subset) with a direct, no-filler personality. The most commonly requested use case.
-3. **Sovereign ChatGPT Replacement** — Research & Knowledge profile with an analytical personality. Honest about local-vs-cloud tradeoffs.
+**Extract and publish 3 launch blueprints.** Standalone YAML/Markdown that works with stock OpenClaw — no ClawHQ CLI dependency. Ordered by adoption demand, not personal usage:
+1. **Chief of Staff / Daily Briefing** — LifeOps profile. The #1 adoption cohort. Morning brief, email triage, calendar management, task coordination. Categories: email (himalaya), calendar (khal/vdirsyncer), tasks (Todoist default, user picks), weather (Open-Meteo), research (Tavily). User picks providers during setup — same tool interface regardless.
+2. **Content Engine** — Marketing profile. Widest adoption category. Social cross-posting, newsletter drafting, content calendar. Categories: social (X/LinkedIn/Reddit), research (Tavily), notes (Obsidian/Notion). Includes content-specific skills.
+3. **Dev Workflow** — Dev profile. Highest satisfaction, natural fit for self-hosted community. Categories: code (GitHub/GitLab), CI/CD (GitHub Actions), errors (Sentry), tasks (Linear/GitHub Issues). Includes dev-specific skills.
+
+**Then:** A multi-profile showcase (LifeOps + Markets + Research) as the #4 "power user" blueprint — demonstrates the "one agent, many hats" pattern. **Validation needed:** confirm multi-profile composition doesn't exceed `bootstrapMaxChars` (20K per file, 150K aggregate).
 
 **Write the first article.** "14 Ways Your OpenClaw Agent Is Silently Broken." Each landmine documented with evidence. Launches the personal website content series.
-
-**Publish the Persona Schema.** The 17-dimension, five-layer personality framework as a standalone spec. This is the most original intellectual contribution in the project — applicable beyond OpenClaw to any agent framework. It's what makes the personality preset axis rigorous (research-grounded dimensions across Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, SDT) instead of the community's current approach of prose paragraphs. Zero maintenance — a published spec doesn't break when upstream ships a new release. Publish as: standalone document, an article ("A Research-Grounded Framework for Agent Personality Design"), or both.
 
 ### Track 2: Ship (tool readiness)
 
@@ -94,19 +93,19 @@ After launch tracks complete. Contribution and product development continue in p
 
 ### Product
 
-**Refactor blueprints into composable profiles + presets.** Current 7 blueprints are monolithic. Extract the operational stack (tools, cron, integrations, security, autonomy) into 10 reusable a-la-carte mission profiles (LifeOps, Dev, Research, Markets, Sales, Marketing, SiteOps, Home, Health, Media) and the personality config into reusable presets grounded in the Persona Schema dimensions. This is the work that makes the composition model real, not just documented. Spec update needed: `profile_ref` and `personality_ref` fields for referencing reusable components.
+**Refactor blueprints into composable profiles.** Current 7 blueprints are monolithic. Extract the operational stack (tools, skills, cron, integrations, security, autonomy, playbook) into 10 reusable a-la-carte mission profiles. Personality is NOT a product axis — one professional default tone ships with every profile. Domain-specific behavior lives in skills and operational playbooks (AGENTS.md), not in personality config. Users customize tone via `soul_overrides` (free text) and a warmth slider.
 
-**Expand published compositions.** Each published blueprint is a stack of a-la-carte mission profiles + a personality preset, and also a content piece — a deep-dive article explaining the configuration decisions and tradeoffs. Priority compositions after the launch three:
-- LifeOps + Warm Companion (Family Hub)
-- LifeOps + Philosophical Guide (Stoic PA — the full Clawdius)
-- Markets + Direct Operator (Trading desk)
-- Dev + Thoughtful Advisor (DevOps/SRE)
-- LifeOps + Sales + Marketing + Direct Operator (Founder's Ops)
-- Research + Philosophical Guide (Research with values filter)
+**Expand the skill library.** Skills carry the real domain behavior — how the agent drafts outreach, structures reports, triages email, runs morning briefs. Each profile needs 2-5 skills that encode domain-specific workflows. This is where the product differentiation actually lives, not in personality.
+
+**Expand published compositions.** Each published blueprint is a stack of a-la-carte mission profiles, and also a content piece — a deep-dive article explaining the configuration decisions and tradeoffs. Priority compositions after the launch three:
+- LifeOps + Markets + Research (multi-profile power user — one agent, many hats)
+- LifeOps (Family Hub — warmth slider turned up)
+- Markets (Trading desk)
+- LifeOps + Sales + Marketing (Founder's Ops)
+- Research (research/intel)
 - LifeOps + Dev + Marketing (Solo builder — the indie hacker stack)
-- Multi-profile composition example: LifeOps + Markets + Research under one personality (the "one agent, many hats" pattern most users actually run)
 - SiteOps + Marketing (Web presence on autopilot)
-- Health + LifeOps + Warm Companion (Wellness coach)
+- Health + LifeOps (Wellness tracker)
 
 **Identity coherence.** Triple-identity-sync across SOUL.md, IDENTITY.md, and `identity.*` in config. 8-file budget management (detecting `bootstrapMaxChars` approach/truncation). Staleness detection, contradiction flagging across workspace files.
 
@@ -141,7 +140,8 @@ These ideas stay alive. Each has a specific traction signal that triggers invest
 
 Decisions made. Do not revisit unless the underlying assumption is disproven.
 
-- ~~Community blueprint marketplace~~ — 10 a-la-carte mission profiles × 4 personality presets, production-tested and composable. Community has 177 SOUL.md-only templates with no operational stack. Quality over quantity.
+- ~~Community blueprint marketplace~~ — 10 a-la-carte mission profiles with complete operational stacks, production-tested. Community has 177 SOUL.md-only templates with no tools, skills, or security. Quality over quantity.
+- ~~Personality as a product axis~~ — 95% of users want the same thing: competent and terse. One professional default tone + soul_overrides for the rest. Domain behavior lives in skills and playbooks, not personality.
 - ~~Managed hosting as primary business~~ — 10+ funded competitors. Different layer entirely.
 - ~~Revenue before reputation~~ — Contribution first. Revenue follows traction.
 - ~~One-time launch events as growth strategy~~ — Development-as-content compounds. Launch events decay.
@@ -152,7 +152,7 @@ Decisions made. Do not revisit unless the underlying assumption is disproven.
 
 ## Known Limitations
 
-- **Persona Schema not yet written** — Referenced in PRODUCT, STRATEGY, ROADMAP, and BLUEPRINT-SPEC. `docs/PERSONA-SCHEMA.md` is a dead link. Highest-priority deliverable.
+- **Persona Schema deprioritized** — `docs/PERSONA-SCHEMA.md` is a dead link. Personality is not a product axis — one professional default ships with all blueprints. The Persona Schema may publish as an academic contribution later, but it doesn't block or inform the product.
 - **No publishable blueprints yet** — 7 monolithic blueprints exist in the codebase. Zero are extractable as standalone configs for stock OpenClaw without generalization and testing work.
 - **Personal website doesn't exist yet** — Content distribution strategy depends on it. SITE_PLAN.md exists. The site doesn't. Static markdown site is sufficient but must exist before first article publishes.
 - **No distro installer yet** — users must clone the repo and build from source

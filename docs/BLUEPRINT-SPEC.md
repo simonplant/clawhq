@@ -19,7 +19,7 @@ OpenClaw auto-loads exactly 8 workspace files at boot: `SOUL.md`, `AGENTS.md`, `
 ### Design Principles
 
 - **Complete** — A blueprint is self-contained. It defines every dimension of the agent.
-- **Composable** — Blueprints encode two independent axes: **mission profiles** (what the agent does — `toolbelt`, `cron_config`, `integration_requirements`, `security_posture`, `autonomy_model`, `memory_policy`) and **personality presets** (how the agent delivers — `personality`, `use_case_mapping`). These are orthogonal. The same mission profile works with different personalities. Multiple mission profiles can compose under one personality. This reflects how people actually use OpenClaw: one agent, multiple capabilities, unified character. The 10 a-la-carte mission profiles are: LifeOps, Dev, Research, Markets, Sales, Marketing, SiteOps, Home, Health, and Media. Users stack whichever combination serves their needs. **Current limitation:** This version of the spec defines monolithic blueprints with all sections inline. Reusable profile and preset references (`profile_ref`, `personality_ref`) are planned for a future spec version. Until then, composition is a design principle enforced by convention, not by schema.
+- **Composable** — Blueprints are built from **mission profiles** — a-la-carte operational stacks (tools, skills, cron, integrations, security, autonomy, playbook). The 10 profiles are: LifeOps, Dev, Research, Markets, Sales, Marketing, SiteOps, Home, Health, and Media. Users stack whichever combination serves their needs. Agent tone is a single professional default ("LifeOps, no BS") that ships with every blueprint — personality is not a separate axis. Users customize tone via `soul_overrides` (free text). This reflects how people actually use OpenClaw: one agent, multiple capabilities, one voice. **Current limitation:** This version of the spec defines monolithic blueprints with all sections inline. Reusable profile references (`profile_ref`) are planned for a future spec version.
 - **Declarative** — Blueprints describe *what* the agent should be, not *how* to configure it. The compiler resolves the blueprint into flat runtime config.
 - **Secure by default** — Security constraints are enforced at the schema level. Identity files are always read-only. Dangerous defaults don't exist.
 - **Validated** — Every blueprint passes 70+ structural and security checks before compilation. Invalid blueprints are rejected with actionable error messages.
@@ -89,7 +89,7 @@ use_case_mapping:
 
 ### `personality`
 
-Defines the agent's communication style, tone, and behavioral boundaries.
+Defines the agent's communication style and behavioral boundaries. **Note:** Personality is not a product axis — one professional default ships with all ClawHQ blueprints. This section exists in the schema for legacy blueprints and for users who want to override the default. Most users should use `soul_overrides` in their config instead.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -97,11 +97,11 @@ Defines the agent's communication style, tone, and behavioral boundaries.
 | `style` | string | Yes | Behavioral style description. |
 | `relationship` | string | Yes | How the agent relates to the user (e.g., `"email operations manager"`). |
 | `boundaries` | string | Yes | Behavioral boundaries the agent must respect. |
-| `dimensions` | object | No | Slider-based personality dimensions (see below). |
+| `dimensions` | object | No | 7-axis dimension overrides (power-user feature — most users ignore this). |
 
-#### Personality Dimensions
+#### Dimension Overrides (optional, power-user)
 
-When present, `dimensions` must define all 7 axes. Each value is an integer from 1 to 5.
+The compiler supports 7 dimension axes for fine-tuning the generated SOUL.md. When present, all 7 must be provided. Most users never touch these — `soul_overrides` free text is simpler and more expressive.
 
 | Dimension | Scale | 1 | 5 |
 |-----------|-------|---|---|
@@ -112,24 +112,6 @@ When present, `dimensions` must define all 7 axes. Each value is an integer from
 | `caution` | 1-5 | Bold | Conservative |
 | `formality` | 1-5 | Casual | Corporate |
 | `analyticalDepth` | 1-5 | Action-oriented | Scholarly |
-
-**Constraint:** If `dimensions` is present, all 7 dimensions must be provided. Partial dimensions are rejected.
-
-**Foundation: the Persona Schema.** These 7 dimensions are the blueprint-facing subset of the Persona Schema (v0.1), a 17-dimension framework across five research-grounded layers: Big Five, HEXACO, Interpersonal Circumplex, Schwartz values, Haidt's Moral Foundations, and Self-Determination Theory. The full schema provides the theoretical grounding for why these dimensions interact the way they do — why high proactivity + high caution produces paralysis (T-01), why warmth + directness creates whiplash (T-02). The 7-dimension subset is the practical interface for blueprint configuration. See `docs/PERSONA-SCHEMA.md` for the full framework. A future spec version may expose additional schema dimensions as optional extended personality configuration.
-
-**Personality tensions** — research-grounded predictions about how dimensions interact in practice. These are warnings, never blocking, but they surface real behavioral conflicts the agent will exhibit:
-
-| ID | Condition | What Happens in Practice |
-|----|-----------|-------------------------|
-| T-01 | proactivity >= 4 AND caution >= 4 | **Paralysis** — agent wants to act but second-guesses everything. Starts tasks, flags concerns, stalls. |
-| T-02 | warmth >= 4 AND directness >= 4 | **Whiplash** — warm tone with blunt delivery. "I care about you, and this is terrible work." |
-| T-03 | verbosity <= 2 AND analyticalDepth >= 4 | **Compression** — deep analysis forced into minimal output. Drops nuance to stay terse. |
-| T-04 | formality >= 4 AND warmth >= 4 | **Stiff warmth** — formal tone with nurturing intent. Corporate-speak about feelings. |
-| T-05 | proactivity >= 4 AND directness <= 2 | **Buried actions** — proactive but diplomatically indirect. Does things without clearly saying what or why. |
-| T-06 | caution <= 2 AND formality >= 4 | **Bold corporate** — risky decisions delivered in boardroom voice. |
-| T-07 | verbosity >= 4 AND directness >= 4 | **Verbose blunt** — long-winded and blunt. Lectures at length about what's wrong. |
-
-These tensions are derived from the Persona Schema's analysis of how the underlying psychological frameworks (Big Five, HEXACO, Interpersonal Circumplex) predict interaction effects between personality dimensions. They're testable — deploy an agent with T-01 settings and observe the paralysis pattern. See `docs/PERSONA-SCHEMA.md` for the theoretical grounding.
 
 ```yaml
 personality:
