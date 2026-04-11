@@ -571,6 +571,9 @@ function renderOpenclawJson(
         },
       },
     },
+    cron: {
+      enabled: true,
+    },
     hooks: {
       internal: {
         enabled: true,
