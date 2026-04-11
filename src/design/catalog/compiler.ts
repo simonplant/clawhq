@@ -574,12 +574,10 @@ function renderOpenclawJson(
         heartbeat: {
           model: buildModelConfig(providers, composition.model).primary,
         },
-        // Sandboxing for small local models (OpenClaw security audit requirement)
-        ...(isLocal ? {
-          sandbox: {
-            mode: "all",
-          },
-        } : {}),
+        // Note: OpenClaw security audit recommends sandbox.mode="all" for small
+        // local models, but sandboxing requires Docker-in-Docker which isn't
+        // available in standard container deployments. Security is enforced via
+        // tool deny lists instead (group:web denied for local models above).
         memorySearch: {
           provider: "ollama",
           store: { vector: { enabled: true } },
