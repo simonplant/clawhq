@@ -667,9 +667,13 @@ function renderCronJobs(
     });
   }
 
-  // Add skill-based cron jobs
+  // Add skill-based cron jobs — skip skills that already have a dedicated cron job
+  const existingJobIds = new Set(jobs.map((j: Record<string, unknown>) => j.id as string));
   for (const skill of profile.skills) {
     if (skill === "construct") continue; // construct runs on its own schedule
+    // Don't duplicate skills that have their own cron entry (e.g. morning-brief)
+    const skillJobId = `skill-${skill}`;
+    if (existingJobIds.has(skill) || existingJobIds.has(skill.replace(/-/g, "_"))) continue;
     jobs.push({
       id: `skill-${skill}`,
       kind: "cron",

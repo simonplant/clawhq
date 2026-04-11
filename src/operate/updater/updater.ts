@@ -233,22 +233,50 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
       return { success: false, error: "Update aborted", backupId };
     }
 
-    report("build", "running", "Rebuilding image from source…");
+    // Two-stage build: base image from source, then custom image with tools
+    const engineDir = join(deployDir, "engine");
+
+    report("build", "running", "Building base image from source…");
     try {
-      // Shell out to `clawhq build` — it handles stage1+stage2 config resolution
-      // from the deploy dir's build manifest and clawhq.yaml
-      const composePath = join(deployDir, "engine", "docker-compose.yml");
-      const sourceDir = join(deployDir, "engine", "source");
       await execFileAsync(
         "docker",
-        ["build", "-t", await getImageName(deployDir) ?? "openclaw:custom", "-f", join(sourceDir, "Dockerfile"), sourceDir],
+        ["build", "-t", "openclaw:local", "-f", join(sourceDir, "Dockerfile"), sourceDir],
         { timeout: 600_000, signal },
       );
-      report("build", "done", "Image rebuilt from source");
+      report("build", "done", "Base image built");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      report("build", "failed", `Build failed: ${message}`);
-      return { success: false, error: `Build failed: ${message}`, backupId };
+      report("build", "failed", `Base image build failed: ${message}`);
+      return { success: false, error: `Base image build failed: ${message}`, backupId };
+    }
+
+    if (signal?.aborted) {
+      return { success: false, error: "Update aborted", backupId };
+    }
+
+    report("build", "running", "Building custom image (stage 2)…");
+    try {
+      const customDockerfile = join(engineDir, "Dockerfile");
+      const hasCustomDockerfile = (await import("node:fs")).existsSync(customDockerfile);
+      if (hasCustomDockerfile) {
+        await execFileAsync(
+          "docker",
+          ["build", "-t", await getImageName(deployDir) ?? "openclaw:custom", "-f", customDockerfile, engineDir],
+          { timeout: 300_000, signal },
+        );
+      } else {
+        // No custom Dockerfile — tag base as custom
+        await execFileAsync(
+          "docker",
+          ["tag", "openclaw:local", await getImageName(deployDir) ?? "openclaw:custom"],
+          { timeout: 30_000, signal },
+        );
+      }
+      report("build", "done", "Custom image built");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      report("build", "failed", `Custom image build failed: ${message}`);
+      return { success: false, error: `Custom image build failed: ${message}`, backupId };
     }
   } else {
     // Cache install: docker pull
