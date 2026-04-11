@@ -545,7 +545,8 @@ async function ip6tables(args: string[], signal?: AbortSignal): Promise<void> {
 type IptablesCmd = "iptables" | "ip6tables";
 
 async function runIptablesCmd(cmd: IptablesCmd, args: string[], signal?: AbortSignal): Promise<void> {
-  await execFileAsync(cmd, args, { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal });
+  // iptables requires root — use sudo (sudoers should have NOPASSWD for iptables)
+  await execFileAsync("sudo", [cmd, ...args], { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal });
 }
 
 async function ensureChain(cmd: IptablesCmd, signal?: AbortSignal): Promise<void> {
@@ -586,7 +587,7 @@ async function removeChain(cmd: IptablesCmd, signal?: AbortSignal): Promise<void
 // ── Ipset Helpers ───────────────────────────────────────────────────────────
 
 async function ipsetCmd(args: string[], signal?: AbortSignal): Promise<string> {
-  const { stdout } = await execFileAsync("ipset", args, { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal });
+  const { stdout } = await execFileAsync("sudo", ["ipset", ...args], { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal });
   return stdout;
 }
 
