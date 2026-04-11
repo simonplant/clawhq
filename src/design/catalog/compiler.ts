@@ -867,34 +867,39 @@ const TOOL_REGISTRY: Readonly<Record<string, () => string>> = {
 function generateToolScripts(profile: MissionProfile): CompiledFile[] {
   const files: CompiledFile[] = [];
 
-  for (const tool of profile.tools) {
-    const generator = TOOL_REGISTRY[tool.name];
-    if (generator) {
-      files.push({
-        relativePath: `workspace/${tool.name}`,
-        content: generator(),
-        mode: FILE_MODE_EXEC,
-      });
-    }
-  }
-
-  // Load static tool assets from configs/tools/<name>/ for tools not in TOOL_GENERATORS
-  // (large tools like email-fastmail.py that are too big for string generators)
+  // Load tools — static assets (configs/tools/<name>/) take precedence over generators.
+  // Static assets are battle-tested, full-featured implementations.
+  // Generators are lightweight alternatives for tools without static assets.
   const configsDir = findConfigsDir();
   const toolsAssetDir = join(configsDir, "tools");
+  const loadedTools = new Set<string>();
+
   for (const tool of profile.tools) {
-    if (!TOOL_GENERATORS[tool.name] && existsSync(join(toolsAssetDir, tool.name))) {
-      const toolDir = join(toolsAssetDir, tool.name);
+    const assetDir = join(toolsAssetDir, tool.name);
+    if (existsSync(assetDir)) {
+      // Static asset — load all files from the directory
       try {
-        for (const entry of readdirSync(toolDir)) {
-          const content = readFileSync(join(toolDir, entry), "utf-8");
+        for (const entry of readdirSync(assetDir)) {
+          const content = readFileSync(join(assetDir, entry), "utf-8");
           files.push({
             relativePath: `workspace/${entry}`,
             content,
             mode: FILE_MODE_EXEC,
           });
         }
+        loadedTools.add(tool.name);
       } catch { /* skip unreadable */ }
+    } else {
+      // Fall back to generator
+      const generator = TOOL_REGISTRY[tool.name];
+      if (generator) {
+        files.push({
+          relativePath: `workspace/${tool.name}`,
+          content: generator(),
+          mode: FILE_MODE_EXEC,
+        });
+        loadedTools.add(tool.name);
+      }
     }
   }
 

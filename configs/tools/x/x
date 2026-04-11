@@ -1,0 +1,757 @@
+#!/bin/bash
+# X/Twitter CLI — read-only intelligence scanner via X API v2
+# Usage: x <command> [args]
+#
+# Commands:
+#   scan [--channel CH]              — intelligence scan: run watchlist, surface new items
+#   tweets <handle> [--limit N]      — user timeline (default: 10)
+#   user <handle>                    — profile info + stats
+#   tweet <id>                       — single tweet + thread context
+#   search <query> [--limit N]       — search recent tweets (7-day window, budget-limited)
+#   mentions <handle> [--limit N]    — tweets mentioning a user (uses search budget)
+#   watchlist                        — show current watchlist config
+#   check                            — verify bearer token works
+#
+# Options:
+#   --json        structured JSON output
+#   --quiet       suppress headers (for heartbeat/scripting)
+#
+# Environment:
+#   CRED_PROXY_URL — credential proxy base URL (required, injects bearer token server-side)
+
+set -euo pipefail
+
+# ── Config ──────────────────────────────────────────────────────────────────
+
+if [ -z "${CRED_PROXY_URL:-}" ]; then
+  echo "Error: CRED_PROXY_URL not set" >&2
+  exit 1
+fi
+
+API_BASE="${CRED_PROXY_URL}/x/2"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WATCHLIST_FILE="${SCRIPT_DIR}/x-watchlist.json"
+STATE_FILE="${SCRIPT_DIR}/x-scan-state.json"
+
+# Global flags
+JSON_OUTPUT=false
+QUIET=false
+
+# ── Helpers ─────────────────────────────────────────────────────────────────
+
+_api_get() {
+  local endpoint="$1"
+  shift
+  local url="${API_BASE}${endpoint}"
+
+  if [ $# -gt 0 ]; then
+    url="${url}?${1}"
+  fi
+
+  local tmpfile
+  tmpfile=$(mktemp)
+  trap "rm -f '$tmpfile'" RETURN
+
+  local raw http_code body
+  raw=$(curl --silent --max-time 15 -w '\n%{http_code}' \
+    -H "Accept: application/json" \
+    -D "$tmpfile" \
+    "$url") || { echo "Error: network request failed" >&2; return 1; }
+
+  http_code=$(echo "$raw" | tail -1)
+  body=$(echo "$raw" | sed '$d')
+
+  # Warn when rate limit is low
+  local remaining
+  remaining=$(grep -i 'x-rate-limit-remaining' "$tmpfile" 2>/dev/null | tr -d '\r' | awk '{print $2}' || true)
+  if [ -n "$remaining" ] && [ "$remaining" -le 5 ] 2>/dev/null; then
+    echo "Warning: rate limit low (${remaining} remaining)" >&2
+  fi
+
+  if [ "$http_code" -ge 400 ]; then
+    local error_msg
+    error_msg=$(echo "$body" | jq -r '.errors[0].message // .detail // .title // "unknown error"' 2>/dev/null || echo "HTTP $http_code")
+    echo "Error: API returned $http_code — $error_msg" >&2
+    return 1
+  fi
+
+  echo "$body"
+}
+
+_resolve_user_id() {
+  local handle="$1"
+  handle="${handle#@}"
+
+  # Check cache in state file
+  if [ -f "$STATE_FILE" ]; then
+    local cached
+    cached=$(jq -r --arg h "$handle" '.userIds[$h] // empty' "$STATE_FILE" 2>/dev/null || true)
+    if [ -n "$cached" ]; then
+      echo "$cached"
+      return
+    fi
+  fi
+
+  # Fetch from API
+  local resp
+  resp=$(_api_get "/users/by/username/${handle}") || return 1
+  local user_id
+  user_id=$(echo "$resp" | jq -r '.data.id // empty')
+  if [ -z "$user_id" ]; then
+    echo "Error: user '@${handle}' not found" >&2
+    return 1
+  fi
+
+  # Cache it
+  _state_set ".userIds[\$k] = \$v" "$handle" "$user_id"
+
+  echo "$user_id"
+}
+
+_state_read() {
+  if [ -f "$STATE_FILE" ]; then
+    cat "$STATE_FILE"
+  else
+    echo '{"userIds":{},"sinceIds":{},"lastScan":null,"searchBudget":{"month":null,"used":0}}'
+  fi
+}
+
+_state_update() {
+  # For expressions with only trusted (hardcoded) values.
+  # Use _state_set for expressions with external data.
+  local expr="$1"
+  local current
+  current=$(_state_read)
+  local updated
+  updated=$(echo "$current" | jq "$expr") || return 1
+  local tmp="${STATE_FILE}.tmp.$$"
+  echo "$updated" > "$tmp"
+  mv "$tmp" "$STATE_FILE"
+}
+
+_state_set() {
+  # Safe parameterized update — passes external values via --arg, not interpolation.
+  # Usage: _state_set '.path[$k] = $v' "key" "value"
+  local expr="$1" key="$2" val="$3"
+  local current
+  current=$(_state_read)
+  local updated
+  updated=$(echo "$current" | jq --arg k "$key" --arg v "$val" "$expr") || return 1
+  local tmp="${STATE_FILE}.tmp.$$"
+  echo "$updated" > "$tmp"
+  mv "$tmp" "$STATE_FILE"
+}
+
+_current_month() {
+  date -u +%Y-%m
+}
+
+_fmt_time_ago() {
+  local created="$1"
+  # Parse ISO 8601 timestamp
+  local ts
+  ts=$(date -d "$created" +%s 2>/dev/null || date -u +%s)
+  local now
+  now=$(date -u +%s)
+  local diff=$(( now - ts ))
+
+  if [ "$diff" -lt 60 ]; then
+    echo "${diff}s ago"
+  elif [ "$diff" -lt 3600 ]; then
+    echo "$(( diff / 60 ))m ago"
+  elif [ "$diff" -lt 86400 ]; then
+    echo "$(( diff / 3600 ))h ago"
+  else
+    echo "$(( diff / 86400 ))d ago"
+  fi
+}
+
+_fmt_metrics() {
+  local retweets="${1:-0}" likes="${2:-0}"
+  local parts=()
+
+  if [ "$retweets" -gt 0 ] 2>/dev/null; then
+    if [ "$retweets" -ge 1000 ]; then
+      parts+=("$(awk -v n="$retweets" 'BEGIN{printf "%.1fK", n/1000}') RT")
+    else
+      parts+=("${retweets} RT")
+    fi
+  fi
+
+  if [ "$likes" -gt 0 ] 2>/dev/null; then
+    if [ "$likes" -ge 1000 ]; then
+      parts+=("$(awk -v n="$likes" 'BEGIN{printf "%.1fK", n/1000}') likes")
+    else
+      parts+=("${likes} likes")
+    fi
+  fi
+
+  if [ ${#parts[@]} -eq 0 ]; then
+    echo ""
+  else
+    local IFS=" | "
+    echo "${parts[*]}"
+  fi
+}
+
+_fmt_tweet() {
+  local handle="$1" text="$2" created="$3" retweets="$4" likes="$5"
+  local time_ago metrics
+
+  time_ago=$(_fmt_time_ago "$created")
+  metrics=$(_fmt_metrics "$retweets" "$likes")
+
+  # ClawWall: sanitize untrusted tweet text
+  local compact_text
+  compact_text=$(echo "$text" | tr '\n' ' ' | sed 's/  */ /g')
+  compact_text=$(python3 "${SCRIPT_DIR}/sanitize" --source x --log <<< "$compact_text" 2>/dev/null || echo "$compact_text")
+
+  echo "[@${handle}] ${time_ago} — \"${compact_text}\""
+  if [ -n "$metrics" ]; then
+    echo "  ${metrics}"
+  fi
+}
+
+# Tweet field parameters for API requests
+TWEET_FIELDS="tweet.fields=created_at,public_metrics,referenced_tweets,conversation_id,author_id"
+USER_FIELDS="user.fields=public_metrics,description,created_at,verified_type"
+
+# ── Commands ────────────────────────────────────────────────────────────────
+
+cmd_check() {
+  local resp
+  resp=$(_api_get "/users/by/username/x") || { echo "FAIL: bearer token invalid or API unreachable"; return 1; }
+  local name
+  name=$(echo "$resp" | jq -r '.data.name // empty')
+  if [ -n "$name" ]; then
+    echo "OK: X API v2 connected (test: @x → \"${name}\")"
+  else
+    echo "FAIL: unexpected response"
+    return 1
+  fi
+}
+
+cmd_user() {
+  local handle="${1:-}"
+  if [ -z "$handle" ]; then
+    echo "Usage: x user <handle>" >&2
+    return 1
+  fi
+  handle="${handle#@}"
+
+  local resp
+  resp=$(_api_get "/users/by/username/${handle}" "${USER_FIELDS}") || return 1
+
+  if $JSON_OUTPUT; then
+    echo "$resp" | jq '.data'
+    return
+  fi
+
+  echo "$resp" | jq -r '.data | "@ \(.username) — \(.name)\n\(.description // "")\n\nFollowers: \(.public_metrics.followers_count)  Following: \(.public_metrics.following_count)  Tweets: \(.public_metrics.tweet_count)\nJoined: \(.created_at[:10])"'
+}
+
+cmd_tweets() {
+  local handle="${1:-}" limit=10
+  if [ -z "$handle" ]; then
+    echo "Usage: x tweets <handle> [--limit N]" >&2
+    return 1
+  fi
+  handle="${handle#@}"
+  shift
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --limit) limit="$2"; shift 2;;
+      *) shift;;
+    esac
+  done
+
+  local user_id
+  user_id=$(_resolve_user_id "$handle") || return 1
+
+  # API requires max_results 5-100
+  [ "$limit" -lt 5 ] 2>/dev/null && limit=5
+  [ "$limit" -gt 100 ] 2>/dev/null && limit=100
+
+  local params="${TWEET_FIELDS}&max_results=${limit}&exclude=retweets"
+  local resp
+  resp=$(_api_get "/users/${user_id}/tweets" "$params") || return 1
+
+  if $JSON_OUTPUT; then
+    echo "$resp" | jq '[.data[]? | {id, text, created_at, metrics: .public_metrics}]'
+    return
+  fi
+
+  local count
+  count=$(echo "$resp" | jq '.data | length' 2>/dev/null || echo 0)
+  if [ "$count" -eq 0 ]; then
+    echo "No tweets found for @${handle}"
+    return
+  fi
+
+  if ! $QUIET; then
+    echo "=== @${handle} — ${count} tweets ==="
+    echo
+  fi
+
+  echo "$resp" | jq -r '.data[]? | [.author_id // "", .text, .created_at, (.public_metrics.retweet_count // 0 | tostring), (.public_metrics.like_count // 0 | tostring)] | @tsv' | \
+  while IFS=$'\t' read -r _aid text created rt likes; do
+    _fmt_tweet "$handle" "$text" "$created" "$rt" "$likes"
+    echo
+  done
+}
+
+cmd_tweet() {
+  local tweet_id="${1:-}"
+  if [ -z "$tweet_id" ]; then
+    echo "Usage: x tweet <id>" >&2
+    return 1
+  fi
+
+  local params="${TWEET_FIELDS}&expansions=author_id&user.fields=username,name"
+  local resp
+  resp=$(_api_get "/tweets/${tweet_id}" "$params") || return 1
+
+  if $JSON_OUTPUT; then
+    echo "$resp" | jq '.'
+    return
+  fi
+
+  local author_handle
+  author_handle=$(echo "$resp" | jq -r '.includes.users[0].username // "unknown"')
+  local text created rt likes
+  text=$(echo "$resp" | jq -r '.data.text // ""')
+  created=$(echo "$resp" | jq -r '.data.created_at // ""')
+  rt=$(echo "$resp" | jq -r '.data.public_metrics.retweet_count // 0')
+  likes=$(echo "$resp" | jq -r '.data.public_metrics.like_count // 0')
+
+  _fmt_tweet "$author_handle" "$text" "$created" "$rt" "$likes"
+}
+
+cmd_search() {
+  local query="" limit=10
+  local args=()
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --limit) limit="$2"; shift 2;;
+      *) args+=("$1"); shift;;
+    esac
+  done
+
+  query="${args[*]:-}"
+  if [ -z "$query" ]; then
+    echo "Usage: x search <query> [--limit N]" >&2
+    return 1
+  fi
+
+  # Check search budget on free tier
+  local month
+  month=$(_current_month)
+  local state
+  state=$(_state_read)
+  local budget_month budget_used
+  budget_month=$(echo "$state" | jq -r '.searchBudget.month // empty')
+  budget_used=$(echo "$state" | jq -r '.searchBudget.used // 0')
+
+  if [ "$budget_month" != "$month" ]; then
+    budget_used=0
+    _state_update ".searchBudget.month = \"$month\" | .searchBudget.used = 0"
+  fi
+
+  if [ "$budget_used" -ge 10 ]; then
+    echo "Error: monthly search budget exhausted (${budget_used}/10 used)" >&2
+    echo "Search resets next month. Use 'x tweets <handle>' for timeline fetches (no budget)." >&2
+    return 1
+  fi
+
+  # API requires max_results 10-100
+  [ "$limit" -lt 10 ] 2>/dev/null && limit=10
+  [ "$limit" -gt 100 ] 2>/dev/null && limit=100
+
+  local encoded_query
+  encoded_query=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$query" 2>/dev/null || echo "$query")
+  local params="query=${encoded_query}&${TWEET_FIELDS}&max_results=${limit}&expansions=author_id&user.fields=username"
+  local resp
+  resp=$(_api_get "/tweets/search/recent" "$params") || return 1
+
+  # Increment budget counter
+  _state_update ".searchBudget.used = $(( budget_used + 1 )) | .searchBudget.month = \"$month\""
+
+  if $JSON_OUTPUT; then
+    echo "$resp" | jq '.'
+    return
+  fi
+
+  local count
+  count=$(echo "$resp" | jq '.meta.result_count // 0')
+  if [ "$count" -eq 0 ]; then
+    echo "No results for: ${query}"
+    return
+  fi
+
+  if ! $QUIET; then
+    echo "=== Search: ${query} — ${count} results (budget: $(( budget_used + 1 ))/10 this month) ==="
+    echo
+  fi
+
+  # Build username lookup from includes
+  local user_map
+  user_map=$(echo "$resp" | jq -r '[.includes.users[]? | {(.id): .username}] | add // {}')
+
+  echo "$resp" | jq -r --argjson umap "$user_map" '.data[]? | [(.author_id // ""), .text, .created_at, (.public_metrics.retweet_count // 0 | tostring), (.public_metrics.like_count // 0 | tostring)] | @tsv' | \
+  while IFS=$'\t' read -r aid text created rt likes; do
+    local handle
+    handle=$(echo "$user_map" | jq -r --arg id "$aid" '.[$id] // "unknown"')
+    _fmt_tweet "$handle" "$text" "$created" "$rt" "$likes"
+    echo
+  done
+}
+
+cmd_mentions() {
+  local handle="${1:-}" limit=10
+  if [ -z "$handle" ]; then
+    echo "Usage: x mentions <handle> [--limit N]" >&2
+    return 1
+  fi
+  handle="${handle#@}"
+  shift || true
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --limit) limit="$2"; shift 2;;
+      *) shift;;
+    esac
+  done
+
+  # Mentions use search endpoint
+  cmd_search "@${handle}" --limit "$limit"
+}
+
+cmd_watchlist() {
+  if [ ! -f "$WATCHLIST_FILE" ]; then
+    echo "Error: watchlist not found at ${WATCHLIST_FILE}" >&2
+    return 1
+  fi
+
+  if $JSON_OUTPUT; then
+    jq '.' "$WATCHLIST_FILE"
+    return
+  fi
+
+  echo "=== X Watchlist ==="
+  echo
+
+  local acct_count search_count
+  acct_count=$(jq '.accounts | length' "$WATCHLIST_FILE")
+  search_count=$(jq '.searches | length' "$WATCHLIST_FILE")
+  echo "Accounts: ${acct_count}  |  Searches: ${search_count}"
+  echo
+
+  echo "--- Accounts ---"
+  jq -r '.accounts[] | "  @\(.handle) [\(.priority)] — \(.label)  (\(.channels | join(", ")))"' "$WATCHLIST_FILE"
+  echo
+
+  echo "--- Searches ---"
+  jq -r '.searches[] | "  \(.query) [\(.priority)] — \(.label)  (\(.channels | join(", ")))"' "$WATCHLIST_FILE"
+
+  # Show budget status
+  if [ -f "$STATE_FILE" ]; then
+    local month
+    month=$(_current_month)
+    local budget_month budget_used
+    budget_month=$(jq -r '.searchBudget.month // empty' "$STATE_FILE")
+    budget_used=$(jq -r '.searchBudget.used // 0' "$STATE_FILE")
+    if [ "$budget_month" = "$month" ]; then
+      echo
+      echo "Search budget: ${budget_used}/10 used this month"
+    fi
+  fi
+}
+
+cmd_scan() {
+  local channel_filter=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --channel) channel_filter="$2"; shift 2;;
+      *) shift;;
+    esac
+  done
+
+  if [ ! -f "$WATCHLIST_FILE" ]; then
+    echo "Error: watchlist not found at ${WATCHLIST_FILE}" >&2
+    return 1
+  fi
+
+  # Check minimum scan interval (5 min)
+  local state
+  state=$(_state_read)
+  local last_scan
+  last_scan=$(echo "$state" | jq -r '.lastScan // empty')
+  if [ -n "$last_scan" ]; then
+    local last_ts now_ts
+    last_ts=$(date -d "$last_scan" +%s 2>/dev/null || echo 0)
+    now_ts=$(date -u +%s)
+    if [ $(( now_ts - last_ts )) -lt 300 ]; then
+      if ! $QUIET; then
+        echo "Warning: last scan was $(( (now_ts - last_ts) / 60 ))m ago (< 5 min minimum)" >&2
+      fi
+    fi
+  fi
+
+  local scan_limit
+  scan_limit=$(jq -r '.defaults.scanLimit // 5' "$WATCHLIST_FILE")
+
+  # ── Scan accounts ──
+  local all_tweets='[]'
+  local acct_count=0 new_count=0
+
+  local accounts
+  if [ -n "$channel_filter" ]; then
+    accounts=$(jq -c --arg ch "$channel_filter" '[.accounts[] | select(.channels[] == $ch)]' "$WATCHLIST_FILE")
+  else
+    accounts=$(jq -c '.accounts' "$WATCHLIST_FILE")
+  fi
+
+  local num_accounts
+  num_accounts=$(echo "$accounts" | jq 'length')
+
+  for i in $(seq 0 $(( num_accounts - 1 ))); do
+    local acct
+    acct=$(echo "$accounts" | jq -c ".[$i]")
+    local handle label priority channels
+    handle=$(echo "$acct" | jq -r '.handle')
+    label=$(echo "$acct" | jq -r '.label')
+    priority=$(echo "$acct" | jq -r '.priority')
+    channels=$(echo "$acct" | jq -c '.channels')
+
+    acct_count=$(( acct_count + 1 ))
+
+    local user_id
+    user_id=$(_resolve_user_id "$handle" 2>/dev/null) || { echo "Warning: could not resolve @${handle}" >&2; continue; }
+
+    # Build params with since_id if available
+    local since_id
+    since_id=$(echo "$state" | jq -r --arg h "$handle" '.sinceIds[$h] // empty')
+    local params="${TWEET_FIELDS}&max_results=${scan_limit}&exclude=retweets"
+    if [ -n "$since_id" ]; then
+      params="${params}&since_id=${since_id}"
+    fi
+
+    local resp
+    resp=$(_api_get "/users/${user_id}/tweets" "$params" 2>/dev/null) || { echo "Warning: failed to fetch @${handle}" >&2; continue; }
+
+    local tweet_count
+    tweet_count=$(echo "$resp" | jq '(.data // []) | length' 2>/dev/null || echo 0)
+    if [ "$tweet_count" -eq 0 ]; then
+      continue
+    fi
+
+    new_count=$(( new_count + tweet_count ))
+
+    # Update since_id to newest tweet
+    local newest_id
+    newest_id=$(echo "$resp" | jq -r '.data[0].id // empty')
+    if [ -n "$newest_id" ]; then
+      _state_set ".sinceIds[\$k] = \$v" "$handle" "$newest_id"
+    fi
+
+    # Add tweets to collection with metadata
+    local enriched
+    enriched=$(echo "$resp" | jq -c --arg h "$handle" --arg l "$label" --arg p "$priority" --argjson ch "$channels" \
+      '[.data[]? | {
+        channel: ($ch[0] // "general"),
+        channels: $ch,
+        handle: $h,
+        label: $l,
+        priority: $p,
+        tweet_id: .id,
+        text: .text,
+        created_at: .created_at,
+        retweet_count: (.public_metrics.retweet_count // 0),
+        like_count: (.public_metrics.like_count // 0),
+        source_type: "timeline"
+      }]')
+    all_tweets=$(echo "$all_tweets" "$enriched" | jq -s '.[0] + .[1]')
+  done
+
+  # ── Scan searches (budget-limited) ──
+  local search_count=0
+  local month
+  month=$(_current_month)
+  state=$(_state_read)
+  local budget_month budget_used
+  budget_month=$(echo "$state" | jq -r '.searchBudget.month // empty')
+  budget_used=$(echo "$state" | jq -r '.searchBudget.used // 0')
+
+  if [ "$budget_month" != "$month" ]; then
+    budget_used=0
+    _state_update ".searchBudget.month = \"$month\" | .searchBudget.used = 0"
+  fi
+
+  local searches
+  if [ -n "$channel_filter" ]; then
+    searches=$(jq -c --arg ch "$channel_filter" '[.searches[] | select(.channels[] == $ch)]' "$WATCHLIST_FILE")
+  else
+    searches=$(jq -c '.searches' "$WATCHLIST_FILE")
+  fi
+
+  local num_searches
+  num_searches=$(echo "$searches" | jq 'length')
+
+  for i in $(seq 0 $(( num_searches - 1 ))); do
+    # Reserve 2 searches for ad-hoc use
+    if [ "$budget_used" -ge 8 ]; then
+      if ! $QUIET; then
+        echo "Warning: search budget nearly exhausted (${budget_used}/10), skipping remaining searches" >&2
+      fi
+      break
+    fi
+
+    local srch
+    srch=$(echo "$searches" | jq -c ".[$i]")
+    local query label priority channels
+    query=$(echo "$srch" | jq -r '.query')
+    label=$(echo "$srch" | jq -r '.label')
+    priority=$(echo "$srch" | jq -r '.priority')
+    channels=$(echo "$srch" | jq -c '.channels')
+
+    search_count=$(( search_count + 1 ))
+
+    local encoded_query
+    encoded_query=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$query" 2>/dev/null || echo "$query")
+    local params="query=${encoded_query}&${TWEET_FIELDS}&max_results=${scan_limit}&expansions=author_id&user.fields=username"
+
+    local resp
+    resp=$(_api_get "/tweets/search/recent" "$params" 2>/dev/null) || { echo "Warning: search failed for '${label}'" >&2; continue; }
+
+    budget_used=$(( budget_used + 1 ))
+    _state_update ".searchBudget.used = ${budget_used} | .searchBudget.month = \"$month\""
+
+    local result_count
+    result_count=$(echo "$resp" | jq '.meta.result_count // 0')
+    if [ "$result_count" -eq 0 ]; then
+      continue
+    fi
+
+    new_count=$(( new_count + result_count ))
+
+    # Build username lookup
+    local user_map
+    user_map=$(echo "$resp" | jq -r '[.includes.users[]? | {(.id): .username}] | add // {}')
+
+    local enriched
+    enriched=$(echo "$resp" | jq -c --arg l "$label" --arg p "$priority" --argjson ch "$channels" --argjson umap "$user_map" \
+      '[.data[]? | {
+        channel: ($ch[0] // "general"),
+        channels: $ch,
+        handle: ($umap[.author_id] // "unknown"),
+        label: $l,
+        priority: $p,
+        tweet_id: .id,
+        text: .text,
+        created_at: .created_at,
+        retweet_count: (.public_metrics.retweet_count // 0),
+        like_count: (.public_metrics.like_count // 0),
+        source_type: "search"
+      }]')
+    all_tweets=$(echo "$all_tweets" "$enriched" | jq -s '.[0] + .[1]')
+  done
+
+  # ── Deduplicate and sort ──
+  all_tweets=$(echo "$all_tweets" | jq '[group_by(.tweet_id)[] | .[0]] | sort_by(.created_at) | reverse')
+
+  # Update last scan timestamp
+  _state_update ".lastScan = \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\""
+
+  # ── ClawWall: sanitize all tweet text ──
+  all_tweets=$(echo "$all_tweets" | python3 "${SCRIPT_DIR}/sanitize" --json -f text --source x --log 2>/dev/null || echo "$all_tweets")
+
+  # ── Output ──
+  if $JSON_OUTPUT; then
+    echo "$all_tweets"
+    return
+  fi
+
+  if ! $QUIET; then
+    local ts
+    ts=$(date -u +"%Y-%m-%d %H:%M UTC")
+    echo "=== X Scan ==="
+    echo "${acct_count} accounts, ${search_count} searches | ${new_count} new tweets | ${ts}"
+    echo
+  fi
+
+  if [ "$new_count" -eq 0 ]; then
+    if ! $QUIET; then
+      echo "No new tweets since last scan."
+    fi
+    return
+  fi
+
+  # Group by channel and print
+  local channel_list
+  channel_list=$(echo "$all_tweets" | jq -r '[.[].channel] | unique | .[]')
+
+  while IFS= read -r ch; do
+    [ -z "$ch" ] && continue
+    if ! $QUIET; then
+      echo "--- ${ch} ---"
+    fi
+
+    echo "$all_tweets" | jq -r --arg ch "$ch" '.[] | select(.channel == $ch) | [.handle, .text, .created_at, (.retweet_count | tostring), (.like_count | tostring)] | @tsv' | \
+    while IFS=$'\t' read -r handle text created rt likes; do
+      _fmt_tweet "$handle" "$text" "$created" "$rt" "$likes"
+      echo
+    done
+  done <<< "$channel_list"
+}
+
+# ── Main ────────────────────────────────────────────────────────────────────
+
+# Parse global flags
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --json) JSON_OUTPUT=true; shift;;
+    --quiet) QUIET=true; shift;;
+    *) args+=("$1"); shift;;
+  esac
+done
+set -- "${args[@]+"${args[@]}"}"
+
+case "${1:-help}" in
+  check)
+    cmd_check
+    ;;
+  user)
+    shift
+    cmd_user "$@"
+    ;;
+  tweets)
+    shift
+    cmd_tweets "$@"
+    ;;
+  tweet)
+    shift
+    cmd_tweet "$@"
+    ;;
+  search)
+    shift
+    cmd_search "$@"
+    ;;
+  mentions)
+    shift
+    cmd_mentions "$@"
+    ;;
+  watchlist)
+    cmd_watchlist
+    ;;
+  scan)
+    shift
+    cmd_scan "$@"
+    ;;
+  help|*)
+    sed -n '2,20p' "$0" | sed 's/^# \?//'
+    ;;
+esac
