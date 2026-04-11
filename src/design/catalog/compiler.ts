@@ -878,6 +878,26 @@ function generateToolScripts(profile: MissionProfile): CompiledFile[] {
     }
   }
 
+  // Load static tool assets from configs/tools/<name>/ for tools not in TOOL_GENERATORS
+  // (large tools like email-fastmail.py that are too big for string generators)
+  const configsDir = findConfigsDir();
+  const toolsAssetDir = join(configsDir, "tools");
+  for (const tool of profile.tools) {
+    if (!TOOL_GENERATORS[tool.name] && existsSync(join(toolsAssetDir, tool.name))) {
+      const toolDir = join(toolsAssetDir, tool.name);
+      try {
+        for (const entry of readdirSync(toolDir)) {
+          const content = readFileSync(join(toolDir, entry), "utf-8");
+          files.push({
+            relativePath: `workspace/${entry}`,
+            content,
+            mode: FILE_MODE_EXEC,
+          });
+        }
+      } catch { /* skip unreadable */ }
+    }
+  }
+
   // Always include sanitize (ClawWall) — security platform tool
   if (!files.some((f) => f.relativePath === "workspace/sanitize")) {
     files.push({

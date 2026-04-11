@@ -8,6 +8,10 @@ tools:
     category: communication
     description: "Email reading, triage, and draft replies via himalaya"
     required: true
+  - name: email-fastmail
+    category: communication
+    description: "FastMail JMAP email — triage, read, send, search, archive, label"
+    required: false
   - name: ical
     category: productivity
     description: "Calendar management, conflict detection, scheduling via CalDAV"
