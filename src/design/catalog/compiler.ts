@@ -116,6 +116,13 @@ export function compile(
     egressSet.add("login.tailscale.com");
   }
 
+  // Channel egress — Telegram is always enabled, add its API domain
+  egressSet.add("api.telegram.org");
+
+  // Ollama needs egress when running on host (container → host gateway)
+  // Not a domain — handled by Docker networking, but add for completeness
+  // if Ollama is used as a provider
+
   const composeOutput = generateCompose("openclaw:custom", posture, deployDir, networkName, {
     enableCredProxy: proxyEnabled,
     enableTailscale: tailscaleEnabled,
@@ -514,6 +521,8 @@ function renderOpenclawJson(
 ): string {
   // Security posture determines tool restrictions
   const isUnderAttack = profile.security_posture === "under-attack";
+  const modelConfig = buildModelConfig(providers, composition.model);
+  const isLocal = (modelConfig.primary as string).startsWith("ollama/");
 
   const config: Record<string, unknown> = {
     tools: {
@@ -523,9 +532,12 @@ function renderOpenclawJson(
       },
       // Explicit deny list — defense in depth against prompt injection
       // Even if model is confused, denied tools can't execute
+      // Small local models get web tools denied (OpenClaw security audit)
       deny: isUnderAttack
         ? ["exec", "browser", "gateway", "nodes", "canvas", "image"]
-        : ["browser", "gateway", "nodes"],
+        : isLocal
+          ? ["browser", "gateway", "nodes", "group:web"]
+          : ["browser", "gateway", "nodes"],
       fs: {
         workspaceOnly: true,
       },
@@ -551,12 +563,23 @@ function renderOpenclawJson(
     agents: {
       defaults: {
         model: buildModelConfig(providers, composition.model),
+        // Local models need more time — 5 min timeout, relaxed idle timeout
+        llm: {
+          idleTimeoutSeconds: isLocal ? 300 : 60,
+        },
         subagents: {
           model: buildModelConfig(providers, composition.model).primary,
+          runTimeoutSeconds: isLocal ? 600 : 120,
         },
         heartbeat: {
           model: buildModelConfig(providers, composition.model).primary,
         },
+        // Sandboxing for small local models (OpenClaw security audit requirement)
+        ...(isLocal ? {
+          sandbox: {
+            mode: "all",
+          },
+        } : {}),
         memorySearch: {
           provider: "ollama",
           store: { vector: { enabled: true } },
