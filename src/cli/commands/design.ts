@@ -165,59 +165,10 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
       ollamaModel?: string;
     }) => {
       try {
-        let answers;
-
-        if (opts.config && isCompositionConfig(opts.config)) {
-          // New path: profile + personality composition
-          try {
-            const compiled = loadAndCompileComposition(opts.config);
-            const deployDir = compiled.files.find((f) => f.relativePath === "clawhq.yaml")
-              ? opts.deployDir
-              : opts.deployDir;
-
-            console.log(chalk.green(`\n✔ Composition loaded from ${opts.config}`));
-            console.log(chalk.dim(`  Profile:     ${compiled.profile.name}`));
-            console.log(chalk.dim(`  Personality: ${compiled.personality.name}`));
-            console.log(chalk.dim(`  Deploy to:   ${opts.deployDir}`));
-
-            // Write all compiled files
-            const spinner = ora("Writing workspace…");
-            spinner.start();
-
-            const result = writeBundle(opts.deployDir, compiled.files);
-
-            spinner.succeed(`Workspace written to ${result.deployDir}`);
-            console.log(chalk.dim(`  ${result.written.length} files written`));
-            console.log(chalk.green(`\n✔ Agent forged: ${compiled.personality.name} × ${compiled.profile.name}`));
-            console.log(chalk.dim(`\n  Next: clawhq build -d ${opts.deployDir}`));
-            return;
-          } catch (error) {
-            if (error instanceof ConfigFileError) {
-              console.error(chalk.red(`\n  ✘ ${error.message}\n`));
-              throw new CommandError("", 1);
-            }
-            throw error;
-          }
-        } else if (opts.config) {
-          // Legacy path: blueprint-based config file
-          try {
-            answers = loadConfigFile(opts.config);
-            console.log(chalk.green(`\n✔ Config loaded from ${opts.config}`));
-            console.log(chalk.dim(`  Blueprint: ${answers.blueprint.name}`));
-            console.log(chalk.dim(`  Channel:   ${answers.channel}`));
-            console.log(chalk.dim(`  Model:     ${answers.modelProvider === "local" ? answers.localModel : "cloud"}`));
-            console.log(chalk.dim(`  Deploy to: ${answers.deployDir}`));
-          } catch (error) {
-            if (error instanceof ConfigFileError) {
-              console.error(chalk.red(`\n  ✘ ${error.message}\n`));
-              throw new CommandError("", 1);
-            }
-            throw error;
-          }
-        } else {
-          // Interactive: wizard or smart inference
+        // Legacy paths: --smart and --blueprint still use the blueprint pipeline
+        if (opts.smart || opts.blueprint) {
           const prompter = await createInquirerPrompter();
-          answers = opts.smart
+          const answers = opts.smart
             ? await runSmartInference(prompter, {
                 deployDir: opts.deployDir,
                 ollamaModel: opts.ollamaModel,
@@ -227,42 +178,195 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
                 deployDir: opts.deployDir,
                 airGapped: opts.airGapped,
               });
+
+          const spinner = ora("Generating config…");
+          spinner.start();
+          const bundle = generateBundle(answers);
+          const report = validateBundle(bundle);
+          if (!report.valid) {
+            spinner.fail("Config validation failed");
+            for (const err of report.errors) {
+              console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
+            }
+            throw new CommandError("", 1);
+          }
+          const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers, Object.keys(answers.integrations));
+          const result = writeBundle(answers.deployDir, files);
+          spinner.succeed(`Config written to ${result.deployDir}`);
+          for (const warn of report.warnings) {
+            console.log(chalk.yellow(`  ⚠ ${warn.rule}: ${warn.message}`));
+          }
+          console.log(chalk.green(`\n✔ Agent forged successfully`));
+          console.log(chalk.dim(`  ${result.written.length} files written`));
+          console.log(chalk.dim(`\n  Next: clawhq up`));
+          return;
         }
 
-        // Step 2: Generate deployment bundle
-        const spinner = ora("Generating config…");
+        if (opts.config) {
+          // Non-interactive: load from config file (both composition and legacy formats)
+          if (isCompositionConfig(opts.config)) {
+            try {
+              const compiled = loadAndCompileComposition(opts.config);
+              console.log(chalk.green(`\n✔ Composition loaded from ${opts.config}`));
+              console.log(chalk.dim(`  Profile:     ${compiled.profile.name}`));
+              console.log(chalk.dim(`  Personality: ${compiled.personality.name}`));
+              console.log(chalk.dim(`  Deploy to:   ${opts.deployDir}`));
+
+              const spinner = ora("Writing workspace…");
+              spinner.start();
+              const result = writeBundle(opts.deployDir, compiled.files);
+              spinner.succeed(`Workspace written to ${result.deployDir}`);
+              console.log(chalk.dim(`  ${result.written.length} files written`));
+              console.log(chalk.green(`\n✔ Agent forged: ${compiled.personality.name} × ${compiled.profile.name}`));
+              console.log(chalk.dim(`\n  Next: clawhq build -d ${opts.deployDir}`));
+              return;
+            } catch (error) {
+              if (error instanceof ConfigFileError) {
+                console.error(chalk.red(`\n  ✘ ${error.message}\n`));
+                throw new CommandError("", 1);
+              }
+              throw error;
+            }
+          }
+
+          // Legacy blueprint config file
+          try {
+            const answers = loadConfigFile(opts.config);
+            console.log(chalk.green(`\n✔ Config loaded from ${opts.config}`));
+            const spinner = ora("Generating config…");
+            spinner.start();
+            const bundle = generateBundle(answers);
+            const report = validateBundle(bundle);
+            if (!report.valid) {
+              spinner.fail("Config validation failed");
+              for (const err of report.errors) {
+                console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
+              }
+              throw new CommandError("", 1);
+            }
+            const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers, Object.keys(answers.integrations));
+            const result = writeBundle(answers.deployDir, files);
+            spinner.succeed(`Config written to ${result.deployDir}`);
+            for (const warn of report.warnings) {
+              console.log(chalk.yellow(`  ⚠ ${warn.rule}: ${warn.message}`));
+            }
+            console.log(chalk.green(`\n✔ Agent forged successfully`));
+            console.log(chalk.dim(`  ${result.written.length} files written`));
+            console.log(chalk.dim(`\n  Next: clawhq up`));
+            return;
+          } catch (error) {
+            if (error instanceof ConfigFileError) {
+              console.error(chalk.red(`\n  ✘ ${error.message}\n`));
+              throw new CommandError("", 1);
+            }
+            throw error;
+          }
+        }
+
+        // Interactive: composition-based wizard (primary path)
+        const { select, input } = await import("@inquirer/prompts");
+
+        console.log(chalk.bold("\n⚡ ClawHQ — Set Up Your Agent\n"));
+
+        // Step 1: Pick profile
+        const profiles = loadAllProfiles();
+        const profileId = await select({
+          message: "What should your agent do? (mission profile)",
+          choices: profiles.map((p) => ({
+            name: `${p.name} — ${p.description}`,
+            value: p.id,
+          })),
+        });
+        const profile = profiles.find((p) => p.id === profileId)!;
+
+        // Step 2: Pick personality
+        const personalities = loadAllPersonalities();
+        const personalityId = await select({
+          message: "How should your agent communicate? (personality)",
+          choices: personalities.map((p) => ({
+            name: `${p.name} — ${p.description}`,
+            value: p.id,
+          })),
+        });
+
+        // Step 3: Pick providers for each capability domain
+        const providerSelections: Record<string, string> = {};
+        const categoryToDomain: Record<string, string> = {
+          communication: "email",
+          productivity: "calendar",
+          research: "search",
+          core: "",
+          data: "",
+        };
+
+        const seenDomains = new Set<string>();
+        for (const tool of profile.tools) {
+          const domain = categoryToDomain[tool.category];
+          if (!domain || seenDomains.has(domain)) continue;
+          seenDomains.add(domain);
+
+          const available = getProvidersForDomain(domain);
+          if (available.length === 0) continue;
+
+          if (available.length === 1) {
+            providerSelections[domain] = available[0]!.id;
+            console.log(chalk.dim(`  ${domain}: ${available[0]!.name} (only option)`));
+          } else {
+            providerSelections[domain] = await select({
+              message: `${domain.charAt(0).toUpperCase() + domain.slice(1)} provider:`,
+              choices: available.map((p) => ({
+                name: `${p.name} (${p.protocol})`,
+                value: p.id,
+                description: p.setupNotes,
+              })),
+            });
+          }
+        }
+
+        // Tasks provider
+        const taskProviders = getProvidersForDomain("tasks");
+        if (taskProviders.length > 0) {
+          providerSelections["tasks"] = await select({
+            message: "Tasks provider:",
+            choices: taskProviders.map((p) => ({
+              name: `${p.name} (${p.protocol})`,
+              value: p.id,
+            })),
+          });
+        }
+
+        // Step 4: User info
+        const userName = await input({ message: "Your name:", default: "User" });
+        const timezone = await input({
+          message: "Timezone:",
+          default: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+
+        // Step 5: Compile and write
+        console.log(chalk.dim("\nForging agent…"));
+        const spinner = ora("Compiling workspace…");
         spinner.start();
 
-        const bundle = generateBundle(answers);
+        const compiled = compile(
+          { profile: profileId, personality: personalityId, providers: providerSelections },
+          { name: userName, timezone, communication: "brief" },
+          opts.deployDir,
+        );
 
-        // Step 3: Validate against all 14 landmine rules
-        const report = validateBundle(bundle);
-        if (!report.valid) {
-          spinner.fail("Config validation failed");
-          for (const err of report.errors) {
-            console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
-          }
-          throw new CommandError("", 1);
-        }
+        const result = writeBundle(opts.deployDir, compiled.files);
 
-        // Step 4: Write files atomically
-        const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers, Object.keys(answers.integrations));
-        const result = writeBundle(answers.deployDir, files);
-
-        spinner.succeed(`Config written to ${result.deployDir}`);
-
-        // Show warnings if any
-        for (const warn of report.warnings) {
-          console.log(chalk.yellow(`  ⚠ ${warn.rule}: ${warn.message}`));
-        }
-
-        console.log(chalk.green(`\n✔ Agent forged successfully`));
-        console.log(chalk.dim(`  ${result.written.length} files written`));
-        console.log(chalk.dim(`  All 14 landmine rules passed`));
-        console.log(chalk.dim(`\n  Next: clawhq up`));
+        spinner.succeed(`Agent forged: ${compiled.personality.name} × ${compiled.profile.name}`);
+        console.log(chalk.dim(`  ${result.written.length} files written to ${result.deployDir}`));
+        console.log(chalk.green(`\n✔ Agent ready`));
+        console.log(chalk.dim(`\n  Next: clawhq build -d ${opts.deployDir}`));
+        console.log(chalk.dim(`  Then: clawhq up -d ${opts.deployDir}`));
       } catch (error) {
         if (error instanceof CommandError) throw error;
         if (error instanceof WizardAbortError || error instanceof SmartInferenceAbortError) {
+          console.log(chalk.yellow("\nSetup cancelled."));
+          throw new CommandError("", 0);
+        }
+        if ((error as Error)?.name === "ExitPromptError") {
           console.log(chalk.yellow("\nSetup cancelled."));
           throw new CommandError("", 0);
         }
