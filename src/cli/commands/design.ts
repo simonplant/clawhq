@@ -558,13 +558,14 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
 
   compose
     .command("create")
-    .description("Interactive config builder — pick profile, personality, providers")
+    .description("Interactive config builder — generates a config file (use 'clawhq init' to set up directly)")
     .option("-o, --output <path>", "Output config file path", "./config.yaml")
     .action(async (opts: { output: string }) => {
       try {
         const { select, input } = await import("@inquirer/prompts");
 
         console.log(chalk.bold("\n🔧 ClawHQ Compose — Build Your Agent\n"));
+        console.log(chalk.dim("Tip: use 'clawhq init' to set up directly without a config file.\n"));
 
         // Step 1: Pick profile
         const profiles = loadAllProfiles();
