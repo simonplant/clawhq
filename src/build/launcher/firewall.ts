@@ -63,6 +63,7 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
 
     let rulesApplied = 0;
     let resolvedIps = 0;
+    let ipsetAvailable = true;
 
     // 1. Allow ESTABLISHED/RELATED connections
     await iptables(
@@ -87,26 +88,34 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
         const ports = [...new Set(allowlist.map((e) => e.port))];
 
         // Create and populate IPv4 ipset
-        await ensureIpset(IPSET_NAME, "inet", options.signal);
-        await flushIpset(IPSET_NAME, options.signal);
-        for (const ip of resolved.v4) {
-          await ipsetAdd(IPSET_NAME, ip, options.signal);
+        try {
+          await ensureIpset(IPSET_NAME, "inet", options.signal);
+          await flushIpset(IPSET_NAME, options.signal);
+          for (const ip of resolved.v4) {
+            await ipsetAdd(IPSET_NAME, ip, options.signal);
+          }
+        } catch {
+          // ipset not available (missing sudoers entry or not installed)
+          // Skip domain-based filtering — don't add DROP rule without ACCEPT rules
+          ipsetAvailable = false;
         }
 
         // Add iptables rules referencing IPv4 ipset — one per port
-        for (const port of ports) {
-          if (resolved.v4.length > 0) {
-            await iptables(
-              [
-                "-A", CHAIN_NAME,
-                "-p", "tcp",
-                "-m", "set", "--match-set", IPSET_NAME, "dst",
-                "--dport", String(port),
-                "-j", "ACCEPT",
-              ],
-              options.signal,
-            );
-            rulesApplied++;
+        if (ipsetAvailable) {
+          for (const port of ports) {
+            if (resolved.v4.length > 0) {
+              await iptables(
+                [
+                  "-A", CHAIN_NAME,
+                  "-p", "tcp",
+                  "-m", "set", "--match-set", IPSET_NAME, "dst",
+                  "--dport", String(port),
+                  "-j", "ACCEPT",
+                ],
+                options.signal,
+              );
+              rulesApplied++;
+            }
           }
         }
 
@@ -164,7 +173,17 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
       }
     }
 
-    // 4. LOG + DROP everything else
+    // 4. LOG + DROP everything else — only if ipset worked (domain ACCEPT rules exist).
+    // Without domain ACCEPT rules, DROP would block ALL egress including Telegram/APIs.
+    if (!ipsetAvailable) {
+      return {
+        success: true,
+        rulesApplied,
+        resolvedIps: 0,
+        warning: "ipset not available — egress filtering disabled (install ipset for domain-based firewall)",
+      };
+    }
+
     await iptables(
       ["-A", CHAIN_NAME, "-j", "LOG", "--log-prefix", "CLAWHQ_DROP: ", "--log-level", "4"],
       options.signal,

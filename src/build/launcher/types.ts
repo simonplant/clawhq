@@ -146,6 +146,8 @@ export interface FirewallResult {
   /** Number of IPs resolved from domain DNS lookups into the ipset. */
   readonly resolvedIps?: number;
   readonly error?: string;
+  /** Warning when firewall is partially applied (e.g. ipset unavailable). */
+  readonly warning?: string;
 }
 
 /** Result of firewall verification (expected vs actual rule diff). */
