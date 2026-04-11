@@ -213,10 +213,15 @@ function mergeEnv(absolutePath: string, generated: string): string {
   }
 
   if (orphanedLines.length > 0) {
-    lines.push("", "# Preserved from previous configuration", ...orphanedLines);
+    // Ensure a blank line separates generated content from preserved keys
+    const lastLine = lines[lines.length - 1]?.trim();
+    if (lastLine !== "") {
+      lines.push("");
+    }
+    lines.push("# Preserved from previous configuration", ...orphanedLines);
   }
 
-  return lines.join("\n");
+  return lines.join("\n") + "\n";
 }
 
 // ── Batch Write ──────────────────────────────────────────────────────────────

@@ -283,4 +283,35 @@ describe("generateProxyServerScript", () => {
     const script = generateProxyServerScript();
     expect(script).toContain('"none"');
   });
+
+  it("resolves env: upstream references at startup", () => {
+    const script = generateProxyServerScript();
+    expect(script).toContain('env:');
+    expect(script).toContain('.slice(4)');
+  });
+
+  it("sorts routes by prefix length for greedy matching", () => {
+    const script = generateProxyServerScript();
+    expect(script).toContain("sort");
+    expect(script).toContain("pathPrefix.length");
+  });
+});
+
+// ── Dynamic Upstream Routes ──────────────────────────────────────────────────
+
+describe("dynamic upstream routes", () => {
+  it("caldav route uses env:CALDAV_URL for dynamic upstream", () => {
+    const caldav = BUILTIN_ROUTES.find((r) => r.id === "caldav");
+    expect(caldav?.upstream).toBe("env:CALDAV_URL");
+  });
+
+  it("ha route uses env:HA_URL for dynamic upstream", () => {
+    const ha = BUILTIN_ROUTES.find((r) => r.id === "ha");
+    expect(ha?.upstream).toBe("env:HA_URL");
+  });
+
+  it("static routes have regular https:// upstreams", () => {
+    const tavily = BUILTIN_ROUTES.find((r) => r.id === "tavily");
+    expect(tavily?.upstream).toMatch(/^https:\/\//);
+  });
 });

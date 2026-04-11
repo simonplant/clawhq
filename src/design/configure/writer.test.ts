@@ -188,3 +188,57 @@ describe("writeBundle", () => {
   });
 });
 
+// ── mergeEnv orphaned key preservation ──────────────────────────────────────
+
+describe("mergeEnv preserves orphaned keys", () => {
+  it("appends keys from existing .env that aren't in generated template", () => {
+    // Existing .env has TELEGRAM_BOT_TOKEN (not in template)
+    writeFileAtomic(join(tempDir, "engine", ".env"), "KEY=val\nTELEGRAM_BOT_TOKEN=secret123\n", 0o600);
+
+    // Generated template only has KEY
+    const files: FileEntry[] = [
+      { relativePath: "engine/.env", content: "KEY=CHANGE_ME\n", mode: 0o600 },
+    ];
+
+    writeBundle(tempDir, files);
+
+    const merged = readFileSync(join(tempDir, "engine", ".env"), "utf-8");
+    // KEY should be preserved from existing (real value over placeholder)
+    expect(merged).toContain("KEY=val");
+    // TELEGRAM_BOT_TOKEN should be preserved even though it's not in the template
+    expect(merged).toContain("TELEGRAM_BOT_TOKEN=secret123");
+    // Should be on separate lines (not concatenated)
+    expect(merged).not.toMatch(/val.*TELEGRAM/);
+  });
+
+  it("does not append orphaned keys that are just placeholders", () => {
+    writeFileAtomic(join(tempDir, "engine", ".env"), "KEY=val\nUNUSED=CHANGE_ME\n", 0o600);
+
+    const files: FileEntry[] = [
+      { relativePath: "engine/.env", content: "KEY=CHANGE_ME\n", mode: 0o600 },
+    ];
+
+    writeBundle(tempDir, files);
+
+    const merged = readFileSync(join(tempDir, "engine", ".env"), "utf-8");
+    expect(merged).not.toContain("UNUSED");
+  });
+
+  it("each orphaned key is on its own line", () => {
+    writeFileAtomic(join(tempDir, "engine", ".env"), "A=1\nB=2\nC=3\n", 0o600);
+
+    const files: FileEntry[] = [
+      { relativePath: "engine/.env", content: "A=CHANGE_ME\n", mode: 0o600 },
+    ];
+
+    writeBundle(tempDir, files);
+
+    const merged = readFileSync(join(tempDir, "engine", ".env"), "utf-8");
+    const lines = merged.split("\n").filter((l: string) => l.includes("="));
+    // A preserved from existing, B and C appended as orphans
+    expect(lines.length).toBe(3);
+    expect(lines.find((l: string) => l.startsWith("B="))).toBe("B=2");
+    expect(lines.find((l: string) => l.startsWith("C="))).toBe("C=3");
+  });
+});
+

@@ -341,6 +341,15 @@ describe("sanitize tool", () => {
     const sanitize = generateToolWrappers(bp).find((w) => w.name === "sanitize");
     expect(sanitize?.content).toContain("QUARANTINE_THRESHOLD = 0.6");
   });
+
+  it("only quarantines 'external' source — tool sources are sanitized but not quarantined", () => {
+    const bp = loadEmailManager();
+    const sanitize = generateToolWrappers(bp).find((w) => w.name === "sanitize");
+    // QUARANTINE_SOURCES should only contain "external"
+    expect(sanitize?.content).toContain('QUARANTINE_SOURCES = ["external"]');
+    // The quarantine decision should check canQuarantine
+    expect(sanitize?.content).toContain("canQuarantine");
+  });
 });
 
 // ── External Tools Pipe Through Sanitize ──────────────────────────────────
