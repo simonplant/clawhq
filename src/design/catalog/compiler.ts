@@ -541,9 +541,7 @@ function renderOpenclawJson(
       // Small local models get web tools denied (OpenClaw security audit)
       deny: isUnderAttack
         ? ["exec", "browser", "gateway", "nodes", "canvas", "image"]
-        : isLocal
-          ? ["browser", "gateway", "nodes", "group:web"]
-          : ["browser", "gateway", "nodes"],
+        : ["browser", "gateway", "nodes"],
       fs: {
         workspaceOnly: true,
       },
