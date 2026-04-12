@@ -2087,3 +2087,5 @@ workspace/ (the agent's brain — 8 files auto-loaded each session)
 | Security is opt-in, defaults are dangerous | Security hardened by default — every blueprint starts secure |
 | Native heartbeat is a token sink | Isolated cron sessions instead of main-session heartbeat |
 | Production agents need ongoing SRE | The entire platform exists because this is true |
+
+See also: [`docs/KB.md`](KB.md) — operational knowledge base for lessons learned in production.

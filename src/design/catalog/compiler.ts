@@ -545,6 +545,15 @@ function renderOpenclawJson(
       fs: {
         workspaceOnly: true,
       },
+      // Media understanding — enable image/vision when model supports it
+      // Gemma4 and other multimodal models can interpret screenshots, charts, etc.
+      media: {
+        image: {
+          enabled: true,
+          models: [{ provider: "ollama", model: (modelConfig.primary as string).replace("ollama/", "") }],
+          timeoutSeconds: isLocal ? 120 : 30,
+        },
+      },
     },
     gateway: {
       port,
@@ -822,6 +831,7 @@ function buildChannels(config: CompositionConfig): Record<string, unknown> {
       enabled: true,
       dmPolicy: "pairing",
       groupPolicy: "disabled",
+      linkPreview: false,
     },
   };
 
