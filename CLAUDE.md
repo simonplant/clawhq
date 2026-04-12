@@ -80,6 +80,7 @@ Canonical terms — use these consistently:
 
 ## Key Design Constraints
 
+- **All changes go through ClawHQ — never touch OpenClaw directly.** Every change to a running OpenClaw instance (config, credentials, tools, identity files, cron, .env, workspace files) MUST flow through a `clawhq` command. No `echo >> .env`, no `cp tool workspace/`, no `docker exec` edits. If ClawHQ lacks the capability for a needed change, stop — implement the capability in ClawHQ first, then use it. Direct edits get overwritten by `clawhq apply`, create drift between ClawHQ's model and deployed state, and can't be reproduced. This applies during development and testing, not just in production.
 - **ClawHQ is the install** — Users don't install OpenClaw separately
 - **Two acquisition paths** — Trusted cache (signed) or from source (zero-trust)
 - **Security by default** — Container hardening applied automatically via 3-tier posture system (minimal/hardened/under-attack, default: hardened). Hardened includes gVisor runtime (when available), egress firewall auto-enable, and chattr +i on identity files. Under-attack adds air-gapped network, noexec tmpfs, and 10s healthchecks
@@ -225,6 +226,7 @@ src/
 This project uses aishore for autonomous sprint execution. Backlog lives in `backlog/`, tool lives in `.aishore/`.
 
 **Agent rules (mandatory):**
+- **All changes go through ClawHQ.** Never directly edit files in an OpenClaw deployment (workspace, .env, config, tools). If the task requires changing the running agent and ClawHQ lacks the command, implement the ClawHQ capability first, then use it. No exceptions.
 - **Intent is the north star.** Every item has a commander's intent field. When steps or AC are ambiguous, follow intent.
 - **Prove it runs.** Wire code to real entry points. If the build command exists, run it. If a verify command exists, execute it. Working code that's reachable beats tested code that's isolated.
 - **No mocks or stubs** in production code unless the item explicitly requests them.
