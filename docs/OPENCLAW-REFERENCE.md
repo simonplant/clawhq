@@ -3,9 +3,9 @@
 > The single source of truth for what OpenClaw is, how it works, and how to configure, personalize, and secure it.
 > Extracted from running a production OpenClaw agent for months. Engineering companion to `PRODUCT.md` and `ARCHITECTURE.md`.
 
-**Updated:** 2026-04-03 · **Minimum OpenClaw version:** v0.8.6
+**Updated:** 2026-04-12 · **Minimum OpenClaw version:** v2026.4.10
 
-> **Version baseline:** ClawHQ assumes OpenClaw v0.8.6 or later. Earlier versions are missing environment variables and fixes that ClawHQ depends on (see [Environment Variables Added in v0.8.6–v0.8.10](#environment-variables-added-in-v086v0810)).
+> **Version baseline:** ClawHQ targets OpenClaw v2026.4.10 or later. The version scheme switched from semver (v0.8.x) to calendar-based (v2026.x.x) in early 2026. Earlier versions are missing critical fixes including the Telegram approval callback deadlock (#64979) and media understanding pipeline improvements.
 
 ---
 
@@ -16,48 +16,52 @@
 2. [Internal Architecture](#internal-architecture)
 3. [Key Directories](#key-directories)
 4. [Four Integration Surfaces](#four-integration-surfaces)
-5. [Three Communication Channels](#three-communication-channels)
-6. [What OpenClaw Already Handles](#what-openclaw-already-handles)
+5. [Three Communication Protocols](#three-communication-protocols)
+6. [Messaging Channels](#messaging-channels)
+7. [What OpenClaw Already Handles](#what-openclaw-already-handles)
 
 **Part 2 — The Workspace (The Agent's Brain)**
-7. [Workspace File System](#workspace-file-system)
-8. [System Prompt Assembly Order](#system-prompt-assembly-order)
-9. [The Memory System](#the-memory-system)
-10. [Identity Drift](#identity-drift)
+8. [Workspace File System](#workspace-file-system)
+9. [System Prompt Assembly Order](#system-prompt-assembly-order)
+10. [The Memory System](#the-memory-system)
+11. [Identity Drift](#identity-drift)
 
 **Part 3 — Configuration**
-11. [openclaw.json Reference](#openclawjson-reference)
-12. [Configuration Surface Inventory](#configuration-surface-inventory)
-13. [The 14 Configuration Landmines](#the-14-configuration-landmines)
-14. [Multi-Agent Routing](#multi-agent-routing)
-15. [Automation: Cron, Heartbeat, and Hooks](#automation-cron-heartbeat-and-hooks)
-16. [Skills System](#skills-system)
-17. [Plugins](#plugins)
-18. [Built-in Tools Inventory](#built-in-tools-inventory)
+12. [openclaw.json Reference](#openclawjson-reference)
+13. [Configuration Surface Inventory](#configuration-surface-inventory)
+14. [The 14 Configuration Landmines](#the-14-configuration-landmines)
+15. [Multi-Agent Routing](#multi-agent-routing)
+16. [Automation: Cron, Heartbeat, and Hooks](#automation-cron-heartbeat-and-hooks)
+17. [Skills System](#skills-system)
+18. [Plugins](#plugins)
+19. [Media Understanding](#media-understanding)
+20. [Voice & Real-time Capabilities](#voice--real-time-capabilities)
+21. [Diagnostics & Observability](#diagnostics--observability)
+22. [Built-in Tools Inventory](#built-in-tools-inventory)
 
 **Part 4 — Security**
-19. [Threat Model & Hardening](#threat-model--hardening)
-20. [Container Hardening Matrix](#container-hardening-matrix)
-21. [Egress Firewall](#egress-firewall)
-22. [Prompt Injection Defense](#prompt-injection-defense)
-23. [PII & Secret Scanning](#pii--secret-scanning)
-24. [Credential Health Probes](#credential-health-probes)
+23. [Threat Model & Hardening](#threat-model--hardening)
+24. [Container Hardening Matrix](#container-hardening-matrix)
+25. [Egress Firewall](#egress-firewall)
+26. [Prompt Injection Defense](#prompt-injection-defense)
+27. [PII & Secret Scanning](#pii--secret-scanning)
+28. [Credential Health Probes](#credential-health-probes)
 
 **Part 5 — Deployment & Operations**
-25. [Two-Stage Docker Build](#two-stage-docker-build)
-26. [Blueprint System](#blueprint-system)
-27. [Integration Layer](#integration-layer)
-28. [Doctor: Preventive Diagnostics](#doctor-preventive-diagnostics)
-29. [Diagnostic Commands](#diagnostic-commands)
+29. [Two-Stage Docker Build](#two-stage-docker-build)
+30. [Blueprint System](#blueprint-system)
+31. [Integration Layer](#integration-layer)
+32. [Doctor: Preventive Diagnostics](#doctor-preventive-diagnostics)
+33. [Diagnostic Commands](#diagnostic-commands)
 
 **Part 6 — Platform & Business**
-30. [Managed Mode Architecture](#managed-mode-architecture)
-31. [Competitive Landscape](#competitive-landscape)
+34. [Managed Mode Architecture](#managed-mode-architecture)
+35. [Competitive Landscape](#competitive-landscape)
 
 **Appendices**
-32. [File Relationship Summary](#file-relationship-summary)
-33. [Key Principles](#key-principles)
-34. [Production Discoveries](#production-discoveries)
+36. [File Relationship Summary](#file-relationship-summary)
+37. [Key Principles](#key-principles)
+38. [Production Discoveries](#production-discoveries)
 
 ---
 
@@ -72,10 +76,12 @@ The key architectural insight: **the workspace files are the agent.** Everything
 Key facts:
 - Single process, single config file (`openclaw.json`), filesystem-backed state (no database except SQLite for memory search)
 - ~13,500 tokens of configuration across 11+ files
-- ~200+ configurable fields
+- ~200+ configurable fields, 47+ built-in agent tools
 - CLI talks to Gateway via WebSocket RPC (`ws://127.0.0.1:18789`)
 - Control UI is a Lit web-component app served by the Gateway itself
-- Channels (WhatsApp, Telegram, Discord, Slack, Signal, iMessage) are compiled-in adapters; plugin channels (Teams, Matrix, etc.) loaded by `src/plugins/loader.ts`
+- 11+ primary messaging channels (Telegram, WhatsApp, Discord, Slack, Signal, iMessage, Teams, Matrix, IRC, iMessage/BlueBubbles, Google Chat) compiled-in or as plugins; 100+ total plugin extensions
+- Media understanding pipeline: image, audio, and video analysis with configurable model providers
+- Voice capabilities: voice calls, Talk Mode (real-time conversation), TTS, real-time transcription
 - Agent runtime (`PiEmbeddedRunner`) runs in-process; tools are function calls or Docker exec for sandboxed ops
 - Config schema is TypeBox (`src/config/schema.ts`) — unknown keys cause Gateway to refuse to start
 - Configuration priority: **Environment Variables > Config File > Default Values**
@@ -98,10 +104,10 @@ Key facts:
 │                                                          │
 │  ┌──────────┐  ┌───────────┐  ┌──────────────────────┐  │
 │  │ Config   │  │ Session   │  │ Channel Adapters     │  │
-│  │ Loader   │  │ Manager   │  │ (telegram/, discord/,│  │
-│  │ (config/ │  │ (config/  │  │  slack/, whatsapp/,  │  │
-│  │  config  │  │  sessions │  │  signal/, imessage/, │  │
-│  │  .ts)    │  │  .ts)     │  │  + plugin channels)  │  │
+│  │ Loader   │  │ Manager   │  │ (11+ built-in:       │  │
+│  │ (config/ │  │ (config/  │  │  telegram, discord,  │  │
+│  │  config  │  │  sessions │  │  whatsapp, slack,    │  │
+│  │  .ts)    │  │  .ts)     │  │  + 100+ plugins)     │  │
 │  └────┬─────┘  └─────┬─────┘  └──────────┬───────────┘  │
 │       │              │                    │              │
 │       ▼              ▼                    ▼              │
@@ -182,10 +188,12 @@ Exposes config management, session RPCs, gateway status/health/restart, agent RP
 
 ---
 
-## Three Communication Channels
+## Three Communication Protocols
 
-| Channel | What it's for | When to use |
-|---------|--------------|-------------|
+ClawHQ communicates with OpenClaw through three protocol layers (not to be confused with messaging channels like Telegram/WhatsApp — see [Messaging Channels](#messaging-channels) below):
+
+| Protocol | What it's for | When to use |
+|----------|--------------|-------------|
 | **WebSocket RPC** | Config read/write, session ops, status, real-time events | Anything the Gateway manages at runtime |
 | **Filesystem** | Workspace files, memory, identity, cron jobs, backups | Anything stored as files |
 | **Subprocess** | Docker, iptables, openclaw CLI commands, system operations | Anything needing OS-level access |
@@ -203,6 +211,34 @@ Managed:
                                 → Filesystem (direct)
                                 → Subprocess (direct)
 ```
+
+---
+
+## Messaging Channels
+
+OpenClaw supports 11+ primary messaging channels with 100+ total plugin extensions. Channels are either compiled into the core or loaded as plugins at startup.
+
+### Primary Channels
+
+| Channel | Type | Key Features |
+|---------|------|-------------|
+| **Telegram** | Built-in | Bot API, DM/group, inline commands, media, approval callbacks |
+| **WhatsApp** | Built-in | Phone-based, multi-account, media, read receipts, reactions |
+| **Discord** | Built-in | Bot, guilds, threads, reactions, voice channel awareness |
+| **Slack** | Built-in | Bot + app tokens, channels, threads, reactions |
+| **Signal** | Built-in | Phone-based, end-to-end encrypted |
+| **iMessage** | Built-in | macOS only, requires companion app or BlueBubbles bridge |
+| **Microsoft Teams** | Plugin | Federated OAuth, reactions, file attachments, delegated auth |
+| **Matrix** | Plugin | Federated, self-hosted compatible |
+| **IRC** | Plugin | Traditional IRC protocol |
+| **Google Chat** | Plugin | Workspace integration |
+| **Mattermost** | Plugin | Self-hosted team chat |
+
+### Additional Plugin Channels
+
+Twitch, Nostr, LINE, Feishu/Lark, Zalo, Nextcloud Talk, Synology Chat, BlueBubbles (iMessage bridge), QQ, Webhook (generic HTTP), and more. The plugin ecosystem is actively growing.
+
+All channels share common config: `enabled`, `dmPolicy` (pairing/allowlist/open/disabled), `allowFrom`, `groupPolicy`, `ackReaction`. See the [Channel Configuration](#channel-configuration) section in Part 3 for details.
 
 ---
 
@@ -1031,23 +1067,6 @@ The gateway picks up the change via its dynamic config watcher — no second res
 | Environment | 4 | 0 | 2 | 2 |
 | **TOTAL** | **~200+** | **~31** | **~81** | **~97** |
 
-### Environment Variables Added in v0.8.6–v0.8.10
-
-The following environment variables were introduced or fixed across OpenClaw v0.8.6–v0.8.10. They are set in `.env` and take precedence over config file values.
-
-| Variable | Purpose | Version | Notes |
-|---|---|---|---|
-| `WEBSOCKET_EVENT_CALLER_TIMEOUT` | WebSocket event caller timeout (ms) | v0.8.6 | Was hardcoded 60s; now configurable. ClawHQ default: 60000 |
-| `VECTOR_DB` | Vector database backend selection | v0.8.7 | New option `mariadb-vector` added alongside existing backends |
-| `OPENID_END_SESSION_ENDPOINT` | Custom OIDC logout endpoint URL | v0.8.7 | Overrides auto-discovered OIDC end-session endpoint |
-| `USER_PERMISSIONS_ACCESS_GRANTS_ALLOW_USERS` | Enable/disable per-user sharing | v0.8.8 | Set `false` to disable individual access grants |
-| `DEFAULT_GROUP_SHARE_PERMISSION` | Default permission for group shares | v0.8.8 | Values: `read`, `write`, `admin` |
-| `ENABLE_AUDIT_STDOUT` | Audit log output to stdout | v0.8.6 (fixed v0.8.9) | Was broken until v0.8.9. ClawHQ default: `true` |
-| `WEB_SEARCH_DOMAIN_FILTER_LIST` | Domain filter for web search | v0.8.6 (fixed v0.8.9) | Comma-separated. Was broken until v0.8.9 |
-| `REPORTING_ENDPOINTS` | CSP violation reporting endpoint | v0.8.9 | Receives Content-Security-Policy reports from Gateway UI |
-| `OAUTH_UPDATE_NAME_ON_LOGIN` | Sync display name from OAuth provider | v0.8.10 | Set `true` to update name on each login |
-| `OAUTH_UPDATE_EMAIL_ON_LOGIN` | Sync email from OAuth provider | v0.8.10 | Set `true` to update email on each login |
-
 ### Config Management Meta-Capabilities
 
 | Capability | Description | Priority |
@@ -1410,15 +1429,158 @@ Plugin install only accepts npm registry specs (package name + optional exact ve
 | Plugin | Architecture | Use Case |
 |--------|-------------|----------|
 | `memory-core` (default) | SQLite + sqlite-vec, keyword + vector hybrid | Standard memory search, works out of the box |
+| `memory-wiki` | Markdown wiki-based | Structured knowledge base with pages, cross-references, and diary UI |
+| `memory-lancedb` | LanceDB vector database | High-performance vector search for large memory stores |
+| **Active Memory** | Dedicated sub-agent | Automatic context recall before main reply (v2026.4.10+) |
 | **QMD** | Local sidecar, reranking, query expansion | Better recall accuracy, indexes directories outside workspace |
 | **Cognee** | Knowledge graph + entity extraction | Relational queries ("who manages auth?"), auto-indexes MEMORY.md |
 | **Mem0** | Auto-extraction, vector DB, deduplication | Automatic fact capture without manual curation, cloud or self-hosted |
 
 ---
 
+## Media Understanding
+
+OpenClaw can interpret images, transcribe audio, and analyze video when configured. This is **not enabled by default** — it requires explicit config even when the model supports the modality.
+
+### Configuration
+
+```json5
+{
+  tools: {
+    media: {
+      // Shared fallback models for all media types
+      models: [{ provider: "anthropic", model: "claude-sonnet-4-6" }],
+      concurrency: 2,  // max concurrent media ops per turn
+
+      image: {
+        enabled: true,
+        models: [{ provider: "ollama", model: "gemma4:26b" }],
+        timeoutSeconds: 120,  // increase for local models (default 30s)
+        maxBytes: 10485760,   // 10MB max per image
+      },
+      audio: {
+        enabled: true,
+        models: [{ provider: "openai", model: "whisper-1" }],
+        timeoutSeconds: 60,
+        language: "en",       // language hint for transcription
+      },
+      video: {
+        enabled: true,
+        models: [{ provider: "google", model: "gemini-2.5-pro" }],
+        timeoutSeconds: 180,
+      },
+    },
+  },
+}
+```
+
+### Media Staging Pipeline
+
+When a user shares media (screenshot, voice note, PDF) via a messaging channel:
+
+1. Channel adapter downloads the file to `~/.openclaw/media/` (the media directory)
+2. Staging pipeline copies it into `workspace/media/inbound/<filename>` (sandbox-safe)
+3. Media understanding model processes the content and adds the description to the agent's context
+4. Agent sees the interpreted text, not the raw file
+
+**Key gotcha:** `tools.fs.workspaceOnly: true` does NOT block media understanding. The staging pipeline operates independently of the agent's file tools — it copies files into workspace before the agent processes them. The `fs` restriction only governs the agent's `read`/`write`/`edit` tools.
+
+### Supported Modalities
+
+| Modality | Capability | Example Use |
+|----------|-----------|-------------|
+| **Image** | Vision/description | Screenshots, stock charts, whiteboard photos, PDFs |
+| **Audio** | Transcription | Voice notes, meeting recordings |
+| **Video** | Description | Screen recordings, video messages |
+
+### Provider Notes
+
+- **Ollama (local):** Gemma4:26b is vision-capable. Set `timeoutSeconds: 120`+ for local inference — default 30s is too short for 26B parameters on mixed CPU/GPU.
+- **Anthropic:** Claude Sonnet/Opus support image understanding natively.
+- **OpenAI:** Whisper for audio transcription, GPT-4o for image understanding.
+- **Google:** Gemini models support all three modalities.
+
+---
+
+## Voice & Real-time Capabilities
+
+OpenClaw supports voice interaction through multiple subsystems:
+
+| Capability | Plugin/Module | Description |
+|-----------|--------------|-------------|
+| **Voice Calls** | `voice-call` plugin | Inbound/outbound voice calls with real-time speech |
+| **Talk Mode** | `talk-voice` plugin | Real-time conversational voice (push-to-talk or hands-free) |
+| **TTS** | `src/tts/` | Text-to-speech output with provider registry (ElevenLabs, etc.) |
+| **Real-time Transcription** | `src/realtime-transcription/` | Live audio stream transcription |
+| **Phone Control** | `phone-control` plugin | Phone device integration |
+
+Talk Mode supports MLX local speech provider on macOS for zero-latency, fully offline voice interaction.
+
+### TTS Configuration
+
+```json5
+{
+  tts: {
+    provider: "elevenlabs",     // or "openai", "mlx" (local)
+    voice: "rachel",
+    autoMode: true,             // auto-detect when to speak
+  },
+}
+```
+
+---
+
+## Diagnostics & Observability
+
+### OpenTelemetry Integration
+
+OpenClaw supports full OpenTelemetry export for traces, metrics, and logs via the `diagnostics-otel` plugin.
+
+```json5
+{
+  diagnostics: {
+    otel: {
+      enabled: true,
+      endpoint: "http://localhost:4318",
+      protocol: "http/protobuf",  // or "grpc"
+      serviceName: "openclaw-agent",
+      traces: true,
+      metrics: true,
+      logs: true,
+      sampleRate: 1.0,
+      flushIntervalMs: 5000,
+    },
+  },
+}
+```
+
+### Diagnostic Flags
+
+```json5
+{
+  diagnostics: {
+    flags: ["cache-trace"],    // wildcard support: ["*"] enables all
+  },
+}
+```
+
+Cache trace logging writes JSONL output for embedded agent run inspection — useful for debugging tool execution and model behavior.
+
+### Additional Config Sections
+
+| Section | Purpose |
+|---------|---------|
+| `diagnostics.*` | OpenTelemetry, debug flags, cache trace |
+| `logging.*` | Log levels, file paths, console style, redaction |
+| `update.*` | Update channel (stable/beta/dev), auto-update |
+| `ui.*` | UI accent color, assistant name/avatar |
+| `meta.*` | Config metadata (lastTouched version/timestamp) |
+
+---
+
 ## Built-in Tools Inventory
 
-These tools ship with OpenClaw core and are available without installing any plugins. They are the typed function definitions sent to the model API that the agent can invoke.
+47+ built-in tools ship with OpenClaw core. They are the typed function definitions sent to the model API that the agent can invoke.
 
 ### Core Tool Groups
 
@@ -1426,10 +1588,13 @@ These tools ship with OpenClaw core and are available without installing any plu
 |-------|-------|---------|
 | `group:fs` | `read`, `write`, `edit`, `apply_patch` | File system operations within workspace |
 | `group:runtime` | `exec`, `process` | Shell command execution, process management |
-| `group:sessions` | `session_status`, `sessions_spawn` | Session management, subagent spawning |
+| `group:sessions` | `session_status`, `sessions_spawn`, `sessions_send`, `sessions_list`, `sessions_history`, `sessions_yield` | Session management, subagent spawning, cross-session messaging |
 | `group:memory` | `memory_search`, `memory_get` | Semantic search and file retrieval over memory |
+| `group:web` | `web_search`, `web_fetch`, `browser` | Web search, page fetch, browser automation |
 
 ### Individual Tools
+
+**File System & Execution**
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
@@ -1438,17 +1603,55 @@ These tools ship with OpenClaw core and are available without installing any plu
 | `write` | Write files | |
 | `edit` | Edit files in-place | |
 | `apply_patch` | Apply unified diff patches | |
+
+**Web & Search**
+
+| Tool | Purpose | Notes |
+|------|---------|-------|
 | `browser` | Browse web pages via CDP/Chromium | Auto-starts sandbox browser when needed |
-| `web_search` | Web search | Requires search provider config or API key |
-| `web_fetch` | Fetch web page content | |
-| `image` | Analyze images with configured image model | Requires `imageModel` configured |
-| `image_generate` | Generate or edit images | Requires image provider auth (openai/google/fal) |
+| `web_search` | Web search | Providers: Brave, DuckDuckGo, Exa, Perplexity, Tavily, SearXNG |
+| `web_fetch` | Fetch web page content | Subject to SSRF policy |
+
+**Media & Content Generation**
+
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| `image` | Analyze images with vision model | Requires `tools.media.image.enabled` |
+| `image_generate` | Generate or edit images | Providers: OpenAI (GPT-Image-1), Google, fal |
+| `video_generate` | Generate video | Providers: Seedance 2.0, etc. |
+| `music_generate` | Generate music/audio | |
+| `tts` | Text-to-speech | Providers: ElevenLabs, OpenAI, MLX (local) |
+| `pdf` | Analyze PDF documents | Native provider support |
+| `canvas` | Canvas rendering for visual content | |
+
+**Communication & Sessions**
+
+| Tool | Purpose | Notes |
+|------|---------|-------|
 | `message` | Send messages to channels | Subject to channel config and permissions |
 | `cron` | Manage cron jobs (add/edit/remove/list) | |
+| `sessions_spawn` | Spawn subagent sessions | Subject to `subagents.*` config |
+| `sessions_send` | Send messages to other sessions | Cross-session communication |
+| `sessions_list` | List active sessions | |
+| `sessions_history` | Read session transcript history | |
+| `sessions_yield` | Yield control back to parent session | For subagent coordination |
+| `session_status` | Query session metadata | Always available |
+| `agents_list` | List configured agents | |
+| `subagents` | Manage subagent lifecycle | |
+| `update_plan` | Update an in-progress plan | |
+| `gateway` | Gateway management operations | |
+
+**Memory**
+
+| Tool | Purpose | Notes |
+|------|---------|-------|
 | `memory_search` | Semantic search over memory files | Requires `memorySearch.enabled` |
 | `memory_get` | Read specific memory file or line range | |
-| `sessions_spawn` | Spawn subagent sessions | Subject to `subagents.*` config |
-| `session_status` | Query session metadata | Always available |
+
+**Device & Nodes**
+
+| Tool | Purpose | Notes |
+|------|---------|-------|
 | `nodes_canvas` | Node display management | For paired companion devices |
 | `nodes_camera` | Capture camera/screen from nodes | Requires foregrounded node app |
 | `nodes_location` | Get device location | Returns JSON (lat/lon/accuracy/timestamp) |
@@ -2004,6 +2207,7 @@ openclaw.json (central config — JSON5, hot-reloaded by Gateway)
 ├── auth.*         → Auth profiles per provider, failover order
 ├── channels.*     → Telegram, WhatsApp, Discord, Slack, Signal, iMessage, etc.
 ├── tools.*        → Allow/deny lists, profiles, groups, per-provider restrictions, exec config
+│   └── media.*    → Image/audio/video understanding: models, timeouts, concurrency
 ├── sandbox.*      → Docker isolation: mode, scope, image, network, binds, limits
 ├── session.*      → DM scope, thread bindings, reset mode
 ├── skills.*       → Global allowList/denyList, per-skill env vars and config
@@ -2018,7 +2222,12 @@ openclaw.json (central config — JSON5, hot-reloaded by Gateway)
 ├── logging.*      → Level, file path, console style, redaction
 ├── env.*          → Environment variables, shell env passthrough
 ├── secrets.*      → Secret provider backends (env/file/exec)
-└── discovery.*    → mDNS/Bonjour service discovery
+├── discovery.*    → mDNS/Bonjour service discovery
+├── diagnostics.*  → OpenTelemetry export, debug flags, cache trace
+├── logging.*      → Log levels, file paths, console style, redaction
+├── update.*       → Update channel (stable/beta/dev), auto-update
+├── ui.*           → UI accent color, assistant name/avatar
+└── meta.*         → Config metadata (lastTouched version/timestamp)
 
 workspace/ (the agent's brain — 8 files auto-loaded each session)
 ├── SOUL.md          ← WHO the agent is (personality, values, hard limits, style)
@@ -2047,6 +2256,8 @@ workspace/ (the agent's brain — 8 files auto-loaded each session)
 ├── cron/
 │   ├── jobs.json    ← Persisted scheduled job definitions
 │   └── runs/        ← Job execution history (.jsonl per job)
+├── media/           ← Inbound media files (images, audio, video, PDFs)
+│   └── inbound/     ← Channel-downloaded attachments staged for processing
 ├── skills/          ← Installed ClawHub skills (managed tier)
 ├── hooks/           ← User-installed hooks (managed tier, shared across workspaces)
 ├── plugins/         ← Installed plugins
