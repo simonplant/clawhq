@@ -160,6 +160,9 @@ export function compile(
     // Cron
     { relativePath: "cron/jobs.json", content: renderCronJobs(profile, resolvedProviders, config.model) },
 
+    // Substack publication aliases — user-managed, created empty on init
+    { relativePath: "workspace/config/substack-aliases.json", content: "{}\n" },
+
     // Ops — egress includes provider-specific domains
     { relativePath: "ops/firewall/allowlist.yaml", content: renderAllowlistFromDomains(profile, [...egressSet]) },
 

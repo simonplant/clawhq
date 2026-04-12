@@ -26,9 +26,10 @@ export type { ApplyOptions, ApplyProgress, ApplyReport, ApplyResult } from "./ty
 
 /** Files the compiler generates but apply must not overwrite. */
 const SKIP_PATHS = new Set([
-  "workspace/MEMORY.md",  // user's curated memory
-  "clawhq.yaml",          // we're reading from it — don't overwrite
-  "cron/jobs.json",        // agent/user owns cron schedule after init
+  "workspace/MEMORY.md",                        // user's curated memory
+  "clawhq.yaml",                                // we're reading from it — don't overwrite
+  "cron/jobs.json",                              // agent/user owns cron schedule after init
+  "workspace/config/substack-aliases.json",      // user's publication aliases
 ]);
 
 /** .env placeholder value — the writer preserves real values over this. */
