@@ -1,0 +1,510 @@
+#!/bin/bash
+# Tradier CLI — real-time trading via credential proxy
+# Usage: tradier <command> [args]
+#
+# Commands:
+#   tradier account                     — show account info (equity, cash, buying power)
+#   tradier positions                   — list open positions
+#   tradier orders                      — list recent orders
+#   tradier orders place <side> <qty> <symbol> [type] [price]
+#                                       — place an order (side: buy/sell/sell_short/buy_to_cover)
+#                                       — type: market/limit/stop/stop_limit (default: market)
+#   tradier orders cancel <order_id>    — cancel a pending order
+#   tradier orders cancel-all           — cancel all open orders
+#   tradier bracket <side> <qty> <symbol> <limit_price> <stop_price> <target_price>
+#                                       — OTOCO bracket order (entry + stop + target)
+#   tradier quote <symbol> [symbol...]  — real-time quote (bid/ask/last, supports multiple)
+#   tradier bars <symbol> [interval] [days]
+#                                       — historical bars (interval: daily/weekly/monthly, default daily)
+#
+# Examples:
+#   tradier account
+#   tradier positions
+#   tradier quote AAPL SPY ES
+#   tradier bars SPY daily 30
+#   tradier orders place buy 10 SPY market
+#   tradier orders place buy 10 SPY limit 450.00
+#   tradier orders place sell_short 5 TSLA limit 200.00
+#   tradier bracket buy 10 SPY 450.00 445.00 460.00
+#   tradier orders cancel 12345
+#
+# Environment:
+#   CRED_PROXY_URL       — credential proxy base URL (required, injects Bearer token server-side)
+#   TRADIER_ACCOUNT_ID   — Tradier account ID (required for trading/account commands)
+
+set -euo pipefail
+
+if [ -z "${CRED_PROXY_URL:-}" ]; then
+  echo "Error: CRED_PROXY_URL not set" >&2
+  exit 1
+fi
+
+API="${CRED_PROXY_URL}/tradier/v1"
+
+# --- helpers ---
+
+_curl() {
+  local url="$1"; shift
+  local out http_code
+  out=$(curl --silent --max-time 15 -w '\n%{http_code}' \
+    -H "Accept: application/json" \
+    "$url" "$@")
+  http_code=$(echo "$out" | tail -1)
+  out=$(echo "$out" | sed '$d')
+  if [[ "$http_code" -ge 400 ]] 2>/dev/null; then
+    local msg
+    msg=$(echo "$out" | jq -r '.fault.faultstring // .errors.error // .error // empty' 2>/dev/null)
+    _err "HTTP $http_code${msg:+: $msg}"
+  fi
+  echo "$out"
+}
+
+_err() {
+  echo "Error: $*" >&2
+  exit 1
+}
+
+_fmt_money() {
+  printf "%'.2f" "$1" 2>/dev/null || echo "$1"
+}
+
+_account_id() {
+  if [ -n "${TRADIER_ACCOUNT_ID:-}" ]; then
+    echo "$TRADIER_ACCOUNT_ID"
+    return
+  fi
+  # Auto-discover: fetch user profile and grab first account ID
+  local body
+  body=$(_curl "${API}/user/profile")
+  local aid
+  aid=$(echo "$body" | jq -r '
+    .profile.account.account_number //
+    (.profile.account | if type == "array" then .[0].account_number else .account_number end) //
+    empty' 2>/dev/null)
+  if [ -z "$aid" ] || [ "$aid" = "null" ]; then
+    _err "Cannot determine account ID. Set TRADIER_ACCOUNT_ID."
+  fi
+  echo "$aid"
+}
+
+# Tradier returns single items as objects, arrays as arrays.
+# Normalize to always-array.
+_ensure_array() {
+  jq 'if type == "array" then . elif type == "object" then [.] elif . == null then [] else [.] end'
+}
+
+_help() {
+  sed -n '2,/^[^#]/{ s/^# \?//p; }' "$0" | head -n -1
+  exit 0
+}
+
+# --- commands ---
+
+cmd_account() {
+  local aid
+  aid=$(_account_id)
+
+  local body
+  body=$(_curl "${API}/accounts/${aid}/balances")
+
+  local total_equity total_cash buying_power long_mv short_mv open_pl close_pl
+  total_equity=$(echo "$body" | jq -r '.balances.total_equity // .balances.equity // "N/A"')
+  total_cash=$(echo "$body" | jq -r '.balances.total_cash // .balances.cash.cash_available // "N/A"')
+  long_mv=$(echo "$body" | jq -r '.balances.long_market_value // "0"')
+  short_mv=$(echo "$body" | jq -r '.balances.short_market_value // "0"')
+  open_pl=$(echo "$body" | jq -r '.balances.open_pl // "N/A"')
+  close_pl=$(echo "$body" | jq -r '.balances.close_pl // "N/A"')
+
+  # Buying power depends on account type (margin vs cash)
+  buying_power=$(echo "$body" | jq -r '
+    .balances.margin.stock_buying_power //
+    .balances.cash.cash_available //
+    .balances.buying_power //
+    "N/A"')
+
+  local acct_type
+  acct_type=$(echo "$body" | jq -r '.balances.account_type // "unknown"')
+
+  echo "=== Tradier Account ($acct_type) ==="
+  echo "Equity:        \$$(_fmt_money "$total_equity")"
+  echo "Cash:          \$$(_fmt_money "$total_cash")"
+  echo "Buying Power:  \$$(_fmt_money "$buying_power")"
+  echo "Long Value:    \$$(_fmt_money "$long_mv")"
+  echo "Short Value:   \$$(_fmt_money "$short_mv")"
+  echo "Open P&L:      \$$(_fmt_money "$open_pl")"
+  echo "Closed P&L:    \$$(_fmt_money "$close_pl")"
+}
+
+cmd_positions() {
+  local aid
+  aid=$(_account_id)
+
+  local body
+  body=$(_curl "${API}/accounts/${aid}/positions")
+
+  local positions
+  positions=$(echo "$body" | jq '.positions.position' | _ensure_array)
+
+  local count
+  count=$(echo "$positions" | jq 'length')
+
+  if [ "$count" = "0" ] || [ "$count" = "null" ]; then
+    echo "No open positions."
+    return
+  fi
+
+  # Tradier positions don't include current price — fetch quotes for all symbols
+  local symbols
+  symbols=$(echo "$positions" | jq -r '.[].symbol' | sort -u | tr '\n' ',' | sed 's/,$//')
+
+  local quotes_body
+  quotes_body=$(_curl "${API}/markets/quotes?symbols=${symbols}")
+  local quotes
+  quotes=$(echo "$quotes_body" | jq '.quotes.quote' | _ensure_array)
+
+  printf "%-8s %5s %8s %10s %10s %10s %8s\n" "SYMBOL" "QTY" "SIDE" "COST" "CURRENT" "P&L" "P&L %"
+  printf "%-8s %5s %8s %10s %10s %10s %8s\n" "------" "---" "----" "----" "-------" "---" "-----"
+
+  echo "$positions" | jq -c '.[]' | while read -r pos; do
+    local sym qty cost_basis
+    sym=$(echo "$pos" | jq -r '.symbol')
+    qty=$(echo "$pos" | jq -r '.quantity')
+    cost_basis=$(echo "$pos" | jq -r '.cost_basis')
+
+    # Determine side from quantity sign
+    local side abs_qty
+    if jq -e "($qty) < 0" >/dev/null 2>&1; then
+      side="short"
+      abs_qty=$(jq -n "($qty) * -1")
+    else
+      side="long"
+      abs_qty="$qty"
+    fi
+
+    local avg_cost
+    avg_cost=$(jq -n "($cost_basis) / ($abs_qty)" 2>/dev/null || echo "0")
+
+    # Look up current price from quotes
+    local cur_price
+    cur_price=$(echo "$quotes" | jq -r --arg s "$sym" '.[] | select(.symbol == $s) | .last // .close // 0')
+    [ -z "$cur_price" ] && cur_price="0"
+
+    local pl pl_pct
+    if [ "$side" = "long" ]; then
+      pl=$(jq -n "($cur_price - $avg_cost) * $abs_qty" | xargs printf "%.2f")
+      pl_pct=$(jq -n "if $avg_cost > 0 then ($cur_price - $avg_cost) / $avg_cost * 100 else 0 end" | xargs printf "%.2f")
+    else
+      pl=$(jq -n "($avg_cost - $cur_price) * $abs_qty" | xargs printf "%.2f")
+      pl_pct=$(jq -n "if $avg_cost > 0 then ($avg_cost - $cur_price) / $avg_cost * 100 else 0 end" | xargs printf "%.2f")
+    fi
+
+    printf "%-8s %5s %8s %10s %10s %10s %7s%%\n" \
+      "$sym" "$abs_qty" "$side" \
+      "\$$(printf "%.2f" "$avg_cost")" \
+      "\$$(printf "%.2f" "$cur_price")" \
+      "\$$pl" "$pl_pct"
+  done
+}
+
+cmd_orders_list() {
+  local aid
+  aid=$(_account_id)
+
+  local body
+  body=$(_curl "${API}/accounts/${aid}/orders?includeTags=true")
+
+  local orders
+  orders=$(echo "$body" | jq '.orders.order' | _ensure_array)
+
+  local count
+  count=$(echo "$orders" | jq 'length')
+
+  if [ "$count" = "0" ] || [ "$count" = "null" ]; then
+    echo "No recent orders."
+    return
+  fi
+
+  # Show most recent 20
+  printf "%-12s %-8s %-12s %6s %-10s %-12s %s\n" "DATE" "SYMBOL" "SIDE" "QTY" "TYPE" "STATUS" "ID"
+  printf "%-12s %-8s %-12s %6s %-10s %-12s %s\n" "----" "------" "----" "---" "----" "------" "--"
+
+  echo "$orders" | jq -c '.[-20:][]' | while read -r order; do
+    local date sym side qty typ status oid
+    date=$(echo "$order" | jq -r '.create_date[:10] // "N/A"')
+    sym=$(echo "$order" | jq -r '.symbol // "multi"')
+    side=$(echo "$order" | jq -r '.side // .class // "N/A"')
+    qty=$(echo "$order" | jq -r '.quantity // "?"')
+    typ=$(echo "$order" | jq -r '.type // "N/A"')
+    status=$(echo "$order" | jq -r '.status // "N/A"')
+    oid=$(echo "$order" | jq -r '.id')
+    printf "%-12s %-8s %-12s %6s %-10s %-12s %s\n" "$date" "$sym" "$side" "$qty" "$typ" "$status" "$oid"
+  done
+}
+
+cmd_orders_place() {
+  local side="${1:-}" qty="${2:-}" symbol="${3:-}" type="${4:-market}" price="${5:-}"
+
+  [ -z "$side" ] || [ -z "$qty" ] || [ -z "$symbol" ] && \
+    _err "Usage: tradier orders place <buy|sell|sell_short|buy_to_cover> <qty> <symbol> [market|limit|stop|stop_limit] [price]"
+
+  side=$(echo "$side" | tr '[:upper:]' '[:lower:]')
+  symbol=$(echo "$symbol" | tr '[:lower:]' '[:upper:]')
+  type=$(echo "$type" | tr '[:upper:]' '[:lower:]')
+
+  case "$side" in
+    buy|sell|sell_short|buy_to_cover) ;;
+    *) _err "Side must be: buy, sell, sell_short, or buy_to_cover" ;;
+  esac
+
+  case "$type" in
+    market|limit|stop|stop_limit) ;;
+    *) _err "Type must be: market, limit, stop, or stop_limit" ;;
+  esac
+
+  [[ "$type" == "limit" || "$type" == "stop_limit" ]] && [ -z "$price" ] && \
+    _err "Limit/stop_limit orders require a price"
+
+  local aid
+  aid=$(_account_id)
+
+  # Build form data (Tradier uses form-encoded, not JSON)
+  local form_data="class=equity&symbol=${symbol}&side=${side}&quantity=${qty}&type=${type}&duration=day"
+  if [ -n "$price" ]; then
+    if [ "$type" = "stop" ]; then
+      form_data="${form_data}&stop=${price}"
+    elif [ "$type" = "stop_limit" ]; then
+      # stop_limit needs both stop and limit — use price as limit, caller can override
+      form_data="${form_data}&price=${price}"
+      [ -n "${6:-}" ] && form_data="${form_data}&stop=${6}"
+    else
+      form_data="${form_data}&price=${price}"
+    fi
+  fi
+
+  local body
+  body=$(_curl "${API}/accounts/${aid}/orders" \
+    -X POST \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "$form_data")
+
+  local oid status
+  oid=$(echo "$body" | jq -r '.order.id // "unknown"')
+  status=$(echo "$body" | jq -r '.order.status // "unknown"')
+  echo "Order placed: $side $qty $symbol ($type) — ID: $oid, Status: $status"
+}
+
+cmd_bracket() {
+  local side="${1:-}" qty="${2:-}" symbol="${3:-}" limit_price="${4:-}" stop_price="${5:-}" target_price="${6:-}"
+
+  [ -z "$side" ] || [ -z "$qty" ] || [ -z "$symbol" ] || \
+  [ -z "$limit_price" ] || [ -z "$stop_price" ] || [ -z "$target_price" ] && \
+    _err "Usage: tradier bracket <buy|sell_short> <qty> <symbol> <entry_limit> <stop_loss> <profit_target>"
+
+  side=$(echo "$side" | tr '[:upper:]' '[:lower:]')
+  symbol=$(echo "$symbol" | tr '[:lower:]' '[:upper:]')
+
+  local exit_side
+  case "$side" in
+    buy)        exit_side="sell" ;;
+    sell_short) exit_side="buy_to_cover" ;;
+    *)          _err "Bracket entry side must be: buy or sell_short" ;;
+  esac
+
+  local aid
+  aid=$(_account_id)
+
+  # OTOCO: leg[0] = entry, leg[1] = profit target (limit), leg[2] = stop loss
+  local form_data="class=otoco"
+  form_data="${form_data}&duration[0]=day&side[0]=${side}&quantity[0]=${qty}&type[0]=limit&price[0]=${limit_price}&symbol[0]=${symbol}"
+  form_data="${form_data}&duration[1]=gtc&side[1]=${exit_side}&quantity[1]=${qty}&type[1]=limit&price[1]=${target_price}&symbol[1]=${symbol}"
+  form_data="${form_data}&duration[2]=gtc&side[2]=${exit_side}&quantity[2]=${qty}&type[2]=stop&stop[2]=${stop_price}&symbol[2]=${symbol}"
+
+  local body
+  body=$(_curl "${API}/accounts/${aid}/orders" \
+    -X POST \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "$form_data")
+
+  local oid status
+  oid=$(echo "$body" | jq -r '.order.id // "unknown"')
+  status=$(echo "$body" | jq -r '.order.status // "unknown"')
+  echo "Bracket order placed: $side $qty $symbol"
+  echo "  Entry: $limit_price (limit) | Stop: $stop_price | Target: $target_price"
+  echo "  ID: $oid, Status: $status"
+}
+
+cmd_orders_cancel() {
+  local order_id="${1:-}"
+  [ -z "$order_id" ] && _err "Usage: tradier orders cancel <order_id>"
+
+  local aid
+  aid=$(_account_id)
+
+  local body
+  body=$(_curl "${API}/accounts/${aid}/orders/${order_id}" -X DELETE)
+
+  local status
+  status=$(echo "$body" | jq -r '.order.status // "ok"' 2>/dev/null)
+  echo "Order $order_id cancelled (status: $status)."
+}
+
+cmd_orders_cancel_all() {
+  # Tradier has no bulk cancel — fetch open orders and cancel each
+  local aid
+  aid=$(_account_id)
+
+  local body
+  body=$(_curl "${API}/accounts/${aid}/orders?includeTags=false")
+
+  local order_ids
+  order_ids=$(echo "$body" | jq -r '.orders.order' | _ensure_array | jq -r '.[] | select(.status == "open" or .status == "pending" or .status == "partially_filled") | .id')
+
+  if [ -z "$order_ids" ]; then
+    echo "No open orders to cancel."
+    return
+  fi
+
+  local count=0
+  while read -r oid; do
+    curl --silent --max-time 15 -X DELETE \
+      -H "Accept: application/json" \
+      "${API}/accounts/${aid}/orders/${oid}" >/dev/null 2>&1
+    count=$((count + 1))
+  done <<< "$order_ids"
+
+  echo "Cancelled $count open orders."
+}
+
+cmd_quote() {
+  [ $# -eq 0 ] && _err "Usage: tradier quote <symbol> [symbol...]"
+
+  # Join all args as comma-separated uppercase symbols
+  local symbols=""
+  for s in "$@"; do
+    s=$(echo "$s" | tr '[:lower:]' '[:upper:]')
+    symbols="${symbols:+$symbols,}$s"
+  done
+
+  local body
+  body=$(_curl "${API}/markets/quotes?symbols=${symbols}")
+
+  local quotes
+  quotes=$(echo "$body" | jq '.quotes.quote' | _ensure_array)
+
+  local count
+  count=$(echo "$quotes" | jq 'length')
+
+  if [ "$count" = "0" ] || [ "$count" = "null" ]; then
+    echo "No quotes returned."
+    return
+  fi
+
+  echo "$quotes" | jq -c '.[]' | while read -r q; do
+    local sym last bid ask vol chg chg_pct open high low prev_close desc
+    sym=$(echo "$q" | jq -r '.symbol')
+    desc=$(echo "$q" | jq -r '.description // ""')
+    last=$(echo "$q" | jq -r '.last // "N/A"')
+    bid=$(echo "$q" | jq -r '.bid // "N/A"')
+    ask=$(echo "$q" | jq -r '.ask // "N/A"')
+    vol=$(echo "$q" | jq -r '.volume // "N/A"')
+    chg=$(echo "$q" | jq -r '.change // "N/A"')
+    chg_pct=$(echo "$q" | jq -r '.change_percentage // "N/A"')
+    open=$(echo "$q" | jq -r '.open // "N/A"')
+    high=$(echo "$q" | jq -r '.high // "N/A"')
+    low=$(echo "$q" | jq -r '.low // "N/A"')
+    prev_close=$(echo "$q" | jq -r '.prevclose // "N/A"')
+
+    echo "=== $sym ==="
+    [ -n "$desc" ] && [ "$desc" != "null" ] && echo "  $desc"
+    echo "Last:     \$$last"
+    [ "$bid" != "N/A" ] && [ "$bid" != "null" ] && echo "Bid:      \$$bid"
+    [ "$ask" != "N/A" ] && [ "$ask" != "null" ] && echo "Ask:      \$$ask"
+    [ "$chg" != "N/A" ] && [ "$chg" != "null" ] && echo "Change:   \$$chg ($chg_pct%)"
+    [ "$vol" != "N/A" ] && [ "$vol" != "null" ] && echo "Volume:   $vol"
+    if [ "$low" != "N/A" ] && [ "$low" != "null" ]; then
+      echo "Day:      \$$low — \$$high (open \$$open)"
+    fi
+    [ "$prev_close" != "N/A" ] && [ "$prev_close" != "null" ] && echo "Prev:     \$$prev_close"
+    echo
+  done
+}
+
+cmd_bars() {
+  local symbol="${1:-}" interval="${2:-daily}" days="${3:-30}"
+  [ -z "$symbol" ] && _err "Usage: tradier bars <symbol> [daily|weekly|monthly] [days]"
+  symbol=$(echo "$symbol" | tr '[:lower:]' '[:upper:]')
+  interval=$(echo "$interval" | tr '[:upper:]' '[:lower:]')
+
+  case "$interval" in
+    daily|weekly|monthly) ;;
+    *) _err "Interval must be: daily, weekly, or monthly" ;;
+  esac
+
+  # Calculate date range
+  local end_date start_date
+  end_date=$(date +%Y-%m-%d)
+  start_date=$(date -d "-${days} days" +%Y-%m-%d 2>/dev/null || date -v-${days}d +%Y-%m-%d 2>/dev/null)
+
+  local body
+  body=$(_curl "${API}/markets/history?symbol=${symbol}&interval=${interval}&start=${start_date}&end=${end_date}")
+
+  local bars
+  bars=$(echo "$body" | jq '.history.day' | _ensure_array)
+
+  local count
+  count=$(echo "$bars" | jq 'length')
+
+  if [ "$count" = "0" ] || [ "$count" = "null" ]; then
+    echo "No bars returned for $symbol ($interval)."
+    return
+  fi
+
+  echo "=== $symbol — $interval (last $count bars) ==="
+  printf "%-12s %10s %10s %10s %10s %12s\n" "DATE" "OPEN" "HIGH" "LOW" "CLOSE" "VOLUME"
+  printf "%-12s %10s %10s %10s %10s %12s\n" "----" "----" "----" "---" "-----" "------"
+
+  echo "$bars" | jq -c '.[]' | while read -r bar; do
+    local d o h l c v
+    d=$(echo "$bar" | jq -r '.date')
+    o=$(echo "$bar" | jq -r '.open')
+    h=$(echo "$bar" | jq -r '.high')
+    l=$(echo "$bar" | jq -r '.low')
+    c=$(echo "$bar" | jq -r '.close')
+    v=$(echo "$bar" | jq -r '.volume')
+    printf "%-12s %10s %10s %10s %10s %12s\n" "$d" "\$$o" "\$$h" "\$$l" "\$$c" "$v"
+  done
+}
+
+# --- dispatch ---
+
+cmd="${1:-}"
+[ -z "$cmd" ] && _help
+
+shift
+
+case "$cmd" in
+  account)    cmd_account ;;
+  positions)  cmd_positions ;;
+  orders)
+    subcmd="${1:-list}"
+    shift 2>/dev/null || true
+    case "$subcmd" in
+      list)       cmd_orders_list ;;
+      place)      cmd_orders_place "$@" ;;
+      cancel)
+        if [ "${1:-}" = "-all" ] || [ "${1:-}" = "--all" ]; then
+          cmd_orders_cancel_all
+        else
+          cmd_orders_cancel "$@"
+        fi
+        ;;
+      cancel-all) cmd_orders_cancel_all ;;
+      *)          _err "Unknown orders subcommand: $subcmd (use: list, place, cancel, cancel-all)" ;;
+    esac
+    ;;
+  bracket)    cmd_bracket "$@" ;;
+  quote)      cmd_quote "$@" ;;
+  bars|history) cmd_bars "$@" ;;
+  help|--help|-h) _help ;;
+  *)          _err "Unknown command: $cmd (try: tradier --help)" ;;
+esac

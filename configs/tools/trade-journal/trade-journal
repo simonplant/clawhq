@@ -1,0 +1,666 @@
+#!/usr/bin/env python3
+"""trade-journal — three-pot paper trading experiment tracker.
+
+Tracks a $100K Tradier account split into three strategy pots:
+  A — Clawdius System (TA/market structure/fundamentals)
+  B — Mirror DP (mechanically follow VTF trade alerts)
+  C — Mirror Mancini (mechanically follow Mancini ES levels/setups)
+
+Usage: trade-journal <command> [args]
+
+Commands:
+  init                                — initialize portfolio ($100K, 3 pots)
+  log <pot> <side> <qty> <symbol>     — log a trade (--price, --notes, --execute)
+  close <pot> <symbol>                — close position (--qty, --price, --notes, --execute)
+  mark                                — EOD mark-to-market all positions
+  summary [pot]                       — P&L summary
+  compare                             — pot-vs-pot-vs-SPY comparison
+  positions [pot]                     — open positions
+  reconcile                           — reconcile vs Tradier positions
+  halt <pot> <reason>                 — halt trading for a pot
+  unhalt <pot>                        — resume trading
+
+Options (for log/close):
+  --price N       override auto-quote
+  --notes '...'   trade rationale
+  --execute       also place the order on Tradier
+  --qty N         partial close (close only)
+
+Environment:
+  CRED_PROXY_URL — credential proxy base URL (required)
+"""
+
+import json
+import os
+import subprocess
+import sys
+import urllib.request
+from datetime import datetime
+from pathlib import Path
+
+# --- Config ---
+
+WORKSPACE = Path(os.environ.get("HOME", "/home/node")) / ".openclaw" / "workspace"
+JOURNAL = WORKSPACE / "trade-journal.json"
+STATE = WORKSPACE / "portfolio-state.json"
+PROXY = os.environ.get("CRED_PROXY_URL", "")
+
+POTS = {
+    "A": ("Clawdius System", "TA/market structure/fundamentals"),
+    "B": ("Mirror DP", "Mechanically follow VTF trade alerts"),
+    "C": ("Mirror Mancini", "Mechanically follow Mancini ES levels/setups"),
+}
+POT_ALLOC = {"A": 33333.33, "B": 33333.33, "C": 33333.34}
+TOTAL = 100000.00
+MAX_POS = 0.15   # 15% of pot per position
+MAX_EXP = 0.60   # 60% total pot exposure
+
+
+# --- I/O ---
+
+def _load(path, default=None):
+    return json.loads(path.read_text()) if path.exists() else default
+
+
+def _save(path, data):
+    path.write_text(json.dumps(data, indent=2) + "\n")
+
+
+def _state():
+    s = _load(STATE)
+    if not s:
+        _die("Portfolio not initialized. Run: trade-journal init")
+    return s
+
+
+def _journal():
+    return _load(JOURNAL, {"trades": []})
+
+
+# --- API ---
+
+def _api_get(url):
+    """GET from credential proxy. Returns parsed JSON or None."""
+    if not PROXY:
+        return None
+    try:
+        resp = urllib.request.urlopen(f"{PROXY}{url}", timeout=15)
+        return json.loads(resp.read())
+    except Exception:
+        return None
+
+
+def _quote(symbol):
+    """Current price via Tradier quotes API."""
+    data = _api_get(f"/tradier/v1/markets/quotes?symbols={symbol}")
+    if data:
+        quote = data.get("quotes", {}).get("quote")
+        if isinstance(quote, list):
+            quote = quote[0] if quote else None
+        if quote:
+            return quote.get("last") or quote.get("close")
+    return None
+
+
+def _tradier_positions():
+    """All Tradier positions as list of dicts (normalized to common format)."""
+    account_id = os.environ.get("TRADIER_ACCOUNT_ID", "")
+    if not account_id:
+        return []
+    data = _api_get(f"/tradier/v1/accounts/{account_id}/positions")
+    if not data:
+        return []
+    positions = data.get("positions", {}).get("position")
+    if positions is None:
+        return []
+    if isinstance(positions, dict):
+        positions = [positions]
+    # Normalize to trade-journal expected format: symbol, qty, side
+    result = []
+    for p in positions:
+        qty = p.get("quantity", 0)
+        result.append({
+            "symbol": p.get("symbol", ""),
+            "qty": str(abs(qty)),
+            "side": "short" if qty < 0 else "long",
+        })
+    return result
+
+
+# --- Formatting ---
+
+def _money(v):
+    return f"-${abs(v):,.2f}" if v < 0 else f"${v:,.2f}"
+
+
+def _pct(v):
+    return f"+{v:.2f}%" if v >= 0 else f"{v:.2f}%"
+
+
+def _die(msg):
+    print(f"Error: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _trade_id(journal):
+    today = datetime.now().strftime("%Y-%m-%d")
+    n = sum(1 for t in journal["trades"] if t["id"].startswith(today))
+    return f"{today}-{n + 1:03d}"
+
+
+def _pot_exposure(ps):
+    return sum(
+        p["qty"] * p.get("current_price", p["avg_cost"])
+        for p in ps["positions"].values()
+    )
+
+
+def _parse_opts(args, start=0):
+    """Parse --price, --notes, --execute, --qty from args list."""
+    opts = {"price": None, "notes": "", "execute": False, "qty": None}
+    i = start
+    while i < len(args):
+        if args[i] == "--price" and i + 1 < len(args):
+            opts["price"] = float(args[i + 1]); i += 2
+        elif args[i] == "--notes" and i + 1 < len(args):
+            opts["notes"] = args[i + 1]; i += 2
+        elif args[i] == "--execute":
+            opts["execute"] = True; i += 1
+        elif args[i] == "--qty" and i + 1 < len(args):
+            opts["qty"] = int(args[i + 1]); i += 2
+        else:
+            i += 1
+    return opts
+
+
+# --- Commands ---
+
+def cmd_init(args):
+    if STATE.exists() and "--force" not in args:
+        _die("Already initialized. Use --force to reset.")
+
+    spy = _quote("SPY")
+    state = {
+        "inception": datetime.now().strftime("%Y-%m-%d"),
+        "pots": {},
+        "last_mark": None,
+        "spy_inception_price": spy,
+    }
+    for pot_id, (name, strategy) in POTS.items():
+        state["pots"][pot_id] = {
+            "name": name,
+            "strategy": strategy,
+            "allocation": POT_ALLOC[pot_id],
+            "cash": POT_ALLOC[pot_id],
+            "positions": {},
+            "realized_pnl": 0.0,
+            "halted": False,
+            "halt_reason": None,
+        }
+    _save(STATE, state)
+    if not JOURNAL.exists():
+        _save(JOURNAL, {"trades": []})
+
+    print(f"Portfolio initialized: ${TOTAL:,.2f} across 3 pots")
+    for pid, (name, _) in POTS.items():
+        print(f"  Pot {pid}: {name} — {_money(POT_ALLOC[pid])}")
+    if spy:
+        print(f"SPY at inception: ${spy:.2f}")
+
+
+def cmd_log(args):
+    if len(args) < 4:
+        _die("Usage: trade-journal log <pot> <side> <qty> <symbol> [--price N] [--notes '...'] [--execute]")
+
+    state = _state()
+    pot = args[0].upper()
+    side = args[1].lower()
+    qty = int(args[2])
+    symbol = args[3].upper()
+    opts = _parse_opts(args, 4)
+
+    if pot not in state["pots"]:
+        _die(f"Unknown pot '{pot}'. Use A, B, or C.")
+    if side not in ("buy", "sell"):
+        _die("Side must be 'buy' or 'sell'.")
+
+    ps = state["pots"][pot]
+    if ps["halted"]:
+        _die(f"Pot {pot} halted: {ps['halt_reason']}")
+
+    price = opts["price"]
+    if price is None:
+        price = _quote(symbol)
+        if price is None:
+            _die(f"No quote for {symbol}. Use --price to specify.")
+
+    notional = qty * price
+    alloc = ps["allocation"]
+
+    # Constraint: 15% max position size
+    if notional > alloc * MAX_POS:
+        _die(f"Position {_money(notional)} exceeds 15% of Pot {pot} ({_money(alloc * MAX_POS)})")
+
+    # Block sell if holding a long (use 'close' instead)
+    if side == "sell" and symbol in ps["positions"] and ps["positions"][symbol]["side"] == "long":
+        _die(f"{symbol} is LONG in Pot {pot} — use 'trade-journal close' to exit, not 'log sell'")
+
+    # Constraint: 60% max exposure (both sides)
+    exposure = _pot_exposure(ps)
+    if (exposure + notional) > alloc * MAX_EXP:
+        _die(f"Exposure {_money(exposure + notional)} exceeds 60% of Pot {pot} ({_money(alloc * MAX_EXP)})")
+
+    if side == "buy" and notional > ps["cash"]:
+        _die(f"Insufficient cash: need {_money(notional)}, have {_money(ps['cash'])}")
+
+    # Append to journal
+    journal = _journal()
+    tid = _trade_id(journal)
+    journal["trades"].append({
+        "id": tid,
+        "timestamp": datetime.now().isoformat(),
+        "pot": pot,
+        "action": "open",
+        "side": side,
+        "symbol": symbol,
+        "qty": qty,
+        "price": round(price, 4),
+        "notional": round(notional, 2),
+        "notes": opts["notes"],
+    })
+    _save(JOURNAL, journal)
+
+    # Update portfolio state
+    if side == "buy":
+        ps["cash"] = round(ps["cash"] - notional, 2)
+        if symbol in ps["positions"]:
+            p = ps["positions"][symbol]
+            old_notional = p["qty"] * p["avg_cost"]
+            p["qty"] += qty
+            p["avg_cost"] = round((old_notional + notional) / p["qty"], 4)
+            p["current_price"] = price
+        else:
+            ps["positions"][symbol] = {
+                "qty": qty, "avg_cost": round(price, 4),
+                "current_price": price, "side": "long",
+            }
+    else:  # sell (short)
+        ps["cash"] = round(ps["cash"] + notional, 2)
+        if symbol in ps["positions"] and ps["positions"][symbol]["side"] == "short":
+            p = ps["positions"][symbol]
+            old_notional = p["qty"] * p["avg_cost"]
+            p["qty"] += qty
+            p["avg_cost"] = round((old_notional + notional) / p["qty"], 4)
+            p["current_price"] = price
+        else:
+            ps["positions"][symbol] = {
+                "qty": qty, "avg_cost": round(price, 4),
+                "current_price": price, "side": "short",
+            }
+    _save(STATE, state)
+
+    # Execute on Tradier if requested
+    if opts["execute"]:
+        r = subprocess.run(
+            ["tradier", "orders", "place", side, str(qty), symbol, "market"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if r.returncode == 0:
+            print(f"Tradier: {r.stdout.strip()}")
+        else:
+            print(f"Tradier FAILED: {r.stderr.strip()}")
+
+    exposure = _pot_exposure(ps)
+    print(f"[{tid}] Pot {pot}: {side} {qty} {symbol} @ ${price:.2f} ({_money(notional)})")
+    print(f"  Cash: {_money(ps['cash'])}  Exposure: {_pct(exposure / alloc * 100)}")
+
+
+def cmd_close(args):
+    if len(args) < 2:
+        _die("Usage: trade-journal close <pot> <symbol> [--qty N] [--price N] [--notes '...'] [--execute]")
+
+    state = _state()
+    pot = args[0].upper()
+    symbol = args[1].upper()
+    opts = _parse_opts(args, 2)
+
+    if pot not in state["pots"]:
+        _die(f"Unknown pot '{pot}'.")
+
+    ps = state["pots"][pot]
+    if symbol not in ps["positions"]:
+        _die(f"No {symbol} position in Pot {pot}.")
+
+    pos = ps["positions"][symbol]
+    close_qty = opts["qty"] or pos["qty"]
+    if close_qty > pos["qty"]:
+        _die(f"Can't close {close_qty} — only hold {pos['qty']}.")
+
+    price = opts["price"]
+    if price is None:
+        price = _quote(symbol)
+        if price is None:
+            _die(f"No quote for {symbol}. Use --price.")
+
+    notional = close_qty * price
+
+    # Calculate P&L
+    if pos["side"] == "long":
+        pnl = (price - pos["avg_cost"]) * close_qty
+        close_side = "sell"
+    else:
+        pnl = (pos["avg_cost"] - price) * close_qty
+        close_side = "buy"
+
+    # Append to journal
+    journal = _journal()
+    tid = _trade_id(journal)
+    journal["trades"].append({
+        "id": tid,
+        "timestamp": datetime.now().isoformat(),
+        "pot": pot,
+        "action": "close",
+        "side": close_side,
+        "symbol": symbol,
+        "qty": close_qty,
+        "price": round(price, 4),
+        "notional": round(notional, 2),
+        "pnl": round(pnl, 2),
+        "notes": opts["notes"],
+    })
+    _save(JOURNAL, journal)
+
+    # Update state: return proceeds (long) or pay cover cost (short)
+    if pos["side"] == "long":
+        ps["cash"] = round(ps["cash"] + notional, 2)
+    else:
+        ps["cash"] = round(ps["cash"] - notional, 2)
+
+    ps["realized_pnl"] = round(ps.get("realized_pnl", 0) + pnl, 2)
+
+    if close_qty >= pos["qty"]:
+        del ps["positions"][symbol]
+    else:
+        pos["qty"] -= close_qty
+
+    _save(STATE, state)
+
+    # Execute on Tradier
+    if opts["execute"]:
+        r = subprocess.run(
+            ["tradier", "orders", "place", close_side, str(close_qty), symbol, "market"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if r.returncode == 0:
+            print(f"Tradier: {r.stdout.strip()}")
+        else:
+            print(f"Tradier FAILED: {r.stderr.strip()}")
+
+    print(f"[{tid}] Pot {pot}: close {close_qty} {symbol} @ ${price:.2f} — P&L: {_money(pnl)}")
+    print(f"  Cash: {_money(ps['cash'])}  Realized: {_money(ps['realized_pnl'])}")
+
+
+def cmd_mark(args):
+    state = _state()
+    symbols = set()
+    for ps in state["pots"].values():
+        symbols.update(ps["positions"].keys())
+
+    if not symbols:
+        print("No positions to mark.")
+        return
+
+    prices = {}
+    failed = []
+    for sym in sorted(symbols):
+        p = _quote(sym)
+        if p is not None:
+            prices[sym] = p
+        else:
+            failed.append(sym)
+
+    for ps in state["pots"].values():
+        for sym, pos in ps["positions"].items():
+            if sym in prices:
+                pos["current_price"] = prices[sym]
+
+    state["last_mark"] = datetime.now().isoformat()
+    _save(STATE, state)
+
+    print(f"Marked {len(prices)} positions")
+    if failed:
+        print(f"  No quote: {', '.join(failed)}")
+    print()
+    _print_summary(state)
+
+
+def cmd_summary(args):
+    state = _state()
+    pot_filter = args[0].upper() if args else None
+    if pot_filter and pot_filter not in state["pots"]:
+        _die(f"Unknown pot '{pot_filter}'.")
+    _print_summary(state, pot_filter)
+
+
+def _print_summary(state, pot_filter=None):
+    total_nav = 0
+
+    for pot_id in ("A", "B", "C"):
+        ps = state["pots"][pot_id]
+        if pot_filter and pot_id != pot_filter:
+            continue
+
+        unrealized = 0
+        for pos in ps["positions"].values():
+            cp = pos.get("current_price", pos["avg_cost"])
+            if pos["side"] == "long":
+                unrealized += (cp - pos["avg_cost"]) * pos["qty"]
+            else:
+                unrealized += (pos["avg_cost"] - cp) * pos["qty"]
+
+        realized = ps.get("realized_pnl", 0)
+        exposure = _pot_exposure(ps)
+        nav = ps["cash"] + exposure
+        total_nav += nav
+        ret = (nav - ps["allocation"]) / ps["allocation"] * 100
+
+        halted = " [HALTED]" if ps["halted"] else ""
+        print(f"=== Pot {pot_id}: {ps['name']}{halted} ===")
+        print(f"  NAV:        {_money(nav)}  ({_pct(ret)})")
+        print(f"  Cash:       {_money(ps['cash'])}")
+        print(f"  Exposure:   {_money(exposure)} ({_pct(exposure / ps['allocation'] * 100 if ps['allocation'] else 0)} of alloc)")
+        print(f"  Realized:   {_money(realized)}")
+        print(f"  Unrealized: {_money(unrealized)}")
+        print(f"  Total P&L:  {_money(realized + unrealized)}")
+
+        if ps["positions"]:
+            for sym, pos in sorted(ps["positions"].items()):
+                cp = pos.get("current_price", pos["avg_cost"])
+                if pos["side"] == "long":
+                    pl = (cp - pos["avg_cost"]) * pos["qty"]
+                else:
+                    pl = (pos["avg_cost"] - cp) * pos["qty"]
+                print(f"    {sym:<8} {pos['qty']:>5} @ ${pos['avg_cost']:.2f} -> ${cp:.2f}  {_money(pl)}")
+        print()
+
+    if not pot_filter:
+        total_ret = (total_nav - TOTAL) / TOTAL * 100
+        print(f"Total NAV: {_money(total_nav)} ({_pct(total_ret)})")
+        if state.get("last_mark"):
+            print(f"Last mark: {state['last_mark'][:19]}")
+
+
+def cmd_compare(args):
+    state = _state()
+    spy_now = _quote("SPY")
+    spy_inception = state.get("spy_inception_price")
+
+    print("=== Pot Comparison ===\n")
+    print(f"  {'Pot':<5} {'Strategy':<35} {'NAV':>12} {'Return':>8} {'Realized':>10} {'Unrealized':>10}")
+    print(f"  {'---':<5} {'---':<35} {'---':>12} {'---':>8} {'---':>10} {'---':>10}")
+
+    for pot_id in ("A", "B", "C"):
+        ps = state["pots"][pot_id]
+        exposure = _pot_exposure(ps)
+        nav = ps["cash"] + exposure
+        ret = (nav - ps["allocation"]) / ps["allocation"] * 100
+        realized = ps.get("realized_pnl", 0)
+        unrealized = sum(
+            ((p.get("current_price", p["avg_cost"]) - p["avg_cost"]) * p["qty"]
+             if p["side"] == "long"
+             else (p["avg_cost"] - p.get("current_price", p["avg_cost"])) * p["qty"])
+            for p in ps["positions"].values()
+        )
+        print(f"  {pot_id:<5} {ps['name']:<35} {_money(nav):>12} {_pct(ret):>8} {_money(realized):>10} {_money(unrealized):>10}")
+
+    if spy_inception and spy_now:
+        spy_ret = (spy_now - spy_inception) / spy_inception * 100
+        print(f"\n  {'SPY':<5} {'Buy & hold benchmark':<35} {'':>12} {_pct(spy_ret):>8}")
+        print(f"  (Inception ${spy_inception:.2f} -> Now ${spy_now:.2f})")
+
+    print(f"\n  Inception: {state['inception']}")
+
+
+def cmd_positions(args):
+    state = _state()
+    pot_filter = args[0].upper() if args else None
+    found = False
+
+    for pot_id in ("A", "B", "C"):
+        ps = state["pots"][pot_id]
+        if pot_filter and pot_id != pot_filter:
+            continue
+        if not ps["positions"]:
+            continue
+
+        found = True
+        print(f"=== Pot {pot_id}: {ps['name']} ===")
+        print(f"  {'Symbol':<8} {'Side':<5} {'Qty':>5} {'Avg':>10} {'Current':>10} {'P&L':>10} {'P&L%':>7} {'%Pot':>7}")
+        print(f"  {'------':<8} {'----':<5} {'---':>5} {'---':>10} {'-------':>10} {'---':>10} {'----':>7} {'----':>7}")
+
+        for sym, pos in sorted(ps["positions"].items()):
+            cp = pos.get("current_price", pos["avg_cost"])
+            if pos["side"] == "long":
+                pl = (cp - pos["avg_cost"]) * pos["qty"]
+            else:
+                pl = (pos["avg_cost"] - cp) * pos["qty"]
+            cost = pos["avg_cost"] * pos["qty"]
+            pl_pct = (pl / cost * 100) if cost else 0
+            pot_pct = (pos["qty"] * cp) / ps["allocation"] * 100
+            print(f"  {sym:<8} {pos['side']:<5} {pos['qty']:>5} ${pos['avg_cost']:>9.2f} ${cp:>9.2f} {_money(pl):>10} {_pct(pl_pct):>7} {_pct(pot_pct):>7}")
+        print()
+
+    if not found:
+        print("No open positions.")
+
+
+def cmd_reconcile(args):
+    state = _state()
+
+    # Sum journal positions across all pots
+    journal_totals = {}
+    for ps in state["pots"].values():
+        for sym, pos in ps["positions"].items():
+            journal_totals.setdefault(sym, 0)
+            if pos["side"] == "long":
+                journal_totals[sym] += pos["qty"]
+            else:
+                journal_totals[sym] -= pos["qty"]
+
+    # Fetch Tradier positions
+    broker_raw = _tradier_positions()
+    broker_totals = {}
+    for p in broker_raw:
+        sym = p["symbol"]
+        qty = int(float(p["qty"]))
+        side = p.get("side", "long")
+        broker_totals[sym] = qty if side == "long" else -qty
+
+    all_symbols = sorted(set(list(journal_totals.keys()) + list(broker_totals.keys())))
+
+    if not all_symbols:
+        print("No positions in journal or Tradier.")
+        return
+
+    mismatches = 0
+    print(f"  {'Symbol':<8} {'Journal':>8} {'Tradier':>8} {'Status':<10}")
+    print(f"  {'------':<8} {'-------':>8} {'-------':>8} {'------':<10}")
+
+    for sym in all_symbols:
+        jq = journal_totals.get(sym, 0)
+        aq = broker_totals.get(sym, 0)
+        ok = jq == aq
+        if not ok:
+            mismatches += 1
+        status = "OK" if ok else "MISMATCH"
+        print(f"  {sym:<8} {jq:>8} {aq:>8} {status}")
+
+    print()
+    if mismatches:
+        print(f"  {mismatches} mismatch(es) — reconcile manually")
+    else:
+        print(f"  All positions match")
+
+
+def cmd_halt(args):
+    if len(args) < 2:
+        _die("Usage: trade-journal halt <pot> <reason>")
+
+    state = _state()
+    pot = args[0].upper()
+    reason = " ".join(args[1:])
+
+    if pot not in state["pots"]:
+        _die(f"Unknown pot '{pot}'.")
+
+    state["pots"][pot]["halted"] = True
+    state["pots"][pot]["halt_reason"] = reason
+    _save(STATE, state)
+    print(f"Pot {pot} halted: {reason}")
+
+
+def cmd_unhalt(args):
+    if not args:
+        _die("Usage: trade-journal unhalt <pot>")
+
+    state = _state()
+    pot = args[0].upper()
+    if pot not in state["pots"]:
+        _die(f"Unknown pot '{pot}'.")
+
+    state["pots"][pot]["halted"] = False
+    state["pots"][pot]["halt_reason"] = None
+    _save(STATE, state)
+    print(f"Pot {pot} resumed.")
+
+
+# --- Main ---
+
+COMMANDS = {
+    "init": cmd_init,
+    "log": cmd_log,
+    "close": cmd_close,
+    "mark": cmd_mark,
+    "summary": cmd_summary,
+    "compare": cmd_compare,
+    "positions": cmd_positions,
+    "reconcile": cmd_reconcile,
+    "halt": cmd_halt,
+    "unhalt": cmd_unhalt,
+}
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
+        print(__doc__.strip())
+        sys.exit(0)
+
+    cmd = sys.argv[1]
+    if cmd not in COMMANDS:
+        _die(f"Unknown command: {cmd}")
+
+    COMMANDS[cmd](sys.argv[2:])
+
+
+if __name__ == "__main__":
+    main()

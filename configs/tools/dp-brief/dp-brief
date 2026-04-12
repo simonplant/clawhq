@@ -1,0 +1,701 @@
+#!/usr/bin/env python3
+"""dp-brief — parse DP/Inner Circle AM Call transcriptions into structured trading briefs.
+
+Usage:
+  dp-brief              — read from stdin (paste transcription, Ctrl+D to finish)
+  dp-brief --file FILE  — read from file
+  dp-brief --json       — machine-readable JSON output
+
+Extracts:
+  - Market bias and outlook
+  - DP's current positions (SHORT/LONG/SOLD/FLAT)
+  - Key levels (resistance, support, 21-day MA)
+  - Analyst upgrades/downgrades/price targets
+  - Catalysts and upcoming events
+
+Handles Dropbox speech-to-text errors:
+  - "queues"/"the Qs" -> QQQ, "GE Vinova" -> GEV, "58463" -> 584.63
+  - Missing decimals in prices, garbled ticker names
+
+Reference: DP.md — David Prince's trading methodology (conviction mapping,
+  sizing rules, key MAs, language-to-signal mapping)
+
+Environment:
+  No dependencies — stdlib Python only.
+"""
+
+import json
+import re
+import sys
+from datetime import datetime
+
+# --- Speech-to-text corrections ---
+
+# Applied to the full text before parsing
+TEXT_FIXES = [
+    (r"\bthe qs\b", "QQQ", re.IGNORECASE),
+    (r"\bthe queues\b", "QQQ", re.IGNORECASE),
+    (r"\bqueues\b", "QQQ", re.IGNORECASE),
+    (r"\bthe q's\b", "QQQ", re.IGNORECASE),
+    (r"\bthe spy\b", "SPY", re.IGNORECASE),
+    (r"\bge vinova\b", "GEV", re.IGNORECASE),
+    (r"\bge vernova\b", "GEV", re.IGNORECASE),
+    (r"\bpalantir\b", "PLTR", re.IGNORECASE),
+    (r"\bmeta platforms\b", "META", re.IGNORECASE),
+    (r"\bcrowdstrike\b", "CRWD", re.IGNORECASE),
+    (r"\batlassian\b", "TEAM", re.IGNORECASE),
+    (r"\bservicenow\b", "NOW", re.IGNORECASE),
+    (r"\bpalo alto\b", "PANW", re.IGNORECASE),
+    (r"\bdatadog\b", "DDOG", re.IGNORECASE),
+    (r"\bsnowflake\b", "SNOW", re.IGNORECASE),
+    (r"\brestoration hardware\b", "RH", re.IGNORECASE),
+    (r"\bsandisk\b", "SNDK", re.IGNORECASE),
+    (r"\bfastly\b", "FSLY", re.IGNORECASE),
+    (r"\bnvidia\b", "NVDA", re.IGNORECASE),
+    (r"\bgold\b(?!\s*man)", "GLD", re.IGNORECASE),  # "gold" but not "Goldman"
+    (r"\bsilver\b", "SLV", re.IGNORECASE),
+    (r"\brobinhood\b", "HOOD", re.IGNORECASE),
+    (r"\bcoreweave\b", "CRWV", re.IGNORECASE),
+    (r"\bunitedhealth\b", "UNH", re.IGNORECASE),
+    (r"\bunited\s*health\b", "UNH", re.IGNORECASE),
+    (r"\barcher\b", "ACHR", re.IGNORECASE),
+    (r"\btempest\s*ai\b", "TEM", re.IGNORECASE),
+    (r"\basana\b", "ASAN", re.IGNORECASE),
+    (r"\bhome depot\b", "HD", re.IGNORECASE),
+    (r"\bboeing\b", "BA", re.IGNORECASE),
+    (r"\bspotify\b", "SPOT", re.IGNORECASE),
+    (r"\bmongodb\b", "MDB", re.IGNORECASE),
+    (r"\bamazon\b", "AMZN", re.IGNORECASE),
+    (r"\bdell\b", "DELL", re.IGNORECASE),
+    (r"\btesla\b", "TSLA", re.IGNORECASE),
+    (r"\bnike\b", "NKE", re.IGNORECASE),
+    (r"\bupstart\b", "UPST", re.IGNORECASE),
+    (r"\bdisney\b", "DIS", re.IGNORECASE),
+    (r"\bnetflix\b", "NFLX", re.IGNORECASE),
+    (r"\bmicrosoft\b", "MSFT", re.IGNORECASE),
+    (r"\bapple\b(?!\s*(?:sauce|pie|cider))", "AAPL", re.IGNORECASE),
+]
+
+TICKER_FIXES = {
+    "mera": "META", "emta": "META", "m,eta": "META",
+    "qqqq": "QQQ", "nividia": "NVDA", "nvdia": "NVDA",
+    "telsa": "TSLA", "appl": "AAPL", "amazn": "AMZN",
+    "gogl": "GOOGL", "mircosoft": "MSFT",
+}
+
+KNOWN_TICKERS = {
+    # Mega-cap / FAANG+
+    "META", "AAPL", "NVDA", "TSLA", "AMZN", "MSFT", "GOOGL", "GOOG",
+    # Indices / ETFs
+    "QQQ", "SPY", "SPX", "IWM", "SMH", "SOXX", "SOXL", "SQQQ",
+    # DP frequent names
+    "AMD", "INTC", "NFLX", "CRM", "COIN", "PLTR", "AVGO", "ORCL",
+    "UBER", "BA", "JPM", "GS", "DIS", "COST", "HD",
+    "SNOW", "NET", "DDOG", "CRWD", "PANW", "ZS", "MDB", "ARM", "MRVL",
+    "NKE", "RH", "RIVN", "SNAP", "TEAM", "GEV", "FSLY", "GLD", "SLV",
+    "SNDK", "SOFI", "SHOP", "SQ", "PYPL", "WMT",
+    "LLY", "UNH", "XOM", "CVX", "ABNB", "DASH", "SPOT", "ANET", "ADBE",
+    "MU", "ROKU", "DELL",
+    # Quantum computing (DP favorites)
+    "QBTS", "IONQ", "QUBT", "RGTI",
+    # Growth / momentum (DP frequent)
+    "HOOD", "ACHR", "HIMS", "TEM", "NBIS", "CAVA", "CRWV", "UPST",
+    "ASAN", "CRDO", "MSTR", "CEG",
+    # Trading vehicles
+    "V", "MA",
+    # Futures
+    "ES", "NQ", "RTY", "YM",
+}
+
+ANALYST_FIRMS = [
+    "UBS", "Truist", "Piper", "Wells Fargo", "Goldman", "Barclays", "KeyBank",
+    "DA Davidson", "Roth", "Benchmark", "Morgan Stanley", "JPMorgan", "Citi",
+    "BofA", "Deutsche Bank", "RBC", "Needham", "Wedbush", "Bernstein",
+    "Jefferies", "Cowen", "Oppenheimer", "Stifel", "Raymond James",
+    "Loop Capital", "Susquehanna", "Mizuho", "HSBC", "Canaccord",
+    "Wolfe Research", "Evercore", "Bank of America", "Credit Suisse",
+]
+
+ANALYST_ACTIONS = [
+    "upgrade", "downgrade", "initiate", "initiated", "initiates",
+    "raise", "raised", "lower", "lowered", "cut", "cuts",
+    "overweight", "underweight", "neutral", "buy", "sell", "hold",
+    "outperform", "underperform", "market perform",
+    "price target", "target", "pt",
+]
+
+POSITION_KEYWORDS = {
+    "i am short": "SHORT",
+    "i'm short": "SHORT",
+    "started a short": "SHORT",
+    "shorting": "SHORT",
+    "shorted": "SHORT",
+    "short some": "SHORT",
+    "short the": "SHORT",
+    "am short": "SHORT",
+    "i'm long": "LONG",
+    "i am long": "LONG",
+    "lazy long": "LONG",
+    "bought": "LONG",
+    "sold most": "SOLD",
+    "i've sold": "SOLD",
+    "i have sold": "SOLD",
+    "selling": "SOLD",
+    "got flat": "FLAT",
+    "get flat": "FLAT",
+    "went flat": "FLAT",
+    "covered": "COVERED",
+}
+
+# Entry intent — not yet in position but planning to be
+ENTRY_INTENT_PATTERNS = [
+    (r"i'm a buyer\b", "LONG"),
+    (r"i'd be a buyer\b", "LONG"),
+    (r"i am a buyer\b", "LONG"),
+    (r"definitely a buyer\b", "LONG"),
+    (r"i'd be interested\b", "LONG"),
+    (r"i'd be pretty aggressive\b", "LONG"),
+    (r"it'd be buyable\b", "LONG"),
+    (r"i'd add\b", "LONG"),
+    (r"i'd probably add\b", "LONG"),
+    (r"look to short\b", "SHORT"),
+    (r"might be a cute short\b", "SHORT"),
+    (r"decent short\b", "SHORT"),
+    (r"short opportunities\b", "SHORT"),
+]
+
+# Words that look like tickers but aren't in position context
+POSITION_TICKER_BLACKLIST = {"NOW", "IT", "US", "A", "ALL", "AM", "AN", "OR", "SO", "LOW", "ON"}
+
+LEVEL_KEYWORDS = [
+    "resistance", "support", "21-day", "21 day", "50-day", "50 day",
+    "200-day", "200 day", "100-day", "100 day", "10-day", "10 day",
+    "8-day", "8 day", "vwap", "pivot",
+]
+
+CATALYST_KEYWORDS = [
+    "earnings", "report", "adp", "nfp", "jobs", "fomc", "fed",
+    "cpi", "ppi", "gdp", "ism", "pce", "rate", "president",
+    "trump", "congress", "tariff", "war", "iran", "ukraine",
+    "opec", "oil", "speaking", "addresses",
+]
+
+BIAS_BEARISH = [
+    "pullback", "short", "overbought", "not the bottom", "problems ahead",
+    "resistance", "sell", "short opportunities", "cautious", "bear",
+    "overhead", "fade", "trap",
+]
+
+BIAS_BULLISH = [
+    "rally", "bullish", "bottom", "support holding", "breakout",
+    "buy the dip", "accumulate", "long", "upside",
+]
+
+
+# --- Preprocessing ---
+
+def preprocess(text):
+    """Fix known speech-to-text errors."""
+    for pattern, replacement, flags in TEXT_FIXES:
+        text = re.sub(pattern, replacement, text, flags=flags)
+    return text
+
+
+def split_sentences(text):
+    """Split text into sentences, handling price-like periods."""
+    # Protect decimal numbers from sentence splitting
+    text = re.sub(r"(\d)\.(\d)", r"\1DECIMAL\2", text)
+    # Split on sentence boundaries
+    sentences = re.split(r"[.!?]+\s+", text)
+    # Restore decimals
+    return [s.replace("DECIMAL", ".").strip() for s in sentences if s.strip()]
+
+
+def find_ticker(text):
+    """Find the most likely ticker mentioned in text."""
+    # Check for $TICKER
+    m = re.search(r"\$([A-Z]{1,5})", text)
+    if m and m.group(1) in KNOWN_TICKERS:
+        return m.group(1)
+
+    words = re.split(r"[\s,;:()\[\]]+", text)
+    for word in words:
+        clean = word.strip(".,!?'\"").upper()
+        # Fix known typos
+        if clean.lower() in TICKER_FIXES:
+            return TICKER_FIXES[clean.lower()]
+        # Known ticker
+        if clean in KNOWN_TICKERS and len(clean) >= 2:
+            return clean
+    return None
+
+
+def find_all_tickers(text):
+    """Find all tickers mentioned in text."""
+    tickers = []
+    # $TICKER pattern
+    for m in re.finditer(r"\$([A-Z]{1,5})", text):
+        if m.group(1) in KNOWN_TICKERS:
+            tickers.append(m.group(1))
+
+    words = re.split(r"[\s,;:()\[\]]+", text)
+    for word in words:
+        clean = word.strip(".,!?'\"").upper()
+        if clean.lower() in TICKER_FIXES:
+            tickers.append(TICKER_FIXES[clean.lower()])
+        elif clean in KNOWN_TICKERS and len(clean) >= 2 and clean not in tickers:
+            tickers.append(clean)
+    return tickers
+
+
+def find_prices(text):
+    """Extract all price-like numbers from text, excluding non-price numbers."""
+    prices = []
+    # Remove "N-day" MA references so we don't treat 8/10/21/50/100/200 as prices
+    cleaned = re.sub(r"\b(8|10|21|50|100|200)[-\s]day", "", text, flags=re.IGNORECASE)
+    for m in re.finditer(r"\$?(\d{1,5}(?:\.\d{1,2})?)", cleaned):
+        val = float(m.group(1))
+        if 10 < val < 10000:  # reasonable price range (excludes small numbers)
+            prices.append(val)
+    return prices
+
+
+def find_firm(text):
+    """Find analyst firm mentioned in text."""
+    lower = text.lower()
+    for firm in ANALYST_FIRMS:
+        if firm.lower() in lower:
+            return firm
+    # Check for "over at [firm]" pattern
+    m = re.search(r"over at\s+(\w[\w\s]*?)(?:\.|,|$)", text, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    return None
+
+
+# --- Extraction ---
+
+def extract_analyst_actions(sentences):
+    """Extract analyst upgrades, downgrades, and price targets."""
+    actions = []
+    for sent in sentences:
+        lower = sent.lower()
+        has_action = any(kw in lower for kw in ANALYST_ACTIONS)
+        firm = find_firm(sent)
+        tickers = find_all_tickers(sent)
+        prices = find_prices(sent)
+
+        if not has_action or (not firm and not tickers):
+            continue
+
+        # Determine action type
+        action_type = "mention"
+        if any(w in lower for w in ["upgrade", "upgraded"]):
+            action_type = "upgrade"
+        elif any(w in lower for w in ["downgrade", "downgrades", "downgraded"]):
+            action_type = "downgrade"
+        elif any(w in lower for w in ["initiate", "initiated", "initiates"]):
+            action_type = "initiate"
+        elif any(w in lower for w in ["price target", "target", "pt "]):
+            action_type = "price_target"
+        elif any(w in lower for w in ["raised", "raise"]):
+            action_type = "pt_raise"
+        elif any(w in lower for w in ["lowered", "lower", "cut", "cuts"]):
+            action_type = "pt_lower"
+
+        # Determine rating
+        rating = None
+        for r in ["buy", "sell", "hold", "neutral", "overweight", "underweight",
+                   "outperform", "underperform", "market perform"]:
+            if r in lower:
+                rating = r
+                break
+
+        # Extract price target(s) — match "target $190" or just numbers near firm mentions
+        pt = None
+        pt_match = re.search(r"(?:price\s+)?target\s*,?\s*\$?(\d+(?:\.\d+)?)", sent, re.IGNORECASE)
+        if pt_match:
+            pt = float(pt_match.group(1))
+        elif prices and (firm or action_type != "mention"):
+            # Use the most prominent price
+            pt = prices[-1] if len(prices) == 1 else None
+
+        # Multiple firm+target in one sentence (e.g., "UBS, 54. Truist, 57.")
+        multi = re.findall(
+            r"(" + "|".join(re.escape(f) for f in ANALYST_FIRMS) + r")[\s,]*(?:goes to\s+)?\$?(\d+(?:\.\d+)?)",
+            sent, re.IGNORECASE,
+        )
+        if len(multi) > 1:
+            ticker = tickers[0] if tickers else None
+            for f, p in multi:
+                actions.append({
+                    "ticker": ticker,
+                    "firm": f,
+                    "action": action_type,
+                    "rating": rating,
+                    "price_target": float(p),
+                    "raw": sent.strip(),
+                })
+            continue
+
+        for ticker in (tickers or [None]):
+            actions.append({
+                "ticker": ticker,
+                "firm": firm,
+                "action": action_type,
+                "rating": rating,
+                "price_target": pt,
+                "raw": sent.strip(),
+            })
+
+    # Deduplicate
+    seen = set()
+    unique = []
+    for a in actions:
+        key = (a["ticker"], a["firm"], a["price_target"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(a)
+    return unique
+
+
+def extract_positions(sentences):
+    """Extract DP's current positions and entry intents."""
+    positions = []
+    for sent in sentences:
+        lower = sent.lower()
+
+        # Check explicit position keywords first
+        found = False
+        for keyword, side in POSITION_KEYWORDS.items():
+            if keyword in lower:
+                tickers = find_all_tickers(sent)
+                prices = find_prices(sent)
+                for ticker in tickers:
+                    if any(f.lower() in lower for f in ANALYST_FIRMS):
+                        continue
+                    if ticker in POSITION_TICKER_BLACKLIST:
+                        continue
+                    positions.append({
+                        "ticker": ticker,
+                        "side": side,
+                        "price": prices[0] if prices else None,
+                        "raw": sent.strip(),
+                        "intent": False,
+                    })
+                found = True
+                break
+
+        if found:
+            continue
+
+        # Check entry intent patterns ("I'm a buyer at X")
+        for pattern, side in ENTRY_INTENT_PATTERNS:
+            if re.search(pattern, lower):
+                tickers = find_all_tickers(sent)
+                prices = find_prices(sent)
+                for ticker in tickers:
+                    if ticker in POSITION_TICKER_BLACKLIST:
+                        continue
+                    positions.append({
+                        "ticker": ticker,
+                        "side": side,
+                        "price": prices[0] if prices else None,
+                        "raw": sent.strip(),
+                        "intent": True,  # planned, not yet entered
+                    })
+                break
+
+    # Deduplicate, keep last mention per ticker
+    by_ticker = {}
+    for p in positions:
+        if p["ticker"]:
+            by_ticker[p["ticker"]] = p
+    return list(by_ticker.values())
+
+
+def extract_levels(sentences):
+    """Extract key price levels (resistance, support, moving averages).
+    Carries forward last-seen ticker for context continuity."""
+    levels = []
+    last_ticker = None  # carry forward context
+
+    # Tickers that are common English words — ignore in level context
+    level_ticker_blacklist = {"NOW", "IT", "US", "A", "ALL", "AM", "AN", "OR", "SO", "LOW", "ON"}
+
+    for sent in sentences:
+        lower = sent.lower()
+        has_level = any(kw in lower for kw in LEVEL_KEYWORDS)
+        if not has_level:
+            # Still update last_ticker if a ticker is mentioned
+            tickers = [t for t in find_all_tickers(sent) if t not in level_ticker_blacklist]
+            if tickers:
+                last_ticker = tickers[0]
+            continue
+
+        tickers = [t for t in find_all_tickers(sent) if t not in level_ticker_blacklist]
+        prices = find_prices(sent)
+
+        if tickers:
+            last_ticker = tickers[0]
+
+        # Use last_ticker as context if no ticker in this sentence
+        effective_ticker = tickers[0] if tickers else last_ticker
+
+        # Determine level type (pick most specific, longest MA first)
+        level_type = "resistance"  # default for level mentions
+        if "200-day" in lower or "200 day" in lower:
+            level_type = "200-day MA"
+        elif "100-day" in lower or "100 day" in lower:
+            level_type = "100-day MA"
+        elif "50-day" in lower or "50 day" in lower:
+            level_type = "50-day MA"
+        elif "21-day" in lower or "21 day" in lower:
+            level_type = "21-day MA"
+        elif "10-day" in lower or "10 day" in lower:
+            level_type = "10-day MA"
+        elif "8-day" in lower or "8 day" in lower:
+            level_type = "8-day MA"
+        elif "support" in lower:
+            level_type = "support"
+        elif "vwap" in lower:
+            level_type = "VWAP"
+
+        for price in prices:
+            levels.append({
+                "ticker": effective_ticker,
+                "price": price,
+                "type": level_type,
+                "raw": sent.strip(),
+            })
+
+    # Deduplicate
+    seen = set()
+    unique = []
+    for l in levels:
+        key = (l["ticker"], l["price"], l["type"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(l)
+    return unique
+
+
+def extract_catalysts(sentences):
+    """Extract upcoming events and catalysts."""
+    catalysts = []
+    for sent in sentences:
+        lower = sent.lower()
+        if any(kw in lower for kw in CATALYST_KEYWORDS):
+            # Skip analyst action sentences
+            if any(kw in lower for kw in ANALYST_ACTIONS):
+                continue
+            catalysts.append(sent.strip())
+    return catalysts
+
+
+def assess_bias(text):
+    """Assess overall market bias from the transcription."""
+    lower = text.lower()
+    bearish_score = sum(1 for kw in BIAS_BEARISH if kw in lower)
+    bullish_score = sum(1 for kw in BIAS_BULLISH if kw in lower)
+
+    if bearish_score > bullish_score + 2:
+        return "BEARISH"
+    elif bullish_score > bearish_score + 2:
+        return "BULLISH"
+    elif bearish_score > bullish_score:
+        return "LEAN BEARISH"
+    elif bullish_score > bearish_score:
+        return "LEAN BULLISH"
+    else:
+        return "MIXED / TRADING RANGE"
+
+
+def extract_outlook(sentences):
+    """Extract outlook/conclusion sentences (usually near the end)."""
+    outlook = []
+    # Last ~30% of sentences tend to be outlook
+    tail = sentences[int(len(sentences) * 0.7):]
+    for sent in tail:
+        lower = sent.lower()
+        if any(w in lower for w in [
+            "bottom", "think", "believe", "expect", "ahead",
+            "go from here", "chop", "pullback", "trading market",
+            "don't go all in", "my gut", "indecision",
+        ]):
+            outlook.append(sent.strip())
+    return outlook
+
+
+# --- Output formatting ---
+
+def format_markdown(data):
+    """Format as markdown for memory/trading-YYYY-MM-DD.md."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    lines = [
+        f"## DP/Inner Circle AM Call — {today}",
+        "",
+        f"**Bias:** {data['bias']}",
+        "",
+    ]
+
+    active = [p for p in data["positions"] if not p.get("intent")]
+    intents = [p for p in data["positions"] if p.get("intent")]
+
+    if active:
+        lines.append("**DP's Active Positions:**")
+        for p in active:
+            price_str = f" @ ${p['price']}" if p.get("price") else ""
+            lines.append(f"- {p['side']} {p['ticker']}{price_str}")
+        lines.append("")
+
+    if intents:
+        lines.append("**DP's Entry Plans:**")
+        for p in intents:
+            price_str = f" @ ${p['price']}" if p.get("price") else ""
+            lines.append(f"- {p['side']} {p['ticker']}{price_str} (intent)")
+        lines.append("")
+
+    if data["levels"]:
+        lines.append("**Key Levels:**")
+        lines.append("| Ticker | Level | Type | Context |")
+        lines.append("|--------|-------|------|---------|")
+        for l in data["levels"]:
+            ticker = l.get("ticker") or "—"
+            lines.append(f"| {ticker} | {l['price']} | {l['type']} | {_truncate(l['raw'], 60)} |")
+        lines.append("")
+
+    if data["analyst_actions"]:
+        lines.append("**Analyst Actions:**")
+        for a in data["analyst_actions"]:
+            ticker = a.get("ticker") or "?"
+            firm = a.get("firm") or "?"
+            pt = f", PT ${a['price_target']}" if a.get("price_target") else ""
+            rating = f" → {a['rating']}" if a.get("rating") else ""
+            action = a.get("action", "mention").replace("_", " ")
+            lines.append(f"- {ticker}: {firm} {action}{rating}{pt}")
+        lines.append("")
+
+    if data["catalysts"]:
+        lines.append("**Catalysts:**")
+        for c in data["catalysts"]:
+            lines.append(f"- {_truncate(c, 100)}")
+        lines.append("")
+
+    if data["outlook"]:
+        lines.append("**Outlook:**")
+        for o in data["outlook"]:
+            lines.append(f"> {_truncate(o, 120)}")
+        lines.append("")
+
+    if data["corrections"]:
+        lines.append("**Transcription Notes (possible errors):**")
+        for c in data["corrections"]:
+            lines.append(f"- {c}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def format_json_output(data):
+    """Machine-readable JSON."""
+    return json.dumps(data, indent=2)
+
+
+def _truncate(s, n):
+    return s[:n] + "..." if len(s) > n else s
+
+
+# --- Price sanity checks ---
+
+# Approximate price ranges for common tickers (for flagging transcription errors)
+PRICE_RANGES = {
+    "SPY": (400, 650), "QQQ": (350, 600), "META": (300, 700),
+    "NVDA": (80, 250), "TSLA": (100, 400), "AAPL": (150, 250),
+    "AMZN": (150, 250), "MSFT": (350, 500), "GOOGL": (140, 200),
+    "AMD": (100, 250), "SNOW": (100, 250), "CRWD": (200, 450),
+    "GLD": (150, 500), "NKE": (50, 120), "ARM": (100, 200),
+    "RIVN": (5, 30), "SNAP": (5, 20),
+}
+
+
+def check_price_sanity(data):
+    """Flag prices that look wrong for the ticker."""
+    corrections = []
+    for item_list in [data["levels"], data["positions"]]:
+        for item in item_list:
+            ticker = item.get("ticker")
+            price = item.get("price")
+            if not ticker or not price or ticker not in PRICE_RANGES:
+                continue
+            lo, hi = PRICE_RANGES[ticker]
+            if price < lo * 0.5 or price > hi * 1.5:
+                corrections.append(
+                    f"Check {ticker} @ ${price} — expected range ${lo}-${hi} "
+                    f"(transcription error?)"
+                )
+    return corrections
+
+
+# --- Main ---
+
+def parse_transcript(text):
+    """Parse a full AM Call transcription into structured data."""
+    text = preprocess(text)
+    sentences = split_sentences(text)
+
+    positions = extract_positions(sentences)
+    levels = extract_levels(sentences)
+    analyst_actions = extract_analyst_actions(sentences)
+    catalysts = extract_catalysts(sentences)
+    bias = assess_bias(text)
+    outlook = extract_outlook(sentences)
+
+    data = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "bias": bias,
+        "positions": positions,
+        "levels": levels,
+        "analyst_actions": analyst_actions,
+        "catalysts": catalysts,
+        "outlook": outlook,
+        "corrections": [],
+    }
+
+    data["corrections"] = check_price_sanity(data)
+
+    return data
+
+
+def main():
+    args = sys.argv[1:]
+
+    if "-h" in args or "--help" in args or "help" in args:
+        print(__doc__.strip())
+        sys.exit(0)
+
+    json_mode = "--json" in args
+    file_path = None
+    for i, a in enumerate(args):
+        if a == "--file" and i + 1 < len(args):
+            file_path = args[i + 1]
+
+    if file_path:
+        with open(file_path) as f:
+            text = f.read()
+    elif not sys.stdin.isatty():
+        text = sys.stdin.read()
+    else:
+        print("Paste DP AM Call transcription (Ctrl+D when done):", file=sys.stderr)
+        text = sys.stdin.read()
+
+    data = parse_transcript(text)
+
+    if json_mode:
+        print(format_json_output(data))
+    else:
+        print(format_markdown(data))
+
+
+if __name__ == "__main__":
+    main()

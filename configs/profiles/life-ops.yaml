@@ -40,11 +40,26 @@ tools:
     category: data
     description: "Substack newsletter reader — latest posts, search, full articles"
     required: false
+  - name: tradier
+    category: data
+    description: "Tradier brokerage API — account, positions, orders, market data"
+    required: false
+  - name: trade-journal
+    category: data
+    description: "Trade journaling — log entries, review performance, track setups"
+    required: false
+  - name: dp-brief
+    category: data
+    description: "David Prince AM Call parser — transcript and VTF alert extraction"
+    required: false
 
 skills:
   - morning-brief
   - schedule-guard
   - construct
+  - mancini-fetch
+  - eod-review
+  # dp-parse is event-driven (triggered when user pastes content), not cron-scheduled
 
 integrations:
   required: [messaging, email, calendar]
@@ -55,10 +70,18 @@ cron_defaults:
   heartbeat: "*/10 * * * *"
   work_session: "*/15 * * * *"
   morning_brief: "30 7 * * *"
+  mancini_fetch: "30 14 * * 1-5"
+  mancini_fallback: "0 19 * * 1-5"
+  premarket_brief: "0 6 * * 1-5"
+  eod_review: "15 13 * * 1-5"
 
 cron_prompts:
   heartbeat: "Run heartbeat: check email for urgent messages, check calendar for upcoming meetings in the next 2 hours, check tasks for overdue items. If nothing urgent, respond HEARTBEAT_OK."
   work_session: "Run work session: check your task queue, pick the highest priority item, execute it. If blocked, move to the next item. Summarize what you accomplished."
+  mancini_fetch: "Run skill mancini-fetch: pull Mancini's latest Futures Daily post from Substack, extract trade plan per EXTRACT_MANCINI.md, write to memory/trading-YYYY-MM-DD.md."
+  mancini_fallback: "Run skill mancini-fetch --force: fallback fetch if the 2:30pm run missed. Check memory/trading-YYYY-MM-DD.md first — skip if already populated."
+  premarket_brief: "Deliver premarket brief: read today's trading-YYYY-MM-DD.md, summarize key levels, upcoming catalysts, and overnight moves. Format for quick mobile read."
+  eod_review: "Run skill eod-review: fetch closing prices via quote for all watched names, compare against today's trade plan levels, categorize as TRIGGERED/NEAR/WATCH. Write to memory/trading-YYYY-MM-DD-eod.md."
   morning_brief: "Deliver morning briefing: summarize today's calendar, overnight email highlights (urgent items first), top 3 tasks for today, any conflicts or deadlines."
 
 delegation:
@@ -88,6 +111,7 @@ egress_domains:
   - api.todoist.com
   - api.tavily.com
   - query1.finance.yahoo.com
+  - api.tradier.com
   - api.twitter.com
   - substack.com
 
