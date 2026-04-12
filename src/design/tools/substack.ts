@@ -68,14 +68,16 @@ shift 2>/dev/null || true
 case "\$cmd" in
   latest)
     pub=\$(_resolve_pub "\${1:?Usage: substack latest <publication>}")
-    _curl "https://\$pub.substack.com/api/v1/posts?limit=10" | _sanitize
+    _curl "https://\$pub.substack.com/api/v1/posts?limit=10" | \\
+      jq '[.[] | {title, slug, post_date, subtitle, audience, canonical_url, wordcount, description: .truncated_body_text[0:200]}]' 2>/dev/null | _sanitize
     ;;
   search)
     pub=\$(_resolve_pub "\${1:?Usage: substack search <publication> <query>}")
     query="\${*:2}"
     [[ -z "\$query" ]] && { echo "Usage: substack search <publication> <query>" >&2; exit 1; }
     encoded=\$(jq -rn --arg q "\$query" '\$q | @uri')
-    _curl "https://\$pub.substack.com/api/v1/posts?query=\$encoded&limit=10" | _sanitize
+    _curl "https://\$pub.substack.com/api/v1/posts?query=\$encoded&limit=10" | \\
+      jq '[.[] | {title, slug, post_date, subtitle, audience, canonical_url, wordcount, description: .truncated_body_text[0:200]}]' 2>/dev/null | _sanitize
     ;;
   read)
     pub=\$(_resolve_pub "\${1:?Usage: substack read <publication> <slug>}")
