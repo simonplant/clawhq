@@ -67,11 +67,14 @@ export function compile(
   const profile = loadProfile(config.profile);
   const personality = loadPersonality(config.personality);
 
-  // Resolve selected providers
-  const providerIds = Object.values(config.providers ?? {});
-  const resolvedProviders = providerIds
-    .map((id) => getProvider(id))
-    .filter((p): p is Provider => p !== undefined);
+  // Resolve selected providers — carry domain key for multi-account env var prefixing
+  const providerEntries = Object.entries(config.providers ?? {});
+  const providerIds = providerEntries.map(([, id]) => id);
+  const resolvedProviders: Array<Provider & { domainKey: string }> = [];
+  for (const [domainKey, id] of providerEntries) {
+    const p = getProvider(id);
+    if (p) resolvedProviders.push({ ...p, domainKey });
+  }
 
   // Compute egress domains: profile defaults + provider-specific
   const providerEgress = getEgressForProviders(providerIds);
@@ -639,14 +642,20 @@ function renderEnv(
   }
 
   // Add provider-specific env var templates
+  // Multi-account: numbered domain keys (e.g. email-2) get prefixed env vars
   if (providers.length > 0) {
     lines.push("# ── Provider Credentials ──");
     for (const provider of providers) {
       if (provider.envVars.length === 0) continue;
-      lines.push(`# ${provider.name} (${provider.domain})`);
+      // Determine env var prefix for multi-account providers
+      const domainKey = (provider as { domainKey?: string }).domainKey ?? "";
+      const suffix = domainKey.match(/-(\d+)$/)?.[1]; // email-2 → "2"
+      const prefix = suffix ? `${provider.domain.toUpperCase()}_${suffix}_` : "";
+      lines.push(`# ${provider.name} (${domainKey || provider.domain})`);
       for (const ev of provider.envVars) {
+        const key = prefix ? `${prefix}${ev.key}` : ev.key;
         const value = ev.default ?? "CHANGE_ME";
-        lines.push(`${ev.key}=${value}`);
+        lines.push(`${key}=${value}`);
       }
       lines.push("");
     }
