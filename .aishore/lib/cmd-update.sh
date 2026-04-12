@@ -276,13 +276,17 @@ cmd_update() {
     local section_template="$AISHORE_ROOT/templates/claude-section.md"
     if [[ -n "$claude_md" && -f "$section_template" ]]; then
         if grep -q "## Sprint Orchestration (aishore)" "$claude_md" 2>/dev/null; then
-            local new_section
-            new_section=$(cat "$section_template")
             local tmp_claude
             tmp_claude="$(ensure_tmpdir)/claude_md_refresh.md"
-            # Replace everything from "## Sprint Orchestration (aishore)" to next "## " or EOF
-            awk -v new="$new_section" '
-                /^## Sprint Orchestration \(aishore\)/ { found=1; print new; next }
+            # Replace everything from "## Sprint Orchestration (aishore)" to next "## " or EOF.
+            # Template is read via getline (not -v) since BSD awk rejects literal newlines in -v values.
+            awk -v tmpl="$section_template" '
+                /^## Sprint Orchestration \(aishore\)/ {
+                    found=1
+                    while ((getline line < tmpl) > 0) print line
+                    close(tmpl)
+                    next
+                }
                 found && /^## / { found=0 }
                 !found { print }
             ' "$claude_md" > "$tmp_claude"

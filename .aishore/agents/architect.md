@@ -122,16 +122,16 @@ The orchestrator enforces `dependsOn` at pick time — items with unmet dependen
 Example:
 ```bash
 # Create scaffolding items in order
-.aishore/aishore backlog add --type feat --title "Wire up build pipeline" ... --ready
+.aishore/aishore backlog add --json '{"type":"feat","title":"Wire up build pipeline","intent":"...","readyForSprint":true}'
 # FEAT-050 created
-.aishore/aishore backlog add --type feat --title "Wire up entry point to core" ... --depends-on FEAT-050 --ready
+.aishore/aishore backlog add --json '{"type":"feat","title":"Wire up entry point to core","intent":"...","dependsOn":["FEAT-050"],"readyForSprint":true}'
 # FEAT-051 created
-.aishore/aishore backlog add --type feat --title "End-to-end smoke test" ... --depends-on FEAT-051 --ready
+.aishore/aishore backlog add --json '{"type":"feat","title":"End-to-end smoke test","intent":"...","dependsOn":["FEAT-051"],"readyForSprint":true}'
 # FEAT-052 created
 
 # Block existing feature items on scaffolding
-.aishore/aishore backlog edit FEAT-030 --depends-on FEAT-050
-.aishore/aishore backlog edit FEAT-031 --depends-on FEAT-051
+.aishore/aishore backlog edit FEAT-030 --json '{"dependsOn":["FEAT-050"]}'
+.aishore/aishore backlog edit FEAT-031 --json '{"dependsOn":["FEAT-051"]}'
 ```
 
 ### Process

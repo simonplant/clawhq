@@ -96,14 +96,15 @@ _backlog_check_all() {
     done
     echo ""
     printf '%s item(s): %s pass, %s fail\n' "$total" "$pass_count" "$fail_count"
+    log_info "$pass_count/$total items ready for sprint"
 
     [[ "$fail_count" -gt 0 ]] && return 1
     return 0
 }
 
 cmd_backlog_list() {
-    local filter_status="" filter_type="" filter_priority="" filter_ready=false filter_no_ready=false
-    parse_opts "val:filter_status:--status" "val:filter_type:--type" "val:filter_priority:--priority" "bool:filter_ready:--ready" "bool:filter_no_ready:--no-ready" -- "$@" || return 1
+    local filter_status="" filter_type="" filter_priority="" filter_ready=false filter_no_ready=false filter_failed=false
+    parse_opts "val:filter_status:--status" "val:filter_type:--type" "val:filter_priority:--priority" "bool:filter_ready:--ready" "bool:filter_no_ready:--no-ready" "bool:filter_failed:--failed" -- "$@" || return 1
 
     # Determine which files to scan
     local files=()
@@ -129,28 +130,34 @@ cmd_backlog_list() {
     elif [[ "$filter_no_ready" == "true" ]]; then
         jq_filter="$jq_filter | select(.readyForSprint != true)"
     fi
+    if [[ "$filter_failed" == "true" ]]; then
+        jq_filter="$jq_filter | select((.failCount // 0) > 0)"
+    fi
 
     # Collect done IDs for dependency checking
     local done_ids
     done_ids=$(collect_done_ids)
 
     # Header
-    printf "%-10s %-8s %-13s %-6s %-20s %s\n" "ID" "PRI" "STATUS" "READY" "BLOCKED" "TITLE"
-    printf "%-10s %-8s %-13s %-6s %-20s %s\n" "──────────" "────────" "─────────────" "──────" "────────────────────" "─────────────────────────────"
+    printf "%-10s %-8s %-13s %-6s %-6s %-20s %s\n" "ID" "PRI" "STATUS" "READY" "FAILS" "BLOCKED" "TITLE"
+    printf "%-10s %-8s %-13s %-6s %-6s %-20s %s\n" "──────────" "────────" "─────────────" "──────" "──────" "────────────────────" "─────────────────────────────"
 
     local count=0
     for f in "${files[@]}"; do
         [[ -f "$BACKLOG_DIR/$f" ]] || continue
         local items
         # shellcheck disable=SC1010
-        items=$(jq -r --argjson done "$done_ids" "${JQ_PRIO_RANK}[$jq_filter] | sort_by(.priority // \"should\" | prio_rank) | .[] | [.id, .priority // \"-\", .status // \"todo\", (if .readyForSprint then \"yes\" else \"no\" end), ((.dependsOn // []) | map(select(. as \$d | \$done | index(\$d) | not)) | if length == 0 then \"-\" else join(\",\") end), .title] | @tsv" "$BACKLOG_DIR/$f" 2>/dev/null) || continue
+        items=$(jq -r --argjson done "$done_ids" "${JQ_PRIO_RANK}[$jq_filter] | sort_by(.priority // \"should\" | prio_rank) | .[] | [.id, .priority // \"-\", .status // \"todo\", (if .readyForSprint then \"yes\" else \"no\" end), ((.failCount // 0) | tostring), ((.dependsOn // []) | map(select(. as \$d | \$done | index(\$d) | not)) | if length == 0 then \"-\" else join(\",\") end), .title] | @tsv" "$BACKLOG_DIR/$f" 2>/dev/null) || continue
         if [[ -n "$items" ]]; then
-            while IFS=$'\t' read -r id pri status ready blocked title; do
-                local blocked_display=""
+            while IFS=$'\t' read -r id pri status ready fails blocked title; do
+                local blocked_display="" fails_display="-"
                 if [[ "$blocked" != "-" ]]; then
                     blocked_display="[blocked: $blocked]"
                 fi
-                printf "%-10s %-8s %-13s %-6s %-20s %s\n" "$id" "$pri" "$status" "$ready" "$blocked_display" "$title"
+                if [[ "$fails" -gt 0 ]] 2>/dev/null; then
+                    fails_display="$fails"
+                fi
+                printf "%-10s %-8s %-13s %-6s %-6s %-20s %s\n" "$id" "$pri" "$status" "$ready" "$fails_display" "$blocked_display" "$title"
                 ((count++)) || true
             done <<< "$items"
         fi
@@ -177,6 +184,11 @@ cmd_backlog_show() {
         "Category:    \(.category // "-")",
         "Ready:       \(if .readyForSprint then "yes" else "no" end)",
         "Passes:      \(if .passes then "yes" else "no" end)",
+        if (.failCount // 0) > 0 or .lastFailReason then
+            "Fail count:   \(.failCount // 0)",
+            if .lastFailReason then "Last failure: \(.lastFailReason)" else empty end,
+            if .lastFailAt then "Last fail at: \(.lastFailAt)" else empty end
+        else empty end,
         "",
         if .intent then "Intent:      \(.intent)\n" else empty end,
         "Description: \(.description // "-")",

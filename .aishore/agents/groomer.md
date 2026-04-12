@@ -39,8 +39,11 @@ For each item, ensure:
 - AC should describe user outcomes — focus on "what" and "why"
 - Implementation steps should focus on "how" — specific enough to follow without guessing
 - If AC is vague, add testable criteria or note the gap in grooming notes
-- AC verify commands must test behavior, not structure. A verify that greps a source file for a function name is theater — rewrite it to execute the feature and check the result.
-- **Prefer structural verify commands over content greps on built output.** Build tools (Astro, Vite, Next.js, webpack) transform, bundle, and minify HTML/JS/CSS — `grep -qi 'subscribe' dist/index.html` will fail even when the feature exists because the content is in a bundled JS file or rendered differently. Instead use: `test -f dist/path/index.html`, `test -d dist/tags`, `ls dist/tags/*/index.html | grep -q .`, or run the dev server and `curl -s localhost:... | grep -qi pattern`. Only grep built output when the string is guaranteed to appear literally (e.g., `<title>` text, meta tags).
+- **CRITICAL: verify commands must survive build transforms.** Build tools (Astro, Vite, Next.js, webpack) transform, bundle, and minify output. A verify command that greps for a string in built HTML/JS/CSS WILL fail even when the feature works — the string is in a hashed bundle, minified, or rendered client-side. Every failed verify command wastes an entire developer retry cycle.
+  - **NEVER:** `grep -qi 'subscribe' dist/index.html` (bundled away)
+  - **NEVER:** `grep -q 'functionName' src/file.js` (tests structure, not behavior)
+  - **INSTEAD:** `test -f dist/path/index.html` (file exists), `test -d dist/tags` (directory exists), `curl -s localhost:3000/page | grep -qi pattern` (test running app), or `node -e "require('./src/module').func()"` (execute the code)
+  - **Rule of thumb:** if the verify command uses `grep` on a file that goes through a build step, it's wrong. Test the behavior, not the text.
 - Set `readyForSprint` only when the item meets all checklist gates
 
 ## Scaffolding Awareness
@@ -118,15 +121,19 @@ Scaffolding items should be:
 
 ### Example — Gold Standard Item
 ```bash
-.aishore/aishore backlog add \
-  --type feat \
-  --title "Export inventory to CSV" \
-  --intent "The user gets a complete, correct export file or a clear error. Never a partial write, corrupt file, or silent failure." \
-  --desc "Add a CSV export command that writes all inventory items to a file. Handle large datasets without excessive memory usage. Include a header row. Escape special characters correctly so the output opens cleanly in Excel and Google Sheets. Must follow the existing CLI command pattern." \
-  --priority should \
-  --ac "Running 'tool export --format csv' writes a valid CSV file to the specified path" \
-  --ac "The CSV includes a header row matching the item schema fields" \
-  --ac "Fields containing commas or quotes are properly escaped per RFC 4180" \
-  --ac "Exporting an empty inventory produces a file with only the header row" \
-  --ac "Export errors (invalid path, permission denied) display a specific message and exit non-zero"
+.aishore/aishore backlog add --json '{
+  "type": "feat",
+  "title": "Export inventory to CSV",
+  "intent": "The user gets a complete, correct export file or a clear error. Never a partial write, corrupt file, or silent failure.",
+  "description": "Add a CSV export command that writes all inventory items to a file. Handle large datasets without excessive memory usage. Include a header row. Escape special characters correctly so the output opens cleanly in Excel and Google Sheets. Must follow the existing CLI command pattern.",
+  "priority": "should",
+  "acceptanceCriteria": [
+    "Running tool export --format csv writes a valid CSV file to the specified path",
+    "The CSV includes a header row matching the item schema fields",
+    "Fields containing commas or quotes are properly escaped per RFC 4180",
+    "Exporting an empty inventory produces a file with only the header row",
+    "Export errors (invalid path, permission denied) display a specific message and exit non-zero"
+  ],
+  "readyForSprint": true
+}'
 ```

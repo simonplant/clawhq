@@ -102,6 +102,7 @@ SESSION_LIMIT=""
 MAX_TURNS_DEVELOPER="75"
 MAX_TURNS_VALIDATOR="45"
 MAX_TURNS_GROOMER="45"
+MAX_TURNS_REFINER="60"
 
 # Detect timeout command once at startup (macOS uses gtimeout from coreutils)
 if command -v timeout &>/dev/null; then
@@ -144,6 +145,7 @@ PERMS_VALIDATOR="Bash,Read,Glob,Grep"
 PERMS_REVIEWER="Read,Glob,Grep"
 # shellcheck disable=SC2034 # used in cmd-review.sh (sourced at runtime)
 PERMS_REVIEWER_DOCS="Read,Glob,Grep,Edit,Write"
+PERMS_REFINER="AskUserQuestion,Edit,Write,Read,Glob,Grep"
 
 # Shared constants (hardcoded — not configurable)
 readonly BACKLOG_FILES=("backlog.json" "bugs.json")
@@ -386,7 +388,7 @@ build_context() {
         [[ -n "$context" ]] && context="$context $arg" || context="$arg"
     done
     # Developer/architect need CLAUDE.md and ARCHITECTURE.md/PRODUCT.md
-    if [[ "$agent_role" == "developer" || "$agent_role" == "architect" ]]; then
+    if [[ "$agent_role" == "developer" || "$agent_role" == "architect" || "$agent_role" == "refiner" ]]; then
         local claude_md; claude_md=$(find_claude_md)
         [[ -n "$claude_md" ]] && context="$context @$claude_md"
         local project_docs; project_docs=$(find_project_docs)
@@ -442,7 +444,7 @@ acquire_lock() {
     local attempt
     for (( attempt = 0; attempt < 2; attempt++ )); do
         if mkdir "$lockdir" 2>/dev/null; then
-            if ! echo $$ > "$lockdir/pid"; then
+            if ! echo "$$" > "$lockdir/pid"; then
                 rm -rf "$lockdir"
                 log_error "Failed to write PID to lock file"
                 return 1
@@ -580,6 +582,7 @@ load_config() {
             ".agent.max_turns.developer MAX_TURNS_DEVELOPER"
             ".agent.max_turns.validator MAX_TURNS_VALIDATOR"
             ".agent.max_turns.groomer   MAX_TURNS_GROOMER"
+            ".agent.max_turns.refiner   MAX_TURNS_REFINER"
         )
         local cfg_val _key _var
         for _entry in "${_cfg_map[@]}"; do
@@ -634,6 +637,7 @@ _apply_env_overrides() {
         "AISHORE_MAX_TURNS_DEVELOPER MAX_TURNS_DEVELOPER"
         "AISHORE_MAX_TURNS_VALIDATOR MAX_TURNS_VALIDATOR"
         "AISHORE_MAX_TURNS_GROOMER   MAX_TURNS_GROOMER"
+        "AISHORE_MAX_TURNS_REFINER   MAX_TURNS_REFINER"
     )
     local _env_name _target_var
     for _entry in "${_env_map[@]}"; do
@@ -745,7 +749,7 @@ pick_item() {
             '"$PICKABLE_ITEMS_FILTER"' |
             [.[] | '"$ITEM_PROJECTION"' + {_source: $src}]
         ' "$BACKLOG_DIR/$backlog" 2>/dev/null || echo "[]")
-        all_candidates=$(printf '%s\n%s\n' "$all_candidates" "$candidates" | jq -s 'add')
+        all_candidates=$(printf '%s\n%s\n' "$all_candidates" "$candidates" | jq -s 'add // []')
     }
     map_backlog_files _collect_candidates
 
@@ -904,6 +908,21 @@ check_readiness_gates() {
         done <<< "$deps"
     fi
 
+    # Run AC verify commands and report failures
+    local verify_cmds
+    verify_cmds=$(printf '%s\n' "$item" | jq -r '[.acceptanceCriteria // [] | .[] | select(type == "object" and .verify != null) | .verify] | .[]' 2>/dev/null)
+    if [[ -n "$verify_cmds" ]]; then
+        while IFS= read -r vcmd; do
+            [[ -z "$vcmd" ]] && continue
+            local vrc=0
+            (eval "$vcmd") >/dev/null 2>&1 || vrc=$?
+            if [[ "$vrc" -ne 0 ]]; then
+                warnings="${warnings}  - AC verify failed (exit ${vrc}): ${vcmd}\n"
+                has_warning=true
+            fi
+        done <<< "$verify_cmds"
+    fi
+
     [[ -n "$warnings" ]] && printf '%s\n' "$warnings"
     if [[ "$has_warning" == "true" ]]; then
         log_error "Readiness gate check failed for $item_id"
@@ -1008,7 +1027,7 @@ collect_done_ids() {
         [[ -f "$BACKLOG_DIR/$f" ]] || return 0
         local ids
         ids=$(jq '[.items[] | select(.status == "done") | .id]' "$BACKLOG_DIR/$f" 2>/dev/null || echo "[]")
-        done_ids=$(printf '%s %s\n' "$done_ids" "$ids" | jq -s 'add | unique')
+        done_ids=$(printf '%s\n%s\n' "$done_ids" "$ids" | jq -s 'add | unique')
     }
     map_backlog_files _collect_done_one
     # Also include archived sprint item IDs (completed items removed via 'clean')
@@ -1016,7 +1035,7 @@ collect_done_ids() {
     if [[ -f "$archive_file" ]] && [[ -s "$archive_file" ]]; then
         local archived_ids
         archived_ids=$(jq -r '.itemId // empty' "$archive_file" 2>/dev/null | jq -R . | jq -s '.' 2>/dev/null || echo "[]")
-        done_ids=$(printf '%s %s\n' "$done_ids" "$archived_ids" | jq -s 'add | unique')
+        done_ids=$(printf '%s\n%s\n' "$done_ids" "$archived_ids" | jq -s 'add | unique')
     fi
     printf '%s\n' "$done_ids"
 }
@@ -1442,6 +1461,94 @@ run_agent_process() {
         "$(portable_date_iso)|$agent_label|${AGENT_MODE:-unknown}|${duration}s|$model"
 }
 
+# Run an agent interactively in the foreground (for agents that use AskUserQuestion).
+# Unlike run_agent_process, this does NOT background via setsid or poll for result.json.
+# Uses --system-prompt (not -p) so claude runs interactively and AskUserQuestion works.
+run_agent_interactive() {
+    local agent_name="$1"
+    local mode="$2"
+    local model="${3:-$MODEL_PRIMARY}"
+    local _rai_ctx_name="${4:-}"
+    local extra_prompt="${5:-}"
+
+    local prompt_file="$AGENTS_DIR/${agent_name}.md"
+    [[ ! -f "$prompt_file" ]] && { log_error "Agent not found: $agent_name"; return 1; }
+
+    rm -f "$STATUS_DIR/result.json"
+
+    local context_files
+    if [[ -n "$_rai_ctx_name" ]]; then
+        local -n _rai_ctx_ref="$_rai_ctx_name"
+        context_files=$(AGENT_CONTEXT_ROLE="$agent_name" build_context "${_rai_ctx_ref[@]}")
+    else
+        context_files=$(AGENT_CONTEXT_ROLE="$agent_name" build_context)
+    fi
+
+    # Resolve @file references into inline content (--system-prompt doesn't expand @file)
+    local resolved_context=""
+    local _token
+    for _token in $context_files; do
+        if [[ "$_token" == @* ]]; then
+            local _file="${_token#@}"
+            if [[ -f "$_file" ]]; then
+                resolved_context+="
+--- ${_file} ---
+$(cat "$_file")
+"
+            fi
+        fi
+    done
+
+    local agent_perms="$PERMS_REFINER"
+    local max_turns="$MAX_TURNS_REFINER"
+
+    local prompt
+    prompt=$(build_agent_prompt "$agent_name" "$mode" "$extra_prompt")
+
+    # Combine resolved context files + agent prompt into system prompt
+    local system_prompt="${resolved_context}
+
+${prompt}"
+
+    local agent_log
+    agent_log="$LOGS_DIR/${agent_name}-$(date +%Y%m%dT%H%M%S).log"
+    LAST_AGENT_LOG="$agent_log"
+
+    log_agent "$agent_name" "Starting interactive session (model: $model, max_turns: $max_turns)"
+
+    local start_time
+    start_time=$(date +%s)
+
+    local claude_args=(
+        --model "$model"
+        --permission-mode acceptEdits
+        --allowedTools "$agent_perms"
+        --system-prompt "$system_prompt"
+    )
+    if [[ -n "$max_turns" ]] && [[ "$max_turns" -gt 0 ]] 2>/dev/null; then
+        claude_args+=(--max-turns "$max_turns")
+    fi
+
+    # Run INTERACTIVELY in foreground — no -p, no setsid, no piping.
+    # AskUserQuestion prompts appear in the user's terminal.
+    # Cannot pipe through tee — claude detects non-tty stdout and switches to print mode.
+    # Use script(1) to capture output while preserving the pty.
+    if command -v script &>/dev/null; then
+        script -q -e -c "env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude $(printf '%q ' "${claude_args[@]}")" "$agent_log"
+    else
+        # Fallback: no logging for interactive sessions
+        env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT \
+            claude "${claude_args[@]}"
+    fi
+
+    local duration
+    duration=$(($(date +%s) - start_time))
+    log_agent "$agent_name" "Completed in ${duration}s"
+
+    append_log "$LOGS_DIR/agent-runs.log" \
+        "$(portable_date_iso)|$agent_name|${mode}|${duration}s|$model"
+}
+
 build_agent_prompt() {
     local agent_name="$1"
     local mode="$2"
@@ -1465,6 +1572,16 @@ ${prompt_content}"
         prompt_content="$(sed '/^## Groom Mode/,$d' "$prompt_file" | sed -e :a -e '/^[[:space:]]*$/{ $d; N; ba; }')"
         # Inject explicit mode indicator so the architect knows its mode without inferring from stripped sections
         prompt_content="You are in review mode.
+${prompt_content}"
+    elif [[ "$agent_name" == "refiner" && "$mode" == "feedback" ]]; then
+        # Strip Refine Mode section, keep Feedback Mode section
+        prompt_content="$(sed '/^## Refine Mode/,/^## Feedback Mode/{/^## Feedback Mode/!d}' "$prompt_file")"
+        prompt_content="You are in feedback mode.
+${prompt_content}"
+    elif [[ "$agent_name" == "refiner" ]]; then
+        # Strip Feedback Mode section (refine mode)
+        prompt_content="$(sed '/^## Feedback Mode/,$d' "$prompt_file" | sed -e :a -e '/^[[:space:]]*$/{ $d; N; ba; }')"
+        prompt_content="You are in refine mode.
 ${prompt_content}"
     else
         prompt_content="$(cat "$prompt_file")"
@@ -1505,7 +1622,10 @@ After you finish, the orchestrator will automatically run \`$FIX_CMD\` to fix li
 ## Maturity Protocol (MANDATORY — complete all phases)
 **Phase 1 — Implement:** Write the code. Follow spec, match conventions.${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix failures.}
 **Phase 2 — Critique:** STOP coding. Re-read every changed file. Verify intent is fulfilled and each AC is provably met. Hunt bugs, edge cases, dead code, missing error handling. Fix everything found.
-**Phase 3 — Harden:**${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix any failures.} **Run every AC verify command and fix failures.** AC verify commands are in sprint.json under \`acceptanceCriteria\` — entries with a \`verify\` field (e.g. \`{\"text\": \"...\", \"verify\": \"shell command\"}\`). Run each \`.verify\` command. For AC without verify commands, manually execute the behavior. Fix regressions. Only then commit and signal done.
+**Phase 3 — Harden:**${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix any failures.} **Run every AC verify command.** AC verify commands are in sprint.json under \`acceptanceCriteria\` — entries with a \`verify\` field (e.g. \`{\"text\": \"...\", \"verify\": \"shell command\"}\`). Run each \`.verify\` command. If a verify command fails:
+- **Your code is wrong** → fix your code and re-run.
+- **The verify command is wrong** (grepping bundled/minified output, wrong file path, pattern that can't match after build transforms) → the spec is broken, not your code. Use common sense: if the feature demonstrably works but the grep pattern doesn't match transformed output, report it as a bad verify command in your result.json summary and count it as passed. Do NOT waste retries fighting a broken grep.
+For AC without verify commands, manually execute the behavior. Fix regressions. Only then commit and signal done.
 Output phase markers: \`═══ PHASE 2: CRITIQUE ═══\` / \`═══ PHASE 3: HARDEN ═══\`
 
 ## Maturity Evidence (REQUIRED in result.json)
@@ -1571,19 +1691,32 @@ Every item should have an \`intent\` field — a non-negotiable directive statin
 Every AC you write MUST have an \`--ac-verify\` command wherever the outcome is testable by a shell command. This is what separates an eval from an opinion. Verify commands must **execute the behavior and check the result**, not grep for code existence in source files.
 
 \`\`\`bash
-# Pattern: --ac \"what it does\" --ac-verify \"command that proves it\"
+# Good: test behavior, exit codes, file existence
 --ac \"CLI prints usage on --help\" --ac-verify \".aishore/aishore help | head -1 | grep -qi usage\"
---ac \"Invalid input returns exit code 1\" --ac-verify \"! .aishore/aishore backlog show NONEXISTENT\"
---ac \"New flag is wired end-to-end\" --ac-verify \".aishore/aishore run --dry-run 2>&1 | grep -q flag-output\"
---ac \"Config rejects invalid input\" --ac-verify \"echo '{}' > /tmp/bad.yaml && ! tool validate /tmp/bad.yaml\"
+--ac \"Invalid input exits non-zero\" --ac-verify \"! .aishore/aishore backlog show NONEXISTENT\"
+--ac \"Build succeeds\" --ac-verify \"npm run build\"
+--ac \"New page exists after build\" --ac-verify \"test -f dist/new-page/index.html\"
+
+# BAD: greps built/bundled output (will fail after minification/bundling)
+# --ac \"Page has subscribe form\" --ac-verify \"grep -qi subscribe dist/index.html\"  ← WRONG
+# --ac \"Function exists\" --ac-verify \"grep -q 'myFunc' src/app.js\"  ← tests structure, not behavior
 \`\`\`
 
-If you genuinely cannot write a verify command for an AC (e.g., \"code is readable\"), use a plain string AC — but this should be rare. Most real acceptance criteria describe observable behavior that a command can check. **If you cannot write a verify command, ask yourself whether the AC is specific enough to be useful.** A verify command that only checks whether a string exists in a source file (e.g., \`grep -q 'functionName' file.sh\`) tests structure, not behavior. **Always test behavior.**
+**CRITICAL: verify commands must survive build transforms.** If the project uses a build tool (Astro, Vite, Next.js, webpack, etc.), NEVER grep built output for content strings — they are bundled, hashed, and minified. Test file existence, exit codes, HTTP responses, or run the code directly. Every broken verify command wastes an entire developer retry cycle.
 
 ## Grooming Limits
 - **Maximum items per session:** $GROOM_MAX_ITEMS — stop adding new items after this cap. Focus on the highest-value items first.
 - **Minimum priority threshold:** $GROOM_MIN_PRIORITY — only add items at \`$GROOM_MIN_PRIORITY\` priority or higher. Skip lower-priority items (log them in your summary but do not add them).
 - When you reach the cap or run out of items above the threshold, stop and signal completion. Do not generate busywork."
+    elif [[ "$agent_name" == "refiner" ]]; then
+        local prd_path
+        prd_path=$(_find_prd)
+        validate_hint="
+## Target Document
+Edit \`$prd_path\` directly. Preserve section structure. Be specific and concrete — write for the groomer agent that will decompose this into backlog items.
+
+## Interview Tool
+Use \`AskUserQuestion\` to interview the user. Ask 1-2 questions at a time. The user can answer or say \"done\" to end the interview."
     fi
 
     local prompt
@@ -1631,6 +1764,7 @@ run_agent() {
                 agent_perms="$PERMS_REVIEWER"
             fi ;;
         groomer)    agent_perms="$PERMS_DEVELOPER" ;;
+        refiner)    agent_perms="$PERMS_REFINER" ;;
         *)          agent_perms="$PERMS_DEVELOPER" ;;
     esac
 
@@ -1643,6 +1777,8 @@ run_agent() {
             max_turns="$MAX_TURNS_VALIDATOR" ;;
         groomer|architect)
             max_turns="$MAX_TURNS_GROOMER" ;;
+        refiner)
+            max_turns="$MAX_TURNS_REFINER" ;;
         *)
             max_turns="$MAX_TURNS_DEVELOPER" ;;
     esac
@@ -1733,6 +1869,29 @@ check_result() {
         show_failure_log_tail
         return 1
     fi
+}
+
+# Scope enforcement — warn on out-of-scope file modifications (advisory only).
+# Reads .item.scope from sprint.json, compares changed files against scope globs,
+# and calls log_warning for each file outside scope. Never fails the sprint.
+_check_scope_warnings() {
+    local _scope_globs
+    _scope_globs=$(jq -r '.item.scope // [] | .[]' "$BACKLOG_DIR/sprint.json" 2>/dev/null || true)
+    [[ -z "$_scope_globs" || -z "${AISHORE_BASE_BRANCH:-}" ]] && return 0
+    # Build combined regex from all scope globs
+    local _combined_re="" _sg _re
+    while IFS= read -r _sg; do
+        _re=$(printf '%s' "$_sg" | sed -e 's/\./\\./g' -e 's/\*\*/\x00/g' -e 's/\*/[^\/]*/g' -e 's/\x00/.*/g' -e 's/?/./g')
+        [[ -n "$_combined_re" ]] && _combined_re="${_combined_re}|"
+        _combined_re="${_combined_re}^${_re}\$"
+    done <<< "$_scope_globs"
+    # Compare changed files against scope globs and warn on mismatches
+    local _scope_diff _cf
+    _scope_diff=$(git diff --name-only "$AISHORE_BASE_BRANCH" 2>/dev/null || true)
+    while IFS= read -r _cf; do [[ -z "$_cf" ]] && continue
+        [[ "$_cf" =~ ${_combined_re} ]] || log_warning "Out-of-scope file modified: $_cf"
+    done <<< "$_scope_diff"
+    return 0
 }
 
 run_ac_verification() {
@@ -2275,6 +2434,9 @@ Fix the issues identified above. Address each specific failure point."
         return 1
     fi
 
+    # Advisory scope warnings (never fails the sprint)
+    _check_scope_warnings
+
     return 0
 }
 
@@ -2446,6 +2608,8 @@ _handle_sprint_success() {
                 log_warning "Failed to push $AISHORE_FEATURE_BRANCH — push manually"
         fi
 
+        printf '\n  To open a PR:\n\n    gh pr create --head %s --base %s\n\n' "$AISHORE_FEATURE_BRANCH" "$base_branch"
+
         git checkout "$base_branch" || { log_error "Cannot checkout $base_branch after no-merge push"; return 1; }
     else
         # Save sprint.json content (mark_complete needs it after merge), then reset
@@ -2556,6 +2720,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"; then
 
     AISHORE_BASE_BRANCH="$_saved_base"
     AISHORE_DIFF_TARGET="$_saved_diff_target"
+    reset_sprint
     return 0
 }
 
@@ -2775,7 +2940,7 @@ _build_skip_list() {
     local -a _keys=()
     for _k in "${!FAILED_IDS[@]}"; do _keys+=("$_k"); done
     for _k in "${!COMPLETED_IDS[@]}"; do _keys+=("$_k"); done
-    IFS=,; printf '%s' "${_keys[*]}"
+    local IFS=,; printf '%s' "${_keys[*]}"
 }
 
 # Execute the core pick-implement-validate-merge cycle.
@@ -2841,9 +3006,10 @@ run_sprint_loop() {
         log_info "Creating branch: $branch_name"
 
         # Worktree isolation: create a separate working directory for the sprint
+        # Use mktemp -u to generate a unique path without creating the directory,
+        # avoiding a race between rmdir and git worktree add.
         local wt_dir
-        wt_dir=$(mktemp -d "${TMPDIR:-/tmp}/aishore-wt-${ITEM_ID}.XXXXXX")
-        rmdir "$wt_dir"
+        wt_dir=$(mktemp -u "${TMPDIR:-/tmp}/aishore-wt-${ITEM_ID}.XXXXXX")
         git branch -D "$branch_name" 2>/dev/null || true
         git worktree add "$wt_dir" -b "$branch_name"
         AISHORE_WORKTREE_DIR="$wt_dir"
@@ -2868,7 +3034,7 @@ run_sprint_loop() {
             if ! bash -c "$SETUP_CMD" 2>&1; then
                 log_error "Setup command failed — aborting sprint"
                 _record_sprint_failure "Setup failed" "Setup command '$SETUP_CMD' failed in worktree"
-                cd "$PROJECT_ROOT" 2>/dev/null || true
+                cd "$PROJECT_ROOT" || { log_error "Cannot return to project root"; break; }
                 continue
             fi
         fi
@@ -3037,6 +3203,7 @@ main() {
         backlog) _load_module cmd-backlog-read; cmd_backlog "$@" ;;
         groom)    _load_module cmd-groom; cmd_groom "$@" ;;
         scaffold) _load_module cmd-scaffold; cmd_scaffold "$@" ;;
+        refine)  _load_module cmd-refine; cmd_refine "$@" ;;
         review)  _load_module cmd-review; cmd_review "$@" ;;
         status)  _load_module cmd-status; cmd_status "$@" ;;
         update)  _load_module cmd-update; cmd_update "$@" ;;

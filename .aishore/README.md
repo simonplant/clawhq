@@ -1,36 +1,48 @@
 # .aishore/
 
-This directory contains the aishore sprint orchestration tool. It is self-contained and can be updated independently of your project code.
+Autonomous sprint orchestration for Claude Code. You write a backlog with intent. AI implements, validates, and merges — hands-off.
 
-## Contents
+## Workflow
+
+```bash
+.aishore/aishore backlog populate           # Create items from PRODUCT.md
+.aishore/aishore groom                      # Groom items for sprint readiness
+.aishore/aishore run done                   # Drain the backlog autonomously
+```
+
+Each item needs **intent** (what must be true when done), **steps**, and **executable AC** (verify commands that prove behavior). The verify commands compound into a regression suite — every future sprint proves prior work still holds.
+
+## Commands
+
+```bash
+.aishore/aishore run [N|ID|done|p0|p1|p2]  # Run sprints
+.aishore/aishore backlog populate            # Create items from PRODUCT.md
+.aishore/aishore backlog add --json '{...}'   # Add item manually
+.aishore/aishore groom                       # Groom backlog items
+.aishore/aishore scaffold                    # Detect fragment risk
+.aishore/aishore review [--update-docs]      # Architecture review
+.aishore/aishore status                      # Backlog overview
+.aishore/aishore clean                       # Archive done items
+.aishore/aishore update [--ref main]         # Self-update
+.aishore/aishore help [command]              # Help
+```
+
+## Directory Contents
 
 | Path | Purpose |
 |------|---------|
 | `aishore` | CLI entry point (Bash) |
-| `VERSION` | Version (single source of truth) |
+| `VERSION` | Current version |
 | `checksums.sha256` | SHA-256 checksums for update verification |
-| `agents/` | Agent prompt files (developer, validator, groomer, architect) |
 | `config.yaml` | Optional overrides (preserved across updates) |
-| `templates/` | Init wizard templates |
+| `agents/` | Agent prompts (developer, validator, groomer, architect) |
 | `lib/` | Lazy-loaded command modules |
-| `data/` | Runtime files — logs, status, lock (not version-controlled) |
-
-## Quick Reference
-
-```bash
-.aishore/aishore help               # Full usage
-.aishore/aishore run [N|ID|scope]   # Run sprints (scope: done, p0, p1, p2)
-.aishore/aishore groom              # Groom backlog items
-.aishore/aishore review             # Architecture review
-.aishore/aishore status             # Backlog overview
-.aishore/aishore clean              # Archive done items
-.aishore/aishore update             # Self-update from GitHub
-```
+| `templates/` | Init wizard templates |
+| `data/` | Runtime — logs, status, lock (not version-controlled) |
 
 ## Docs
 
-Full documentation: https://github.com/simonplant/aishore
-
 - [Quickstart](../docs/QUICKSTART.md) — install, configure, first sprint
-- [Configuration](../docs/CONFIGURATION.md) — all settings and flags
-- [Architecture](../docs/ARCHITECTURE.md) — pipeline, agents, design decisions
+- [Configuration](../docs/CONFIGURATION.md) — config file, env vars, all flags
+- [Architecture](../docs/ARCHITECTURE.md) — pipeline, agents, quality model
+- [Full README](../README.md) — intent-based development, comparison, examples

@@ -11,28 +11,9 @@ Commands:
     --priority <p>  Filter by priority (must, should, could, future)
     --ready         Show only sprint-ready items
     --no-ready      Show only items not yet ready
-  backlog add       Add a new item with flags
-    --type <t>      Type: feat (default) or bug
-    --title "..."   Item title (required)
-    --intent "..."  Commander's intent — the non-negotiable directive
-    --desc "..."    Description
-    --priority <p>  must, should, could, or future (default: should)
-    --category "."  Category
-    --ready         Mark as ready for sprint
-    --ac "text"     Acceptance criterion (repeatable, replaces all AC)
-    --ac-verify "cmd"  Attach verify command to preceding --ac
-    --steps "text"  Implementation step (repeatable, replaces all steps)
-    --scope "glob"  Scope glob (repeatable, replaces all scope)
-    --depends-on ID Dependency (repeatable, replaces all deps)
+  backlog add --json '{..}'  Add a new item (JSON object, or pipe via stdin)
   backlog show <ID> Show full detail of one item
-  backlog edit <ID> Update fields on an item
-    --title, --intent, --desc, --priority, --status, --category, --ready, --no-ready,
-    --groomed-at [date], --groomed-notes "...",
-    --steps "text"  Set implementation steps (repeatable, replaces all steps),
-    --scope "glob"  Set scope globs (repeatable, replaces all scope),
-    --ac "text", --ac-verify "cmd"  Set acceptance criteria (repeatable, replaces all AC),
-    --depends-on ID  Set dependencies (repeatable, replaces all deps),
-    --clear-depends  Remove all dependencies
+  backlog edit <ID> --json '{..}'  Update fields (merges onto existing item)
   backlog check <ID> Check readiness gates (title, intent, steps, AC, step length)
     --all           Audit every non-done item and print a summary table
   backlog rm <ID>   Remove an item (with confirmation)
@@ -53,6 +34,8 @@ Commands:
     --dry-run       Preview without running agents
 
   groom             Groom bugs, features, and tech debt
+  refine            Improve PRODUCT.md through interactive interview
+    --from-sprints  Feed sprint learnings back into PRODUCT.md
   scaffold          Detect fragment risk, inject scaffolding items (Architect)
 
   review            Architecture review (read-only)

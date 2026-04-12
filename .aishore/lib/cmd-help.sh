@@ -15,6 +15,7 @@ cmd_help() {
         backlog) _help_backlog ;;
         groom)    _help_groom ;;
         scaffold) _help_scaffold ;;
+        refine) _help_refine ;;
         review) _help_review ;;
         status) _help_status ;;
         update) _help_update ;;
@@ -35,6 +36,7 @@ Commands:
   run [N|ID|scope] Run sprints, or drain backlog with scope (done|p0|p1|p2)
   backlog <sub>    Manage backlog (list|add|show|edit|check|rm)
   groom            Groom bugs, features, and tech debt
+  refine           Improve PRODUCT.md through interactive interview
   scaffold         Detect fragment risk, inject scaffolding items
   review           Architecture review
   status           Backlog overview and sprint readiness
@@ -91,22 +93,9 @@ Subcommands:
     --priority <p>    Filter by priority (must, should, could, future)
     --ready           Show only sprint-ready items
     --no-ready        Show only items not yet ready
-  add               Add a new item
-    --type <t>        Type: feat (default) or bug
-    --title "..."     Item title (required)
-    --intent "..."    Commander's intent
-    --desc "..."      Description
-    --priority <p>    must, should, could, or future (default: should)
-    --category "..."  Category
-    --ready           Mark as ready for sprint
-    --ac "text"       Acceptance criterion (repeatable, replaces all AC)
-    --ac-verify "cmd" Attach verify command to preceding --ac
-    --steps "text"    Implementation step (repeatable, replaces all steps)
-    --scope "glob"    Scope glob (repeatable, replaces all scope)
-    --depends-on ID   Dependency (repeatable, replaces all deps)
+  add --json '{..}' Add a new item (JSON object, or pipe via stdin)
   show <ID>         Show full detail of one item
-  edit <ID>         Update fields on an item (same flags as add, plus --status,
-                    --no-ready, --clear-depends, --groomed-at, --groomed-notes)
+  edit <ID> --json '{..}' Update fields on an item (merges onto existing)
   check <ID>        Check readiness gates for an item
     --all             Audit every non-done item
   rm <ID>           Remove an item (--force to skip confirmation)
@@ -114,8 +103,8 @@ Subcommands:
 
 Examples:
   aishore backlog list --ready         # Show sprint-ready items
-  aishore backlog add --title "Add auth" --intent "Users can log in" --ac "Login works"
-  aishore backlog edit FEAT-001 --priority must --ready
+  aishore backlog add --json '{"title": "Add auth", "intent": "Users can log in securely"}'
+  aishore backlog edit FEAT-001 --json '{"priority": "must", "readyForSprint": true}'
   aishore backlog check --all          # Audit all items
   aishore backlog populate             # Populate from PRODUCT.md
 EOF
@@ -217,5 +206,31 @@ Checks prerequisites, detects project settings, and configures aishore.
 
 Options:
   -y, --yes     Accept all detected defaults (non-interactive)
+EOF
+}
+
+_help_refine() {
+    cat <<EOF
+aishore refine — Improve PRODUCT.md interactively
+
+Usage: aishore refine [options]
+
+Launches an interactive AI interview to improve your product requirements
+document. The Refiner agent reads the codebase and existing backlog, then
+asks targeted questions to fill gaps in PRODUCT.md.
+
+Options:
+  --from-sprints    Feed sprint learnings back into PRODUCT.md
+
+The refine → populate → groom → run cycle:
+  1. aishore refine                # Improve PRODUCT.md
+  2. aishore backlog populate      # Generate backlog items
+  3. aishore groom                 # Polish items for sprint
+  4. aishore run done              # Execute sprints
+  5. aishore refine --from-sprints # Learn and iterate
+
+Examples:
+  aishore refine                   # Interactive interview
+  aishore refine --from-sprints    # Post-sprint feedback loop
 EOF
 }

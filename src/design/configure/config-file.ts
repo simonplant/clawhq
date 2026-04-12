@@ -90,13 +90,21 @@ export class ConfigFileError extends Error {
 
 /**
  * Check if a config file uses the new composition format (profile + personality).
+ *
+ * Supports both input format (flat profile/personality keys) and deployed
+ * clawhq.yaml format (nested under composition:).
  */
 export function isCompositionConfig(configPath: string): boolean {
   const resolved = resolve(configPath);
   if (!existsSync(resolved)) return false;
   const content = readFileSync(resolved, "utf-8");
-  const parsed = yamlParse(content) as ConfigFile | null;
-  return !!(parsed?.profile && parsed?.personality);
+  const parsed = yamlParse(content) as Record<string, unknown> | null;
+  if (!parsed) return false;
+  // Flat format: profile + personality at top level
+  if (parsed.profile && parsed.personality) return true;
+  // Deployed format: composition.profile + composition.personality
+  const comp = parsed.composition as Record<string, unknown> | undefined;
+  return !!(comp?.profile && comp?.personality);
 }
 
 /**

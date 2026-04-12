@@ -1,0 +1,12 @@
+{
+  "itemId": "FEAT-152",
+  "reason": "Implementation failed",
+  "detail": "Implementation failed",
+  "timestamp": "2026-04-07T15:18:38-07:00",
+  "agentLog": "/home/simon/dev/clawhq/.aishore/data/logs/developer-20260407T145643.log",
+  "result": {
+    "status": "fail",
+    "reason": "CRASH: Agent crashed or was killed (exit code 1) — empty log suggests startup failure or resource limit"
+  },
+  "logTail": "Error: Reached max turns (75)"
+}

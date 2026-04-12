@@ -53,12 +53,20 @@ _status_output() {
         log_warning "No items ready for sprint — run 'groom' or 'backlog edit <ID> --ready'"
     fi
 
+    # --- Ready count summary ---
+    local ready_total=0
+    for f in "${BACKLOG_FILES[@]}"; do
+        [[ -f "$BACKLOG_DIR/$f" ]] || continue
+        ready_total=$((ready_total + $(count_ready_items "$BACKLOG_DIR/$f")))
+    done
+    log_info "$ready_total/$total items ready for sprint"
+
     # --- Currently running ---
     local sprint_file="$BACKLOG_DIR/sprint.json"
     if [[ -f "$sprint_file" ]]; then
         local sprint_status sprint_item_id sprint_item_title
         sprint_status=$(jq -r '.status // "idle"' "$sprint_file" 2>/dev/null || echo "idle")
-        if [[ "$sprint_status" != "idle" ]]; then
+        if [[ "$sprint_status" == "in_progress" ]]; then
             sprint_item_id=$(jq -r '.item.id // empty' "$sprint_file" 2>/dev/null || true)
             sprint_item_title=$(jq -r '.item.title // empty' "$sprint_file" 2>/dev/null || true)
             if [[ -n "$sprint_item_id" ]]; then
