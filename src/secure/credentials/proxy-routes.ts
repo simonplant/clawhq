@@ -100,7 +100,7 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
   {
     id: "x",
     pathPrefix: "/x",
-    upstream: "https://api.twitter.com/2",
+    upstream: "https://api.twitter.com",
     auth: {
       type: "header",
       header: "Authorization",

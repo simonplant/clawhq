@@ -152,9 +152,19 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     return aborted();
   }
 
-  // Firewall: enabled by default, auto-enabled by posture (hardened/paranoid),
-  // only skipped with explicit --skip-firewall flag
-  if (!options.skipFirewall) {
+  // Firewall: enabled by default, auto-enabled by posture (hardened/paranoid).
+  // Skipped when: --skip-firewall flag, or security.firewallDisabled in clawhq.yaml
+  const clawhqConfigPath = join(deployDir, "clawhq.yaml");
+  let firewallDisabledByConfig = false;
+  try {
+    const { readFileSync } = await import("node:fs");
+    const { parse: yamlParse } = await import("yaml");
+    const raw = yamlParse(readFileSync(clawhqConfigPath, "utf-8")) as Record<string, unknown>;
+    const security = raw.security as Record<string, unknown> | undefined;
+    firewallDisabledByConfig = security?.firewallDisabled === true;
+  } catch { /* no config or parse error — default to enabled */ }
+
+  if (!options.skipFirewall && !firewallDisabledByConfig) {
     const firewallOpts = { deployDir, airGap: options.airGap, signal };
     report("firewall", "running", options.airGap ? "Applying air-gap firewall (all egress blocked)…" : "Applying egress firewall…");
 

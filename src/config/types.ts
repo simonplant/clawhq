@@ -441,6 +441,8 @@ export interface ClawHQConfig {
     readonly posture?: SecurityPosture;
     readonly egress?: "default" | "restricted" | "allowlist-only";
     readonly airGap?: boolean;
+    /** Disable iptables egress firewall (requires ipset to be installed). */
+    readonly firewallDisabled?: boolean;
   };
   readonly cloud?: {
     readonly enabled?: boolean;
