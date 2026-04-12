@@ -608,7 +608,10 @@ function renderOpenclawJson(
         entries: {
           "boot-md": { enabled: true },
           "bootstrap-extra-files": { enabled: true },
-          "session-memory": { enabled: true },
+          // session-memory disabled for local models — the LLM slug generator
+          // has a hardcoded 15s timeout that large local models can't meet,
+          // causing every session to timeout and block responses.
+          "session-memory": { enabled: !isLocal },
           "command-logger": { enabled: true },
         },
       },
