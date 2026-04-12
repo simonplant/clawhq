@@ -584,7 +584,10 @@ function renderOpenclawJson(
         // tool deny lists instead (group:web denied for local models above).
         memorySearch: {
           provider: "ollama",
-          store: { vector: { enabled: true } },
+          // Vector search disabled for local models — embedding model competes
+          // with the main model for VRAM, causing rate limit loops and timeouts.
+          // Enable when running a dedicated embedding server or cloud provider.
+          store: { vector: { enabled: false } },
         },
       },
     },
