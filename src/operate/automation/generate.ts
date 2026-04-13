@@ -44,6 +44,7 @@ export function generateOpsAutomationFiles(
     const autoUpdateUnits = generateAutoUpdateUnits(
       deployDir,
       config?.autoUpdate?.schedule,
+      config?.autoUpdate?.mode,
     );
     files.push({
       filename: autoUpdateUnits.serviceName,

@@ -392,6 +392,8 @@ export interface OpsAutoUpdateConfig {
   readonly enabled?: boolean;
   /** Systemd timer schedule (default: daily). */
   readonly schedule?: string;
+  /** Update mode: "notify" (check + alert, default) or "apply" (check + apply + alert). */
+  readonly mode?: "notify" | "apply";
 }
 
 /** Security monitor automation configuration. */

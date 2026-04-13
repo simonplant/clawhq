@@ -24,15 +24,18 @@ interface SystemdUnitPair {
 
 /**
  * Generate systemd service + timer for auto-update.
+ *
+ * @param mode - "notify" (check + Telegram alert) or "apply" (check + apply + notify)
  */
 export function generateAutoUpdateUnits(
   deployDir: string,
   schedule: string = OPS_AUTO_UPDATE_SCHEDULE,
+  mode: "notify" | "apply" = "notify",
 ): SystemdUnitPair {
   const scriptPath = `${deployDir}/ops/automation/scripts/clawhq-autoupdate.sh`;
 
   const service = `[Unit]
-Description=ClawHQ Auto-Update
+Description=ClawHQ Auto-Update (${mode} mode)
 After=network-online.target
 Wants=network-online.target
 
@@ -41,6 +44,7 @@ Type=oneshot
 ExecStart=${scriptPath}
 User=root
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=AUTO_UPDATE_MODE=${mode}
 StandardOutput=journal
 StandardError=journal
 
