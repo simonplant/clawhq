@@ -155,7 +155,7 @@ toolbelt:
       category: reflection
       required: true
       description: "Append-only markdown journal for daily intentions, reflections, and insights"
-    - name: tasks
+    - name: backlog
       category: core
       required: true
       description: "Track commitments and practice goals"

@@ -8,11 +8,11 @@ tools:
     category: finance
     description: "Stock and futures quotes via Yahoo Finance (no auth, ~15min delay)"
     required: true
-  - name: tavily
+  - name: search
     category: research
-    description: "Market research and news via Tavily API"
+    description: "Market research and news via web search API"
     required: false
-  - name: tasks
+  - name: backlog
     category: core
     description: "Trading task and watchlist tracking"
     required: true

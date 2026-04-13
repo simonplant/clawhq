@@ -59,11 +59,9 @@ describe("BUILTIN_ROUTES", () => {
     }
   });
 
-  it("includes todoist-sync route", () => {
+  it("does not include deprecated todoist-sync route", () => {
     const sync = BUILTIN_ROUTES.find((r) => r.id === "todoist-sync");
-    expect(sync).toBeDefined();
-    expect(sync?.pathPrefix).toBe("/todoist-sync");
-    expect(sync?.upstream).toContain("sync/v9");
+    expect(sync).toBeUndefined();
   });
 
   it("includes anthropic route with x-api-key header", () => {
@@ -163,8 +161,8 @@ describe("filterRoutesForEnv", () => {
       ANTHROPIC_API_KEY: "key2",
     };
     const filtered = filterRoutesForEnv(BUILTIN_ROUTES, env);
-    // Todoist and todoist-sync share the same env var, plus always-on routes
-    expect(filtered.length).toBe(4 + alwaysIncluded);
+    // tavily + todoist + anthropic, plus always-on routes
+    expect(filtered.length).toBe(3 + alwaysIncluded);
   });
 
   it("includes basic auth routes when user env var is set", () => {

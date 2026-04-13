@@ -113,7 +113,7 @@ export function bundleToFiles(
       relativePath: f.path,
       content: f.content,
     })),
-    // Workspace tools (email, ical, todoist, sanitize, etc.)
+    // Workspace tools (email, calendar, tasks, search, sanitize, etc.)
     ...generateToolFiles(blueprint).map((f) => ({
       relativePath: f.relativePath,
       content: f.content,

@@ -162,19 +162,15 @@ toolbelt:
       category: email
       required: true
       description: "Email reading and triage via himalaya"
-    - name: ical
+    - name: calendar
       category: calendar
       required: true
       description: "Calendar management via CalDAV"
-    - name: todoist
-      category: tasks
-      required: false
-      description: "Task management via Todoist API"
-    - name: todoist-sync
-      category: tasks
-      required: false
-      description: "Task polling and due-date alerts"
     - name: tasks
+      category: tasks
+      required: false
+      description: "Task management via task management API"
+    - name: backlog
       category: core
       required: true
       description: "Local work queue for autonomous task execution"

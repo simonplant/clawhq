@@ -191,25 +191,25 @@ describe("email tool", () => {
   });
 });
 
-describe("ical tool", () => {
+describe("calendar tool", () => {
   it("is a bash script", () => {
     const bp = loadFamilyHub();
-    const wrapper = generateToolWrappers(bp).find((w) => w.name === "ical");
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "calendar");
     expect(wrapper).toBeDefined();
     expect(wrapper?.content).toMatch(/^#!\/usr\/bin\/env bash/);
   });
 
   it("references caldav", () => {
     const bp = loadFamilyHub();
-    const wrapper = generateToolWrappers(bp).find((w) => w.name === "ical");
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "calendar");
     expect(wrapper?.content).toContain("caldav");
   });
 });
 
-describe("tasks tool", () => {
+describe("backlog tool", () => {
   it("manages a local JSON task queue", () => {
     const bp = loadEmailManager();
-    const wrapper = generateToolWrappers(bp).find((w) => w.name === "tasks");
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "backlog");
     expect(wrapper).toBeDefined();
     expect(wrapper?.content).toContain("tasks.json");
     expect(wrapper?.content).toContain("add");
@@ -217,32 +217,60 @@ describe("tasks tool", () => {
   });
 });
 
-describe("todoist tool", () => {
-  it("uses credential proxy for Todoist REST API", () => {
+describe("tasks tool (todoist provider)", () => {
+  it("uses credential proxy for Todoist REST API v1", () => {
     const bp = loadFoundersOps();
-    const wrapper = generateToolWrappers(bp).find((w) => w.name === "todoist");
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "tasks");
     expect(wrapper).toBeDefined();
     expect(wrapper?.content).toContain("CRED_PROXY_URL");
     expect(wrapper?.content).toContain("/todoist");
   });
-});
 
-describe("todoist-sync tool", () => {
-  it("checks for overdue tasks via credential proxy", () => {
+  it("paginates via _fetch_all with next_cursor and safety limit", () => {
     const bp = loadFoundersOps();
-    const wrapper = generateToolWrappers(bp).find((w) => w.name === "todoist-sync");
-    expect(wrapper).toBeDefined();
-    expect(wrapper?.content).toContain("overdue");
-    expect(wrapper?.content).toContain("due-today");
-    expect(wrapper?.content).toContain("CRED_PROXY_URL");
-    expect(wrapper?.content).toContain("/todoist-sync");
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "tasks");
+    expect(wrapper?.content).toContain("_fetch_all");
+    expect(wrapper?.content).toContain("next_cursor");
+    expect(wrapper?.content).toContain("max_pages");
+  });
+
+  it("uses /tasks/filter endpoint for filter queries", () => {
+    const bp = loadFoundersOps();
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "tasks");
+    expect(wrapper?.content).toContain("/tasks/filter");
+  });
+
+  it("supports standard task CLI commands", () => {
+    const bp = loadFoundersOps();
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "tasks");
+    for (const cmd of ["list)", "today)", "overdue)", "search)", "get)", "add)", "update)", "complete)", "reopen)", "delete)", "move)", "projects)", "project)", "comment)", "comments)"]) {
+      expect(wrapper?.content, `missing command: ${cmd}`).toContain(cmd);
+    }
+  });
+
+  it("pipes results through _sanitize", () => {
+    const bp = loadFoundersOps();
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "tasks");
+    expect(wrapper?.content).toContain("_sanitize");
+    expect(wrapper?.content).toContain("SCRIPT_DIR");
+    expect(wrapper?.content).toContain("--source tasks");
+  });
+
+  it("uses --fail-with-body for HTTP error detection", () => {
+    const bp = loadFoundersOps();
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "tasks");
+    expect(wrapper?.content).toContain("--fail-with-body");
   });
 });
 
-describe("tavily tool", () => {
+// todoist-sync is absorbed into the tasks tool — no longer registered as a
+// separate tool. The generator still exists for blueprints that explicitly
+// reference it, but standard profiles use `tasks` which covers today/overdue.
+
+describe("search tool (tavily provider)", () => {
   it("uses credential proxy for Tavily search API", () => {
     const bp = loadFoundersOps();
-    const wrapper = generateToolWrappers(bp).find((w) => w.name === "tavily");
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "search");
     expect(wrapper).toBeDefined();
     expect(wrapper?.content).toContain("CRED_PROXY_URL");
     expect(wrapper?.content).toContain("/tavily");
@@ -355,12 +383,12 @@ describe("sanitize tool", () => {
 // ── External Tools Pipe Through Sanitize ──────────────────────────────────
 
 describe("external tools pipe through sanitize", () => {
-  it("tavily pipes results through _sanitize", () => {
+  it("search pipes results through _sanitize", () => {
     const bp = loadFoundersOps();
-    const tavily = generateToolWrappers(bp).find((w) => w.name === "tavily");
-    expect(tavily?.content).toContain("_sanitize");
-    expect(tavily?.content).toContain("SCRIPT_DIR");
-    expect(tavily?.content).toContain('--source tavily');
+    const search = generateToolWrappers(bp).find((w) => w.name === "search");
+    expect(search?.content).toContain("_sanitize");
+    expect(search?.content).toContain("SCRIPT_DIR");
+    expect(search?.content).toContain('--source search');
   });
 
   it("email pipes read/list/search through _sanitize", () => {
@@ -386,10 +414,10 @@ describe("external tools pipe through sanitize", () => {
 
   it("sanitize pipe is gracefully optional (falls back to cat)", () => {
     const bp = loadFoundersOps();
-    const tavily = generateToolWrappers(bp).find((w) => w.name === "tavily");
+    const search = generateToolWrappers(bp).find((w) => w.name === "search");
     // Should check if sanitize is executable, fall back to cat
-    expect(tavily?.content).toContain('[[ -x "$SCRIPT_DIR/sanitize" ]]');
-    expect(tavily?.content).toContain("cat");
+    expect(search?.content).toContain('[[ -x "$SCRIPT_DIR/sanitize" ]]');
+    expect(search?.content).toContain("cat");
   });
 });
 
@@ -591,7 +619,7 @@ describe("substack tool", () => {
 
 // ── Home Assistant Tool ─────────────────────────────────────────────────────
 
-describe("ha tool", () => {
+describe("home tool (ha provider)", () => {
   it("generates a bash script", () => {
     const content = generateHaTool();
     expect(content).toMatch(/^#!\/usr\/bin\/env bash/);

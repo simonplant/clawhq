@@ -161,11 +161,11 @@ toolbelt:
   role: "Editorial partner"
   description: "Research, drafting, editorial calendar, publish pipeline — with approval gates on all public content"
   tools:
-    - name: tavily
+    - name: search
       category: research
       required: true
-      description: "Topic research, trend discovery, and source gathering via Tavily API"
-    - name: tasks
+      description: "Topic research, trend discovery, and source gathering via search API"
+    - name: backlog
       category: core
       required: true
       description: "Editorial calendar and content pipeline tracking"

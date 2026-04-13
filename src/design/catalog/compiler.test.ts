@@ -41,11 +41,11 @@ describe("compile", () => {
       const afterWorkspace = f.relativePath.slice("workspace/".length);
       return !afterWorkspace.includes("/");
     });
-    // life-ops has: email, ical, todoist, tasks, tavily, quote, x, substack + sanitize
+    // life-ops has: email, calendar, tasks, backlog, search, quote, x, substack + sanitize
     const toolNames = toolFiles.map((f) => f.relativePath.replace("workspace/", ""));
     expect(toolNames).toContain("sanitize");
     expect(toolNames).toContain("email");
-    expect(toolNames).toContain("tavily");
+    expect(toolNames).toContain("search");
     expect(toolNames).toContain("quote");
     expect(toolNames).toContain("x");
     expect(toolNames).toContain("substack");

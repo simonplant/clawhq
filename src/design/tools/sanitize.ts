@@ -6,7 +6,7 @@
  *
  * Designed as a standalone stdin filter (Unix pipe-composable):
  *   echo "$content" | sanitize --source email
- *   tavily search "topic" | sanitize --source tavily --strict
+ *   search search "topic" | sanitize --source search --strict
  *
  * Quarantine log: ~/.clawhq/ops/security/quarantine.jsonl
  */
@@ -41,7 +41,7 @@ Options:
 
 Examples:
   echo "some content" | sanitize --source email
-  tavily search "topic" | sanitize --source tavily --strict
+  search search "topic" | sanitize --source search --strict
   cat message.json | sanitize --json subject,body --source email
 \\n\`);
   process.exit(0);
@@ -497,7 +497,7 @@ function writeQuarantine(source, text, threats) {
 
 // Sources that trigger full quarantine. "external" = unsolicited content
 // (inbound email body, message from unknown sender). Any named source
-// (e.g. --source tavily, --source substack) is agent-requested tool output —
+// (e.g. --source search, --source substack) is agent-requested tool output —
 // sanitized (dangerous patterns stripped) but never quarantined, because the
 // agent intentionally fetched this data through an approved tool.
 var QUARANTINE_SOURCES = ["external"];

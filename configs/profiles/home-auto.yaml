@@ -4,7 +4,7 @@ description: "Smart home control, device monitoring, automation, scene managemen
 replaces: "Google Home / Alexa / manual Home Assistant dashboard"
 
 tools:
-  - name: tasks
+  - name: backlog
     category: core
     description: "Automation task tracking and scheduling"
     required: true

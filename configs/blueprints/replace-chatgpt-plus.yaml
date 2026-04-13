@@ -145,11 +145,11 @@ toolbelt:
   role: "Research and writing partner"
   description: "Deep research, web search, writing assistance, brainstorming — replaces ChatGPT Plus"
   tools:
-    - name: tavily
+    - name: search
       category: research
       required: true
-      description: "Web research via Tavily API"
-    - name: tasks
+      description: "Web research via search API"
+    - name: backlog
       category: core
       required: true
       description: "Local work queue for research task tracking"

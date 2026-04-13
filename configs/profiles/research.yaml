@@ -4,11 +4,11 @@ description: "Web research, source synthesis, writing assistance, competitor ana
 replaces: "ChatGPT Plus / manual research / tab-hoarding"
 
 tools:
-  - name: tavily
+  - name: search
     category: research
-    description: "Web search and deep research via Tavily API"
+    description: "Web search and deep research via web search API"
     required: true
-  - name: tasks
+  - name: backlog
     category: core
     description: "Research task tracking and queue"
     required: true

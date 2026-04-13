@@ -149,19 +149,15 @@ toolbelt:
   role: "Family coordinator"
   description: "Shared calendar, chore tracking, meal planning, household coordination"
   tools:
-    - name: ical
+    - name: calendar
       category: calendar
       required: true
       description: "Shared family calendar management via CalDAV"
-    - name: todoist
-      category: tasks
-      required: false
-      description: "Chore assignment and tracking via Todoist"
-    - name: todoist-sync
-      category: tasks
-      required: false
-      description: "Chore reminder alerts and completion tracking"
     - name: tasks
+      category: tasks
+      required: false
+      description: "Chore assignment and tracking via task management API"
+    - name: backlog
       category: core
       required: true
       description: "Local work queue for household task coordination"

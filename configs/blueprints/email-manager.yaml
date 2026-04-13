@@ -252,19 +252,15 @@ toolbelt:
       category: email
       required: true
       description: "Email reading, triage, and drafting via himalaya — inbox zero engine"
-    - name: ical
+    - name: calendar
       category: calendar
       required: true
       description: "Calendar awareness via CalDAV — schedule conflicts, focus block protection"
-    - name: todoist
-      category: tasks
-      required: false
-      description: "Task extraction and tracking via Todoist API"
-    - name: todoist-sync
-      category: tasks
-      required: false
-      description: "Task deadline alerts and follow-up reminders"
     - name: tasks
+      category: tasks
+      required: false
+      description: "Task extraction and tracking via task management API"
+    - name: backlog
       category: core
       required: true
       description: "Local work queue for autonomous task execution and action item tracking"

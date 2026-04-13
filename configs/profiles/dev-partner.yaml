@@ -4,11 +4,11 @@ description: "Code from your phone, autonomous PRs, architecture decisions, repo
 replaces: "Late-night coding sessions / manual CI babysitting / context-switching to laptop"
 
 tools:
-  - name: tasks
+  - name: backlog
     category: core
     description: "Local work queue for development tasks"
     required: true
-  - name: tavily
+  - name: search
     category: research
     description: "Web search for docs, Stack Overflow, API references"
     required: false

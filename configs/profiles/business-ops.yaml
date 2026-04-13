@@ -8,15 +8,15 @@ tools:
     category: communication
     description: "Client and investor email management via himalaya"
     required: true
-  - name: todoist
+  - name: tasks
     category: productivity
-    description: "Business task tracking and pipeline management via Todoist"
+    description: "Business task tracking and pipeline management via external task service"
     required: true
-  - name: tavily
+  - name: search
     category: research
     description: "Competitor analysis, market research, lead research"
     required: true
-  - name: tasks
+  - name: backlog
     category: core
     description: "Internal work queue for business operations"
     required: true

@@ -7,27 +7,25 @@
  * Every tool available for install must be listed here.
  */
 
+import { generateBacklogTool } from "../../design/tools/backlog.js";
 import { generateEmailTool } from "../../design/tools/email.js";
 import { generateIcalTool } from "../../design/tools/ical.js";
 import { generateQuoteTool } from "../../design/tools/quote.js";
-import { generateTasksTool } from "../../design/tools/tasks.js";
 import { generateTavilyTool } from "../../design/tools/tavily.js";
-import { generateTodoistSyncTool } from "../../design/tools/todoist-sync.js";
 import { generateTodoistTool } from "../../design/tools/todoist.js";
 
 /**
  * Registry of available tools and their generators.
  *
- * The approve-action tool is excluded — it's a platform tool that gets
- * added automatically when the blueprint requires approval gates.
+ * Tool names are generic capabilities (tasks, calendar, search),
+ * not provider names (todoist, ical, tavily).
  */
 export const TOOL_REGISTRY: Readonly<Record<string, () => string>> = {
+  backlog: generateBacklogTool,
+  calendar: generateIcalTool,
   email: generateEmailTool,
-  ical: generateIcalTool,
-  tasks: generateTasksTool,
-  todoist: generateTodoistTool,
-  "todoist-sync": generateTodoistSyncTool,
-  tavily: generateTavilyTool,
+  tasks: generateTodoistTool,
+  search: generateTavilyTool,
   quote: generateQuoteTool,
 };
 

@@ -164,7 +164,7 @@ toolbelt:
       category: financial
       required: true
       description: "Read-only bank feed access via Plaid API — transaction sync, balance checks, no write scopes"
-    - name: tasks
+    - name: backlog
       category: core
       required: true
       description: "Local work queue for bill reminders and budget check scheduling"

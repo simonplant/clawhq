@@ -197,11 +197,11 @@ toolbelt:
       category: markets
       required: true
       description: "Real-time and historical market data via Yahoo Finance — prices, volume, fundamentals"
-    - name: tavily
+    - name: search
       category: research
       required: true
-      description: "Market news and earnings research via Tavily API"
-    - name: tasks
+      description: "Market news and earnings research via search API"
+    - name: backlog
       category: core
       required: true
       description: "Local work queue for price alert monitoring and research task tracking"

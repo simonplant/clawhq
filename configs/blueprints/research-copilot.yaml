@@ -147,11 +147,11 @@ toolbelt:
   role: "Academic research partner"
   description: "Deep research, citation management, literature review, technical writing"
   tools:
-    - name: tavily
+    - name: search
       category: research
       required: true
-      description: "Web research and literature discovery via Tavily API"
-    - name: tasks
+      description: "Web research and literature discovery via search API"
+    - name: backlog
       category: core
       required: true
       description: "Research task queue for tracking investigations"

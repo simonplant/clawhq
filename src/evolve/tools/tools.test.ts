@@ -37,12 +37,11 @@ describe("TOOL_REGISTRY", () => {
   it("contains expected built-in tools", () => {
     const names = availableToolNames();
     expect(names).toContain("email");
-    expect(names).toContain("ical");
+    expect(names).toContain("calendar");
     expect(names).toContain("tasks");
+    expect(names).toContain("backlog");
     expect(names).toContain("quote");
-    expect(names).toContain("tavily");
-    expect(names).toContain("todoist");
-    expect(names).toContain("todoist-sync");
+    expect(names).toContain("search");
   });
 
   it("every registered generator returns a non-empty string", () => {

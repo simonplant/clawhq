@@ -55,17 +55,6 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
     },
   },
   {
-    id: "todoist-sync",
-    pathPrefix: "/todoist-sync",
-    upstream: "https://api.todoist.com/sync/v9",
-    auth: {
-      type: "header",
-      header: "Authorization",
-      prefix: "Bearer ",
-      envVar: "TODOIST_API_KEY",
-    },
-  },
-  {
     id: "anthropic",
     pathPrefix: "/anthropic",
     upstream: "https://api.anthropic.com",

@@ -12,19 +12,19 @@ tools:
     category: communication
     description: "FastMail JMAP email — triage, read, send, search, archive, label"
     required: false
-  - name: ical
+  - name: calendar
     category: productivity
     description: "Calendar management, conflict detection, scheduling via CalDAV"
     required: true
-  - name: todoist
-    category: productivity
-    description: "Task management and tracking via Todoist API"
-    required: true
   - name: tasks
+    category: productivity
+    description: "Task management and tracking via external task service"
+    required: true
+  - name: backlog
     category: core
     description: "Local work queue for autonomous task execution"
     required: true
-  - name: tavily
+  - name: search
     category: research
     description: "Web search for quick lookups and research"
     required: false
