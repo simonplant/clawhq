@@ -204,6 +204,14 @@ describe("calendar tool", () => {
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "calendar");
     expect(wrapper?.content).toContain("caldav");
   });
+
+  it("pipes results through _sanitize", () => {
+    const bp = loadFamilyHub();
+    const wrapper = generateToolWrappers(bp).find((w) => w.name === "calendar");
+    expect(wrapper?.content).toContain("_sanitize");
+    expect(wrapper?.content).toContain("SCRIPT_DIR");
+    expect(wrapper?.content).toContain("--source calendar");
+  });
 });
 
 describe("backlog tool", () => {
@@ -262,10 +270,6 @@ describe("tasks tool (todoist provider)", () => {
     expect(wrapper?.content).toContain("--fail-with-body");
   });
 });
-
-// todoist-sync is absorbed into the tasks tool — no longer registered as a
-// separate tool. The generator still exists for blueprints that explicitly
-// reference it, but standard profiles use `tasks` which covers today/overdue.
 
 describe("search tool (tavily provider)", () => {
   it("uses credential proxy for Tavily search API", () => {
@@ -410,6 +414,21 @@ describe("external tools pipe through sanitize", () => {
     expect(quote?.content).toContain("_sanitize");
     expect(quote?.content).toContain("SCRIPT_DIR");
     expect(quote?.content).toContain('--source quote');
+  });
+
+  it("calendar pipes results through _sanitize", () => {
+    const bp = loadFamilyHub();
+    const calendar = generateToolWrappers(bp).find((w) => w.name === "calendar");
+    expect(calendar?.content).toContain("_sanitize");
+    expect(calendar?.content).toContain("SCRIPT_DIR");
+    expect(calendar?.content).toContain('--source calendar');
+  });
+
+  it("home pipes results through _sanitize", () => {
+    const content = generateHaTool();
+    expect(content).toContain("_sanitize");
+    expect(content).toContain("SCRIPT_DIR");
+    expect(content).toContain('--source home');
   });
 
   it("sanitize pipe is gracefully optional (falls back to cat)", () => {
@@ -656,6 +675,13 @@ describe("home tool (ha provider)", () => {
   it("uses jq for JSON body construction in call-service", () => {
     const content = generateHaTool();
     expect(content).toContain("jq -n");
+  });
+
+  it("pipes results through _sanitize", () => {
+    const content = generateHaTool();
+    expect(content).toContain("_sanitize");
+    expect(content).toContain("SCRIPT_DIR");
+    expect(content).toContain("--source home");
   });
 });
 

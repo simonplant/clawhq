@@ -53,7 +53,7 @@ shift 2>/dev/null || true
 
 case "$cmd" in
   inbox)
-    "$HIMALAYA" envelope list --output json "\${@:---filter}" "\${2:-not flag seen}" | _sanitize
+    "$HIMALAYA" envelope list --output json --filter "not flag seen" "$@" | _sanitize
     ;;
   all)
     "$HIMALAYA" envelope list --output json "$@" | _sanitize
@@ -69,24 +69,27 @@ case "$cmd" in
     _egress_check "$subject $body"
     printf 'To: %s\\r\\nSubject: %s\\r\\nMIME-Version: 1.0\\r\\nContent-Type: text/plain; charset=utf-8\\r\\n\\r\\n%s\\n' \\
       "$to" "$subject" "$body" | "$HIMALAYA" message send
-    echo '{"status":"sent","to":"'"$to"'","subject":"'"$subject"'"}'
+    jq -n --arg to "$to" --arg subj "$subject" '{status:"sent",to:$to,subject:$subj}'
     ;;
   reply)
-    "$HIMALAYA" message reply "$@"
+    id="\${1:?Usage: email reply <id>}"
+    body="$(cat)"
+    _egress_check "$body"
+    echo "$body" | "$HIMALAYA" message reply "$id"
     ;;
   mark-read)
     "$HIMALAYA" flag add "\${1:?Usage: email mark-read <id>}" seen
-    echo '{"status":"marked_read","id":"'"$1"'"}'
+    jq -n --arg id "$1" '{status:"marked_read",id:$id}'
     ;;
   delete)
     "$HIMALAYA" message delete "\${1:?Usage: email delete <id>}"
-    echo '{"status":"deleted","id":"'"$1"'"}'
+    jq -n --arg id "$1" '{status:"deleted",id:$id}'
     ;;
   search)
-    "$HIMALAYA" envelope list --output json subject "$*" | _sanitize
+    "$HIMALAYA" envelope list --output json --filter "subject $*" | _sanitize
     ;;
   folders)
-    "$HIMALAYA" folder list --output json "$@"
+    "$HIMALAYA" folder list --output json "$@" | _sanitize
     ;;
   help|--help|-h|"")
     sed -n '2,14p' "$0" | sed 's/^# \\?//'

@@ -24,6 +24,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "\$0")" && pwd)"
 
+# Help works without credentials
+case "\${1:-}" in help|--help|-h|"")
+  sed -n '2,10p' "\$0" | sed 's/^# \\?//'
+  exit 0 ;; esac
+
+# ClawWall: sanitize external content before passing to agent
+_sanitize() {
+  if [[ -x "\$SCRIPT_DIR/sanitize" ]]; then
+    "\$SCRIPT_DIR/sanitize" --source home --log
+  else
+    cat
+  fi
+}
+
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/ha"
@@ -78,15 +92,15 @@ shift 2>/dev/null || true
 
 case "\$cmd" in
   states)
-    _curl "\$API/states"
+    _curl "\$API/states" | _sanitize
     ;;
   state)
     entity="\${1:?Usage: ha state <entity_id>}"
     _check_entity "\$entity"
-    _curl "\$API/states/\$entity"
+    _curl "\$API/states/\$entity" | _sanitize
     ;;
   services)
-    _curl "\$API/services"
+    _curl "\$API/services" | _sanitize
     ;;
   call-service)
     domain="\${1:?Usage: ha call-service <domain> <service> <entity_id> [data_json]}"
@@ -95,17 +109,17 @@ case "\$cmd" in
     data="\${4:-\\{\\}}"
     _check_entity "\$entity"
     payload=\$(jq -n --arg e "\$entity" --argjson d "\$data" '{entity_id: \$e} + \$d')
-    _curl -X POST -d "\$payload" "\$API/services/\$domain/\$service"
+    _curl -X POST -d "\$payload" "\$API/services/\$domain/\$service" | _sanitize
     ;;
   history)
     entity="\${1:?Usage: ha history <entity_id> [hours]}"
     hours="\${2:-24}"
     _check_entity "\$entity"
     start=\$(date -u -d "-\${hours} hours" +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || date -u -v-\${hours}H +%Y-%m-%dT%H:%M:%S%z)
-    _curl "\$API/history/period/\$start?filter_entity_id=\$entity"
+    _curl "\$API/history/period/\$start?filter_entity_id=\$entity" | _sanitize
     ;;
   help|--help|-h|"")
-    sed -n '2,11p' "\$0" | sed 's/^# \\\\?//'
+    sed -n '2,10p' "\$0" | sed 's/^# \\?//'
     ;;
   *)
     echo "home: unknown command '\$cmd'" >&2

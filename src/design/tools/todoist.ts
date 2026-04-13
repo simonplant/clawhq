@@ -43,6 +43,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Help works without credentials
+case "\${1:-}" in help|--help|-h|"")
+  grep '^#' "$0" | tail -n +2 | head -n 19 | sed 's/^# \\?//'
+  exit 0 ;; esac
+
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/todoist"
@@ -144,7 +149,7 @@ case "$cmd" in
         --project) project="\${2:?--project requires an ID}"; shift 2 ;;
         --due) due="\${2:?--due requires a date string}"; shift 2 ;;
         --priority) priority="\${2:?--priority requires 1-4}"; shift 2 ;;
-        *) echo "tasksadd: unknown option '$1'" >&2; exit 1 ;;
+        *) echo "tasks add: unknown option '$1'" >&2; exit 1 ;;
       esac
     done
     body=$(jq -n \\
@@ -156,7 +161,7 @@ case "$cmd" in
        + (if $p  != "" then {project_id: $p} else {} end)
        + (if $d  != "" then {due_string: $d} else {} end)
        + (if $pr != "" then {priority: ($pr | tonumber)} else {} end)')
-    _curl -X POST -H "Content-Type: application/json" -d "$body" "$API/tasks"
+    _curl -X POST -H "Content-Type: application/json" -d "$body" "$API/tasks" | _sanitize
     ;;
   update)
     id="\${1:?Usage: todoist update <id> [--content TEXT] [--due DATE] [--priority 1-4]}"
@@ -171,7 +176,7 @@ case "$cmd" in
       esac
     done
     if [[ -z "$content" && -z "$due" && -z "$priority" ]]; then
-      echo "tasksupdate: provide at least one of --content, --due, or --priority" >&2
+      echo "tasks update: provide at least one of --content, --due, or --priority" >&2
       exit 1
     fi
     body=$(jq -n \\
@@ -181,22 +186,22 @@ case "$cmd" in
       '(if $c  != "" then {content: $c} else {} end)
        + (if $d  != "" then {due_string: $d} else {} end)
        + (if $pr != "" then {priority: ($pr | tonumber)} else {} end)')
-    _curl -X POST -H "Content-Type: application/json" -d "$body" "$API/tasks/$id"
+    _curl -X POST -H "Content-Type: application/json" -d "$body" "$API/tasks/$id" | _sanitize
     ;;
   complete)
     id="\${1:?Usage: todoist complete <id>}"
     _curl -X POST "$API/tasks/$id/close" > /dev/null
-    echo '{"status":"completed","id":"'"$id"'"}'
+    jq -n --arg id "$id" '{status:"completed",id:$id}'
     ;;
   reopen)
     id="\${1:?Usage: todoist reopen <id>}"
     _curl -X POST "$API/tasks/$id/reopen" > /dev/null
-    echo '{"status":"reopened","id":"'"$id"'"}'
+    jq -n --arg id "$id" '{status:"reopened",id:$id}'
     ;;
   delete)
     id="\${1:?Usage: todoist delete <id>}"
     _curl -X DELETE "$API/tasks/$id" > /dev/null
-    echo '{"status":"deleted","id":"'"$id"'"}'
+    jq -n --arg id "$id" '{status:"deleted",id:$id}'
     ;;
   move)
     id="\${1:?Usage: todoist move <id> --project <project_id>}"
@@ -205,21 +210,21 @@ case "$cmd" in
     while [[ $# -gt 0 ]]; do
       case "$1" in
         --project) target_project="\${2:?--project requires an ID}"; shift 2 ;;
-        *) echo "tasksmove: unknown option '$1'" >&2; exit 1 ;;
+        *) echo "tasks move: unknown option '$1'" >&2; exit 1 ;;
       esac
     done
     if [[ -z "$target_project" ]]; then
-      echo "tasksmove: --project is required" >&2
+      echo "tasks move: --project is required" >&2
       exit 1
     fi
     body=$(jq -n --arg p "$target_project" '{project_id: $p}')
-    _curl -X POST -H "Content-Type: application/json" -d "$body" "$API/tasks/$id/move"
+    _curl -X POST -H "Content-Type: application/json" -d "$body" "$API/tasks/$id/move" | _sanitize
     ;;
   comment)
     id="\${1:?Usage: todoist comment <id> <text>}"
     text="\${2:?Usage: todoist comment <id> <text>}"
     body=$(jq -n --arg c "$text" --arg t "$id" '{task_id: $t, content: $c}')
-    _curl -X POST -H "Content-Type: application/json" -d "$body" "$API/comments"
+    _curl -X POST -H "Content-Type: application/json" -d "$body" "$API/comments" | _sanitize
     ;;
   comments)
     id="\${1:?Usage: todoist comments <id>}"
@@ -233,11 +238,11 @@ case "$cmd" in
     _curl "$API/projects/$id/full" | _sanitize
     ;;
   help|--help|-h|"")
-    grep '^#' "$0" | tail -n +2 | head -n 18 | sed 's/^# \\?//'
+    grep '^#' "$0" | tail -n +2 | head -n 19 | sed 's/^# \\?//'
     ;;
   *)
     echo "tasks: unknown command '$cmd'" >&2
-    grep '^#' "$0" | tail -n +2 | head -n 18 | sed 's/^# \\?//' >&2
+    grep '^#' "$0" | tail -n +2 | head -n 19 | sed 's/^# \\?//' >&2
     exit 1
     ;;
 esac

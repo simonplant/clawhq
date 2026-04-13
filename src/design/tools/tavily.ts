@@ -22,6 +22,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Help works without credentials
+case "\${1:-}" in help|--help|-h|"")
+  sed -n '2,8p' "$0" | sed 's/^# \\?//'
+  exit 0 ;; esac
+
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/tavily"

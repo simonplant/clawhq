@@ -60,7 +60,7 @@ cmd_add() {
   fi
 
   printf '\\n## %s%s\\n\\n%s\\n' "$timestamp" "$tag_str" "$text" >> "$JOURNAL_FILE"
-  echo "Logged: $tag_str entry at $timestamp"
+  echo "Logged:$tag_str $text (at $timestamp)"
 }
 
 cmd_list() {

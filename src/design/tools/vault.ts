@@ -19,6 +19,22 @@ export function generateVaultTool(): string {
 #   list <vault>                     List items in a vault (titles only, no secrets)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "\$0")" && pwd)"
+
+# Help works without credentials
+case "\${1:-}" in help|--help|-h|"")
+  sed -n '2,9p' "\$0" | sed 's/^# \\?//'
+  exit 0 ;; esac
+
+# ClawWall: sanitize external content
+_sanitize() {
+  if [[ -x "\$SCRIPT_DIR/sanitize" ]]; then
+    "\$SCRIPT_DIR/sanitize" --source vault --log
+  else
+    cat
+  fi
+}
+
 # Auth: prefer credential proxy, fall back to op CLI
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/op"
@@ -50,14 +66,14 @@ case "\$cmd" in
     vault="\${1:?Usage: vault get <vault> <item> [field]}"
     item="\${2:?Usage: vault get <vault> <item> [field]}"
     field="\${3:-password}"
-    _get_item "\$vault" "\$item" "\$field"
+    _get_item "\$vault" "\$item" "\$field" | _sanitize
     ;;
   list)
     vault="\${1:?Usage: vault list <vault>}"
-    _list_items "\$vault"
+    _list_items "\$vault" | _sanitize
     ;;
   help|--help|-h|"")
-    sed -n '2,10p' "\$0" | sed 's/^# \\\\?//'
+    sed -n '2,9p' "\$0" | sed 's/^# \\?//'
     ;;
   *)
     echo "vault: unknown command '\$cmd'" >&2

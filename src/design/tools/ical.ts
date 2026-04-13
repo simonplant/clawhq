@@ -20,6 +20,13 @@ export function generateIcalTool(): string {
 #   calendars            List available calendars (JSON)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Help works without credentials
+case "\${1:-}" in help|--help|-h|"")
+  sed -n '2,10p' "$0" | sed 's/^# \\?//'
+  exit 0 ;; esac
+
 # Auth: prefer credential proxy, fall back to direct env vars
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   CALDAV_BASE="\${CRED_PROXY_URL}/caldav"
@@ -31,6 +38,15 @@ else
   CALDAV_BASE="$CALDAV_URL"
   _curl() { curl -sS -u "$CALDAV_USER:$CALDAV_PASS" "$@"; }
 fi
+
+# ClawWall: sanitize external calendar content before passing to agent
+_sanitize() {
+  if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
+    "$SCRIPT_DIR/sanitize" --source calendar --log
+  else
+    cat
+  fi
+}
 
 # CalDAV auto-discovery (required for iCloud which redirects to partition servers)
 # Discovers: base URL -> principal -> calendar-home, caches in /tmp for session
@@ -48,7 +64,7 @@ _discover_home() {
     "$CALDAV_BASE/" 2>/dev/null | python3 -c "
 import sys, re
 data = sys.stdin.read()
-m = re.search(r'<href[^>]*>(/[^<]*principal[^<]*)</href>', data)
+m = re.search(r'<(?:\\w+:)?href[^>]*>(/[^<]*principal[^<]*)</(?:\\w+:)?href>', data)
 print(m.group(1) if m else '')
 "
 )
@@ -67,7 +83,7 @@ print(m.group(1) if m else '')
     "$CALDAV_BASE$principal" 2>/dev/null | python3 -c "
 import sys, re
 data = sys.stdin.read()
-m = re.search(r'<href[^>]*>(https://[^<]+)</href>', data)
+m = re.search(r'<(?:\\w+:)?href[^>]*>(https?://[^<]+)</(?:\\w+:)?href>', data)
 print(m.group(1).rstrip('/') if m else '')
 "
 )
@@ -91,12 +107,12 @@ _discover_calendars() {
 import sys, re, json
 data = sys.stdin.read()
 cals = []
-for resp in re.finditer(r'<response[^>]*>(.*?)</response>', data, re.DOTALL):
+for resp in re.finditer(r'<(?:\\w+:)?response[^>]*>(.*?)</(?:\\w+:)?response>', data, re.DOTALL):
     block = resp.group(1)
     if 'calendar' not in block:
         continue
-    href = re.search(r'<href[^>]*>(.*?)</href>', block)
-    name = re.search(r'<displayname[^>]*>(.*?)</displayname>', block)
+    href = re.search(r'<(?:\\w+:)?href[^>]*>(.*?)</(?:\\w+:)?href>', block)
+    name = re.search(r'<(?:\\w+:)?displayname[^>]*>(.*?)</(?:\\w+:)?displayname>', block)
     if href:
         cals.append({
             'name': name.group(1).strip() if name else '(unnamed)',
@@ -116,7 +132,6 @@ case "$cmd" in
     end=$(date -u -d "+$days days" +%Y%m%dT235959Z 2>/dev/null || date -u -v+\${days}d +%Y%m%dT235959Z)
     home=$(_discover_home)
     # Query all calendar collections
-    cals=$(_discover_calendars)
     cal_paths=$(_discover_calendars | python3 -c "
 import sys, json
 for c in json.load(sys.stdin):
@@ -164,7 +179,7 @@ for m in re.finditer(r'BEGIN:VEVENT(.*?)END:VEVENT', data, re.DOTALL):
 events.sort(key=lambda e: e['start'])
 json.dump(events, sys.stdout, indent=2)
 print()
-"
+" | _sanitize
     ;;
   today)
     exec "$0" list 1
@@ -203,11 +218,61 @@ END:VEVENT
 END:VCALENDAR"
     _curl -X PUT -H "Content-Type: text/calendar" \\
       -d "$vcal" "\${cal_url}$uid.ics" >/dev/null
-    echo '{"status":"created","title":"'"$title"'","start":"'"$start"'","end":"'"$end"'","uid":"'"$uid"'"}'
+    jq -n --arg t "$title" --arg s "$start" --arg e "$end" --arg u "$uid" \\
+      '{status:"created",title:$t,start:$s,end:$e,uid:$u}'
     ;;
   check)
-    date_str="\${1:?Usage: ical check <YYYY-MM-DD>}"
-    exec "$0" list 1
+    date_str="\${1:?Usage: calendar check <YYYY-MM-DD>}"
+    home=$(_discover_home)
+    start="\${date_str}T000000Z"
+    end="\${date_str}T235959Z"
+    cal_paths=$(_discover_calendars | python3 -c "
+import sys, json
+for c in json.load(sys.stdin):
+    print(c['href'])
+"
+)
+    all_data=""
+    while IFS= read -r cal_href; do
+      [[ -z "$cal_href" ]] && continue
+      if [[ "$cal_href" == /* ]]; then
+        cal_url=$(echo "$home" | sed 's|\\(https\\?://[^/]*\\).*|\\1|')"\${cal_href}"
+      else
+        cal_url="$home/$cal_href"
+      fi
+      body='<?xml version="1.0" encoding="utf-8"?>
+<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:prop><d:getetag/><c:calendar-data/></d:prop>
+  <c:filter><c:comp-filter name="VCALENDAR">
+    <c:comp-filter name="VEVENT">
+      <c:time-range start="'"$start"'" end="'"$end"'"/>
+    </c:comp-filter>
+  </c:comp-filter></c:filter>
+</c:calendar-query>'
+      result=$(_curl -X REPORT -H "Content-Type: application/xml" -H "Depth: 1" \\
+        -d "$body" "$cal_url" 2>/dev/null)
+      all_data+="\${result}"
+    done <<< "$cal_paths"
+    echo "$all_data" | python3 -c "
+import sys, re, json
+data = sys.stdin.read()
+events = []
+for m in re.finditer(r'BEGIN:VEVENT(.*?)END:VEVENT', data, re.DOTALL):
+    block = m.group(1)
+    summary = re.search(r'SUMMARY:(.*)', block)
+    dtstart = re.search(r'DTSTART[^:]*:(.*)', block)
+    dtend = re.search(r'DTEND[^:]*:(.*)', block)
+    location = re.search(r'LOCATION:(.*)', block)
+    events.append({
+        'summary': summary.group(1).strip() if summary else '(no title)',
+        'start': dtstart.group(1).strip() if dtstart else '',
+        'end': dtend.group(1).strip() if dtend else '',
+        'location': location.group(1).strip() if location else None,
+    })
+events.sort(key=lambda e: e['start'])
+json.dump(events, sys.stdout, indent=2)
+print()
+" | _sanitize
     ;;
   calendars)
     _discover_calendars | python3 -c "
@@ -215,10 +280,10 @@ import sys, json
 cals = json.load(sys.stdin)
 json.dump(cals, sys.stdout, indent=2)
 print()
-"
+" | _sanitize
     ;;
   help|--help|-h|"")
-    sed -n '2,9p' "$0" | sed 's/^# \\?//'
+    sed -n '2,10p' "$0" | sed 's/^# \\?//'
     ;;
   *)
     echo "calendar: unknown command '$cmd'" >&2

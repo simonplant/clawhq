@@ -92,7 +92,7 @@ case "\$cmd" in
     fi
     ;;
   help|--help|-h|"")
-    sed -n '2,12p' "\$0" | sed 's/^# \\\\?//'
+    sed -n '2,12p' "\$0" | sed 's/^# \\?//'
     ;;
   *)
     echo "substack: unknown command '\$cmd'" >&2

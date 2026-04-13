@@ -70,7 +70,9 @@ tasks.append({
     'created': os.environ['TASK_CREATED']
 })
 json.dump(tasks, open(tf, 'w'), indent=2)
-print(f'Added: {os.environ[\"TASK_TITLE\"]} (id: {os.environ[\"TASK_ID\"]})')
+title = os.environ['TASK_TITLE']
+tid = os.environ['TASK_ID']
+print(f'Added: {title} (id: {tid})')
 "
 }
 
@@ -86,7 +88,8 @@ for t in tasks:
     if t['id'] == tid:
         t['status'] = 'done'
         found = True
-        print(f'Done: {t[\"title\"]}')
+        name = t['title']
+        print(f'Done: {name}')
 if not found:
     print(f'Task not found: {tid}', file=sys.stderr)
     sys.exit(1)
@@ -137,8 +140,29 @@ print(pending)
 }
 
 case "\${1:-}" in
-  list)    shift; cmd_list "\${1:-all}" ;;
-  add)     shift; cmd_add "\${1:?title required}" "\${2:-medium}" ;;
+  list)
+    shift
+    status="all"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --status) status="\${2:?--status requires a value}"; shift 2 ;;
+        *) status="$1"; shift ;;
+      esac
+    done
+    cmd_list "$status"
+    ;;
+  add)
+    shift
+    title="" priority="medium"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --priority) priority="\${2:?--priority requires a value}"; shift 2 ;;
+        *) if [[ -z "$title" ]]; then title="$1"; else title="$title $1"; fi; shift ;;
+      esac
+    done
+    [[ -z "$title" ]] && { echo "backlog: title required" >&2; exit 1; }
+    cmd_add "$title" "$priority"
+    ;;
   done)    shift; cmd_done "\${1:?id required}" ;;
   remove)  shift; cmd_remove "\${1:?id required}" ;;
   clear)   shift; cmd_clear "\${1:-}" ;;

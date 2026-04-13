@@ -22,6 +22,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "\$0")" && pwd)"
 
+# Help works without credentials
+case "\${1:-}" in help|--help|-h|"")
+  sed -n '2,9p' "\$0" | sed 's/^# \\?//'
+  exit 0 ;; esac
+
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/x"
@@ -59,7 +64,7 @@ case "\$cmd" in
     _curl "\$API/users/by/username/\$username?user.fields=description,public_metrics,created_at" | _sanitize
     ;;
   help|--help|-h|"")
-    sed -n '2,9p' "\$0" | sed 's/^# \\\\?//'
+    sed -n '2,9p' "\$0" | sed 's/^# \\?//'
     ;;
   *)
     echo "x: unknown command '\$cmd'" >&2
