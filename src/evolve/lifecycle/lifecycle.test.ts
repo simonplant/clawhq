@@ -7,7 +7,6 @@
  *   - Verified destruction (secure wipe, proof generation, proof verification)
  */
 
-import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -15,10 +14,9 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { destroyAgent, verifyDestructionProof } from "./destroy.js";
+import { destroyAgent } from "./destroy.js";
 import { exportBundle } from "./export.js";
 import { isTextFile, maskPii } from "./mask.js";
-import type { DestructionProof } from "./types.js";
 
 // ── Test Setup ──────────────────────────────────────────────────────────────
 
@@ -229,65 +227,36 @@ describe("destroyAgent", () => {
     expect(existsSync(deployDir)).toBe(false);
   });
 
-  it("produces a proof file", async () => {
+  it("produces a receipt file", async () => {
     const result = await destroyAgent({ deployDir, confirm: true });
 
     expect(result.success).toBe(true);
-    expect(result.proofPath).toBeDefined();
-    if (result.proofPath) {
-      expect(existsSync(result.proofPath)).toBe(true);
+    expect(result.receiptPath).toBeDefined();
+    if (result.receiptPath) {
+      expect(existsSync(result.receiptPath)).toBe(true);
     }
   });
 
-  it("proof contains all destroyed files", async () => {
+  it("receipt contains all destroyed files", async () => {
     const result = await destroyAgent({ deployDir, confirm: true });
-    expect(result.proof).toBeDefined();
-    const proof = result.proof ?? { files: [], totalBytes: 0, destroyedAt: "", witnessHash: "", hmacSignature: "", hmacKey: "" };
+    expect(result.receipt).toBeDefined();
+    const receipt = result.receipt!;
 
-    expect(proof.files.length).toBeGreaterThan(0);
-    expect(proof.totalBytes).toBeGreaterThan(0);
-    expect(proof.destroyedAt).toBeDefined();
-    expect(proof.witnessHash).toHaveLength(64); // SHA-256 hex
-    expect(proof.hmacSignature).toHaveLength(64);
-    expect(proof.hmacKey).toHaveLength(64);
+    expect(receipt.files.length).toBeGreaterThan(0);
+    expect(receipt.totalBytes).toBeGreaterThan(0);
+    expect(receipt.destroyedAt).toBeDefined();
   });
 
-  it("proof is independently verifiable", async () => {
+  it("receipt can be read back from JSON", async () => {
     const result = await destroyAgent({ deployDir, confirm: true });
-    expect(result.proof).toBeDefined();
-    if (result.proof) {
-      expect(verifyDestructionProof(result.proof)).toBe(true);
-    }
-  });
+    expect(result.receiptPath).toBeDefined();
+    if (!result.receiptPath) return;
+    const receiptJson = await readFile(result.receiptPath, "utf-8");
+    const receipt = JSON.parse(receiptJson);
 
-  it("proof verification detects tampering", async () => {
-    const result = await destroyAgent({ deployDir, confirm: true });
-    expect(result.proof).toBeDefined();
-    if (!result.proof) return;
-
-    // Tamper with a file hash
-    const tampered: DestructionProof = {
-      ...result.proof,
-      files: result.proof.files.map((f, i) =>
-        i === 0 ? { ...f, hashBefore: "0".repeat(64) } : f,
-      ),
-    };
-
-    expect(verifyDestructionProof(tampered)).toBe(false);
-  });
-
-  it("proof verification detects removed files", async () => {
-    const result = await destroyAgent({ deployDir, confirm: true });
-    expect(result.proof).toBeDefined();
-    if (!result.proof) return;
-
-    // Remove a file from the manifest
-    const tampered: DestructionProof = {
-      ...result.proof,
-      files: result.proof.files.slice(1),
-    };
-
-    expect(verifyDestructionProof(tampered)).toBe(false);
+    expect(receipt.version).toBe(1);
+    expect(receipt.files).toBeDefined();
+    expect(receipt.destroyedAt).toBeDefined();
   });
 
   it("reports progress callbacks", async () => {
@@ -303,38 +272,11 @@ describe("destroyAgent", () => {
     expect(steps).toContain("wipe:running");
     expect(steps).toContain("wipe:done");
     expect(steps).toContain("verify:done");
-    expect(steps).toContain("proof:done");
   });
 
   it("fails gracefully for missing deploy dir", async () => {
     const result = await destroyAgent({ deployDir: "/nonexistent/path", confirm: true });
     expect(result.success).toBe(false);
     expect(result.error).toContain("not found");
-  });
-});
-
-// ── Proof Verification Tests ────────────────────────────────────────────────
-
-describe("verifyDestructionProof", () => {
-  it("verifies a valid proof read from JSON", async () => {
-    const result = await destroyAgent({ deployDir, confirm: true });
-    expect(result.proofPath).toBeDefined();
-    if (!result.proofPath) return;
-    const proofJson = await readFile(result.proofPath, "utf-8");
-    const proof = JSON.parse(proofJson) as DestructionProof;
-
-    expect(verifyDestructionProof(proof)).toBe(true);
-  });
-
-  it("rejects proof with wrong HMAC key", async () => {
-    const result = await destroyAgent({ deployDir, confirm: true });
-    expect(result.proof).toBeDefined();
-    if (!result.proof) return;
-    const tampered: DestructionProof = {
-      ...result.proof,
-      hmacKey: randomBytes(32).toString("hex"),
-    };
-
-    expect(verifyDestructionProof(tampered)).toBe(false);
   });
 });

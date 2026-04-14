@@ -1,26 +1,23 @@
 /**
- * Threat detection engine. Analyzes untrusted text against all known
- * prompt injection, obfuscation, and exfiltration patterns.
+ * Threat detection engine. Analyzes untrusted text for deterministic
+ * prompt injection, encoding tricks, and exfiltration patterns.
+ *
+ * Tier 1 only: catches invisible unicode, delimiter spoofing, encoded payloads,
+ * exfil markup, and secret leaks. For adversarial prompt injection
+ * (semantic override, social engineering), use model-based detection.
  */
 
 import {
   CONFUSABLE_MAP,
   DECODE_KEYWORDS,
   DELIMITER_PATTERNS,
-  ELICITATION_PATTERNS,
   ENCODING_PATTERNS,
   EXTENDED_CONFUSABLE_MAP,
   EXFIL_INSTRUCTIONS,
   EXFIL_PATTERNS,
-  FEWSHOT_PATTERNS,
   INJECTION_PATTERNS,
   INVISIBLE_RANGES,
-  LEETSPEAK_MAP,
-  MORSE_PATTERN,
-  MULTILINGUAL_INJECTION,
-  QA_FEWSHOT_PATTERNS,
   SECRET_PATTERNS,
-  SEMANTIC_OVERRIDE_PATTERNS,
 } from "./patterns.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -32,22 +29,14 @@ export type ThreatCategory =
   | "encoded_payload"
   | "decode_instruction"
   | "exfil_markup"
-  | "homoglyph"
-  | "obfuscated_injection"
-  | "morse_encoding"
-  | "fewshot_spoof"
-  | "multilingual_injection"
   | "exfil_instruction"
-  | "secret_leak"
-  | "indirect_elicitation"
-  | "semantic_override"
-  | "leetspeak_obfuscation";
+  | "secret_leak";
 
 export type ThreatSeverity = "high" | "medium" | "low";
 
 export interface Threat {
   readonly category: ThreatCategory;
-  readonly tier: 1 | 2;
+  readonly tier: 1;
   readonly detail: string;
   readonly span: readonly [start: number, end: number];
   readonly severity: ThreatSeverity;
@@ -57,12 +46,11 @@ export interface Threat {
 
 function threat(
   category: ThreatCategory,
-  tier: 1 | 2,
   detail: string,
   span: readonly [number, number] = [0, 0],
   severity: ThreatSeverity = "medium",
 ): Threat {
-  return { category, tier, detail, span, severity };
+  return { category, tier: 1, detail, span, severity };
 }
 
 function codepoints(match: string, max = 5): string {
@@ -91,6 +79,7 @@ export interface NormalizeResult {
   readonly hadConfusables: boolean;
 }
 
+/** Normalize confusable Unicode characters to ASCII equivalents. */
 export function normalizeConfusables(text: string): NormalizeResult {
   let hadConfusables = false;
   const chars: string[] = [];
@@ -106,33 +95,16 @@ export function normalizeConfusables(text: string): NormalizeResult {
   return { text: chars.join(""), hadConfusables };
 }
 
-/** Normalize leetspeak substitutions (0→o, 1→i, 3→e, etc.). */
-export function normalizeLeetspeak(text: string): NormalizeResult {
-  let hadLeetspeak = false;
-  const chars: string[] = [];
-  for (const ch of text) {
-    const replacement = LEETSPEAK_MAP.get(ch);
-    if (replacement !== undefined) {
-      chars.push(replacement);
-      hadLeetspeak = true;
-    } else {
-      chars.push(ch);
-    }
-  }
-  return { text: chars.join(""), hadConfusables: hadLeetspeak };
-}
-
 // ── Detection Engine ────────────────────────────────────────────────────────
 
 export function detectThreats(text: string): Threat[] {
   const threats: Threat[] = [];
 
-  // Tier 1: Invisible unicode
+  // Invisible unicode
   for (const m of matchAll(INVISIBLE_RANGES, text)) {
     threats.push(
       threat(
         "invisible_unicode",
-        1,
         `Invisible chars: ${codepoints(m[0])}`,
         [m.index, m.index + m[0].length],
         "high",
@@ -140,13 +112,12 @@ export function detectThreats(text: string): Threat[] {
     );
   }
 
-  // Tier 1: Direct injection keywords
+  // Direct injection keywords
   for (const pat of INJECTION_PATTERNS) {
     for (const m of matchAll(pat, text)) {
       threats.push(
         threat(
           "injection_keyword",
-          1,
           `Prompt override: "${m[0].slice(0, 60)}"`,
           [m.index, m.index + m[0].length],
           "high",
@@ -155,13 +126,29 @@ export function detectThreats(text: string): Threat[] {
     }
   }
 
-  // Tier 1: Delimiter spoofing
+  // Also check after confusable normalization (catches Cyrillic/fullwidth obfuscation)
+  const normalized = normalizeConfusables(text);
+  if (normalized.hadConfusables) {
+    for (const pat of INJECTION_PATTERNS) {
+      for (const m of matchAll(pat, normalized.text)) {
+        threats.push(
+          threat(
+            "injection_keyword",
+            `Post-normalization: "${m[0].slice(0, 60)}"`,
+            [m.index, m.index + m[0].length],
+            "high",
+          ),
+        );
+      }
+    }
+  }
+
+  // Delimiter spoofing
   for (const pat of DELIMITER_PATTERNS) {
     for (const m of matchAll(pat, text)) {
       threats.push(
         threat(
           "delimiter_spoof",
-          1,
           `Fake delimiter: "${m[0].slice(0, 40)}"`,
           [m.index, m.index + m[0].length],
           "high",
@@ -170,7 +157,7 @@ export function detectThreats(text: string): Threat[] {
     }
   }
 
-  // Tier 1: Encoded payloads
+  // Encoded payloads
   const hasDecodeKeyword = DECODE_KEYWORDS.test(text);
   for (const { pattern, type } of ENCODING_PATTERNS) {
     for (const m of matchAll(pattern, text)) {
@@ -178,7 +165,6 @@ export function detectThreats(text: string): Threat[] {
         threats.push(
           threat(
             "encoded_payload",
-            1,
             `${type} (${m[0].length} chars)`,
             [m.index, m.index + m[0].length],
             hasDecodeKeyword ? "high" : "medium",
@@ -189,17 +175,16 @@ export function detectThreats(text: string): Threat[] {
   }
   if (hasDecodeKeyword) {
     threats.push(
-      threat("decode_instruction", 1, "Decode instruction for encoded content", [0, 0], "high"),
+      threat("decode_instruction", "Decode instruction for encoded content", [0, 0], "high"),
     );
   }
 
-  // Tier 1: Exfiltration markup
+  // Exfiltration markup
   for (const pat of EXFIL_PATTERNS) {
     for (const m of matchAll(pat, text)) {
       threats.push(
         threat(
           "exfil_markup",
-          1,
           `Exfil markup: "${m[0].slice(0, 60)}"`,
           [m.index, m.index + m[0].length],
           "high",
@@ -208,72 +193,12 @@ export function detectThreats(text: string): Threat[] {
     }
   }
 
-  // Tier 2: Homoglyph obfuscation
-  const normalized = normalizeConfusables(text);
-  if (normalized.hadConfusables) {
-    threats.push(threat("homoglyph", 2, "Lookalike chars from other scripts", [0, 0], "medium"));
-    for (const pat of INJECTION_PATTERNS) {
-      for (const m of matchAll(pat, normalized.text)) {
-        threats.push(
-          threat(
-            "obfuscated_injection",
-            2,
-            `Post-normalization: "${m[0].slice(0, 60)}"`,
-            [m.index, m.index + m[0].length],
-            "high",
-          ),
-        );
-      }
-    }
-  }
-
-  // Tier 2: Morse encoding
-  for (const line of text.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.length > 20 && MORSE_PATTERN.test(trimmed)) {
-      threats.push(
-        threat("morse_encoding", 2, `Morse content (${trimmed.length} chars)`, [0, 0], "medium"),
-      );
-    }
-  }
-
-  // Tier 2: Few-shot conversation spoofing
-  const userTurns = matchAll(FEWSHOT_PATTERNS.user, text).length;
-  const assistantTurns = matchAll(FEWSHOT_PATTERNS.assistant, text).length;
-  if (userTurns >= 2 && assistantTurns >= 1) {
-    threats.push(
-      threat(
-        "fewshot_spoof",
-        2,
-        `Conversation spoofing (${userTurns}u + ${assistantTurns}a turns)`,
-        [0, 0],
-        "medium",
-      ),
-    );
-  }
-
-  // Tier 2: Multilingual injection
-  for (const pat of MULTILINGUAL_INJECTION) {
-    for (const m of matchAll(pat, text)) {
-      threats.push(
-        threat(
-          "multilingual_injection",
-          2,
-          `Non-English injection: "${m[0].slice(0, 60)}"`,
-          [m.index, m.index + m[0].length],
-          "high",
-        ),
-      );
-    }
-  }
-
-  // Tier 2: Exfiltration instructions
+  // Exfiltration instructions
   for (const pat of EXFIL_INSTRUCTIONS) {
     for (const m of matchAll(pat, text)) {
       threats.push(
         threat(
           "exfil_instruction",
-          2,
           `Exfil instruction: "${m[0].slice(0, 60)}"`,
           [m.index, m.index + m[0].length],
           "medium",
@@ -282,85 +207,18 @@ export function detectThreats(text: string): Threat[] {
     }
   }
 
-  // Tier 1: Secret leak detection
+  // Secret leak detection
   for (const { pattern, type } of SECRET_PATTERNS) {
     for (const m of matchAll(pattern, text)) {
       threats.push(
         threat(
           "secret_leak",
-          1,
           `Secret detected: ${type}`,
           [m.index, m.index + m[0].length],
           "high",
         ),
       );
     }
-  }
-
-  // Tier 2: Indirect elicitation (social engineering for secrets)
-  for (const pat of ELICITATION_PATTERNS) {
-    for (const m of matchAll(pat, text)) {
-      threats.push(
-        threat(
-          "indirect_elicitation",
-          2,
-          `Elicitation attempt: "${m[0].slice(0, 60)}"`,
-          [m.index, m.index + m[0].length],
-          "high",
-        ),
-      );
-    }
-  }
-
-  // Tier 2: Semantic override (instruction hijacking via meaning)
-  for (const pat of SEMANTIC_OVERRIDE_PATTERNS) {
-    for (const m of matchAll(pat, text)) {
-      threats.push(
-        threat(
-          "semantic_override",
-          2,
-          `Semantic override: "${m[0].slice(0, 60)}"`,
-          [m.index, m.index + m[0].length],
-          "high",
-        ),
-      );
-    }
-  }
-
-  // Tier 2: Leetspeak obfuscation — normalize then re-check injection patterns
-  const leet = normalizeLeetspeak(text);
-  if (leet.hadConfusables) {
-    // Also apply confusable normalization on top of leetspeak
-    const leetNorm = normalizeConfusables(leet.text);
-    const leetText = leetNorm.text;
-    for (const pat of INJECTION_PATTERNS) {
-      for (const m of matchAll(pat, leetText)) {
-        threats.push(
-          threat(
-            "leetspeak_obfuscation",
-            2,
-            `Post-leetspeak: "${m[0].slice(0, 60)}"`,
-            [m.index, m.index + m[0].length],
-            "high",
-          ),
-        );
-      }
-    }
-  }
-
-  // Tier 2: Q/A few-shot conversation spoofing
-  const questionTurns = matchAll(QA_FEWSHOT_PATTERNS.question, text).length;
-  const answerTurns = matchAll(QA_FEWSHOT_PATTERNS.answer, text).length;
-  if (questionTurns >= 2 && answerTurns >= 1) {
-    threats.push(
-      threat(
-        "fewshot_spoof",
-        2,
-        `Q/A spoofing (${questionTurns}q + ${answerTurns}a turns)`,
-        [0, 0],
-        "medium",
-      ),
-    );
   }
 
   return threats;

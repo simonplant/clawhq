@@ -4,7 +4,7 @@
  * Four event streams, each append-only JSONL:
  *   - Tool execution: what the agent did
  *   - Egress: what data left the machine
- *   - Secret lifecycle: credential added/rotated/revoked (HMAC-chained)
+ *   - Secret lifecycle: credential added/rotated/revoked
  *   - Approval resolution: high-stakes action approved/rejected by user
  */
 
@@ -14,8 +14,6 @@
 export interface AuditEventBase {
   /** ISO 8601 timestamp. */
   readonly ts: string;
-  /** Monotonic sequence number within the log file. */
-  readonly seq: number;
 }
 
 // ── Tool Execution ─────────────────────────────────────────────────────────
@@ -57,7 +55,7 @@ export interface EgressEvent extends AuditEventBase {
 /** Secret lifecycle action. */
 export type SecretAction = "added" | "rotated" | "revoked" | "accessed";
 
-/** HMAC-chained event for tamper-evident secret lifecycle tracking. */
+/** Secret lifecycle event. */
 export interface SecretLifecycleEvent extends AuditEventBase {
   readonly type: "secret_lifecycle";
   /** Secret identifier (key name, never the value). */
@@ -66,10 +64,6 @@ export interface SecretLifecycleEvent extends AuditEventBase {
   readonly action: SecretAction;
   /** Who/what triggered this event. */
   readonly actor: string;
-  /** HMAC of this event chained with the previous event's HMAC. */
-  readonly hmac: string;
-  /** HMAC of the previous event (empty string for the first event). */
-  readonly prevHmac: string;
 }
 
 // ── Approval Resolution ──────────────────────────────────────────────────
@@ -106,8 +100,6 @@ export interface AuditTrailConfig {
   readonly secretLogPath: string;
   /** Path to approval resolution JSONL log. */
   readonly approvalLogPath: string;
-  /** HMAC secret key for chaining secret lifecycle events. */
-  readonly hmacKey: string;
 }
 
 // ── Report ─────────────────────────────────────────────────────────────────
@@ -131,7 +123,6 @@ export interface AuditSummary {
   readonly allowedEgress: number;
   readonly blockedEgress: number;
   readonly totalSecretEvents: number;
-  readonly chainValid: boolean;
   readonly totalApprovalEvents: number;
   readonly approvedCount: number;
   readonly rejectedCount: number;

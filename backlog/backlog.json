@@ -921,7 +921,7 @@
     },
     {
       "id": "FEAT-168",
-      "title": "Wizard multi-account email collection — agent email vs personal email",
+      "title": "Wizard multi-account email collection \u2014 agent email vs personal email",
       "intent": "People commonly have 4-10 email addresses. The wizard must collect credentials for at least two: one for the agent, one for the person. Current wizard collects a single set of email credentials.",
       "description": "collectIntegrations() in wizard.ts collects one credential set per integration domain. For email, it needs to support multiple accounts (e.g. agent iCloud + personal Fastmail). Today this works by accident because iCloud uses himalaya TOML config and Fastmail uses cred-proxy env var, so they don't collide. A third email or second IMAP provider would break. The wizard should ask how many email accounts, collect creds for each with a label (agent/personal/work), and store them namespaced.",
       "priority": "should",
@@ -999,7 +999,7 @@
     },
     {
       "id": "REFACTOR-171",
-      "title": "Merge two compilation pipelines — catalog vs configure",
+      "title": "Merge two compilation pipelines \u2014 catalog vs configure",
       "intent": "catalog/compiler.ts and configure/generate.ts are parallel implementations producing the same output format with behavioral divergences (workspaceOnly, soul rendering, token generation). One must be canonical.",
       "description": "Both pipelines take blueprint/composition input and produce OpenClaw deployment files. They share zero code despite producing identical output formats. This causes bugs where one path has correct behavior and the other doesn't (e.g. workspaceOnly was wrong in generate.ts, soul rendering uses different dimension grouping). Merge into one canonical path.",
       "priority": "should",
@@ -1079,7 +1079,7 @@
     },
     {
       "id": "REFACTOR-174",
-      "title": "Streaming backup — stop buffering all files in memory",
+      "title": "Streaming backup \u2014 stop buffering all files in memory",
       "intent": "createBackup buffers all file content in memory before writing. For large deployments this causes excessive memory use. Should stream files through gzip.",
       "description": "backup.ts collectAllFiles+archive loop reads every file into tarChunks[] before writing to disk. hashFile also reads the entire archive into memory. Both should use Node streams. collectAllFiles uses O(n^2) push(...spread) for recursive directory walking.",
       "priority": "could",
@@ -1105,7 +1105,7 @@
     },
     {
       "id": "REFACTOR-175",
-      "title": "Doctor lazy version detection — don't block all 31 checks",
+      "title": "Doctor lazy version detection \u2014 don't block all 31 checks",
       "intent": "detectOpenClawVersion runs sequentially before all 31 checks, with a 15s timeout. Only 3 checks need the version. The other 28 wait unnecessarily.",
       "description": "runChecks() calls detectOpenClawVersion() first, then passes the result to Promise.all of 31 checks. Pass version as a lazy Promise<string|null> to the 3 checks that need it, so all 31 can start immediately.",
       "priority": "could",
@@ -1130,7 +1130,7 @@
     },
     {
       "id": "REFACTOR-176",
-      "title": "Fleet discovery concurrency limit — cap parallel Docker calls",
+      "title": "Fleet discovery concurrency limit \u2014 cap parallel Docker calls",
       "intent": "discoverFleet spawns unlimited parallel Docker subprocess calls. For large fleets this exhausts system resources.",
       "description": "discoverFleet uses Promise.all(registry.agents.map(discoverAgent)) with no concurrency limit. Each discoverAgent spawns Docker subprocesses. Add a concurrency limiter (e.g. p-limit or manual semaphore) capped at 5-10 concurrent agent discoveries.",
       "priority": "could",
@@ -1151,6 +1151,234 @@
       "status": "todo",
       "readyForSprint": true,
       "track": "F"
+    },
+    {
+      "id": "AUDIT-177",
+      "title": "Remove secret scanner \u2014 replace with gitleaks recommendation",
+      "intent": "Our custom 20-pattern regex scanner is a worse version of established tools (gitleaks, trufflehog). Remove it to reduce maintenance burden and false confidence.",
+      "description": "src/secure/scanner/ reimplements secret detection with 20 regex patterns. gitleaks has 800+ actively maintained patterns with better false-positive suppression. Remove our scanner, add a doctor check that recommends gitleaks if not installed, and update clawhq scan to shell out to gitleaks when available.",
+      "priority": "should",
+      "category": "secure",
+      "steps": [
+        "Remove src/secure/scanner/ directory (patterns.ts, scanner.ts, git.ts, walk.ts, types.ts, index.ts)",
+        "Remove scanner tests",
+        "Update src/cli/commands/ to remove scan subcommand or redirect to gitleaks",
+        "Add doctor check: gitleaks binary available (advisory, not blocking)",
+        "Update any imports referencing the scanner module",
+        "Remove scanner from barrel exports"
+      ],
+      "acceptanceCriteria": [
+        "src/secure/scanner/ directory no longer exists",
+        "No broken imports reference the removed module",
+        "clawhq scan either delegates to gitleaks or prints recommendation to install it",
+        "Build passes, all remaining tests pass"
+      ],
+      "scope": [
+        "src/secure/scanner/",
+        "src/cli/commands/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "audit"
+    },
+    {
+      "id": "AUDIT-178",
+      "title": "Demote HMAC audit trail to simple JSONL logging",
+      "intent": "HMAC chaining provides tamper evidence only with an external verifier. Since key and logs live on the same machine, an attacker can recompute the chain. Remove security theater, keep the useful logging.",
+      "description": "src/secure/audit/logger.ts implements HMAC-SHA256 chaining and sequence counters for tamper evidence. Without external attestation this is unverifiable. Strip HMAC chaining, sequence counters, and tamper-evident claims. Keep the append-only JSONL logging (tool exec, egress, secrets, approvals) which is genuinely useful for debugging and compliance.",
+      "priority": "should",
+      "category": "secure",
+      "steps": [
+        "Remove computeChainedHmac() and lastSecretHmac state from logger.ts",
+        "Remove secretWriteMutex serialization (no longer needed without chain)",
+        "Remove initSeqCounter() and seqCounters map",
+        "Remove hmac and seq fields from log entries in all four streams",
+        "Simplify SecretLifecycleEvent type to remove hmac/prevHmac/seq fields",
+        "Update audit reader to not expect/validate HMAC fields",
+        "Remove OWASP export HMAC references",
+        "Update tests"
+      ],
+      "acceptanceCriteria": [
+        "Audit logger writes plain JSONL with timestamp, event type, and payload",
+        "No HMAC computation, no sequence counters, no tamper-evident claims",
+        "All four log streams (tool, egress, secret, approval) still function",
+        "Reader and CLI output still work",
+        "Tests pass"
+      ],
+      "scope": [
+        "src/secure/audit/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "audit"
+    },
+    {
+      "id": "AUDIT-179",
+      "title": "ClawWall sanitizer \u2014 keep Tier 1, remove Tier 2 detection claims",
+      "intent": "Tier 1 checks (invisible unicode, delimiter spoofing, encoded payloads) catch deterministic attacks. Tier 2 checks (semantic override, indirect elicitation) are fundamentally unreliable via regex and create false confidence.",
+      "description": "src/secure/sanitizer/detect.ts has 16 threat categories across two tiers. Tier 2 categories (homoglyph, morse, fewshot, multilingual, semantic override, indirect elicitation, leetspeak) attempt to detect adversarial prompt injection via regex, which security researchers agree has a low ceiling. Keep Tier 1 (invisible_unicode, injection_keyword, delimiter_spoof, encoded_payload, decode_instruction, exfil_markup, exfil_instruction, secret_leak). Remove or downgrade Tier 2 to advisory-only with clear documentation that regex cannot reliably detect adversarial injection.",
+      "priority": "should",
+      "category": "secure",
+      "steps": [
+        "Remove Tier 2 detection functions from detect.ts (homoglyph, morse, fewshot, multilingual, semantic_override, indirect_elicitation, leetspeak_obfuscation)",
+        "Remove corresponding patterns from patterns.ts (CONFUSABLE_MAP, EXTENDED_CONFUSABLE_MAP, LEETSPEAK_MAP, MORSE_PATTERN, FEWSHOT_PATTERNS, QA_FEWSHOT_PATTERNS, MULTILINGUAL_INJECTION, SEMANTIC_OVERRIDE_PATTERNS, ELICITATION_PATTERNS)",
+        "Remove ThreatCategory union members for removed categories",
+        "Update sanitizer.ts scoring to only use Tier 1",
+        "Update tests to remove Tier 2 expectations",
+        "Add comment documenting that Tier 1 catches encoding tricks, not adversarial injection"
+      ],
+      "acceptanceCriteria": [
+        "Only Tier 1 threat categories remain in detect.ts",
+        "Removed patterns no longer exist in patterns.ts",
+        "Sanitizer still catches invisible unicode, delimiters, encoding, exfil, secrets",
+        "No claims about detecting semantic or adversarial injection",
+        "Tests pass"
+      ],
+      "scope": [
+        "src/secure/sanitizer/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "audit"
+    },
+    {
+      "id": "AUDIT-180",
+      "title": "Demote cryptographic destroy to simple verified deletion",
+      "intent": "Self-signed cryptographic proof of destruction (hash manifest + HMAC with included key) is unverifiable without external attestation. Remove the theater, keep the thorough deletion.",
+      "description": "src/evolve/lifecycle/destroy.ts generates an HMAC-signed proof of destruction including file hashes, witness hash, and one-time key. Since the key is included in the proof and no external party attests, this is a self-signed receipt that proves nothing. Keep the thorough file deletion, container shutdown, and confirmation flow. Remove the cryptographic proof generation.",
+      "priority": "should",
+      "category": "evolve",
+      "steps": [
+        "Remove computeChainedHmac / witness hash / one-time key generation from destroy.ts",
+        "Remove DestructionProof type or simplify to a deletion receipt (list of deleted files, timestamp)",
+        "Keep container stop, file enumeration, and recursive deletion logic",
+        "Keep the confirmation prompt and dry-run mode",
+        "Simplify DestroyResult to not include cryptographic fields",
+        "Update tests"
+      ],
+      "acceptanceCriteria": [
+        "clawhq destroy still stops container, enumerates files, deletes everything",
+        "No cryptographic proof generation (no HMAC, no witness hash, no one-time key)",
+        "Deletion receipt is a simple JSON with files deleted and timestamp",
+        "Confirmation prompt and dry-run still work",
+        "Tests pass"
+      ],
+      "scope": [
+        "src/evolve/lifecycle/destroy.ts",
+        "src/evolve/lifecycle/types.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "audit"
+    },
+    {
+      "id": "AUDIT-181",
+      "title": "Simplify skill vetting scanner to obvious-risk-only detection",
+      "intent": "Regex-based code scanning cannot reliably detect obfuscated malware. Keep the vetting pipeline but limit the scanner to flagging obvious risks (outbound HTTP, shell exec, file writes outside workspace). The real defense is the approval gate + egress firewall.",
+      "description": "src/evolve/skills/vet.ts scans skill source code with regex patterns for URL traps, shell execution, file access, injection patterns, and encoded payloads. The encoded payload and injection pattern detection creates false confidence. Simplify to only flag: (1) outbound HTTP/fetch calls to non-allowlisted domains, (2) subprocess spawning (exec/spawn/system), (3) file writes outside workspace. Remove injection pattern reuse from sanitizer and encoded payload detection.",
+      "priority": "should",
+      "category": "evolve",
+      "steps": [
+        "Simplify vet.ts to three check categories: outbound_http, shell_exec, file_escape",
+        "Remove injection pattern imports from sanitizer",
+        "Remove encoded payload detection",
+        "Remove obfuscation detection (these bypass regex trivially)",
+        "Keep the stage \u2192 vet \u2192 approve \u2192 activate pipeline unchanged",
+        "Update VetFindingCategory type to match simplified categories",
+        "Update tests"
+      ],
+      "acceptanceCriteria": [
+        "Skill vetting only flags: outbound HTTP, shell execution, file writes outside workspace",
+        "No imports from sanitizer module",
+        "No encoded payload or obfuscation detection",
+        "Pipeline (stage \u2192 vet \u2192 approve \u2192 activate) still works end-to-end",
+        "Tests pass"
+      ],
+      "scope": [
+        "src/evolve/skills/vet.ts",
+        "src/evolve/skills/types.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "audit"
+    },
+    {
+      "id": "AUDIT-182",
+      "title": "Prepare landmine validator as OpenClaw contribution",
+      "intent": "The 14-rule landmine validator is original research catching real silent failures. This is our strongest candidate for an OpenClaw upstream contribution \u2014 both idea and implementation.",
+      "description": "src/config/validate.ts contains 14 validation rules (LM-01 through LM-14) that catch configuration landmines causing silent failures in OpenClaw. Extract the validator into a self-contained module suitable for PR to OpenClaw. Must work standalone without ClawHQ dependencies.",
+      "priority": "could",
+      "category": "core",
+      "steps": [
+        "Identify all ClawHQ-specific imports in validate.ts",
+        "Create a standalone version using only OpenClaw types",
+        "Write a clear README explaining each landmine with reproduction steps",
+        "Add examples showing before (broken) and after (fixed) config",
+        "Prepare as a draft PR to OpenClaw repository"
+      ],
+      "acceptanceCriteria": [
+        "Standalone validator module with zero ClawHQ dependencies",
+        "README documenting all 14 landmines with reproduction steps",
+        "Works against raw OpenClaw config format",
+        "Draft PR prepared"
+      ],
+      "scope": [
+        "src/config/validate.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "track": "audit"
+    },
+    {
+      "id": "AUDIT-183",
+      "title": "Prepare approval gate as OpenClaw contribution",
+      "intent": "OpenClaw has no tool-level approval mechanism. The approve-action tool is a clean, self-contained safety feature that would benefit the entire OpenClaw ecosystem.",
+      "description": "src/design/tools/approve-action.ts generates a self-contained Node.js approval gate tool. Extract and document as an OpenClaw contribution. Must work without ClawHQ \u2014 just needs a workspace/memory/ directory and optionally Telegram for notifications.",
+      "priority": "could",
+      "category": "tools",
+      "steps": [
+        "Extract approve-action as standalone tool with documentation",
+        "Remove ClawHQ-specific references",
+        "Add usage guide for OpenClaw users",
+        "Prepare as draft PR to OpenClaw repository"
+      ],
+      "acceptanceCriteria": [
+        "Standalone approve-action tool with zero ClawHQ dependencies",
+        "Documentation explaining setup and usage",
+        "Works in vanilla OpenClaw workspace",
+        "Draft PR prepared"
+      ],
+      "scope": [
+        "src/design/tools/approve-action.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "track": "audit"
+    },
+    {
+      "id": "AUDIT-184",
+      "title": "Prepare container posture as OpenClaw contribution",
+      "intent": "OpenClaw default Docker Compose has no hardening. The 3-tier posture system (84 lines) is clean, minimal, and immediately impactful.",
+      "description": "src/build/docker/posture.ts defines three security postures (minimal/hardened/under-attack) with standard container hardening (cap_drop ALL, no-new-privileges, read-only rootfs). Extract as OpenClaw contribution with documentation.",
+      "priority": "could",
+      "category": "build",
+      "steps": [
+        "Extract posture definitions as standalone docker-compose overlay examples",
+        "Document each posture level and what it protects against",
+        "Prepare as draft PR to OpenClaw repository"
+      ],
+      "acceptanceCriteria": [
+        "Standalone posture examples as docker-compose overlay files",
+        "Documentation for each security level",
+        "Works with vanilla OpenClaw docker-compose.yml",
+        "Draft PR prepared"
+      ],
+      "scope": [
+        "src/build/docker/posture.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "track": "audit"
     }
   ]
 }

@@ -21,10 +21,8 @@ import {
   formatDestroyTable,
   formatExportJson,
   formatExportTable,
-  formatVerifyResult,
-  verifyDestructionProof,
 } from "../../evolve/lifecycle/index.js";
-import type { DestructionProof, LifecycleProgress } from "../../evolve/lifecycle/index.js";
+import type { LifecycleProgress } from "../../evolve/lifecycle/index.js";
 import {
   analyzePreferences,
   formatLifecycleResult,
@@ -709,22 +707,4 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
       }
     });
 
-  program
-    .command("verify-proof")
-    .description("Verify a destruction proof file")
-    .argument("<file>", "Path to the destruction proof JSON file")
-    .action(async (file: string) => {
-      try {
-        const { readFile } = await import("node:fs/promises");
-        const raw = await readFile(file, "utf-8");
-        const proof = JSON.parse(raw) as DestructionProof;
-        const valid = verifyDestructionProof(proof);
-        console.log(formatVerifyResult(proof, valid));
-        if (!valid) throw new CommandError("", 1);
-      } catch (err) {
-        if (err instanceof CommandError) throw err;
-        console.error(renderError(err));
-        throw new CommandError("", 1);
-      }
-    });
 }

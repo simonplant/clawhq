@@ -2,7 +2,7 @@
  * Types for export + destroy lifecycle operations.
  *
  * Export produces a self-contained portable bundle with PII masking.
- * Destroy wipes all local data with cryptographic proof of destruction.
+ * Destroy wipes all local data and produces a deletion receipt.
  */
 
 // ── Export ──────────────────────────────────────────────────────────────────
@@ -11,7 +11,7 @@
 export type ExportStep = "collect" | "mask" | "bundle" | "verify";
 
 /** Pipeline steps for destroy progress reporting. */
-export type DestroyStep = "stop" | "inventory" | "wipe" | "verify" | "proof";
+export type DestroyStep = "stop" | "inventory" | "wipe" | "verify";
 
 /** Status of a pipeline step. */
 export type StepStatus = "running" | "done" | "failed" | "skipped";
@@ -83,48 +83,33 @@ export interface DestroyOptions {
   readonly onProgress?: LifecycleProgressCallback;
 }
 
-/** A file that was destroyed, with its pre-destruction hash. */
+/** A file that was destroyed. */
 export interface DestroyedFile {
   /** Relative path from the deployment directory. */
   readonly path: string;
-  /** SHA-256 hash of the file before destruction. */
-  readonly hashBefore: string;
   /** Size in bytes before destruction. */
   readonly sizeBefore: number;
 }
 
-/**
- * Cryptographic proof of destruction.
- *
- * Contains a hash manifest of every file that was destroyed, signed
- * with a one-time HMAC key. The proof can be independently verified:
- * the witness hash covers the entire manifest, so any missing file
- * or altered entry invalidates the proof.
- */
-export interface DestructionProof {
+/** Deletion receipt — records what was destroyed and when. */
+export interface DeletionReceipt {
   readonly version: 1;
   /** ISO 8601 timestamp of destruction. */
   readonly destroyedAt: string;
   /** Deployment directory that was destroyed. */
   readonly deployDir: string;
-  /** Every file that was destroyed with its pre-destruction hash. */
+  /** Every file that was destroyed. */
   readonly files: readonly DestroyedFile[];
   /** Total bytes wiped. */
   readonly totalBytes: number;
-  /** SHA-256 witness hash over the sorted file manifest. */
-  readonly witnessHash: string;
-  /** HMAC-SHA256 of the witness hash using a one-time key. */
-  readonly hmacSignature: string;
-  /** The one-time HMAC key (included so anyone can verify). */
-  readonly hmacKey: string;
 }
 
-/** Result of a verified destruction operation. */
+/** Result of a destruction operation. */
 export interface DestroyResult {
   readonly success: boolean;
-  /** Path to the proof file (written outside the destroyed directory). */
-  readonly proofPath?: string;
-  /** The destruction proof object. */
-  readonly proof?: DestructionProof;
+  /** Path to the receipt file (written outside the destroyed directory). */
+  readonly receiptPath?: string;
+  /** The deletion receipt. */
+  readonly receipt?: DeletionReceipt;
   readonly error?: string;
 }

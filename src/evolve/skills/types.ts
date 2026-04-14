@@ -51,15 +51,12 @@ export interface SkillManifest {
 
 // ── Vetting ──────────────────────────────────────────────────────────────────
 
-/** Category of security finding during skill vetting. */
+/** Category of security finding during skill vetting.
+ * Flags obvious risks only — the real defense is the approval gate + egress firewall. */
 export type VetFindingCategory =
-  | "url_trap"
-  | "exfil_url"
-  | "suspicious_domain"
-  | "injection_pattern"
-  | "encoded_payload"
+  | "outbound_http"
   | "shell_execution"
-  | "file_access";
+  | "file_escape";
 
 /** Severity of a vetting finding. */
 export type VetSeverity = "critical" | "high" | "medium" | "low";

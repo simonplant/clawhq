@@ -7,16 +7,12 @@ import { normalizeConfusables, type Threat, type ThreatSeverity } from "./detect
 import {
   DECODE_KEYWORDS,
   DELIMITER_PATTERNS,
-  ELICITATION_PATTERNS,
   ENCODING_PATTERNS,
   EXFIL_INSTRUCTIONS,
   EXFIL_PATTERNS,
-  FEWSHOT_PATTERNS,
   INJECTION_PATTERNS,
   INVISIBLE_RANGES,
-  MULTILINGUAL_INJECTION,
   SECRET_PATTERNS,
-  SEMANTIC_OVERRIDE_PATTERNS,
 } from "./patterns.js";
 
 // ── Scoring ─────────────────────────────────────────────────────────────────
@@ -43,14 +39,10 @@ function toGlobal(re: RegExp): RegExp {
   return re.flags.includes("g") ? re : new RegExp(re.source, re.flags + "g");
 }
 
-// Precompute once at module load — avoids allocating ~40 RegExp objects per sanitize() call.
 const INJECTION_GLOBAL = INJECTION_PATTERNS.map(toGlobal);
 const DELIMITER_GLOBAL = DELIMITER_PATTERNS.map(toGlobal);
 const EXFIL_GLOBAL = EXFIL_PATTERNS.map(toGlobal);
-const MULTILINGUAL_GLOBAL = MULTILINGUAL_INJECTION.map(toGlobal);
 const EXFIL_INSTR_GLOBAL = EXFIL_INSTRUCTIONS.map(toGlobal);
-const FEWSHOT_USER_GLOBAL = toGlobal(FEWSHOT_PATTERNS.user);
-const FEWSHOT_ASST_GLOBAL = toGlobal(FEWSHOT_PATTERNS.assistant);
 const DECODE_GLOBAL = toGlobal(DECODE_KEYWORDS);
 const ENCODING_GLOBAL = ENCODING_PATTERNS.map((e) => ({
   pattern: toGlobal(e.pattern),
@@ -60,8 +52,6 @@ const SECRET_GLOBAL = SECRET_PATTERNS.map((s) => ({
   pattern: toGlobal(s.pattern),
   type: s.type,
 }));
-const ELICITATION_GLOBAL = ELICITATION_PATTERNS.map(toGlobal);
-const SEMANTIC_GLOBAL = SEMANTIC_OVERRIDE_PATTERNS.map(toGlobal);
 
 // ── Sanitization ────────────────────────────────────────────────────────────
 
@@ -77,7 +67,7 @@ export function sanitize(text: string, options: SanitizeOptions = {}): string {
   // Strip invisible unicode
   result = result.replace(INVISIBLE_RANGES, "");
 
-  // Normalize homoglyphs
+  // Normalize confusables
   result = normalizeConfusables(result).text;
 
   // Replace injection keywords
@@ -95,33 +85,14 @@ export function sanitize(text: string, options: SanitizeOptions = {}): string {
     result = result.replace(pat, "[LINK REMOVED]");
   }
 
-  // Replace multilingual injection
-  for (const pat of MULTILINGUAL_GLOBAL) {
-    result = result.replace(pat, "[FILTERED]");
-  }
-
   // Replace exfiltration instructions
   for (const pat of EXFIL_INSTR_GLOBAL) {
     result = result.replace(pat, "[EXFIL REMOVED]");
   }
 
-  // Replace few-shot conversation spoofing markers
-  result = result.replace(FEWSHOT_USER_GLOBAL, "$1[TURN REMOVED]");
-  result = result.replace(FEWSHOT_ASST_GLOBAL, "$1[TURN REMOVED]");
-
   // Redact secrets/credentials
   for (const { pattern } of SECRET_GLOBAL) {
     result = result.replace(pattern, "[SECRET REDACTED]");
-  }
-
-  // Replace indirect elicitation attempts
-  for (const pat of ELICITATION_GLOBAL) {
-    result = result.replace(pat, "[FILTERED]");
-  }
-
-  // Replace semantic override attempts
-  for (const pat of SEMANTIC_GLOBAL) {
-    result = result.replace(pat, "[FILTERED]");
   }
 
   // Strict mode: also strip encoded payloads and decode keywords

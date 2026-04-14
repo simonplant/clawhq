@@ -1,14 +1,13 @@
 /**
  * Security vetting engine for skills.
  *
- * Scans skill source code for:
- * - URL traps: outbound HTTP/HTTPS calls to arbitrary hosts
+ * Scans skill source code for obvious risks:
+ * - Outbound HTTP: hardcoded URLs, curl/wget/fetch, HTTP libraries
  * - Shell execution: subprocess spawning, eval, exec
- * - File access: reads/writes outside workspace boundaries
- * - Injection patterns: reuses existing sanitizer detection
- * - Encoded payloads: obfuscated content that may hide instructions
+ * - File escape: path traversal, absolute paths outside workspace
  *
- * A skill that fails vetting with critical or high findings is rejected.
+ * All findings are advisory — the real defense is the approval gate
+ * and egress firewall. Regex can't catch obfuscated malware.
  */
 
 import type {
@@ -61,7 +60,6 @@ function stripComments(content: string, filename: string): string {
   while (i < len) {
     const c = content[i];
 
-    // ── Heredoc content (bash): preserve everything ──
     if (heredocDelim !== null) {
       if (i === 0 || content[i - 1] === "\n") {
         const lineEnd = content.indexOf("\n", i);
@@ -72,12 +70,8 @@ function stripComments(content: string, filename: string): string {
       continue;
     }
 
-    // ── Multi-line comment (JS): blank content ──
     if (inMultiComment) {
-      if (c === "\n") {
-        i++;
-        continue;
-      }
+      if (c === "\n") { i++; continue; }
       out[i] = " ";
       if (c === "*" && i + 1 < len && content[i + 1] === "/") {
         out[i + 1] = " ";
@@ -89,7 +83,6 @@ function stripComments(content: string, filename: string): string {
       continue;
     }
 
-    // ── Triple-quoted strings (Python): preserve content ──
     if (inTripleDouble) {
       if (i + 2 < len && content[i] === '"' && content[i + 1] === '"' && content[i + 2] === '"') {
         inTripleDouble = false;
@@ -109,47 +102,29 @@ function stripComments(content: string, filename: string): string {
       continue;
     }
 
-    // ── Single-quoted strings ──
     if (inSingleQuote) {
-      if (c === "'") {
-        inSingleQuote = false;
-      } else if (c === "\\" && lang !== "bash" && i + 1 < len) {
-        i += 2;
-        continue;
-      }
+      if (c === "'") inSingleQuote = false;
+      else if (c === "\\" && lang !== "bash" && i + 1 < len) { i += 2; continue; }
       i++;
       continue;
     }
 
-    // ── Double-quoted strings ──
     if (inDoubleQuote) {
-      if (c === '"') {
-        inDoubleQuote = false;
-      } else if (c === "\\" && i + 1 < len) {
-        i += 2;
-        continue;
-      }
+      if (c === '"') inDoubleQuote = false;
+      else if (c === "\\" && i + 1 < len) { i += 2; continue; }
       i++;
       continue;
     }
 
-    // ── Not in any string or comment — detect starts ──
-
-    // Triple quotes (Python only)
     if (lang === "python" && i + 2 < len) {
       if (content[i] === '"' && content[i + 1] === '"' && content[i + 2] === '"') {
-        inTripleDouble = true;
-        i += 3;
-        continue;
+        inTripleDouble = true; i += 3; continue;
       }
       if (content[i] === "'" && content[i + 1] === "'" && content[i + 2] === "'") {
-        inTripleSingle = true;
-        i += 3;
-        continue;
+        inTripleSingle = true; i += 3; continue;
       }
     }
 
-    // Template literals (JS) — advance through without comment detection
     if (lang === "javascript" && c === "`") {
       i++;
       while (i < len && content[i] !== "`") {
@@ -160,38 +135,20 @@ function stripComments(content: string, filename: string): string {
       continue;
     }
 
-    // String starts
-    if (c === '"') {
-      inDoubleQuote = true;
-      i++;
-      continue;
-    }
-    if (c === "'") {
-      inSingleQuote = true;
-      i++;
-      continue;
-    }
+    if (c === '"') { inDoubleQuote = true; i++; continue; }
+    if (c === "'") { inSingleQuote = true; i++; continue; }
 
-    // Multi-line comment start (JS)
     if (lang === "javascript" && c === "/" && i + 1 < len && content[i + 1] === "*") {
-      out[i] = " ";
-      out[i + 1] = " ";
-      inMultiComment = true;
-      i += 2;
-      continue;
+      out[i] = " "; out[i + 1] = " ";
+      inMultiComment = true; i += 2; continue;
     }
-
-    // Single-line comment: // (JS) or # (bash/python)
     if (lang === "javascript" && c === "/" && i + 1 < len && content[i + 1] === "/") {
-      blankToEol();
-      continue;
+      blankToEol(); continue;
     }
     if ((lang === "bash" || lang === "python") && c === "#") {
-      blankToEol();
-      continue;
+      blankToEol(); continue;
     }
 
-    // Heredoc start (bash)
     if (lang === "bash" && c === "<" && i + 1 < len && content[i + 1] === "<") {
       const rest = content.slice(i);
       const hdMatch = rest.match(/^<<-?\s*\\?['"]?([A-Za-z_]\w*)['"]?/);
@@ -208,44 +165,16 @@ function stripComments(content: string, filename: string): string {
   return out.join("");
 }
 
-// ── URL Trap Patterns ────────────────────────────────────────────────────────
+// ── Outbound HTTP Patterns ──────────────────────────────────────────────────
 
-/**
- * Patterns that detect outbound HTTP/HTTPS calls in skill code.
- * These catch curl, wget, fetch, requests, http.get, etc.
- */
-const URL_TRAP_PATTERNS: Array<{ pattern: RegExp; detail: string }> = [
-  // Hardcoded URLs in any language
-  {
-    pattern: /https?:\/\/[^\s"'`)}\]>]+/gi,
-    detail: "Hardcoded URL — skill should not make outbound calls to arbitrary hosts",
-  },
-  // curl/wget/fetch commands
-  {
-    pattern: /\b(curl|wget|fetch)\s+/gi,
-    detail: "HTTP client invocation — outbound network access",
-  },
-  // Python requests/urllib
-  {
-    pattern: /\b(requests\.(get|post|put|delete|patch|head)|urllib\.request|httpx\.|aiohttp\.)/gi,
-    detail: "Python HTTP library usage — outbound network access",
-  },
-  // Node.js http/https/fetch
-  {
-    pattern: /\b(https?\.(?:get|request)|node-fetch|axios\.|got\(|undici\.)/gi,
-    detail: "Node.js HTTP library usage — outbound network access",
-  },
-  // Bash network tools
-  {
-    pattern: /\b(nc|ncat|netcat|socat|telnet|nslookup|dig)\s+/gi,
-    detail: "Network utility — potential data exfiltration channel",
-  },
+const HTTP_PATTERNS: Array<{ pattern: RegExp; detail: string }> = [
+  { pattern: /https?:\/\/[^\s"'`)}\]>]+/gi, detail: "Hardcoded URL" },
+  { pattern: /\b(curl|wget|fetch)\s+/gi, detail: "HTTP client invocation" },
+  { pattern: /\b(requests\.(get|post|put|delete|patch|head)|urllib\.request|httpx\.|aiohttp\.)/gi, detail: "Python HTTP library" },
+  { pattern: /\b(https?\.(?:get|request)|node-fetch|axios\.|got\(|undici\.)/gi, detail: "Node.js HTTP library" },
+  { pattern: /\b(nc|ncat|netcat|socat|telnet)\s+/gi, detail: "Network utility" },
 ];
 
-/**
- * Domains that are safe and expected in skill code (documentation, comments).
- * URLs pointing to these domains are NOT flagged.
- */
 const SAFE_DOMAIN_PATTERNS: RegExp[] = [
   /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)/i,
   /^https?:\/\/example\.(com|org|net)/i,
@@ -255,64 +184,18 @@ const SAFE_DOMAIN_PATTERNS: RegExp[] = [
 // ── Shell Execution Patterns ─────────────────────────────────────────────────
 
 const SHELL_EXEC_PATTERNS: Array<{ pattern: RegExp; detail: string }> = [
-  {
-    pattern: /\b(eval|exec)\s/gi,
-    detail: "Dynamic code execution — eval/exec",
-  },
-  {
-    pattern: /\bchild_process\b/gi,
-    detail: "Node.js child_process — subprocess spawning",
-  },
-  {
-    pattern: /\b(subprocess|os\.system|os\.popen|Popen)\s*\(/gi,
-    detail: "Python subprocess spawning",
-  },
-  {
-    pattern: /\$\(.*\)|`[^`]*`/g,
-    detail: "Command substitution — potential shell injection vector",
-  },
+  { pattern: /\b(eval|exec)\s/gi, detail: "Dynamic code execution" },
+  { pattern: /\bchild_process\b/gi, detail: "Node.js subprocess spawning" },
+  { pattern: /\b(subprocess|os\.system|os\.popen|Popen)\s*\(/gi, detail: "Python subprocess spawning" },
+  { pattern: /\$\(.*\)|`[^`]*`/g, detail: "Command substitution" },
 ];
 
-// ── File Access Patterns ─────────────────────────────────────────────────────
+// ── File Escape Patterns ────────────────────────────────────────────────────
 
-const FILE_ACCESS_PATTERNS: Array<{ pattern: RegExp; detail: string }> = [
-  {
-    pattern: /\/(etc|root|home|var|tmp|proc|sys|dev)\//gi,
-    detail: "Absolute path outside workspace — potential filesystem escape",
-  },
-  {
-    pattern: /\.\.\//g,
-    detail: "Parent directory traversal — potential sandbox escape",
-  },
-  {
-    pattern: /\b(chmod|chown|chgrp)\s+/gi,
-    detail: "Permission modification — skills should not change file permissions",
-  },
-];
-
-// ── Encoded/Obfuscated Content ───────────────────────────────────────────────
-
-const OBFUSCATION_PATTERNS: Array<{ pattern: RegExp; detail: string }> = [
-  {
-    pattern: /\\x[0-9a-fA-F]{2}(?:\\x[0-9a-fA-F]{2}){5,}/g,
-    detail: "Hex-escaped string — potentially obfuscated content",
-  },
-  {
-    pattern: /\\u[0-9a-fA-F]{4}(?:\\u[0-9a-fA-F]{4}){5,}/g,
-    detail: "Unicode-escaped string — potentially obfuscated content",
-  },
-  {
-    pattern: /atob\s*\(|Buffer\.from\s*\([^)]*,\s*['"]base64['"]\)/g,
-    detail: "Base64 decoding — potentially obfuscated payload",
-  },
-  {
-    pattern: /\bbase64\s+(-d|--decode)\b/g,
-    detail: "Base64 decode via CLI — potentially obfuscated payload execution",
-  },
-  {
-    pattern: /\bbase64\.b64decode\b/g,
-    detail: "Python base64.b64decode — potentially obfuscated payload",
-  },
+const FILE_ESCAPE_PATTERNS: Array<{ pattern: RegExp; detail: string }> = [
+  { pattern: /\/(etc|root|home|var|tmp|proc|sys|dev)\//gi, detail: "Absolute path outside workspace" },
+  { pattern: /\.\.\//g, detail: "Parent directory traversal" },
+  { pattern: /\b(chmod|chown|chgrp)\s+/gi, detail: "Permission modification" },
 ];
 
 // ── Vetting Engine ───────────────────────────────────────────────────────────
@@ -323,25 +206,16 @@ function isSafeUrl(url: string): boolean {
 
 function severityForCategory(category: VetFindingCategory): VetSeverity {
   switch (category) {
-    case "url_trap":
-    case "exfil_url":
-      return "critical";
-    case "shell_execution":
-    case "file_access":
-    case "encoded_payload":
+    case "outbound_http":
       return "high";
-    case "injection_pattern":
-    case "suspicious_domain":
-      return "medium";
-    default:
-      return "low";
+    case "shell_execution":
+      return "high";
+    case "file_escape":
+      return "high";
   }
 }
 
-function scanFile(
-  file: string,
-  content: string,
-): VetFinding[] {
+function scanFile(file: string, content: string): VetFinding[] {
   const findings: VetFinding[] = [];
   const stripped = stripComments(content, file);
   const lines = stripped.split("\n");
@@ -349,27 +223,31 @@ function scanFile(
   for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
     const line = lines[lineIdx];
     const lineNum = lineIdx + 1;
-
-    // Skip empty/whitespace-only lines (may have been comment-stripped)
     if (line.trim() === "") continue;
 
-    // URL trap detection
-    for (const { pattern, detail } of URL_TRAP_PATTERNS) {
+    // Outbound HTTP detection
+    // Check if any URL on this line is safe (localhost, example.com, etc.)
+    const urlRe = /https?:\/\/[^\s"'`)}\]>]+/gi;
+    const urlsOnLine: string[] = [];
+    let urlMatch: RegExpExecArray | null;
+    while ((urlMatch = urlRe.exec(line)) !== null) urlsOnLine.push(urlMatch[0]);
+    const allUrlsSafe = urlsOnLine.length > 0 && urlsOnLine.every(isSafeUrl);
+
+    for (const { pattern, detail } of HTTP_PATTERNS) {
       const re = new RegExp(pattern.source, pattern.flags);
       let match: RegExpExecArray | null;
       while ((match = re.exec(line)) !== null) {
-        const matched = match[0];
-
-        // For URL matches, check against safe domains
-        if (pattern.source.startsWith("https?") && isSafeUrl(matched)) continue;
-
+        // Skip safe URLs
+        if (pattern.source.startsWith("https?") && isSafeUrl(match[0])) continue;
+        // Skip HTTP client commands when all URLs on the line are safe (e.g. curl http://localhost:...)
+        if (!pattern.source.startsWith("https?") && allUrlsSafe) continue;
         findings.push({
-          category: matched.startsWith("http") ? "exfil_url" : "url_trap",
-          severity: severityForCategory(matched.startsWith("http") ? "exfil_url" : "url_trap"),
+          category: "outbound_http",
+          severity: severityForCategory("outbound_http"),
           file,
           line: lineNum,
           detail,
-          matched: matched.slice(0, 80),
+          matched: match[0].slice(0, 80),
         });
       }
     }
@@ -390,30 +268,14 @@ function scanFile(
       }
     }
 
-    // File access detection
-    for (const { pattern, detail } of FILE_ACCESS_PATTERNS) {
+    // File escape detection
+    for (const { pattern, detail } of FILE_ESCAPE_PATTERNS) {
       const re = new RegExp(pattern.source, pattern.flags);
       let match: RegExpExecArray | null;
       while ((match = re.exec(line)) !== null) {
         findings.push({
-          category: "file_access",
-          severity: severityForCategory("file_access"),
-          file,
-          line: lineNum,
-          detail,
-          matched: match[0].slice(0, 80),
-        });
-      }
-    }
-
-    // Obfuscation detection
-    for (const { pattern, detail } of OBFUSCATION_PATTERNS) {
-      const re = new RegExp(pattern.source, pattern.flags);
-      let match: RegExpExecArray | null;
-      while ((match = re.exec(line)) !== null) {
-        findings.push({
-          category: "encoded_payload",
-          severity: severityForCategory("encoded_payload"),
+          category: "file_escape",
+          severity: severityForCategory("file_escape"),
           file,
           line: lineNum,
           detail,
@@ -438,7 +300,7 @@ function buildSummary(findings: readonly VetFinding[]): VetSummary {
 }
 
 /**
- * Vet a skill by scanning all its source files for security threats.
+ * Vet a skill by scanning all its source files for obvious security risks.
  *
  * Returns a full report with findings and pass/fail determination.
  * A skill fails vetting if any critical or high severity findings exist.

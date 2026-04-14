@@ -2,14 +2,14 @@
  * Lifecycle module — export + destroy (data sovereignty guarantee).
  *
  * `clawhq export` produces a self-contained portable bundle with PII masking.
- * `clawhq destroy` wipes all local data with cryptographic proof of destruction.
+ * `clawhq destroy` wipes all local data and produces a deletion receipt.
  */
 
 // Export
 export { exportBundle } from "./export.js";
 
 // Destroy
-export { destroyAgent, verifyDestructionProof } from "./destroy.js";
+export { destroyAgent } from "./destroy.js";
 
 // PII masking
 export { isTextFile, maskPii } from "./mask.js";
@@ -20,15 +20,14 @@ export {
   formatDestroyTable,
   formatExportJson,
   formatExportTable,
-  formatVerifyResult,
 } from "./format.js";
 
 // Types
 export type {
+  DeletionReceipt,
   DestroyedFile,
   DestroyOptions,
   DestroyResult,
-  DestructionProof,
   ExportOptions,
   ExportResult,
   ExportStep,

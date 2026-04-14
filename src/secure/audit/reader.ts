@@ -1,12 +1,10 @@
 /**
  * Audit log reader — parse JSONL logs and produce audit reports.
  *
- * Reads the three audit streams and produces a unified AuditReport
- * with summary statistics. Supports time-range filtering and
- * HMAC chain verification for secret lifecycle events.
+ * Reads the four audit streams and produces a unified AuditReport
+ * with summary statistics. Supports time-range filtering.
  */
 
-import { createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 import type {
@@ -54,7 +52,6 @@ function filterByTime<T extends { ts: string }>(
 
 function limitEvents<T>(events: T[], limit?: number): T[] {
   if (!limit) return events;
-  // Return most recent events
   return events.slice(-limit);
 }
 
@@ -77,8 +74,6 @@ export async function readAuditReport(
   const secretEvents = limitEvents(filterByTime(rawSecret, opts.since), opts.limit);
   const approvalEvents = limitEvents(filterByTime(rawApproval, opts.since), opts.limit);
 
-  const chainValid = verifyHmacChain(rawSecret, config.hmacKey);
-
   const summary: AuditSummary = {
     totalToolExecutions: toolExecutions.length,
     successfulExecutions: toolExecutions.filter((e) => e.status === "success").length,
@@ -87,7 +82,6 @@ export async function readAuditReport(
     allowedEgress: egressEvents.filter((e) => e.allowed).length,
     blockedEgress: egressEvents.filter((e) => !e.allowed).length,
     totalSecretEvents: secretEvents.length,
-    chainValid,
     totalApprovalEvents: approvalEvents.length,
     approvedCount: approvalEvents.filter((e) => e.resolution === "approved").length,
     rejectedCount: approvalEvents.filter((e) => e.resolution === "rejected").length,
@@ -101,41 +95,4 @@ export async function readAuditReport(
     approvalEvents,
     summary,
   };
-}
-
-// ── HMAC Chain Verification ────────────────────────────────────────────────
-
-/** Verify the HMAC chain integrity of secret lifecycle events.
- *  Returns true if the key is empty (cannot verify without key). */
-export function verifyHmacChain(
-  events: readonly SecretLifecycleEvent[],
-  hmacKey: string,
-): boolean {
-  if (events.length === 0) return true;
-  if (!hmacKey) return true; // Cannot verify without key — skip gracefully
-
-  let expectedPrevHmac = "";
-
-  for (const event of events) {
-    if (event.prevHmac !== expectedPrevHmac) return false;
-
-    // Reconstruct the event data that was signed
-    const eventData = {
-      type: event.type,
-      ts: event.ts,
-      seq: event.seq,
-      secretId: event.secretId,
-      action: event.action,
-      actor: event.actor,
-    };
-
-    const payload = expectedPrevHmac + JSON.stringify(eventData);
-    const expectedHmac = createHmac("sha256", hmacKey).update(payload).digest("hex");
-
-    if (event.hmac !== expectedHmac) return false;
-
-    expectedPrevHmac = event.hmac;
-  }
-
-  return true;
 }

@@ -1,8 +1,8 @@
 /**
- * Audit trail module — tool execution, egress, and secret lifecycle logging.
+ * Audit trail module — tool execution, egress, secret lifecycle, and approval logging.
  *
- * Three append-only JSONL streams with HMAC-chained secret events for
- * tamper-evident audit. OWASP-compatible export for compliance reporting.
+ * Four append-only JSONL streams for debugging and compliance reporting.
+ * OWASP-compatible export for compliance reporting.
  */
 
 // Types
@@ -23,8 +23,6 @@ export type {
 // Logger
 export {
   createAuditConfig,
-  initHmacChain,
-  initSeqCounter,
   logApprovalResolution,
   logEgressEvent,
   logSecretEvent,
@@ -32,7 +30,7 @@ export {
 } from "./logger.js";
 
 // Reader
-export { readAuditReport, verifyHmacChain } from "./reader.js";
+export { readAuditReport } from "./reader.js";
 export type { ReadAuditOptions } from "./reader.js";
 
 // OWASP export

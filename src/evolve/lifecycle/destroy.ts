@@ -1,30 +1,21 @@
 /**
- * Verified agent destruction with cryptographic proof.
+ * Agent destruction with deletion receipt.
  *
  * Wipes all agent data from the deployment directory and produces
- * a tamper-evident proof of destruction. The proof includes:
- *
- *   1. SHA-256 hash of every file before destruction
- *   2. A witness hash over the sorted manifest (any omission invalidates it)
- *   3. HMAC-SHA256 of the witness hash with a one-time key
- *   4. The one-time key itself (so anyone can independently verify)
- *
- * Verification: recompute witness hash from the manifest, then
- * verify HMAC(witnessHash, key) === hmacSignature. If valid,
- * the listed files existed with the listed hashes at destruction time.
+ * a receipt recording what was deleted and when.
  */
 
-import { createHash, createHmac, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
-import { readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { readdir, rm, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 import { formatBytes } from "./format.js";
 import type {
+  DeletionReceipt,
   DestroyedFile,
   DestroyOptions,
   DestroyResult,
-  DestructionProof,
   LifecycleProgressCallback,
 } from "./types.js";
 
@@ -32,7 +23,7 @@ import type {
 
 function progress(
   cb: LifecycleProgressCallback | undefined,
-  step: "stop" | "inventory" | "wipe" | "verify" | "proof",
+  step: "stop" | "inventory" | "wipe" | "verify",
   status: "running" | "done" | "failed" | "skipped",
   message: string,
 ): void {
@@ -56,24 +47,16 @@ async function collectAllFiles(dir: string): Promise<string[]> {
   return files;
 }
 
-/** Hash a file's contents with SHA-256. */
-async function hashFile(filePath: string): Promise<string> {
-  const content = await readFile(filePath);
-  return createHash("sha256").update(content).digest("hex");
-}
-
 /** Overwrite a file with random data before deletion to prevent recovery. */
 async function secureWipe(filePath: string): Promise<void> {
   try {
     const stat = statSync(filePath);
     if (stat.size > 0) {
-      // Overwrite with random bytes
       const randomData = randomBytes(stat.size);
       await writeFile(filePath, randomData);
-      // Second pass: zeros
       await writeFile(filePath, Buffer.alloc(stat.size));
     }
-  } catch (err) {
+  } catch {
     // Secure-wipe failure — continue with normal unlink
   }
 }
@@ -81,14 +64,13 @@ async function secureWipe(filePath: string): Promise<void> {
 // ── Destruction Pipeline ────────────────────────────────────────────────────
 
 /**
- * Destroy all agent data with cryptographic proof.
+ * Destroy all agent data and produce a deletion receipt.
  *
  * Pipeline:
  *   1. Stop — verify no running containers (advisory)
- *   2. Inventory — hash every file for the proof manifest
+ *   2. Inventory — enumerate all files for the receipt
  *   3. Wipe — secure-overwrite then delete all files
  *   4. Verify — confirm directory is empty/removed
- *   5. Proof — generate and write cryptographic proof
  */
 export async function destroyAgent(options: DestroyOptions): Promise<DestroyResult> {
   const { deployDir, onProgress } = options;
@@ -108,7 +90,7 @@ export async function destroyAgent(options: DestroyOptions): Promise<DestroyResu
   }
 
   // ── Step 2: Inventory ──────────────────────────────────────────────────
-  progress(onProgress, "inventory", "running", "Hashing all files for proof manifest...");
+  progress(onProgress, "inventory", "running", "Inventorying files...");
 
   const allFilePaths = await collectAllFiles(deployDir);
   const destroyedFiles: DestroyedFile[] = [];
@@ -117,15 +99,13 @@ export async function destroyAgent(options: DestroyOptions): Promise<DestroyResu
   for (const filePath of allFilePaths) {
     try {
       const stat = statSync(filePath);
-      const hash = await hashFile(filePath);
       destroyedFiles.push({
         path: relative(deployDir, filePath),
-        hashBefore: hash,
         sizeBefore: stat.size,
       });
       totalBytes += stat.size;
-    } catch (err) {
-      // Hash failure — file will still be destroyed, just without proof
+    } catch {
+      // Stat failure — file will still be destroyed
     }
   }
 
@@ -143,7 +123,6 @@ export async function destroyAgent(options: DestroyOptions): Promise<DestroyResu
     await secureWipe(filePath);
   }
 
-  // Remove the entire directory tree
   await rm(deployDir, { recursive: true, force: true });
 
   progress(onProgress, "wipe", "done", `Wiped ${destroyedFiles.length} files`);
@@ -158,73 +137,17 @@ export async function destroyAgent(options: DestroyOptions): Promise<DestroyResu
 
   progress(onProgress, "verify", "done", "Deployment directory removed");
 
-  // ── Step 5: Generate proof ────────────────────────────────────────────
-  progress(onProgress, "proof", "running", "Generating cryptographic proof...");
-
-  const proof = generateProof(deployDir, destroyedFiles, totalBytes);
-
-  // Write proof to a file next to where the deploy dir was
-  const proofPath = join(deployDir, "..", `clawhq-destruction-proof-${Date.now()}.json`);
-  await writeFile(proofPath, JSON.stringify(proof, null, 2), "utf-8");
-
-  progress(onProgress, "proof", "done", `Proof written to ${proofPath}`);
-
-  return { success: true, proofPath, proof };
-}
-
-// ── Proof Generation ────────────────────────────────────────────────────────
-
-function generateProof(
-  deployDir: string,
-  files: readonly DestroyedFile[],
-  totalBytes: number,
-): DestructionProof {
-  // Sort files by path for deterministic witness hash
-  const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path));
-
-  // Witness hash: SHA-256 over the sorted manifest
-  const witnessData = sorted
-    .map((f) => `${f.path}:${f.hashBefore}:${f.sizeBefore}`)
-    .join("\n");
-  const witnessHash = createHash("sha256").update(witnessData).digest("hex");
-
-  // One-time HMAC key — included in the proof for independent verification
-  const hmacKey = randomBytes(32).toString("hex");
-  const hmacSignature = createHmac("sha256", hmacKey).update(witnessHash).digest("hex");
-
-  return {
+  // ── Write deletion receipt ─────────────────────────────────────────────
+  const receipt: DeletionReceipt = {
     version: 1,
     destroyedAt: new Date().toISOString(),
     deployDir,
-    files: sorted,
+    files: [...destroyedFiles].sort((a, b) => a.path.localeCompare(b.path)),
     totalBytes,
-    witnessHash,
-    hmacSignature,
-    hmacKey,
   };
+
+  const receiptPath = join(deployDir, "..", `clawhq-deletion-receipt-${Date.now()}.json`);
+  await writeFile(receiptPath, JSON.stringify(receipt, null, 2), "utf-8");
+
+  return { success: true, receiptPath, receipt };
 }
-
-/**
- * Independently verify a destruction proof.
- *
- * Recomputes the witness hash from the file manifest and checks
- * the HMAC signature. Returns true if the proof is valid.
- */
-export function verifyDestructionProof(proof: DestructionProof): boolean {
-  // Recompute witness hash
-  const sorted = [...proof.files].sort((a, b) => a.path.localeCompare(b.path));
-  const witnessData = sorted
-    .map((f) => `${f.path}:${f.hashBefore}:${f.sizeBefore}`)
-    .join("\n");
-  const expectedWitness = createHash("sha256").update(witnessData).digest("hex");
-
-  if (expectedWitness !== proof.witnessHash) return false;
-
-  // Verify HMAC
-  const expectedHmac = createHmac("sha256", proof.hmacKey)
-    .update(proof.witnessHash)
-    .digest("hex");
-
-  return expectedHmac === proof.hmacSignature;
-}
-

@@ -1,12 +1,12 @@
 /**
  * Detection patterns for prompt injection, delimiter spoofing, data exfiltration,
- * and obfuscation attacks. Organized by OWASP LLM01 detectability tier.
+ * and secret leaks.
  *
- * Tier 1: High detectability — direct injection keywords, fake delimiters, invisible chars.
- * Tier 2: Medium detectability — homoglyphs, multilingual injection, few-shot spoofing.
+ * Tier 1 only: deterministic encoding tricks, invisible chars, known delimiters,
+ * and credential patterns. For adversarial prompt injection, use model-based detection.
  */
 
-// ── Tier 1: High Detectability ──────────────────────────────────────────────
+// ── Invisible Unicode ─────────────────────────────────────────────────────
 
 /* eslint-disable no-misleading-character-class -- intentionally matching ZWNJ/ZWJ (U+200C/D) */
 /** Unicode ranges used to hide content from human review. */
@@ -24,6 +24,8 @@ export const INVISIBLE_RANGES = new RegExp(
   "gu",
 );
 /* eslint-enable no-misleading-character-class */
+
+// ── Direct Injection Keywords ─────────────────────────────────────────────
 
 /** Direct prompt override / role hijack attempts. */
 export const INJECTION_PATTERNS: RegExp[] = [
@@ -48,6 +50,8 @@ export const INJECTION_PATTERNS: RegExp[] = [
   /without\s+(any\s+)?(restriction|filter|safety|guardrail|limitation|censorship)s?/i,
 ];
 
+// ── Delimiter Spoofing ────────────────────────────────────────────────────
+
 /** Fake LLM protocol delimiters injected into user content. */
 export const DELIMITER_PATTERNS: RegExp[] = [
   /<\|im_(start|end)\|>/,
@@ -64,6 +68,8 @@ export const DELIMITER_PATTERNS: RegExp[] = [
   /\bBEGIN\s+NEW\s+(INSTRUCTIONS?|PROMPT|CONTEXT)\b/i,
 ];
 
+// ── Encoded Payloads ──────────────────────────────────────────────────────
+
 /** Encoded payloads that may hide instructions. */
 export const ENCODING_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
   { pattern: /[A-Za-z0-9+/]{20,}={0,2}/, type: "base64_blob" },
@@ -75,6 +81,8 @@ export const ENCODING_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 export const DECODE_KEYWORDS =
   /(decode|decrypt|deobfuscate|translate|convert|interpret|execute)\s+(the\s+)?(following\s+)?(base64|hex|rot13|morse|binary|encoded|cipher|code)/i;
 
+// ── Exfiltration Markup ───────────────────────────────────────────────────
+
 /** Markup that exfiltrates data via embedded URLs. */
 export const EXFIL_PATTERNS: RegExp[] = [
   /!\[.*?\]\(https?:\/\/[^)]+\)/,
@@ -84,7 +92,32 @@ export const EXFIL_PATTERNS: RegExp[] = [
   /<link[^>]+href\s*=\s*["']https?:\/\//i,
 ];
 
-// ── Tier 2: Medium Detectability ────────────────────────────────────────────
+/** Natural-language instructions to exfiltrate data. */
+export const EXFIL_INSTRUCTIONS: RegExp[] = [
+  /(send|forward|post|upload|transmit|exfiltrate|leak)\s+(to|at|via)\s+\S+/i,
+  /(include|embed|append|attach)\s+.{0,30}(in\s+the\s+)?(url|link|image|request|query)/i,
+  /(api|secret|token|key|password|credential|session|cookie)\s*.{0,10}\s*(to|at|via)\s+/i,
+];
+
+// ── Secret Leak Detection ─────────────────────────────────────────────────
+
+/** Common secret/credential formats that should never appear in LLM context. */
+export const SECRET_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
+  { pattern: /AKIA[0-9A-Z]{16}/, type: "aws_access_key" },
+  { pattern: /(?:aws_secret_access_key|AWS_SECRET)\s*[:=]\s*[A-Za-z0-9/+=]{40}/, type: "aws_secret" },
+  { pattern: /ghp_[A-Za-z0-9_]{36,}/, type: "github_pat" },
+  { pattern: /ghs_[A-Za-z0-9_]{36,}/, type: "github_server_token" },
+  { pattern: /xox[baprs]-[A-Za-z0-9\-]{10,}/, type: "slack_token" },
+  { pattern: /sk-[A-Za-z0-9]{20,}/, type: "openai_api_key" },
+  { pattern: /-----BEGIN\s+(?:RSA\s+|EC\s+|DSA\s+|OPENSSH\s+)?PRIVATE\s+KEY-----/, type: "private_key" },
+  { pattern: /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+/, type: "jwt_token" },
+  { pattern: /Bearer\s+[A-Za-z0-9\-._~+/]{20,}=*/, type: "bearer_token" },
+  { pattern: /(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token)\s*[:=]\s*['"]?[A-Za-z0-9\-._~+/]{16,}['"]?/i, type: "generic_api_key" },
+  { pattern: /(?:password|passwd|pwd)\s*[:=]\s*['"]?[^\s'"]{8,}['"]?/i, type: "password_assignment" },
+];
+
+// ── Confusable Normalization Maps ─────────────────────────────────────────
+// Used by normalizeConfusables() for text normalization before Tier 1 matching.
 
 /**
  * Homoglyph map: visually identical chars from Cyrillic, Greek, and fullwidth
@@ -105,103 +138,6 @@ export const CONFUSABLE_MAP: ReadonlyMap<string, string> = new Map([
   ["\uff49", "i"], ["\uff4a", "j"], ["\uff4b", "k"], ["\uff4c", "l"],
   ["\uff4d", "m"], ["\uff4e", "n"], ["\uff4f", "o"], ["\uff50", "p"],
 ]);
-
-/** Morse-encoded content (potential obfuscated instructions). */
-export const MORSE_PATTERN = /^[.\-\s/]{20,}$/;
-
-/** Fake conversation turns injected to steer few-shot behavior. */
-export const FEWSHOT_PATTERNS = {
-  user: /(^|\n)\s*(User|Human|Customer|Person)\s*:/i,
-  assistant: /(^|\n)\s*(Assistant|AI|Agent|Bot)\s*:/i,
-} as const;
-
-/** Prompt injection in non-English languages (8 language families). */
-export const MULTILINGUAL_INJECTION: RegExp[] = [
-  /ignorez?\s+(toutes?\s+)?(les\s+)?instructions?\s+pr[ée]c[ée]dentes?/i,
-  /ignorar?\s+(todas?\s+)?(las\s+)?instrucciones?\s+anteriores?/i,
-  /ignor(ieren?|iere)\s+(Sie\s+)?(alle\s+)?vorherigen?\s+(Anweisungen?|Instruktionen?)/i,
-  /前の指示を(すべて)?無視/i,
-  /忽略(所有)?之前的指[令示]/i,
-  /이전\s*(모든\s*)?지시를?\s*무시/i,
-  /игнорируй(те)?\s+(все\s+)?предыдущие\s+инструкции/i,
-  /تجاهل\s+(جميع\s+)?التعليمات\s+السابقة/i,
-];
-
-/** Natural-language instructions to exfiltrate data. */
-export const EXFIL_INSTRUCTIONS: RegExp[] = [
-  /(send|forward|post|upload|transmit|exfiltrate|leak)\s+(to|at|via)\s+\S+/i,
-  /(include|embed|append|attach)\s+.{0,30}(in\s+the\s+)?(url|link|image|request|query)/i,
-  /(api|secret|token|key|password|credential|session|cookie)\s*.{0,10}\s*(to|at|via)\s+/i,
-];
-
-// ── Tier 1: Secret Leak Detection ──────────────────────────────────────────
-
-/** Common secret/credential formats that should never appear in LLM context. */
-export const SECRET_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
-  { pattern: /AKIA[0-9A-Z]{16}/, type: "aws_access_key" },
-  { pattern: /(?:aws_secret_access_key|AWS_SECRET)\s*[:=]\s*[A-Za-z0-9/+=]{40}/, type: "aws_secret" },
-  { pattern: /ghp_[A-Za-z0-9_]{36,}/, type: "github_pat" },
-  { pattern: /ghs_[A-Za-z0-9_]{36,}/, type: "github_server_token" },
-  { pattern: /xox[baprs]-[A-Za-z0-9\-]{10,}/, type: "slack_token" },
-  { pattern: /sk-[A-Za-z0-9]{20,}/, type: "openai_api_key" },
-  { pattern: /-----BEGIN\s+(?:RSA\s+|EC\s+|DSA\s+|OPENSSH\s+)?PRIVATE\s+KEY-----/, type: "private_key" },
-  { pattern: /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+/, type: "jwt_token" },
-  { pattern: /Bearer\s+[A-Za-z0-9\-._~+/]{20,}=*/, type: "bearer_token" },
-  { pattern: /(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token)\s*[:=]\s*['"]?[A-Za-z0-9\-._~+/]{16,}['"]?/i, type: "generic_api_key" },
-  { pattern: /(?:password|passwd|pwd)\s*[:=]\s*['"]?[^\s'"]{8,}['"]?/i, type: "password_assignment" },
-];
-
-// ── Tier 2: Indirect Elicitation ───────────────────────────────────────────
-
-/** Social engineering attempts to extract secrets or system prompts. */
-export const ELICITATION_PATTERNS: RegExp[] = [
-  /(?:what\s+is|show|tell|give|reveal|display|print|output|dump|list)\s+(?:me\s+)?(?:your|the)\s+(?:api[_\s-]?key|password|secret|token|credentials?|\.env|system\s+prompt|instructions?|config(?:uration)?)/i,
-  /(?:show|tell|give|reveal|display)\s+(?:me\s+)?(?:all\s+)?(?:your|the)\s+(?:secrets?|keys?|tokens?|passwords?|credentials?)/i,
-  /(?:read|cat|type|head|tail|more|less)\s+(?:\/etc\/(?:shadow|passwd)|\.env|credentials?\.json|\.(?:bash|zsh)_history)/i,
-  /(?:repeat|recite|echo|reproduce)\s+(?:your\s+)?(?:system\s+(?:prompt|message|instructions?)|initial\s+(?:prompt|instructions?))/i,
-  /(?:what|how)\s+(?:are|were)\s+you\s+(?:instructed|programmed|configured|prompted|told)\s+to/i,
-  /(?:above|preceding)\s+(?:text|content|prompt|instructions?)\s+(?:verbatim|exactly|word.for.word)/i,
-];
-
-// ── Tier 2: Semantic Override ──────────────────────────────────────────────
-
-/** Instruction hijacking via meaning rather than explicit override keywords. */
-export const SEMANTIC_OVERRIDE_PATTERNS: RegExp[] = [
-  /from\s+now\s+on\s+(?:you\s+)?(?:will|must|should|shall|are\s+going\s+to|need\s+to)/i,
-  /your\s+(?:new|updated|revised|actual|real|true)\s+(?:task|objective|goal|mission|purpose|instructions?|role)\s+(?:is|are)\b/i,
-  /(?:for|during)\s+the\s+rest\s+of\s+this\s+(?:conversation|session|chat|interaction)/i,
-  /starting\s+(?:now|immediately|from\s+this\s+point)\s*,?\s*(?:you|your)/i,
-  /(?:the\s+)?(?:above|previous|prior)\s+(?:instructions?|rules?|prompt)\s+(?:(?:is|are)\s+)?(?:wrong|fake|outdated|invalid|superseded|overridden)/i,
-  /here\s+(?:are|is)\s+your\s+(?:actual|real|true|correct|updated|new)\s+(?:instructions?|prompt|rules?|guidelines?)/i,
-  /(?:I\s+am|this\s+is)\s+(?:the|your|an?)\s+(?:administrator|developer|creator|owner|operator|maintainer)/i,
-  /(?:I\s+have|with)\s+(?:admin|administrator|root|sudo|elevated)\s+(?:access|privileges?|permissions?|rights?)/i,
-  /(?:security|admin|override|authorization)\s+(?:code|token)\s*[:=]/i,
-  /(?:this\s+is\s+)?(?:an?\s+)?(?:authorized|approved|permitted|sanctioned)\s+(?:request|override|access)/i,
-];
-
-// ── Tier 2: Leetspeak Normalization ────────────────────────────────────────
-
-/**
- * Leetspeak substitutions: character→latin mapping used to bypass keyword
- * detection. Applied as a second normalization pass after homoglyph normalization.
- */
-export const LEETSPEAK_MAP: ReadonlyMap<string, string> = new Map([
-  ["0", "o"],
-  ["1", "i"],
-  ["3", "e"],
-  ["4", "a"],
-  ["5", "s"],
-  ["7", "t"],
-  ["@", "a"],
-  ["$", "s"],
-  ["!", "i"],
-  ["|", "l"],
-  ["(", "c"],
-  ["{", "c"],
-  ["+", "t"],
-]);
-
-// ── Extended Unicode Confusables ───────────────────────────────────────────
 
 /**
  * Additional confusable characters beyond the base CONFUSABLE_MAP.
@@ -246,11 +182,3 @@ export const EXTENDED_CONFUSABLE_MAP: ReadonlyMap<string, string> = new Map([
   ["\u1D18", "P"], ["\u1D1B", "T"], ["\u1D1C", "U"], ["\u1D20", "V"],
   ["\u1D21", "W"], ["\u1D22", "Z"],
 ]);
-
-// ── Q/A Few-Shot Patterns ──────────────────────────────────────────────────
-
-/** Question/answer style few-shot injection markers. */
-export const QA_FEWSHOT_PATTERNS = {
-  question: /(^|\n)\s*(Q|Question|Input|Prompt|Request)\s*[:]\s*/i,
-  answer: /(^|\n)\s*(A|Answer|Output|Response|Result)\s*[:]\s*/i,
-} as const;

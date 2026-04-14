@@ -60,14 +60,11 @@ export {
   createAuditConfig,
   formatAuditJson,
   formatAuditTable,
-  initHmacChain,
-  initSeqCounter,
   logApprovalResolution,
   logEgressEvent,
   logSecretEvent,
   logToolExecution,
   readAuditReport,
-  verifyHmacChain,
 } from "./audit/index.js";
 
 // Sanitizer (input injection firewall)
@@ -96,25 +93,3 @@ export type {
   ThreatSeverity,
 } from "./sanitizer/index.js";
 
-// Scanner (PII + secret scanning)
-export {
-  formatScanJson,
-  formatScanTable,
-  isFalsePositive,
-  redact,
-  runScan,
-  scanContent,
-  scanGitHistory,
-  shouldSkipFile,
-  walkAndScan,
-} from "./scanner/index.js";
-export type {
-  Finding,
-  FindingCategory,
-  FindingSeverity,
-  GitScanResult,
-  ScanOptions,
-  ScanReport,
-  SecretPattern,
-  WalkResult,
-} from "./scanner/index.js";

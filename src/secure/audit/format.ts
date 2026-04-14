@@ -137,7 +137,6 @@ export function formatAuditTable(report: AuditReport): string {
   lines.push(`  Egress:    ${s.totalEgressEvents} total (${s.allowedEgress} allowed, ${s.blockedEgress} blocked)`);
   lines.push(`  Secrets:   ${s.totalSecretEvents} events`);
   lines.push(`  Approvals: ${s.totalApprovalEvents} total (${s.approvedCount} approved, ${s.rejectedCount} rejected)`);
-  lines.push(`  Chain:     ${s.chainValid ? "✔ valid (tamper-evident)" : "✘ BROKEN — log may have been tampered with"}`);
 
   return lines.join("\n");
 }

@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createAuditConfig, initSeqCounter } from "../../secure/audit/logger.js";
+import { createAuditConfig } from "../../secure/audit/logger.js";
 import type { AuditTrailConfig } from "../../secure/audit/types.js";
 
 import {
@@ -262,8 +262,7 @@ describe("audit trail integration", () => {
 
   beforeEach(async () => {
     mkdirSync(join(deployDir, "ops", "audit"), { recursive: true });
-    auditConfig = createAuditConfig(deployDir, "");
-    await initSeqCounter(auditConfig.approvalLogPath);
+    auditConfig = createAuditConfig(deployDir);
   });
 
   it("logs approval resolution to audit trail", async () => {

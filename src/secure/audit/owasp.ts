@@ -89,9 +89,7 @@ function mapSecretEvent(event: SecretLifecycleEvent): OwaspEvent {
     outcome: "success",
     actor: event.actor,
     target: event.secretId,
-    details: {
-      hmacValid: true,
-    },
+    details: {},
   };
 }
 

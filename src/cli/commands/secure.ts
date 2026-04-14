@@ -20,37 +20,27 @@ import { renderError, ensureInstalled } from "../ux.js";
 export function registerSecureCommands(program: Command, defaultDeployDir: string): void {
   program
     .command("scan")
-    .description("PII and secrets scanner")
+    .description("Scan for secrets and PII using gitleaks")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
-    .option("--git", "Scan git history for committed secrets")
-    .option("--max-commits <n>", "Max git commits to scan (default: 100)", "100")
-    .option("--json", "Output as JSON")
-    .action(async (opts: { deployDir: string; git?: boolean; maxCommits: string; json?: boolean }) => {
+    .action(async (opts: { deployDir: string }) => {
       ensureInstalled(opts.deployDir);
-      const { runScan, formatScanTable, formatScanJson } = await import("../../secure/scanner/index.js");
-      const spinner = ora("Scanning for secrets and PII…");
-      if (!opts.json) spinner.start();
+      const { execSync } = await import("node:child_process");
 
       try {
-        const report = await runScan({
-          deployDir: opts.deployDir,
-          git: opts.git,
-          maxCommits: parseInt(opts.maxCommits, 10),
-        });
+        execSync("gitleaks version", { stdio: "ignore" });
+      } catch {
+        console.log(chalk.yellow("gitleaks is not installed.\n"));
+        console.log("Install gitleaks for secret scanning (800+ patterns, actively maintained):\n");
+        console.log("  brew install gitleaks          # macOS");
+        console.log("  sudo apt install gitleaks      # Debian/Ubuntu");
+        console.log("  https://github.com/gitleaks/gitleaks#installing\n");
+        throw new CommandError("", 1);
+      }
 
-        if (!opts.json) spinner.stop();
-
-        if (opts.json) {
-          console.log(formatScanJson(report));
-        } else {
-          console.log(formatScanTable(report));
-        }
-
-        if (!report.clean) throw new CommandError("", 1);
-      } catch (error) {
-        if (error instanceof CommandError) throw error;
-        spinner.stop();
-        console.error(renderError(error));
+      try {
+        execSync(`gitleaks detect --source "${opts.deployDir}" --verbose`, { stdio: "inherit" });
+        console.log(chalk.green("\n✔ No secrets detected."));
+      } catch {
         throw new CommandError("", 1);
       }
     });

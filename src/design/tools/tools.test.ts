@@ -321,16 +321,13 @@ describe("sanitize tool", () => {
     const sanitize = generateToolWrappers(bp).find((w) => w.name === "sanitize");
     expect(sanitize).toBeDefined();
     expect(sanitize?.content).toMatch(/^#!\/usr\/bin\/env node/);
-    // Tier 1 patterns
+    // Detection patterns
     expect(sanitize?.content).toContain("INJECTION_PATTERNS");
     expect(sanitize?.content).toContain("DELIMITER_PATTERNS");
     expect(sanitize?.content).toContain("ENCODING_PATTERNS");
     expect(sanitize?.content).toContain("EXFIL_PATTERNS");
-    // Tier 2 patterns
     expect(sanitize?.content).toContain("CONFUSABLE_MAP");
-    expect(sanitize?.content).toContain("MULTILINGUAL_INJECTION");
-    expect(sanitize?.content).toContain("FEWSHOT_");
-    expect(sanitize?.content).toContain("MORSE_PATTERN");
+    expect(sanitize?.content).toContain("SECRET_PATTERNS");
   });
 
   it("works as a stdin filter with --source and --strict flags", () => {
@@ -364,7 +361,6 @@ describe("sanitize tool", () => {
     expect(sanitize?.content).toContain("[DELIM]");
     expect(sanitize?.content).toContain("[LINK REMOVED]");
     expect(sanitize?.content).toContain("[EXFIL REMOVED]");
-    expect(sanitize?.content).toContain("[TURN REMOVED]");
     expect(sanitize?.content).toContain("[ENCODED REMOVED]");
   });
 

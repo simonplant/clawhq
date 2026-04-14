@@ -4,7 +4,7 @@
  * Two modes: human-readable table and machine-readable JSON.
  */
 
-import type { DestructionProof, DestroyResult, ExportResult } from "./types.js";
+import type { DestroyResult, ExportResult } from "./types.js";
 
 // ── Export Formatters ───────────────────────────────────────────────────────
 
@@ -39,23 +39,15 @@ export function formatDestroyTable(result: DestroyResult): string {
     return `✘ Destruction failed: ${result.error}`;
   }
 
-  const proof = result.proof;
-  if (!proof) return "✘ Destruction failed: no proof generated";
+  const receipt = result.receipt;
+  if (!receipt) return "✘ Destruction failed: no receipt generated";
   const lines = [
     "✔ Agent destroyed",
     "",
-    `  Files wiped:   ${proof.files.length}`,
-    `  Total bytes:   ${formatBytes(proof.totalBytes)}`,
-    `  Destroyed at:  ${proof.destroyedAt}`,
-    `  Proof file:    ${result.proofPath}`,
-    "",
-    "  Cryptographic proof:",
-    `    Witness hash: ${proof.witnessHash.slice(0, 32)}...`,
-    `    HMAC:         ${proof.hmacSignature.slice(0, 32)}...`,
-    "",
-    "  To verify: clawhq verify-proof <proof-file>",
-    "  Or independently: recompute SHA-256 witness hash from file manifest,",
-    "  then verify HMAC-SHA256(witnessHash, hmacKey) === hmacSignature.",
+    `  Files wiped:   ${receipt.files.length}`,
+    `  Total bytes:   ${formatBytes(receipt.totalBytes)}`,
+    `  Destroyed at:  ${receipt.destroyedAt}`,
+    `  Receipt file:  ${result.receiptPath}`,
   ];
 
   return lines.join("\n");
@@ -66,31 +58,12 @@ export function formatDestroyJson(result: DestroyResult): string {
   return JSON.stringify(result, null, 2);
 }
 
-/** Format a destruction proof verification result. */
-export function formatVerifyResult(proof: DestructionProof, valid: boolean): string {
-  if (valid) {
-    return [
-      "✔ Destruction proof is valid",
-      "",
-      `  Destroyed at:  ${proof.destroyedAt}`,
-      `  Files:         ${proof.files.length}`,
-      `  Total bytes:   ${formatBytes(proof.totalBytes)}`,
-      `  Witness hash:  ${proof.witnessHash.slice(0, 32)}...`,
-    ].join("\n");
-  }
-
-  return [
-    "✘ Destruction proof is INVALID",
-    "",
-    "  The proof has been tampered with or is corrupt.",
-    "  The witness hash or HMAC signature does not match.",
-  ].join("\n");
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const val = bytes / 1024 ** i;
+  return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
