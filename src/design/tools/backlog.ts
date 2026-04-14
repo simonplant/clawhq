@@ -58,7 +58,9 @@ cmd_add() {
   id="$(gen_id)"
   local created
   created="$(now_iso)"
-  TASKS_FILE="$TASKS_FILE" TASK_ID="$id" TASK_TITLE="$title" TASK_PRIORITY="$priority" TASK_CREATED="$created" python3 -c "
+  (
+    flock -x 200
+    TASKS_FILE="$TASKS_FILE" TASK_ID="$id" TASK_TITLE="$title" TASK_PRIORITY="$priority" TASK_CREATED="$created" python3 -c "
 import json, os
 tf = os.environ['TASKS_FILE']
 tasks = json.load(open(tf))
@@ -74,11 +76,14 @@ title = os.environ['TASK_TITLE']
 tid = os.environ['TASK_ID']
 print(f'Added: {title} (id: {tid})')
 "
+  ) 200>"$TASKS_FILE.lock"
 }
 
 cmd_done() {
   local id="$1"
-  TASKS_FILE="$TASKS_FILE" TASK_ID="$id" python3 -c "
+  (
+    flock -x 200
+    TASKS_FILE="$TASKS_FILE" TASK_ID="$id" python3 -c "
 import json, os, sys
 tf = os.environ['TASKS_FILE']
 tid = os.environ['TASK_ID']
@@ -95,11 +100,14 @@ if not found:
     sys.exit(1)
 json.dump(tasks, open(tf, 'w'), indent=2)
 "
+  ) 200>"$TASKS_FILE.lock"
 }
 
 cmd_remove() {
   local id="$1"
-  TASKS_FILE="$TASKS_FILE" TASK_ID="$id" python3 -c "
+  (
+    flock -x 200
+    TASKS_FILE="$TASKS_FILE" TASK_ID="$id" python3 -c "
 import json, os, sys
 tf = os.environ['TASKS_FILE']
 tid = os.environ['TASK_ID']
@@ -111,12 +119,15 @@ if len(new_tasks) == len(tasks):
 json.dump(new_tasks, open(tf, 'w'), indent=2)
 print(f'Removed task: {tid}')
 "
+  ) 200>"$TASKS_FILE.lock"
 }
 
 cmd_clear() {
   local only_done="\${1:-}"
-  if [ "$only_done" = "--done" ]; then
-    TASKS_FILE="$TASKS_FILE" python3 -c "
+  (
+    flock -x 200
+    if [ "$only_done" = "--done" ]; then
+      TASKS_FILE="$TASKS_FILE" python3 -c "
 import json, os
 tf = os.environ['TASKS_FILE']
 tasks = json.load(open(tf))
@@ -124,10 +135,11 @@ tasks = [t for t in tasks if t.get('status') != 'done']
 json.dump(tasks, open(tf, 'w'), indent=2)
 print('Cleared completed tasks')
 "
-  else
-    echo '[]' > "$TASKS_FILE"
-    echo "Cleared all tasks"
-  fi
+    else
+      echo '[]' > "$TASKS_FILE"
+      echo "Cleared all tasks"
+    fi
+  ) 200>"$TASKS_FILE.lock"
 }
 
 cmd_count() {

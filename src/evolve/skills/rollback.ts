@@ -13,7 +13,7 @@ import { chmodSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { cp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { DIR_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 import type { RollbackSnapshot } from "./types.js";
 
@@ -51,7 +51,7 @@ async function saveSnapshots(
   const dir = rollbackDir(deployDir);
   mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   chmodSync(dir, DIR_MODE_SECRET);
-  await writeFile(manifestPath(deployDir), JSON.stringify(snapshots, null, 2));
+  await writeFile(manifestPath(deployDir), JSON.stringify(snapshots, null, 2), { mode: FILE_MODE_SECRET });
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────

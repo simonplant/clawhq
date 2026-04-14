@@ -47,9 +47,9 @@ _resolve_pub() {
 
 _curl() {
   if [[ -n "\$COOKIE" ]]; then
-    curl -sS -H "Cookie: \$COOKIE" "\$@"
+    curl -sS --fail-with-body -H "Cookie: \$COOKIE" "\$@"
   else
-    curl -sS "\$@"
+    curl -sS --fail-with-body "\$@"
   fi
 }
 

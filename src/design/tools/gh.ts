@@ -35,11 +35,11 @@ case "\${1:-}" in help|--help|-h|"")
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/github"
-  _curl() { curl -sS -H "Accept: application/vnd.github+json" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Accept: application/vnd.github+json" "\$@"; }
 else
   API="https://api.github.com"
   TOKEN="\${GH_TOKEN:?Set GH_TOKEN or CRED_PROXY_URL}"
-  _curl() { curl -sS -H "Accept: application/vnd.github+json" -H "Authorization: Bearer \$TOKEN" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Accept: application/vnd.github+json" -H "Authorization: Bearer \$TOKEN" "\$@"; }
 fi
 
 # ClawWall: sanitize external content

@@ -66,8 +66,9 @@ function writeFleetRegistry(deployDir: string, registry: FleetRegistry): void {
     writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
     chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
-  } catch {
+  } catch (err) {
     // Write failed — fleet registry is best-effort
+    console.warn("[fleet] registry write failed:", err instanceof Error ? err.message : String(err));
   }
 }
 

@@ -7,7 +7,7 @@ import chalk from "chalk";
 import ora from "ora";
 
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
-import { build, getPostureConfig } from "../../build/docker/index.js";
+import { build, getPostureConfig, getRequiredBinaries } from "../../build/docker/index.js";
 import { install } from "../../build/installer/index.js";
 import { deploy } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
@@ -163,7 +163,7 @@ export function registerQuickstartCommand(program: Command): void {
           aptPackages: [],
         };
         const stage2: Stage2Config = {
-          binaries: [],
+          binaries: getRequiredBinaries(deployDir),
           workspaceTools: [],
           skills: [],
         };

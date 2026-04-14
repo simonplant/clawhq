@@ -97,6 +97,19 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
       envVar: "X_BEARER_TOKEN",
     },
   },
+  {
+    id: "plaid",
+    pathPrefix: "/plaid",
+    upstream: "https://production.plaid.com",
+    auth: {
+      type: "body-json-fields",
+      fields: {
+        client_id: "PLAID_CLIENT_ID",
+        secret: "PLAID_SECRET",
+        access_token: "PLAID_ACCESS_TOKEN",
+      },
+    },
+  },
   // Substack has no proxy route — each publication is a different subdomain
   // (pub.substack.com). Cookie auth is injected directly by the tool.
   {
@@ -209,6 +222,9 @@ export function filterRoutesForEnv(
   return routes.filter((r) => {
     if (r.auth.type === "none") return true;
     if (r.auth.type === "basic") return envVars[r.auth.userEnvVar] !== undefined;
+    if (r.auth.type === "body-json-fields") {
+      return Object.values(r.auth.fields).some((envVar) => envVars[envVar] !== undefined);
+    }
     return envVars[r.auth.envVar] !== undefined;
   });
 }

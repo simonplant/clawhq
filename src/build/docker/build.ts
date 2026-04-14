@@ -110,7 +110,16 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   const imageInfo = await getImageInfo(stage2Tag);
 
   // Generate docker-compose.yml
-  const compose = generateCompose(stage2Tag, postureConfig, deployDir, networkName);
+  // Auto-detect cred-proxy: if init/apply generated the proxy files, enable the sidecar
+  const credProxyScriptPath = join(engineDir, "cred-proxy.js");
+  const credProxyRoutesPath = join(engineDir, "cred-proxy-routes.json");
+  const enableCredProxy = existsSync(credProxyScriptPath) && existsSync(credProxyRoutesPath);
+
+  const compose = generateCompose(stage2Tag, postureConfig, deployDir, networkName, {
+    enableCredProxy,
+    credProxyScriptPath,
+    credProxyRoutesPath,
+  });
   const composePath = join(engineDir, "docker-compose.yml");
   await writeFile(composePath, serializeYaml(compose), "utf-8");
   await chmod(composePath, 0o600);
@@ -297,6 +306,43 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
     lines.push(`          cpus: "${svc.deploy.resources.limits.cpus}"`);
     lines.push(`          memory: ${svc.deploy.resources.limits.memory}`);
     lines.push(`          pids: ${svc.deploy.resources.limits.pids}`);
+  }
+
+  // Credential proxy sidecar
+  if (compose.services["cred-proxy"]) {
+    const cp = compose.services["cred-proxy"];
+    lines.push("", "  cred-proxy:");
+    lines.push(`    image: ${cp.image}`);
+    lines.push(`    user: "${cp.user}"`);
+    lines.push(`    read_only: ${cp.read_only}`);
+    lines.push(`    restart: ${cp.restart}`);
+    lines.push("    cap_drop:");
+    for (const cap of cp.cap_drop) lines.push(`      - ${cap}`);
+    lines.push("    security_opt:");
+    for (const opt of cp.security_opt) lines.push(`      - ${opt}`);
+    lines.push("    command:");
+    for (const c of cp.command) lines.push(`      - "${c}"`);
+    lines.push("    volumes:");
+    for (const v of cp.volumes) lines.push(`      - "${v}"`);
+    lines.push("    networks:");
+    for (const n of cp.networks) lines.push(`      - ${n}`);
+    lines.push("    env_file:");
+    for (const e of cp.env_file) lines.push(`      - ${e}`);
+    lines.push("    tmpfs:");
+    for (const t of cp.tmpfs) lines.push(`      - "${t}"`);
+    lines.push("    healthcheck:");
+    lines.push("      test:");
+    for (const t of cp.healthcheck.test) {
+      // Use single-quoted YAML scalar when value contains double quotes
+      if (t.includes('"')) {
+        lines.push(`        - '${t}'`);
+      } else {
+        lines.push(`        - "${t}"`);
+      }
+    }
+    lines.push(`      interval: ${cp.healthcheck.interval}`);
+    lines.push(`      timeout: ${cp.healthcheck.timeout}`);
+    lines.push(`      retries: ${cp.healthcheck.retries}`);
   }
 
   // Tailscale sidecar

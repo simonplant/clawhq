@@ -80,7 +80,7 @@ async function saveSnapshots(
 ): Promise<void> {
   const dir = rollbackDir(deployDir, kind);
   mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
-  await writeFile(manifestPath(deployDir, kind), JSON.stringify(snapshots, null, 2));
+  await writeFile(manifestPath(deployDir, kind), JSON.stringify(snapshots, null, 2), { mode: FILE_MODE_SECRET });
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────

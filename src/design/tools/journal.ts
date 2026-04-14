@@ -59,7 +59,10 @@ cmd_add() {
     tag_str=" #$tag"
   fi
 
-  printf '\\n## %s%s\\n\\n%s\\n' "$timestamp" "$tag_str" "$text" >> "$JOURNAL_FILE"
+  (
+    flock -x 200
+    printf '\\n## %s%s\\n\\n%s\\n' "$timestamp" "$tag_str" "$text" >> "$JOURNAL_FILE"
+  ) 200>"$JOURNAL_FILE.lock"
   echo "Logged:$tag_str $text (at $timestamp)"
 }
 

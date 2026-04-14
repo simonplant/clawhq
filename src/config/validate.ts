@@ -229,8 +229,8 @@ export function validateLM09(
   const invalidJobs: string[] = [];
 
   for (const job of cronJobs) {
-    if (job.kind !== "cron" || !job.expr) continue;
-    const fields = job.expr.trim().split(/\s+/);
+    if (job.schedule?.kind !== "cron" || !job.schedule.expr) continue;
+    const fields = job.schedule.expr.trim().split(/\s+/);
     for (const field of fields) {
       if (INVALID_CRON_STEP.test(field)) {
         invalidJobs.push(`${job.id} (field "${field}")`);

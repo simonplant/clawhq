@@ -325,9 +325,9 @@ describe("mapRoutinesToCron", () => {
 
     expect(result.success).toBe(true);
     expect(result.mappings.length).toBe(1);
-    expect(result.mappings[0]?.cronJob.expr).toBe("0 7 * * *");
+    expect(result.mappings[0]?.cronJob.schedule.expr).toBe("0 7 * * *");
     expect(result.mappings[0]?.cronJob.id).toBe("import-morning-check");
-    expect(result.mappings[0]?.cronJob.kind).toBe("cron");
+    expect(result.mappings[0]?.cronJob.schedule.kind).toBe("cron");
     expect(result.mappings[0]?.cronJob.enabled).toBe(true);
   });
 
@@ -342,10 +342,10 @@ describe("mapRoutinesToCron", () => {
     const result = mapRoutinesToCron(routines);
 
     expect(result.mappings.length).toBe(4);
-    expect(result.mappings[0]?.cronJob.expr).toBe("0 7 * * *"); // morning
-    expect(result.mappings[1]?.cronJob.expr).toBe("0 19 * * *"); // evening
-    expect(result.mappings[2]?.cronJob.expr).toBe("0 9 * * 1"); // weekly
-    expect(result.mappings[3]?.cronJob.expr).toBe("0 8 * * *"); // daily
+    expect(result.mappings[0]?.cronJob.schedule.expr).toBe("0 7 * * *"); // morning
+    expect(result.mappings[1]?.cronJob.schedule.expr).toBe("0 19 * * *"); // evening
+    expect(result.mappings[2]?.cronJob.schedule.expr).toBe("0 9 * * 1"); // weekly
+    expect(result.mappings[3]?.cronJob.schedule.expr).toBe("0 8 * * *"); // daily
   });
 
   it("reports unmapped routines", () => {
@@ -519,7 +519,7 @@ describe("runMigration", () => {
     // Check PII was masked in cron jobs
     if (result.cronJobs.length > 0) {
       for (const job of result.cronJobs) {
-        expect(job.task).not.toContain("john.doe@example.com");
+        expect(job.payload.message).not.toContain("john.doe@example.com");
       }
     }
 
@@ -530,7 +530,7 @@ describe("runMigration", () => {
   it("merges imported cron jobs with existing ones", async () => {
     // Write existing cron jobs
     const existingJobs = [
-      { id: "heartbeat", kind: "cron", expr: "0 */2 * * *", task: "Heartbeat", enabled: true },
+      { id: "heartbeat", name: "heartbeat", enabled: true, schedule: { kind: "cron", expr: "0 */2 * * *" }, delivery: { mode: "none" }, payload: { kind: "agentTurn", message: "Heartbeat" }, sessionTarget: "isolated" },
     ];
     await writeFile(
       join(deployDir, "cron", "jobs.json"),

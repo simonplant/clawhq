@@ -33,10 +33,10 @@ if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   _search() {
     local body=$(jq -n --arg q "$1" --arg d "$2" --argjson n "$3" \\
       '{query: $q, search_depth: $d, max_results: $n, include_answer: true}')
-    curl -sS -X POST -H "Content-Type: application/json" -d "$body" "$API/search"
+    curl -sS --fail-with-body -X POST -H "Content-Type: application/json" -d "$body" "$API/search"
   }
   _extract() {
-    curl -sS -X POST -H "Content-Type: application/json" \\
+    curl -sS --fail-with-body -X POST -H "Content-Type: application/json" \\
       -d "$(jq -n --arg u "$1" '{urls: [$u]}')" "$API/extract"
   }
 else
@@ -45,10 +45,10 @@ else
   _search() {
     local body=$(jq -n --arg q "$1" --arg d "$2" --argjson n "$3" --arg k "$TOKEN" \\
       '{api_key: $k, query: $q, search_depth: $d, max_results: $n, include_answer: true}')
-    curl -sS -X POST -H "Content-Type: application/json" -d "$body" "$API/search"
+    curl -sS --fail-with-body -X POST -H "Content-Type: application/json" -d "$body" "$API/search"
   }
   _extract() {
-    curl -sS -X POST -H "Content-Type: application/json" \\
+    curl -sS --fail-with-body -X POST -H "Content-Type: application/json" \\
       -d "$(jq -n --arg u "$1" --arg k "$TOKEN" '{api_key: $k, urls: [$u]}')" "$API/extract"
   }
 fi

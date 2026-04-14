@@ -71,22 +71,20 @@ function validComposeConfig(): ComposeConfig {
   };
 }
 
+function makeCronJob(id: string, expr: string, message = "test"): CronJobDefinition {
+  return {
+    id, name: id, enabled: true,
+    schedule: { kind: "cron", expr },
+    delivery: { mode: "none" },
+    payload: { kind: "agentTurn", message },
+    sessionTarget: "isolated",
+  };
+}
+
 function validCronJobs(): CronJobDefinition[] {
   return [
-    {
-      id: "heartbeat",
-      kind: "cron",
-      expr: "0-59/10 5-23 * * *",
-      task: "Run heartbeat",
-      enabled: true,
-    },
-    {
-      id: "morning-brief",
-      kind: "cron",
-      expr: "0 8 * * *",
-      task: "Morning brief",
-      enabled: true,
-    },
+    makeCronJob("heartbeat", "0-59/10 5-23 * * *", "Run heartbeat"),
+    makeCronJob("morning-brief", "0 8 * * *", "Morning brief"),
   ];
 }
 
@@ -290,16 +288,15 @@ describe("LM-08: bootstrapMaxChars", () => {
 describe("LM-09: cron stepping syntax", () => {
   it("passes with valid expressions", () => {
     const jobs: CronJobDefinition[] = [
-      { id: "hb", kind: "cron", expr: "0-59/10 5-23 * * *", task: "t", enabled: true },
-      { id: "mb", kind: "cron", expr: "0 8 * * *", task: "t", enabled: true },
-      { id: "ev", kind: "every", everyMs: 60000, task: "t", enabled: true },
+      makeCronJob("hb", "0-59/10 5-23 * * *"),
+      makeCronJob("mb", "0 8 * * *"),
     ];
     expect(validateLM09(jobs).passed).toBe(true);
   });
 
   it("fails with bare N/step", () => {
     const jobs: CronJobDefinition[] = [
-      { id: "bad", kind: "cron", expr: "5/15 * * * *", task: "t", enabled: true },
+      makeCronJob("bad", "5/15 * * * *"),
     ];
     const result = validateLM09(jobs);
     expect(result.passed).toBe(false);
@@ -309,7 +306,7 @@ describe("LM-09: cron stepping syntax", () => {
 
   it("passes with */step syntax", () => {
     const jobs: CronJobDefinition[] = [
-      { id: "ok", kind: "cron", expr: "*/10 * * * *", task: "t", enabled: true },
+      makeCronJob("ok", "*/10 * * * *"),
     ];
     expect(validateLM09(jobs).passed).toBe(true);
   });

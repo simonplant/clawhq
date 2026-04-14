@@ -41,12 +41,12 @@ _sanitize() {
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/ha"
-  _curl() { curl -sS -H "Content-Type: application/json" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Content-Type: application/json" "\$@"; }
 else
   HA_BASE="\${HA_URL:?Set HA_URL or CRED_PROXY_URL}"
   TOKEN="\${HA_TOKEN:?Set HA_TOKEN or CRED_PROXY_URL}"
   API="\${HA_BASE}/api"
-  _curl() { curl -sS -H "Content-Type: application/json" -H "Authorization: Bearer \$TOKEN" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Content-Type: application/json" -H "Authorization: Bearer \$TOKEN" "\$@"; }
 fi
 
 # Entity allow/deny list for safety
@@ -115,7 +115,7 @@ case "\$cmd" in
     entity="\${1:?Usage: ha history <entity_id> [hours]}"
     hours="\${2:-24}"
     _check_entity "\$entity"
-    start=\$(date -u -d "-\${hours} hours" +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || date -u -v-\${hours}H +%Y-%m-%dT%H:%M:%S%z)
+    start=\$(date -u -d "-\${hours} hours" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-\${hours}H +%Y-%m-%dT%H:%M:%SZ)
     _curl "\$API/history/period/\$start?filter_entity_id=\$entity" | _sanitize
     ;;
   help|--help|-h|"")

@@ -88,12 +88,12 @@ async function writeValidCron(): Promise<void> {
     jobs: [
       {
         id: "heartbeat",
-        kind: "cron",
-        expr: "0-59/10 5-23 * * *",
-        task: "Run heartbeat",
+        name: "heartbeat",
         enabled: true,
+        schedule: { kind: "cron", expr: "0-59/10 5-23 * * *" },
+        delivery: { mode: "none" },
+        payload: { kind: "agentTurn", message: "Run heartbeat" },
         sessionTarget: "isolated",
-        state: {},
       },
     ],
   };
@@ -202,8 +202,8 @@ describe("checks", { timeout: 30_000 }, () => {
   });
 
   it("cron-syntax fails with invalid stepping", async () => {
-    const jobs = [{ id: "bad", kind: "cron", expr: "5/15 * * * *", task: "Test", enabled: true }];
-    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(jobs));
+    const envelope = { version: 1, jobs: [{ id: "bad", name: "bad", enabled: true, schedule: { kind: "cron", expr: "5/15 * * * *" }, delivery: { mode: "none" }, payload: { kind: "agentTurn", message: "Test" }, sessionTarget: "isolated" }] };
+    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(envelope));
     const checks = await runChecks(testDir);
     const check = findCheck(checks, "cron-syntax");
     expect(check.passed).toBe(false);
@@ -211,8 +211,8 @@ describe("checks", { timeout: 30_000 }, () => {
   });
 
   it("cron-syntax fails with wrong field count", async () => {
-    const jobs = [{ id: "bad", kind: "cron", expr: "* * *", task: "Test", enabled: true }];
-    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(jobs));
+    const envelope = { version: 1, jobs: [{ id: "bad", name: "bad", enabled: true, schedule: { kind: "cron", expr: "* * *" }, delivery: { mode: "none" }, payload: { kind: "agentTurn", message: "Test" }, sessionTarget: "isolated" }] };
+    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(envelope));
     const checks = await runChecks(testDir);
     const check = findCheck(checks, "cron-syntax");
     expect(check.passed).toBe(false);
@@ -220,8 +220,8 @@ describe("checks", { timeout: 30_000 }, () => {
   });
 
   it("cron-syntax fails with out-of-range field values", async () => {
-    const jobs = [{ id: "bad", kind: "cron", expr: "99 99 99 99 99", task: "Test", enabled: true }];
-    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(jobs));
+    const envelope = { version: 1, jobs: [{ id: "bad", name: "bad", enabled: true, schedule: { kind: "cron", expr: "99 99 99 99 99" }, delivery: { mode: "none" }, payload: { kind: "agentTurn", message: "Test" }, sessionTarget: "isolated" }] };
+    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(envelope));
     const checks = await runChecks(testDir);
     const check = findCheck(checks, "cron-syntax");
     expect(check.passed).toBe(false);
@@ -229,8 +229,8 @@ describe("checks", { timeout: 30_000 }, () => {
   });
 
   it("cron-syntax fails with minute > 59", async () => {
-    const jobs = [{ id: "bad", kind: "cron", expr: "60 * * * *", task: "Test", enabled: true }];
-    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(jobs));
+    const envelope = { version: 1, jobs: [{ id: "bad", name: "bad", enabled: true, schedule: { kind: "cron", expr: "60 * * * *" }, delivery: { mode: "none" }, payload: { kind: "agentTurn", message: "Test" }, sessionTarget: "isolated" }] };
+    await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(envelope));
     const checks = await runChecks(testDir);
     const check = findCheck(checks, "cron-syntax");
     expect(check.passed).toBe(false);

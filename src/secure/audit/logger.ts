@@ -10,8 +10,11 @@
  * Design: fire-and-forget — logging never throws, never disrupts the pipeline.
  */
 
+import { chmodSync } from "node:fs";
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
+
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
 import type {
   ApprovalResolutionEvent,
@@ -29,13 +32,14 @@ const ensuredDirs = new Set<string>();
 async function ensureDir(filePath: string): Promise<void> {
   const dir = dirname(filePath);
   if (ensuredDirs.has(dir)) return;
-  await mkdir(dir, { recursive: true });
+  await mkdir(dir, { recursive: true, mode: DIR_MODE_SECRET });
+  chmodSync(dir, DIR_MODE_SECRET);
   ensuredDirs.add(dir);
 }
 
 async function appendJsonl(filePath: string, entry: unknown): Promise<void> {
   await ensureDir(filePath);
-  await appendFile(filePath, JSON.stringify(entry) + "\n", "utf-8");
+  await appendFile(filePath, JSON.stringify(entry) + "\n", { encoding: "utf-8", mode: FILE_MODE_SECRET });
 }
 
 // ── Tool Execution Logging ─────────────────────────────────────────────────

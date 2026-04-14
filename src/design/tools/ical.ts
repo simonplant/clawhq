@@ -30,13 +30,13 @@ case "\${1:-}" in help|--help|-h|"")
 # Auth: prefer credential proxy, fall back to direct env vars
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   CALDAV_BASE="\${CRED_PROXY_URL}/caldav"
-  _curl() { curl -sS "$@"; }
+  _curl() { curl -sS --fail-with-body "$@"; }
 else
   CALDAV_URL="\${CALDAV_URL:?Set CALDAV_URL or CRED_PROXY_URL}"
   CALDAV_USER="\${CALDAV_USER:?Set CALDAV_USER}"
   CALDAV_PASS="\${CALDAV_PASS:?Set CALDAV_PASS}"
   CALDAV_BASE="$CALDAV_URL"
-  _curl() { curl -sS -u "$CALDAV_USER:$CALDAV_PASS" "$@"; }
+  _curl() { curl -sS --fail-with-body -u "$CALDAV_USER:$CALDAV_PASS" "$@"; }
 fi
 
 # ClawWall: sanitize external calendar content before passing to agent
@@ -51,7 +51,9 @@ _sanitize() {
 # CalDAV auto-discovery (required for iCloud which redirects to partition servers)
 # Discovers: base URL -> principal -> calendar-home, caches in /tmp for session
 _discover_home() {
-  local cache="/tmp/.caldav-home-\${CALDAV_USER:-proxy}"
+  local cache_dir="\$HOME/.cache/clawhq"
+  mkdir -p "\$cache_dir"
+  local cache="\$cache_dir/.caldav-home-\${CALDAV_USER:-proxy}"
   if [[ -f "$cache" ]]; then
     cat "$cache"
     return
@@ -128,6 +130,9 @@ shift 2>/dev/null || true
 case "$cmd" in
   list)
     days="\${1:-7}"
+    if [[ "$days" -lt 1 || "$days" -gt 365 ]]; then
+      echo "calendar: days must be between 1 and 365" >&2; exit 1
+    fi
     start=$(date -u +%Y%m%dT000000Z)
     end=$(date -u -d "+$days days" +%Y%m%dT235959Z 2>/dev/null || date -u -v+\${days}d +%Y%m%dT235959Z)
     home=$(_discover_home)

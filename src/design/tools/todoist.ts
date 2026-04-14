@@ -90,6 +90,11 @@ _fetch_all() {
     local page
     page=$(printf '%s' "$resp" | jq '.results // empty')
     if [[ -z "$page" ]]; then
+      # No pagination — could be single-object response or error
+      if printf '%s' "$resp" | jq -e '.error // .message // empty' >/dev/null 2>&1; then
+        echo "tasks: API error: $(printf '%s' "$resp" | jq -r '.error // .message')" >&2
+        return 1
+      fi
       printf '%s\\n' "$resp"
       return
     fi

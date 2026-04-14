@@ -103,7 +103,7 @@ export async function attemptRecovery(
           action: alert.category === "container-oom" ? "oom-restart" : "container-restart",
           success: false,
           timestamp: new Date().toISOString(),
-          message: `Recovery skipped — rate limit reached (${tracker.recentCount} attempts in last hour)`,
+          message: `Recovery skipped — rate limit reached (${tracker.recentCount} attempts in last hour, cooldown ${p.cooldownMs / 1000}s, max ${p.maxAttemptsPerHour}/hr)`,
           durationMs: 0,
         });
         continue;

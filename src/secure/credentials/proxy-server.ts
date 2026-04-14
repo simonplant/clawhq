@@ -171,6 +171,26 @@ function injectCredential(route, headers, bodyBuffer) {
     }
   }
 
+  if (auth.type === "body-json-fields") {
+    try {
+      const bodyStr = bodyBuffer.toString("utf-8");
+      const bodyObj = bodyStr.length > 0 ? JSON.parse(bodyStr) : {};
+      let anyInjected = false;
+      for (const [field, envVar] of Object.entries(auth.fields)) {
+        const val = process.env[envVar];
+        if (val) {
+          bodyObj[field] = val;
+          anyInjected = true;
+        }
+      }
+      const newBody = Buffer.from(JSON.stringify(bodyObj));
+      headers["content-length"] = String(newBody.length);
+      return { headers, body: newBody, injected: anyInjected };
+    } catch {
+      return { headers, body: bodyBuffer, injected: false };
+    }
+  }
+
   return { headers, body: bodyBuffer, injected: false };
 }
 

@@ -8,10 +8,13 @@
  */
 
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { getRequiredBinaries } from "../../build/docker/binary-deps.js";
+import { generateStage2Dockerfile } from "../../build/docker/dockerfile.js";
+import type { Stage2Config } from "../../build/docker/types.js";
 import { UPDATER_EXEC_TIMEOUT_MS, UPDATER_PULL_TIMEOUT_MS } from "../../config/defaults.js";
 
 import type {
@@ -257,24 +260,24 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
       return { success: false, error: "Update aborted", backupId };
     }
 
+    // Regenerate Stage 2 Dockerfile so it reflects current binaries/tools.
+    // Without this, update reuses the stale Dockerfile from the initial build,
+    // which may be missing core binaries like jq.
     report("build", "running", "Building custom image (stage 2)…");
     try {
+      const stage2Config: Stage2Config = {
+        binaries: getRequiredBinaries(deployDir),
+        workspaceTools: [],
+        skills: [],
+      };
       const customDockerfile = join(engineDir, "Dockerfile");
-      const hasCustomDockerfile = (await import("node:fs")).existsSync(customDockerfile);
-      if (hasCustomDockerfile) {
-        await execFileAsync(
-          "docker",
-          ["build", "-t", await getImageName(deployDir) ?? "openclaw:custom", "-f", customDockerfile, engineDir],
-          { timeout: 300_000, signal },
-        );
-      } else {
-        // No custom Dockerfile — tag base as custom
-        await execFileAsync(
-          "docker",
-          ["tag", "openclaw:local", await getImageName(deployDir) ?? "openclaw:custom"],
-          { timeout: 30_000, signal },
-        );
-      }
+      await writeFile(customDockerfile, generateStage2Dockerfile("openclaw:local", stage2Config), "utf-8");
+
+      await execFileAsync(
+        "docker",
+        ["build", "-t", await getImageName(deployDir) ?? "openclaw:custom", "-f", customDockerfile, engineDir],
+        { timeout: 300_000, signal },
+      );
       report("build", "done", "Custom image built");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

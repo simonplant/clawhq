@@ -87,7 +87,12 @@ export async function startMonitor(options: MonitorOptions): Promise<MonitorStat
       const { alerts: trendAlerts } = analyzeHealth(samples, options.thresholds);
 
       const tickAlerts = [...containerAlerts, ...trendAlerts];
-      allAlerts.push(...tickAlerts);
+      const oneHourAgo = Date.now() - 3_600_000;
+      const recentCategories = new Set(
+        allAlerts.filter(a => new Date(a.timestamp).getTime() > oneHourAgo).map(a => a.category)
+      );
+      const newAlerts = tickAlerts.filter(a => !recentCategories.has(a.category));
+      allAlerts.push(...newAlerts);
 
       // Prune old alerts/recoveries (keep last 48h)
       const cutoff48h = Date.now() - 2 * 86_400_000;

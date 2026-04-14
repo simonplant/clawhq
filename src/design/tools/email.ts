@@ -65,6 +65,12 @@ case "$cmd" in
     to="\${1:?Usage: email send <to> <subject>}"
     subject="\${2:?Usage: email send <to> <subject>}"
     shift 2
+    if [[ "$to" == *$'\\n'* || "$to" == *$'\\r'* ]]; then
+      echo "email: invalid recipient (contains newline)" >&2; exit 1
+    fi
+    if [[ "$subject" == *$'\\n'* || "$subject" == *$'\\r'* ]]; then
+      echo "email: invalid subject (contains newline)" >&2; exit 1
+    fi
     body="$(cat)"
     _egress_check "$subject $body"
     printf 'To: %s\\r\\nSubject: %s\\r\\nMIME-Version: 1.0\\r\\nContent-Type: text/plain; charset=utf-8\\r\\n\\r\\n%s\\n' \\

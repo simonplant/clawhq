@@ -29,6 +29,13 @@ export interface BodyJsonAuth {
   readonly envVar: string;
 }
 
+/** Inject multiple credentials as fields in a JSON request body (e.g. Plaid client_id + secret + access_token). */
+export interface BodyJsonFieldsAuth {
+  readonly type: "body-json-fields";
+  /** Map of JSON field name → environment variable name. */
+  readonly fields: Readonly<Record<string, string>>;
+}
+
 /** Inject HTTP Basic auth (user:pass base64-encoded). */
 export interface BasicAuth {
   readonly type: "basic";
@@ -49,7 +56,7 @@ export interface NoAuth {
 }
 
 /** Union of credential injection strategies. */
-export type ProxyAuthConfig = HeaderAuth | BodyJsonAuth | BasicAuth | NoAuth;
+export type ProxyAuthConfig = HeaderAuth | BodyJsonAuth | BodyJsonFieldsAuth | BasicAuth | NoAuth;
 
 // ── Route Definition ───────────────────────────────────────────────────────
 

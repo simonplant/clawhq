@@ -20,6 +20,7 @@ import { generateBacklogTool } from "./backlog.js";
 import { generateHaTool } from "./ha.js";
 import { generateIcalTool } from "./ical.js";
 import { generateJournalTool } from "./journal.js";
+import { generatePlaidTool } from "./plaid.js";
 import { generateQuoteTool } from "./quote.js";
 import { generateSanitizeTool } from "./sanitize.js";
 import { generateSubstackTool } from "./substack.js";
@@ -57,6 +58,7 @@ export const TOOL_GENERATORS: Readonly<Record<string, () => string>> = {
   gh: generateGhTool,
   home: generateHaTool,
   journal: generateJournalTool,
+  plaid: generatePlaidTool,
   quote: generateQuoteTool,
   search: generateTavilyTool,
   substack: generateSubstackTool,

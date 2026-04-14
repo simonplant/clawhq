@@ -46,8 +46,8 @@ USAGE
 cmd_get() {
   local symbol
   symbol=$(echo "$1" | tr '[:lower:]' '[:upper:]')
-  curl -sS "$API/chart/\${symbol}?range=1d&interval=1d" \\
-    -H "User-Agent: ClawHQ/1.0" | jq '{quote: .chart.result[0].meta | {symbol, price: .regularMarketPrice, dayHigh: .regularMarketDayHigh, dayLow: .regularMarketDayLow, volume: .regularMarketVolume, fiftyTwoWeekHigh, fiftyTwoWeekLow, currency}}' | _sanitize
+  curl -sS --fail-with-body "$API/chart/\${symbol}?range=1d&interval=1d" \\
+    -H "User-Agent: ClawHQ/1.0" | jq '{quote: (.chart.result[0].meta // {}) | {symbol, price: .regularMarketPrice, dayHigh: .regularMarketDayHigh, dayLow: .regularMarketDayLow, volume: .regularMarketVolume, fiftyTwoWeekHigh, fiftyTwoWeekLow, currency}}' | _sanitize
 }
 
 cmd_batch() {
@@ -56,8 +56,8 @@ cmd_batch() {
   IFS=',' read -ra SYMS <<< "$(echo "$symbols" | tr '[:lower:]' '[:upper:]')"
   for sym in "\${SYMS[@]}"; do
     local data
-    data=$(curl -sS "$API/chart/\${sym}?range=1d&interval=1d" \\
-      -H "User-Agent: ClawHQ/1.0" | jq '.chart.result[0].meta | {symbol, price: .regularMarketPrice, dayHigh: .regularMarketDayHigh, dayLow: .regularMarketDayLow, volume: .regularMarketVolume, currency}')
+    data=$(curl -sS --fail-with-body "$API/chart/\${sym}?range=1d&interval=1d" \\
+      -H "User-Agent: ClawHQ/1.0" | jq '(.chart.result[0].meta // {}) | {symbol, price: .regularMarketPrice, dayHigh: .regularMarketDayHigh, dayLow: .regularMarketDayLow, volume: .regularMarketVolume, currency}')
     results=$(echo "$results" | jq --argjson d "$data" '. + [$d]')
   done
   echo "$results" | _sanitize
@@ -66,26 +66,26 @@ cmd_batch() {
 cmd_history() {
   local symbol="$1"
   local range="\${2:-1mo}"
-  curl -sS "$API/chart/$(echo "$symbol" | tr '[:lower:]' '[:upper:]')?range=$range&interval=1d" \\
+  curl -sS --fail-with-body "$API/chart/$(echo "$symbol" | tr '[:lower:]' '[:upper:]')?range=$range&interval=1d" \\
     -H "User-Agent: ClawHQ/1.0" | _sanitize
 }
 
 cmd_summary() {
   local symbol
   symbol=$(echo "$1" | tr '[:lower:]' '[:upper:]')
-  curl -sS "$API/chart/\${symbol}?range=5d&interval=1d" \\
-    -H "User-Agent: ClawHQ/1.0" | jq '{summary: .chart.result[0] | {
-      symbol: .meta.symbol,
-      currency: .meta.currency,
-      price: .meta.regularMarketPrice,
-      dayHigh: .meta.regularMarketDayHigh,
-      dayLow: .meta.regularMarketDayLow,
-      volume: .meta.regularMarketVolume,
-      fiftyTwoWeekHigh: .meta.fiftyTwoWeekHigh,
-      fiftyTwoWeekLow: .meta.fiftyTwoWeekLow,
-      previousClose: .meta.chartPreviousClose,
-      change: ((.meta.regularMarketPrice - .meta.chartPreviousClose) * 100 | round | . / 100),
-      changePercent: (((.meta.regularMarketPrice - .meta.chartPreviousClose) / .meta.chartPreviousClose * 10000 | round | . / 100))
+  curl -sS --fail-with-body "$API/chart/\${symbol}?range=5d&interval=1d" \\
+    -H "User-Agent: ClawHQ/1.0" | jq '{summary: (.chart.result[0].meta // {}) | {
+      symbol,
+      currency,
+      price: .regularMarketPrice,
+      dayHigh: .regularMarketDayHigh,
+      dayLow: .regularMarketDayLow,
+      volume: .regularMarketVolume,
+      fiftyTwoWeekHigh,
+      fiftyTwoWeekLow,
+      previousClose: .chartPreviousClose,
+      change: (if .regularMarketPrice and .chartPreviousClose then ((.regularMarketPrice - .chartPreviousClose) * 100 | round | . / 100) else null end),
+      changePercent: (if .chartPreviousClose > 0 then (((.regularMarketPrice - .chartPreviousClose) / .chartPreviousClose * 10000 | round | . / 100)) else null end)
     }}' | _sanitize
 }
 

@@ -93,8 +93,8 @@ describe("generateBundle", () => {
   it("produces LM-09: valid cron expressions (no bare N/step)", () => {
     const bundle = generateBundle(makeAnswers());
     for (const job of bundle.cronJobs) {
-      if (job.kind === "cron" && job.expr) {
-        for (const field of job.expr.split(/\s+/)) {
+      if (job.schedule?.kind === "cron" && job.schedule.expr) {
+        for (const field of job.schedule.expr.split(/\s+/)) {
           expect(field).not.toMatch(/^\d+\/\d+$/);
         }
       }
@@ -187,9 +187,9 @@ describe("generateBundle", () => {
     const skillJob = bundle.cronJobs.find((j) => j.id === "skill-email-digest");
     expect(skillJob).toBeDefined();
     expect(skillJob?.enabled).toBe(true);
-    expect(skillJob?.expr).toBeDefined();
+    expect(skillJob?.schedule.expr).toBeDefined();
     // Must not have bare N/step
-    for (const field of (skillJob?.expr ?? "").split(/\s+/)) {
+    for (const field of (skillJob?.schedule.expr ?? "").split(/\s+/)) {
       expect(field).not.toMatch(/^\d+\/\d+$/);
     }
   });
@@ -225,15 +225,15 @@ describe("generateBundle", () => {
     const bundle = generateBundle(answers);
 
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.model).toBe("haiku");
+    expect(heartbeat?.payload.model).toBe("haiku");
     expect(heartbeat?.fallbacks).toEqual(["sonnet"]);
 
     const workSession = bundle.cronJobs.find((j) => j.id === "work-session");
-    expect(workSession?.model).toBe("opus");
+    expect(workSession?.payload.model).toBe("opus");
     expect(workSession?.fallbacks).toEqual(["sonnet"]);
 
     const morningBrief = bundle.cronJobs.find((j) => j.id === "morning-brief");
-    expect(morningBrief?.model).toBe("sonnet");
+    expect(morningBrief?.payload.model).toBe("sonnet");
     expect(morningBrief?.fallbacks).toEqual(["haiku"]);
   });
 
@@ -246,7 +246,7 @@ describe("generateBundle", () => {
     const bundle = generateBundle(answers);
 
     const skillJob = bundle.cronJobs.find((j) => j.id === "skill-email-digest");
-    expect(skillJob?.model).toBe("opus");
+    expect(skillJob?.payload.model).toBe("opus");
     expect(skillJob?.fallbacks).toEqual(["sonnet"]);
   });
 
@@ -260,7 +260,7 @@ describe("generateBundle", () => {
     const bundle = generateBundle(answers);
 
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.model).toBeUndefined();
+    expect(heartbeat?.payload.model).toBeUndefined();
     expect(heartbeat?.fallbacks).toBeUndefined();
   });
 
@@ -289,19 +289,19 @@ describe("generateBundle", () => {
     const bundle = generateBundle(answers);
 
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.session).toBe("isolated");
+    expect(heartbeat?.sessionTarget).toBe("isolated");
 
     const skillJob = bundle.cronJobs.find((j) => j.id === "skill-email-digest");
-    expect(skillJob?.session).toBe("isolated");
+    expect(skillJob?.sessionTarget).toBe("isolated");
   });
 
   it("sets work-session and morning-brief to session 'main'", () => {
     const bundle = generateBundle(makeAnswers());
     const workSession = bundle.cronJobs.find((j) => j.id === "work-session");
-    expect(workSession?.session).toBe("main");
+    expect(workSession?.sessionTarget).toBe("main");
 
     const morningBrief = bundle.cronJobs.find((j) => j.id === "morning-brief");
-    expect(morningBrief?.session).toBe("main");
+    expect(morningBrief?.sessionTarget).toBe("main");
   });
 
   it("populates activeHours on cron jobs with 'waking' qualifier", () => {
@@ -336,13 +336,13 @@ describe("generateBundle", () => {
   it("defaults morning-brief delivery to 'announce', others to 'none'", () => {
     const bundle = generateBundle(makeAnswers());
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.delivery).toBe("none");
+    expect(heartbeat?.delivery.mode).toBe("none");
 
     const workSession = bundle.cronJobs.find((j) => j.id === "work-session");
-    expect(workSession?.delivery).toBe("none");
+    expect(workSession?.delivery.mode).toBe("none");
 
     const morningBrief = bundle.cronJobs.find((j) => j.id === "morning-brief");
-    expect(morningBrief?.delivery).toBe("announce");
+    expect(morningBrief?.delivery.mode).toBe("announce");
   });
 
   it("allows blueprint to override delivery mode per job", () => {
@@ -358,10 +358,10 @@ describe("generateBundle", () => {
     const bundle = generateBundle(answers);
 
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.delivery).toBe("errors");
+    expect(heartbeat?.delivery.mode).toBe("errors");
 
     const morningBrief = bundle.cronJobs.find((j) => j.id === "morning-brief");
-    expect(morningBrief?.delivery).toBe("none");
+    expect(morningBrief?.delivery.mode).toBe("none");
   });
 
   it("allows blueprint to override sessionTarget per job", () => {
@@ -377,7 +377,7 @@ describe("generateBundle", () => {
     const bundle = generateBundle(answers);
 
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.session).toBe("main");
+    expect(heartbeat?.sessionTarget).toBe("main");
   });
 
   it("uses cost-efficient defaults: cheap models for frequent jobs", () => {
@@ -396,7 +396,7 @@ describe("generateBundle", () => {
       });
       const bundle = generateBundle(answers);
       const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-      expect(heartbeat?.model, `${name}: heartbeat should use haiku`).toBe("haiku");
+      expect(heartbeat?.payload.model, `${name}: heartbeat should use haiku`).toBe("haiku");
       expect(heartbeat?.fallbacks, `${name}: heartbeat should fall back to sonnet`).toEqual(["sonnet"]);
     }
   });
@@ -734,7 +734,7 @@ describe("bare N/step cron fix uses correct field ranges", () => {
     const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
     const bundle = generateBundle(answers);
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.expr).toBe("0 0-23/3 * * *");
+    expect(heartbeat?.schedule.expr).toBe("0 0-23/3 * * *");
   });
 
   it("fixes bare N/step in day-of-month field to 1-31 range", () => {
@@ -743,7 +743,7 @@ describe("bare N/step cron fix uses correct field ranges", () => {
     const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
     const bundle = generateBundle(answers);
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.expr).toBe("0 0 1-31/10 * *");
+    expect(heartbeat?.schedule.expr).toBe("0 0 1-31/10 * *");
   });
 
   it("fixes bare N/step in minute field to 0-59 range", () => {
@@ -752,7 +752,7 @@ describe("bare N/step cron fix uses correct field ranges", () => {
     const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
     const bundle = generateBundle(answers);
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.expr).toContain("0-59/15");
+    expect(heartbeat?.schedule.expr).toContain("0-59/15");
   });
 
   it("fixes bare N/step in day-of-week field to 0-7 range", () => {
@@ -761,7 +761,7 @@ describe("bare N/step cron fix uses correct field ranges", () => {
     const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
     const bundle = generateBundle(answers);
     const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
-    expect(heartbeat?.expr).toContain("0-7/2");
+    expect(heartbeat?.schedule.expr).toContain("0-7/2");
   });
 });
 
@@ -772,14 +772,14 @@ describe("morning brief rejects invalid time formats", () => {
     const loaded = loadBlueprint("family-hub");
     const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, morning_brief: "7:00 AM" } };
     const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
-    expect(() => generateBundle(answers)).toThrow(/Invalid morning brief time.*expected HH:MM/);
+    expect(() => generateBundle(answers)).toThrow(/Invalid morning brief day "am"/);
   });
 
   it("throws on '07:00 UTC' format", () => {
     const loaded = loadBlueprint("family-hub");
     const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, morning_brief: "07:00 UTC" } };
     const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
-    expect(() => generateBundle(answers)).toThrow(/Invalid morning brief time/);
+    expect(() => generateBundle(answers)).toThrow(/Invalid morning brief day "utc"/);
   });
 
   it("throws on '7h00' format", () => {
@@ -795,7 +795,16 @@ describe("morning brief rejects invalid time formats", () => {
     const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
     const bundle = generateBundle(answers);
     const brief = bundle.cronJobs.find((j) => j.id === "morning-brief");
-    expect(brief?.expr).toBe("30 6 * * *");
+    expect(brief?.schedule.expr).toBe("30 6 * * *");
+  });
+
+  it("accepts 'HH:MM dayname' format", () => {
+    const loaded = loadBlueprint("family-hub");
+    const bp = { ...loaded.blueprint, cron_config: { ...loaded.blueprint.cron_config, morning_brief: "08:00 monday" } };
+    const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
+    const bundle = generateBundle(answers);
+    const brief = bundle.cronJobs.find((j) => j.id === "morning-brief");
+    expect(brief?.schedule.expr).toBe("0 8 * * 1");
   });
 
   it("accepts edge case 23:59", () => {
@@ -804,7 +813,7 @@ describe("morning brief rejects invalid time formats", () => {
     const answers = makeAnswers({ blueprint: bp, blueprintPath: loaded.sourcePath });
     const bundle = generateBundle(answers);
     const brief = bundle.cronJobs.find((j) => j.id === "morning-brief");
-    expect(brief?.expr).toBe("59 23 * * *");
+    expect(brief?.schedule.expr).toBe("59 23 * * *");
   });
 });
 

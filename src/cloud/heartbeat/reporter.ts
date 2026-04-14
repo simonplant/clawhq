@@ -82,8 +82,9 @@ function writeHeartbeatState(deployDir: string, state: HeartbeatState): void {
     writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
     chmodSync(tmpPath, FILE_MODE_SECRET);
     renameSync(tmpPath, path);
-  } catch {
+  } catch (err) {
     // Write failed — heartbeat state is best-effort
+    console.warn("[heartbeat] state write failed:", err instanceof Error ? err.message : String(err));
   }
 }
 

@@ -40,11 +40,11 @@ if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/op"
   _get_item() {
     local vault="\$1" item="\$2" field="\${3:-password}"
-    curl -sS "\$API/v1/vaults/\$vault/items/\$item?fields=\$field"
+    curl -sS --fail-with-body "\$API/v1/vaults/\$vault/items/\$item?fields=\$field"
   }
   _list_items() {
     local vault="\$1"
-    curl -sS "\$API/v1/vaults/\$vault/items"
+    curl -sS --fail-with-body "\$API/v1/vaults/\$vault/items"
   }
 else
   : "\${OP_SERVICE_ACCOUNT_TOKEN:?Set OP_SERVICE_ACCOUNT_TOKEN or CRED_PROXY_URL}"

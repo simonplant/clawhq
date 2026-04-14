@@ -61,7 +61,7 @@ async function saveManifest(
   const dir = join(deployDir, "workspace", "skills");
   mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   chmodSync(dir, DIR_MODE_SECRET);
-  await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2), { mode: FILE_MODE_SECRET });
+  await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2) + "\n", { mode: FILE_MODE_SECRET });
 }
 
 function updateEntry(

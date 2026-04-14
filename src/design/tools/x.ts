@@ -30,11 +30,11 @@ case "\${1:-}" in help|--help|-h|"")
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/x"
-  _curl() { curl -sS "\$@"; }
+  _curl() { curl -sS --fail-with-body "\$@"; }
 else
   API="https://api.twitter.com/2"
   TOKEN="\${X_BEARER_TOKEN:?Set X_BEARER_TOKEN or CRED_PROXY_URL}"
-  _curl() { curl -sS -H "Authorization: Bearer \$TOKEN" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Authorization: Bearer \$TOKEN" "\$@"; }
 fi
 
 # ClawWall: sanitize external content
