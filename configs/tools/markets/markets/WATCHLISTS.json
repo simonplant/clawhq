@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-13T00:00:00Z",
+
+  "portfolio": {
+    "description": "Current holdings and key indices",
+    "symbols": ["SPY", "QQQ", "ES=F", "NQ=F"]
+  },
+
+  "dp_watchlist": {
+    "description": "DP/Inner Circle frequent names — updated from AM calls",
+    "symbols": ["META", "NVDA", "AAPL", "TSLA", "AMZN", "GOOGL", "QQQ", "SPY", "PLTR", "GEV", "CRWD", "NOW"]
+  },
+
+  "mancini_levels": {
+    "description": "Mancini ES levels — refreshed daily by mancini-fetch",
+    "symbols": ["ES=F", "SPY"]
+  },
+
+  "swing_candidates": {
+    "description": "Swing scanner candidates — refreshed by swing-scanner (Phase 2)",
+    "symbols": []
+  }
+}

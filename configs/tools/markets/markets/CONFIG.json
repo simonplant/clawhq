@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-13T00:00:00Z",
+
+  "risk": {
+    "max_position_pct": 5.0,
+    "max_position_pct_daytrade": 2.0,
+    "max_total_exposure_pct": 80.0,
+    "max_long_exposure_pct": 80.0,
+    "max_short_exposure_pct": 30.0,
+    "max_sector_pct": 35.0,
+    "max_daily_loss": 500.00,
+    "max_daily_loss_pct": 2.0,
+    "max_drawdown_pct": 10.0,
+    "max_trades_per_day_swing": 5,
+    "max_trades_per_day_daytrade": 10,
+    "max_open_positions": 15,
+    "pdt_guard": true,
+    "force_close_daytrades_by": "15:50",
+    "circuit_breaker_cooldown_hours": 24,
+    "paper_mode": true
+  },
+
+  "pots": {
+    "enabled": true,
+    "allocations": {
+      "A": { "name": "Clawdius System", "allocation": 33333.33, "strategy": "discretionary" },
+      "B": { "name": "Mirror DP", "allocation": 33333.33, "strategy": "mirror-dp" },
+      "C": { "name": "Mirror Mancini", "allocation": 33333.34, "strategy": "mirror-mancini" }
+    },
+    "max_per_position_pct": 15.0,
+    "max_exposure_pct": 60.0,
+    "halt_drawdown_pct": 10.0
+  },
+
+  "signal_sources": {
+    "primary": [
+      { "id": "mancini", "type": "human-curated", "skill": "mancini-fetch", "priority": 1 },
+      { "id": "dp", "type": "human-curated", "skill": "dp-parse", "priority": 1 },
+      { "id": "focus25", "type": "human-curated", "skill": "focus25-fetch", "priority": 2 }
+    ],
+    "supplementary": [
+      { "id": "scanner", "type": "algorithmic", "skill": "swing-scanner", "priority": 3, "phase": 2 }
+    ],
+    "rule": "human-curated signals take priority over algorithmic when they conflict"
+  },
+
+  "loops": {
+    "portfolio": { "enabled": true, "phase": 1, "cadence": "daily" },
+    "swing": { "enabled": false, "phase": 2, "cadence": "hourly" },
+    "session": { "enabled": false, "phase": 3, "cadence": "2min" }
+  },
+
+  "data": {
+    "quote_tool": "quote",
+    "finnhub_api_key_env": "FINNHUB_API_KEY",
+    "alpaca_paper_env": "ALPACA_API_KEY_PAPER",
+    "alpaca_secret_env": "ALPACA_API_SECRET_PAPER",
+    "alpaca_base_url": "https://paper-api.alpaca.markets"
+  },
+
+  "features": {
+    "auto_execute": false,
+    "auto_rebalance": false,
+    "day_trading": false
+  }
+}

@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""journal — append-only event log for the trading system.
+
+Every signal, risk check, order, fill, and governor block is recorded.
+
+Commands:
+  journal signal <symbol> <action> <source> [--notes '...']
+  journal risk_check <symbol> <verdict> [--reason '...']
+  journal order <symbol> <side> <qty> <price> [--type limit] [--pot P] [--loop L]
+  journal fill <symbol> <side> <qty> <price> [--order_id X]
+  journal read [--date YYYY-MM-DD]
+  journal summary [--date YYYY-MM-DD] [--json]
+  journal append <type> <json_data>
+
+Examples:
+  journal signal NVDA buy mancini --notes "Rank 1 FB at 185"
+  journal summary
+  journal read --date 2026-04-14
+"""
+import os
+import sys
+
+MARKETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "markets")
+os.environ["MARKETS_DIR"] = MARKETS_DIR
+sys.path.insert(0, MARKETS_DIR)
+
+from journal import main
+main()

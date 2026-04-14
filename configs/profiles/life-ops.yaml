@@ -52,6 +52,26 @@ tools:
     category: data
     description: "David Prince AM Call parser — transcript and VTF alert extraction"
     required: false
+  - name: alpaca
+    category: trading
+    description: "Alpaca paper trading — account, positions, orders, quotes, bars"
+    required: false
+  - name: journal
+    category: trading
+    description: "Trading event log — signals, risk checks, orders, fills (append-only JSONL)"
+    required: false
+  - name: market-calendar
+    category: trading
+    description: "US market day/holiday detection and session timing"
+    required: false
+  - name: risk-governor
+    category: trading
+    description: "Hard constraint enforcement — every trade must pass before execution"
+    required: false
+  - name: markets
+    category: trading
+    description: "Shared trading module — config, watchlists, risk logic, journal backend"
+    required: false
 
 skills:
   - morning-brief

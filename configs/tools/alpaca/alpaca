@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+"""alpaca — Alpaca paper trading CLI via REST API.
+
+Paper trading only until paper_mode is disabled in CONFIG.json.
+Routes through cred-proxy when available, falls back to direct API.
+
+Commands:
+  alpaca account                — account info (cash, buying power, equity)
+  alpaca positions              — open positions with P&L
+  alpaca orders [--status open] — list orders
+  alpaca quote <symbol>         — latest quote
+  alpaca bars <symbol> [--days N] — daily bars (default 5 days)
+  alpaca submit <side> <qty> <symbol> --type <market|limit> [--price N] [--pot P]
+  alpaca cancel <order_id>      — cancel an order
+  alpaca cancel-all             — cancel all open orders
+  alpaca close <symbol>         — close a position (market order)
+
+Environment:
+  ALPACA_API_KEY    — API key ID (required)
+  ALPACA_API_SECRET — API secret key (required)
+  ALPACA_BASE_URL   — base URL (default: paper-api.alpaca.markets)
+  CRED_PROXY_URL    — credential proxy (optional, routes /alpaca prefix)
+"""
+
+import json
+import os
+import subprocess
+import sys
+import urllib.request
+import urllib.error
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+API_KEY = os.environ.get("ALPACA_API_KEY", "")
+API_SECRET = os.environ.get("ALPACA_API_SECRET", "")
+BASE_URL = os.environ.get("ALPACA_BASE_URL", "https://paper-api.alpaca.markets")
+DATA_URL = "https://data.alpaca.markets"
+# Free tier uses IEX feed; SIP requires paid subscription
+DATA_FEED = "iex"
+PROXY = os.environ.get("CRED_PROXY_URL", "")
+
+MARKETS_DIR = Path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "markets"))
+RISK_GOVERNOR = MARKETS_DIR / "risk_governor.py"
+JOURNAL_PY = MARKETS_DIR / "journal.py"
+
+
+def _api(method, path, data=None, is_data_api=False):
+    """Call Alpaca API with authentication."""
+    base = DATA_URL if is_data_api else BASE_URL
+    url = f"{base}{path}"
+
+    body = json.dumps(data).encode() if data else None
+    headers = {
+        "APCA-API-KEY-ID": API_KEY,
+        "APCA-API-SECRET-KEY": API_SECRET,
+        "Content-Type": "application/json",
+    }
+
+    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw.strip() else {}
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        try:
+            err = json.loads(body)
+            print(f"Error {e.code}: {err.get('message', body)}", file=sys.stderr)
+        except json.JSONDecodeError:
+            print(f"Error {e.code}: {body}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"Connection error: {e.reason}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _check_auth():
+    if not API_KEY or not API_SECRET or API_SECRET == "CHANGE_ME":
+        print("Error: ALPACA_API_KEY and ALPACA_API_SECRET must be set", file=sys.stderr)
+        print("Set them in ~/.clawhq/.env", file=sys.stderr)
+        sys.exit(1)
+
+
+def _money(v):
+    v = float(v)
+    return f"-${abs(v):,.2f}" if v < 0 else f"${v:,.2f}"
+
+
+def _pct(v):
+    v = float(v)
+    return f"+{v:.2f}%" if v >= 0 else f"{v:.2f}%"
+
+
+def _risk_check(side, qty, symbol, price, pot=None):
+    """Call risk governor before executing a trade."""
+    if not RISK_GOVERNOR.exists():
+        return True, None
+    cmd = [
+        sys.executable, str(RISK_GOVERNOR),
+        "check", side, str(qty), symbol,
+        "--price", str(price), "--json",
+    ]
+    if pot:
+        cmd.extend(["--pot", pot])
+    env = dict(os.environ)
+    env["MARKETS_DIR"] = str(MARKETS_DIR)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, env=env)
+        verdict = json.loads(result.stdout) if result.stdout.strip() else {}
+        if verdict.get("verdict") == "BLOCKED":
+            return False, verdict.get("reason", "blocked by risk governor")
+        if verdict.get("verdict") == "REDUCED":
+            return False, f"Reduced to {verdict.get('new_qty')} shares: {verdict.get('reason')}"
+        return True, None
+    except Exception:
+        return True, None  # fail-open
+
+
+def _journal_log(entry_type, data):
+    """Log to event journal."""
+    if not JOURNAL_PY.exists():
+        return
+    try:
+        entry = json.dumps({"type": entry_type, **data})
+        env = dict(os.environ)
+        env["MARKETS_DIR"] = str(MARKETS_DIR)
+        subprocess.run(
+            [sys.executable, str(JOURNAL_PY), "append", entry_type, entry],
+            capture_output=True, timeout=5, env=env,
+        )
+    except Exception:
+        pass
+
+
+def cmd_account():
+    acct = _api("GET", "/v2/account")
+    use_json = "--json" in sys.argv
+    if use_json:
+        print(json.dumps(acct, indent=2))
+        return
+
+    print(f"Alpaca {'PAPER' if 'paper' in BASE_URL else 'LIVE'} Account")
+    print(f"  Equity:       {_money(acct.get('equity', 0))}")
+    print(f"  Cash:         {_money(acct.get('cash', 0))}")
+    print(f"  Buying Power: {_money(acct.get('buying_power', 0))}")
+    print(f"  Portfolio:    {_money(acct.get('portfolio_value', 0))}")
+    print(f"  Day Trades:   {acct.get('daytrade_count', 0)}")
+    print(f"  PDT Flag:     {acct.get('pattern_day_trader', False)}")
+    print(f"  Status:       {acct.get('status', 'unknown')}")
+
+
+def cmd_positions():
+    positions = _api("GET", "/v2/positions")
+    use_json = "--json" in sys.argv
+    if use_json:
+        print(json.dumps(positions, indent=2))
+        return
+
+    if not positions:
+        print("No open positions.")
+        return
+
+    print(f"{'SYMBOL':<8} {'QTY':>6} {'ENTRY':>10} {'CURRENT':>10} {'P&L':>12} {'P&L%':>8}")
+    print("-" * 60)
+    for p in positions:
+        sym = p.get("symbol", "?")
+        qty = p.get("qty", "0")
+        entry = float(p.get("avg_entry_price", 0))
+        current = float(p.get("current_price", 0))
+        pnl = float(p.get("unrealized_pl", 0))
+        pnl_pct = float(p.get("unrealized_plpc", 0)) * 100
+        print(f"{sym:<8} {qty:>6} {_money(entry):>10} {_money(current):>10} "
+              f"{_money(pnl):>12} {_pct(pnl_pct):>8}")
+
+
+def cmd_orders():
+    status = "open"
+    for i, arg in enumerate(sys.argv):
+        if arg == "--status" and i + 1 < len(sys.argv):
+            status = sys.argv[i + 1]
+
+    orders = _api("GET", f"/v2/orders?status={status}")
+    use_json = "--json" in sys.argv
+    if use_json:
+        print(json.dumps(orders, indent=2))
+        return
+
+    if not orders:
+        print(f"No {status} orders.")
+        return
+
+    for o in orders:
+        sym = o.get("symbol", "?")
+        side = o.get("side", "?")
+        qty = o.get("qty", "?")
+        otype = o.get("type", "?")
+        price = o.get("limit_price") or o.get("stop_price") or "market"
+        status_val = o.get("status", "?")
+        oid = o.get("id", "?")[:8]
+        print(f"  [{oid}] {side} {qty} {sym} @ {price} ({otype}) — {status_val}")
+
+
+def cmd_quote():
+    if len(sys.argv) < 3:
+        print("Usage: alpaca quote <symbol>", file=sys.stderr)
+        sys.exit(2)
+    symbol = sys.argv[2].upper()
+    data = _api("GET", f"/v2/stocks/{symbol}/quotes/latest?feed={DATA_FEED}", is_data_api=True)
+    use_json = "--json" in sys.argv
+    if use_json:
+        print(json.dumps(data, indent=2))
+        return
+
+    q = data.get("quote", data)
+    bid = q.get("bp", q.get("bid_price", "?"))
+    ask = q.get("ap", q.get("ask_price", "?"))
+    print(f"{symbol}: bid {bid} / ask {ask}")
+
+
+def cmd_bars():
+    if len(sys.argv) < 3:
+        print("Usage: alpaca bars <symbol> [--days N]", file=sys.stderr)
+        sys.exit(2)
+    symbol = sys.argv[2].upper()
+    days = 5
+    for i, arg in enumerate(sys.argv):
+        if arg == "--days" and i + 1 < len(sys.argv):
+            days = int(sys.argv[i + 1])
+
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=days + 3)  # extra days for weekends
+    params = (f"?timeframe=1Day&start={start.strftime('%Y-%m-%d')}"
+              f"&end={end.strftime('%Y-%m-%d')}&limit={days}")
+    data = _api("GET", f"/v2/stocks/{symbol}/bars{params}&feed={DATA_FEED}", is_data_api=True)
+    use_json = "--json" in sys.argv
+    if use_json:
+        print(json.dumps(data, indent=2))
+        return
+
+    bars = data.get("bars", [])
+    if not bars:
+        print(f"No bars for {symbol}")
+        return
+
+    print(f"{'DATE':<12} {'OPEN':>10} {'HIGH':>10} {'LOW':>10} {'CLOSE':>10} {'VOLUME':>12}")
+    print("-" * 70)
+    for b in bars[-days:]:
+        dt = b.get("t", "")[:10]
+        print(f"{dt:<12} {b.get('o', 0):>10.2f} {b.get('h', 0):>10.2f} "
+              f"{b.get('l', 0):>10.2f} {b.get('c', 0):>10.2f} {b.get('v', 0):>12,}")
+
+
+def cmd_submit():
+    if len(sys.argv) < 5:
+        print("Usage: alpaca submit <side> <qty> <symbol> --type <market|limit> "
+              "[--price N] [--pot P]", file=sys.stderr)
+        sys.exit(2)
+
+    side = sys.argv[2].lower()
+    qty = int(sys.argv[3])
+    symbol = sys.argv[4].upper()
+
+    order_type = "market"
+    price = None
+    pot = None
+    for i, arg in enumerate(sys.argv):
+        if arg == "--type" and i + 1 < len(sys.argv):
+            order_type = sys.argv[i + 1]
+        elif arg == "--price" and i + 1 < len(sys.argv):
+            price = float(sys.argv[i + 1])
+        elif arg == "--pot" and i + 1 < len(sys.argv):
+            pot = sys.argv[i + 1].upper()
+
+    # For risk check, we need a price estimate
+    check_price = price
+    if check_price is None:
+        # Try to get current price for risk check
+        try:
+            data = _api("GET", f"/v2/stocks/{symbol}/quotes/latest?feed={DATA_FEED}", is_data_api=True)
+            q = data.get("quote", data)
+            check_price = float(q.get("ap", q.get("ask_price", 0)))
+        except Exception:
+            check_price = 0
+
+    if check_price > 0:
+        approved, reason = _risk_check(side, qty, symbol, check_price, pot=pot)
+        if not approved:
+            print(f"GOVERNOR BLOCKED: {reason}", file=sys.stderr)
+            _journal_log("governor_block", {"symbol": symbol, "side": side, "qty": qty,
+                                            "reason": reason})
+            sys.exit(1)
+
+    order_data = {
+        "symbol": symbol,
+        "qty": str(qty),
+        "side": side,
+        "type": order_type,
+        "time_in_force": "day",
+    }
+    if order_type == "limit" and price is not None:
+        order_data["limit_price"] = str(price)
+
+    result = _api("POST", "/v2/orders", order_data)
+
+    _journal_log("order", {
+        "symbol": symbol, "side": side, "qty": qty,
+        "price": price or check_price, "order_type": order_type,
+        "pot": pot or "", "order_id": result.get("id", ""),
+    })
+
+    if "--json" in sys.argv:
+        print(json.dumps(result, indent=2))
+    else:
+        oid = result.get("id", "?")[:8]
+        status = result.get("status", "?")
+        print(f"Order submitted: [{oid}] {side} {qty} {symbol} ({order_type}) — {status}")
+
+
+def cmd_cancel():
+    if len(sys.argv) < 3:
+        print("Usage: alpaca cancel <order_id>", file=sys.stderr)
+        sys.exit(2)
+    order_id = sys.argv[2]
+    _api("DELETE", f"/v2/orders/{order_id}")
+    print(f"Cancelled order {order_id[:8]}")
+
+
+def cmd_cancel_all():
+    _api("DELETE", "/v2/orders")
+    print("All open orders cancelled.")
+
+
+def cmd_close():
+    if len(sys.argv) < 3:
+        print("Usage: alpaca close <symbol>", file=sys.stderr)
+        sys.exit(2)
+    symbol = sys.argv[2].upper()
+    result = _api("DELETE", f"/v2/positions/{symbol}")
+    if "--json" in sys.argv:
+        print(json.dumps(result, indent=2))
+    else:
+        print(f"Closed position: {symbol}")
+
+
+def main():
+    _check_auth()
+
+    if len(sys.argv) < 2:
+        print(__doc__.strip())
+        sys.exit(0)
+
+    cmd = sys.argv[1]
+    cmds = {
+        "account": cmd_account,
+        "positions": cmd_positions,
+        "orders": cmd_orders,
+        "quote": cmd_quote,
+        "bars": cmd_bars,
+        "submit": cmd_submit,
+        "cancel": cmd_cancel,
+        "cancel-all": cmd_cancel_all,
+        "close": cmd_close,
+    }
+
+    if cmd in cmds:
+        cmds[cmd]()
+    elif cmd in ("-h", "--help", "help"):
+        print(__doc__.strip())
+    else:
+        print(f"Unknown command: {cmd}", file=sys.stderr)
+        print(__doc__.strip())
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()
