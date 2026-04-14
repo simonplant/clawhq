@@ -31,7 +31,7 @@ const execFileAsync = promisify(execFile);
 /**
  * Check for available updates.
  *
- * - source installs: git fetch + compare HEAD to origin/main
+ * - source installs: git fetch + compare HEAD to latest release tag
  * - cache installs: docker pull + compare image digests
  */
 export async function checkForUpdates(options: UpdateOptions): Promise<UpdateCheckResult> {
@@ -48,7 +48,7 @@ export async function checkForUpdates(options: UpdateOptions): Promise<UpdateChe
   return checkForCacheUpdates(deployDir, signal, report);
 }
 
-/** Check for updates in a from-source installation (git fetch + compare). */
+/** Check for updates in a from-source installation (git fetch + compare to latest release tag). */
 async function checkForSourceUpdates(
   deployDir: string,
   signal: AbortSignal | undefined,
@@ -63,43 +63,35 @@ async function checkForSourceUpdates(
       signal,
     });
 
-    const { stdout: localHead } = await execFileAsync(
+    const currentTag = await getCurrentTag(sourceDir, signal);
+    const latestTag = await getLatestReleaseTag(sourceDir, signal);
+
+    if (!latestTag) {
+      report("check", "failed", "No release tags found in upstream");
+      return { available: false, currentImage: image, error: "No release tags found" };
+    }
+
+    const { stdout: currentCommit } = await execFileAsync(
       "git", ["-C", sourceDir, "rev-parse", "HEAD"],
       { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
     );
 
-    const { stdout: remoteHead } = await execFileAsync(
-      "git", ["-C", sourceDir, "rev-parse", "origin/main"],
+    const { stdout: latestCommit } = await execFileAsync(
+      "git", ["-C", sourceDir, "rev-parse", latestTag],
       { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
     );
 
-    const { stdout: behindCount } = await execFileAsync(
-      "git", ["-C", sourceDir, "rev-list", "--count", "HEAD..origin/main"],
-      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
-    );
-
-    const behind = parseInt(behindCount.trim(), 10);
-    const available = behind > 0;
-
-    // Get latest tag for display
-    let latestTag = "";
-    try {
-      const { stdout: tagOut } = await execFileAsync(
-        "git", ["-C", sourceDir, "describe", "--tags", "--abbrev=0", "origin/main"],
-        { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
-      );
-      latestTag = tagOut.trim();
-    } catch { /* no tags */ }
+    const available = currentCommit.trim() !== latestCommit.trim();
 
     const status = available
-      ? `${behind} commit(s) behind${latestTag ? ` (latest: ${latestTag})` : ""}`
-      : "Already up to date";
+      ? `Update available: ${currentTag ?? currentCommit.trim().slice(0, 8)} → ${latestTag}`
+      : `Already on latest release (${latestTag})`;
     report("check", "done", status);
 
     return {
       available,
       currentImage: image,
-      latestDigest: remoteHead.trim(),
+      latestDigest: latestCommit.trim(),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -216,13 +208,24 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     // From-source: git pull + rebuild
     const sourceDir = join(deployDir, "engine", "source");
 
-    report("pull", "running", "Pulling latest source…");
+    report("pull", "running", "Fetching latest release…");
     try {
-      await execFileAsync("git", ["-C", sourceDir, "pull", "--ff-only"], {
+      await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags"], {
         timeout: UPDATER_PULL_TIMEOUT_MS,
         signal,
       });
-      report("pull", "done", "Source updated");
+
+      const latestTag = await getLatestReleaseTag(sourceDir, signal);
+      if (!latestTag) {
+        report("pull", "failed", "No release tags found in upstream");
+        return { success: false, error: "No release tags found in upstream", backupId };
+      }
+
+      await execFileAsync("git", ["-C", sourceDir, "checkout", latestTag], {
+        timeout: UPDATER_EXEC_TIMEOUT_MS,
+        signal,
+      });
+      report("pull", "done", `Checked out ${latestTag}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       report("pull", "failed", `Git pull failed: ${message}`);
@@ -447,6 +450,46 @@ async function detectInstallMethod(deployDir: string): Promise<"cache" | "source
   } catch { /* no source dir */ }
 
   return "cache";
+}
+
+/**
+ * Get the tag pointing at HEAD, if any.
+ */
+async function getCurrentTag(
+  sourceDir: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git", ["-C", sourceDir, "describe", "--tags", "--exact-match", "HEAD"],
+      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+    );
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Find the latest release tag (vYYYY.M.D format) by version sort.
+ * Ignores pre-release tags (e.g. -beta, -rc).
+ */
+async function getLatestReleaseTag(
+  sourceDir: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git", ["-C", sourceDir, "tag", "--list", "v*", "--sort=-version:refname"],
+      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+    );
+    const tags = stdout.trim().split("\n").filter(Boolean);
+    // Skip pre-release tags (-beta, -rc, -alpha, etc.)
+    const stable = tags.find(t => !/-/.test(t.replace(/^v/, "")));
+    return stable ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function progress(callback?: UpdateProgressCallback) {

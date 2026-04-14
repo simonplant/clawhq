@@ -3,9 +3,9 @@
 > The single source of truth for what OpenClaw is, how it works, and how to configure, personalize, and secure it.
 > Extracted from running a production OpenClaw agent for months. Engineering companion to `PRODUCT.md` and `ARCHITECTURE.md`.
 
-**Updated:** 2026-04-12 · **Minimum OpenClaw version:** v2026.4.10
+**Updated:** 2026-04-14 · **Minimum OpenClaw version:** v2026.4.12
 
-> **Version baseline:** ClawHQ targets OpenClaw v2026.4.10 or later. The version scheme switched from semver (v0.8.x) to calendar-based (v2026.x.x) in early 2026. Earlier versions are missing critical fixes including the Telegram approval callback deadlock (#64979) and media understanding pipeline improvements.
+> **Version baseline:** ClawHQ targets OpenClaw v2026.4.12 or later. The version scheme switched from semver (v0.8.x) to calendar-based (v2026.x.x) in early 2026. Earlier versions are missing critical fixes including the Telegram approval callback deadlock (#64979), media understanding pipeline improvements, and Telegram thinking+text block delivery bugs (#66459, #53384).
 
 ---
 
