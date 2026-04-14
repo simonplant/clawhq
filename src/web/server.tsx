@@ -9,13 +9,14 @@
 
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 
 import { Hono } from "hono";
 import { stringify as yamlStringify } from "yaml";
 
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
 import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../config/defaults.js";
+import { readEnvValue } from "../secure/credentials/env-store.js";
 import {
   loadAllBuiltinBlueprints,
   loadBlueprint,
@@ -168,7 +169,8 @@ export function createApp(options: DashboardOptions): Hono {
 
   app.post("/api/deploy/up", async (c) => {
     try {
-      const result = await deploy({ deployDir, gatewayToken: "" });
+      const gatewayToken = readEnvValue(join(deployDir, "engine", ".env"), "OPENCLAW_GATEWAY_TOKEN") ?? "";
+      const result = await deploy({ deployDir, gatewayToken });
       if (!result.success) {
         return c.html(
           <DeployResult success={false} message={result.error ?? "Deploy failed"} />,
@@ -188,7 +190,8 @@ export function createApp(options: DashboardOptions): Hono {
 
   app.post("/api/deploy/restart", async (c) => {
     try {
-      const result = await restart({ deployDir, gatewayToken: "" });
+      const gatewayToken = readEnvValue(join(deployDir, "engine", ".env"), "OPENCLAW_GATEWAY_TOKEN") ?? "";
+      const result = await restart({ deployDir, gatewayToken });
       if (!result.success) {
         return c.html(
           <DeployResult success={false} message={result.error ?? "Restart failed"} />,

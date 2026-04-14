@@ -58,12 +58,33 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
   const allowlist = airGap ? [] : (options.allowlist ?? (await loadAllowlist(options.deployDir)));
 
   try {
+    // Pre-check: if allowlist has domains, verify ipset is available before creating any rules.
+    // Without ipset, we can't create domain ACCEPT rules, so creating a chain with only
+    // ESTABLISHED/RELATED + DNS + DROP would block all egress (fail-closed but unusable).
+    // Better to skip the firewall entirely and warn.
+    let ipsetAvailable = true;
+    if (!airGap && allowlist.length > 0) {
+      try {
+        await ipsetCmd(["--version"], options.signal);
+      } catch {
+        ipsetAvailable = false;
+      }
+    }
+
+    if (!ipsetAvailable) {
+      return {
+        success: true,
+        rulesApplied: 0,
+        resolvedIps: 0,
+        warning: "ipset not available — egress firewall skipped (install ipset for domain-based filtering)",
+      };
+    }
+
     // Ensure chain exists (create if not, flush if exists) — idempotent
     await ensureChain("iptables", options.signal);
 
     let rulesApplied = 0;
     let resolvedIps = 0;
-    let ipsetAvailable = true;
 
     // 1. Allow ESTABLISHED/RELATED connections
     await iptables(
@@ -88,34 +109,26 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
         const ports = [...new Set(allowlist.map((e) => e.port))];
 
         // Create and populate IPv4 ipset
-        try {
-          await ensureIpset(IPSET_NAME, "inet", options.signal);
-          await flushIpset(IPSET_NAME, options.signal);
-          for (const ip of resolved.v4) {
-            await ipsetAdd(IPSET_NAME, ip, options.signal);
-          }
-        } catch {
-          // ipset not available (missing sudoers entry or not installed)
-          // Skip domain-based filtering — don't add DROP rule without ACCEPT rules
-          ipsetAvailable = false;
+        await ensureIpset(IPSET_NAME, "inet", options.signal);
+        await flushIpset(IPSET_NAME, options.signal);
+        for (const ip of resolved.v4) {
+          await ipsetAdd(IPSET_NAME, ip, options.signal);
         }
 
         // Add iptables rules referencing IPv4 ipset — one per port
-        if (ipsetAvailable) {
-          for (const port of ports) {
-            if (resolved.v4.length > 0) {
-              await iptables(
-                [
-                  "-A", CHAIN_NAME,
-                  "-p", "tcp",
-                  "-m", "set", "--match-set", IPSET_NAME, "dst",
-                  "--dport", String(port),
-                  "-j", "ACCEPT",
-                ],
-                options.signal,
-              );
-              rulesApplied++;
-            }
+        for (const port of ports) {
+          if (resolved.v4.length > 0) {
+            await iptables(
+              [
+                "-A", CHAIN_NAME,
+                "-p", "tcp",
+                "-m", "set", "--match-set", IPSET_NAME, "dst",
+                "--dport", String(port),
+                "-j", "ACCEPT",
+              ],
+              options.signal,
+            );
+            rulesApplied++;
           }
         }
 
@@ -173,17 +186,7 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
       }
     }
 
-    // 4. LOG + DROP everything else — only if ipset worked (domain ACCEPT rules exist).
-    // Without domain ACCEPT rules, DROP would block ALL egress including Telegram/APIs.
-    if (!ipsetAvailable) {
-      return {
-        success: true,
-        rulesApplied,
-        resolvedIps: 0,
-        warning: "ipset not available — egress filtering disabled (install ipset for domain-based firewall)",
-      };
-    }
-
+    // 4. LOG + DROP everything else
     await iptables(
       ["-A", CHAIN_NAME, "-j", "LOG", "--log-prefix", "CLAWHQ_DROP: ", "--log-level", "4"],
       options.signal,
@@ -279,53 +282,6 @@ export async function verifyFirewall(options: FirewallOptions): Promise<Firewall
 }
 
 /**
- * Watch for Docker container stop events and reapply firewall.
- *
- * Returns an AbortController to stop watching. Calls `applyFirewall`
- * whenever an OpenClaw container stops (which happens on compose down).
- */
-export function watchAndReapply(
-  options: FirewallOptions,
-  onReapply?: (result: FirewallResult) => void,
-): AbortController {
-  const controller = new AbortController();
-  const { signal } = controller;
-
-  // Spawn `docker events` to watch for container die/stop events
-  const proc = execFile(
-    "docker",
-    ["events", "--filter", "event=die", "--filter", "type=container", "--format", "{{.Actor.Attributes.name}}"],
-    { signal },
-    // callback is required for non-promisified form — errors handled via events
-    () => { /* handled below */ },
-  );
-
-  if (proc.stdout) {
-    proc.stdout.on("data", (chunk: Buffer) => {
-      const name = chunk.toString().trim();
-      // Reapply when an OpenClaw container stops
-      if (name.includes("openclaw") || name.includes("clawhq")) {
-        // Short delay to let compose fully tear down
-        setTimeout(() => {
-          if (!signal.aborted) {
-            applyFirewall(options).then(
-              (result) => onReapply?.(result),
-              () => { /* reapply failed — non-fatal */ },
-            );
-          }
-        }, 2_000);
-      }
-    });
-  }
-
-  proc.on("error", () => {
-    // Docker events stream failed — non-fatal
-  });
-
-  return controller;
-}
-
-/**
  * Refresh ipset by re-resolving DNS for all allowlisted domains.
  *
  * Atomically swaps ipset contents: resolve new IPs, flush old set, add new.
@@ -370,37 +326,6 @@ export async function refreshIpset(options: FirewallOptions): Promise<FirewallRe
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, rulesApplied: 0, error: `Ipset refresh failed: ${message}` };
   }
-}
-
-/**
- * Start periodic ipset refresh for DNS re-resolution.
- *
- * Returns an AbortController to stop the refresh loop.
- * Default interval: 5 minutes (IPSET_REFRESH_INTERVAL_MS).
- */
-export function startIpsetRefresh(
-  options: FirewallOptions,
-  onRefresh?: (result: FirewallResult) => void,
-  intervalMs: number = IPSET_REFRESH_INTERVAL_MS,
-): AbortController {
-  const controller = new AbortController();
-  const { signal } = controller;
-
-  const timer = setInterval(() => {
-    if (signal.aborted) {
-      clearInterval(timer);
-      return;
-    }
-    refreshIpset(options).then(
-      (result) => onRefresh?.(result),
-      () => { /* refresh failed — non-fatal, will retry next interval */ },
-    );
-  }, intervalMs);
-
-  // Clean up on abort
-  signal.addEventListener("abort", () => clearInterval(timer), { once: true });
-
-  return controller;
 }
 
 /**

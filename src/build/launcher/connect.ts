@@ -21,7 +21,6 @@ import { GatewayClient } from "../../gateway/index.js";
 import { readEnv, setEnvValue, writeEnvAtomic } from "../../secure/credentials/env-store.js";
 
 import type { ConnectOptions, ConnectResult } from "./types.js";
-import { removeFirewall } from "./firewall.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -276,16 +275,6 @@ export async function connectChannel(options: ConnectOptions): Promise<ConnectRe
     const message = err instanceof Error ? err.message : String(err);
     onProgress?.({ step: "recreate", status: "failed", message: `Container recreate failed: ${message}` });
     return { success: false, channel, error: `Container recreate failed: ${message}` };
-  }
-
-  // Step 3b: Clear stale firewall rules so the channel can reach external APIs.
-  // The egress firewall uses ipset for domain-based filtering, but if ipset
-  // is unavailable (no sudoers entry), the chain degrades to DROP-all which
-  // blocks all outbound. Safe to remove here — `clawhq up` reapplies properly.
-  try {
-    await removeFirewall();
-  } catch {
-    // Non-fatal: firewall may not exist or sudo unavailable
   }
 
   // Step 4: Wait for Gateway health

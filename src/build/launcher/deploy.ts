@@ -16,7 +16,7 @@ import { promisify } from "node:util";
 
 import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
 
-import { applyFirewall, removeFirewall, startIpsetRefresh, watchAndReapply } from "./firewall.js";
+import { applyFirewall, removeFirewall } from "./firewall.js";
 import { smokeTest, verifyHealth } from "./health.js";
 import { runPreflight } from "./preflight.js";
 import type {
@@ -173,34 +173,11 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     if (!fwResult.success) {
       report("firewall", "failed", "Firewall setup failed");
       // Firewall failure is non-fatal — agent still runs, just without egress filtering
-      // Log warning but continue
       report("firewall", "skipped", `Firewall skipped: ${fwResult.error}`);
+    } else if (fwResult.warning) {
+      report("firewall", "skipped", fwResult.warning);
     } else {
       report("firewall", "done", `Firewall applied (${fwResult.rulesApplied} rules${options.airGap ? ", air-gap mode" : ""})`);
-
-      // Start watching for container restarts to auto-reapply firewall
-      watchAndReapply(
-        { deployDir, airGap: options.airGap },
-        (reapplyResult) => {
-          if (reapplyResult.success) {
-            report("firewall", "done", `Firewall auto-reapplied (${reapplyResult.rulesApplied} rules)`);
-          } else {
-            report("firewall", "failed", `Firewall auto-reapply failed: ${reapplyResult.error}`);
-          }
-        },
-      );
-
-      // Start periodic ipset DNS re-resolution (keeps ipset current as IPs rotate)
-      if (!options.airGap) {
-        startIpsetRefresh(
-          { deployDir },
-          (refreshResult) => {
-            if (refreshResult.success) {
-              report("firewall", "done", `Ipset refreshed (${refreshResult.resolvedIps ?? 0} IPs resolved)`);
-            }
-          },
-        );
-      }
     }
   } else {
     report("firewall", "skipped", "Firewall skipped (--skip-firewall)");

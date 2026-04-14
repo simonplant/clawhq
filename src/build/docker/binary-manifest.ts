@@ -55,6 +55,7 @@ export const PINNED_BINARIES: readonly BinaryInstall[] = [];
  */
 export const OP_CLI_VERSION = "2.30.3";
 export const OP_CLI_URL = `https://cache.agilebits.com/dist/1P/op2/pkg/v${OP_CLI_VERSION}/op_linux_amd64_v${OP_CLI_VERSION}.zip`;
+export const OP_CLI_SHA256 = "3c2daeb5e4547e6e72965a101e8a40bc425e61a3c498e9e9f17467e3ea1eceb2";
 export const OP_CLI_DEST = "/usr/local/bin/op";
 
 /**

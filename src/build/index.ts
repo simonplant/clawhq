@@ -56,7 +56,6 @@ export {
   smokeTest,
   verifyFirewall,
   verifyHealth,
-  watchAndReapply,
 } from "./launcher/index.js";
 
 export type {

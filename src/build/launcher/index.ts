@@ -27,9 +27,7 @@ export {
   removeFirewall,
   resolveDomains,
   serializeAllowlist,
-  startIpsetRefresh,
   verifyFirewall,
-  watchAndReapply,
 } from "./firewall.js";
 export type { FirewallRuleDescriptor } from "./firewall.js";
 
