@@ -217,8 +217,8 @@ function mergeCronJobs(deployDir: string, compiled: CompiledFile): CompiledFile 
       ...compiled,
       content: JSON.stringify(merged, null, 2) + "\n",
     };
-  } catch {
-    // Can't parse existing — just use compiled version
+  } catch (err) {
+    console.warn(`[apply] Could not merge existing cron jobs, using compiled version: ${err instanceof Error ? err.message : String(err)}`);
     return compiled;
   }
 }
@@ -300,12 +300,12 @@ function protectCredentials(
 ): CompiledFile {
   const lines = file.content.split("\n");
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line || line.startsWith("#")) continue;
-    const eq = line.indexOf("=");
+    const rawLine = lines[i];
+    if (!rawLine.trim() || rawLine.trim().startsWith("#")) continue;
+    const eq = rawLine.indexOf("=");
     if (eq < 1) continue;
-    const key = line.slice(0, eq);
-    const newVal = line.slice(eq + 1);
+    const key = rawLine.slice(0, eq).trim();
+    const newVal = rawLine.slice(eq + 1);
     // If existing .env has a real value for this key, and the generated
     // value is also real (not a placeholder), replace with placeholder
     // so the merge preserves the existing value.

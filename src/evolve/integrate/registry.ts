@@ -26,7 +26,8 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "SMTP_USER", label: "SMTP username", secret: false },
       { key: "SMTP_PASS", label: "SMTP password", secret: true },
     ],
-    egressDomains: [],  // dynamic — depends on IMAP/SMTP host
+    egressDomains: [],
+    dynamicEgressEnvKeys: ["IMAP_HOST", "SMTP_HOST"],
     quirks: [
       "IMAP connections may drop silently — always re-check connection before batch operations",
       "Some providers rate-limit IMAP SEARCH — batch queries, avoid rapid-fire searches",
@@ -44,6 +45,7 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "CALDAV_PASS", label: "CalDAV password", secret: true },
     ],
     egressDomains: [],
+    dynamicEgressEnvKeys: ["CALDAV_URL"],
     quirks: [
       "CalDAV sync can lag 1-5 minutes — re-fetch before confirming availability",
       "Recurring event modifications require updating the entire series or creating an exception",
@@ -200,7 +202,8 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "HA_ENTITY_ALLOW", label: "Allowed entity prefixes (comma-separated, optional)", secret: false, defaultValue: "" },
       { key: "HA_ENTITY_DENY", label: "Denied entity prefixes (comma-separated, optional)", secret: false, defaultValue: "" },
     ],
-    egressDomains: [],  // dynamic — depends on HA_URL
+    egressDomains: [],
+    dynamicEgressEnvKeys: ["HA_URL"],
     quirks: [
       "Long-lived access tokens do not expire — but can be revoked from the HA UI",
       "Use HA_ENTITY_ALLOW/HA_ENTITY_DENY to restrict which entities the agent can control",

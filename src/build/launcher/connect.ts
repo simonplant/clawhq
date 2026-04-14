@@ -219,7 +219,7 @@ export async function connectChannel(options: ConnectOptions): Promise<ConnectRe
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     onProgress?.({ step: "recreate", status: "failed", message: `Container recreate failed: ${message}` });
-    return { success: false, channel, error: `Container recreate failed: ${message}` };
+    return { success: false, channel, error: `Container recreate failed: ${message}. Credentials were saved — retry with: clawhq restart` };
   }
 
   // Step 4: Wait for Gateway health
@@ -316,9 +316,11 @@ async function waitForChannelConnect(
 
   while (Date.now() - start < timeoutMs) {
     try {
+      const elapsed = Math.ceil((Date.now() - start) / 1000);
+      const lookback = `${Math.max(30, elapsed + 10)}s`;
       const { stdout } = await execFileAsync(
         "docker",
-        ["compose", "logs", "--no-color", "--since", "30s", "openclaw"],
+        ["compose", "logs", "--no-color", "--since", lookback, "openclaw"],
         { timeout: 5_000, cwd: engineDir },
       );
 

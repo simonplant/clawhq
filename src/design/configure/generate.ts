@@ -674,8 +674,9 @@ export function generateDelegatedRulesContent(blueprint: Blueprint): string | un
 export function generateAllowlistContent(
   blueprint: Blueprint,
   integrationNames: readonly string[] = [],
+  envVars?: Readonly<Record<string, string>>,
 ): string {
-  const integrationDomains = collectIntegrationDomains(integrationNames);
+  const integrationDomains = collectIntegrationDomains(integrationNames, envVars);
   const entries = buildAllowlistFromBlueprint(
     blueprint.security_posture.egress_domains,
     integrationDomains,

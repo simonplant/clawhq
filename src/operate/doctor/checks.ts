@@ -1682,12 +1682,22 @@ async function checkEgressDomainsCoverage(deployDir: string): Promise<DoctorChec
         .filter((k): k is string => !!k && !k.startsWith("#")),
     );
 
-    // Detect which integrations are configured by matching env key prefixes
+    // Parse env vars into a map for dynamic domain resolution
+    const envVarMap: Record<string, string> = {};
+    for (const line of envContent.split("\n")) {
+      const eqIdx = line.indexOf("=");
+      if (eqIdx > 0 && !line.startsWith("#")) {
+        envVarMap[line.slice(0, eqIdx).trim()] = line.slice(eqIdx + 1).trim();
+      }
+    }
+
+    // Detect which integrations are configured by matching env keys
     const configuredIntegrations: string[] = [];
     for (const [integrationName, def] of Object.entries(INTEGRATION_REGISTRY)) {
-      if (def.egressDomains.length === 0) continue; // skip integrations with no egress needs
-      const prefix = integrationName.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-      const hasKeys = def.envKeys.some((ek) => envKeys.has(`${prefix}_${ek.key.toUpperCase()}`));
+      const hasStaticDomains = def.egressDomains.length > 0;
+      const hasDynamicDomains = (def.dynamicEgressEnvKeys?.length ?? 0) > 0;
+      if (!hasStaticDomains && !hasDynamicDomains) continue;
+      const hasKeys = def.envKeys.some((ek) => envKeys.has(ek.key));
       if (hasKeys) {
         configuredIntegrations.push(integrationName);
       }
@@ -1697,8 +1707,8 @@ async function checkEgressDomainsCoverage(deployDir: string): Promise<DoctorChec
       return ok(name, "No integrations with egress requirements detected");
     }
 
-    // Collect required domains
-    const requiredDomains = collectIntegrationDomains(configuredIntegrations);
+    // Collect required domains (static + dynamic from env vars)
+    const requiredDomains = collectIntegrationDomains(configuredIntegrations, envVarMap);
 
     // Load current allowlist
     const allowlist = await loadAllowlist(deployDir);

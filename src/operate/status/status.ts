@@ -111,15 +111,17 @@ async function getContainerStatus(
 
     // docker compose ps --format json outputs one JSON object per line
     const lines = stdout.trim().split("\n");
-    const first = lines[0];
-    const svc = JSON.parse(first) as {
+    const containers = lines.filter(l => l.trim()).map(l => JSON.parse(l) as {
       Name?: string;
+      Service?: string;
       Image?: string;
       State?: string;
       Health?: string;
       RunningFor?: string;
       Status?: string;
-    };
+    });
+    const svc = containers.find(c => c.Name?.includes("openclaw") || c.Service?.includes("openclaw")) ?? containers[0];
+    if (!svc) return null;
 
     return {
       running: svc.State === "running",

@@ -7,7 +7,7 @@
  */
 
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
-import { chmod, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { build } from "../../build/docker/build.js";
@@ -79,8 +79,9 @@ export async function installTool(
   chmodSync(toolsDir, DIR_MODE_SECRET);
 
   const toolPath = join(toolsDir, name);
-  await writeFile(toolPath, content, "utf-8");
-  await chmod(toolPath, FILE_MODE_EXEC);
+  const tmpPath = toolPath + `.tmp.${Date.now()}`;
+  await writeFile(tmpPath, content, { encoding: "utf-8", mode: 0o755 });
+  await rename(tmpPath, toolPath);
 
   // Update manifest
   const entry: ToolManifestEntry = {
@@ -180,8 +181,9 @@ export async function addCustomTool(
   chmodSync(toolsDir, DIR_MODE_SECRET);
 
   const toolPath = join(toolsDir, name);
-  await writeFile(toolPath, content, "utf-8");
-  await chmod(toolPath, FILE_MODE_EXEC);
+  const tmpPath = toolPath + `.tmp.${Date.now()}`;
+  await writeFile(tmpPath, content, { encoding: "utf-8", mode: 0o755 });
+  await rename(tmpPath, toolPath);
 
   // Update manifest
   const entry: ToolManifestEntry = {

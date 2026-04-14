@@ -11,6 +11,8 @@ import ora from "ora";
 
 import { apply } from "../../evolve/apply/index.js";
 import type { ApplyProgress } from "../../evolve/apply/index.js";
+import { readCurrentPosture, getPostureConfig, DEFAULT_POSTURE } from "../../build/docker/index.js";
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import { CommandError } from "../errors.js";
 import { ensureInstalled } from "../ux.js";
@@ -107,7 +109,30 @@ export function registerApplyCommand(program: Command, defaultDeployDir: string)
             const { readEnvValue } = await import("../../secure/credentials/env-store.js");
             const gatewayToken = readEnvValue(join(opts.deployDir, "engine", ".env"), "OPENCLAW_GATEWAY_TOKEN") ?? "";
             const { restart } = await import("../../build/launcher/index.js");
-            const restartResult = await restart({ deployDir: opts.deployDir, gatewayToken });
+
+            const currentPosture = readCurrentPosture(opts.deployDir) ?? DEFAULT_POSTURE;
+            const postureConfig = getPostureConfig(currentPosture);
+
+            // Only pass runtime if runsc is actually available on this host
+            let runtime = postureConfig.runtime;
+            if (runtime === "runsc") {
+              try {
+                const { execFile: ef } = await import("node:child_process");
+                const { promisify: p } = await import("node:util");
+                await p(ef)("runsc", ["--version"], { timeout: 5000 });
+              } catch {
+                runtime = undefined;
+              }
+            }
+
+            const restartResult = await restart({
+              deployDir: opts.deployDir,
+              gatewayToken,
+              gatewayPort: GATEWAY_DEFAULT_PORT,
+              runtime,
+              autoFirewall: postureConfig.autoFirewall,
+              immutableIdentity: postureConfig.immutableIdentity,
+            });
             if (restartResult.success) {
               restartSpinner.succeed("Agent restarted");
             } else {

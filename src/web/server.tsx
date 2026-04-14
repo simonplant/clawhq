@@ -10,6 +10,7 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
+import { realpathSync } from "node:fs";
 
 import { Hono } from "hono";
 import { stringify as yamlStringify } from "yaml";
@@ -303,8 +304,15 @@ export function createApp(options: DashboardOptions): Hono {
         ? rawDeployDir.replace("~", homedir())
         : rawDeployDir;
       const resolvedDeployDir = resolve(tildeExpanded);
+      // Resolve symlinks to prevent path traversal via symlink chains
+      let realDeployDir: string;
+      try {
+        realDeployDir = realpathSync(resolvedDeployDir);
+      } catch {
+        realDeployDir = resolvedDeployDir; // Path doesn't exist yet — use resolved
+      }
       const home = homedir();
-      const rel = relative(home, resolvedDeployDir);
+      const rel = relative(home, realDeployDir);
       if (rel.startsWith("..") || isAbsolute(rel)) {
         return c.html(`<div class="error">Deploy directory must be within your home directory</div>`, 400);
       }

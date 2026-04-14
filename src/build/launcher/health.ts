@@ -68,8 +68,11 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
       // Gateway not ready yet — retry
     }
 
-    // Wait before retrying (exponential backoff capped at MAX_INTERVAL_MS)
-    await sleep(Math.min(interval, DEPLOY_HEALTH_MAX_INTERVAL_MS), options.signal);
+    // Wait before retrying (exponential backoff capped at MAX_INTERVAL_MS and remaining time)
+    const remaining = timeoutMs - (Date.now() - start);
+    if (remaining <= 0) break;
+    const sleepMs = Math.min(interval, remaining, DEPLOY_HEALTH_MAX_INTERVAL_MS);
+    await sleep(sleepMs, options.signal);
     interval = Math.min(interval * 1.5, DEPLOY_HEALTH_MAX_INTERVAL_MS);
   }
 

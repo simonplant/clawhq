@@ -243,6 +243,7 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
   const lines: string[] = [];
   const svc = compose.services.openclaw;
 
+  lines.push(`version: "${compose.version}"`, "");
   lines.push("services:", "  openclaw:");
   lines.push(`    image: ${svc.image}`);
   lines.push(`    user: "${svc.user}"`);

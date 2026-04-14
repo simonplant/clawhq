@@ -51,6 +51,12 @@ function sentinel(step: string): string {
 export function generateCloudInit(options: CloudInitOptions): string {
   const { name, blueprint, gatewayToken, trustMode, deployDir, healthCallbackUrl, sshPublicKey } = options;
 
+  // Validate trustMode if provided
+  const VALID_TRUST_MODES = ["paranoid", "zero-trust", "managed"] as const;
+  if (trustMode && !VALID_TRUST_MODES.includes(trustMode as any)) {
+    throw new Error(`Invalid trustMode: ${trustMode}. Must be one of: ${VALID_TRUST_MODES.join(", ")}`);
+  }
+
   // Escape single quotes for safe shell embedding
   const safeName = name.replace(/'/g, "'\\''");
   const safeBlueprint = blueprint?.replace(/'/g, "'\\''") ?? "";

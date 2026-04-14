@@ -24,6 +24,9 @@ export interface IntegrationDefinition {
   readonly envKeys: readonly IntegrationEnvKey[];
   /** Egress domains needed for firewall allowlist. */
   readonly egressDomains: readonly string[];
+  /** Env var keys whose values are hostnames/URLs to add to the egress allowlist dynamically.
+   *  Used for integrations where the domain depends on user config (e.g. IMAP_HOST, CALDAV_URL). */
+  readonly dynamicEgressEnvKeys?: readonly string[];
   /** Operational quirks — gotchas and tips for using this integration. */
   readonly quirks?: readonly string[];
 }

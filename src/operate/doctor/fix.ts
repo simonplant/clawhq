@@ -118,6 +118,24 @@ async function fixConfigLandmines(deployDir: string): Promise<FixResult> {
       fixes.push("LM-03: set trustedProxies to [172.17.0.1]");
     }
 
+    // LM-02/LM-03 nested: gateway.controlUi.allowedOrigins, gateway.trustedProxies
+    const gateway = config["gateway"] as Record<string, unknown> | undefined;
+    if (gateway) {
+      const controlUi = gateway["controlUi"] as Record<string, unknown> | undefined;
+      if (controlUi) {
+        const nestedOrigins = controlUi["allowedOrigins"];
+        if (Array.isArray(nestedOrigins) && nestedOrigins.length === 0) {
+          controlUi["allowedOrigins"] = [`http://localhost:${GATEWAY_DEFAULT_PORT}`];
+          fixes.push("LM-02: set gateway.controlUi.allowedOrigins");
+        }
+      }
+      const nestedProxies = gateway["trustedProxies"];
+      if (Array.isArray(nestedProxies) && nestedProxies.length === 0) {
+        gateway["trustedProxies"] = ["172.17.0.1"];
+        fixes.push("LM-03: set gateway.trustedProxies");
+      }
+    }
+
     // LM-04 & LM-05: tools.exec
     let tools = config["tools"] as Record<string, unknown> | undefined;
     if (!tools) {

@@ -199,8 +199,14 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
 
     return { success: true, rulesApplied, resolvedIps };
   } catch (err) {
+    // Roll back partial rules
+    try {
+      await removeFirewall(options.signal);
+    } catch {
+      // Cleanup is best-effort
+    }
     const message = err instanceof Error ? err.message : String(err);
-    return { success: false, rulesApplied: 0, error: `Firewall setup failed: ${message}` };
+    return { success: false, rulesApplied: 0, error: `Firewall setup failed (rolled back): ${message}` };
   }
 }
 
@@ -353,18 +359,57 @@ export function buildAllowlistFromBlueprint(
 }
 
 /**
+ * Extract hostname from a value that may be a plain hostname, a URL, or a host:port.
+ * Returns the hostname, or undefined if extraction fails.
+ */
+function extractHostname(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  // URL: parse and extract hostname
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try { return new URL(trimmed).hostname; } catch { return undefined; }
+  }
+  // host:port — take the host part
+  const colonIdx = trimmed.lastIndexOf(":");
+  if (colonIdx > 0) {
+    const maybePort = trimmed.slice(colonIdx + 1);
+    if (/^\d+$/.test(maybePort)) return trimmed.slice(0, colonIdx);
+  }
+  // Plain hostname
+  return trimmed;
+}
+
+/**
  * Collect egress domains for a set of configured integrations.
  *
  * Looks up each integration name in the registry and returns all
- * egressDomains they require. Unknown integration names are skipped.
+ * egressDomains they require. For integrations with dynamic domains
+ * (email, calendar, home assistant), resolves hostnames from envVars.
+ * Unknown integration names are skipped.
  */
-export function collectIntegrationDomains(integrationNames: readonly string[]): string[] {
+export function collectIntegrationDomains(
+  integrationNames: readonly string[],
+  envVars?: Readonly<Record<string, string>>,
+): string[] {
   const domains: string[] = [];
   for (const name of integrationNames) {
     const def = INTEGRATION_REGISTRY[name.toLowerCase()];
-    if (def) {
-      for (const d of def.egressDomains) {
-        domains.push(d);
+    if (!def) continue;
+
+    for (const d of def.egressDomains) {
+      domains.push(d);
+    }
+
+    // Resolve dynamic domains from env vars (e.g. IMAP_HOST → imap.mail.me.com)
+    if (def.dynamicEgressEnvKeys && envVars) {
+      for (const envKey of def.dynamicEgressEnvKeys) {
+        const val = envVars[envKey];
+        if (val) {
+          const host = extractHostname(val);
+          if (host && host !== "localhost" && host !== "127.0.0.1" && host !== "0.0.0.0") {
+            domains.push(host);
+          }
+        }
       }
     }
   }

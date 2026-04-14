@@ -458,7 +458,7 @@ function findAgentService(
 
 /** Extract `$VAR` or `${VAR}` references from a compose environment value. */
 function extractEnvRef(value: string): string | null {
-  const match = value.match(/^\$\{([^}:]+?)(?::.*?)?\}$|^\$([A-Z_][A-Z0-9_]*)$/);
+  const match = value.match(/^\$\{([^}:]+?)(?::.*?)?\}$|^\$([A-Za-z_][A-Za-z0-9_]*)$/);
   return match ? (match[1] ?? match[2] ?? null) : null;
 }
 

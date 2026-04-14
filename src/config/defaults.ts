@@ -277,8 +277,9 @@ export const CRED_PROXY_AUDIT_DIR = "/app/audit";
 
 // ── OpenClaw environment variable defaults (v0.8.6+) ────────────────────────
 
-/** Default WebSocket event caller timeout in milliseconds (was hardcoded 60s). */
-export const WEBSOCKET_EVENT_CALLER_TIMEOUT_MS = 60_000;
+/** Default WebSocket event caller timeout in milliseconds.
+ *  180s accommodates local Ollama cold start (5-30s) + inference (30-120s). */
+export const WEBSOCKET_EVENT_CALLER_TIMEOUT_MS = 180_000;
 
 /** Default for ENABLE_AUDIT_STDOUT — enable audit logging to stdout. */
 export const ENABLE_AUDIT_STDOUT = "true";

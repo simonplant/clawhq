@@ -568,7 +568,9 @@ describe("runMigration", () => {
 
     // Read merged cron jobs
     const mergedRaw = await readFile(join(deployDir, "cron", "jobs.json"), "utf-8");
-    const merged = JSON.parse(mergedRaw) as { id: string }[];
+    const envelope = JSON.parse(mergedRaw) as { version: number; jobs: { id: string }[] };
+    expect(envelope.version).toBe(1);
+    const merged = envelope.jobs;
 
     // Should contain both existing and imported jobs
     expect(merged.some((j) => j.id === "heartbeat")).toBe(true);

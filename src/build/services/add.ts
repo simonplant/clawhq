@@ -9,7 +9,7 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
@@ -71,6 +71,16 @@ export async function addService(options: ServiceAddOptions): Promise<ServiceAdd
 
   // Build service entry for compose
   const port = options.port ?? config.port;
+
+  // Check if port is already bound by another service
+  if (composeRaw.includes(`127.0.0.1:${port}:`)) {
+    return {
+      success: false,
+      service,
+      error: `Port ${port} is already in use by another service`,
+    };
+  }
+
   const serviceEntry: Record<string, unknown> = {
     image: config.image,
     restart: "unless-stopped",

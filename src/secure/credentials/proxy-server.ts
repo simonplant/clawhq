@@ -352,7 +352,7 @@ const server = http.createServer(async (req, res) => {
     });
 
     res.writeHead(502, { "content-type": "application/json" });
-    res.end(JSON.stringify({ error: "Upstream request failed", detail: err.message }));
+    res.end(JSON.stringify({ error: "Upstream request failed" }));
   }
 });
 

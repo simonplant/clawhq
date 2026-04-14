@@ -78,11 +78,11 @@ export function verifyCommandSignature(
     };
   }
 
-  if (ageMs < -30_000) {
+  if (createdAtMs > now + 30_000) {
     // Allow up to 30s clock skew into the future, reject beyond that
     return {
       valid: false,
-      reason: "Command timestamp is in the future",
+      reason: `Command timestamp is in the future (clock skew > 30s)`,
     };
   }
 

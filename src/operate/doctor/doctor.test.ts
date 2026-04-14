@@ -287,7 +287,7 @@ describe("checks", { timeout: 30_000 }, () => {
     // Write .env with anthropic credentials (prefix ANTHROPIC_)
     await writeFile(
       join(testDir, "engine", ".env"),
-      "ANTHROPIC_ANTHROPIC_API_KEY=sk-ant-test\n",
+      "ANTHROPIC_API_KEY=sk-ant-test\n",
     );
     await chmod(join(testDir, "engine", ".env"), 0o600);
 
@@ -308,7 +308,7 @@ describe("checks", { timeout: 30_000 }, () => {
     // Write .env with anthropic credentials
     await writeFile(
       join(testDir, "engine", ".env"),
-      "ANTHROPIC_ANTHROPIC_API_KEY=sk-ant-test\n",
+      "ANTHROPIC_API_KEY=sk-ant-test\n",
     );
     await chmod(join(testDir, "engine", ".env"), 0o600);
 

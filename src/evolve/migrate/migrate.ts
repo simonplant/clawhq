@@ -341,6 +341,8 @@ async function mergeCronJobs(
     const parsed: unknown = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       existingJobs = parsed as CronJobDefinition[];
+    } else if (parsed && typeof parsed === "object" && "jobs" in parsed && Array.isArray((parsed as Record<string, unknown>).jobs)) {
+      existingJobs = (parsed as Record<string, unknown>).jobs as CronJobDefinition[];
     }
   } catch (err) {
   }
@@ -352,7 +354,7 @@ async function mergeCronJobs(
     ...newJobs.filter((j) => !existingIds.has(j.id)),
   ];
 
-  await writeFile(jobsPath, JSON.stringify(mergedJobs, null, 2), "utf-8");
+  await writeFile(jobsPath, JSON.stringify({ version: 1, jobs: mergedJobs }, null, 2) + "\n", "utf-8");
 }
 
 // ── Failure Helper ───────────────────────────────────────────────────────────

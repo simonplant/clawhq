@@ -32,6 +32,7 @@ export function computeStage2Hash(config: Stage2Config): string {
     binaries: config.binaries.map((b) => ({ name: b.name, url: b.url, sha256: b.sha256 })),
     workspaceTools: [...config.workspaceTools].sort(),
     skills: [...config.skills].sort(),
+    enableOnePassword: config.enableOnePassword ?? false,
   });
   return createHash("sha256").update(data).digest("hex").slice(0, 16);
 }

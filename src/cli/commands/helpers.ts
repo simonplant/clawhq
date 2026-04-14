@@ -117,7 +117,7 @@ export function bundleToFiles(
     // Egress firewall allowlist (compiled from blueprint + integration domains)
     {
       relativePath: "ops/firewall/allowlist.yaml",
-      content: generateAllowlistContent(blueprint, integrationNames),
+      content: generateAllowlistContent(blueprint, integrationNames, bundle.envVars),
     },
     // Identity files (SOUL.md, AGENTS.md) — content from bundle, not regenerated
     ...bundle.identityFiles.map((f) => ({

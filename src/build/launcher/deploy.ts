@@ -101,7 +101,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     try {
       await execFileAsync(
         "sudo",
-        ["iptables", "-C", "INPUT", "-s", "172.16.0.0/12", "-p", "tcp", "--dport", "11434", "-j", "ACCEPT"],
+        ["iptables", "-C", "FORWARD", "-s", "172.16.0.0/12", "-p", "tcp", "--dport", "11434", "-j", "ACCEPT"],
         { timeout: 5000 },
       );
     } catch {
@@ -109,7 +109,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
       try {
         await execFileAsync(
           "sudo",
-          ["iptables", "-I", "INPUT", "-s", "172.16.0.0/12", "-p", "tcp", "--dport", "11434", "-j", "ACCEPT"],
+          ["iptables", "-I", "FORWARD", "-s", "172.16.0.0/12", "-p", "tcp", "--dport", "11434", "-j", "ACCEPT"],
           { timeout: 5000 },
         );
         report("compose-up", "done", "Ollama firewall rule applied");
