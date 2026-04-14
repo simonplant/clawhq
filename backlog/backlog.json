@@ -1379,6 +1379,95 @@
       "status": "todo",
       "readyForSprint": false,
       "track": "audit"
+    },
+    {
+      "id": "FEAT-171",
+      "title": "Workspace integrity compiler \u2014 immutable tools via Docker layer topology",
+      "intent": "The agent must not be able to modify its own tools, identity files, or security guardrails. Mutability policy must be enforced architecturally via Docker image layers and granular volume mounts, not by filesystem flags.",
+      "description": "Current state: the entire workspace is volume-mounted writable into the container. Tools, identity files, and the sanitizer are all modifiable by the agent at runtime. This contradicts the security architecture \u2014 identity files get chattr +i but tools have zero protection. An agent could rewrite sanitize to skip injection detection or modify email to exfiltrate data.\n\nSolution: a workspace manifest (compiled from blueprint) declares which paths are immutable (baked into Docker image layer), persistent (volume-mounted read-write), config (volume-mounted read-only), or ephemeral (tmpfs). The build module compiles this manifest into: (1) Dockerfile COPY instructions for immutable files, (2) docker-compose volume mounts per directory, (3) SHA256 integrity manifest baked into image, (4) startup verification script.\n\nThis replaces the current single workspace volume mount with granular per-directory mounts. Immutable files come from the read-only image layer. With read_only: true rootfs, there is no writable path to tool or identity files.\n\nReference: AD-06 in ARCHITECTURE.md. Pattern already proven by ClawWall sanitizer (baked into /opt/clawwall/ read-only image layer).",
+      "priority": "should",
+      "category": "security",
+      "steps": [
+        "Define WorkspaceManifest type in src/build/docker/types.ts \u2014 categories: immutable, persistent, config, ephemeral, each with glob patterns",
+        "Add generateWorkspaceManifest() to src/design/configure/generate.ts \u2014 derives manifest from blueprint (tools \u2192 immutable, memory \u2192 persistent, etc.)",
+        "Add stageImmutableFiles() to src/build/docker/build.ts \u2014 copies immutable workspace files from deployDir/workspace/ to engine/workspace/ (Docker build context)",
+        "Update generateStage2Dockerfile() in src/build/docker/dockerfile.ts \u2014 emit COPY instructions for staged immutable files",
+        "Add generateIntegrityManifest() to src/build/docker/integrity.ts \u2014 SHA256 of every immutable file, written to image at /opt/workspace-integrity.json",
+        "Update generateCompose() in src/build/docker/compose.ts \u2014 replace single workspace volume mount with per-directory mounts for persistent and config paths",
+        "Update serializeYaml() in src/build/docker/build.ts \u2014 serialize the new granular volume mounts",
+        "Add verifyWorkspaceIntegrity() to src/operate/doctor/checks.ts \u2014 doctor check that compares runtime files against integrity manifest",
+        "Update computeStage2Hash() in src/build/docker/cache.ts \u2014 include workspace manifest in hash",
+        "Update quickstart.ts and updater.ts to pass workspace manifest through build pipeline",
+        "Add workspace-integrity doctor check to the standard check suite",
+        "Update tests: build.test.ts, compose tests, doctor tests"
+      ],
+      "acceptanceCriteria": [
+        "Blueprint compilation produces a WorkspaceManifest with correct categorization of all workspace paths",
+        "clawhq build stages immutable files into engine/ and generates Dockerfile COPY instructions",
+        "Generated docker-compose.yml has individual volume mounts per persistent/config directory instead of single workspace mount",
+        "Immutable files (tools/*, identity/*, sanitize) come from read-only image layer \u2014 docker exec touch /workspace/tools/email returns read-only filesystem error",
+        "Persistent files (memory/*, state/*) are writable and survive container restart",
+        "Config files (config/*, USER.md) are mounted read-only \u2014 agent cannot modify",
+        "/opt/workspace-integrity.json exists in image with SHA256 of every immutable file",
+        "clawhq doctor verifies workspace integrity \u2014 detects tampering if image is built from modified source",
+        "Existing clawhq up/down/restart workflows work unchanged",
+        "All existing tests pass, new tests cover manifest generation, staging, compose output, and integrity verification"
+      ],
+      "scope": [
+        "src/build/docker/types.ts",
+        "src/build/docker/build.ts",
+        "src/build/docker/dockerfile.ts",
+        "src/build/docker/compose.ts",
+        "src/build/docker/cache.ts",
+        "src/build/docker/integrity.ts",
+        "src/design/configure/generate.ts",
+        "src/operate/doctor/checks.ts",
+        "src/cli/commands/build.ts",
+        "src/cli/commands/quickstart.ts",
+        "src/operate/updater/updater.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "track": "core"
+    },
+    {
+      "id": "FEAT-185",
+      "title": "Closed-loop deploy \u2014 verify every integration works before declaring healthy",
+      "intent": "Deploy should prove the agent can do its job, not just that the container started. Every bug we hit with Clawdius was invisible at deploy time \u2014 firewall silently dropping email, LLM timing out, cron jobs fighting over GPU. A verify step after deploy that tests every configured integration end-to-end catches these at deploy time instead of 3 hours later.",
+      "description": "Add a verify phase to the deploy pipeline (after health, before smoke test) that runs integration-specific probes through the running container. IMAP connect, SMTP connect, LLM generate (measures actual response time vs timeout budget), API auth checks, firewall passthrough verification. Uses existing credential probes (src/secure/credentials/probes.ts) and doctor checks, wired into the deploy orchestrator. Failed verifications are warnings (non-blocking) with actionable fix suggestions.",
+      "priority": "should",
+      "category": "build",
+      "steps": [
+        "Define VerifyResult type and per-integration verify functions",
+        "Wire existing credential probes (probeAnthropic, probeOpenAI, probeTelegram) into verify step",
+        "Add IMAP/SMTP connection test (TCP connect + auth handshake via himalaya or raw socket)",
+        "Add LLM response time test \u2014 generate a short response and measure latency vs WEBSOCKET_EVENT_CALLER_TIMEOUT",
+        "Add firewall passthrough test \u2014 verify allowlisted domains are reachable from inside container",
+        "Wire verify step into deploy.ts between health-verify and smoke-test",
+        "Format verify results as table (like doctor output) with fix suggestions for failures",
+        "Add --skip-verify flag for fast restarts",
+        "Add standalone clawhq verify command for post-deploy re-verification"
+      ],
+      "acceptanceCriteria": [
+        "clawhq up runs verify step after health check, before smoke test",
+        "Every configured integration with credentials gets a live probe",
+        "LLM response time is measured and compared to timeout budget",
+        "Failed verifications print actionable fix suggestions",
+        "Verify failures are warnings, not fatal \u2014 agent still starts",
+        "clawhq verify runs the same checks standalone",
+        "--skip-verify flag skips the step for fast restarts"
+      ],
+      "scope": [
+        "src/build/launcher/deploy.ts",
+        "src/build/launcher/verify.ts",
+        "src/secure/credentials/probes.ts",
+        "src/cli/commands/build.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "core"
     }
   ]
 }

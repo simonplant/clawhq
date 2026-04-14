@@ -545,10 +545,50 @@ Three security postures. Default is **hardened**.
 | Resource limits | None | 2 CPU / 2GB RAM | 1 CPU / 1GB RAM |
 | Runtime sandbox | None | gVisor (`runsc`) | gVisor (`runsc`) |
 | Identity files | Read-write | Read-only mount + immutable (`chattr +i`) | Read-only mount + immutable (`chattr +i`) |
+| Workspace tools | Writable | Immutable (baked into image) | Immutable (baked into image) |
 | Tailscale sidecar | No | Opt-in | Opt-in |
 | Health checks | 30s interval | 30s interval | 10s interval |
 
 > **Note:** `minimal` is for development only and should never be used in production. Blueprint defaults are `hardened`.
+
+### Workspace Integrity (AD-06)
+
+The agent workspace is a composite filesystem — some paths come from the read-only Docker image layer (immutable), others from individual volume mounts (mutable). A declarative **workspace manifest** controls which is which.
+
+**Principle:** The agent must not be able to modify its own tools, identity, or security guardrails. It must be able to write to memory, state, and work product. This is enforced architecturally via Docker layer/mount topology, not by policy flags.
+
+**Workspace manifest** (compiled from blueprint):
+
+```yaml
+workspace:
+  immutable:      # Baked into read-only image layer
+    - tools/*           # CLI wrappers (email, tasks, quote, etc.)
+    - identity/*        # SOUL.md, AGENTS.md, BOOTSTRAP.md
+    - sanitize          # ClawWall prompt injection filter
+    - TOOLS.md          # Tool documentation
+    - IDENTITY.md       # Identity documentation
+
+  persistent:     # Volume-mounted read-write, survives restart
+    - memory/*          # Hot/warm/cold agent memory
+    - state/*           # Runtime state files
+    - backlog/*         # Agent task tracking
+    - journal/*         # Agent journal entries
+
+  config:         # Volume-mounted read-only
+    - config/*          # Runtime configuration
+    - USER.md           # User profile (agent reads, ClawHQ writes)
+
+  ephemeral:      # tmpfs, gone on restart
+    - .cache/*          # Temporary caches
+```
+
+**Compilation output:**
+1. **Dockerfile COPY** — immutable files baked into image layer at `/home/node/.openclaw/workspace/`
+2. **Compose volume mounts** — one mount per persistent/config directory (NOT the whole workspace)
+3. **Integrity manifest** — SHA256 of every immutable file at `/opt/workspace-integrity.json`
+4. **Runtime verification** — startup check confirms immutable files match their checksums
+
+**Security guarantee:** With `read_only: true` rootfs and granular volume mounts, there is no writable path to tool or identity files. An agent that attempts to modify its own tools will receive a read-only filesystem error.
 
 ### Egress Firewall
 
