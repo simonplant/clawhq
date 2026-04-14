@@ -747,6 +747,14 @@ function renderOpenclawJson(
     cron: {
       enabled: true,
     },
+    // Pre-declare plugins so OpenClaw doesn't auto-enable and rewrite the config.
+    // Without this, OpenClaw detects the ollama model on startup, adds plugins,
+    // which triggers the config watcher → gateway restart loop every ~12 minutes.
+    plugins: {
+      entries: {
+        ...(isLocal ? { ollama: { enabled: true } } : {}),
+      },
+    },
     hooks: {
       internal: {
         enabled: true,
