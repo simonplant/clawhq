@@ -50,6 +50,7 @@ export type DeployStepName =
   | "identity-lock"
   | "firewall"
   | "health-verify"
+  | "verify"
   | "smoke-test";
 
 /** Status of a deploy step. */
@@ -79,6 +80,8 @@ export interface DeployOptions {
   readonly skipPreflight?: boolean;
   /** Skip firewall setup. */
   readonly skipFirewall?: boolean;
+  /** Skip post-deploy integration verification. */
+  readonly skipVerify?: boolean;
   /** Block ALL egress including DNS (air-gap mode). */
   readonly airGap?: boolean;
   /** OCI runtime (e.g. "runsc" for gVisor) — passed to preflight for runtime check. */

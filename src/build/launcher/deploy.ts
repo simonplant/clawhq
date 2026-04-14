@@ -2,7 +2,7 @@
  * Deploy orchestrator for `clawhq up / down / restart`.
  *
  * Coordinates the full deploy sequence:
- *   preflight → compose up → identity lock → firewall apply → health verify → smoke test
+ *   preflight → compose up → identity lock → firewall → health verify → integration verify → smoke test
  *
  * Every step reports progress via callback. AbortSignal threads through
  * the entire pipeline for clean cancellation. On failure, the user gets
@@ -19,6 +19,7 @@ import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
 import { applyFirewall, removeFirewall } from "./firewall.js";
 import { smokeTest, verifyHealth } from "./health.js";
 import { runPreflight } from "./preflight.js";
+import { formatVerifyReport, verifyIntegrations } from "./verify.js";
 import type {
   DeployOptions,
   DeployProgress,
@@ -209,7 +210,34 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
 
   report("health-verify", "done", `Agent reachable (${healthResult.attempts} attempt(s), ${healthResult.elapsedMs}ms)`);
 
-  // ── Step 6: Smoke Test ─────────────────────────────────────────────────
+  // ── Step 6: Integration Verify ───────────────────────────────────────
+
+  if (signal?.aborted) {
+    return aborted();
+  }
+
+  if (!options.skipVerify) {
+    report("verify", "running", "Verifying integrations work from container…");
+
+    const verifyReport = await verifyIntegrations({
+      deployDir,
+      signal,
+    });
+
+    if (verifyReport.checks.length === 0) {
+      report("verify", "skipped", "No integrations to verify");
+    } else if (verifyReport.healthy) {
+      report("verify", "done", `All ${verifyReport.passed} integrations verified`);
+    } else {
+      // Verification failures are warnings, not blockers — agent still runs
+      report("verify", "failed",
+        `${verifyReport.failed} of ${verifyReport.checks.length} checks failed:\n${formatVerifyReport(verifyReport)}`);
+    }
+  } else {
+    report("verify", "skipped", "Integration verification skipped (--skip-verify)");
+  }
+
+  // ── Step 7: Smoke Test ─────────────────────────────────────────────────
 
   if (signal?.aborted) {
     return aborted();

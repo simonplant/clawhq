@@ -34,6 +34,10 @@ export type { FirewallRuleDescriptor } from "./firewall.js";
 // Health
 export { smokeTest, verifyHealth } from "./health.js";
 
+// Post-deploy verification
+export { formatVerifyReport, verifyIntegrations } from "./verify.js";
+export type { VerifyCheckResult, VerifyOptions, VerifyReport } from "./verify.js";
+
 // Connect (channel setup)
 export {
   connectChannel,

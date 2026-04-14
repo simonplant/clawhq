@@ -65,6 +65,7 @@ function stepLabel(step: string): string {
     "compose-up": "[compose]",
     "firewall": "[firewall]",
     "health-verify": "[health]",
+    "verify": "[verify]",
     "smoke-test": "[smoke]",
   };
   return chalk.dim(labels[step] ?? `[${step}]`);

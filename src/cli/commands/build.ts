@@ -143,6 +143,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
     .option("-p, --port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
     .option("--skip-preflight", "Skip preflight checks")
     .option("--skip-firewall", "Skip egress firewall setup")
+    .option("--skip-verify", "Skip post-deploy integration verification")
     .option("--air-gap", "Air-gapped mode: block all egress traffic")
     .action(async (opts: {
       deployDir: string;
@@ -150,6 +151,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       port: string;
       skipPreflight?: boolean;
       skipFirewall?: boolean;
+      skipVerify?: boolean;
       airGap?: boolean;
     }) => {
       ensureInstalled(opts.deployDir);
@@ -197,6 +199,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           gatewayPort,
           skipPreflight: opts.skipPreflight,
           skipFirewall: opts.skipFirewall,
+          skipVerify: opts.skipVerify,
           airGap: opts.airGap || postureConfig.airGap,
           runtime,
           autoFirewall: postureConfig.autoFirewall,
@@ -262,6 +265,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
     .option("-p, --port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
     .option("--skip-preflight", "Skip preflight checks")
     .option("--skip-firewall", "Skip egress firewall setup")
+    .option("--skip-verify", "Skip post-deploy integration verification")
     .option("--air-gap", "Air-gapped mode: block all egress traffic")
     .action(async (opts: {
       deployDir: string;
@@ -269,6 +273,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       port: string;
       skipPreflight?: boolean;
       skipFirewall?: boolean;
+      skipVerify?: boolean;
       airGap?: boolean;
     }) => {
       ensureInstalled(opts.deployDir);
@@ -300,6 +305,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           gatewayPort,
           skipPreflight: opts.skipPreflight,
           skipFirewall: opts.skipFirewall,
+          skipVerify: opts.skipVerify,
           airGap: opts.airGap,
           onProgress,
           signal: ac.signal,
@@ -315,6 +321,34 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         }
       } finally {
         spinner.stop();
+      }
+    });
+
+  program
+    .command("verify")
+    .description("Verify all configured integrations work from inside the container")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .action(async (opts: { deployDir: string }) => {
+      ensureInstalled(opts.deployDir);
+      const { verifyIntegrations, formatVerifyReport } = await import("../../build/launcher/verify.js");
+
+      const spinner = ora("Verifying integrations…");
+      spinner.start();
+
+      try {
+        const report = await verifyIntegrations({ deployDir: opts.deployDir });
+        spinner.stop();
+
+        console.log(formatVerifyReport(report));
+
+        if (!report.healthy) {
+          throw new CommandError("", 1);
+        }
+      } catch (err) {
+        spinner.stop();
+        if (err instanceof CommandError) throw err;
+        console.error(renderError(err));
+        throw new CommandError("", 1);
       }
     });
 
