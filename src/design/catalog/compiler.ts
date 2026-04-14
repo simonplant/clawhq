@@ -705,6 +705,7 @@ function renderCronJobs(
 
     // Local: all jobs use the same model (no alias routing available)
     // Cloud: route by complexity (heartbeat=cheap, brief=mid, work=expensive)
+    const sessionTarget = isHeartbeat ? "isolated" : "main";
     jobs.push({
       id: id.replace(/_/g, "-"),
       kind: "cron",
@@ -718,7 +719,8 @@ function renderCronJobs(
       fallbacks: isLocal
         ? []
         : isHeartbeat ? ["sonnet"] : ["sonnet", "haiku"],
-      session: "main",
+      session: sessionTarget,
+      sessionTarget,
     });
   }
 
@@ -738,7 +740,8 @@ function renderCronJobs(
       delivery: "none",
       model: isLocal ? primary : "opus",
       fallbacks: isLocal ? [] : ["sonnet"],
-      session: "main",
+      session: "isolated",
+      sessionTarget: "isolated",
     });
   }
 

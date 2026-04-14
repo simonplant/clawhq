@@ -398,6 +398,7 @@ function buildCronJobs(blueprint: Blueprint, timezone?: string): CronJobDefiniti
         model: r?.model,
         fallbacks: r?.fallbacks,
         session: cron.session_target?.heartbeat ?? "isolated",
+        sessionTarget: cron.session_target?.heartbeat ?? "isolated",
         ...(isWaking && wakingActiveHours ? { activeHours: wakingActiveHours } : {}),
       });
     }
@@ -419,6 +420,7 @@ function buildCronJobs(blueprint: Blueprint, timezone?: string): CronJobDefiniti
         model: r?.model,
         fallbacks: r?.fallbacks,
         session: cron.session_target?.work_session ?? "main",
+        sessionTarget: cron.session_target?.work_session ?? "main",
         ...(isWaking && wakingActiveHours ? { activeHours: wakingActiveHours } : {}),
       });
     }
@@ -438,6 +440,7 @@ function buildCronJobs(blueprint: Blueprint, timezone?: string): CronJobDefiniti
       model: r?.model,
       fallbacks: r?.fallbacks,
       session: cron.session_target?.morning_brief ?? "main",
+      sessionTarget: cron.session_target?.morning_brief ?? "main",
     });
   }
 
@@ -459,6 +462,7 @@ function buildCronJobs(blueprint: Blueprint, timezone?: string): CronJobDefiniti
           model: r?.model,
           fallbacks: r?.fallbacks,
           session: "isolated",
+          sessionTarget: "isolated",
           ...(isWaking && wakingActiveHours ? { activeHours: wakingActiveHours } : {}),
         });
       }

@@ -307,6 +307,8 @@ export interface CronJobDefinition {
   readonly model?: string;
   readonly fallbacks?: readonly string[];
   readonly session?: "main" | "isolated";
+  /** OpenClaw-native session target. Required by the Gateway cron scheduler. */
+  readonly sessionTarget?: "main" | "isolated";
   readonly activeHours?: ActiveHours;
 }
 

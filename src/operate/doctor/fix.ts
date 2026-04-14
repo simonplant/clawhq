@@ -59,6 +59,7 @@ const fixers: Partial<Record<DoctorCheckName, Fixer>> = {
   "no-new-privileges": fixNoNewPrivileges,
   "user-uid": fixUserUid,
   "tool-access-grants": fixToolAccessGrants,
+  "cron-health": fixCronHealth,
 };
 
 /** Fix .env file permissions to 0600. */
@@ -219,6 +220,80 @@ async function fixToolAccessGrants(deployDir: string): Promise<FixResult> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { name, success: false, message: `Failed to fix tool access grants: ${msg}` };
+  }
+}
+
+/**
+ * Fix cron health issues: clear stale error state and add missing sessionTarget.
+ *
+ * Stale error state (lastRunStatus, lastError, consecutiveErrors) in jobs.json
+ * causes the OpenClaw cron scheduler to crash with "Cannot read properties of
+ * undefined (reading 'runningAtMs')" on startup. Missing sessionTarget causes
+ * job execution to crash with "Cannot read properties of undefined (reading 'startsWith')".
+ */
+async function fixCronHealth(deployDir: string): Promise<FixResult> {
+  const name: DoctorCheckName = "cron-health";
+  const cronPath = join(deployDir, "cron", "jobs.json");
+
+  try {
+    const raw = await readFile(cronPath, "utf-8");
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+    // Handle both bare array and {version, jobs} wrapper
+    const isWrapped = !Array.isArray(parsed) && Array.isArray(parsed.jobs);
+    const jobs: Array<Record<string, unknown>> = isWrapped
+      ? (parsed.jobs as Array<Record<string, unknown>>)
+      : Array.isArray(parsed)
+        ? (parsed as Array<Record<string, unknown>>)
+        : [];
+
+    const fixes: string[] = [];
+
+    for (const job of jobs) {
+      const id = typeof job.id === "string" ? job.id : "unknown";
+      const state = job.state as Record<string, unknown> | undefined;
+
+      // Clear stale error state that crashes the scheduler
+      if (state) {
+        const staleKeys = ["lastRunStatus", "lastStatus", "lastError", "consecutiveErrors", "lastDurationMs", "lastDeliveryStatus", "lastRunAtMs"];
+        let cleared = false;
+        for (const key of staleKeys) {
+          if (key in state) {
+            delete state[key];
+            cleared = true;
+          }
+        }
+        if (cleared) fixes.push(`${id}: cleared stale error state`);
+      }
+
+      // Ensure state object exists
+      if (!job.state) {
+        job.state = {};
+        fixes.push(`${id}: created empty state`);
+      }
+
+      // Add missing sessionTarget
+      if (!job.sessionTarget) {
+        const payload = job.payload as Record<string, unknown> | undefined;
+        const kind = typeof payload?.kind === "string" ? payload.kind : "";
+        job.sessionTarget = kind === "systemEvent" ? "main" : "isolated";
+        fixes.push(`${id}: added sessionTarget="${job.sessionTarget}"`);
+      }
+    }
+
+    if (fixes.length === 0) {
+      return { name, success: true, message: "No cron health fixes needed" };
+    }
+
+    // Write back, preserving the wrapper format
+    const backupPath = cronPath + ".bak";
+    await copyFile(cronPath, backupPath);
+    const output = isWrapped ? parsed : jobs;
+    await writeFile(cronPath, JSON.stringify(output, null, 2) + "\n", "utf-8");
+    return { name, success: true, message: `Fixed ${fixes.length} issue(s): ${fixes.join("; ")}` };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { name, success: false, message: `Failed to fix cron health: ${msg}` };
   }
 }
 

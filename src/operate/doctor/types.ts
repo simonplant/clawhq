@@ -22,6 +22,7 @@ export type DoctorCheckName =
   | "user-uid"
   | "identity-size"
   | "cron-syntax"
+  | "cron-health"
   | "env-vars"
   | "firewall-active"
   | "workspace-exists"

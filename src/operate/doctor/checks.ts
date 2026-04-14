@@ -133,6 +133,7 @@ export async function runChecks(
     checkUserUid(deployDir, signal),
     checkIdentitySize(deployDir),
     checkCronSyntax(deployDir),
+    checkCronHealth(deployDir),
     checkEnvVars(deployDir),
     checkFirewallActive(deployDir, signal),
     checkWorkspaceExists(deployDir),
@@ -590,12 +591,18 @@ async function checkCronSyntax(deployDir: string): Promise<DoctorCheckResult> {
 
   try {
     const raw = await readFile(cronPath, "utf-8");
-    const jobs = JSON.parse(raw) as Array<{ id: string; kind: string; expr?: string }>;
+    const parsed = JSON.parse(raw);
+    // Handle both bare array and {version, jobs} wrapper (OpenClaw native format)
+    const jobs: Array<{ id: string; kind?: string; expr?: string; schedule?: { kind?: string; expr?: string } }> =
+      Array.isArray(parsed) ? parsed : Array.isArray(parsed?.jobs) ? parsed.jobs : [];
 
     const invalid: string[] = [];
     for (const job of jobs) {
-      if (job.kind !== "cron" || !job.expr) continue;
-      const errors = validateCronExpr(job.expr);
+      // Support both ClawHQ format (kind/expr at top level) and OpenClaw format (schedule.kind/schedule.expr)
+      const kind = job.kind ?? job.schedule?.kind;
+      const expr = job.expr ?? job.schedule?.expr;
+      if (kind !== "cron" || !expr) continue;
+      const errors = validateCronExpr(expr);
       if (errors.length > 0) {
         invalid.push(`${job.id}: ${errors.join(", ")}`);
       }
@@ -610,6 +617,63 @@ async function checkCronSyntax(deployDir: string): Promise<DoctorCheckResult> {
       );
     }
     return ok(name, `All ${jobs.length} cron job(s) have valid syntax`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("ENOENT")) {
+      return ok(name, "No cron jobs configured (optional)", "info");
+    }
+    return fail(name, "warning", `Cannot read cron jobs: ${msg}`);
+  }
+}
+
+/**
+ * Cron health — detect stale state data and missing sessionTarget that crash the Gateway scheduler.
+ *
+ * The OpenClaw cron scheduler crashes on startup if job state contains error fields from
+ * a previous run (TypeError: Cannot read properties of undefined). It also crashes during
+ * job execution if sessionTarget is missing (undefined.startsWith() error).
+ */
+async function checkCronHealth(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "cron-health";
+  const cronPath = join(deployDir, "cron", "jobs.json");
+
+  try {
+    const raw = await readFile(cronPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    const jobs: Array<Record<string, unknown>> =
+      Array.isArray(parsed) ? parsed : Array.isArray(parsed?.jobs) ? parsed.jobs : [];
+
+    if (jobs.length === 0) {
+      return ok(name, "No cron jobs configured", "info");
+    }
+
+    const issues: string[] = [];
+
+    for (const job of jobs) {
+      const id = typeof job.id === "string" ? job.id : "unknown";
+      const state = job.state as Record<string, unknown> | undefined;
+
+      // Stale error state crashes the scheduler on startup
+      if (state && (state.lastRunStatus === "error" || state.lastError || state.consecutiveErrors)) {
+        issues.push(`${id}: stale error state will crash cron scheduler on restart`);
+      }
+
+      // Missing sessionTarget crashes job execution with undefined.startsWith()
+      if (!job.sessionTarget) {
+        issues.push(`${id}: missing sessionTarget — job execution will crash`);
+      }
+    }
+
+    if (issues.length > 0) {
+      return fail(
+        name,
+        "error",
+        `Cron health issues: ${issues.join("; ")}`,
+        "Run: clawhq doctor --fix",
+        true,
+      );
+    }
+    return ok(name, `All ${jobs.length} cron job(s) healthy`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("ENOENT")) {

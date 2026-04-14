@@ -205,6 +205,21 @@ function forwardRequest(route, req, bodyBuffer, injectedHeaders) {
     };
 
     const upstream = mod.request(opts, (res) => {
+      // Follow 3xx redirects within the same upstream domain (re-inject auth)
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume(); // drain response
+        try {
+          const loc = new URL(res.headers.location, upstreamUrl.href);
+          if (loc.hostname === upstreamUrl.hostname) {
+            // Same domain redirect — follow with auth preserved
+            const redirectReq = Object.assign({}, req, {
+              url: route.pathPrefix + loc.pathname + loc.search,
+            });
+            resolve(forwardRequest(route, redirectReq, bodyBuffer, injectedHeaders));
+            return;
+          }
+        } catch { /* invalid URL — fall through to return the redirect */ }
+      }
       const chunks = [];
       res.on("data", (c) => chunks.push(c));
       res.on("end", () => {

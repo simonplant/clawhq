@@ -83,16 +83,21 @@ async function writeValidEnv(): Promise<void> {
 
 /** Write valid cron jobs. */
 async function writeValidCron(): Promise<void> {
-  const jobs = [
-    {
-      id: "heartbeat",
-      kind: "cron",
-      expr: "0-59/10 5-23 * * *",
-      task: "Run heartbeat",
-      enabled: true,
-    },
-  ];
-  await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(jobs, null, 2));
+  const store = {
+    version: 1,
+    jobs: [
+      {
+        id: "heartbeat",
+        kind: "cron",
+        expr: "0-59/10 5-23 * * *",
+        task: "Run heartbeat",
+        enabled: true,
+        sessionTarget: "isolated",
+        state: {},
+      },
+    ],
+  };
+  await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(store, null, 2));
 }
 
 /** Write identity files. */
@@ -321,7 +326,7 @@ describe("checks", { timeout: 30_000 }, () => {
 
   it("runs all checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(30);
+    expect(checks.length).toBe(31);
   });
 });
 
@@ -337,7 +342,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(30);
+    expect(report.checks.length).toBe(31);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -808,7 +813,7 @@ services:
 
   it("runs all 30 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(30);
+    expect(checks.length).toBe(31);
   });
 });
 
