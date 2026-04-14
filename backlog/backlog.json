@@ -918,6 +918,84 @@
       "status": "todo",
       "readyForSprint": true,
       "track": "E"
+    },
+    {
+      "id": "FEAT-168",
+      "title": "Wizard multi-account email collection — agent email vs personal email",
+      "intent": "People commonly have 4-10 email addresses. The wizard must collect credentials for at least two: one for the agent, one for the person. Current wizard collects a single set of email credentials.",
+      "description": "collectIntegrations() in wizard.ts collects one credential set per integration domain. For email, it needs to support multiple accounts (e.g. agent iCloud + personal Fastmail). Today this works by accident because iCloud uses himalaya TOML config and Fastmail uses cred-proxy env var, so they don't collide. A third email or second IMAP provider would break. The wizard should ask how many email accounts, collect creds for each with a label (agent/personal/work), and store them namespaced.",
+      "priority": "should",
+      "category": "design",
+      "steps": [
+        "Extend wizard collectIntegrations() to loop for multi-account domains (email, calendar)",
+        "Add account labeling (agent/personal/work) to credential collection",
+        "Namespace env vars or config entries per account to prevent collisions",
+        "Update generate.ts to emit namespaced credentials",
+        "Update config-file.ts to support nested account structure in clawhq.yaml",
+        "Test with 2 IMAP providers (would currently collide on IMAP_HOST etc.)"
+      ],
+      "acceptanceCriteria": [
+        "Wizard collects credentials for 2+ email accounts without collision",
+        "Each account has a label visible in clawhq status",
+        "Adding a third email provider doesn't overwrite existing credentials",
+        "Backwards-compatible with existing single-account deployments"
+      ],
+      "scope": [
+        "src/design/configure/wizard.ts",
+        "src/design/configure/generate.ts",
+        "src/design/configure/config-file.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-169",
+      "title": "BOOTSTRAP.md should health-check optional tools, not just required",
+      "intent": "Optional tools like email-fastmail are deployed but never verified on startup. If they break, the agent silently loses a capability. The agent should know when an optional tool is degraded.",
+      "description": "renderBootstrap() in compiler.ts only generates health checks for tools marked required: true. Optional tools should get a separate check section that reports degradation without blocking startup. The agent should note which optional tools are healthy vs unavailable.",
+      "priority": "should",
+      "category": "design",
+      "steps": [
+        "In renderBootstrap(), add a second section for optional tool checks",
+        "Optional tool failures should log a warning, not block startup",
+        "Agent should report optional tool status in session greeting or heartbeat",
+        "Update BOOTSTRAP.md template to include both sections"
+      ],
+      "acceptanceCriteria": [
+        "Optional tools are checked on startup",
+        "Failed optional tool is reported as degraded, not fatal",
+        "Agent can list which optional tools are available vs unavailable"
+      ],
+      "scope": [
+        "src/design/catalog/compiler.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-170",
+      "title": "Egress allowlist must include Fastmail JMAP domains",
+      "intent": "When the egress firewall is enabled, email-fastmail will be blocked because api.fastmail.com and www.fastmailusercontent.com are not in the allowlist. The allowlist was generated for Gmail/iCloud but not Fastmail.",
+      "description": "The deployed allowlist.yaml includes imap.gmail.com/smtp.gmail.com and caldav.icloud.com but not Fastmail JMAP domains. The firewall chain isn't currently active so this doesn't bite yet, but enabling it would break Fastmail email. buildAllowlistFromBlueprint() in firewall.ts should pull egress domains from all configured providers, not just the primary email integration.",
+      "priority": "should",
+      "category": "secure",
+      "steps": [
+        "Ensure allowlist generation includes egress domains for ALL configured providers",
+        "For life-ops profile: add api.fastmail.com and www.fastmailusercontent.com",
+        "Verify collectIntegrationDomains() in firewall.ts picks up fastmail-jmap provider",
+        "Add test: profile with 2 email providers produces allowlist with both sets of domains"
+      ],
+      "acceptanceCriteria": [
+        "Enabling egress firewall does not break email-fastmail JMAP connectivity",
+        "allowlist.yaml includes domains for all configured providers",
+        "clawhq doctor warns if a deployed tool's egress domains are missing from allowlist"
+      ],
+      "scope": [
+        "src/build/launcher/firewall.ts",
+        "src/design/catalog/compiler.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true
     }
   ]
 }
