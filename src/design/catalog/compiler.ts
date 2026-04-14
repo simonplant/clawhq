@@ -400,7 +400,60 @@ This is a security tool — never skip it for external content.`,
 Append-only daily entries. Good for reflection prompts and progress tracking.`,
 
   quote: `Usage: \`quote <symbol>\` | \`quote <symbol1> <symbol2> ...\`
-Output: JSON. ~15-minute delay. No auth needed. For real-time data, a dedicated market data provider is needed.`,
+Output: JSON. ~15-minute delay. No auth needed. For real-time data, use \`tradier quote\`.`,
+
+  x: `X/Twitter read-only intelligence scanner via X API v2.
+Usage: \`x scan [--channel CH]\` — intelligence scan: run watchlist, surface new items
+  \`x tweets <handle> [--limit N]\` — user timeline (default: 10)
+  \`x user <handle>\` — profile info + stats
+  \`x tweet <id>\` — single tweet + thread context
+  \`x search <query> [--limit N]\` — search recent tweets (7-day window, budget-limited)
+  \`x mentions <handle> [--limit N]\` — tweets mentioning a user (uses search budget)
+  \`x watchlist\` — show current watchlist config
+  \`x check\` — verify bearer token works
+Options: \`--json\` for structured output, \`--quiet\` for scripting.
+Output: Text or JSON. All content sanitized through ClawWall.
+Budget-limited: search and mentions consume API quota — prefer \`scan\` for routine monitoring.`,
+
+  substack: `Substack newsletter reader.
+Usage: \`substack latest <publication>\` — get latest posts (JSON)
+  \`substack search <publication> <query>\` — search posts in a publication (JSON)
+  \`substack read <publication> <slug>\` — read a specific post (JSON)
+Publication aliases loaded from config/substack-aliases.json (e.g. "mancini" → "tradecompanion").
+Output: JSON. All content sanitized through ClawWall.`,
+
+  tradier: `Tradier brokerage API — real-time trading via credential proxy.
+Usage: \`tradier account\` — account info (equity, cash, buying power)
+  \`tradier positions\` — list open positions
+  \`tradier orders\` — list recent orders
+  \`tradier orders place <side> <qty> <symbol> [type] [price]\` — place order
+  \`tradier orders cancel <order_id>\` | \`tradier orders cancel-all\`
+  \`tradier bracket <side> <qty> <symbol> <limit> <stop> <target>\` — OTOCO bracket order
+  \`tradier quote <symbol> [symbol...]\` — real-time quote (bid/ask/last)
+  \`tradier bars <symbol> [interval] [days]\` — historical bars
+Sides: buy, sell, sell_short, buy_to_cover. Types: market, limit, stop, stop_limit.
+High-stakes: ALL order commands require explicit user approval. Never place trades autonomously.`,
+
+  "trade-journal": `Three-pot paper trading experiment tracker.
+Usage: \`trade-journal init\` — initialize portfolio ($100K, 3 pots)
+  \`trade-journal log <pot> <side> <qty> <symbol> [--price N] [--notes '...'] [--execute]\`
+  \`trade-journal close <pot> <symbol> [--qty N] [--price N] [--notes '...'] [--execute]\`
+  \`trade-journal mark\` — EOD mark-to-market all positions
+  \`trade-journal summary [pot]\` — P&L summary
+  \`trade-journal compare\` — pot-vs-pot-vs-SPY comparison
+  \`trade-journal positions [pot]\` — open positions
+  \`trade-journal reconcile\` — reconcile vs Tradier positions
+  \`trade-journal halt <pot> <reason>\` | \`trade-journal unhalt <pot>\`
+Pots: A (Clawdius System), B (Mirror DP), C (Mirror Mancini).
+\`--execute\` also places the order on Tradier — requires approval.`,
+
+  "dp-brief": `Parse DP/Inner Circle AM Call transcriptions into structured trading briefs.
+Usage: \`dp-brief\` — read from stdin (paste transcription, Ctrl+D)
+  \`dp-brief --file FILE\` — read from file
+  \`dp-brief --json\` — machine-readable JSON output
+Extracts: market bias, DP's positions, key levels, analyst calls, catalysts.
+Handles Dropbox speech-to-text errors (e.g. "queues" → QQQ, garbled prices).
+Reference: DP.md for David Prince's methodology and signal mapping.`,
 
   "email-fastmail": `FastMail JMAP email — Simon's personal email account (simon@simonplant.com).
 Usage: \`email-fastmail inbox\` | \`email-fastmail all [--limit N]\` | \`email-fastmail read <id>\`
@@ -430,6 +483,8 @@ function renderTools(profile: MissionProfile): string {
   lines.push("These tools are on your PATH. Use them for their designated purpose.");
   lines.push("All tools produce structured JSON output. All external content must be piped through `sanitize`.\n");
 
+  const missingUsageNotes: string[] = [];
+
   // Group by category
   const byCategory = new Map<string, ProfileTool[]>();
   for (const tool of profile.tools) {
@@ -450,8 +505,18 @@ function renderTools(profile: MissionProfile): string {
         lines.push("```");
         lines.push(notes);
         lines.push("```\n");
+      } else {
+        missingUsageNotes.push(tool.name);
       }
     }
+  }
+
+  if (missingUsageNotes.length > 0) {
+    throw new Error(
+      `TOOL_USAGE_NOTES missing for: ${missingUsageNotes.join(", ")}. ` +
+      `Agent cannot use tools without usage docs in TOOLS.md. ` +
+      `Add entries to TOOL_USAGE_NOTES in compiler.ts.`,
+    );
   }
 
   // Always document sanitize even if not in profile tools
