@@ -37,7 +37,7 @@ _init_check_prereqs() {
 }
 
 # Detect project name, validation command, and existing docs.
-# Sets outer-scope locals: project_name, validate_cmd, prd_found, arch_found, claude_md
+# Sets outer-scope locals: project_name, core_cmd, prd_found, arch_found, claude_md
 _init_detect_project() {
     local auto_yes="${1:-false}"
 
@@ -63,46 +63,48 @@ _init_detect_project() {
 
     echo ""
 
-    # ── Validation command ──
-    log_subheader "Step 3/6 — Validation"
-    echo "  After each sprint, aishore runs a command to verify the code works."
-    echo "  Examples: 'npm run build', 'cargo test', 'make check'"
+    # ── Core command ──
+    log_subheader "Step 3/6 — Core Command"
+    echo "  aishore verifies your project's core works — the product doing its primary thing."
+    echo "  This gates the sprint queue: if the core breaks, only fix items are pickable."
+    echo "  Examples: 'npm run build && node -e \"require(\\\"./dist\\\")\"', 'cargo build && ./target/debug/myapp --help'"
+    echo "  Leave empty to configure later (the architect agent can propose one)."
     echo ""
 
-    local detected_validate=""
+    local detected_core=""
     if [[ -f "$PROJECT_ROOT/package.json" ]]; then
         if command -v jq &>/dev/null; then
             local npm_script
             npm_script=$(jq -r '.scripts // {} | if .check then "check" elif .build and .test then "build+test" elif .build then "build" elif .test then "test" else empty end' "$PROJECT_ROOT/package.json" 2>/dev/null || true)
             case "$npm_script" in
-                check)      detected_validate="npm run check" ;;
-                build+test) detected_validate="npm run build && npm test" ;;
-                build)      detected_validate="npm run build" ;;
-                test)       detected_validate="npm test" ;;
+                check)      detected_core="npm run check" ;;
+                build+test) detected_core="npm run build && npm test" ;;
+                build)      detected_core="npm run build" ;;
+                test)       detected_core="npm test" ;;
             esac
         fi
     elif [[ -f "$PROJECT_ROOT/Cargo.toml" ]]; then
-        detected_validate="cargo test"
+        detected_core="cargo build"
     elif [[ -f "$PROJECT_ROOT/Makefile" ]]; then
-        detected_validate="make test"
+        detected_core="make build"
     elif [[ -f "$PROJECT_ROOT/pyproject.toml" || -f "$PROJECT_ROOT/setup.py" ]]; then
-        detected_validate="python -m pytest"
+        detected_core="python -m pytest"
     elif [[ -f "$PROJECT_ROOT/go.mod" ]]; then
-        detected_validate="go test ./..."
+        detected_core="go build ./..."
     fi
 
     if [[ "$auto_yes" == "true" ]]; then
-        validate_cmd="${detected_validate:-}"
-        if [[ -n "$validate_cmd" ]]; then
-            log_info "Validation command: $validate_cmd"
+        core_cmd="${detected_core:-}"
+        if [[ -n "$core_cmd" ]]; then
+            log_info "Core command: $core_cmd"
         else
-            log_info "No validation command detected — skipping"
+            log_info "No core command detected — skipping (configure later or run scaffold)"
         fi
-    elif [[ -n "$detected_validate" ]]; then
-        read -r -p "  Validation command [$detected_validate]: " validate_cmd
-        validate_cmd="${validate_cmd:-$detected_validate}"
+    elif [[ -n "$detected_core" ]]; then
+        read -r -p "  Core command [$detected_core]: " core_cmd
+        core_cmd="${core_cmd:-$detected_core}"
     else
-        read -r -p "  Validation command (or leave empty to skip): " validate_cmd
+        read -r -p "  Core command (or leave empty to skip): " core_cmd
     fi
 
     echo ""
@@ -139,7 +141,7 @@ _init_detect_project() {
 }
 
 # Create directories, config, backlogs, templates, .gitignore, CLAUDE.md.
-# Uses outer-scope locals: project_name, validate_cmd, claude_md, reinit, prd_found, arch_found
+# Uses outer-scope locals: project_name, core_cmd, claude_md, reinit, prd_found, arch_found
 # Sets outer-scope locals: product_path, arch_path
 _init_scaffold_files() {
     log_subheader "Step 5/6 — Scaffolding"
@@ -150,18 +152,14 @@ _init_scaffold_files() {
     # Write config.yaml
     # Escape sed metacharacters in user input (| is the delimiter, & and \ are special)
     _sed_escape() { sed 's:[&\\|]:\\&:g'; }
-    local project_name_safe validate_cmd_safe
+    local project_name_safe core_cmd_safe
     project_name_safe=$(printf '%s' "$project_name" | _sed_escape)
-    validate_cmd_safe=$(printf '%s' "$validate_cmd" | _sed_escape)
+    core_cmd_safe=$(printf '%s' "$core_cmd" | _sed_escape)
 
-    if [[ ! -f "$CONFIG_FILE" || "$reinit" == true ]]; then
-        sed -e "s|\\\$PROJECT_NAME|$project_name_safe|g" \
-            -e "s|\\\$VALIDATE_CMD|$validate_cmd_safe|g" \
-            "$AISHORE_ROOT/templates/config.yaml.tmpl" > "$CONFIG_FILE"
-        log_success "Wrote .aishore/config.yaml"
-    else
-        log_info "Kept existing .aishore/config.yaml"
-    fi
+    sed -e "s|\\\$PROJECT_NAME|$project_name_safe|g" \
+        -e "s|\\\$CORE_CMD|$core_cmd_safe|g" \
+        "$AISHORE_ROOT/templates/config.yaml.tmpl" > "$CONFIG_FILE"
+    log_success "Wrote .aishore/config.yaml"
 
     # Create backlogs (never overwrite existing)
     if [[ ! -f "$BACKLOG_DIR/backlog.json" ]]; then
@@ -295,7 +293,7 @@ cmd_init() {
     fi
 
     # Shared state across init steps
-    local project_name="" validate_cmd="" prd_found="" claude_md=""
+    local project_name="" core_cmd="" prd_found="" claude_md=""
     local arch_found="" product_path="" arch_path=""
 
     _init_check_prereqs
@@ -309,7 +307,7 @@ cmd_init() {
     echo ""
 
     echo "  Project:       $project_name"
-    echo "  Validation:    ${validate_cmd:-<none>}"
+    echo "  Core command:  ${core_cmd:-<none>}"
     echo "  CLAUDE.md:     ${claude_md:-<not found>}"
     echo "  PRODUCT.md:    ${product_path:-<not found>}"
     echo "  ARCHITECTURE:  ${arch_path:-<not found>}"

@@ -198,7 +198,7 @@ export function registerQuickstartCommand(program: Command): void {
       // Read the generated gateway token from .env
       const { readEnvValue } = await import("../../secure/credentials/env-store.js");
       const envPath = join(deployDir, "engine", ".env");
-      const gatewayToken = readEnvValue(envPath, "GATEWAY_TOKEN") ?? "";
+      const gatewayToken = readEnvValue(envPath, "OPENCLAW_GATEWAY_TOKEN") ?? "";
 
       if (!gatewayToken) {
         spinner.fail(`${phase("deploy")} No gateway token found in .env`);

@@ -401,6 +401,26 @@ Append-only daily entries. Good for reflection prompts and progress tracking.`,
 
   quote: `Usage: \`quote <symbol>\` | \`quote <symbol1> <symbol2> ...\`
 Output: JSON. ~15-minute delay. No auth needed. For real-time data, a dedicated market data provider is needed.`,
+
+  "email-fastmail": `FastMail JMAP email — Simon's personal email account (simon@simonplant.com).
+Usage: \`email-fastmail inbox\` | \`email-fastmail all [--limit N]\` | \`email-fastmail read <id>\`
+  \`email-fastmail triage [--limit N]\` — smart triage with priority + action recommendations
+  \`email-fastmail thread <id> [--last N]\` — read full conversation thread
+  \`email-fastmail search <query> [--from ADDR] [--subject TEXT] [--since DATE] [--has-attachment]\`
+  \`email-fastmail send <to> <subject> [--cc ...] [--bcc ...]\` — compose (reads body from stdin)
+  \`email-fastmail reply <id>\` | \`email-fastmail reply-all <id>\` | \`email-fastmail forward <id> <to>\`
+  \`email-fastmail draft <to> <subject>\` | \`email-fastmail draft-reply <id>\` | \`email-fastmail send-draft <id>\`
+  \`email-fastmail archive <id ...>\` | \`email-fastmail delete <id ...>\` | \`email-fastmail mark-read <id ...>\`
+  \`email-fastmail move <id> <folder>\` | \`email-fastmail label <id> <keyword>\` | \`email-fastmail unlabel <id> <keyword>\`
+  \`email-fastmail folders\` | \`email-fastmail attachments <id>\` | \`email-fastmail download <id> <part_id>\`
+  \`email-fastmail batch\` — read batch JSON from stdin: [{"action":"archive|delete|label|mark-read","ids":[...]}]
+  \`email-fastmail followup add <id> [--due DATE]\` | \`email-fastmail followup list\` | \`email-fastmail followup done <id>\`
+  \`email-fastmail contacts list\` | \`email-fastmail contacts find <query>\` | \`email-fastmail contacts add <email> <name>\`
+  \`email-fastmail audit [--last N]\` | \`email-fastmail audit-summary\`
+Output: Structured text. All inbound content sanitized through ClawWall.
+This is the USER's personal email — distinct from \`email\` (agent's iCloud account).
+High-stakes: \`send\`, \`reply\`, \`reply-all\`, \`forward\` require approval unless delegated.
+Use \`--delegated <category>\` for pre-approved send categories (e.g. unsubscribe, vendor-reply).`,
 };
 
 function renderTools(profile: MissionProfile): string {

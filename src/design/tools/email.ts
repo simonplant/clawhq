@@ -53,7 +53,7 @@ shift 2>/dev/null || true
 
 case "$cmd" in
   inbox)
-    "$HIMALAYA" envelope list --output json --filter "not flag seen" "$@" | _sanitize
+    "$HIMALAYA" envelope list --output json "$@" -- not flag seen | _sanitize
     ;;
   all)
     "$HIMALAYA" envelope list --output json "$@" | _sanitize
@@ -86,7 +86,7 @@ case "$cmd" in
     jq -n --arg id "$1" '{status:"deleted",id:$id}'
     ;;
   search)
-    "$HIMALAYA" envelope list --output json --filter "subject $*" | _sanitize
+    "$HIMALAYA" envelope list --output json -- subject "$*" | _sanitize
     ;;
   folders)
     "$HIMALAYA" folder list --output json "$@" | _sanitize

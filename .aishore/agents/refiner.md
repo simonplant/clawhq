@@ -34,11 +34,12 @@ Before asking anything:
 Ask questions in this order, **skipping areas that are already well-covered** in PRODUCT.md:
 
 1. **Vision & purpose** — What problem does this solve? Who cares? Why now? What's the alternative if this doesn't exist?
-2. **Target users** — Specific personas, their workflows, their pain points. "Developers" is too broad — what kind? What are they doing when they reach for this tool?
-3. **Core capabilities** — For each listed feature, drill into: What does it actually do? What does success look like? What are the edge cases? What's the failure mode?
-4. **Non-goals & boundaries** — What is explicitly out of scope? What should this NOT do? (Prevents scope creep in sprints)
-5. **Technical constraints** — Existing tech stack, deployment targets, performance requirements, dependencies
-6. **Priority ordering** — Of the features listed, what's MVP vs. nice-to-have? If you could only ship three things, which three?
+2. **Working core** — What is the ONE thing this product does? Describe the primary end-to-end path: from the user's first action to the system's first real output. This becomes the core definition that gates all feature work. (e.g., "User opens the app, sees their items list, data comes from a real API backed by a real database.")
+3. **Target users** — Specific personas, their workflows, their pain points. "Developers" is too broad — what kind? What are they doing when they reach for this tool?
+4. **Core capabilities** — For each listed feature, drill into: What does it actually do? What does success look like? What are the edge cases? What's the failure mode?
+5. **Non-goals & boundaries** — What is explicitly out of scope? What should this NOT do? (Prevents scope creep in sprints)
+6. **Technical constraints** — Existing tech stack, deployment targets, performance requirements, dependencies
+7. **Priority ordering** — Of the features listed, what's MVP vs. nice-to-have? If you could only ship three things, which three?
 
 ### Interview Rules
 
@@ -62,6 +63,7 @@ After the interview (or when the user says "done"):
 ### What to Look For
 
 Common gaps in product docs that cause sprint failures:
+- **Missing core definition:** no clear statement of the primary end-to-end path. Without this, the groomer can't assign tracks and the architect can't generate CORE_CMD. The machine doesn't know what to build first.
 - **Vague outcomes:** "improve performance" (what metric? what target?)
 - **Missing boundaries:** features described without limits (what's NOT included?)
 - **Implicit assumptions:** "users can log in" (with what? OAuth? email/password? SSO?)

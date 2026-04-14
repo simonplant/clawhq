@@ -61,6 +61,33 @@ _status_output() {
     done
     log_info "$ready_total/$total items ready for sprint"
 
+    # --- Core health ---
+    if [[ -n "$CORE_CMD" ]]; then
+        echo ""
+        log_subheader "Core health"
+        local core_tmpfile
+        core_tmpfile="$(ensure_tmpdir)/status_core_check.txt"
+        if run_timed_command "$CORE_CMD" "$core_tmpfile"; then
+            rm -f "$core_tmpfile"
+            log_success "Core: healthy ($CORE_CMD)"
+        else
+            rm -f "$core_tmpfile"
+            log_error "Core: FAILING ($CORE_CMD)"
+            # Count core vs feature items
+            local core_ready=0 feature_ready=0
+            for f in "${BACKLOG_FILES[@]}"; do
+                [[ -f "$BACKLOG_DIR/$f" ]] || continue
+                local _cr _fr
+                _cr=$(jq '[.items[] | select(.readyForSprint == true and (.status == "todo" or .status == null) and (.track // "feature") == "core")] | length' "$BACKLOG_DIR/$f" 2>/dev/null || echo 0)
+                _fr=$(jq '[.items[] | select(.readyForSprint == true and (.status == "todo" or .status == null) and (.track // "feature") == "feature")] | length' "$BACKLOG_DIR/$f" 2>/dev/null || echo 0)
+                core_ready=$((core_ready + _cr))
+                feature_ready=$((feature_ready + _fr))
+            done
+            echo "  Core items:    $core_ready ready"
+            echo "  Feature items: $feature_ready ready (blocked until core passes)"
+        fi
+    fi
+
     # --- Currently running ---
     local sprint_file="$BACKLOG_DIR/sprint.json"
     if [[ -f "$sprint_file" ]]; then
@@ -102,5 +129,6 @@ _status_output() {
 
 cmd_status() {
     require_tool jq
+    load_config
     _status_output
 }

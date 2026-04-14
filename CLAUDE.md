@@ -221,12 +221,15 @@ src/
 
 <!-- This section is managed by aishore and will be overwritten on `aishore update`. -->
 <!-- Customizations here will be lost. Add project-specific instructions above this section. -->
+
+<!-- This section is managed by aishore and will be overwritten on `aishore update`. -->
+<!-- Customizations here will be lost. Add project-specific instructions above this section. -->
 ## Sprint Orchestration (aishore)
 
 This project uses aishore for autonomous sprint execution. Backlog lives in `backlog/`, tool lives in `.aishore/`.
 
 **Agent rules (mandatory):**
-- **All changes go through ClawHQ.** Never directly edit files in an OpenClaw deployment (workspace, .env, config, tools). If the task requires changing the running agent and ClawHQ lacks the command, implement the ClawHQ capability first, then use it. No exceptions.
+- **Core before features.** The working core — the primary end-to-end path — must pass before feature work proceeds. Check the item's `track` field: `core` items build the foundation; `feature` items decorate it.
 - **Intent is the north star.** Every item has a commander's intent field. When steps or AC are ambiguous, follow intent.
 - **Prove it runs.** Wire code to real entry points. If the build command exists, run it. If a verify command exists, execute it. Working code that's reachable beats tested code that's isolated.
 - **No mocks or stubs** in production code unless the item explicitly requests them.
@@ -236,7 +239,7 @@ This project uses aishore for autonomous sprint execution. Backlog lives in `bac
 ```bash
 .aishore/aishore run [N|ID|scope]    # Run sprints (scope: done, p0, p1, p2)
 .aishore/aishore groom              # Groom backlog items
-.aishore/aishore scaffold           # Detect fragment risk
+.aishore/aishore scaffold           # Establish working core, detect fragment risk
 .aishore/aishore review             # Architecture review
 .aishore/aishore status             # Backlog overview
 ```

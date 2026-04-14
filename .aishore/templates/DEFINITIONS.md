@@ -20,10 +20,10 @@ An item is done when:
 | # | Criteria              | Description                                        |
 |---|-----------------------|----------------------------------------------------|
 | 1 | **Code Complete**     | Implementation matches acceptance criteria         |
-| 2 | **Tests Pass**        | All tests pass (existing + new)                   |
-| 3 | **Validation Pass**   | Type-check, lint, tests all pass                  |
-| 4 | **AC Verified**       | Each AC met (verify commands pass, validator confirms) |
-| 5 | **No Regressions**    | Regression suite passes (prior sprints' guarantees hold) |
+| 2 | **Verify Commands Pass** | All AC verify commands pass — synthetic transactions proving real behavior |
+| 3 | **Validator Confirms** | Validator agent confirms intent fulfilled |
+| 4 | **No Regressions**    | Regression suite passes (prior sprints' guarantees hold) |
+| 5 | **Core Intact**       | Working core still passes after merge (if `CORE_CMD` configured) |
 
 ## Priority Levels
 
@@ -66,6 +66,7 @@ Write it like an order, not a description. State the outcome, not the implementa
   "description": "Full description — what to build, context, scope boundaries",
   "priority": "should",
   "category": "core",
+  "track": "core",
   "steps": ["Step 1", "Step 2"],
   "acceptanceCriteria": [
     "Plain string AC (validated by judgment)",
@@ -89,6 +90,7 @@ Write it like an order, not a description. State the outcome, not the implementa
 | `description` | string | User / groom agent | Full context and scope boundaries |
 | `priority` | string | User / groom agent | `must` \| `should` \| `could` \| `future` |
 | `category` | string | User / groom agent | Arbitrary tag for filtering (e.g., `api`, `docs`) |
+| `track` | string | Groom agent / CLI | `"core"` \| `"feature"` (default: `"feature"`). Core items build the primary end-to-end path. Feature items are gated on `CORE_CMD` passing. |
 | `steps` | string[] | User / groom agent | Implementation steps |
 | `acceptanceCriteria` | (string \| object)[] | User / groom agent | Plain strings or `{text, verify}` objects. `verify` is a shell command (an eval) |
 | `scope` | string[] | User / groom agent | File glob patterns constraining where changes should land |
@@ -102,6 +104,7 @@ Write it like an order, not a description. State the outcome, not the implementa
 | `lastFailReason` | string | Orchestrator | Reason for most recent sprint failure |
 | `lastFailAt` | string | Orchestrator | ISO timestamp of most recent failure |
 | `failCount` | integer | Orchestrator | Number of sprint failures |
+| `healSource` | string | Orchestrator | (Heal items only) ID of the original item whose regression triggered this heal item |
 
 ## Executable AC (Verify Commands)
 

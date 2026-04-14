@@ -7,7 +7,7 @@
 # Read commands (list, show, check, rm) remain in cmd-backlog-read.sh.
 
 # Known item fields — anything not in this list is rejected.
-readonly _ITEM_FIELDS="title intent description priority category steps acceptanceCriteria scope dependsOn readyForSprint type"
+readonly _ITEM_FIELDS="title intent description priority category track steps acceptanceCriteria scope dependsOn readyForSprint type"
 
 # Validate that a JSON object contains only known fields.
 # Prints unknown field names to stderr and returns 1 if any found.
@@ -106,6 +106,7 @@ cmd_backlog_add() {
             intent: ($input.intent // null),
             description: ($input.description // ""),
             priority: ($input.priority // "should"),
+            track: ($input.track // "feature"),
             category: ($input.category // null),
             steps: (if ($input.steps // null | type) == "array" then $input.steps else [] end),
             acceptanceCriteria: (if ($input.acceptanceCriteria // null | type) == "array" then $input.acceptanceCriteria else [] end),
@@ -223,12 +224,12 @@ cmd_backlog_edit() {
     unknown=$(echo "$raw_json" | jq -r '
         ["title","intent","description","priority","category","steps",
          "acceptanceCriteria","scope","dependsOn","readyForSprint",
-         "status","groomedAt","groomingNotes"] as $allowed |
+         "status","track","groomedAt","groomingNotes"] as $allowed |
         keys | map(select(. as $k | $allowed | index($k) | not)) | .[]
     ')
     if [[ -n "$unknown" ]]; then
         log_error "Unknown fields: $unknown"
-        log_error "Allowed fields for edit: title, intent, description, priority, category, steps, acceptanceCriteria, scope, dependsOn, readyForSprint, status, groomedAt, groomingNotes"
+        log_error "Allowed fields for edit: title, intent, description, priority, category, track, steps, acceptanceCriteria, scope, dependsOn, readyForSprint, status, groomedAt, groomingNotes"
         return 1
     fi
 

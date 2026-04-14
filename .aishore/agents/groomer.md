@@ -46,16 +46,23 @@ For each item, ensure:
   - **Rule of thumb:** if the verify command uses `grep` on a file that goes through a build step, it's wrong. Test the behavior, not the text.
 - Set `readyForSprint` only when the item meets all checklist gates
 
-## Scaffolding Awareness
+## Track Assignment & Core Awareness
 
-Before marking feature items ready, check whether they depend on skeleton infrastructure that hasn't been built yet. If a feature assumes a working build pipeline, wired entry point, or other infrastructure that doesn't exist in the codebase, do NOT mark it ready — add a grooming note explaining what scaffolding is missing and leave `readyForSprint` false. The architect is responsible for creating scaffolding items via `aishore scaffold`, but you are the gate that prevents features from sprinting before their skeleton exists.
+Every backlog item has a `track` field: `"core"` or `"feature"` (default: `"feature"`). The orchestrator gates feature items on `CORE_CMD` passing — features cannot pick until the working core is verified.
+
+**The architect is the track authority** — it sets initial track assignments via `scaffold`. You preserve and validate those assignments during grooming. Your responsibilities:
+
+1. **Preserve tracks** — if the architect has already assigned a `track`, do not override it. If a new item has no track and you're confident it belongs on core (it builds the primary end-to-end path), assign it. When in doubt, leave it as `feature` (the default) and flag for the architect.
+2. **Gate feature readiness on core** — before marking feature items ready, check: do core-track items exist and are they complete? If the core hasn't been built yet, feature items should not be marked `readyForSprint` — add a grooming note explaining that core work must complete first.
+3. **Flag misassigned tracks** — if a feature item looks like it should be core (it wires up the primary entry point) or a core item looks like a feature (it adds search filtering), note it in grooming notes for the architect to review. Only correct obvious misassignments.
 
 Watch for these signals during grooming:
-- Features at `must` priority but no scaffolding items that wire up the skeleton they depend on
-- Items that assume infrastructure that hasn't been wired up yet
-- A backlog full of feature items but no items that prove the system runs end-to-end
+- A backlog full of feature items but no core-track items
+- Feature items at `must` priority that assume infrastructure the core hasn't established
+- Items that assume the system runs end-to-end when no `CORE_CMD` exists or passes
+- Core items that are actually features (they decorate, not build the primary path)
 
-If you see these gaps, note them in grooming notes.
+If you see these gaps, note them in grooming notes and flag for the architect (`aishore scaffold`).
 
 ---
 
@@ -96,25 +103,27 @@ Each item must be completable in a single sprint — one focused change. If you 
 
 **Split by user value, not by technical layer.** "Add user registration" -> "User can create account with email" + "User can verify email address" + "User can reset forgotten password" — each delivers independent value.
 
-### Scaffolding First — Skeleton Before Features
+### Working Core First — Core Before Features
 
-The number one failure mode in AI-driven sprints: 50 features get implemented as isolated fragments, all tests pass (mocked), and then nobody can prove the system actually works.
+The number one failure mode in AI-driven sprints: 50 features get implemented as isolated fragments, each with mocked unit tests that pass, and then nobody can prove the system actually works. Features built on a dead frame.
 
-**Before generating feature items, generate scaffolding items that wire up the top-down skeleton:**
+**Before generating feature items, generate core-track items that establish the working core:**
 
-1. **Identify the primary user journey** — the critical path from first user action to first real output
-2. **Generate scaffolding items** that wire up each step end-to-end, connecting real infrastructure — not mocks. Each scaffolding item should produce a working, runnable increment.
-3. **Then generate feature items** that fill in the skeleton with real behavior.
+1. **Read the core definition** in PRODUCT.md — what is the primary end-to-end path?
+2. **Generate core-track items** (`track: "core"`) that wire up each step of the core path end-to-end, connecting real infrastructure — not mocks. Each core item should produce a working, runnable increment toward the core.
+3. **Generate a CORE_CMD item** — the last core item establishes the verification command that proves the core works.
+4. **Then generate feature-track items** (`track: "feature"`) that decorate the core with real behavior. These are automatically gated — they won't pick until `CORE_CMD` passes.
 
-Scaffolding items should be:
+Core-track items should be:
 - Priority `must` — they block all feature work
-- Focused on proving the system turns on, not on feature completeness
+- Track `core` — the orchestrator enforces the gate
+- Focused on proving the system does its primary thing, not on feature completeness
 - Connecting real dependencies, not mocks
 
 ### Process
 1. Read the product requirements document thoroughly — understand the vision, not just the feature list
 2. Check the existing backlog (`.aishore/aishore backlog list`) to avoid duplicates
-3. **Identify the primary user journey** and generate scaffolding items first (see above)
+3. **Identify the primary user journey** and generate core-track items first (see above)
 4. Decompose the remaining product vision into concrete, right-sized feature items
 5. Add each item using the CLI (see example below)
 6. Do NOT edit JSON files directly — use only CLI commands

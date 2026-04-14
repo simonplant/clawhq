@@ -10,7 +10,7 @@ Autonomous sprint orchestration for Claude Code. You write a backlog with intent
 .aishore/aishore run done                   # Drain the backlog autonomously
 ```
 
-Each item needs **intent** (what must be true when done), **steps**, and **executable AC** (verify commands that prove behavior). The verify commands compound into a regression suite — every future sprint proves prior work still holds.
+Each item has a **track** (`core` or `feature`), **intent** (what must be true when done), **steps**, and **executable AC** (verify commands that prove behavior). Core-track items build the primary end-to-end path; feature-track items are blocked until the core passes (`CORE_CMD`). The verify commands compound into a regression suite — every future sprint proves prior work still holds.
 
 ## Commands
 
@@ -19,7 +19,7 @@ Each item needs **intent** (what must be true when done), **steps**, and **execu
 .aishore/aishore backlog populate            # Create items from PRODUCT.md
 .aishore/aishore backlog add --json '{...}'   # Add item manually
 .aishore/aishore groom                       # Groom backlog items
-.aishore/aishore scaffold                    # Detect fragment risk
+.aishore/aishore scaffold                    # Establish working core, detect fragment risk
 .aishore/aishore review [--update-docs]      # Architecture review
 .aishore/aishore status                      # Backlog overview
 .aishore/aishore clean                       # Archive done items

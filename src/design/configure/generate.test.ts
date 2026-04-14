@@ -67,7 +67,7 @@ describe("generateBundle", () => {
     const bundle = generateBundle(makeAnswers());
     const fs = bundle.openclawConfig.tools?.fs;
     expect(fs).toBeDefined();
-    expect(fs!.workspaceOnly).toBe(false);
+    expect(fs!.workspaceOnly).toBe(true);
   });
 
   it("sets LM-06: container user to 1000:1000", () => {

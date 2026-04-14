@@ -81,10 +81,12 @@ ARCHIVE_DIR="$BACKLOG_DIR/archive"
 MODEL_PRIMARY="claude-opus-4-6"
 MODEL_FAST="claude-sonnet-4-6"
 AGENT_TIMEOUT="3600"
-VALIDATE_CMD=""
-VALIDATE_TIMEOUT="120"
+CORE_CMD=""
+CORE_TIMEOUT="120"
+CORE_HEALTHY=true
 SETUP_CMD=""
 FIX_CMD=""
+DEVELOPER_CMD=""
 NOTIFY_CMD=""
 AUTO_GROOM_THRESHOLD="3"
 AUTO_MAX_FAILURES="5"
@@ -149,16 +151,18 @@ PERMS_REFINER="AskUserQuestion,Edit,Write,Read,Glob,Grep"
 
 # Shared constants (hardcoded — not configurable)
 readonly BACKLOG_FILES=("backlog.json" "bugs.json")
-ITEM_PROJECTION='{id, title, intent, description, steps, acceptanceCriteria, priority, scope, category, status: (.status // "todo"), passes: (.passes // false)}'
+ITEM_PROJECTION='{id, title, intent, description, steps, acceptanceCriteria, priority, scope, category, track: (.track // "feature"), status: (.status // "todo"), passes: (.passes // false)}'
 # Shared jq function for priority ordering — used inline via string interpolation
 JQ_PRIO_RANK='def prio_rank: {"must":0,"should":1,"could":2}[.] // 3;'
 # Shared jq filter for pickable items — used by pick_item() and list_pickable_ids()
-# Expects $skip (JSON array of IDs to skip) and $done_ids (JSON array of completed IDs)
+# Expects $skip (JSON array of IDs to skip), $done_ids (JSON array of completed IDs),
+# and $core_healthy ("true"/"false") for track gating
 PICKABLE_ITEMS_FILTER='[.items[] |
             select(.readyForSprint == true and (.passes == false or .passes == null) and (.status == "todo" or .status == null)) |
             select(.intent != null and .intent != "" and (.intent | length) >= 20) |
             select(.id as $id | $skip | index($id) | not) |
-            select(.dependsOn == null or (.dependsOn | length == 0) or (.id as $self | .dependsOn | all(. != $self) and all(. as $dep | $done_ids | index($dep) != null)))]'
+            select(.dependsOn == null or (.dependsOn | length == 0) or (.id as $self | .dependsOn | all(. != $self) and all(. as $dep | $done_ids | index($dep) != null))) |
+            select($core_healthy == "true" or (.track // "feature") == "core")]'
 
 # ============================================================================
 # COLORS & LOGGING (inlined from common.sh)
@@ -322,13 +326,13 @@ truncate_output() {
 }
 
 # Run a command with optional timeout, capturing output to a file.
-# Usage: run_validated_command <command_string> <output_file>
+# Usage: run_timed_command <command_string> <output_file>
 # Returns: 0 on success, 1 on failure. Output is written to output_file.
-run_validated_command() {
+run_timed_command() {
     local cmd="$1"
     local outfile="$2"
     if [[ -n "$TIMEOUT_CMD" ]]; then
-        "$TIMEOUT_CMD" "$VALIDATE_TIMEOUT" bash -c "$cmd" >"$outfile" 2>&1
+        "$TIMEOUT_CMD" "$CORE_TIMEOUT" bash -c "$cmd" >"$outfile" 2>&1
     else
         bash -c "$cmd" >"$outfile" 2>&1
     fi
@@ -560,10 +564,13 @@ load_config() {
 
     if command -v yq &> /dev/null; then
         local -a _cfg_map=(
-            ".validation.command    VALIDATE_CMD"
-            ".validation.timeout    VALIDATE_TIMEOUT"
+            ".validation.command    CORE_CMD"
+            ".validation.timeout    CORE_TIMEOUT"
+            ".core.command          CORE_CMD"
+            ".core.timeout          CORE_TIMEOUT"
             ".setup.command         SETUP_CMD"
             ".fix.command           FIX_CMD"
+            ".developer.command    DEVELOPER_CMD"
             ".models.primary        MODEL_PRIMARY"
             ".models.fast           MODEL_FAST"
             ".agent.timeout         AGENT_TIMEOUT"
@@ -591,13 +598,13 @@ load_config() {
             [[ -n "$cfg_val" ]] && printf -v "$_var" '%s' "$cfg_val"
         done
     else
-        # Simple grep fallback for validation command only
+        # Simple grep fallback for core command only
         local cfg_cmd
         cfg_cmd=$(grep -E '^\s*command:' "$CONFIG_FILE" 2>/dev/null | head -1 | sed 's/.*command:\s*//' | tr -d '"' || echo "")
-        [[ -n "$cfg_cmd" ]] && VALIDATE_CMD="$cfg_cmd"
+        [[ -n "$cfg_cmd" ]] && CORE_CMD="$cfg_cmd"
         # Always warn when config.yaml has content but yq is unavailable
         if grep -qE '[^[:space:]]' "$CONFIG_FILE" 2>/dev/null; then
-            log_warning "config.yaml exists but yq is not installed — most settings in ${CONFIG_FILE} are being ignored (only validation.command is read via fallback). yq is a lightweight YAML processor. Install it for full config support: https://github.com/mikefarah/yq#install"
+            log_warning "config.yaml exists but yq is not installed — most settings in ${CONFIG_FILE} are being ignored (only core.command is read via fallback). yq is a lightweight YAML processor. Install it for full config support: https://github.com/mikefarah/yq#install"
         fi
     fi
 
@@ -618,8 +625,11 @@ _apply_env_overrides() {
         "AISHORE_MODEL_PRIMARY      MODEL_PRIMARY"
         "AISHORE_MODEL_FAST         MODEL_FAST"
         "AISHORE_AGENT_TIMEOUT      AGENT_TIMEOUT"
-        "AISHORE_VALIDATE_CMD       VALIDATE_CMD"
-        "AISHORE_VALIDATE_TIMEOUT   VALIDATE_TIMEOUT"
+        "AISHORE_VALIDATE_CMD       CORE_CMD"
+        "AISHORE_VALIDATE_TIMEOUT   CORE_TIMEOUT"
+        "AISHORE_CORE_CMD           CORE_CMD"
+        "AISHORE_CORE_TIMEOUT       CORE_TIMEOUT"
+        "AISHORE_DEVELOPER_CMD      DEVELOPER_CMD"
         "AISHORE_SETUP_CMD          SETUP_CMD"
         "AISHORE_FIX_CMD            FIX_CMD"
         "AISHORE_NOTIFY_CMD         NOTIFY_CMD"
@@ -745,7 +755,7 @@ pick_item() {
         local backlog="$1"
         [[ -f "$BACKLOG_DIR/$backlog" ]] || return 0
         local candidates
-        candidates=$(jq -r --argjson skip "$skip_json" --argjson done_ids "$done_ids_json" --arg src "$backlog" '
+        candidates=$(jq -r --argjson skip "$skip_json" --argjson done_ids "$done_ids_json" --arg core_healthy "$CORE_HEALTHY" --arg src "$backlog" '
             '"$PICKABLE_ITEMS_FILTER"' |
             [.[] | '"$ITEM_PROJECTION"' + {_source: $src}]
         ' "$BACKLOG_DIR/$backlog" 2>/dev/null || echo "[]")
@@ -756,7 +766,7 @@ pick_item() {
     # Pick highest priority across all files
     local best
     best=$(printf '%s\n' "$all_candidates" | jq -r "$JQ_PRIO_RANK"'
-        sort_by(.priority // "should" | prio_rank) | first // empty
+        sort_by([(if .category == "heal" then 0 else 1 end), (.priority // "should" | prio_rank)]) | first // empty
     ' 2>/dev/null)
 
     if [[ -n "$best" && "$best" != "null" ]]; then
@@ -1010,7 +1020,7 @@ list_pickable_ids() {
     : > "$_lpi_tmp"
     _list_pickable_one() {
         local backlog="$1"
-        jq -r --argjson skip "$skip_json" --argjson done_ids "$done_ids_json" --argjson prios "$prio_json" "$JQ_PRIO_RANK"'
+        jq -r --argjson skip "$skip_json" --argjson done_ids "$done_ids_json" --arg core_healthy "$CORE_HEALTHY" --argjson prios "$prio_json" "$JQ_PRIO_RANK"'
             '"$PICKABLE_ITEMS_FILTER"' |
             [.[] | select(($prios | length) == 0 or (.priority // "should") as $p | $prios | index($p) != null)] |
             .[] | (.priority // "should" | prio_rank | tostring) + "\t" + .id
@@ -1075,6 +1085,59 @@ add_item() {
         return 1
     }
     mv "$tmp" "$BACKLOG_DIR/$file"
+}
+
+# Synthesize a heal item from a core regression.
+# Creates a BUG item with track:core, priority:must, category:heal.
+# Guard: never creates a heal from a heal (returns 1 to signal circuit breaker).
+# Returns 0 on success (prints new item ID), 1 on guard/failure.
+_synthesize_heal_item() {
+    local causing_item_id="$1"
+    local core_output="$2"
+
+    # Guard: never heal a heal
+    local causing_heal_source
+    causing_heal_source=$(jq -r --arg id "$causing_item_id" '.items[] | select(.id == $id) | .healSource // ""' "$BACKLOG_DIR/bugs.json" 2>/dev/null || echo "")
+    if [[ -n "$causing_heal_source" ]]; then
+        log_warning "Heal item $causing_item_id itself caused a core regression — removing it"
+        remove_item "bugs.json" "$causing_item_id" 2>/dev/null || true
+        return 1
+    fi
+
+    local heal_id
+    heal_id=$(next_id "BUG")
+    local heal_title="Heal: core regression after $causing_item_id"
+    local heal_intent="Restore core functionality — CORE_CMD must pass again. The merge of $causing_item_id broke the core. Diagnose the regression, fix the code, and verify the core works end-to-end."
+
+    local tmp
+    tmp="$(ensure_tmpdir)/heal_item.json"
+    jq --arg id "$heal_id" \
+       --arg title "$heal_title" \
+       --arg intent "$heal_intent" \
+       --arg healSource "$causing_item_id" \
+       --arg core_cmd "$CORE_CMD" \
+       --arg core_output "$core_output" \
+       '.items += [{
+           id: $id,
+           title: $title,
+           intent: $intent,
+           track: "core",
+           priority: "must",
+           category: "heal",
+           healSource: $healSource,
+           readyForSprint: true,
+           status: "todo",
+           steps: ["Diagnose why CORE_CMD fails after merging " + $healSource, "Fix the regression in the code", "Verify CORE_CMD passes"],
+           acceptanceCriteria: [{text: "CORE_CMD passes", verify: $core_cmd}],
+           description: ("Core regression after merging " + $healSource + ".\n\nCORE_CMD: " + $core_cmd + "\n\nOutput:\n" + $core_output)
+       }]' "$BACKLOG_DIR/bugs.json" > "$tmp" || {
+        log_error "Failed to synthesize heal item"
+        rm -f "$tmp"
+        return 1
+    }
+    mv "$tmp" "$BACKLOG_DIR/bugs.json"
+    log_warning "Heal item $heal_id created for core regression caused by $causing_item_id"
+    printf '%s' "$heal_id"
 }
 
 remove_item() {
@@ -1620,9 +1683,9 @@ After you finish, the orchestrator will automatically run \`$FIX_CMD\` to fix li
         validate_hint="$validate_hint
 
 ## Maturity Protocol (MANDATORY — complete all phases)
-**Phase 1 — Implement:** Write the code. Follow spec, match conventions.${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix failures.}
+**Phase 1 — Implement:** Write the code. Follow spec, match conventions.
 **Phase 2 — Critique:** STOP coding. Re-read every changed file. Verify intent is fulfilled and each AC is provably met. Hunt bugs, edge cases, dead code, missing error handling. Fix everything found.
-**Phase 3 — Harden:**${VALIDATE_CMD:+ Run \`$VALIDATE_CMD\` and fix any failures.} **Run every AC verify command.** AC verify commands are in sprint.json under \`acceptanceCriteria\` — entries with a \`verify\` field (e.g. \`{\"text\": \"...\", \"verify\": \"shell command\"}\`). Run each \`.verify\` command. If a verify command fails:
+**Phase 3 — Harden:** **Run every AC verify command.** AC verify commands are in sprint.json under \`acceptanceCriteria\` — entries with a \`verify\` field (e.g. \`{\"text\": \"...\", \"verify\": \"shell command\"}\`). Run each \`.verify\` command. If a verify command fails:
 - **Your code is wrong** → fix your code and re-run.
 - **The verify command is wrong** (grepping bundled/minified output, wrong file path, pattern that can't match after build transforms) → the spec is broken, not your code. Use common sense: if the feature demonstrably works but the grep pattern doesn't match transformed output, report it as a bad verify command in your result.json summary and count it as passed. Do NOT waste retries fighting a broken grep.
 For AC without verify commands, manually execute the behavior. Fix regressions. Only then commit and signal done.
@@ -1635,13 +1698,7 @@ Your result.json MUST include a \`\"phases\"\` object proving you completed Crit
 \`\`\`
 The orchestrator will REJECT a pass result that lacks the \`\"phases\"\` field. findings_count is how many issues you found in Critique; fixed_count is how many you fixed. verify_commands_run/passed are from Harden."
     elif [[ "$agent_name" == "validator" ]]; then
-        validate_hint=""
-        if [[ -n "$VALIDATE_CMD" ]]; then
-            validate_hint="
-## Validation Command
-The orchestrator runs \`$VALIDATE_CMD\` before you. If results are provided below, trust them — do not re-run the command."
-        fi
-        validate_hint="$validate_hint
+        validate_hint="
 
 ## Adversarial Probing (MANDATORY)
 You have Bash access. USE IT. Reading diffs tells you what changed — running commands tells you if it works.
@@ -1743,6 +1800,26 @@ run_agent() {
     [[ ! -f "$prompt_file" ]] && { log_error "Agent not found: $agent_name"; return 1; }
 
     rm -f "$STATUS_DIR/result.json"
+
+    # Developer command override: run a shell command instead of Claude
+    # The command runs in the worktree with sprint.json available, and must write result.json
+    if [[ "$agent_name" == "developer" && -n "$DEVELOPER_CMD" ]]; then
+        log_agent "developer" "Running developer command: $DEVELOPER_CMD"
+        local agent_log
+        agent_log="$LOGS_DIR/developer-$(date +%Y%m%dT%H%M%S).log"
+        LAST_AGENT_LOG="$agent_log"
+        if bash -c "$DEVELOPER_CMD" > "$agent_log" 2>&1; then
+            log_agent "developer" "Command completed"
+        else
+            local _dc_exit=$?
+            log_error "Developer command failed (exit $_dc_exit)"
+            if [[ ! -f "$STATUS_DIR/result.json" ]]; then
+                printf '{"status":"fail","reason":"Developer command exited %d"}\n' "$_dc_exit" \
+                    > "$STATUS_DIR/result.json"
+            fi
+        fi
+        return 0
+    fi
 
     local context_files
     if [[ -n "$_ra_ctx_name" ]]; then
@@ -1925,7 +2002,7 @@ run_ac_verification() {
         local ac_ok=true
         local ac_tmpfile
         ac_tmpfile="$(ensure_tmpdir)/ac_verify_${idx}.txt"
-        run_validated_command "$ac_cmd" "$ac_tmpfile" || ac_ok=false
+        run_timed_command "$ac_cmd" "$ac_tmpfile" || ac_ok=false
         local ac_output
         ac_output=$(truncate_output "$ac_tmpfile")
         rm -f "$ac_tmpfile"
@@ -2017,7 +2094,7 @@ _run_regression_suite() {
 
         local reg_tmpfile
         reg_tmpfile="$(ensure_tmpdir)/regression_${line_num}.txt"
-        if run_validated_command "$cmd" "$reg_tmpfile"; then
+        if run_timed_command "$cmd" "$reg_tmpfile"; then
             rm -f "$reg_tmpfile"
             passed_count=$((passed_count + 1))
         else
@@ -2173,9 +2250,14 @@ _run_dry_run() {
     fi
     echo ""
 
+    # Run core gate to determine track filtering (same as real run)
+    _run_core_gate
+
     local item_json
     if ! item_json=$(pick_item "$specific_id"); then
-        if [[ -z "$specific_id" ]]; then
+        if [[ "$CORE_HEALTHY" == "false" ]]; then
+            log_error "Core is broken and no core-track items available — run '.aishore/aishore scaffold' or fix CORE_CMD manually"
+        elif [[ -z "$specific_id" ]]; then
             log_warning "No ready items in backlog. Items need readyForSprint: true AND a commander's intent (>=20 chars). Run '.aishore/aishore groom' to prepare items."
         fi
         return 1
@@ -2216,9 +2298,9 @@ _run_dry_run() {
         rm -f "$BACKLOG_DIR/sprint.json"
     fi
 
-    log_subheader "Validation Command"
-    if [[ -n "$VALIDATE_CMD" ]]; then
-        printf '%s\n' "$VALIDATE_CMD"
+    log_subheader "Core Command"
+    if [[ -n "$CORE_CMD" ]]; then
+        printf '%s\n' "$CORE_CMD"
     else
         echo "none configured"
     fi
@@ -2227,35 +2309,45 @@ _run_dry_run() {
     log_header "Dry run complete"
     echo "Would pick: $item_id ($item_title)"
     echo "Model: $MODEL_PRIMARY"
-    echo "Validation: ${VALIDATE_CMD:-none}"
+    echo "Core: ${CORE_CMD:-none}"
     return 0
 }
 
 # Pre-flight: run validation command on the baseline before developer touches anything.
-# Returns 0 if preflight passes (or no VALIDATE_CMD configured), 1 on failure.
+# Run CORE_CMD to determine core health. Sets CORE_HEALTHY.
+# Returns 0 always — core gate failure filters tracks but doesn't abort.
+# If no CORE_CMD configured, CORE_HEALTHY stays true (no gating).
+_run_core_gate() {
+    CORE_HEALTHY=true
+    [[ -z "$CORE_CMD" ]] && return 0
+    log_info "Core gate: running $CORE_CMD"
+    local gate_tmpfile
+    gate_tmpfile="$(ensure_tmpdir)/core_gate_output.txt"
+    if run_timed_command "$CORE_CMD" "$gate_tmpfile"; then
+        rm -f "$gate_tmpfile"
+        log_success "Core gate: healthy"
+        return 0
+    fi
+    local gate_output
+    gate_output=$(truncate_output "$gate_tmpfile")
+    # Keep the output file for heal synthesis (Phase 5 reads it)
+    CORE_HEALTHY=false
+    log_warning "Core gate: CORE_CMD failed — only core-track items pickable"
+    [[ -n "$gate_output" ]] && log_warning "Output (truncated): $gate_output"
+    return 0
+}
+
+# Pre-flight: run regression suite on the baseline before developer touches anything.
+# Returns 0 if preflight passes, 1 on failure.
 _run_preflight() {
     # Regression suite: run accumulated verify commands from prior sprints
-    # This runs even when VALIDATE_CMD is empty — the regression suite IS the eval
+    # This runs even when CORE_CMD is empty — the regression suite IS the eval
     if ! _run_regression_suite; then
         log_error "Pre-flight: regression suite failed — a prior sprint's guarantees are broken"
         return 1
     fi
-
-    [[ -z "$VALIDATE_CMD" ]] && return 0
-    log_info "Pre-flight: running validation on baseline"
-    local preflight_tmpfile
-    preflight_tmpfile="$(ensure_tmpdir)/preflight_output.txt"
-    if run_validated_command "$VALIDATE_CMD" "$preflight_tmpfile"; then
-        rm -f "$preflight_tmpfile"
-        log_success "Pre-flight passed"
-        return 0
-    fi
-    local preflight_output
-    preflight_output=$(truncate_output "$preflight_tmpfile")
-    rm -f "$preflight_tmpfile"
-    log_error "Pre-flight validation failed — baseline is broken"
-    log_error "Output (truncated): $preflight_output"
-    return 1
+    log_success "Pre-flight passed"
+    return 0
 }
 
 # Run developer agent for one attempt: build failure context, run fix_cmd on retry,
@@ -2314,32 +2406,10 @@ _run_developer_cycle() {
     return 0
 }
 
-# Run validation cycle: scope check, validation command, AC verification, validator agent.
-# Uses outer-scope: retry_extra_prompt, VALIDATE_CMD
+# Run validation cycle: AC verification, validator agent.
+# Uses outer-scope: retry_extra_prompt
 _run_validation_cycle() {
     _validation_failure=""
-    local validate_output=""
-
-    # Run validation command (if configured)
-    if [[ -n "$VALIDATE_CMD" ]]; then
-        log_info "Running validation: $VALIDATE_CMD"
-        local validate_tmpfile
-        validate_tmpfile="$(ensure_tmpdir)/validate_output.txt"
-        if run_validated_command "$VALIDATE_CMD" "$validate_tmpfile"; then
-            validate_output=$(truncate_output "$validate_tmpfile")
-            rm -f "$validate_tmpfile"
-            log_success "Validation passed"
-        else
-            validate_output=$(truncate_output "$validate_tmpfile")
-            rm -f "$validate_tmpfile"
-            log_error "Validation command failed"
-            retry_extra_prompt="Previous attempt failed validation command ($VALIDATE_CMD). Validation output:
-${validate_output}
-Fix the issues and ensure all acceptance criteria pass."
-            _validation_failure="Validation failed"
-            return 1
-        fi
-    fi
 
     # Run AC verification commands (report returned via stdout)
     local ac_report
@@ -2423,10 +2493,6 @@ ${agent_fail_reason}"
 ## Validator Log (last 40 lines)
 ${validator_log_tail}"
         fi
-        [[ -n "$validate_output" ]] && retry_extra_prompt="${retry_extra_prompt}
-
-## Validation Command Output
-${validate_output}"
         retry_extra_prompt="${retry_extra_prompt}
 
 Fix the issues identified above. Address each specific failure point."
@@ -2671,6 +2737,21 @@ Co-Authored-By: Claude <noreply@anthropic.com>"; then
             printf '%s\n' "$_saved_sprint_json" > "$BACKLOG_DIR/sprint.json"
         fi
     fi
+
+    # Phase 3.5: Core re-check after merge — detect core regressions
+    local _pre_merge_core_healthy="$CORE_HEALTHY"
+    _run_core_gate
+    if [[ "$_pre_merge_core_healthy" == "true" && "$CORE_HEALTHY" == "false" ]]; then
+        log_error "Core regression detected after merging $ITEM_ID"
+        local _gate_output=""
+        local _gate_file="$(ensure_tmpdir)/core_gate_output.txt"
+        [[ -f "$_gate_file" ]] && _gate_output=$(cat "$_gate_file" 2>/dev/null || echo "")
+        if ! _synthesize_heal_item "$ITEM_ID" "$_gate_output"; then
+            log_error "Circuit breaker: heal-of-heal detected — stopping"
+            consecutive_failures=$max_consecutive_failures
+        fi
+    fi
+
     # Phase 4: Bookkeeping on the base branch (mark complete, archive, remove)
     # Set diff base/target so mark_complete computes accurate line stats
     local _saved_base="$AISHORE_BASE_BRANCH"
@@ -2875,6 +2956,14 @@ _record_sprint_failure() {
     _store_failure_context "$ITEM_ID" "$reason" "$detail"
     mark_item_failed "$ITEM_ID" "$detail" "$item_source"
 
+    # If a heal item fails, remove it (no accumulation of failed heals)
+    local _fail_category
+    _fail_category=$(jq -r --arg id "$ITEM_ID" '.items[] | select(.id == $id) | .category // ""' "$BACKLOG_DIR/$item_source" 2>/dev/null || echo "")
+    if [[ "$_fail_category" == "heal" ]]; then
+        log_warning "Heal item $ITEM_ID failed — removing from backlog (no heal-of-heal)"
+        remove_item "$item_source" "$ITEM_ID" 2>/dev/null || true
+    fi
+
     if [[ -n "$NOTIFY_CMD" ]]; then
         bash -c "$NOTIFY_CMD" -- "fail" "$ITEM_ID" 2>/dev/null || log_warning "Notification command failed (exit $?) — sprint outcome unaffected"
     fi
@@ -2966,6 +3055,9 @@ run_sprint_loop() {
 
         _maybe_auto_groom
 
+        # Core gate: determine which tracks are pickable
+        _run_core_gate
+
         local skip_list
         skip_list=$(_build_skip_list)
 
@@ -2973,6 +3065,8 @@ run_sprint_loop() {
         if ! item_json=$(pick_item "$specific_id" "$skip_list"); then
             if [[ -n "$specific_id" ]]; then
                 : # resolve_backlog_file already printed the error
+            elif [[ "$CORE_HEALTHY" == "false" ]]; then
+                log_error "Core is broken and no core-track items available — run '.aishore/aishore scaffold' or fix CORE_CMD manually"
             elif [[ "$auto_mode" == "true" ]]; then
                 log_success "No more ready items — backlog drained"
             else

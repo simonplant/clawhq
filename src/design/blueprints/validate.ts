@@ -275,7 +275,7 @@ function checkModelRouting(
           ));
         }
       }
-      if (results.every((r) => r.passed || !r.check.includes("fallbacks"))) {
+      if (results.filter((r) => r.check.includes("fallbacks")).every((r) => r.passed)) {
         results.push(pass(`${prefix}.fallbacks`, `${prefix}.fallbacks are valid`));
       }
     }

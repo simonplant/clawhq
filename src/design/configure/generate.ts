@@ -143,7 +143,7 @@ function buildOpenClawConfig(
       ...(mergedDeny.length > 0 ? { deny: mergedDeny } : {}),
       fs: {
         // LM-14: Filesystem access — workspace only by default
-        workspaceOnly: false,
+        workspaceOnly: true,
       },
     },
 
