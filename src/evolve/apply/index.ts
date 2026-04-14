@@ -28,8 +28,12 @@ export type { ApplyOptions, ApplyProgress, ApplyReport, ApplyResult } from "./ty
 const SKIP_PATHS = new Set([
   "workspace/MEMORY.md",                        // user's curated memory
   "clawhq.yaml",                                // we're reading from it — don't overwrite
-  "cron/jobs.json",                              // agent/user owns cron schedule after init
   "workspace/config/substack-aliases.json",      // user's publication aliases
+]);
+
+/** Files where apply merges compiled output with existing runtime state. */
+const MERGE_PATHS = new Set([
+  "cron/jobs.json",                              // compiler owns job definitions, preserve runtime state
 ]);
 
 /** .env placeholder value — the writer preserves real values over this. */
@@ -88,8 +92,17 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
     );
     report("compile", "done", `${compiled.files.length} files compiled`);
 
-    // 5. Filter stateful files
+    // 5. Filter stateful files + merge where needed
     let files: CompiledFile[] = compiled.files.filter((f) => !SKIP_PATHS.has(f.relativePath));
+
+    // Merge cron/jobs.json: compiled definitions + preserved runtime state
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (!f || !MERGE_PATHS.has(f.relativePath)) continue;
+      if (f.relativePath === "cron/jobs.json") {
+        files[i] = mergeCronJobs(deployDir, f);
+      }
+    }
 
     // 6. Report proxy/Tailscale status
     const proxyFiles = files.filter((f) => f.relativePath.includes("cred-proxy"));
@@ -138,6 +151,63 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, error: message, report: emptyReport() };
+  }
+}
+
+// ── Cron Merge ─────────────────────────────────────────────────────────────
+
+/**
+ * Merge compiled cron jobs with existing deployed state.
+ *
+ * Compiled jobs are the source of truth for definitions (expr, task, delivery,
+ * model). Runtime state fields (state, updatedAtMs, runningAtMs) are preserved
+ * from the existing deployed file so we don't lose run history.
+ */
+function mergeCronJobs(deployDir: string, compiled: CompiledFile): CompiledFile {
+  const existingPath = join(deployDir, compiled.relativePath);
+  if (!existsSync(existingPath)) return compiled;
+
+  try {
+    const existing: unknown[] = JSON.parse(readFileSync(existingPath, "utf-8"));
+    const compiledJobs: unknown[] = JSON.parse(compiled.content);
+
+    // Build lookup of existing state by job ID
+    const stateById = new Map<string, Record<string, unknown>>();
+    for (const job of existing) {
+      const j = job as Record<string, unknown>;
+      if (j.id && j.state) {
+        stateById.set(j.id as string, j.state as Record<string, unknown>);
+      }
+      // Also preserve updatedAtMs
+      if (j.id && j.updatedAtMs) {
+        const existing_state = stateById.get(j.id as string) ?? {};
+        stateById.set(j.id as string, { ...existing_state, _updatedAtMs: j.updatedAtMs });
+      }
+    }
+
+    // Merge: compiled definition + existing state
+    const merged = compiledJobs.map((job) => {
+      const j = job as Record<string, unknown>;
+      const id = j.id as string;
+      const existingState = stateById.get(id);
+      if (existingState) {
+        const { _updatedAtMs, ...state } = existingState;
+        return {
+          ...j,
+          state: Object.keys(state).length > 0 ? state : undefined,
+          ...(_updatedAtMs ? { updatedAtMs: _updatedAtMs } : {}),
+        };
+      }
+      return j;
+    });
+
+    return {
+      ...compiled,
+      content: JSON.stringify(merged, null, 2) + "\n",
+    };
+  } catch {
+    // Can't parse existing — just use compiled version
+    return compiled;
   }
 }
 

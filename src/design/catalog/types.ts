@@ -35,7 +35,7 @@ export interface MissionProfile {
     readonly recommended: readonly string[];
     readonly optional: readonly string[];
   };
-  readonly cron_defaults: Readonly<Record<string, string>>;
+  readonly cron_defaults: Readonly<Record<string, string | { expr: string; announce?: boolean }>>;
   readonly cron_prompts: Readonly<Record<string, string>>;
   readonly delegation: readonly ProfileDelegation[];
   readonly egress_domains: readonly string[];

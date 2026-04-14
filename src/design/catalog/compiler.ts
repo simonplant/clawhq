@@ -873,7 +873,7 @@ function renderCronJobs(
       expr: "*/15 * * * *",
       task: `Run skill: ${skill}`,
       enabled: true,
-      delivery: "none",
+      delivery: { mode: "none" },
       model: isLocal ? primary : "opus",
       fallbacks: isLocal ? [] : ["sonnet"],
       session: "isolated",
