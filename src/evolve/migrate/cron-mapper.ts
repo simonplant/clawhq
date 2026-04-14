@@ -90,14 +90,18 @@ function buildCronJob(routine: ParsedRoutine): CronJobDefinition | null {
   const delivery = resolveDelivery(routine.schedule);
   const id = sanitizeId(routine.name);
 
+  const jobId = `import-${id}`;
   return {
-    id: `import-${id}`,
-    kind: "cron",
-    expr,
-    task: routine.description.slice(0, 200),
+    id: jobId,
+    name: jobId,
     enabled: true,
-    delivery,
-    session: "main",
+    schedule: { kind: "cron" as const, expr },
+    delivery: { mode: delivery },
+    payload: {
+      kind: "agentTurn" as const,
+      message: routine.description.slice(0, 200),
+    },
+    sessionTarget: "main" as const,
   };
 }
 

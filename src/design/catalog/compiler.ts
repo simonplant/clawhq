@@ -818,6 +818,17 @@ function renderEnv(
 
 // ── cron/jobs.json ──────────────────────────────────────────────────────────
 
+/**
+ * Generate cron/jobs.json in OpenClaw's native format.
+ *
+ * Format (verified from working backups):
+ *   { version: 1, jobs: [{ id, name, enabled, schedule, delivery, payload }] }
+ *
+ * - schedule: { kind: "cron", expr: "..." }
+ * - delivery: { mode: "announce" | "none" }
+ * - payload:  { kind: "agentTurn", message: "...", model: "..." }
+ * - state:    preserved by apply merge, not generated here
+ */
 function renderCronJobs(
   profile: MissionProfile,
   providers: Provider[] = [],
@@ -829,59 +840,53 @@ function renderCronJobs(
   const isLocal = primary.startsWith("ollama/");
 
   for (const [id, cronDef] of Object.entries(profile.cron_defaults)) {
-    // Support both string expr and {expr, announce} object format
     const expr = typeof cronDef === "string" ? cronDef : cronDef.expr;
     const shouldAnnounce = typeof cronDef === "object" && cronDef.announce === true;
-
-    const task = profile.cron_prompts[id] ?? `Run ${id}`;
+    const message = profile.cron_prompts[id] ?? `Run ${id}`;
     const isHeartbeat = id === "heartbeat";
     const isBrief = id.includes("brief");
+    const jobId = id.replace(/_/g, "-");
 
-    // Local: all jobs use the same model (no alias routing available)
-    // Cloud: route by complexity (heartbeat=cheap, brief=mid, work=expensive)
-    const sessionTarget = isHeartbeat ? "isolated" : "main";
+    // Model selection: local uses primary for all, cloud routes by complexity
+    const model = isLocal
+      ? primary
+      : isHeartbeat ? "haiku" : isBrief ? "sonnet" : "opus";
+
     jobs.push({
-      id: id.replace(/_/g, "-"),
-      kind: "cron",
-      expr,
-      task,
+      id: jobId,
+      name: jobId,
       enabled: true,
-      delivery: shouldAnnounce
-        ? { mode: "announce", target: "last" }
-        : { mode: "none" },
-      model: isLocal
-        ? primary
-        : isHeartbeat ? "haiku" : isBrief ? "sonnet" : "opus",
-      fallbacks: isLocal
-        ? []
-        : isHeartbeat ? ["sonnet"] : ["sonnet", "haiku"],
-      session: sessionTarget,
-      sessionTarget,
+      schedule: { kind: "cron", expr },
+      delivery: { mode: shouldAnnounce ? "announce" : "none" },
+      payload: { kind: "agentTurn", message, model },
+      sessionTarget: "isolated",
     });
   }
 
   // Add skill-based cron jobs — skip skills that already have a dedicated cron job
   const existingJobIds = new Set(jobs.map((j: Record<string, unknown>) => j.id as string));
   for (const skill of profile.skills) {
-    if (skill === "construct") continue; // construct runs on its own schedule
-    // Don't duplicate skills that have their own cron entry (e.g. morning-brief)
-    const skillJobId = `skill-${skill}`;
+    if (skill === "construct") continue;
     if (existingJobIds.has(skill) || existingJobIds.has(skill.replace(/-/g, "_"))) continue;
+    const skillId = `skill-${skill}`;
     jobs.push({
-      id: `skill-${skill}`,
-      kind: "cron",
-      expr: "*/15 * * * *",
-      task: `Run skill: ${skill}`,
+      id: skillId,
+      name: skillId,
       enabled: true,
+      schedule: { kind: "cron", expr: "*/15 * * * *" },
       delivery: { mode: "none" },
-      model: isLocal ? primary : "opus",
-      fallbacks: isLocal ? [] : ["sonnet"],
-      session: "isolated",
+      payload: {
+        kind: "agentTurn",
+        message: `Run skill: ${skill}`,
+        model: isLocal ? primary : "opus",
+      },
       sessionTarget: "isolated",
     });
   }
 
-  return JSON.stringify(jobs, null, 2) + "\n";
+  // Wrap in versioned envelope
+  const envelope = { version: 1, jobs };
+  return JSON.stringify(envelope, null, 2) + "\n";
 }
 
 // ── allowlist.yaml ──────────────────────────────────────────────────────────

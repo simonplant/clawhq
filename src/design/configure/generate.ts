@@ -382,47 +382,48 @@ function buildCronJobs(blueprint: Blueprint, timezone?: string): CronJobDefiniti
   // Compile activeHours from monitoring.quiet_hours for jobs with 'waking' qualifier
   const wakingActiveHours = parseQuietHoursToActiveHours(blueprint.monitoring.quiet_hours, timezone);
 
+  // Helper: build a job in OpenClaw's native format
+  const makeJob = (
+    id: string,
+    expr: string,
+    message: string,
+    deliveryMode: string,
+    model?: string,
+  ): CronJobDefinition => ({
+    id,
+    name: id,
+    enabled: true,
+    schedule: { kind: "cron", expr },
+    delivery: { mode: deliveryMode },
+    payload: { kind: "agentTurn", message, ...(model ? { model } : {}) },
+    sessionTarget: "isolated",
+  }) as unknown as CronJobDefinition;
+
   // Heartbeat — regular check-in
   if (cron.heartbeat) {
-    const isWaking = hasWakingQualifier(cron.heartbeat);
     const expr = normalizeCronExpr(cron.heartbeat);
     if (expr) {
       const r = routing?.heartbeat;
-      jobs.push({
-        id: "heartbeat",
-        kind: "cron",
-        expr,
-        task: "Run heartbeat check — verify all systems operational",
-        enabled: true,
-        delivery: cron.delivery?.heartbeat ?? "none",
-        model: r?.model,
-        fallbacks: r?.fallbacks,
-        session: cron.session_target?.heartbeat ?? "isolated",
-        sessionTarget: cron.session_target?.heartbeat ?? "isolated",
-        ...(isWaking && wakingActiveHours ? { activeHours: wakingActiveHours } : {}),
-      });
+      jobs.push(makeJob(
+        "heartbeat", expr,
+        "Run heartbeat check — verify all systems operational",
+        cron.delivery?.heartbeat ?? "none",
+        r?.model,
+      ));
     }
   }
 
   // Work session — periodic active work
   if (cron.work_session) {
-    const isWaking = hasWakingQualifier(cron.work_session);
     const expr = normalizeCronExpr(cron.work_session);
     if (expr) {
       const r = routing?.work_session;
-      jobs.push({
-        id: "work-session",
-        kind: "cron",
-        expr,
-        task: "Run scheduled work session — process pending tasks and check integrations",
-        enabled: true,
-        delivery: cron.delivery?.work_session ?? "none",
-        model: r?.model,
-        fallbacks: r?.fallbacks,
-        session: cron.session_target?.work_session ?? "main",
-        sessionTarget: cron.session_target?.work_session ?? "main",
-        ...(isWaking && wakingActiveHours ? { activeHours: wakingActiveHours } : {}),
-      });
+      jobs.push(makeJob(
+        "work-session", expr,
+        "Run scheduled work session — process pending tasks and check integrations",
+        cron.delivery?.work_session ?? "none",
+        r?.model,
+      ));
     }
   }
 
@@ -430,41 +431,26 @@ function buildCronJobs(blueprint: Blueprint, timezone?: string): CronJobDefiniti
   if (cron.morning_brief) {
     const expr = normalizeMorningBrief(cron.morning_brief);
     const r = routing?.morning_brief;
-    jobs.push({
-      id: "morning-brief",
-      kind: "cron",
-      expr,
-      task: "Send morning briefing — summarize overnight activity and today's schedule",
-      enabled: true,
-      delivery: cron.delivery?.morning_brief ?? "announce",
-      model: r?.model,
-      fallbacks: r?.fallbacks,
-      session: cron.session_target?.morning_brief ?? "main",
-      sessionTarget: cron.session_target?.morning_brief ?? "main",
-    });
+    jobs.push(makeJob(
+      "morning-brief", expr,
+      "Send morning briefing — summarize overnight activity and today's schedule",
+      cron.delivery?.morning_brief ?? "announce",
+      r?.model,
+    ));
   }
 
-  // Skill-specific cron jobs — included skills run on the work-session schedule
-  // Skills inherit the work_session model routing for cost consistency
+  // Skill-specific cron jobs
   if (cron.work_session && blueprint.skill_bundle?.included) {
-    const isWaking = hasWakingQualifier(cron.work_session);
     const skillExpr = normalizeCronExpr(cron.work_session);
     if (skillExpr) {
       const r = routing?.work_session;
       for (const skillName of blueprint.skill_bundle.included) {
-        jobs.push({
-          id: `skill-${skillName}`,
-          kind: "cron",
-          expr: skillExpr,
-          task: `Run skill: ${skillName}`,
-          enabled: true,
-          delivery: "none",
-          model: r?.model,
-          fallbacks: r?.fallbacks,
-          session: "isolated",
-          sessionTarget: "isolated",
-          ...(isWaking && wakingActiveHours ? { activeHours: wakingActiveHours } : {}),
-        });
+        jobs.push(makeJob(
+          `skill-${skillName}`, skillExpr,
+          `Run skill: ${skillName}`,
+          "none",
+          r?.model,
+        ));
       }
     }
   }
@@ -843,12 +829,27 @@ function normalizeCronExpr(blueprintExpr: string): string | null {
  * Validates that hour and minute are within range.
  */
 function normalizeMorningBrief(timeStr: string): string {
-  // Accept HH:MM format (e.g. "07:00") → convert to 5-field cron
-  const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  const DAY_MAP: Record<string, number> = {
+    sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+    thursday: 4, friday: 5, saturday: 6,
+    sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+  };
+
+  // Accept "HH:MM" or "HH:MM dayname" (e.g. "07:00" or "08:00 monday")
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})(?:\s+(\w+))?$/);
   if (match && match[1] !== undefined && match[2] !== undefined) {
     const hour = parseInt(match[1], 10);
     const minute = parseInt(match[2], 10);
-    const expr = `${minute} ${hour} * * *`;
+    const dayName = match[3]?.toLowerCase();
+    const dow = dayName ? DAY_MAP[dayName] : undefined;
+
+    if (dayName && dow === undefined) {
+      throw new Error(
+        `Invalid morning brief day "${dayName}" in "${timeStr}" — expected a weekday name`,
+      );
+    }
+
+    const expr = `${minute} ${hour} * * ${dow !== undefined ? dow : "*"}`;
 
     const errors = validateCronExpr(expr);
     if (errors.length > 0) {

@@ -214,11 +214,11 @@ function maskCronJobs(
   const items: CronJobDefinition[] = [];
 
   for (const job of cronJobs) {
-    const taskResult = maskPii(job.task);
+    const taskResult = maskPii(job.payload.message);
     report = mergeMaskResult(report, "cron-jobs", taskResult);
     items.push({
       ...job,
-      task: taskResult.text,
+      payload: { ...job.payload, message: taskResult.text },
     });
   }
 

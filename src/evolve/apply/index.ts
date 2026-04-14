@@ -163,44 +163,56 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
  * model). Runtime state fields (state, updatedAtMs, runningAtMs) are preserved
  * from the existing deployed file so we don't lose run history.
  */
+/**
+ * Extract jobs array from cron file, handling both formats:
+ * - Wrapped: { version: N, jobs: [...] }
+ * - Bare: [...]
+ */
+function extractCronJobs(data: unknown): Record<string, unknown>[] {
+  if (Array.isArray(data)) return data as Record<string, unknown>[];
+  if (typeof data === "object" && data !== null && "jobs" in data) {
+    return (data as Record<string, unknown>).jobs as Record<string, unknown>[];
+  }
+  return [];
+}
+
 function mergeCronJobs(deployDir: string, compiled: CompiledFile): CompiledFile {
   const existingPath = join(deployDir, compiled.relativePath);
   if (!existsSync(existingPath)) return compiled;
 
   try {
-    const existing: unknown[] = JSON.parse(readFileSync(existingPath, "utf-8"));
-    const compiledJobs: unknown[] = JSON.parse(compiled.content);
+    const existingRaw = JSON.parse(readFileSync(existingPath, "utf-8"));
+    const compiledRaw = JSON.parse(compiled.content);
 
-    // Build lookup of existing state by job ID
-    const stateById = new Map<string, Record<string, unknown>>();
-    for (const job of existing) {
-      const j = job as Record<string, unknown>;
-      if (j.id && j.state) {
-        stateById.set(j.id as string, j.state as Record<string, unknown>);
-      }
-      // Also preserve updatedAtMs
-      if (j.id && j.updatedAtMs) {
-        const existing_state = stateById.get(j.id as string) ?? {};
-        stateById.set(j.id as string, { ...existing_state, _updatedAtMs: j.updatedAtMs });
+    const existingJobs = extractCronJobs(existingRaw);
+    const compiledEnvelope = compiledRaw as { version: number; jobs: Record<string, unknown>[] };
+
+    // Build lookup of existing runtime state by job ID
+    const stateById = new Map<string, { state?: Record<string, unknown>; updatedAtMs?: number }>();
+    for (const job of existingJobs) {
+      if (job.id) {
+        stateById.set(job.id as string, {
+          state: job.state as Record<string, unknown> | undefined,
+          updatedAtMs: job.updatedAtMs as number | undefined,
+        });
       }
     }
 
-    // Merge: compiled definition + existing state
-    const merged = compiledJobs.map((job) => {
-      const j = job as Record<string, unknown>;
-      const id = j.id as string;
-      const existingState = stateById.get(id);
-      if (existingState) {
-        const { _updatedAtMs, ...state } = existingState;
+    // Merge: compiled definitions + preserved runtime state
+    const mergedJobs = compiledEnvelope.jobs.map((job) => {
+      const id = job.id as string;
+      const existing = stateById.get(id);
+      if (existing) {
         return {
-          ...j,
-          state: Object.keys(state).length > 0 ? state : undefined,
-          ...(_updatedAtMs ? { updatedAtMs: _updatedAtMs } : {}),
+          ...job,
+          ...(existing.state ? { state: existing.state } : {}),
+          ...(existing.updatedAtMs ? { updatedAtMs: existing.updatedAtMs } : {}),
         };
       }
-      return j;
+      return job;
     });
 
+    const merged = { version: compiledEnvelope.version, jobs: mergedJobs };
     return {
       ...compiled,
       content: JSON.stringify(merged, null, 2) + "\n",

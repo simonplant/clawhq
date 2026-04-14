@@ -146,7 +146,7 @@ export async function runDemo(
     },
     {
       relativePath: "cron/jobs.json",
-      content: JSON.stringify(bundle.cronJobs, null, 2) + "\n",
+      content: JSON.stringify({ version: 1, jobs: bundle.cronJobs }, null, 2) + "\n",
     },
     {
       relativePath: "clawhq.yaml",
