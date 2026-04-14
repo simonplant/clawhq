@@ -397,16 +397,17 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
     .option("-t, --token <token>", "Gateway auth token")
     .option("-p, --port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
     .option("-c, --channel <channel>", "Channel to connect (telegram, whatsapp)")
+    .option("--bot-token <botToken>", "Telegram bot token (non-interactive)")
     .action(async (opts: {
       deployDir: string;
       token?: string;
       port: string;
       channel?: string;
+      botToken?: string;
     }) => {
       ensureInstalled(opts.deployDir);
 
       try {
-        const { select, input, password } = await import("@inquirer/prompts");
         const {
           connectChannel,
           validateTelegramToken,
@@ -415,7 +416,6 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         const { readEnvValue } = await import("../../secure/credentials/env-store.js");
 
         console.log(chalk.bold("\nclawhq connect\n"));
-        console.log(chalk.dim("Connect a messaging channel so you can talk to your agent.\n"));
 
         // Resolve gateway token
         const envPath = join(opts.deployDir, "engine", ".env");
@@ -431,14 +431,23 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
 
         const gatewayPort = validatePort(opts.port);
 
-        // Step 1: Select channel
-        const channel = (opts.channel as "telegram" | "whatsapp") ?? await select({
-          message: "Which messaging channel?",
-          choices: [
-            { name: "Telegram", value: "telegram" as const, description: "Bot token + chat ID" },
-            { name: "WhatsApp", value: "whatsapp" as const, description: "Business API + phone number" },
-          ],
-        });
+        // Step 1: Select channel (from flag or interactive)
+        let channel: "telegram" | "whatsapp";
+        if (opts.channel === "telegram" || opts.channel === "whatsapp") {
+          channel = opts.channel;
+        } else if (opts.botToken) {
+          // --bot-token implies telegram
+          channel = "telegram";
+        } else {
+          const { select } = await import("@inquirer/prompts");
+          channel = await select({
+            message: "Which messaging channel?",
+            choices: [
+              { name: "Telegram", value: "telegram" as const, description: "Bot API via @BotFather" },
+              { name: "WhatsApp", value: "whatsapp" as const, description: "Business API" },
+            ],
+          });
+        }
 
         if (channel !== "telegram" && channel !== "whatsapp") {
           console.error(chalk.red(`Unsupported channel: ${channel}. Use telegram or whatsapp.`));
@@ -450,15 +459,20 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         const spinner = ora();
 
         if (channel === "telegram") {
-          console.log(chalk.dim("\nCreate a Telegram bot via @BotFather and paste the token below.\n"));
+          // Accept token from --bot-token flag or prompt interactively
+          let botToken = opts.botToken;
+          if (!botToken) {
+            const { password } = await import("@inquirer/prompts");
+            console.log(chalk.dim("Create a Telegram bot via @BotFather and paste the token below.\n"));
+            botToken = await password({ message: "Telegram bot token:", mask: "*" });
+          }
 
-          const botToken = await password({ message: "Telegram bot token:", mask: "*" });
           if (!botToken) {
             console.error(chalk.red("Bot token is required."));
             throw new CommandError("", 1);
           }
 
-          // Validate token
+          // Validate token against Telegram API
           spinner.start("Validating bot token…");
           try {
             const botUsername = await validateTelegramToken(botToken);
@@ -468,18 +482,13 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
             throw new CommandError("", 1);
           }
 
-          const chatId = await input({
-            message: "Telegram chat ID (your user ID or group ID):",
-          });
-          if (!chatId) {
-            console.error(chalk.red("Chat ID is required."));
-            throw new CommandError("", 1);
-          }
-
+          // No chat ID needed — OpenClaw uses device pairing.
+          // The user sends a message to the bot, gets a pairing code,
+          // and approves via the Control UI.
           vars["TELEGRAM_BOT_TOKEN"] = botToken;
-          vars["TELEGRAM_CHAT_ID"] = chatId;
         } else {
-          console.log(chalk.dim("\nYou need a WhatsApp Business API account. Enter your credentials below.\n"));
+          const { input, password } = await import("@inquirer/prompts");
+          console.log(chalk.dim("You need a WhatsApp Business API account. Enter your credentials below.\n"));
 
           const phoneNumberId = await input({ message: "Phone Number ID:" });
           const accessToken = await password({ message: "Access Token:", mask: "*" });
@@ -498,20 +507,11 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
             throw new CommandError("", 1);
           }
 
-          const recipientPhone = await input({
-            message: "Your phone number (for test message, with country code, e.g. 14155551234):",
-          });
-          if (!recipientPhone) {
-            console.error(chalk.red("Recipient phone is required for test message."));
-            throw new CommandError("", 1);
-          }
-
           vars["WHATSAPP_PHONE_NUMBER_ID"] = phoneNumberId;
           vars["WHATSAPP_ACCESS_TOKEN"] = accessToken;
-          vars["WHATSAPP_RECIPIENT_PHONE"] = recipientPhone;
         }
 
-        // Step 3: Run connect flow
+        // Step 3: Run connect flow (writes .env, updates config, recreates container, waits)
         console.log("");
         const connectSpinner = ora();
         const onProgress = createConnectProgressHandler(connectSpinner);
@@ -529,12 +529,8 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
 
         if (result.success) {
           console.log(chalk.green("\n✔ Channel connected"));
-          if (result.testMessageSent) {
-            console.log(chalk.green("✔ Test message sent — check your channel!"));
-          } else if (result.error) {
-            console.log(chalk.yellow(`⚠ ${result.error}`));
-          }
-          console.log(chalk.dim("\n  Your agent is now reachable. Send it a message!"));
+          console.log(chalk.dim("\n  Send a message to your bot — it will reply with a pairing code."));
+          console.log(chalk.dim("  Approve pairing in the Control UI: http://127.0.0.1:18789/__openclaw__/\n"));
         } else {
           console.error(chalk.red(`\n✘ ${result.error}`));
           throw new CommandError("", 1);

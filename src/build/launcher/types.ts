@@ -186,7 +186,9 @@ export interface IpsetMeta {
 export type ConnectStepName =
   | "write-credentials"
   | "update-config"
+  | "recreate"
   | "health-ping"
+  | "channel-wait"
   | "test-message";
 
 /** Progress event emitted during channel connection. */

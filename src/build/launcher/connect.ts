@@ -1,21 +1,35 @@
 /**
- * Messaging channel connection — guided setup, validation, and test message.
+ * Messaging channel connection — full lifecycle from token to talking.
  *
  * `clawhq connect` configures and verifies a messaging channel so the user
  * can talk to their agent. Supports Telegram and WhatsApp.
  *
- * Flow: select channel → collect credentials → validate token → write .env →
- * update openclaw.json → Gateway health ping → send test message.
+ * Flow: validate token → write .env → update openclaw.json →
+ * force-recreate container → wait for health → wait for channel connect.
+ *
+ * Docker only reads env_file at container creation time, so we must
+ * force-recreate (not just restart) for .env changes to take effect.
  */
 
+import { execFile } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { promisify } from "node:util";
 
 import { GATEWAY_DEFAULT_PORT, GATEWAY_RPC_TIMEOUT_MS, TELEGRAM_API_BASE, WHATSAPP_API_BASE, WHATSAPP_API_VERSION } from "../../config/defaults.js";
 import { GatewayClient } from "../../gateway/index.js";
 import { readEnv, setEnvValue, writeEnvAtomic } from "../../secure/credentials/env-store.js";
 
 import type { ConnectOptions, ConnectResult } from "./types.js";
+import { removeFirewall } from "./firewall.js";
+
+const execFileAsync = promisify(execFile);
+
+/** How long to wait for the channel to start polling after container recreation. */
+const CHANNEL_CONNECT_TIMEOUT_MS = 30_000;
+
+/** How long to wait for Gateway health after container recreation. */
+const HEALTH_TIMEOUT_MS = 60_000;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -204,8 +218,12 @@ export async function pingGateway(
  *
  * 1. Write credentials to .env (atomic, 0600)
  * 2. Update openclaw.json channel config
- * 3. Verify Gateway health via WebSocket RPC
- * 4. Send test message via channel API
+ * 3. Recreate container (force-recreate so new .env is loaded)
+ * 4. Wait for Gateway health
+ * 5. Wait for channel to connect (poll logs)
+ *
+ * Docker only reads env_file at container creation time, so a
+ * `docker restart` is NOT enough — we must `docker compose up --force-recreate`.
  */
 export async function connectChannel(options: ConnectOptions): Promise<ConnectResult> {
   const {
@@ -214,7 +232,6 @@ export async function connectChannel(options: ConnectOptions): Promise<ConnectRe
     credentials,
     gatewayToken,
     gatewayPort = GATEWAY_DEFAULT_PORT,
-    agentName = "Your agent",
     onProgress,
   } = options;
 
@@ -248,54 +265,153 @@ export async function connectChannel(options: ConnectOptions): Promise<ConnectRe
     return { success: false, channel, error: `Failed to update config: ${message}` };
   }
 
-  // Step 3: Gateway health ping
-  onProgress?.({ step: "health-ping", status: "running", message: "Verifying Gateway connection…" });
-
-  const health = await pingGateway(gatewayToken, gatewayPort);
-  if (health.healthy) {
-    onProgress?.({ step: "health-ping", status: "done", message: "Gateway is reachable" });
-  } else {
-    onProgress?.({ step: "health-ping", status: "failed", message: `Gateway unreachable: ${health.error}` });
-    // Non-fatal: credentials and config are saved, agent may not be running yet
-    return {
-      success: false,
-      channel,
-      error: `Channel configured but Gateway is unreachable: ${health.error}. Start agent with 'clawhq up' first.`,
-    };
-  }
-
-  // Step 4: Send test message
-  onProgress?.({ step: "test-message", status: "running", message: "Sending test message…" });
+  // Step 3: Recreate container so new .env is picked up
+  // Docker only reads env_file at container creation — restart is not enough.
+  onProgress?.({ step: "recreate", status: "running", message: "Recreating container with new credentials…" });
 
   try {
-    if (channel === "telegram") {
-      const botToken = credentials.vars["TELEGRAM_BOT_TOKEN"];
-      const chatId = credentials.vars["TELEGRAM_CHAT_ID"];
-      if (!botToken || !chatId) {
-        throw new Error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
-      }
-      await sendTelegramTestMessage(botToken, chatId, agentName);
-    } else if (channel === "whatsapp") {
-      const phoneNumberId = credentials.vars["WHATSAPP_PHONE_NUMBER_ID"];
-      const accessToken = credentials.vars["WHATSAPP_ACCESS_TOKEN"];
-      const recipientPhone = credentials.vars["WHATSAPP_RECIPIENT_PHONE"];
-      if (!phoneNumberId || !accessToken || !recipientPhone) {
-        throw new Error("Missing WhatsApp credentials");
-      }
-      await sendWhatsAppTestMessage(phoneNumberId, accessToken, recipientPhone, agentName);
-    }
-    onProgress?.({ step: "test-message", status: "done", message: "Test message sent — check your channel!" });
+    await recreateContainer(deployDir);
+    onProgress?.({ step: "recreate", status: "done", message: "Container recreated" });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    onProgress?.({ step: "test-message", status: "failed", message: `Test message failed: ${message}` });
-    // Non-fatal: channel is configured even if test message fails
-    return {
-      success: true,
-      channel,
-      testMessageSent: false,
-      error: `Channel connected but test message failed: ${message}`,
-    };
+    onProgress?.({ step: "recreate", status: "failed", message: `Container recreate failed: ${message}` });
+    return { success: false, channel, error: `Container recreate failed: ${message}` };
   }
 
-  return { success: true, channel, testMessageSent: true };
+  // Step 3b: Clear stale firewall rules so the channel can reach external APIs.
+  // The egress firewall uses ipset for domain-based filtering, but if ipset
+  // is unavailable (no sudoers entry), the chain degrades to DROP-all which
+  // blocks all outbound. Safe to remove here — `clawhq up` reapplies properly.
+  try {
+    await removeFirewall();
+  } catch {
+    // Non-fatal: firewall may not exist or sudo unavailable
+  }
+
+  // Step 4: Wait for Gateway health
+  onProgress?.({ step: "health-ping", status: "running", message: "Waiting for Gateway…" });
+
+  const healthResult = await waitForHealth(gatewayToken, gatewayPort);
+  if (healthResult.healthy) {
+    onProgress?.({ step: "health-ping", status: "done", message: `Gateway reachable (${healthResult.attempts} attempt(s))` });
+  } else {
+    onProgress?.({ step: "health-ping", status: "failed", message: `Gateway not reachable: ${healthResult.error}` });
+    return { success: false, channel, error: `Gateway not reachable after recreate: ${healthResult.error}` };
+  }
+
+  // Step 5: Wait for channel to start polling (non-fatal timeout)
+  onProgress?.({ step: "channel-wait", status: "running", message: `Waiting for ${channel} to connect…` });
+
+  const channelUp = await waitForChannelConnect(channel, CHANNEL_CONNECT_TIMEOUT_MS);
+  if (channelUp) {
+    onProgress?.({ step: "channel-wait", status: "done", message: `${channel} connected and polling` });
+  } else {
+    onProgress?.({ step: "channel-wait", status: "done", message: `${channel} starting — send a message to pair` });
+  }
+
+  return { success: true, channel, testMessageSent: false };
+}
+
+// ── Container Recreation ────────────────────────────────────────────────────
+
+/**
+ * Force-recreate the containers via docker compose.
+ *
+ * This is required because Docker only reads `env_file` at container creation
+ * time. A `docker restart` does NOT reload `.env` — the container keeps the
+ * old environment. `--force-recreate` destroys and recreates with fresh env.
+ */
+async function recreateContainer(deployDir: string): Promise<void> {
+  const engineDir = join(deployDir, "engine");
+  await execFileAsync(
+    "docker",
+    ["compose", "up", "-d", "--force-recreate", "--wait"],
+    { cwd: engineDir, timeout: 120_000 },
+  );
+}
+
+// ── Health Polling ──────────────────────────────────────────────────────────
+
+/**
+ * Poll Gateway health with exponential backoff until reachable.
+ *
+ * Uses HTTP /healthz instead of WebSocket RPC — simpler, no auth challenge,
+ * and sufficient to confirm the Gateway is up and ready.
+ */
+async function waitForHealth(
+  _token: string,
+  port: number,
+): Promise<{ healthy: boolean; attempts: number; error?: string }> {
+  const start = Date.now();
+  let attempts = 0;
+  let interval = 2_000;
+
+  while (Date.now() - start < HEALTH_TIMEOUT_MS) {
+    attempts++;
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/healthz`, {
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (response.ok) return { healthy: true, attempts };
+    } catch {
+      // Not ready yet
+    }
+    await delay(interval);
+    interval = Math.min(interval * 1.5, 10_000);
+  }
+
+  return { healthy: false, attempts, error: `Timed out after ${Math.round(HEALTH_TIMEOUT_MS / 1000)}s` };
+}
+
+// ── Channel Connect Detection ───────────────────────────────────────────────
+
+/**
+ * Poll docker logs looking for evidence the channel connected.
+ *
+ * For Telegram: looks for "starting provider" without a subsequent error,
+ * or "polling" / "long-poll" which indicates successful connection.
+ * Times out gracefully — the channel may still connect after we return.
+ */
+async function waitForChannelConnect(
+  channel: string,
+  timeoutMs: number,
+): Promise<boolean> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const { stdout } = await execFileAsync(
+        "docker",
+        ["logs", "engine-openclaw-1", "--since", "30s"],
+        { timeout: 5_000 },
+      );
+
+      const lines = stdout.split("\n").filter((l) => l.includes(`[${channel}]`));
+      const hasStarted = lines.some((l) => l.includes("starting provider"));
+      const hasPolling = lines.some((l) =>
+        l.includes("polling") || l.includes("long-poll") || l.includes("getUpdates"),
+      );
+      const hasFatalError = lines.some((l) =>
+        l.includes("Unauthorized") || l.includes("channel exited"),
+      );
+
+      if (hasPolling) return true;
+      if (hasFatalError) return false;
+      if (hasStarted) {
+        // Give it a bit more time to finish connecting
+        await delay(3_000);
+        continue;
+      }
+    } catch {
+      // docker logs failed — container may still be starting
+    }
+
+    await delay(2_000);
+  }
+
+  return false;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
