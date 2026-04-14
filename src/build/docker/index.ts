@@ -14,7 +14,6 @@ export { build } from "./build.js";
 
 // Dockerfile generation
 export {
-  generateStage1Dockerfile,
   generateStage2Dockerfile,
   validateBinaryDestPath,
   validateBinaryUrl,
@@ -43,13 +42,15 @@ export {
   OP_CLI_DEST,
   OP_CLI_URL,
   OP_CLI_VERSION,
-  PINNED_BINARIES,
   validateBinarySha256,
 } from "./binary-manifest.js";
 export type { BinaryVerificationResult, VerificationReport } from "./binary-manifest.js";
 
 // Hash verification
 export { verifyBinaryHashes } from "./verify-hashes.js";
+
+// Binary dependency definitions
+export { CORE_BINARIES, getRequiredBinaries, TOOL_BINARY_DEPS } from "./binary-deps.js";
 
 // Types
 export type {

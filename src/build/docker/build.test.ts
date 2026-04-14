@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
-import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
-
 import { formatHashMismatch, validateBinarySha256 } from "./binary-manifest.js";
 import { computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
 import {
-  generateStage1Dockerfile,
   generateStage2Dockerfile,
   validateBinaryDestPath,
   validateBinaryUrl,
@@ -121,39 +118,6 @@ describe("posture", () => {
 });
 
 // ── Dockerfile Tests ────────────────────────────────────────────────────────
-
-describe("generateStage1Dockerfile", () => {
-  it("uses the specified base image", () => {
-    const df = generateStage1Dockerfile(stage1Config());
-    expect(df).toContain("FROM openclaw/openclaw:latest");
-  });
-
-  it("installs apt packages in a single RUN layer", () => {
-    const df = generateStage1Dockerfile(stage1Config());
-    expect(df).toContain("apt-get install");
-    expect(df).toContain("tmux");
-    expect(df).toContain("ffmpeg");
-    expect(df).toContain("jq");
-    expect(df).toContain("ripgrep");
-  });
-
-  it("cleans up apt cache", () => {
-    const df = generateStage1Dockerfile(stage1Config());
-    expect(df).toContain("apt-get clean");
-    expect(df).toContain("rm -rf /var/lib/apt/lists/*");
-  });
-
-  it("skips apt install when no packages", () => {
-    const df = generateStage1Dockerfile({ baseImage: "openclaw:latest", aptPackages: [] });
-    expect(df).not.toContain("apt-get install");
-  });
-
-  it("creates workspace directory with UID 1000 ownership", () => {
-    const df = generateStage1Dockerfile(stage1Config());
-    expect(df).toContain(`mkdir -p ${OPENCLAW_CONTAINER_WORKSPACE}`);
-    expect(df).toContain("chown -R 1000:1000");
-  });
-});
 
 describe("generateStage2Dockerfile", () => {
   it("uses the stage1 tag as base", () => {

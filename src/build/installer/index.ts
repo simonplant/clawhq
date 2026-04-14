@@ -10,7 +10,7 @@ export { detectLegacyInstallation, migrateDeployDir } from "./migrate.js";
 export { checkDocker, checkGit, checkNode, checkOllama, detectPrereqs } from "./prereqs.js";
 export { scaffoldDirs, writeInitialConfig } from "./scaffold.js";
 export { buildFromSource, cloneEngine } from "./source.js";
-export { saveReleaseDigest, verifyArtifact } from "./verify.js";
+export { verifyArtifact } from "./verify.js";
 export type {
   InstallOptions,
   InstallResult,

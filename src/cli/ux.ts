@@ -93,8 +93,8 @@ export function renderError(error: unknown): string {
  */
 export function validatePort(portStr: string): number {
   const port = parseInt(portStr, 10);
-  if (isNaN(port)) {
-    throw new CommandError("Invalid port number");
+  if (isNaN(port) || port < 1 || port > 65535) {
+    throw new CommandError("Invalid port number (must be 1-65535)");
   }
   return port;
 }

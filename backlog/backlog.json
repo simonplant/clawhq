@@ -996,6 +996,161 @@
       ],
       "status": "todo",
       "readyForSprint": true
+    },
+    {
+      "id": "REFACTOR-171",
+      "title": "Merge two compilation pipelines — catalog vs configure",
+      "intent": "catalog/compiler.ts and configure/generate.ts are parallel implementations producing the same output format with behavioral divergences (workspaceOnly, soul rendering, token generation). One must be canonical.",
+      "description": "Both pipelines take blueprint/composition input and produce OpenClaw deployment files. They share zero code despite producing identical output formats. This causes bugs where one path has correct behavior and the other doesn't (e.g. workspaceOnly was wrong in generate.ts, soul rendering uses different dimension grouping). Merge into one canonical path.",
+      "priority": "should",
+      "category": "design",
+      "steps": [
+        "Audit all callers of both pipelines to understand which is used when",
+        "Choose canonical pipeline (likely catalog/ since it's newer and more complete)",
+        "Extract shared rendering functions used by both paths",
+        "Migrate callers of the non-canonical path",
+        "Delete the non-canonical path"
+      ],
+      "acceptanceCriteria": [
+        "Only one compilation pipeline exists",
+        "All existing tests pass with the unified pipeline",
+        "workspaceOnly, soul rendering, and token generation are consistent"
+      ],
+      "scope": [
+        "src/design/catalog/compiler.ts",
+        "src/design/configure/generate.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "E"
+    },
+    {
+      "id": "REFACTOR-172",
+      "title": "Merge two rollback snapshot systems for skills",
+      "intent": "skills/rollback.ts and rollback/capability-snapshot.ts are independent snapshot systems. capability-snapshot is the correct general abstraction; the skills-specific one should be replaced by it.",
+      "description": "A skill install can trigger both snapshot systems simultaneously. capability-snapshot.ts handles skills, integrations, providers, and roles generically. skills/rollback.ts only handles workspace/skills/. The generic system should be canonical.",
+      "priority": "could",
+      "category": "evolve",
+      "steps": [
+        "Update skills/lifecycle.ts to use createCapabilitySnapshot instead of skills-specific createSnapshot",
+        "Migrate restore calls similarly",
+        "Delete skills/rollback.ts",
+        "Update imports and re-exports"
+      ],
+      "acceptanceCriteria": [
+        "Only one rollback snapshot system exists",
+        "Skill install/update/remove still creates and restores snapshots correctly",
+        "All skill tests pass"
+      ],
+      "scope": [
+        "src/evolve/skills/rollback.ts",
+        "src/evolve/rollback/capability-snapshot.ts",
+        "src/evolve/skills/lifecycle.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "E"
+    },
+    {
+      "id": "REFACTOR-173",
+      "title": "Replace hand-rolled YAML serializers with yaml package",
+      "intent": "build.ts and catalog/compiler.ts have custom YAML serializers that don't handle special characters. The yaml package is already a dependency and imported in both files.",
+      "description": "build.ts has a 120-line serializeYaml function. catalog/compiler.ts has serializeSimpleYaml. Both are incomplete (no array support, no escaping of colons/quotes/newlines). Replace with yaml.stringify() which is already imported.",
+      "priority": "could",
+      "category": "build",
+      "steps": [
+        "Replace serializeYaml in build.ts with yaml.stringify",
+        "Replace serializeSimpleYaml in catalog/compiler.ts with yaml.stringify",
+        "Verify output format compatibility with existing tests",
+        "Delete custom serializer functions"
+      ],
+      "acceptanceCriteria": [
+        "No custom YAML serializers remain",
+        "Generated docker-compose.yml and clawhq.yaml are valid YAML",
+        "All build and catalog tests pass"
+      ],
+      "scope": [
+        "src/build/docker/build.ts",
+        "src/design/catalog/compiler.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "E"
+    },
+    {
+      "id": "REFACTOR-174",
+      "title": "Streaming backup — stop buffering all files in memory",
+      "intent": "createBackup buffers all file content in memory before writing. For large deployments this causes excessive memory use. Should stream files through gzip.",
+      "description": "backup.ts collectAllFiles+archive loop reads every file into tarChunks[] before writing to disk. hashFile also reads the entire archive into memory. Both should use Node streams. collectAllFiles uses O(n^2) push(...spread) for recursive directory walking.",
+      "priority": "could",
+      "category": "operate",
+      "steps": [
+        "Rewrite archive creation to stream files through gzip via pipeline",
+        "Fix collectAllFiles to use accumulator pattern instead of recursive spread",
+        "Rewrite hashFile to use createReadStream + pipeline",
+        "Verify backup/restore round-trip still works"
+      ],
+      "acceptanceCriteria": [
+        "Memory usage during backup stays bounded regardless of deployment size",
+        "Backup/restore produces identical output to current implementation",
+        "All backup tests pass"
+      ],
+      "scope": [
+        "src/operate/backup/backup.ts",
+        "src/operate/backup/restore.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "D"
+    },
+    {
+      "id": "REFACTOR-175",
+      "title": "Doctor lazy version detection — don't block all 31 checks",
+      "intent": "detectOpenClawVersion runs sequentially before all 31 checks, with a 15s timeout. Only 3 checks need the version. The other 28 wait unnecessarily.",
+      "description": "runChecks() calls detectOpenClawVersion() first, then passes the result to Promise.all of 31 checks. Pass version as a lazy Promise<string|null> to the 3 checks that need it, so all 31 can start immediately.",
+      "priority": "could",
+      "category": "operate",
+      "steps": [
+        "Change detectOpenClawVersion call to a lazy Promise (don't await it at top)",
+        "Pass the Promise to checkToolAccessGrants, checkMigrationState, checkUnderscoreToolMethods",
+        "Update those 3 checks to await the version Promise internally",
+        "Verify doctor runs faster when Ollama/Docker is slow"
+      ],
+      "acceptanceCriteria": [
+        "All 31 checks start in parallel immediately",
+        "Version detection still works correctly for the 3 checks that need it",
+        "Doctor test suite passes"
+      ],
+      "scope": [
+        "src/operate/doctor/checks.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "D"
+    },
+    {
+      "id": "REFACTOR-176",
+      "title": "Fleet discovery concurrency limit — cap parallel Docker calls",
+      "intent": "discoverFleet spawns unlimited parallel Docker subprocess calls. For large fleets this exhausts system resources.",
+      "description": "discoverFleet uses Promise.all(registry.agents.map(discoverAgent)) with no concurrency limit. Each discoverAgent spawns Docker subprocesses. Add a concurrency limiter (e.g. p-limit or manual semaphore) capped at 5-10 concurrent agent discoveries.",
+      "priority": "could",
+      "category": "cloud",
+      "steps": [
+        "Add concurrency limit to discoverFleet (cap at 5 concurrent discoveries)",
+        "Use p-limit or a simple Promise-based semaphore",
+        "Verify fleet discovery still works with multiple agents"
+      ],
+      "acceptanceCriteria": [
+        "No more than 5 Docker subprocesses spawned concurrently during fleet discovery",
+        "Fleet discovery produces same results as before",
+        "All fleet tests pass"
+      ],
+      "scope": [
+        "src/cloud/fleet/discovery.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "F"
     }
   ]
 }

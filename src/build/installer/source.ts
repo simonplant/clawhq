@@ -216,7 +216,7 @@ async function checkout(
  */
 async function dockerBuildFromSource(sourceDir: string): Promise<CommandResult> {
   try {
-    const { stdout } = await execFileAsync(
+    const { stdout, stderr } = await execFileAsync(
       "docker",
       [
         "build",
@@ -227,8 +227,8 @@ async function dockerBuildFromSource(sourceDir: string): Promise<CommandResult> 
       { timeout: INSTALL_BUILD_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 },
     );
 
-    // Extract image ID from build output
-    const imageId = extractImageId(stdout);
+    // Extract image ID from build output (legacy builder uses stdout, BuildKit uses stderr)
+    const imageId = extractImageId(stdout) ?? extractImageId(stderr);
     return { success: true, imageId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

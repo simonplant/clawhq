@@ -19,6 +19,7 @@ import { existsSync, statSync } from "node:fs";
 import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
+import { formatBytes } from "./format.js";
 import type {
   DestroyedFile,
   DestroyOptions,
@@ -227,8 +228,3 @@ export function verifyDestructionProof(proof: DestructionProof): boolean {
   return expectedHmac === proof.hmacSignature;
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}

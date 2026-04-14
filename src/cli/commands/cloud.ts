@@ -68,7 +68,7 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
         console.log(chalk.dim(formatSwitchResult(switchResult)));
       }
 
-      const result = connectCloud(opts.deployDir, opts.token ?? "");
+      const result = connectCloud(opts.deployDir);
       if (result.success) {
         console.log(chalk.green("Connected to cloud."));
         console.log(chalk.dim(`  Trust mode: ${mode}`));

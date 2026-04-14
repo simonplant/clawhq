@@ -35,7 +35,7 @@ describe("validatePort throws CommandError instead of process.exit()", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(CommandError);
       expect((e as CommandError).exitCode).toBe(1);
-      expect((e as CommandError).message).toBe("Invalid port number");
+      expect((e as CommandError).message).toBe("Invalid port number (must be 1-65535)");
     }
   });
 

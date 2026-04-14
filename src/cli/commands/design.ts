@@ -9,7 +9,6 @@ import { parse as yamlParse } from "yaml";
 
 import { validateBundle } from "../../config/validate.js";
 import {
-  allTemplatesToChoices,
   loadAllBuiltinBlueprints,
   loadBlueprint,
   validateBlueprint,

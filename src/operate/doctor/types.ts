@@ -39,7 +39,8 @@ export type DoctorCheckName =
   | "ops-backup-recent"
   | "ops-security-monitor"
   | "cred-proxy-healthy"
-  | "egress-domains-coverage";
+  | "egress-domains-coverage"
+  | "ollama-reachable";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

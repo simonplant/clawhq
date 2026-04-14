@@ -11,13 +11,10 @@
  */
 
 import { CONTAINER_USER } from "../../config/defaults.js";
-import {
-  OPENCLAW_CONTAINER_ROOT,
-  OPENCLAW_CONTAINER_WORKSPACE,
-} from "../../config/paths.js";
+import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
 
-import type { Stage1Config, Stage2Config } from "./types.js";
-import { validateBinarySha256, OP_CLI_URL, OP_CLI_DEST } from "./binary-manifest.js";
+import type { Stage2Config } from "./types.js";
+import { validateBinarySha256, OP_CLI_URL, OP_CLI_SHA256, OP_CLI_DEST } from "./binary-manifest.js";
 
 // ── Binary Validation ───────────────────────────────────────────────────────
 
@@ -44,43 +41,6 @@ export function validateBinaryDestPath(destPath: string): void {
   if (UNSAFE_PATH_CHARS.test(destPath)) {
     throw new Error(`Binary destPath contains unsafe characters: ${destPath}`);
   }
-}
-
-// ── Stage 1: Base Image ─────────────────────────────────────────────────────
-
-/**
- * Generate Stage 1 Dockerfile content.
- *
- * Installs apt packages on top of the base OpenClaw image.
- * This layer changes rarely and benefits from Docker cache.
- */
-export function generateStage1Dockerfile(config: Stage1Config): string {
-  const lines: string[] = [
-    `FROM ${config.baseImage}`,
-    "",
-    "# Stage 1: Base image with system packages (cached layer)",
-    "# Rebuilds only when base image or package list changes",
-    "",
-  ];
-
-  if (config.aptPackages.length > 0) {
-    lines.push(
-      "RUN apt-get update && \\",
-      `    apt-get install -y --no-install-recommends ${config.aptPackages.join(" ")} && \\`,
-      "    apt-get clean && \\",
-      "    rm -rf /var/lib/apt/lists/*",
-      "",
-    );
-  }
-
-  lines.push(
-    "# Ensure workspace directory exists with correct ownership",
-    `RUN mkdir -p ${OPENCLAW_CONTAINER_WORKSPACE} && \\`,
-    `    chown -R ${CONTAINER_USER} ${OPENCLAW_CONTAINER_ROOT}`,
-    "",
-  );
-
-  return lines.join("\n");
 }
 
 // ── Stage 2: Custom Layer ───────────────────────────────────────────────────
@@ -111,6 +71,7 @@ export function generateStage2Dockerfile(
     lines.push(
       "# Install 1Password CLI (op) for credential vault access",
       `RUN curl -fsSL "${OP_CLI_URL}" -o /tmp/op.zip && \\`,
+      `    echo "${OP_CLI_SHA256}  /tmp/op.zip" | sha256sum -c - && \\`,
       `    unzip -o /tmp/op.zip -d /tmp/op-extract && \\`,
       `    mv /tmp/op-extract/op "${OP_CLI_DEST}" && \\`,
       `    chmod +x "${OP_CLI_DEST}" && \\`,

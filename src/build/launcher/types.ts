@@ -188,8 +188,7 @@ export type ConnectStepName =
   | "update-config"
   | "recreate"
   | "health-ping"
-  | "channel-wait"
-  | "test-message";
+  | "channel-wait";
 
 /** Progress event emitted during channel connection. */
 export interface ConnectProgress {

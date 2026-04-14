@@ -181,12 +181,8 @@ export async function installSkill(
   // ── Step 3: Approve ────────────────────────────────────────────────────
   progress(onProgress, "approve", "running", "Awaiting approval...");
 
-  // Auto-approve if flag set and vetting passed
-  if (!autoApprove) {
-    // In non-auto mode, we still approve since vetting passed.
-    // Runtime approval of skill actions uses the approval queue (src/evolve/approval/).
-  }
-
+  // Vetting passed — auto-approve. Runtime approval of skill actions
+  // uses the approval queue (src/evolve/approval/), not this install-time flag.
   const approvedEntry: SkillManifestEntry = {
     ...vettedEntry,
     status: "approved",
@@ -205,6 +201,8 @@ export async function installSkill(
       try {
         await chmod(join(stageResult.stagingDir, file), FILE_MODE_EXEC);
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        progress(onProgress, "activate", "running", `Warning: chmod failed for ${file}: ${msg}`);
       }
     }
   }

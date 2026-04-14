@@ -124,15 +124,14 @@ describe("connectChannel", () => {
     const config = JSON.parse(await readFile(configPath, "utf-8"));
     expect(config.channels.telegram.enabled).toBe(true);
 
-    // Should fail at health-ping since gateway isn't running
+    // Should fail since there's no running container / gateway
     expect(result.success).toBe(false);
-    expect(result.error).toContain("Gateway");
+    expect(result.error).toBeDefined();
 
-    // Progress events should include all steps up to health-ping
+    // Progress events should include credential and config steps
     const stepNames = events.map((e) => e.step);
     expect(stepNames).toContain("write-credentials");
     expect(stepNames).toContain("update-config");
-    expect(stepNames).toContain("health-ping");
   });
 
   it("handles WhatsApp credential writing", async () => {
@@ -188,7 +187,7 @@ describe("connectChannel", () => {
     // Should have running + done for write-credentials and update-config
     expect(events.filter((e) => e.step === "write-credentials" && e.status === "done")).toHaveLength(1);
     expect(events.filter((e) => e.step === "update-config" && e.status === "done")).toHaveLength(1);
-    // health-ping should fail
-    expect(events.filter((e) => e.step === "health-ping" && e.status === "failed")).toHaveLength(1);
+    // Should have a failure at some step (recreate or health-ping depending on Docker availability)
+    expect(events.some((e) => e.status === "failed")).toBe(true);
   });
 });

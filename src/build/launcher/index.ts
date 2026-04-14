@@ -38,8 +38,6 @@ export { smokeTest, verifyHealth } from "./health.js";
 export {
   connectChannel,
   pingGateway,
-  sendTelegramTestMessage,
-  sendWhatsAppTestMessage,
   validateTelegramToken,
   validateWhatsAppToken,
 } from "./connect.js";

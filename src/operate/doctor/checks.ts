@@ -869,7 +869,7 @@ async function checkOllamaReachable(
   deployDir: string,
   signal?: AbortSignal,
 ): Promise<DoctorCheckResult> {
-  const name = "ollama-reachable" as DoctorCheckName;
+  const name: DoctorCheckName = "ollama-reachable";
 
   // Read config to check if Ollama is the configured model provider
   try {
@@ -1517,7 +1517,7 @@ async function checkOpsBackupRecent(
   }
 
   // Check for recent backup snapshots
-  const backupDir = join(deployDir, "ops", "backup", "incremental");
+  const backupDir = join(deployDir, "ops", "backup", "snapshots");
   const latestLink = join(backupDir, "latest");
   try {
     const latestStat = await stat(latestLink);

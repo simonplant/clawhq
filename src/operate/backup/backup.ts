@@ -13,7 +13,6 @@
  *   5. Cleanup — remove the unencrypted intermediate archive
  */
 
-import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, createWriteStream, existsSync, mkdirSync, statSync } from "node:fs";
 import { readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -24,6 +23,7 @@ import { createGzip } from "node:zlib";
 
 import { BACKUP_GPG_TIMEOUT_MS, DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
+import { SNAPSHOTS_DIR, spawnWithStdin } from "./utils.js";
 import type {
   BackupCreateOptions,
   BackupCreateResult,
@@ -34,9 +34,6 @@ import type {
   StepStatus,
 } from "./types.js";
 
-
-/** Snapshot storage directory relative to deployment directory. */
-const SNAPSHOTS_DIR = "ops/backup/snapshots";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -94,42 +91,6 @@ function tarHeader(name: string, size: number): Buffer {
 async function hashFile(filePath: string): Promise<string> {
   const content = await readFile(filePath);
   return createHash("sha256").update(content).digest("hex");
-}
-
-/** Run a command with stdin input, returning a promise. */
-function spawnWithStdin(
-  cmd: string,
-  args: string[],
-  stdinData: string,
-  timeoutMs: number,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { stdio: ["pipe", "pipe", "pipe"] });
-    let stderr = "";
-
-    const timer = setTimeout(() => {
-      proc.kill("SIGKILL");
-      reject(new Error(`${cmd} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    proc.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
-    });
-
-    proc.on("close", (code) => {
-      clearTimeout(timer);
-      if (code === 0) resolve();
-      else reject(new Error(`${cmd} exited with code ${code}: ${stderr.trim()}`));
-    });
-
-    proc.on("error", (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-
-    proc.stdin.write(stdinData);
-    proc.stdin.end();
-  });
 }
 
 function snapshotsDir(deployDir: string): string {

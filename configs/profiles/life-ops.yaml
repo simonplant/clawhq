@@ -87,22 +87,183 @@ integrations:
   optional: [notes]
 
 cron_defaults:
-  heartbeat: "*/10 * * * *"
-  work_session: "*/15 * * * *"
-  morning_brief: "30 7 * * *"
-  mancini_fetch: "30 14 * * 1-5"
-  mancini_fallback: "0 19 * * 1-5"
-  premarket_brief: "0 6 * * 1-5"
-  eod_review: "15 13 * * 1-5"
+  heartbeat:
+    expr: "*/15 * * * *"
+    announce: false
+  work_session:
+    expr: "0 * * * *"
+    announce: false
+  morning_brief:
+    expr: "0 8 * * *"
+    announce: true
+  mancini_fetch:
+    expr: "30 14 * * 1-5"
+    announce: false
+  mancini_fallback:
+    expr: "0 19 * * 1-5"
+    announce: false
+  premarket_brief:
+    expr: "0 6 * * 1-5"
+    announce: true
+  focus25_fetch:
+    expr: "30 16 * * 1-5"
+    announce: false
+  eod_review:
+    expr: "15 13 * * 1-5"
+    announce: false
+  portfolio_review:
+    expr: "0 14 * * 1-5"
+    announce: true
+  x_scan:
+    expr: "*/15 5-18 * * *"
+    announce: true
+  x_scan_evening:
+    expr: "0 19-22 * * *"
+    announce: true
+  news_scan:
+    expr: "30 6,12 * * 1-5"
+    announce: true
 
 cron_prompts:
-  heartbeat: "Run heartbeat: check email for urgent messages, check calendar for upcoming meetings in the next 2 hours, check tasks for overdue items. If nothing urgent, respond HEARTBEAT_OK."
-  work_session: "Run work session: check your task queue, pick the highest priority item, execute it. If blocked, move to the next item. Summarize what you accomplished."
-  mancini_fetch: "Run skill mancini-fetch: pull Mancini's latest Futures Daily post from Substack, extract trade plan per EXTRACT_MANCINI.md, write to memory/trading-YYYY-MM-DD.md."
-  mancini_fallback: "Run skill mancini-fetch --force: fallback fetch if the 2:30pm run missed. Check memory/trading-YYYY-MM-DD.md first — skip if already populated."
-  premarket_brief: "Deliver premarket brief: read today's trading-YYYY-MM-DD.md, summarize key levels, upcoming catalysts, and overnight moves. Format for quick mobile read."
-  eod_review: "Run skill eod-review: fetch closing prices via quote for all watched names, compare against today's trade plan levels, categorize as TRIGGERED/NEAR/WATCH. Write to memory/trading-YYYY-MM-DD-eod.md."
-  morning_brief: "Deliver morning briefing: summarize today's calendar, overnight email highlights (urgent items first), top 3 tasks for today, any conflicts or deadlines."
+  heartbeat: >
+    Run heartbeat: check email for urgent messages, check calendar for upcoming
+    meetings in the next 2 hours, check tasks for overdue items.
+
+    TRADING (Mon-Fri market hours, 6:30am-1pm PT / 9:30am-4pm ET):
+
+    1. Read today's brief: memory/trading-YYYY-MM-DD.md
+       - If it doesn't exist or is stale, note it and move on
+       - Know the Mancini ranked setups (Rank 1-3) and DP levels if present
+
+    2. Check paper portfolio: trade-journal positions
+       - If Pot B or C have open positions, note them
+       - If all pots are flat, skip position monitoring
+
+    3. Fetch ES price: quote ES=F --json
+       - Compare vs Mancini Rank 1-3 flush targets from the brief
+       - Within 10 pts of flush target: log to daily memory (no Telegram)
+       - Within 5 pts: alert Simon "ES approaching Rank N zone at [price]"
+       - Recovery confirmed above flush level: log Pot C trade
+
+    4. Check Pot B positions vs DP targets/stops
+
+    5. When nothing is near a level: skip trading section silently. HEARTBEAT_OK.
+
+    Outside market hours or weekends: Skip the TRADING section entirely.
+    If nothing urgent from email/calendar/tasks, respond HEARTBEAT_OK.
+
+  work_session: >
+    Run work session: check your task queue, pick the highest priority item,
+    execute it. If blocked, move to the next item. Summarize what you accomplished.
+
+  mancini_fetch: >
+    Run skill mancini-fetch: pull Mancini's latest Futures Daily post from
+    Substack using substack read mancini. Extract trade plan per
+    references/EXTRACT_MANCINI.md — regime, ranked setups, level grid,
+    protection mode. Write to memory/trading-YYYY-MM-DD.md Mancini section.
+    This is Source 1 of the daily trading brief and feeds tomorrow's
+    premarket-brief.
+
+  mancini_fallback: >
+    Run skill mancini-fetch --force: fallback fetch if the 2:30pm run missed.
+    Check memory/trading-YYYY-MM-DD.md first — if the Mancini section is
+    already populated with today's data, skip.
+
+  premarket_brief: >
+    Deliver premarket trading brief per TRADING_SOP.md Phase 2 (PLAN).
+    This is the single most important deliverable of the day — Simon uses it
+    to place LIMIT orders before the bell.
+
+    Steps:
+    1. Read today's memory/trading-YYYY-MM-DD.md — check which sections filled vs pending
+    2. Fill Market Context: quote ES=F NQ=F SPY QQQ --json — futures, overnight moves
+    3. Fill Calendar Risk: earnings today, FOMC, NFP, speeches
+    4. Check section completeness: note which sources (Mancini/Focus 25/DP) are present
+    5. Synthesize Ranked Trade Ideas — cross-reference levels, rank by conviction
+
+    DP/Inner Circle cross-reference:
+    - If DP section exists, cross-reference DP levels with Mancini levels
+    - Flag alignment: "DP and Mancini both watching ES [level] zone"
+    - Flag divergence: "DP bearish but Mancini sees FB setup for longs at [level]"
+    - If DP section missing: note "DP morning call: pending"
+
+    Output format:
+    === Pre-Market Brief — YYYY-MM-DD ===
+    MARKET CONTEXT / OVERNIGHT INTELLIGENCE / TODAY'S TRADE IDEAS (order-ready) /
+    WATCH LIST / KEY LEVELS / CALENDAR RISK / POT STATUS
+
+    Trade ideas must be order-ready: LIMIT price, stop, targets, risk.
+
+  focus25_fetch: >
+    Run skill focus25-fetch: check FastMail for today's EOD Focus 25 email
+    from si.plant@gmail.com. Parse market posture breadth, RS leaders/laggards,
+    biggest movers, actionable cards. Append Focus 25 section to
+    memory/trading-YYYY-MM-DD.md. This is Source 2 of the daily trading brief.
+    If email hasn't arrived yet, log and retry next heartbeat.
+
+  eod_review: >
+    Run end-of-day trading review per TRADING_SOP.md Phase 6 (REVIEW).
+
+    Level Review: fetch closing prices via quote for all watched names from
+    today's trading brief. Compare against trade plan levels. Categorize each
+    as TRIGGERED (<0.5%), NEAR (<2%), or WATCH. Write to
+    memory/trading-YYYY-MM-DD-eod.md.
+
+    Paper Account: trade-journal mark, trade-journal compare. Include pot
+    comparison in EOD report. Flag any pot drawn down >10% for halt review.
+
+    Output: === EOD Review === MARKET SUMMARY / LEVEL ACCURACY / POT PERFORMANCE /
+    TOMORROW'S SETUP
+
+  morning_brief: >
+    Deliver morning briefing: summarize today's calendar, overnight email
+    highlights (urgent items first), top 3 tasks for today, any conflicts
+    or deadlines. Keep it concise for mobile reading.
+
+  portfolio_review: >
+    Run Phase 1 Portfolio Manager daily review (after market close).
+
+    Pre-check: run market-calendar today — if not a market day, skip silently.
+
+    Steps:
+    1. risk-governor status — current risk utilization
+    2. trade-journal summary — today's pot performance
+    3. trade-journal compare — pot-vs-pot-vs-SPY
+    4. quote SPY QQQ ES=F --json — closing levels
+    5. Read memory/trading-YYYY-MM-DD.md — what was the plan?
+    6. Read memory/trading-YYYY-MM-DD-eod.md — what happened?
+    7. journal summary — signals, risk checks, blocks today
+
+    Assess: portfolio health, signal quality, regime, governor blocks.
+    Write to markets/reports/daily-report.md and deliver via Telegram.
+    Keep concise — Simon reads on mobile.
+
+  x_scan: >
+    Run X intelligence scan: x scan
+
+    Review results by channel:
+    - trading: Flag Mancini/DP levels, setups, or position changes.
+      If actionable, cross-reference with memory/trading-YYYY-MM-DD.md.
+    - tech: Flag OpenClaw releases, breaking changes, security advisories.
+    - personal: Note but don't alert unless urgent.
+
+    Only message Simon if something is actionable. If quiet, log one-line
+    summary to memory and stay silent.
+
+  x_scan_evening: >
+    Run X intelligence scan: x scan --quiet
+
+    Same rules as x_scan but evening hours. Only alert if actionable.
+
+  news_scan: >
+    Run news scan for market-moving events:
+    1. x tweets Trade_The_News --limit 10
+    2. search search "stock market breaking news today"
+    3. Check if news impacts positions: trade-journal positions
+
+    Alert Simon only for: Fed/FOMC surprises, major earnings on watched names,
+    geopolitical events likely to move ES >1%, news impacting open positions.
+    Otherwise log to memory/news-YYYY-MM-DD.md and stay silent.
 
 delegation:
   - action: organize_inbox

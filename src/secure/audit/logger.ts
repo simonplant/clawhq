@@ -66,6 +66,9 @@ export async function initSeqCounter(logPath: string): Promise<void> {
 /** Last known HMAC for the secret lifecycle chain. */
 let lastSecretHmac = "";
 
+/** Async mutex for serializing secret event writes (protects HMAC chain integrity). */
+let secretWriteMutex: Promise<void> = Promise.resolve();
+
 /** Compute HMAC-SHA256 of event data chained with the previous HMAC. */
 function computeChainedHmac(
   key: string,
@@ -161,29 +164,33 @@ export async function logSecretEvent(
     actor: string;
   },
 ): Promise<void> {
-  try {
-    const prevHmac = lastSecretHmac;
-    const eventData = {
-      type: "secret_lifecycle" as const,
-      ts: new Date().toISOString(),
-      seq: nextSeq(config.secretLogPath),
-      secretId: opts.secretId,
-      action: opts.action,
-      actor: opts.actor,
-    };
+  // Serialize writes via promise chain to protect HMAC chain integrity
+  secretWriteMutex = secretWriteMutex.then(async () => {
+    try {
+      const prevHmac = lastSecretHmac;
+      const eventData = {
+        type: "secret_lifecycle" as const,
+        ts: new Date().toISOString(),
+        seq: nextSeq(config.secretLogPath),
+        secretId: opts.secretId,
+        action: opts.action,
+        actor: opts.actor,
+      };
 
-    const hmac = computeChainedHmac(config.hmacKey, prevHmac, eventData);
-    lastSecretHmac = hmac;
+      const hmac = computeChainedHmac(config.hmacKey, prevHmac, eventData);
+      lastSecretHmac = hmac;
 
-    const event: SecretLifecycleEvent = {
-      ...eventData,
-      hmac,
-      prevHmac,
-    };
-    await appendJsonl(config.secretLogPath, event);
-  } catch {
-    // Best-effort — audit logging never disrupts the pipeline
-  }
+      const event: SecretLifecycleEvent = {
+        ...eventData,
+        hmac,
+        prevHmac,
+      };
+      await appendJsonl(config.secretLogPath, event);
+    } catch {
+      // Best-effort — audit logging never disrupts the pipeline
+    }
+  });
+  await secretWriteMutex;
 }
 
 // ── Approval Resolution Logging ───────────────────────────────────────────

@@ -7,7 +7,7 @@
  */
 
 import { execFile } from "node:child_process";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -72,20 +72,6 @@ export async function verifyArtifact(deployDir: string): Promise<VerifyResult> {
       ? `Verified: from-source build matches release artifact (${truncateDigest(localDigest)})`
       : `Mismatch: local ${truncateDigest(localDigest)} ≠ release ${truncateDigest(releaseDigest)}`,
   };
-}
-
-/**
- * Save the current engine image digest as the release baseline.
- *
- * Called after a successful trusted-cache install so that future
- * from-source builds can verify against it.
- */
-export async function saveReleaseDigest(
-  deployDir: string,
-  digest: string,
-): Promise<void> {
-  const path = join(deployDir, "engine", RELEASE_DIGEST_FILE);
-  await writeFile(path, digest + "\n", "utf-8");
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

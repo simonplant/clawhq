@@ -15,7 +15,6 @@ export {
   createManifest,
   DEFAULT_POSTURE,
   generateCompose,
-  generateStage1Dockerfile,
   generateStage2Dockerfile,
   getPostureConfig,
   manifestPath,

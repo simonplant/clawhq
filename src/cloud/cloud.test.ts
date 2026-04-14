@@ -120,7 +120,7 @@ describe("trust modes", () => {
     it("switching to paranoid forces disconnect", () => {
       const deployDir = tmpDeployDir();
       switchTrustMode(deployDir, "zero-trust");
-      connectCloud(deployDir, "test-token");
+      connectCloud(deployDir);
       const state1 = readTrustModeState(deployDir);
       expect(state1.connected).toBe(true);
 
@@ -143,7 +143,7 @@ describe("trust modes", () => {
     it("connects in zero-trust mode", () => {
       const deployDir = tmpDeployDir();
       switchTrustMode(deployDir, "zero-trust");
-      const result = connectCloud(deployDir, "test-token");
+      const result = connectCloud(deployDir);
       expect(result.success).toBe(true);
 
       const state = readTrustModeState(deployDir);
@@ -153,7 +153,7 @@ describe("trust modes", () => {
 
     it("fails to connect in paranoid mode", () => {
       const deployDir = tmpDeployDir();
-      const result = connectCloud(deployDir, "test-token");
+      const result = connectCloud(deployDir);
       expect(result.success).toBe(false);
       expect(result.error).toContain("paranoid");
     });
@@ -163,7 +163,7 @@ describe("trust modes", () => {
     it("disconnects immediately", () => {
       const deployDir = tmpDeployDir();
       switchTrustMode(deployDir, "zero-trust");
-      connectCloud(deployDir, "test-token");
+      connectCloud(deployDir);
 
       const result = disconnectCloud(deployDir);
       expect(result.success).toBe(true);

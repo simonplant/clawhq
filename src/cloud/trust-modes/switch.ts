@@ -135,7 +135,6 @@ export function switchTrustMode(
  */
 export function connectCloud(
   deployDir: string,
-  _token: string,
 ): { success: boolean; error?: string } {
   const current = readTrustModeState(deployDir);
 

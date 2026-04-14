@@ -55,10 +55,7 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
     try {
       // Use the simple HTTP /healthz endpoint — no auth required, always works
       const url = `http://${host}:${port}/healthz`;
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), DEPLOY_RPC_TIMEOUT_MS);
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timer);
+      const response = await fetch(url, { signal: AbortSignal.timeout(DEPLOY_RPC_TIMEOUT_MS) });
 
       if (response.ok) {
         return {

@@ -10,7 +10,7 @@
  *   6. Cleanup — remove temp directory
  */
 
-import { execFile, spawn } from "node:child_process";
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { cp, readdir, readFile, rm } from "node:fs/promises";
@@ -22,6 +22,7 @@ import { BACKUP_RESTORE_GPG_TIMEOUT_MS, BACKUP_RESTORE_TAR_TIMEOUT_MS, DIR_MODE_
 import { runDoctor } from "../doctor/doctor.js";
 import type { DoctorReport } from "../doctor/types.js";
 
+import { SNAPSHOTS_DIR, spawnWithStdin } from "./utils.js";
 import type {
   BackupProgressCallback,
   BackupRestoreOptions,
@@ -33,10 +34,6 @@ import type {
 
 const execFileAsync = promisify(execFile);
 
-
-/** Snapshot storage directory relative to deployment directory. */
-const SNAPSHOTS_DIR = "ops/backup/snapshots";
-
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function progress(
@@ -46,42 +43,6 @@ function progress(
   message: string,
 ): void {
   cb?.({ step, status, message });
-}
-
-/** Run a command with stdin input, returning a promise. */
-function spawnWithStdin(
-  cmd: string,
-  args: string[],
-  stdinData: string,
-  timeoutMs: number,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { stdio: ["pipe", "pipe", "pipe"] });
-    let stderr = "";
-
-    const timer = setTimeout(() => {
-      proc.kill("SIGKILL");
-      reject(new Error(`${cmd} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    proc.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
-    });
-
-    proc.on("close", (code) => {
-      clearTimeout(timer);
-      if (code === 0) resolve();
-      else reject(new Error(`${cmd} exited with code ${code}: ${stderr.trim()}`));
-    });
-
-    proc.on("error", (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-
-    proc.stdin.write(stdinData);
-    proc.stdin.end();
-  });
 }
 
 /** Compute SHA-256 hash of a file. */

@@ -843,6 +843,7 @@ function normalizeCronExpr(blueprintExpr: string): string | null {
  * Validates that hour and minute are within range.
  */
 function normalizeMorningBrief(timeStr: string): string {
+  // Accept HH:MM format (e.g. "07:00") → convert to 5-field cron
   const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
   if (match && match[1] !== undefined && match[2] !== undefined) {
     const hour = parseInt(match[1], 10);
@@ -858,8 +859,18 @@ function normalizeMorningBrief(timeStr: string): string {
 
     return expr;
   }
+
+  // Accept 5-field cron expression directly (e.g. "0 7 * * *")
+  const cronParts = timeStr.trim().split(/\s+/);
+  if (cronParts.length === 5) {
+    const errors = validateCronExpr(timeStr);
+    if (errors.length === 0) {
+      return timeStr;
+    }
+  }
+
   throw new Error(
-    `Invalid morning brief time "${timeStr}" — expected HH:MM format (e.g. "07:00")`,
+    `Invalid morning brief time "${timeStr}" — expected HH:MM format (e.g. "07:00") or 5-field cron expression`,
   );
 }
 

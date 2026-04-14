@@ -9,8 +9,6 @@
  * To update hashes: `clawhq build --verify-hashes`
  */
 
-import type { BinaryInstall } from "./types.js";
-
 // ── SHA256 Validation ──────────────────────────────────────────────────────
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
@@ -23,23 +21,6 @@ export function validateBinarySha256(sha256: string): void {
     );
   }
 }
-
-// ── Pinned Binary Manifest ─────────────────────────────────────────────────
-
-/**
- * Pinned binary manifest — the auditable source of truth for all tool
- * binaries downloaded during Docker build.
- *
- * Each entry specifies the tool name, download URL, install path, and
- * SHA256 hash of the expected file.
- *
- * Hash sources: download the binary, run `sha256sum <file>`, paste the hash.
- *
- * Currently empty — binaries are populated per-blueprint during
- * `clawhq init`. When blueprints add binaries (himalaya, gh, etc.),
- * they must include pinned SHA256 hashes.
- */
-export const PINNED_BINARIES: readonly BinaryInstall[] = [];
 
 // ── 1Password CLI ──────────────���──────────────────────────────────────────
 

@@ -711,17 +711,17 @@ function renderOpenclawJson(
     },
     agents: {
       defaults: {
-        model: buildModelConfig(providers, composition.model),
+        model: modelConfig,
         // Local models need more time — 5 min timeout, relaxed idle timeout
         llm: {
           idleTimeoutSeconds: isLocal ? 300 : 60,
         },
         subagents: {
-          model: buildModelConfig(providers, composition.model).primary,
+          model: modelConfig.primary,
           runTimeoutSeconds: isLocal ? 600 : 120,
         },
         heartbeat: {
-          model: buildModelConfig(providers, composition.model).primary,
+          model: modelConfig.primary,
         },
         // Note: OpenClaw security audit recommends sandbox.mode="all" for small
         // local models, but sandboxing requires Docker-in-Docker which isn't
@@ -828,7 +828,11 @@ function renderCronJobs(
   const primary = modelConfig.primary as string;
   const isLocal = primary.startsWith("ollama/");
 
-  for (const [id, expr] of Object.entries(profile.cron_defaults)) {
+  for (const [id, cronDef] of Object.entries(profile.cron_defaults)) {
+    // Support both string expr and {expr, announce} object format
+    const expr = typeof cronDef === "string" ? cronDef : cronDef.expr;
+    const shouldAnnounce = typeof cronDef === "object" && cronDef.announce === true;
+
     const task = profile.cron_prompts[id] ?? `Run ${id}`;
     const isHeartbeat = id === "heartbeat";
     const isBrief = id.includes("brief");
@@ -842,7 +846,9 @@ function renderCronJobs(
       expr,
       task,
       enabled: true,
-      delivery: isBrief ? "announce" : "none",
+      delivery: shouldAnnounce
+        ? { mode: "announce", target: "last" }
+        : { mode: "none" },
       model: isLocal
         ? primary
         : isHeartbeat ? "haiku" : isBrief ? "sonnet" : "opus",

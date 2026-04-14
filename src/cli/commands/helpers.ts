@@ -1,3 +1,5 @@
+import { join } from "node:path";
+
 import chalk from "chalk";
 import ora from "ora";
 import { stringify as yamlStringify } from "yaml";
@@ -65,6 +67,14 @@ function stepLabel(step: string): string {
     "smoke-test": "[smoke]",
   };
   return chalk.dim(labels[step] ?? `[${step}]`);
+}
+
+export async function resolveGatewayToken(opts: { token?: string; deployDir: string }): Promise<string> {
+  const { readEnvValue } = await import("../../secure/credentials/env-store.js");
+  return opts.token
+    ?? process.env["CLAWHQ_GATEWAY_TOKEN"]
+    ?? readEnvValue(join(opts.deployDir, "engine", ".env"), "OPENCLAW_GATEWAY_TOKEN")
+    ?? "";
 }
 
 /** Convert a DeploymentBundle into FileEntry array for the atomic writer. */

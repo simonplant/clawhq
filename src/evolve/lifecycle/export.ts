@@ -23,6 +23,7 @@ import { createGzip } from "node:zlib";
 
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
+import { formatBytes } from "./format.js";
 import { emptyMaskReport, isTextFile, maskPii, mergeMaskResult } from "./mask.js";
 import type {
   ExportOptions,
@@ -268,8 +269,3 @@ export async function exportBundle(options: ExportOptions): Promise<ExportResult
   };
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}

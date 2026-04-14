@@ -502,6 +502,9 @@ cmd_scan() {
 
   local scan_limit
   scan_limit=$(jq -r '.defaults.scanLimit // 5' "$WATCHLIST_FILE")
+  # X API requires max_results 10-100
+  [ "$scan_limit" -lt 10 ] 2>/dev/null && scan_limit=10
+  [ "$scan_limit" -gt 100 ] 2>/dev/null && scan_limit=100
 
   # ── Scan accounts ──
   local all_tweets='[]'

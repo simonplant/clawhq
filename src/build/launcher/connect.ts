@@ -67,29 +67,6 @@ export async function validateTelegramToken(botToken: string): Promise<string> {
   return data.result.username;
 }
 
-/**
- * Send a test message via Telegram Bot API.
- */
-export async function sendTelegramTestMessage(
-  botToken: string,
-  chatId: string,
-  agentName: string,
-): Promise<void> {
-  const url = `${TELEGRAM_API}/bot${botToken}/sendMessage`;
-  const text = `✅ ${agentName} is connected and ready. This is a test message from clawhq connect.`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Failed to send Telegram test message (HTTP ${response.status}): ${body}`);
-  }
-}
-
 // ── WhatsApp Validation ──────────────────────────────────────────────────────
 
 /**
@@ -117,38 +94,6 @@ export async function validateWhatsAppToken(
   }
 
   return data.display_phone_number;
-}
-
-/**
- * Send a test message via WhatsApp Business API.
- */
-export async function sendWhatsAppTestMessage(
-  phoneNumberId: string,
-  accessToken: string,
-  recipientPhone: string,
-  agentName: string,
-): Promise<void> {
-  const url = `${WHATSAPP_API}/${phoneNumberId}/messages`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: recipientPhone,
-      type: "text",
-      text: {
-        body: `✅ ${agentName} is connected and ready. This is a test message from clawhq connect.`,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Failed to send WhatsApp test message (HTTP ${response.status}): ${body}`);
-  }
 }
 
 // ── Config Update ────────────────────────────────────────────────────────────
@@ -291,7 +236,7 @@ export async function connectChannel(options: ConnectOptions): Promise<ConnectRe
   // Step 5: Wait for channel to start polling (non-fatal timeout)
   onProgress?.({ step: "channel-wait", status: "running", message: `Waiting for ${channel} to connect…` });
 
-  const channelUp = await waitForChannelConnect(channel, CHANNEL_CONNECT_TIMEOUT_MS);
+  const channelUp = await waitForChannelConnect(channel, CHANNEL_CONNECT_TIMEOUT_MS, deployDir);
   if (channelUp) {
     onProgress?.({ step: "channel-wait", status: "done", message: `${channel} connected and polling` });
   } else {
@@ -364,15 +309,17 @@ async function waitForHealth(
 async function waitForChannelConnect(
   channel: string,
   timeoutMs: number,
+  deployDir: string,
 ): Promise<boolean> {
   const start = Date.now();
+  const engineDir = join(deployDir, "engine");
 
   while (Date.now() - start < timeoutMs) {
     try {
       const { stdout } = await execFileAsync(
         "docker",
-        ["logs", "engine-openclaw-1", "--since", "30s"],
-        { timeout: 5_000 },
+        ["compose", "logs", "--no-color", "--since", "30s", "openclaw"],
+        { timeout: 5_000, cwd: engineDir },
       );
 
       const lines = stdout.split("\n").filter((l) => l.includes(`[${channel}]`));

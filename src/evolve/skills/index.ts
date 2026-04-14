@@ -26,48 +26,6 @@ export {
 // List
 export { formatSkillList, formatSkillListJson, listSkills } from "./list.js";
 
-// Construct meta-skill
-export {
-  assessGaps,
-  CONSTRUCT_PHASE_ORDER,
-  deployConstructedSkill,
-  filterNewProposals,
-  getConstructStatus,
-  runConstructCycle,
-  validateDeployedSkill,
-  writeArtifact,
-} from "./construct/index.js";
-
-export {
-  assessedGapIds,
-  builtSkillNames,
-  emptyState as emptyConstructState,
-  loadConstructState,
-  proposedSkillNames,
-  recordArtifact,
-  recordCycle,
-  recordGaps,
-  recordProposal,
-  saveConstructState,
-} from "./construct/index.js";
-
-export type {
-  ConstructArtifact,
-  ConstructCycle,
-  ConstructGap,
-  ConstructPhase,
-  ConstructPhaseResult,
-  ConstructPhaseStatus,
-  ConstructProgress,
-  ConstructProgressCallback,
-  ConstructProposal,
-  ConstructRunOptions,
-  ConstructRunResult,
-  ConstructState,
-  GapPriority,
-  SkillBoundaries,
-} from "./construct/index.js";
-
 // Types
 export type {
   RollbackSnapshot,
