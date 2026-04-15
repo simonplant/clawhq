@@ -79,7 +79,7 @@ Hosting providers deploy OpenClaw on a VPS with default or lightly-hardened conf
 
 **Pre-launch.** Built with AI-assisted development (Claude Code). The market is large and contested — 10+ hosting providers are capturing the OpenClaw ecosystem. ClawHQ competes on architectural depth and sovereignty, not hosting convenience.
 
-**Working:** Blueprint engine with 7 internal blueprints (extracting 3 as standalone publishable configs in progress), config generation with 14-landmine prevention, full deploy pipeline with container security hardening, diagnostics + auto-fix (`clawhq doctor` — 30 checks), skill system with sandboxed vetting, encrypted backup/restore, credential health probes, memory lifecycle, cloud provisioning (4 providers), trust modes, audit trail.
+**Working:** Blueprint engine with 7 internal blueprints, config generation with 14-landmine prevention, closed-loop deploy pipeline (preflight → build → firewall → health → integration verify → smoke test), container security hardening with 3-tier posture system, diagnostics + auto-fix (`clawhq doctor` — 30+ checks), skill vetting (outbound HTTP, shell exec, file escape), encrypted backup/restore, credential health probes, port-aware egress firewall with auto-detection of integrations from .env, Tier 1 prompt injection defense, credential proxy (secrets never enter container), append-only JSONL audit trail, memory lifecycle, cloud provisioning (4 providers), trust modes.
 
 **In progress:** Agent runtime integration (wiring subsystems to the running agent), web dashboard UI, distro installer (`curl | sh`).
 

@@ -44,7 +44,7 @@
 24. [Container Hardening Matrix](#container-hardening-matrix)
 25. [Egress Firewall](#egress-firewall)
 26. [Prompt Injection Defense](#prompt-injection-defense)
-27. [PII & Secret Scanning](#pii--secret-scanning)
+27. [Secret Scanning](#secret-scanning)
 28. [Credential Health Probes](#credential-health-probes)
 
 **Part 5 — Deployment & Operations**
@@ -1807,43 +1807,26 @@ Input → Detect → Score → [Quarantine | Sanitize] → [Wrap] → Output
 - Decode instructions ("decode this base64...")
 - Exfiltration markup (hidden links, image tags for data exfiltration)
 
-**Tier 2 — Medium Detectability:**
-- Homoglyph obfuscation (Cyrillic/Greek lookalike characters)
-- Morse encoding
-- Few-shot conversation spoofing (fake multi-turn examples)
-- Multilingual injection (instructions in unexpected languages)
 - Exfiltration instructions (natural-language requests to send data externally)
+- Secret leak detection (AWS keys, GitHub PATs, Slack tokens, OpenAI keys, JWTs, private keys)
+
+Confusable normalization (Cyrillic/Greek/fullwidth → ASCII) is applied before Tier 1 pattern matching to catch obfuscated injection keywords. For adversarial prompt injection (semantic override, social engineering), use model-based detection — regex cannot reliably catch motivated attackers.
 
 The sanitizer sits between external content ingestion and LLM context assembly. It complements the egress firewall — the firewall restricts what goes out, the sanitizer restricts what comes in.
 
 ---
 
-## PII & Secret Scanning
+## Secret Scanning
 
-Implementation: `src/secure/scanner/`.
-
-### Scan Targets
-
-| Scan Target | What It Catches | How |
-|---|---|---|
-| Agent repos | PII (names, addresses, phone, SSN, credit cards) | Regex patterns with false-positive filtering |
-| Agent repos | Secrets (API keys: `ghp_*`, `sk-ant-*`, `AKIA*`, Bearer tokens, JWTs) | Pattern matching + entropy analysis |
-| Agent repos | Dangerous files (`.env`, `*.pem`, `*.key`, `id_rsa*`, `*.db`) | Filename patterns |
-| Git history | Previously committed secrets | `git log` pattern scan |
-| Repo settings | Public repos that should be private, unauthorized collaborators, deploy keys | GitHub API policy checks |
-
-### False Positive Exclusions
-
-The scanner skips: `CHANGE_ME` placeholders, environment variable references (`$VAR`), comments explaining patterns, and functional identity references in designated files (USER.md, MEMORY.md).
+ClawHQ recommends [gitleaks](https://github.com/gitleaks/gitleaks) for secret scanning (800+ patterns, actively maintained). `clawhq scan` checks for gitleaks availability and runs it against the deployment directory.
 
 ### Supply Chain Security
 
 | Control | What It Does |
 |---|---|
-| Skill vetting | AI-powered scanning of community skills before installation; VirusTotal integration |
-| Skill allowlisting | Internal registry of approved skills only; block unapproved installs |
-| IOC database | Known C2 IPs, malicious domains, file hashes, publisher blacklists from known campaigns |
-| CVE monitoring | Automated NVD CVE polling; community threat intelligence feeds; same-day fleet patching |
+| Skill vetting | Regex-based scanning for outbound HTTP, shell execution, and file escape patterns |
+| Approval gate | High-stakes actions (send, delete, purchase) require user approval via Telegram |
+| Egress firewall | Port-aware domain allowlist prevents unauthorized outbound connections |
 
 ---
 
@@ -2074,8 +2057,9 @@ Auto-fix capabilities: file permissions (chmod), critical landmine violations in
 | `clawhq doctor [--fix]` | ClawHQ's 18-check diagnostics with auto-fix |
 | `clawhq status [--watch]` | Single-pane dashboard |
 | `clawhq creds` | Credential health probes |
-| `clawhq scan` | PII + secrets scanner |
-| `clawhq audit` | Tool execution + egress audit trail |
+| `clawhq scan` | Secret scanning via gitleaks |
+| `clawhq audit` | Tool execution + egress audit trail (append-only JSONL) |
+| `clawhq verify` | Verify all integrations work from inside container |
 
 ---
 

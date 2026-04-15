@@ -490,10 +490,10 @@ Each phase produces a working state. The user gets value at every checkpoint.
 
 ### Deploy Pipeline
 
-`clawhq up` executes a six-step deploy pipeline. Each step must pass before the next begins.
+`clawhq up` executes a seven-step deploy pipeline. Each step must pass before the next begins.
 
 ```
-preflight → compose up → identity lock → firewall → health verify → smoke test
+preflight → compose up → identity lock → firewall → health verify → integration verify → smoke test
 ```
 
 | Step | What Happens |
@@ -501,8 +501,9 @@ preflight → compose up → identity lock → firewall → health verify → sm
 | **preflight** | Validate config, check prerequisites, verify images |
 | **compose up** | Start containers with posture-appropriate compose config |
 | **identity lock** | Apply `chattr +i` to identity files (hardened/under-attack) |
-| **firewall** | Apply egress rules via `CLAWHQ_FWD` iptables chain |
+| **firewall** | Apply port-aware egress rules via `CLAWHQ_FWD` iptables chain (auto-detects integrations from .env) |
 | **health verify** | Wait for Gateway health endpoint to report ready |
+| **integration verify** | Test every configured integration from inside container: credential probes, network reachability (IMAP/SMTP/API), LLM response time vs timeout budget. Failures are warnings with fix suggestions, not blockers. (`--skip-verify` to skip) |
 | **smoke test** | Verify tool execution, channel connectivity, cron registration |
 
 ### Engine Acquisition
@@ -612,8 +613,9 @@ Reapplied automatically after every `docker compose down`.
 | System | Purpose | Integrity |
 |---|---|---|
 | Tool execution | What the agent did | Append-only JSONL |
-| Secret lifecycle | Secret added/rotated/revoked | HMAC-chained |
+| Secret lifecycle | Secret added/rotated/revoked | Append-only JSONL |
 | Egress | What data left the machine | Append-only JSONL |
+| Approval resolution | High-stakes actions approved/rejected | Append-only JSONL |
 
 ---
 
@@ -741,10 +743,9 @@ clawhq/
 │   │   └── launcher/               # Deploy orchestration (up/down/restart)
 │   │
 │   ├── secure/                     # Secure: security and compliance
-│   │   ├── sanitizer/              # Input injection detection + sanitization
-│   │   ├── credentials/            # Credential store + health probes
-│   │   ├── audit/                  # Audit logging (tool, secret, egress, cloud)
-│   │   └── scanner/                # PII + secret scanning
+│   │   ├── sanitizer/              # Tier 1 prompt injection detection (deterministic)
+│   │   ├── credentials/            # Credential store + health probes + credential proxy
+│   │   └── audit/                  # Append-only JSONL audit logging
 │   │
 │   ├── operate/                    # Operate: monitoring and maintenance
 │   │   ├── doctor/                 # Diagnostics + auto-fix

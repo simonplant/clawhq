@@ -255,7 +255,7 @@ This tracker documents every known incident with severity, affected versions, de
 
 **ClawHQ mitigation:**
 - `clawhq doctor` check `migration-state` detects version-specific audit issues
-- ClawHQ audit system (`src/secure/audit/`) maintains its own HMAC-chained audit trail independent of OpenClaw's stdout logging
+- ClawHQ audit system (`src/secure/audit/`) maintains its own append-only JSONL audit trail independent of OpenClaw's stdout logging
 - OWASP-compatible audit export normalizes tool execution, data egress, and secret lifecycle events
 - `clawhq update --check` warns about known broken features in current version
 

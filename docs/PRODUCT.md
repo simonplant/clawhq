@@ -97,11 +97,11 @@ This is grounded in how people actually use OpenClaw. Cohort research across 3.2
 
 **Diagnostics** — `clawhq doctor` with 30 diagnostic checks, auto-fix, predictive health alerts. Extends OpenClaw's built-in `openclaw doctor` with landmine detection, firewall verification, credential probes, identity size enforcement, context pruning verification.
 
-**Deployment** — Two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests.
+**Deployment** — Two-stage Docker build, pre-flight checks, port-aware egress firewall with auto-detection of integrations from .env, health verification, closed-loop integration verification (credential probes + network reachability + LLM response time), smoke tests.
 
-**Operations** — Encrypted backup/restore, safe updates with rollback, status dashboard, audit trail, memory lifecycle management.
+**Operations** — Encrypted backup/restore, safe updates with rollback, status dashboard, append-only JSONL audit trail, memory lifecycle management.
 
-**Security** — PII/secret scanning, skill vetting with sandboxed evaluation, credential health with expiry tracking, prompt injection defense.
+**Security** — Secret scanning via gitleaks (recommended external tool), skill vetting (outbound HTTP, shell execution, file escape detection), credential health probes, Tier 1 prompt injection defense (deterministic patterns — invisible unicode, delimiter spoofing, encoded payloads, exfil markup, secret leaks).
 
 ---
 

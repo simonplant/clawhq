@@ -102,11 +102,11 @@ Two-stage Docker build with hash-based change detection: Stage 1 caches the base
 
 ### Security infrastructure
 
-Secrets management with atomic .env writes and 0600 permissions. Credential health probes test each integration (IMAP, CalDAV, Todoist, GitHub, Tavily) with 10-second timeouts and specific remediation steps. PII + secrets scanner with pattern-based detection and git history scanning. Audit trail with append-only JSONL for tool execution, HMAC-chained secret lifecycle events, egress logging, and OWASP compliance export. Air-gapped mode enforces zero egress at both config and firewall levels.
+Secrets management with atomic .env writes and 0600 permissions. Credential health probes test each integration (IMAP, CalDAV, Todoist, GitHub, Tavily) with 10-second timeouts and specific remediation steps. Secret scanning delegated to gitleaks (800+ patterns). Audit trail with append-only JSONL for tool execution, secret lifecycle, egress logging, approval resolution, and OWASP compliance export. Tier 1 prompt injection defense (deterministic patterns). Air-gapped mode enforces zero egress at both config and firewall levels.
 
 ### Operational tooling
 
-Doctor diagnostics run 14+ preventive checks with auto-fix. Encrypted backup/restore with GPG and SHA-256 integrity verification. Status dashboard, log streaming, and safe updates with automatic rollback. Approval queue for high-stakes actions via Telegram. Multi-channel notifications (Telegram, Slack, webhook). Predictive health alerts with trend analysis. Health self-repair for container stopped/OOM. Activity digest for daily summaries. Portable export with PII masking and verified destruction with crypto manifest. Web dashboard (Hono + htmx + Pico CSS) with 7 pages.
+Doctor diagnostics run 14+ preventive checks with auto-fix. Encrypted backup/restore with GPG and SHA-256 integrity verification. Status dashboard, log streaming, and safe updates with automatic rollback. Approval queue for high-stakes actions via Telegram. Multi-channel notifications (Telegram, Slack, webhook). Predictive health alerts with trend analysis. Health self-repair for container stopped/OOM. Activity digest for daily summaries. Portable export with PII masking and thorough destruction with deletion receipt. Web dashboard (Hono + htmx + Pico CSS) with 7 pages.
 
 ---
 

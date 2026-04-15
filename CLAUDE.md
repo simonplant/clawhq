@@ -87,7 +87,7 @@ Canonical terms — use these consistently:
 - **Config generation must be correct** — All 14 landmines auto-handled
 - **Identity files are read-only** — 8 workspace identity files (including BOOTSTRAP.md) are immutable; agents cannot modify their own personality
 - **Credentials secured** — `credentials.json` mode 0600, `.env` mode 0600, never in config files
-- **Data sovereignty** — Full portability (`export`), verified deletion (`destroy`), zero lock-in
+- **Data sovereignty** — Full portability (`export`), thorough deletion (`destroy` with receipt), zero lock-in
 - **Same platform everywhere** — User's PC, Mac Mini, DigitalOcean, Hetzner — same software, different host
 
 ## CLI Commands
@@ -107,16 +107,19 @@ clawhq blueprint preview      — Preview a blueprint's operational design
 clawhq build                  — Two-stage Docker build with change detection + manifests
 
 # Secure
-clawhq scan                   — PII + secrets scanner
+clawhq scan                   — Secret scanning via gitleaks (recommends install)
 clawhq creds                  — Credential health probes
-clawhq audit                  — Tool execution + egress audit trail
+clawhq audit                  — Tool execution + egress audit trail (append-only JSONL)
 
 # Deploy
-clawhq up / down / restart    — Deploy with pre-flight checks, firewall, health verify
+clawhq up / down / restart    — Deploy with preflight, firewall, health, verify, smoke test
+clawhq up --skip-verify       — Skip post-deploy integration verification
+clawhq up --skip-firewall     — Skip egress firewall (diagnostic mode)
+clawhq verify                 — Verify all integrations work from inside container
 clawhq connect                — Connect messaging channel
 
 # Operate
-clawhq doctor [--fix]         — Preventive diagnostics (30 checks) with auto-fix
+clawhq doctor [--fix]         — Preventive diagnostics (30+ checks) with auto-fix
 clawhq status [--watch]       — Single-pane dashboard
 clawhq backup create/list/restore — Encrypted snapshots
 clawhq update [--check]       — Safe upstream upgrade with rollback
@@ -128,7 +131,7 @@ clawhq skill update/remove    — Update or remove installed skill
 clawhq skill list             — List installed skills
 clawhq evolve                 — Manage agent capabilities
 clawhq export                 — Export portable agent bundle
-clawhq destroy                — Verified agent destruction
+clawhq destroy                — Agent destruction with deletion receipt
 
 # Cloud (optional)
 clawhq cloud connect          — Link to clawhq.com for remote monitoring
@@ -148,7 +151,8 @@ Key technical details:
 - Tight coupling to OpenClaw — uses its config schema, WebSocket RPC, file paths, and container structure directly
 - Deployment directory at `~/.clawhq/` — engine, workspace, ops, security, cron, cloud
 - Two-stage Docker build: Stage 1 (base OpenClaw + apt packages), Stage 2 (custom tools + skills)
-- Egress firewall uses dedicated iptables chain (`CLAWHQ_FWD`) on Docker bridge
+- Egress firewall uses dedicated iptables chain (`CLAWHQ_FWD`) on Docker bridge with port-aware rules and auto-detection of configured integrations from .env
+- Closed-loop deploy: `clawhq up` verifies every integration works from inside the container (credential probes + network reachability + LLM response time)
 - `doctor` is the hero feature — checks every known failure mode preventively
 - Blueprints are complete agent designs (identity, security, tools, skills, cron, autonomy, memory, integrations)
 
@@ -166,14 +170,13 @@ src/
 │
 ├── build/                      — Install and deploy
 │   ├── installer/              — Pre-reqs, engine acquisition, scaffold
-│   ├── docker/                 — Two-stage build, compose, Dockerfile gen
-│   └── launcher/               — Deploy orchestration (up/down/restart)
+│   ├── docker/                 — Two-stage build, compose, Dockerfile gen, binary integrity
+│   └── launcher/               — Deploy orchestration (up/down/restart), verify, firewall
 │
 ├── secure/                     — Security and compliance
-│   ├── sanitizer/              — Input injection detection + sanitization
-│   ├── credentials/            — Credential store + health probes
-│   ├── audit/                  — Audit logging (tool, secret, egress, cloud)
-│   └── scanner/                — PII + secret scanning
+│   ├── sanitizer/              — Tier 1 prompt injection detection (deterministic patterns only)
+│   ├── credentials/            — Credential store + health probes + credential proxy
+│   └── audit/                  — Append-only JSONL audit logging (tool, secret, egress)
 │
 ├── operate/                    — Monitoring and maintenance
 │   ├── doctor/                 — Diagnostics + auto-fix
@@ -207,7 +210,9 @@ src/
 
 **Cross-module security code:** Some security concerns live outside `src/secure/`, co-located with their operational context:
 - Container hardening (posture) → `src/build/docker/posture.ts`
-- Egress firewall (iptables CLAWHQ_FWD) → `src/build/launcher/firewall.ts`
+- Egress firewall (iptables CLAWHQ_FWD, port-aware) → `src/build/launcher/firewall.ts`
+- Post-deploy integration verification → `src/build/launcher/verify.ts`
+- Binary integrity (SHA256 verification) → `src/build/docker/integrity.ts`
 - Landmine validation (14 rules) → `src/config/validate.ts`
 
 **Note:** Current source layout differs from target in other modules. The module reorganization is planned work (Track E).
