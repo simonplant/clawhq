@@ -58,26 +58,36 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
   const allowlist = airGap ? [] : (options.allowlist ?? (await loadAllowlist(options.deployDir)));
 
   try {
-    // Pre-check: if allowlist has domains, verify ipset is available before creating any rules.
-    // Without ipset, we can't create domain ACCEPT rules, so creating a chain with only
-    // ESTABLISHED/RELATED + DNS + DROP would block all egress (fail-closed but unusable).
-    // Better to skip the firewall entirely and warn.
-    let ipsetAvailable = true;
-    if (!airGap && allowlist.length > 0) {
+    // Pre-check: verify ipset is available. Without ipset, we can't create
+    // domain-based ACCEPT rules. Creating a chain with only DNS + DROP would
+    // block ALL HTTPS egress (fail-closed, unusable). Skip entirely and warn.
+    if (!airGap) {
+      let ipsetAvailable = true;
       try {
         await ipsetCmd(["--version"], options.signal);
       } catch {
         ipsetAvailable = false;
       }
-    }
 
-    if (!ipsetAvailable) {
-      return {
-        success: true,
-        rulesApplied: 0,
-        resolvedIps: 0,
-        warning: "ipset not available — egress firewall skipped (install ipset for domain-based filtering)",
-      };
+      if (!ipsetAvailable) {
+        return {
+          success: true,
+          rulesApplied: 0,
+          resolvedIps: 0,
+          warning: "ipset not available — egress firewall skipped (install ipset for domain-based filtering)",
+        };
+      }
+
+      // Also skip if allowlist is empty — a chain with DNS + DROP and no HTTPS
+      // ACCEPT rules would block all integration traffic.
+      if (allowlist.length === 0) {
+        return {
+          success: true,
+          rulesApplied: 0,
+          resolvedIps: 0,
+          warning: "egress firewall skipped — allowlist is empty (run clawhq init to generate)",
+        };
+      }
     }
 
     // Ensure chain exists (create if not, flush if exists) — idempotent
@@ -498,17 +508,29 @@ export async function loadAllowlist(deployDir: string): Promise<FirewallAllowEnt
     const raw = await readFile(allowlistPath, "utf-8");
     const parsed: unknown = yamlParse(raw);
 
-    if (!Array.isArray(parsed)) {
+    // Handle both formats:
+    // New format: [{domain: "...", port: 443}]
+    // Legacy compiler format: {domains: ["domain1", "domain2"]}
+    let items: unknown[];
+    if (Array.isArray(parsed)) {
+      items = parsed;
+    } else if (parsed && typeof parsed === "object" && "domains" in parsed && Array.isArray((parsed as Record<string, unknown>).domains)) {
+      // Legacy format — convert plain domain strings to entries with default port 443
+      items = ((parsed as Record<string, unknown>).domains as string[]).map(
+        (d) => ({ domain: d, port: 443 }),
+      );
+    } else {
       return [];
     }
 
     const entries: FirewallAllowEntry[] = [];
-    for (const item of parsed) {
-      if (typeof item === "object" && item !== null && "domain" in item && typeof item.domain === "string") {
+    for (const item of items) {
+      if (typeof item === "object" && item !== null && "domain" in item && typeof (item as Record<string, unknown>).domain === "string") {
+        const rec = item as Record<string, unknown>;
         entries.push({
-          domain: item.domain,
-          port: typeof item.port === "number" ? item.port : 443,
-          comment: typeof item.comment === "string" ? item.comment : undefined,
+          domain: rec.domain as string,
+          port: typeof rec.port === "number" ? rec.port : 443,
+          comment: typeof rec.comment === "string" ? rec.comment : undefined,
         });
       }
     }

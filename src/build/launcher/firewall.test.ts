@@ -116,7 +116,7 @@ describe("loadAllowlist", () => {
     expect(entries).toEqual([]);
   });
 
-  it("returns empty array for non-array YAML", async () => {
+  it("parses legacy domains-array format", async () => {
     await writeFile(
       join(testDir, "ops", "firewall", "allowlist.yaml"),
       `domains:
@@ -126,7 +126,7 @@ describe("loadAllowlist", () => {
     );
 
     const entries = await loadAllowlist(testDir);
-    expect(entries).toEqual([]);
+    expect(entries).toEqual([{ domain: "api.example.com", port: 443, comment: undefined }]);
   });
 
   it("skips entries without domain field", async () => {
