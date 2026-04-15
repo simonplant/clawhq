@@ -524,6 +524,34 @@ ClawHQ integrates through four surfaces — all programmatic:
 | **Cron** | `cron/` — jobs + execution history | Write `jobs.json`, read run logs. Gateway hot-reloads. |
 | **Gateway WebSocket** | `:18789` — config, sessions, health | Token-authenticated. Rate limited (3 req/60s for config writes). |
 
+### Update Intelligence (AD-07)
+
+The update system goes beyond mechanical pull-restart. It understands what changed, predicts impact, and migrates config automatically.
+
+```
+check → analyze → backup → pull → migrate → blue-green restart → verify → (rollback on failure)
+```
+
+| Capability | What It Does |
+|---|---|
+| **Change intelligence** | Fetches upstream commits, classifies config impacts against this deployment's fingerprint, predicts breakage |
+| **Migration registry** | Versioned up/down migrations for config/compose changes between OpenClaw releases. Auto-applied during update. |
+| **Blue-green deploy** | Canary container alongside old, verify health + integrations, swap, warm rollback window |
+| **Update channels** | `security` (CVE only), `stable` (7-day delay), `latest` (newest), `pinned` (locked version) |
+| **Connection awareness** | Snapshots active channels before restart to warn about interrupted connections |
+
+**Update channels** are configured in `clawhq.yaml`:
+
+```yaml
+update:
+  channel: stable          # security | stable | latest | pinned
+  pinnedVersion: v2026.4.12  # only if channel=pinned
+  stableDelayDays: 7       # delay for stable channel
+  blueGreen: true          # default: true
+```
+
+**OpenClaw versioning:** CalVer format `vYYYY.M.PATCH` (e.g. `v2026.4.12`). Switched from semver (v0.8.x) in early 2026. ClawHQ's CalVer parser handles both formats.
+
 ### What OpenClaw Already Handles (Don't Replicate)
 
 Message routing, model API calls, tool execution, session persistence, channel protocols, config schema validation, and the Gateway UI. See `docs/OPENCLAW-REFERENCE.md` for full details.
@@ -857,6 +885,12 @@ One package. Module boundaries via barrel exports and directory structure.
 
 ### AD-05: Security is architecture, not policy
 Content access in managed mode is architecturally blocked — no code path exists. Not a permission flag.
+
+### AD-06: Workspace integrity
+Agent workspace uses Docker layer/mount topology to enforce immutability — tools, identity, and security guardrails are baked into the read-only image layer, not protected by policy flags.
+
+### AD-07: Update intelligence
+Updates are not mechanical pull-restart cycles. The update system understands what changed upstream, predicts deployment-specific breakage, migrates config automatically, and keeps the agent alive during updates via blue-green deploy. The pipeline: `check → analyze → backup → pull → migrate → blue-green restart → verify → rollback`. Four update channels (security/stable/latest/pinned) control update policy.
 
 ---
 

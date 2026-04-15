@@ -37,8 +37,9 @@ import {
 import {
   applyUpdate,
   checkForUpdates,
+  formatIntelligenceReport,
 } from "../../operate/updater/index.js";
-import type { UpdateProgress } from "../../operate/updater/index.js";
+import type { UpdateChannel, UpdateProgress } from "../../operate/updater/index.js";
 
 import { CommandError } from "../errors.js";
 import { renderError, validatePort, ensureInstalled } from "../ux.js";
@@ -339,18 +340,24 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
   program
     .command("update")
-    .description("Safe upstream upgrade with rollback")
+    .description("Safe upstream upgrade with change intelligence, migrations, and rollback")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
-    .option("--check", "Check for updates without applying")
+    .option("--check", "Check for updates with deployment-specific impact analysis")
     .option("-p, --passphrase <passphrase>", "Passphrase for pre-update backup encryption")
     .option("-t, --token <token>", "Gateway auth token for post-update verification")
     .option("--port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
+    .option("--channel <channel>", "Update channel: security, stable, latest, pinned")
+    .option("--no-blue-green", "Force restart-in-place (skip blue-green deploy)")
+    .option("--dry-run", "Show migration plan without applying")
     .action(async (opts: {
       deployDir: string;
       check?: boolean;
       passphrase?: string;
       token?: string;
       port: string;
+      channel?: string;
+      blueGreen?: boolean;
+      dryRun?: boolean;
     }) => {
       ensureInstalled(opts.deployDir);
 
@@ -371,11 +378,14 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
         }
       };
 
+      const channel = opts.channel as UpdateChannel | undefined;
+
       try {
         if (opts.check) {
           const result = await checkForUpdates({
             deployDir: opts.deployDir,
             checkOnly: true,
+            channel,
             onProgress,
             signal: ac.signal,
           });
@@ -390,7 +400,18 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
           if (result.available) {
             console.log(chalk.green("\n✔ Update available"));
             console.log(chalk.dim(`  Image: ${result.currentImage}`));
-            console.log(chalk.dim("  Run: clawhq update --passphrase <passphrase> to apply"));
+
+            // Display change intelligence report
+            if (result.intelligence && result.currentVersion && result.targetVersion) {
+              console.log("");
+              console.log(formatIntelligenceReport(
+                result.intelligence,
+                result.currentVersion,
+                result.targetVersion,
+              ));
+            }
+
+            console.log(chalk.dim("\n  Run: clawhq update --passphrase <passphrase> to apply"));
           } else {
             console.log(chalk.green("\n✔ Already up to date"));
             console.log(chalk.dim(`  Image: ${result.currentImage}`));
@@ -403,6 +424,9 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
             passphrase: opts.passphrase,
             gatewayToken: token,
             gatewayPort,
+            channel,
+            blueGreen: opts.blueGreen,
+            dryRun: opts.dryRun,
             onProgress,
             signal: ac.signal,
           });
@@ -413,6 +437,9 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
             console.log(chalk.green("\n✔ Update applied successfully"));
             if (result.backupId) {
               console.log(chalk.dim(`  Pre-update backup: ${result.backupId}`));
+            }
+            if (result.migrationsApplied) {
+              console.log(chalk.dim(`  Config migrations applied: ${result.migrationsApplied}`));
             }
           } else {
             if (result.rolledBack) {

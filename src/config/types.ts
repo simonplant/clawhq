@@ -355,6 +355,21 @@ export interface OpsAutomationConfig {
   readonly backup?: OpsBackupConfig;
 }
 
+/** Update channel policy. */
+export type UpdateChannel = "security" | "stable" | "latest" | "pinned";
+
+/** Update intelligence configuration within clawhq.yaml. */
+export interface UpdateChannelConfig {
+  /** Update channel (default: "stable"). */
+  readonly channel?: UpdateChannel;
+  /** Pinned version (only used when channel is "pinned"). */
+  readonly pinnedVersion?: string;
+  /** Delay in days for stable channel (default: 7). */
+  readonly stableDelayDays?: number;
+  /** Use blue-green deploy for zero-downtime updates (default: true). */
+  readonly blueGreen?: boolean;
+}
+
 /**
  * ClawHQ's own configuration (clawhq.yaml).
  *
@@ -386,6 +401,8 @@ export interface ClawHQConfig {
   readonly sentinel?: SentinelConfig;
   readonly monitor?: MonitorConfig;
   readonly ops?: OpsAutomationConfig;
+  /** Update intelligence configuration (channels, blue-green, etc.). */
+  readonly update?: UpdateChannelConfig;
   readonly paths?: {
     readonly deployDir?: string;
     readonly engineDir?: string;

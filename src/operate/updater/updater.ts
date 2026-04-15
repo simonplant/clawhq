@@ -1,7 +1,8 @@
 /**
- * Safe upstream update with automatic rollback on failure.
+ * Update intelligence system — safe upstream updates with change intelligence,
+ * versioned migrations, blue-green deploy, and automatic rollback.
  *
- * Pipeline: check → backup → pull → restart → verify → (rollback on failure)
+ * Pipeline: check → analyze → backup → pull/build → migrate → restart → verify → (rollback on failure)
  *
  * Never throws — returns structured result. Rollback is automatic when
  * post-update verification fails.
@@ -18,6 +19,15 @@ import type { Stage2Config } from "../../build/docker/types.js";
 import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import { UPDATER_EXEC_TIMEOUT_MS, UPDATER_PULL_TIMEOUT_MS } from "../../config/defaults.js";
 
+import { detectOpenClawVersion } from "../doctor/checks.js";
+
+import {
+  buildMigrationPlan,
+  createMigrationContext,
+  executeMigrationPlan,
+  rollbackMigrations,
+} from "./migrations/index.js";
+
 import type {
   UpdateCheckResult,
   UpdateOptions,
@@ -33,10 +43,13 @@ const execFileAsync = promisify(execFile);
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Check for available updates.
+ * Check for available updates with change intelligence.
  *
  * - source installs: git fetch + compare HEAD to latest release tag
  * - cache installs: docker pull + compare image digests
+ *
+ * When an update is available, enriches the result with migration plan
+ * and change intelligence (deployment-specific impact analysis).
  */
 export async function checkForUpdates(options: UpdateOptions): Promise<UpdateCheckResult> {
   const { deployDir, signal } = options;
@@ -45,11 +58,33 @@ export async function checkForUpdates(options: UpdateOptions): Promise<UpdateChe
 
   report("check", "running", "Checking for updates…");
 
+  let result: UpdateCheckResult;
   if (installMethod === "source") {
-    return checkForSourceUpdates(deployDir, signal, report);
+    result = await checkForSourceUpdates(deployDir, signal, report);
+  } else {
+    result = await checkForCacheUpdates(deployDir, signal, report);
   }
 
-  return checkForCacheUpdates(deployDir, signal, report);
+  // Enrich with change intelligence when an update is available
+  if (result.available && result.currentVersion && result.targetVersion) {
+    report("analyze", "running", "Analyzing update impact…");
+    try {
+      const { analyzeUpdate } = await import("./intelligence.js");
+      const intelligence = await analyzeUpdate({
+        deployDir,
+        currentVersion: result.currentVersion,
+        targetVersion: result.targetVersion,
+        signal,
+      });
+      result = { ...result, intelligence };
+      report("analyze", "done", `Classification: ${intelligence.classification}`);
+    } catch {
+      // Intelligence is best-effort — don't fail the check
+      report("analyze", "skipped", "Change analysis unavailable (GitHub API unreachable)");
+    }
+  }
+
+  return result;
 }
 
 /** Check for updates in a from-source installation (git fetch + compare to latest release tag). */
@@ -87,14 +122,21 @@ async function checkForSourceUpdates(
 
     const available = currentCommit.trim() !== latestCommit.trim();
 
+    // Detect current version from running deployment
+    const currentVersion = currentTag
+      ?? await detectOpenClawVersion(deployDir, signal)
+      ?? undefined;
+
     const status = available
-      ? `Update available: ${currentTag ?? currentCommit.trim().slice(0, 8)} → ${latestTag}`
+      ? `Update available: ${currentVersion ?? currentCommit.trim().slice(0, 8)} → ${latestTag}`
       : `Already on latest release (${latestTag})`;
     report("check", "done", status);
 
     return {
       available,
       currentImage: image,
+      currentVersion,
+      targetVersion: available ? latestTag : undefined,
       latestDigest: latestCommit.trim(),
     };
   } catch (err) {
@@ -132,6 +174,9 @@ async function checkForCacheUpdates(
       // Local image may not exist yet
     }
 
+    // Detect current version before pulling
+    const currentVersion = await detectOpenClawVersion(deployDir, signal) ?? undefined;
+
     await execFileAsync(
       "docker",
       ["pull", "--quiet", image],
@@ -146,12 +191,19 @@ async function checkForCacheUpdates(
     const newDigest = newDigestOut.trim();
 
     const available = !localDigest || localDigest !== newDigest;
+
+    // Extract target version from image tag (e.g. "ghcr.io/openclaw/openclaw:v2026.4.14")
+    const tagMatch = image.match(/:v?(\d+\.\d+\.\d+)$/);
+    const targetVersion = available && tagMatch ? `v${tagMatch[1]}` : undefined;
+
     const status = available ? "Update available" : "Already up to date";
     report("check", "done", status);
 
     return {
       available,
       currentImage: image,
+      currentVersion,
+      targetVersion,
       latestDigest: newDigest,
     };
   } catch (err) {
@@ -165,12 +217,15 @@ async function checkForCacheUpdates(
 }
 
 /**
- * Apply update: backup → pull → restart → verify → rollback on failure.
+ * Apply update: backup → pull → migrate → restart → verify → rollback on failure.
  */
 export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult> {
   const { deployDir, signal } = options;
   const composePath = join(deployDir, "engine", "docker-compose.yml");
   const report = progress(options.onProgress);
+
+  // Detect current version before starting
+  const currentVersion = await detectOpenClawVersion(deployDir, signal) ?? undefined;
 
   // ── Step 1: Pre-update backup ─────────────────────────────────────────
   let backupId: string | undefined;
@@ -207,6 +262,7 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
   // ── Step 2: Pull source / image ────────────────────────────────────────
 
   const installMethod = await detectInstallMethod(deployDir);
+  let targetVersion: string | undefined;
 
   if (installMethod === "source") {
     // From-source: git pull + rebuild
@@ -224,6 +280,8 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
         report("pull", "failed", "No release tags found in upstream");
         return { success: false, error: "No release tags found in upstream", backupId };
       }
+
+      targetVersion = latestTag;
 
       await execFileAsync("git", ["-C", sourceDir, "checkout", latestTag], {
         timeout: UPDATER_EXEC_TIMEOUT_MS,
@@ -262,8 +320,6 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     }
 
     // Regenerate Stage 2 Dockerfile so it reflects current binaries/tools.
-    // Without this, update reuses the stale Dockerfile from the initial build,
-    // which may be missing core binaries like jq.
     report("build", "running", "Building custom image (stage 2)…");
     try {
       const workspace = scanWorkspaceManifest(deployDir);
@@ -294,6 +350,10 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
       return { success: false, error: "Cannot determine image from docker-compose.yml", backupId };
     }
 
+    // Extract target version from image tag
+    const tagMatch = image.match(/:v?(\d+\.\d+\.\d+)$/);
+    if (tagMatch) targetVersion = `v${tagMatch[1]}`;
+
     report("pull", "running", `Pulling ${image}…`);
     try {
       await execFileAsync("docker", ["pull", image], {
@@ -312,7 +372,60 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     return { success: false, error: "Update aborted", backupId };
   }
 
-  // ── Step 3: Restart containers ────────────────────────────────────────
+  // ── Step 3: Run config migrations ────────────────────────────────────
+
+  let migrationsApplied = 0;
+
+  if (currentVersion && targetVersion) {
+    const plan = buildMigrationPlan(currentVersion, targetVersion);
+
+    if (plan.migrations.length > 0) {
+      if (options.dryRun) {
+        report("migrate", "done", `Dry run: ${plan.migrations.length} migration(s) would be applied`);
+        return {
+          success: true,
+          backupId,
+          migrationsApplied: 0,
+        };
+      }
+
+      report("migrate", "running", `Applying ${plan.migrations.length} config migration(s)…`);
+      try {
+        const ctx = await createMigrationContext(deployDir, signal);
+        const migrationResult = await executeMigrationPlan(plan, ctx);
+
+        if (migrationResult.success) {
+          migrationsApplied = migrationResult.applied.length;
+          report("migrate", "done", `Applied ${migrationsApplied} migration(s)`);
+        } else {
+          report("migrate", "failed", `Migration failed: ${migrationResult.error}`);
+
+          // Roll back applied migrations before full rollback
+          await rollbackMigrations(migrationResult.applied, plan, ctx);
+
+          return rollback(
+            options,
+            backupId,
+            `Config migration failed: ${migrationResult.error}`,
+          );
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        report("migrate", "failed", `Migration error: ${message}`);
+        return rollback(options, backupId, `Config migration error: ${message}`);
+      }
+    } else {
+      report("migrate", "skipped", "No config migrations needed");
+    }
+  } else {
+    report("migrate", "skipped", "Version detection unavailable — skipping migrations");
+  }
+
+  if (signal?.aborted) {
+    return { success: false, error: "Update aborted", backupId };
+  }
+
+  // ── Step 4: Restart containers ────────────────────────────────────────
 
   report("restart", "running", "Restarting containers…");
   try {
@@ -339,7 +452,7 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     return { success: false, error: "Update aborted", backupId };
   }
 
-  // ── Step 4: Verify health ─────────────────────────────────────────────
+  // ── Step 5: Verify health ─────────────────────────────────────────────
 
   report("verify", "running", "Verifying agent health…");
   try {
@@ -351,7 +464,7 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
 
     if (doctorReport.healthy) {
       report("verify", "done", "Agent is healthy after update");
-      return { success: true, backupId };
+      return { success: true, backupId, migrationsApplied };
     }
 
     const errorCount = doctorReport.errors.length;

@@ -122,7 +122,10 @@ clawhq connect                — Connect messaging channel
 clawhq doctor [--fix]         — Preventive diagnostics (30+ checks) with auto-fix
 clawhq status [--watch]       — Single-pane dashboard
 clawhq backup create/list/restore — Encrypted snapshots
-clawhq update [--check]       — Safe upstream upgrade with rollback
+clawhq update [--check]       — Update with change intelligence + migration plan
+clawhq update --channel <ch>  — Override channel (security/stable/latest/pinned)
+clawhq update --no-blue-green — Force restart-in-place (skip zero-downtime deploy)
+clawhq update --dry-run       — Show migration plan without applying
 clawhq logs                   — Stream agent logs
 
 # Evolve
@@ -155,6 +158,8 @@ Key technical details:
 - Closed-loop deploy: `clawhq up` verifies every integration works from inside the container (credential probes + network reachability + LLM response time)
 - `doctor` is the hero feature — checks every known failure mode preventively
 - Blueprints are complete agent designs (identity, security, tools, skills, cron, autonomy, memory, integrations)
+- OpenClaw uses CalVer versioning: `vYYYY.M.PATCH` (e.g. v2026.4.12). Earlier versions used semver (v0.8.x). ClawHQ's CalVer module handles both.
+- Update intelligence: `clawhq update --check` shows deployment-specific impact analysis (upstream commits, breakage predictions, migration plan, recommendation). Versioned config migrations auto-apply during `clawhq update`. Blue-green deploy keeps the agent alive during updates.
 
 ## Key Source Layout
 
@@ -182,7 +187,7 @@ src/
 │   ├── doctor/                 — Diagnostics + auto-fix
 │   ├── monitor/                — Health monitoring daemon
 │   ├── backup/                 — Encrypted backup/restore
-│   ├── updater/                — Safe updates + rollback
+│   ├── updater/                — Update intelligence (change analysis, migrations, blue-green, channels)
 │   ├── status/                 — Dashboard
 │   └── logs/                   — Log streaming
 │
@@ -214,6 +219,8 @@ src/
 - Post-deploy integration verification → `src/build/launcher/verify.ts`
 - Binary integrity (SHA256 verification) → `src/build/docker/integrity.ts`
 - Landmine validation (14 rules) → `src/config/validate.ts`
+- Update intelligence (change analysis, migrations, blue-green) → `src/operate/updater/`
+- CalVer version parsing (shared) → `src/operate/updater/calver.ts`
 
 **Note:** Current source layout differs from target in other modules. The module reorganization is planned work (Track E).
 

@@ -46,19 +46,14 @@ function fail(
 // ── Version Detection ───────────────────────────────────────────────────────
 
 /**
- * Compare two semver-style version strings.
+ * Compare two version strings (CalVer or semver).
  * Returns negative if a < b, 0 if equal, positive if a > b.
+ *
+ * Delegates to the shared CalVer module which handles both
+ * calendar-based (v2026.4.12) and legacy semver (v0.8.7) formats.
  */
-export function compareVersions(a: string, b: string): number {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const na = pa[i] ?? 0;
-    const nb = pb[i] ?? 0;
-    if (na !== nb) return na - nb;
-  }
-  return 0;
-}
+import { compareVersions } from "../updater/calver.js";
+export { compareVersions };
 
 /**
  * Detect the running OpenClaw version.
