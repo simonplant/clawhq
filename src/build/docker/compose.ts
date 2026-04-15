@@ -200,6 +200,10 @@ export function generateCompose(
       "/home/node/.config/op:noexec,nosuid,size=10m,uid=1000,gid=1000",
       "/home/node/.local:exec,nosuid,size=512m",
       "/home/node/.cache:exec,nosuid,size=512m",
+      // OpenClaw runtime state: exec-approval temp files, plugin state, and
+      // directories created at startup (telegram/, agents/, canvas/, logs/).
+      // Bind mounts for persistent paths (workspace, cron, config) overlay this.
+      `${OPENCLAW_CONTAINER_ROOT}:exec,nosuid,size=256m,uid=1000,gid=1000`,
     ],
     volumes: buildVolumes(deployDir, options),
     networks: [networkName, "ollama-bridge"],

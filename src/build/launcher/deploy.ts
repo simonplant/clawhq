@@ -10,13 +10,19 @@
  */
 
 import { execFile } from "node:child_process";
-import { readdir } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
 
-import { applyFirewall, removeFirewall } from "./firewall.js";
+import {
+  applyFirewall,
+  collectIntegrationDomains,
+  detectConfiguredIntegrations,
+  removeFirewall,
+  serializeAllowlist,
+} from "./firewall.js";
 import { smokeTest, verifyHealth } from "./health.js";
 import { runPreflight } from "./preflight.js";
 import { formatVerifyReport, verifyIntegrations } from "./verify.js";
@@ -79,6 +85,77 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
       report("preflight", "done", `Preflight passed with ${preflight.warnings.length} warning(s)`);
     } else {
       report("preflight", "done", "All preflight checks passed");
+    }
+  }
+
+  // ── Step 1b: Config Sync ────────────────────────────────────────────────
+  // The golden config at deployDir/openclaw.json is the source of truth.
+  // The engine copy at deployDir/engine/openclaw.json is what the container reads.
+  // Sync golden → engine so the container always starts with the latest config.
+  {
+    const goldenConfig = join(deployDir, "openclaw.json");
+    const engineConfig = join(engineDir, "openclaw.json");
+    try {
+      const goldenStat = await stat(goldenConfig);
+      if (goldenStat.isFile()) {
+        await copyFile(goldenConfig, engineConfig);
+        report("preflight", "running", "Config synced (golden → engine)");
+      }
+    } catch {
+      // Golden config doesn't exist — engine config is used as-is
+    }
+  }
+
+  // ── Step 1c: Ensure firewall allowlist exists ─────────────────────────
+  // If no allowlist.yaml exists yet, auto-generate it from the configured
+  // channels and integrations in openclaw.json + .env. Without this, the
+  // egress firewall blocks ALL HTTPS traffic.
+  {
+    const allowlistPath = join(deployDir, "ops", "firewall", "allowlist.yaml");
+    try {
+      await stat(allowlistPath);
+    } catch {
+      // Allowlist doesn't exist — auto-generate from config + env
+      try {
+        const configPath = join(engineDir, "openclaw.json");
+        const envPath = join(engineDir, ".env");
+
+        const configRaw = await readFile(configPath, "utf-8");
+        const config = JSON.parse(configRaw) as Record<string, unknown>;
+
+        // Parse .env file into key-value map
+        const envVars: Record<string, string> = {};
+        try {
+          const envRaw = await readFile(envPath, "utf-8");
+          for (const line of envRaw.split("\n")) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith("#")) continue;
+            const eqIdx = trimmed.indexOf("=");
+            if (eqIdx > 0) {
+              envVars[trimmed.slice(0, eqIdx)] = trimmed.slice(eqIdx + 1);
+            }
+          }
+        } catch { /* no .env — continue with empty */ }
+
+        // Collect domains from configured integrations
+        const configuredIntegrations = detectConfiguredIntegrations(envVars);
+        const entries = collectIntegrationDomains(configuredIntegrations, envVars);
+
+        // Add Telegram API domain if telegram channel is enabled
+        const channels = config["channels"] as Record<string, unknown> | undefined;
+        const telegram = channels?.["telegram"] as Record<string, unknown> | undefined;
+        if (telegram?.["enabled"] === true) {
+          entries.push({ domain: "api.telegram.org", port: 443 });
+        }
+
+        if (entries.length > 0) {
+          await mkdir(join(deployDir, "ops", "firewall"), { recursive: true });
+          await writeFile(allowlistPath, serializeAllowlist(entries), "utf-8");
+          report("preflight", "running", `Firewall allowlist auto-generated (${entries.length} entries)`);
+        }
+      } catch {
+        // Best-effort — firewall will fall back to DNS-only
+      }
     }
   }
 

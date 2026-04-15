@@ -40,7 +40,9 @@ export type DoctorCheckName =
   | "ops-security-monitor"
   | "cred-proxy-healthy"
   | "egress-domains-coverage"
-  | "ollama-reachable";
+  | "ollama-reachable"
+  | "ollama-model-available"
+  | "config-sync";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

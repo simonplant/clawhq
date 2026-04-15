@@ -147,6 +147,8 @@ export async function runChecks(
     checkOpsSecurityMonitor(deployDir, signal),
     checkCredProxyHealthy(deployDir, signal),
     checkEgressDomainsCoverage(deployDir),
+    checkOllamaModelAvailable(deployDir, signal),
+    checkConfigSync(deployDir),
   ]);
 }
 
@@ -1726,5 +1728,121 @@ async function checkEgressDomainsCoverage(deployDir: string): Promise<DoctorChec
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return fail(name, "warning", `Cannot check egress domain coverage: ${msg}`);
+  }
+}
+
+/**
+ * Check that the configured Ollama model is actually available.
+ *
+ * The ollama-reachable check only verifies the Ollama server is running.
+ * This check goes further: it reads the configured model from openclaw.json
+ * and verifies it exists in Ollama's model list. Catches the case where
+ * the config references a model that was never pulled or was removed.
+ */
+async function checkOllamaModelAvailable(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "ollama-model-available";
+
+  try {
+    const configPath = join(deployDir, "engine", "openclaw.json");
+    const raw = await readFile(configPath, "utf-8");
+    const config = JSON.parse(raw) as Record<string, unknown>;
+    const agents = config["agents"] as Record<string, unknown> | undefined;
+    const defaults = agents?.["defaults"] as Record<string, unknown> | undefined;
+    const model = defaults?.["model"] as Record<string, unknown> | undefined;
+    const primary = (model?.["primary"] ?? "") as string;
+
+    if (!primary.startsWith("ollama/")) {
+      return ok(name, "Not using Ollama — skipped");
+    }
+
+    const modelName = primary.replace("ollama/", "");
+
+    // Query Ollama for available models
+    const { stdout } = await execFileAsync(
+      "curl",
+      ["-s", "--max-time", "3", "http://localhost:11434/api/tags"],
+      { timeout: 5000, signal },
+    );
+
+    const response = JSON.parse(stdout) as { models?: Array<{ name: string }> };
+    const available = response.models?.map((m) => m.name) ?? [];
+
+    if (available.some((m) => m === modelName || m.startsWith(`${modelName}:`))) {
+      return ok(name, `Model ${modelName} is available in Ollama`);
+    }
+
+    return fail(
+      name,
+      "error",
+      `Configured model "${modelName}" is not available in Ollama (available: ${available.join(", ") || "none"})`,
+      `Pull the model: ollama pull ${modelName}`,
+      false,
+    );
+  } catch {
+    return ok(name, "Cannot check model availability — skipped", "info");
+  }
+}
+
+/**
+ * Check that the golden config (deployDir/openclaw.json) and engine config
+ * (deployDir/engine/openclaw.json) are in sync.
+ *
+ * Config drift causes the running container to use stale settings (wrong model,
+ * old channel config, missing integrations). The deploy flow now syncs these
+ * automatically, but this check catches manual edits or failed syncs.
+ */
+async function checkConfigSync(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "config-sync";
+
+  try {
+    const goldenPath = join(deployDir, "openclaw.json");
+    const enginePath = join(deployDir, "engine", "openclaw.json");
+
+    const [goldenRaw, engineRaw] = await Promise.all([
+      readFile(goldenPath, "utf-8").catch(() => null),
+      readFile(enginePath, "utf-8").catch(() => null),
+    ]);
+
+    if (!goldenRaw) {
+      return ok(name, "No golden config — engine config is authoritative", "info");
+    }
+    if (!engineRaw) {
+      return fail(
+        name,
+        "error",
+        "Engine config missing — container has no config to mount",
+        "Run: clawhq up (config sync happens automatically)",
+        true,
+      );
+    }
+
+    // Compare the parsed JSON (ignore formatting differences)
+    const golden = JSON.parse(goldenRaw);
+    const engine = JSON.parse(engineRaw);
+
+    if (JSON.stringify(golden) === JSON.stringify(engine)) {
+      return ok(name, "Golden and engine configs are in sync");
+    }
+
+    // Identify specific drift
+    const goldenModel = golden?.agents?.defaults?.model?.primary ?? "unknown";
+    const engineModel = engine?.agents?.defaults?.model?.primary ?? "unknown";
+    const modelDrift = goldenModel !== engineModel
+      ? ` (model: golden=${goldenModel}, engine=${engineModel})`
+      : "";
+
+    return fail(
+      name,
+      "warning",
+      `Config drift detected — golden and engine configs differ${modelDrift}`,
+      "Run: clawhq up (config sync happens automatically)",
+      true,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return fail(name, "warning", `Cannot check config sync: ${msg}`);
   }
 }
