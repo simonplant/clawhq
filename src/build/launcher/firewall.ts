@@ -335,23 +335,34 @@ export async function refreshIpset(options: FirewallOptions): Promise<FirewallRe
 }
 
 /**
- * Build allowlist entries from blueprint egress_domains.
+ * Build allowlist entries from blueprint egress_domains + integration domains.
  *
- * Merges blueprint-defined domains with integration registry domains
- * for any connected integrations. Deduplicates by domain+port.
+ * Merges blueprint-defined domains (always port 443) with integration entries
+ * that may specify custom ports (e.g. IMAP 993, SMTP 587).
+ * Deduplicates by domain+port.
  */
 export function buildAllowlistFromBlueprint(
   egressDomains: readonly string[],
-  integrationDomains: readonly string[] = [],
+  integrationEntries: readonly FirewallAllowEntry[] = [],
 ): FirewallAllowEntry[] {
   const seen = new Set<string>();
   const entries: FirewallAllowEntry[] = [];
 
-  for (const domain of [...egressDomains, ...integrationDomains]) {
+  // Blueprint domains default to port 443
+  for (const domain of egressDomains) {
     const key = `${domain}:443`;
     if (!seen.has(key)) {
       seen.add(key);
       entries.push({ domain, port: 443 });
+    }
+  }
+
+  // Integration entries carry their own port
+  for (const entry of integrationEntries) {
+    const key = `${entry.domain}:${entry.port}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      entries.push(entry);
     }
   }
 
@@ -380,40 +391,87 @@ function extractHostname(value: string): string | undefined {
 }
 
 /**
+ * Auto-detect which integrations are configured by checking which env keys
+ * from the registry are present in the env vars map.
+ */
+export function detectConfiguredIntegrations(envVars: Readonly<Record<string, string>>): string[] {
+  const configured: string[] = [];
+  for (const [name, def] of Object.entries(INTEGRATION_REGISTRY)) {
+    const hasKey = def.envKeys.some((ek) => {
+      const val = envVars[ek.key];
+      return val !== undefined && val !== "";
+    });
+    if (hasKey) configured.push(name);
+  }
+  return configured;
+}
+
+/**
  * Collect egress domains for a set of configured integrations.
  *
  * Looks up each integration name in the registry and returns all
  * egressDomains they require. For integrations with dynamic domains
  * (email, calendar, home assistant), resolves hostnames from envVars.
+ *
+ * When envVars is provided, also auto-detects integrations not in the
+ * explicit list (catches credentials added after initial setup).
  * Unknown integration names are skipped.
+ *
+ * Returns FirewallAllowEntry[] with correct ports (e.g. IMAP=993, SMTP=587).
  */
 export function collectIntegrationDomains(
   integrationNames: readonly string[],
   envVars?: Readonly<Record<string, string>>,
-): string[] {
-  const domains: string[] = [];
-  for (const name of integrationNames) {
-    const def = INTEGRATION_REGISTRY[name.toLowerCase()];
+): FirewallAllowEntry[] {
+  // Merge explicit list with auto-detected integrations from env vars
+  const allNames = new Set(integrationNames.map((n) => n.toLowerCase()));
+  if (envVars) {
+    for (const name of detectConfiguredIntegrations(envVars)) {
+      allNames.add(name);
+    }
+  }
+
+  const entries: FirewallAllowEntry[] = [];
+  for (const name of allNames) {
+    const def = INTEGRATION_REGISTRY[name];
     if (!def) continue;
 
+    // Static domains — default port 443
     for (const d of def.egressDomains) {
-      domains.push(d);
+      entries.push({ domain: d, port: 443 });
     }
 
-    // Resolve dynamic domains from env vars (e.g. IMAP_HOST → imap.mail.me.com)
+    // Dynamic domains from env vars with port detection
     if (def.dynamicEgressEnvKeys && envVars) {
       for (const envKey of def.dynamicEgressEnvKeys) {
         const val = envVars[envKey];
-        if (val) {
-          const host = extractHostname(val);
-          if (host && host !== "localhost" && host !== "127.0.0.1" && host !== "0.0.0.0") {
-            domains.push(host);
-          }
+        if (!val) continue;
+
+        // Extract hostname and port from the env value
+        const trimmed = val.trim();
+        let host: string | undefined;
+        let port = 443;
+
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+          try {
+            const url = new URL(trimmed);
+            host = url.hostname;
+            port = url.port ? parseInt(url.port, 10) : (url.protocol === "https:" ? 443 : 80);
+          } catch { continue; }
+        } else {
+          host = extractHostname(trimmed);
+          // Infer port from env key name
+          if (envKey === "IMAP_HOST") port = parseInt(envVars.IMAP_PORT || "993", 10);
+          else if (envKey === "SMTP_HOST") port = parseInt(envVars.SMTP_PORT || "587", 10);
+        }
+
+        if (host && host !== "localhost" && host !== "127.0.0.1" && host !== "0.0.0.0") {
+          entries.push({ domain: host, port });
         }
       }
     }
   }
-  return domains;
+  return entries;
 }
 
 /**

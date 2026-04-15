@@ -42,6 +42,8 @@ import type { ToolFileContent } from "../tools/index.js";
 import { loadBlueprintSkills, loadPlatformSkills } from "../skills/index.js";
 import type { SkillFileEntry } from "../skills/index.js";
 
+import type { WorkspaceManifest } from "../../build/docker/types.js";
+
 import {
   buildAllowlistFromBlueprint,
   collectIntegrationDomains,
@@ -905,6 +907,54 @@ function fixCronField(field: string, fieldIndex: number): string {
   }
   return field;
 }
+
+// ── Workspace Manifest ──────────────────────────────────────────────────────
+
+/**
+ * Generate a workspace mutability manifest from a deployment bundle.
+ *
+ * Classifies every workspace path into one of four categories:
+ * - immutable: tools, identity files, sanitize — baked into Docker image layer
+ * - persistent: directories where the agent writes state (memory, state, etc.)
+ * - config: agent reads, ClawHQ writes (config directory)
+ * - ephemeral: temporary caches (tmpfs, gone on restart)
+ */
+export function generateWorkspaceManifest(bundle: DeploymentBundle): WorkspaceManifest {
+  // Immutable: all tool files + identity files
+  const immutable: string[] = [];
+
+  for (const tool of bundle.toolFiles) {
+    // tool.path is e.g. "workspace/tools/email"
+    const rel = tool.path.replace(/^workspace\//, "");
+    immutable.push(rel);
+  }
+
+  for (const identity of bundle.identityFiles) {
+    // identity.path is e.g. "workspace/identity/SOUL.md"
+    const rel = identity.path.replace(/^workspace\//, "");
+    immutable.push(rel);
+  }
+
+  // Skill files are also immutable — they are pre-vetted
+  for (const skill of bundle.skillFiles) {
+    // skill.path is e.g. "workspace/skills/cron-doctor/SKILL.md"
+    const rel = skill.path.replace(/^workspace\//, "");
+    immutable.push(rel);
+  }
+
+  // Persistent: directories where agent writes state
+  const persistent = ["memory", "state", "backlog", "journal"];
+
+  // Config: agent reads, ClawHQ writes
+  const config = ["config"];
+
+  // Ephemeral: temporary caches
+  const ephemeral = [".cache"];
+
+  return { immutable, persistent, config, ephemeral };
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Generate a random hex token for Gateway auth. */
 function generateToken(): string {

@@ -176,10 +176,13 @@ describe("buildAllowlistFromBlueprint", () => {
     expect(entries[2]).toEqual({ domain: "api.todoist.com", port: 443 });
   });
 
-  it("merges blueprint and integration domains without duplicates", () => {
+  it("merges blueprint and integration entries without duplicates", () => {
     const entries = buildAllowlistFromBlueprint(
       ["api.example.com", "smtp.gmail.com"],
-      ["api.telegram.org", "api.example.com"], // api.example.com is a duplicate
+      [
+        { domain: "api.telegram.org", port: 443 },
+        { domain: "api.example.com", port: 443 }, // duplicate
+      ],
     );
 
     expect(entries).toHaveLength(3);
@@ -195,8 +198,8 @@ describe("buildAllowlistFromBlueprint", () => {
     expect(entries).toEqual([]);
   });
 
-  it("handles integration-only domains", () => {
-    const entries = buildAllowlistFromBlueprint([], ["api.anthropic.com"]);
+  it("handles integration-only entries", () => {
+    const entries = buildAllowlistFromBlueprint([], [{ domain: "api.anthropic.com", port: 443 }]);
     expect(entries).toHaveLength(1);
     expect(entries[0].domain).toBe("api.anthropic.com");
   });
@@ -205,20 +208,23 @@ describe("buildAllowlistFromBlueprint", () => {
 // ── collectIntegrationDomains Tests ────────────────────────────────────────
 
 describe("collectIntegrationDomains", () => {
-  it("returns egress domains for known integrations", () => {
-    const domains = collectIntegrationDomains(["telegram", "anthropic"]);
+  it("returns egress entries for known integrations", () => {
+    const entries = collectIntegrationDomains(["telegram", "anthropic"]);
+    const domains = entries.map((e) => e.domain);
     expect(domains).toContain("api.telegram.org");
     expect(domains).toContain("api.anthropic.com");
+    expect(entries.every((e) => e.port === 443)).toBe(true);
   });
 
-  it("returns empty array for integrations with no egress domains", () => {
-    const domains = collectIntegrationDomains(["ollama"]);
-    expect(domains).toEqual([]);
+  it("returns empty array for integrations with no egress domains and no env", () => {
+    const entries = collectIntegrationDomains(["ollama"]);
+    expect(entries).toEqual([]);
   });
 
   it("skips unknown integration names", () => {
-    const domains = collectIntegrationDomains(["nonexistent", "telegram"]);
-    expect(domains).toEqual(["api.telegram.org"]);
+    const entries = collectIntegrationDomains(["nonexistent", "telegram"]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].domain).toBe("api.telegram.org");
   });
 
   it("returns empty for empty input", () => {
@@ -226,15 +232,45 @@ describe("collectIntegrationDomains", () => {
   });
 
   it("handles case-insensitive lookup", () => {
-    const domains = collectIntegrationDomains(["Telegram"]);
-    expect(domains).toContain("api.telegram.org");
+    const entries = collectIntegrationDomains(["Telegram"]);
+    expect(entries[0].domain).toBe("api.telegram.org");
   });
 
   it("collects multiple domains from one integration", () => {
-    const domains = collectIntegrationDomains(["onepassword"]);
+    const entries = collectIntegrationDomains(["onepassword"]);
+    const domains = entries.map((e) => e.domain);
     expect(domains).toContain("my.1password.com");
     expect(domains).toContain("events.1password.com");
-    expect(domains).toHaveLength(2);
+    expect(entries).toHaveLength(2);
+  });
+
+  it("resolves dynamic IMAP/SMTP domains with correct ports from env", () => {
+    const entries = collectIntegrationDomains(["email"], {
+      IMAP_HOST: "imap.mail.me.com",
+      IMAP_PORT: "993",
+      SMTP_HOST: "smtp.mail.me.com",
+      SMTP_PORT: "587",
+      IMAP_USER: "user",
+      IMAP_PASS: "pass",
+      SMTP_USER: "user",
+      SMTP_PASS: "pass",
+    });
+    const imap = entries.find((e) => e.domain === "imap.mail.me.com");
+    const smtp = entries.find((e) => e.domain === "smtp.mail.me.com");
+    expect(imap).toBeDefined();
+    expect(imap!.port).toBe(993);
+    expect(smtp).toBeDefined();
+    expect(smtp!.port).toBe(587);
+  });
+
+  it("auto-detects integrations from env vars", () => {
+    const entries = collectIntegrationDomains([], {
+      ANTHROPIC_API_KEY: "sk-ant-test",
+      GH_TOKEN: "ghp_test",
+    });
+    const domains = entries.map((e) => e.domain);
+    expect(domains).toContain("api.anthropic.com");
+    expect(domains).toContain("api.github.com");
   });
 });
 

@@ -1707,21 +1707,21 @@ async function checkEgressDomainsCoverage(deployDir: string): Promise<DoctorChec
       return ok(name, "No integrations with egress requirements detected");
     }
 
-    // Collect required domains (static + dynamic from env vars)
-    const requiredDomains = collectIntegrationDomains(configuredIntegrations, envVarMap);
+    // Collect required domain:port entries (static + dynamic from env vars)
+    const requiredEntries = collectIntegrationDomains(configuredIntegrations, envVarMap);
 
     // Load current allowlist
     const allowlist = await loadAllowlist(deployDir);
-    const allowedDomains = new Set(allowlist.map((e) => e.domain));
+    const allowedKeys = new Set(allowlist.map((e) => `${e.domain}:${e.port}`));
 
-    // Find missing domains
-    const missing = requiredDomains.filter((d) => !allowedDomains.has(d));
+    // Find missing domain:port combinations
+    const missing = requiredEntries.filter((e) => !allowedKeys.has(`${e.domain}:${e.port}`));
 
     if (missing.length > 0) {
       return fail(
         name,
         "warning",
-        `Missing egress domains for configured integrations: ${missing.join(", ")}`,
+        `Missing egress rules for configured integrations: ${missing.map((e) => `${e.domain}:${e.port}`).join(", ")}`,
         "Run: clawhq init to regenerate the allowlist with current integrations",
         true,
       );
