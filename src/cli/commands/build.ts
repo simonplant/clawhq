@@ -7,6 +7,7 @@ import ora from "ora";
 
 import { build, DEFAULT_POSTURE, formatHashMismatch, getPostureConfig, getRequiredBinaries, readCurrentPosture, verifyBinaryHashes } from "../../build/docker/index.js";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
+import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import { checkDocker } from "../../build/installer/index.js";
 import { deploy, restart, shutdown } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
@@ -50,10 +51,12 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       // Populate Stage 2 binaries based on deployed tools
       const stage2Binaries = getRequiredBinaries(opts.deployDir);
 
+      const workspace = scanWorkspaceManifest(opts.deployDir);
       const stage2: Stage2Config = {
         binaries: stage2Binaries,
         workspaceTools: [],
         skills: [],
+        workspace,
       };
 
       // --verify-hashes: download and check binaries against pinned SHA256

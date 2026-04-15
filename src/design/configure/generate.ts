@@ -8,6 +8,9 @@
  * The generator never produces a config that fails validation.
  */
 
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
 import {
   agentNetworkName,
   BOOTSTRAP_MAX_CHARS,
@@ -952,6 +955,71 @@ export function generateWorkspaceManifest(bundle: DeploymentBundle): WorkspaceMa
   const ephemeral = [".cache"];
 
   return { immutable, persistent, config, ephemeral };
+}
+
+/** Recursively scan a directory, adding all files as prefix/relative paths. */
+function scanDirRecursive(dir: string, prefix: string, out: string[]): void {
+  if (!existsSync(dir)) return;
+  for (const entry of readdirSync(dir)) {
+    if (entry.startsWith(".") || entry === "manifest.json") continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      scanDirRecursive(full, `${prefix}/${entry}`, out);
+    } else {
+      out.push(`${prefix}/${entry}`);
+    }
+  }
+}
+
+/**
+ * Scan a deployed workspace directory and derive a WorkspaceManifest.
+ * Used by `clawhq build` when no bundle is available.
+ */
+export function scanWorkspaceManifest(deployDir: string): WorkspaceManifest {
+
+  const workspaceDir = join(deployDir, "workspace");
+  const immutable: string[] = [];
+
+  // Scan tools
+  const toolsDir = join(workspaceDir, "tools");
+  if (existsSync(toolsDir)) {
+    for (const f of readdirSync(toolsDir)) {
+      if (!f.startsWith(".")) immutable.push(`tools/${f}`);
+    }
+  }
+
+  // Scan identity files
+  const identityDir = join(workspaceDir, "identity");
+  if (existsSync(identityDir)) {
+    for (const f of readdirSync(identityDir)) {
+      if (f.endsWith(".md")) immutable.push(`identity/${f}`);
+    }
+  }
+
+  // Scan skills (directories with nested files)
+  const skillsDir = join(workspaceDir, "skills");
+  if (existsSync(skillsDir)) {
+    scanDirRecursive(skillsDir, "skills", immutable);
+  }
+
+  // Root-level immutable .md files
+  const rootImmutable = [
+    "TOOLS.md", "IDENTITY.md", "SOUL.md", "AGENTS.md",
+    "BOOTSTRAP.md", "HEARTBEAT.md",
+  ];
+  for (const f of rootImmutable) {
+    if (existsSync(join(workspaceDir, f))) immutable.push(f);
+  }
+
+  // Sanitize script
+  if (existsSync(join(workspaceDir, "sanitize"))) immutable.push("sanitize");
+
+  return {
+    immutable,
+    persistent: ["memory", "state", "backlog", "journal"],
+    config: ["config"],
+    ephemeral: [".cache"],
+  };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

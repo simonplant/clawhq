@@ -15,6 +15,7 @@ import { promisify } from "node:util";
 import { getRequiredBinaries } from "../../build/docker/binary-deps.js";
 import { generateStage2Dockerfile } from "../../build/docker/dockerfile.js";
 import type { Stage2Config } from "../../build/docker/types.js";
+import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import { UPDATER_EXEC_TIMEOUT_MS, UPDATER_PULL_TIMEOUT_MS } from "../../config/defaults.js";
 
 import type {
@@ -265,10 +266,12 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     // which may be missing core binaries like jq.
     report("build", "running", "Building custom image (stage 2)…");
     try {
+      const workspace = scanWorkspaceManifest(deployDir);
       const stage2Config: Stage2Config = {
         binaries: getRequiredBinaries(deployDir),
         workspaceTools: [],
         skills: [],
+        workspace,
       };
       const customDockerfile = join(engineDir, "Dockerfile");
       await writeFile(customDockerfile, generateStage2Dockerfile("openclaw:local", stage2Config), "utf-8");

@@ -17,10 +17,11 @@ import {
   OPENCLAW_CONTAINER_CONFIG,
   OPENCLAW_CONTAINER_CREDENTIALS,
   OPENCLAW_CONTAINER_CRON,
+  OPENCLAW_CONTAINER_ROOT,
   OPENCLAW_CONTAINER_WORKSPACE,
 } from "../../config/paths.js";
 
-import type { PostureConfig } from "./types.js";
+import type { PostureConfig, WorkspaceManifest } from "./types.js";
 
 /** Options for generating a Docker Compose configuration. */
 export interface ComposeOptions {
@@ -34,6 +35,8 @@ export interface ComposeOptions {
   readonly credProxyScriptPath?: string;
   /** Host path to the proxy routes config file. */
   readonly credProxyRoutesPath?: string;
+  /** Workspace manifest for granular volume mounts. When set, replaces single workspace mount. */
+  readonly workspaceManifest?: WorkspaceManifest;
   /** Enable Tailscale sidecar for secure remote access. */
   readonly enableTailscale?: boolean;
   /** Tailscale auth key for automatic node registration. */
@@ -198,14 +201,7 @@ export function generateCompose(
       "/home/node/.local:exec,nosuid,size=512m",
       "/home/node/.cache:exec,nosuid,size=512m",
     ],
-    volumes: [
-      // Deploy dir as OpenClaw root (writable — OpenClaw creates temp files, state dirs)
-      `${deployDir}:/home/node/.openclaw`,
-      // Workspace writable
-      `${deployDir}/workspace:/home/node/.openclaw/workspace`,
-      // Cron
-      `${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`,
-    ],
+    volumes: buildVolumes(deployDir, options),
     networks: [networkName, "ollama-bridge"],
     env_file: [".env"],
     restart: "unless-stopped",
@@ -321,6 +317,59 @@ export function generateCompose(
         }
       : {}),
   };
+}
+
+// ── Volume Construction ────────────────────────────────────────────────────
+
+/**
+ * Build the volumes array for the openclaw service.
+ *
+ * When a workspace manifest is provided, the single blanket deploy-dir mount
+ * is decomposed into granular mounts so that:
+ *   - Immutable paths (tools, identity) come from the image layer — NO mount
+ *   - Persistent dirs (memory, state) are mounted read-write
+ *   - Config paths are mounted read-only
+ *   - The workspace root itself is NOT mounted
+ *
+ * Without a manifest, falls back to the original blanket mount for
+ * backwards compatibility.
+ */
+function buildVolumes(deployDir: string, options?: ComposeOptions): string[] {
+  const volumes: string[] = [];
+  const ws = OPENCLAW_CONTAINER_WORKSPACE;
+  const manifest = options?.workspaceManifest;
+
+  if (manifest) {
+    // Granular mode: mount only what OpenClaw needs outside workspace,
+    // then mount workspace subdirs individually.
+    //
+    // Engine config (read-only — runtime should not modify its own config)
+    volumes.push(`${deployDir}/engine/openclaw.json:${OPENCLAW_CONTAINER_CONFIG}:ro`);
+    // Credentials (read-only — managed by clawhq creds, never by the agent)
+    volumes.push(`${deployDir}/engine/credentials.json:${OPENCLAW_CONTAINER_CREDENTIALS}:ro`);
+    // Cron jobs
+    volumes.push(`${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`);
+
+    // Persistent workspace directories — read-write
+    for (const dir of manifest.persistent) {
+      volumes.push(`${deployDir}/workspace/${dir}:${ws}/${dir}`);
+    }
+
+    // Config workspace paths — read-only
+    for (const path of manifest.config) {
+      volumes.push(`${deployDir}/workspace/${path}:${ws}/${path}:ro`);
+    }
+
+    // Immutable paths: no mount — files come from the Docker image layer.
+    // Ephemeral paths: future tmpfs support (not yet wired).
+  } else {
+    // Backwards compatibility: blanket mount of entire deploy dir
+    volumes.push(`${deployDir}:${OPENCLAW_CONTAINER_ROOT}`);
+    volumes.push(`${deployDir}/workspace:${ws}`);
+    volumes.push(`${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`);
+  }
+
+  return volumes;
 }
 
 /** Check if posture has non-zero resource limits to apply. */

@@ -111,29 +111,73 @@ export function generateStage2Dockerfile(
     }
   }
 
-  // Copy workspace tools
-  if (config.workspaceTools.length > 0) {
-    lines.push("# Copy workspace tools");
-    for (const tool of config.workspaceTools) {
+  // Copy immutable workspace files (tools, identity, skills, sanitize)
+  if (config.workspace && config.workspace.immutable.length > 0) {
+    lines.push("# Immutable workspace files (baked into image — agent cannot modify)");
+
+    // Group by top-level directory for cleaner COPY instructions
+    const dirs = new Set(
+      config.workspace.immutable
+        .filter(f => f.includes("/"))
+        .map(f => f.split("/")[0])
+        .filter((d): d is string => d !== undefined),
+    );
+    for (const dir of dirs) {
+      const dirFiles = config.workspace.immutable.filter(f => f.startsWith(dir + "/"));
+      if (dirFiles.length > 0) {
+        lines.push(
+          `COPY --chown=${CONTAINER_USER} workspace/${dir}/ ${OPENCLAW_CONTAINER_WORKSPACE}/${dir}/`,
+        );
+      }
+    }
+
+    // Copy individual files at workspace root (TOOLS.md, SOUL.md, etc.)
+    const rootFiles = config.workspace.immutable.filter(f => !f.includes("/"));
+    for (const file of rootFiles) {
       lines.push(
-        `COPY --chown=${CONTAINER_USER} workspace/tools/${tool} ${OPENCLAW_CONTAINER_WORKSPACE}/tools/${tool}`,
+        `COPY --chown=${CONTAINER_USER} workspace/${file} ${OPENCLAW_CONTAINER_WORKSPACE}/${file}`,
       );
     }
-    lines.push(
-      `RUN chmod +x ${OPENCLAW_CONTAINER_WORKSPACE}/tools/*`,
-      "",
-    );
-  }
 
-  // Copy skills
-  if (config.skills.length > 0) {
-    lines.push("# Copy skills");
-    for (const skill of config.skills) {
+    // Make tool scripts executable
+    if (config.workspace.immutable.some(f => f.startsWith("tools/"))) {
       lines.push(
-        `COPY --chown=${CONTAINER_USER} workspace/skills/${skill} ${OPENCLAW_CONTAINER_WORKSPACE}/skills/${skill}`,
+        `RUN chmod +x ${OPENCLAW_CONTAINER_WORKSPACE}/tools/*`,
       );
     }
     lines.push("");
+
+    // Integrity manifest — allows runtime tamper detection
+    lines.push(
+      "# Workspace integrity manifest (SHA256 checksums for tamper detection)",
+      "COPY workspace-integrity.json /opt/workspace-integrity.json",
+      "RUN chmod 444 /opt/workspace-integrity.json",
+      "",
+    );
+  } else {
+    // Fallback: legacy behavior — copy tools and skills individually
+    if (config.workspaceTools.length > 0) {
+      lines.push("# Copy workspace tools");
+      for (const tool of config.workspaceTools) {
+        lines.push(
+          `COPY --chown=${CONTAINER_USER} workspace/tools/${tool} ${OPENCLAW_CONTAINER_WORKSPACE}/tools/${tool}`,
+        );
+      }
+      lines.push(
+        `RUN chmod +x ${OPENCLAW_CONTAINER_WORKSPACE}/tools/*`,
+        "",
+      );
+    }
+
+    if (config.skills.length > 0) {
+      lines.push("# Copy skills");
+      for (const skill of config.skills) {
+        lines.push(
+          `COPY --chown=${CONTAINER_USER} workspace/skills/${skill} ${OPENCLAW_CONTAINER_WORKSPACE}/skills/${skill}`,
+        );
+      }
+      lines.push("");
+    }
   }
 
   // ClawWall — immutable security scanning layer

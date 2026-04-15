@@ -33,6 +33,10 @@ export function computeStage2Hash(config: Stage2Config): string {
     workspaceTools: [...config.workspaceTools].sort(),
     skills: [...config.skills].sort(),
     enableOnePassword: config.enableOnePassword ?? false,
+    workspace: config.workspace ? {
+      immutable: [...config.workspace.immutable].sort(),
+      persistent: [...config.workspace.persistent].sort(),
+    } : null,
   });
   return createHash("sha256").update(data).digest("hex").slice(0, 16);
 }

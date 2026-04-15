@@ -14,17 +14,18 @@
 
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { chmod, copyFile, mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 
 import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
 import { checkCache, computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
 import { generateStage2Dockerfile } from "./dockerfile.js";
+import { generateIntegrityManifest } from "./integrity.js";
 import { createManifest, writeManifest } from "./manifest.js";
 import { DEFAULT_POSTURE, getPostureConfig } from "./posture.js";
-import type { BuildOptions, BuildResult, ManifestLayer } from "./types.js";
+import type { BuildOptions, BuildResult, ManifestLayer, WorkspaceManifest } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -95,6 +96,17 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
     }
   }
 
+  // Stage workspace files into Docker build context (before Dockerfile generation)
+  if (stage2.workspace) {
+    await stageWorkspaceFiles(deployDir, engineDir, stage2.workspace);
+    const integrityManifest = await generateIntegrityManifest(engineDir, stage2.workspace.immutable);
+    await writeFile(
+      join(engineDir, "workspace-integrity.json"),
+      JSON.stringify(integrityManifest, null, 2),
+      "utf-8",
+    );
+  }
+
   // Stage 2: Layer custom tools on top
   const stage2Dockerfile = generateStage2Dockerfile(STAGE1_TAG, stage2);
   await writeFile(join(engineDir, "Dockerfile"), stage2Dockerfile, "utf-8");
@@ -119,6 +131,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
     enableCredProxy,
     credProxyScriptPath,
     credProxyRoutesPath,
+    workspaceManifest: stage2.workspace,
   });
   const composePath = join(engineDir, "docker-compose.yml");
   await writeFile(composePath, serializeYaml(compose), "utf-8");
@@ -231,6 +244,26 @@ async function getImageInfo(tag: string): Promise<ImageInfo> {
   }
 }
 
+// ── Workspace Staging ──────────────────────────────────────────────────────
+
+/**
+ * Copy immutable workspace files from the deploy directory into the engine
+ * directory (Docker build context) so they can be baked into the image layer.
+ */
+async function stageWorkspaceFiles(
+  deployDir: string,
+  engineDir: string,
+  manifest: WorkspaceManifest,
+): Promise<void> {
+  for (const relPath of manifest.immutable) {
+    const src = join(deployDir, "workspace", relPath);
+    const dst = join(engineDir, "workspace", relPath);
+    if (!existsSync(src)) continue;
+    await mkdir(dirname(dst), { recursive: true });
+    await copyFile(src, dst);
+  }
+}
+
 // ── YAML Serialization ──────────────────────────────────────────────────────
 
 /**
@@ -243,7 +276,7 @@ function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
   const lines: string[] = [];
   const svc = compose.services.openclaw;
 
-  lines.push(`version: "${compose.version}"`, "");
+  // Note: 'version' is obsolete in Docker Compose v2+ and produces a warning
   lines.push("services:", "  openclaw:");
   lines.push(`    image: ${svc.image}`);
   lines.push(`    user: "${svc.user}"`);

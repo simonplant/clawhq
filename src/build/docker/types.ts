@@ -45,6 +45,29 @@ export interface PostureConfig {
   readonly healthcheckIntervalSecs: number;
 }
 
+// ── Workspace Manifest ─────────────────────────────────────────────────────
+
+/**
+ * Workspace integrity manifest — classifies workspace paths by mutability.
+ *
+ * When present, the compose generator replaces the single blanket workspace
+ * volume mount with granular per-directory mounts:
+ * - `persistent` dirs are mounted read-write (memory, state)
+ * - `config` paths are mounted read-only (BOOTSTRAP.md, etc.)
+ * - `immutable` paths are NOT mounted — they come from the image layer
+ * - `ephemeral` paths use tmpfs (not yet implemented)
+ */
+export interface WorkspaceManifest {
+  /** Directories that persist agent-written data (e.g. "memory", "state"). Mounted read-write. */
+  readonly persistent: readonly string[];
+  /** Files/dirs that the agent reads but must not modify (e.g. "BOOTSTRAP.md"). Mounted read-only. */
+  readonly config: readonly string[];
+  /** Files/dirs baked into the image layer that must NOT be volume-mounted (e.g. "tools", "identity"). */
+  readonly immutable: readonly string[];
+  /** Paths that use tmpfs — written at runtime, discarded on restart. */
+  readonly ephemeral: readonly string[];
+}
+
 // ── Build Configuration ─────────────────────────────────────────────────────
 
 /** Packages to install in Stage 1 (base image). */
@@ -60,6 +83,8 @@ export interface Stage2Config {
   readonly skills: readonly string[];
   /** Install 1Password CLI (op) for credential vault access. */
   readonly enableOnePassword?: boolean;
+  /** Workspace mutability manifest — when present, immutable files are baked into the image layer. */
+  readonly workspace?: WorkspaceManifest;
 }
 
 /** Binary to install from a GitHub release or URL. */

@@ -52,6 +52,10 @@ export { verifyBinaryHashes } from "./verify-hashes.js";
 // Binary dependency definitions
 export { CORE_BINARIES, getRequiredBinaries, TOOL_BINARY_DEPS } from "./binary-deps.js";
 
+// Workspace integrity
+export { generateIntegrityManifest } from "./integrity.js";
+export type { IntegrityEntry, IntegrityManifest } from "./integrity.js";
+
 // Types
 export type {
   BinaryInstall,
@@ -66,4 +70,5 @@ export type {
   Stage1Config,
   Stage2Config,
   TmpfsConfig,
+  WorkspaceManifest,
 } from "./types.js";
