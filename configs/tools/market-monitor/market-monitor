@@ -1,0 +1,424 @@
+#!/usr/bin/env python3
+"""market-monitor — Lightweight price monitor for ORDER block levels.
+
+Runs via system cron every 30-60s (NOT the LLM cron). Fetches prices,
+compares against ORDER blocks from the daily brief, writes alerts to
+a JSONL file the LLM reads during heartbeat.
+
+Usage:
+  market-monitor run              — one polling cycle (fetch, compare, write alerts)
+  market-monitor status           — show current price cache + active alerts
+  market-monitor clear            — clear today's alerts (after review)
+
+Designed to be stateless: starts, polls, writes, exits. System cron restarts it.
+
+Environment:
+  CRED_PROXY_URL    — credential proxy (for tradier or yahoo quotes)
+  WORKSPACE_DIR     — workspace root (default: ~/.openclaw/workspace)
+"""
+
+import json
+import os
+import re
+import sys
+import time
+import urllib.request
+from datetime import datetime
+from pathlib import Path
+
+WORKSPACE = Path(os.environ.get("WORKSPACE_DIR",
+    os.path.join(os.environ.get("HOME", "/home/node"), ".openclaw", "workspace")))
+BRIEF_DIR = WORKSPACE / "memory"
+ALERTS_FILE = WORKSPACE / "state" / "market-alerts.jsonl"
+CACHE_FILE = WORKSPACE / "state" / "price-cache.json"
+PROXY = os.environ.get("CRED_PROXY_URL", "")
+
+
+# --- Price fetching ---
+
+def fetch_prices(symbols):
+    """Fetch current prices for a batch of symbols. Returns {symbol: {price, change, volume}}."""
+    if not symbols:
+        return {}
+    if not PROXY:
+        return {}
+
+    results = {}
+
+    # Try tradier first (real-time), fall back to yahoo
+    try:
+        results = _fetch_tradier(symbols)
+    except Exception:
+        pass
+
+    # Fill gaps with yahoo
+    missing = [s for s in symbols if s not in results]
+    if missing:
+        try:
+            yahoo = _fetch_yahoo(missing)
+            results.update(yahoo)
+        except Exception:
+            pass
+
+    return results
+
+
+def _fetch_tradier(symbols):
+    """Fetch from tradier via cred-proxy. Returns dict or raises."""
+    sym_str = ",".join(symbols)
+    url = f"{PROXY}/tradier/v1/markets/quotes?symbols={sym_str}"
+    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        data = json.loads(resp.read())
+
+    quotes = data.get("quotes", {}).get("quote", [])
+    if isinstance(quotes, dict):
+        quotes = [quotes]
+
+    results = {}
+    for q in quotes:
+        sym = q.get("symbol", "")
+        results[sym] = {
+            "price": q.get("last") or q.get("close", 0),
+            "change": q.get("change", 0),
+            "change_pct": q.get("change_percentage", 0),
+            "volume": q.get("volume", 0),
+            "bid": q.get("bid"),
+            "ask": q.get("ask"),
+            "source": "tradier",
+            "ts": int(time.time()),
+        }
+    return results
+
+
+def _fetch_yahoo(symbols):
+    """Fetch from yahoo via cred-proxy. Returns dict or raises."""
+    results = {}
+    for sym in symbols:
+        try:
+            url = f"{PROXY}/yahoo/v8/finance/chart/{sym}?interval=1d&range=1d"
+            req = urllib.request.Request(url, headers={
+                "Accept": "application/json",
+                "User-Agent": "Mozilla/5.0",
+            })
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+            meta = data.get("chart", {}).get("result", [{}])[0].get("meta", {})
+            results[sym] = {
+                "price": meta.get("regularMarketPrice", 0),
+                "change": 0,
+                "change_pct": 0,
+                "volume": meta.get("regularMarketVolume", 0),
+                "source": "yahoo",
+                "ts": int(time.time()),
+            }
+        except Exception:
+            continue
+        time.sleep(0.3)  # Avoid yahoo rate limits
+    return results
+
+
+# --- ORDER block parsing ---
+
+def parse_order_blocks(brief_path):
+    """Extract ORDER blocks from the daily brief's ## Orders section."""
+    if not brief_path.exists():
+        return []
+
+    content = brief_path.read_text()
+
+    # Find ## Orders section
+    orders_match = re.search(r'^## Orders\s*\n(.*?)(?=^## |\Z)', content, re.MULTILINE | re.DOTALL)
+    if not orders_match:
+        return []
+
+    orders_text = orders_match.group(1)
+    orders = []
+
+    # Parse each ORDER block
+    for block in re.finditer(r'ORDER \d+ \| (\w+) \| (\w+)\n(.*?)(?=ORDER \d+|\Z)', orders_text, re.DOTALL):
+        conviction = block.group(1)
+        status = block.group(2)
+        fields_text = block.group(3)
+
+        order = {"conviction": conviction, "status": status}
+        for line in fields_text.strip().split("\n"):
+            line = line.strip()
+            if ":" in line:
+                key, _, val = line.partition(":")
+                key = key.strip()
+                val = val.strip()
+                # Parse numeric fields
+                if key in ("entry", "stop", "t1", "t2"):
+                    # Extract just the price number
+                    price_match = re.match(r'[\$]?([\d.]+)', val)
+                    if price_match:
+                        order[key] = float(price_match.group(1))
+                    order[key + "_raw"] = val
+                else:
+                    order[key] = val
+
+        if "ticker" in order or "exec_as" in order:
+            orders.append(order)
+
+    return orders
+
+
+# --- Alert logic ---
+
+def check_levels(orders, prices):
+    """Compare prices against ORDER levels. Return alerts."""
+    alerts = []
+
+    for order in orders:
+        status = order.get("status", "")
+        if status in ("CLOSED", "KILLED", "BLOCKED"):
+            continue
+
+        sym = order.get("exec_as", order.get("ticker", ""))
+        if not sym or sym not in prices:
+            continue
+
+        price = prices[sym]["price"]
+        if not price or price <= 0:
+            continue
+
+        source = order.get("source", "?")
+        setup = order.get("setup", "?")
+        confirmation = order.get("confirmation", "PENDING_TA")
+
+        # Check entry proximity
+        entry = order.get("entry")
+        if entry and entry > 0:
+            dist_pct = abs(price - entry) / entry * 100
+
+            if dist_pct <= 0.3:  # At level (within 0.3%)
+                alerts.append({
+                    "type": "AT_ENTRY",
+                    "symbol": sym,
+                    "price": price,
+                    "level": entry,
+                    "dist_pct": round(dist_pct, 2),
+                    "source": source,
+                    "setup": setup,
+                    "confirmation": confirmation,
+                    "conviction": order.get("conviction", "?"),
+                    "direction": order.get("direction", "?"),
+                    "msg": f"{source} {setup}: {sym} AT entry {entry} (current {price})",
+                })
+            elif dist_pct <= 1.0:  # Near (within 1%)
+                alerts.append({
+                    "type": "NEAR_ENTRY",
+                    "symbol": sym,
+                    "price": price,
+                    "level": entry,
+                    "dist_pct": round(dist_pct, 2),
+                    "source": source,
+                    "setup": setup,
+                    "confirmation": confirmation,
+                    "msg": f"{source}: {sym} approaching entry {entry} ({dist_pct:.1f}% away, current {price})",
+                })
+            elif dist_pct <= 2.0:  # Approaching (within 2%)
+                alerts.append({
+                    "type": "APPROACHING",
+                    "symbol": sym,
+                    "price": price,
+                    "level": entry,
+                    "dist_pct": round(dist_pct, 2),
+                    "source": source,
+                    "msg": f"{source}: {sym} {dist_pct:.1f}% from entry {entry} (current {price})",
+                })
+
+        # Check stop proximity for filled positions
+        stop = order.get("stop")
+        if stop and stop > 0 and status == "FILLED":
+            direction = order.get("direction", "LONG")
+            if direction == "LONG" and price <= stop * 1.01:
+                alerts.append({
+                    "type": "STOP_WARNING",
+                    "symbol": sym,
+                    "price": price,
+                    "level": stop,
+                    "msg": f"STOP WARNING: {sym} at {price}, stop at {stop}",
+                })
+            elif direction == "SHORT" and price >= stop * 0.99:
+                alerts.append({
+                    "type": "STOP_WARNING",
+                    "symbol": sym,
+                    "price": price,
+                    "level": stop,
+                    "msg": f"STOP WARNING: {sym} at {price}, stop at {stop}",
+                })
+
+        # Check T1 proximity for filled positions
+        t1 = order.get("t1")
+        if t1 and t1 > 0 and status == "FILLED":
+            t1_dist = abs(price - t1) / t1 * 100
+            if t1_dist <= 1.0:
+                alerts.append({
+                    "type": "TARGET_T1",
+                    "symbol": sym,
+                    "price": price,
+                    "level": t1,
+                    "msg": f"T1 approaching: {sym} at {price}, T1 at {t1} ({t1_dist:.1f}% away)",
+                })
+
+    return alerts
+
+
+def today_brief_path():
+    """Path to today's trading brief."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    return BRIEF_DIR / f"trading-{today}.md"
+
+
+# --- File I/O ---
+
+def write_cache(prices):
+    """Write price cache to shared state file."""
+    CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    data = {"ts": int(time.time()), "prices": prices}
+    CACHE_FILE.write_text(json.dumps(data, indent=2))
+
+
+def write_alerts(alerts):
+    """Append alerts to JSONL file."""
+    if not alerts:
+        return
+    ALERTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(ALERTS_FILE, "a") as f:
+        for alert in alerts:
+            alert["ts"] = int(time.time())
+            alert["time"] = datetime.now().strftime("%H:%M:%S")
+            f.write(json.dumps(alert) + "\n")
+
+
+def read_cache():
+    """Read price cache."""
+    if not CACHE_FILE.exists():
+        return None
+    try:
+        return json.loads(CACHE_FILE.read_text())
+    except Exception:
+        return None
+
+
+def read_alerts():
+    """Read today's alerts."""
+    if not ALERTS_FILE.exists():
+        return []
+    alerts = []
+    for line in ALERTS_FILE.read_text().strip().split("\n"):
+        if line:
+            try:
+                alerts.append(json.loads(line))
+            except Exception:
+                continue
+    return alerts
+
+
+# --- Commands ---
+
+def cmd_run():
+    """One polling cycle: fetch prices, compare levels, write alerts."""
+    # Parse ORDER blocks from today's brief
+    brief = today_brief_path()
+    orders = parse_order_blocks(brief)
+
+    if not orders:
+        # No orders to monitor — still cache prices for watchlist
+        return
+
+    # Collect symbols to fetch
+    symbols = set()
+    for order in orders:
+        sym = order.get("exec_as", order.get("ticker", ""))
+        if sym:
+            symbols.add(sym)
+
+    if not symbols:
+        return
+
+    # Fetch prices
+    prices = fetch_prices(list(symbols))
+    if not prices:
+        return
+
+    # Write price cache (other tools can read this)
+    write_cache(prices)
+
+    # Check levels and generate alerts
+    alerts = check_levels(orders, prices)
+
+    # Deduplicate: don't repeat the same alert type+symbol within 5 minutes
+    if alerts:
+        existing = read_alerts()
+        now = int(time.time())
+        recent = {(a.get("type"), a.get("symbol")) for a in existing
+                  if now - a.get("ts", 0) < 300}
+        new_alerts = [a for a in alerts if (a["type"], a["symbol"]) not in recent]
+        write_alerts(new_alerts)
+
+        if new_alerts:
+            for a in new_alerts:
+                print(a["msg"])
+        else:
+            print("No new alerts (deduped)")
+    else:
+        print("No levels in range")
+
+
+def cmd_status():
+    """Show current price cache and active alerts."""
+    cache = read_cache()
+    if cache:
+        age = int(time.time()) - cache.get("ts", 0)
+        print(f"=== Price Cache (age: {age}s) ===")
+        for sym, data in sorted(cache.get("prices", {}).items()):
+            src = data.get("source", "?")
+            print(f"  {sym:>6}: ${data['price']:.2f}  ({src})")
+    else:
+        print("No price cache")
+
+    print()
+    alerts = read_alerts()
+    if alerts:
+        print(f"=== Alerts Today ({len(alerts)}) ===")
+        for a in alerts[-10:]:  # Last 10
+            print(f"  [{a.get('time', '?')}] {a.get('msg', '?')}")
+    else:
+        print("No alerts today")
+
+
+def cmd_clear():
+    """Clear today's alerts."""
+    if ALERTS_FILE.exists():
+        ALERTS_FILE.unlink()
+        print("Alerts cleared")
+    else:
+        print("No alerts to clear")
+
+
+# --- CLI ---
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__.strip())
+        sys.exit(0)
+
+    cmd = sys.argv[1]
+    if cmd == "run":
+        cmd_run()
+    elif cmd == "status":
+        cmd_status()
+    elif cmd == "clear":
+        cmd_clear()
+    elif cmd in ("help", "--help", "-h"):
+        print(__doc__.strip())
+    else:
+        print(f"Unknown command: {cmd}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

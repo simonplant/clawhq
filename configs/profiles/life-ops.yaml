@@ -80,6 +80,10 @@ tools:
     category: trading
     description: "Earnings calendar and economic events — Finnhub API (today, week, check, watchlist, economic)"
     required: false
+  - name: market-monitor
+    category: trading
+    description: "Price monitor — polls every 30s via system cron, compares vs ORDER levels, writes alerts for heartbeat"
+    required: false
 
 skills:
   - morning-brief
@@ -142,39 +146,34 @@ cron_prompts:
 
     TRADING (Mon-Fri market hours, 6:30am-1pm PT / 9:30am-4pm ET):
     ALERT-ONLY MODE — detect and alert. Simon executes. No autonomous order placement.
+    The market-monitor cron script polls prices every 30s and writes alerts.
+    Your job: read the alerts, add context, and deliver to Simon.
 
-    1. Read today's brief: memory/trading-YYYY-MM-DD.md
-       - If it doesn't exist or is stale, note it and move on
-       - Find the ## Orders section — extract all ORDER blocks
-       - Each ORDER has: source, pot, ticker, exec_as, direction, entry,
-         stop, t1, t2, conviction, confirmation, kills, activation
+    1. Read market-monitor alerts: market-monitor status
+       - Shows price cache (current prices) and recent alerts
+       - If alerts exist, read each one — they contain symbol, price, level,
+         source, setup, confirmation, and a pre-formatted message
+       - AT_ENTRY alerts = price at the ORDER level (actionable)
+       - NEAR_ENTRY alerts = within 1% (heads up)
+       - STOP_WARNING alerts = position approaching stop (urgent)
+       - TARGET_T1 alerts = position approaching profit target
 
-    2. Check paper portfolio: trade-journal positions
-       - Note open Pot B and Pot C positions
-       - If all pots flat, skip position monitoring
+    2. For each alert, add context from today's brief:
+       - What's the setup? (FB, Level Reclaim, MA pullback, etc.)
+       - What's the confirmation? (PENDING_TA = watch only, CONFIRMED = actionable)
+       - Is there confluence? (DP + Mancini aligned = higher confidence)
+       - Deliver to Simon with context, not just the raw alert
 
-    3. For each ORDER block with status ACTIVE or CONDITIONAL:
-       a. Fetch real-time price: tradier quote <exec_as symbol>
-       b. If kill condition met (from kills field) → update status to KILLED
-          in the brief, log: journal append order_kill <json>
-       c. Check proximity to entry:
-          - Within 10 pts (ES) / 2% (stocks) → log to daily memory (no alert)
-          - Within 5 pts (ES) / 1% (stocks) → alert Simon:
-            "[source] [setup] approaching: [ticker] at [price], entry [entry]"
-          - At entry level with confirmation CONFIRMED → alert Simon:
-            "[source] [setup] TRIGGERED: [ticker] hit [entry]. Execute?"
-          - At entry level with confirmation PENDING_TA → alert Simon:
-            "[source] [setup] at level but TA unconfirmed. Watch only."
+    3. Check paper portfolio: trade-journal positions
+       - If Pot B or C have open positions, check vs stop/target alerts
+       - If all pots flat and no alerts, skip trading section
 
-    4. For each open position (from trade-journal positions):
-       a. Fetch current price: tradier quote <symbol>
-       b. Check vs ORDER targets:
-          - Price approaching T1 → alert: "[ticker] approaching T1 [price]. Scale 75%?"
-          - Price approaching stop → alert: "[ticker] approaching stop [price]."
-          - >2% adverse move → alert with current P&L
-       c. Simon decides and executes all trades manually
+    4. Kill condition check: if a kill condition from an ORDER is met
+       (e.g., DP went flat, level broken), update the ORDER status to
+       KILLED in the brief, log: journal append order_kill <json>
 
-    5. When nothing is near a level: skip trading section silently. HEARTBEAT_OK.
+    5. When no alerts and nothing near a level: skip trading section
+       silently. HEARTBEAT_OK.
 
     Outside market hours or weekends: Skip the TRADING section entirely.
     If nothing urgent from email/calendar/tasks, respond HEARTBEAT_OK.
