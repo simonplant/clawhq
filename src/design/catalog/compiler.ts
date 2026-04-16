@@ -14,8 +14,8 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { generateCompose } from "../../build/docker/compose.js";
 import { serializeYaml } from "../../build/docker/build.js";
+import { generateCompose } from "../../build/docker/compose.js";
 import { getPostureConfig } from "../../build/docker/posture.js";
 import {
   CRED_PROXY_PORT,

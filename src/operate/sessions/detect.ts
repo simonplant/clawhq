@@ -54,7 +54,7 @@ export async function listSessions(
     done
   `;
 
-  let stdout = "";
+  let stdout: string;
   try {
     const res = await execFileAsync(
       "docker",
