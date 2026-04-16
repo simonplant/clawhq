@@ -6,7 +6,6 @@ import type { Command } from "commander";
 import ora from "ora";
 import { parse as yamlParse } from "yaml";
 
-import { validateBundle } from "../../config/validate.js";
 import {
   loadAllBuiltinBlueprints,
   loadBlueprint,
@@ -21,22 +20,23 @@ import {
   loadAllProfiles,
 } from "../../design/catalog/index.js";
 import {
-  ConfigFileError,
   createInquirerPrompter,
-  generateBundle,
   isCompositionConfig,
   loadAndCompileComposition,
   loadConfigFile,
   runSmartInference,
   runWizard,
-  SmartInferenceAbortError,
-  WizardAbortError,
   writeBundle,
 } from "../../design/configure/index.js";
 import { CommandError } from "../errors.js";
 import { renderError } from "../ux.js";
 
-import { bundleToFiles } from "./helpers.js";
+import {
+  applyEnsureFreshResult,
+  ensureFreshOrReset,
+  forgeFromAnswers,
+  translateInitError,
+} from "./init-run.js";
 
 /** Print a full blueprint preview to stdout. */
 function printBlueprintPreview(bp: Blueprint): void {
@@ -153,6 +153,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--air-gapped", "Run in air-gapped mode (no internet)")
     .option("--ollama-model <model>", "Ollama model for --smart inference")
+    .option("--reset", "Archive the existing deployment and re-forge from scratch")
     .action(async (opts: {
       guided?: boolean;
       smart?: boolean;
@@ -161,9 +162,17 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
       deployDir: string;
       airGapped?: boolean;
       ollamaModel?: string;
+      reset?: boolean;
     }) => {
       try {
-        // Legacy paths: --smart and --blueprint still use the blueprint pipeline
+        // Protective guard: refuse to clobber an existing deployment unless
+        // --reset is passed. See init-run.ts for rationale.
+        applyEnsureFreshResult(
+          ensureFreshOrReset(opts.deployDir, opts.reset === true),
+          opts.deployDir,
+        );
+
+        // Legacy paths: --smart and --blueprint use the blueprint pipeline.
         if (opts.smart || opts.blueprint) {
           const prompter = await createInquirerPrompter();
           const answers = opts.smart
@@ -176,89 +185,34 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
                 deployDir: opts.deployDir,
                 airGapped: opts.airGapped,
               });
-
-          const spinner = ora("Generating config…");
-          spinner.start();
-          const bundle = generateBundle(answers);
-          const report = validateBundle(bundle);
-          if (!report.valid) {
-            spinner.fail("Config validation failed");
-            for (const err of report.errors) {
-              console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
-            }
-            throw new CommandError("", 1);
-          }
-          const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers, Object.keys(answers.integrations));
-          const result = writeBundle(answers.deployDir, files);
-          spinner.succeed(`Config written to ${result.deployDir}`);
-          for (const warn of report.warnings) {
-            console.log(chalk.yellow(`  ⚠ ${warn.rule}: ${warn.message}`));
-          }
-          console.log(chalk.green(`\n✔ Agent forged successfully`));
-          console.log(chalk.dim(`  ${result.written.length} files written`));
-          console.log(chalk.dim(`\n  Next: clawhq up`));
+          forgeFromAnswers(answers);
           return;
         }
 
         if (opts.config) {
-          // Non-interactive: load from config file (both composition and legacy formats)
+          // Composition configs (profile × personality) compile directly;
+          // legacy blueprint configs go through the shared forge pipeline.
           if (isCompositionConfig(opts.config)) {
-            try {
-              const compiled = loadAndCompileComposition(opts.config);
-              console.log(chalk.green(`\n✔ Composition loaded from ${opts.config}`));
-              console.log(chalk.dim(`  Profile:     ${compiled.profile.name}`));
-              console.log(chalk.dim(`  Personality: ${compiled.personality.name}`));
-              console.log(chalk.dim(`  Deploy to:   ${opts.deployDir}`));
+            const compiled = loadAndCompileComposition(opts.config);
+            console.log(chalk.green(`\n✔ Composition loaded from ${opts.config}`));
+            console.log(chalk.dim(`  Profile:     ${compiled.profile.name}`));
+            console.log(chalk.dim(`  Personality: ${compiled.personality.name}`));
+            console.log(chalk.dim(`  Deploy to:   ${opts.deployDir}`));
 
-              const spinner = ora("Writing workspace…");
-              spinner.start();
-              const result = writeBundle(opts.deployDir, compiled.files);
-              spinner.succeed(`Workspace written to ${result.deployDir}`);
-              console.log(chalk.dim(`  ${result.written.length} files written`));
-              console.log(chalk.green(`\n✔ Agent forged: ${compiled.personality.name} × ${compiled.profile.name}`));
-              console.log(chalk.dim(`\n  Next: clawhq build -d ${opts.deployDir}`));
-              return;
-            } catch (error) {
-              if (error instanceof ConfigFileError) {
-                console.error(chalk.red(`\n  ✘ ${error.message}\n`));
-                throw new CommandError("", 1);
-              }
-              throw error;
-            }
-          }
-
-          // Legacy blueprint config file
-          try {
-            const answers = loadConfigFile(opts.config);
-            console.log(chalk.green(`\n✔ Config loaded from ${opts.config}`));
-            const spinner = ora("Generating config…");
+            const spinner = ora("Writing workspace…");
             spinner.start();
-            const bundle = generateBundle(answers);
-            const report = validateBundle(bundle);
-            if (!report.valid) {
-              spinner.fail("Config validation failed");
-              for (const err of report.errors) {
-                console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
-              }
-              throw new CommandError("", 1);
-            }
-            const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers, Object.keys(answers.integrations));
-            const result = writeBundle(answers.deployDir, files);
-            spinner.succeed(`Config written to ${result.deployDir}`);
-            for (const warn of report.warnings) {
-              console.log(chalk.yellow(`  ⚠ ${warn.rule}: ${warn.message}`));
-            }
-            console.log(chalk.green(`\n✔ Agent forged successfully`));
+            const result = writeBundle(opts.deployDir, compiled.files);
+            spinner.succeed(`Workspace written to ${result.deployDir}`);
             console.log(chalk.dim(`  ${result.written.length} files written`));
-            console.log(chalk.dim(`\n  Next: clawhq up`));
+            console.log(chalk.green(`\n✔ Agent forged: ${compiled.personality.name} × ${compiled.profile.name}`));
+            console.log(chalk.dim(`\n  Next: clawhq build -d ${opts.deployDir}`));
             return;
-          } catch (error) {
-            if (error instanceof ConfigFileError) {
-              console.error(chalk.red(`\n  ✘ ${error.message}\n`));
-              throw new CommandError("", 1);
-            }
-            throw error;
           }
+
+          const answers = loadConfigFile(opts.config);
+          console.log(chalk.green(`\n✔ Config loaded from ${opts.config}`));
+          forgeFromAnswers(answers);
+          return;
         }
 
         // Interactive: composition-based wizard (primary path)
@@ -363,17 +317,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         console.log(chalk.dim(`\n  Next: clawhq build -d ${opts.deployDir}`));
         console.log(chalk.dim(`  Then: clawhq up -d ${opts.deployDir}`));
       } catch (error) {
-        if (error instanceof CommandError) throw error;
-        if (error instanceof WizardAbortError || error instanceof SmartInferenceAbortError) {
-          console.log(chalk.yellow("\nSetup cancelled."));
-          throw new CommandError("", 0);
-        }
-        if ((error as Error)?.name === "ExitPromptError") {
-          console.log(chalk.yellow("\nSetup cancelled."));
-          throw new CommandError("", 0);
-        }
-        console.error(renderError(error));
-        throw new CommandError("", 1);
+        throw translateInitError(error);
       }
     });
 
