@@ -47,12 +47,14 @@
 
   "loops": {
     "portfolio": { "enabled": true, "phase": 1, "cadence": "daily" },
-    "swing": { "enabled": false, "phase": 2, "cadence": "hourly" },
-    "session": { "enabled": false, "phase": 3, "cadence": "2min" }
+    "swing": { "enabled": true, "phase": 2, "cadence": "hourly" },
+    "session": { "enabled": true, "phase": 3, "cadence": "2min" }
   },
 
   "data": {
     "quote_tool": "quote",
+    "ta_tool": "ta",
+    "earnings_tool": "earnings",
     "finnhub_api_key_env": "FINNHUB_API_KEY",
     "alpaca_paper_env": "ALPACA_API_KEY_PAPER",
     "alpaca_secret_env": "ALPACA_API_SECRET_PAPER",
@@ -62,6 +64,6 @@
   "features": {
     "auto_execute": false,
     "auto_rebalance": false,
-    "day_trading": false
+    "day_trading": true
   }
 }

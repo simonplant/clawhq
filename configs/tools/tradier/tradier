@@ -15,7 +15,7 @@
 #                                       — OTOCO bracket order (entry + stop + target)
 #   tradier quote <symbol> [symbol...]  — real-time quote (bid/ask/last, supports multiple)
 #   tradier bars <symbol> [interval] [days]
-#                                       — historical bars (interval: daily/weekly/monthly, default daily)
+#                                       — historical bars (interval: daily/weekly/monthly/1min/5min/15min, default daily)
 #
 # Examples:
 #   tradier account
@@ -431,13 +431,18 @@ cmd_quote() {
 
 cmd_bars() {
   local symbol="${1:-}" interval="${2:-daily}" days="${3:-30}"
-  [ -z "$symbol" ] && _err "Usage: tradier bars <symbol> [daily|weekly|monthly] [days]"
+  [ -z "$symbol" ] && _err "Usage: tradier bars <symbol> [daily|weekly|monthly|1min|5min|15min] [days]"
   symbol=$(echo "$symbol" | tr '[:lower:]' '[:upper:]')
   interval=$(echo "$interval" | tr '[:upper:]' '[:lower:]')
 
   case "$interval" in
     daily|weekly|monthly) ;;
-    *) _err "Interval must be: daily, weekly, or monthly" ;;
+    tick|1min|5min|15min)
+      # Intraday intervals use the timesales endpoint
+      _bars_intraday "$symbol" "$interval" "$days"
+      return
+      ;;
+    *) _err "Interval must be: daily, weekly, monthly, 1min, 5min, or 15min" ;;
   esac
 
   # Calculate date range
@@ -472,6 +477,54 @@ cmd_bars() {
     c=$(echo "$bar" | jq -r '.close')
     v=$(echo "$bar" | jq -r '.volume')
     printf "%-12s %10s %10s %10s %10s %12s\n" "$d" "\$$o" "\$$h" "\$$l" "\$$c" "$v"
+  done
+}
+
+_bars_intraday() {
+  local symbol="$1" interval="$2" days="${3:-1}"
+
+  # Map interval to Tradier timesales filter
+  local filter
+  case "$interval" in
+    tick)  filter="tick" ;;
+    1min)  filter="1min" ;;
+    5min)  filter="5min" ;;
+    15min) filter="15min" ;;
+  esac
+
+  # Tradier timesales uses start/end datetimes
+  local end_ts start_ts
+  end_ts=$(date -u +"%Y-%m-%d %H:%M")
+  start_ts=$(date -u -d "-${days} days" +"%Y-%m-%d %H:%M" 2>/dev/null || \
+             date -u -v-${days}d +"%Y-%m-%d %H:%M" 2>/dev/null)
+
+  local body
+  body=$(_curl "${API}/markets/timesales?symbol=${symbol}&interval=${filter}&start=${start_ts}&end=${end_ts}&session_filter=all")
+
+  local bars
+  bars=$(echo "$body" | jq '.series.data' | _ensure_array)
+
+  local count
+  count=$(echo "$bars" | jq 'length')
+
+  if [ "$count" = "0" ] || [ "$count" = "null" ]; then
+    echo "No intraday bars returned for $symbol ($interval, ${days}d)."
+    return
+  fi
+
+  echo "=== $symbol — $interval (last $count bars, ${days}d) ==="
+  printf "%-20s %10s %10s %10s %10s %12s\n" "TIME" "OPEN" "HIGH" "LOW" "CLOSE" "VOLUME"
+  printf "%-20s %10s %10s %10s %10s %12s\n" "----" "----" "----" "---" "-----" "------"
+
+  echo "$bars" | jq -c '.[]' | while read -r bar; do
+    local t o h l c v
+    t=$(echo "$bar" | jq -r '.time // .timestamp')
+    o=$(echo "$bar" | jq -r '.open')
+    h=$(echo "$bar" | jq -r '.high')
+    l=$(echo "$bar" | jq -r '.low')
+    c=$(echo "$bar" | jq -r '.close // .price')
+    v=$(echo "$bar" | jq -r '.volume')
+    printf "%-20s %10s %10s %10s %10s %12s\n" "$t" "\$$o" "\$$h" "\$$l" "\$$c" "$v"
   done
 }
 

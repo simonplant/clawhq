@@ -1,0 +1,299 @@
+#!/usr/bin/env python3
+"""earnings — Earnings calendar and economic events CLI.
+
+Fetches earnings data from Finnhub API for watchlist symbols and date ranges.
+Used by premarket-brief for Calendar Risk section.
+
+Usage:
+  earnings today                          — today's earnings reports
+  earnings week                           — this week's earnings
+  earnings check <symbol> [symbol...]     — next earnings date for specific symbols
+  earnings watchlist                      — earnings this week for all watchlist symbols
+  earnings economic [--days N]            — economic calendar (FOMC, CPI, NFP, etc.)
+
+Examples:
+  earnings today
+  earnings check AAPL NVDA META
+  earnings watchlist
+  earnings economic --days 7
+
+Environment:
+  FINNHUB_API_KEY    — Finnhub API key (required)
+  MARKETS_DIR        — path to markets config dir (for WATCHLISTS.json)
+"""
+
+import json
+import os
+import sys
+import urllib.request
+from datetime import datetime, timedelta
+from pathlib import Path
+
+FINNHUB_KEY = os.environ.get("FINNHUB_API_KEY", "")
+FINNHUB_BASE = "https://finnhub.io/api/v1"
+MARKETS_DIR = Path(os.environ.get("MARKETS_DIR",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "markets", "markets")))
+WATCHLISTS_PATH = MARKETS_DIR / "WATCHLISTS.json"
+
+
+def _die(msg):
+    print(f"Error: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _finnhub(endpoint, params=None):
+    """Make a Finnhub API request."""
+    if not FINNHUB_KEY:
+        _die("FINNHUB_API_KEY not set")
+
+    url = f"{FINNHUB_BASE}{endpoint}?token={FINNHUB_KEY}"
+    if params:
+        for k, v in params.items():
+            url += f"&{k}={v}"
+
+    try:
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        _die(f"Finnhub API error: {e.code} {e.reason}")
+    except Exception as e:
+        _die(f"Finnhub request failed: {e}")
+
+
+def _load_watchlists():
+    """Load all watchlist symbols."""
+    if not WATCHLISTS_PATH.exists():
+        return []
+    data = json.loads(WATCHLISTS_PATH.read_text())
+    symbols = set()
+    for wl in data.values():
+        if isinstance(wl, dict) and "symbols" in wl:
+            symbols.update(wl["symbols"])
+    # Filter out futures/indices (not on Finnhub earnings)
+    return sorted(s for s in symbols if "=" not in s and "^" not in s)
+
+
+def _today():
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def _week_range():
+    today = datetime.now()
+    # Monday of this week
+    monday = today - timedelta(days=today.weekday())
+    friday = monday + timedelta(days=4)
+    return monday.strftime("%Y-%m-%d"), friday.strftime("%Y-%m-%d")
+
+
+# --- Commands ---
+
+def cmd_today():
+    """Show today's earnings."""
+    date = _today()
+    data = _finnhub("/calendar/earnings", {"from": date, "to": date})
+    earnings = data.get("earningsCalendar", [])
+
+    if not earnings:
+        print(f"No earnings reports scheduled for {date}.")
+        return
+
+    print(f"=== Earnings Reports — {date} ({len(earnings)} companies) ===")
+    print()
+    printf_header()
+
+    for e in sorted(earnings, key=lambda x: x.get("symbol", "")):
+        printf_earning(e)
+
+
+def cmd_week():
+    """Show this week's earnings."""
+    start, end = _week_range()
+    data = _finnhub("/calendar/earnings", {"from": start, "to": end})
+    earnings = data.get("earningsCalendar", [])
+
+    if not earnings:
+        print(f"No earnings reports this week ({start} to {end}).")
+        return
+
+    # Group by date
+    by_date = {}
+    for e in earnings:
+        d = e.get("date", "unknown")
+        by_date.setdefault(d, []).append(e)
+
+    print(f"=== Earnings This Week ({start} to {end}, {len(earnings)} total) ===")
+    for date in sorted(by_date.keys()):
+        print(f"\n--- {date} ({len(by_date[date])} reports) ---")
+        printf_header()
+        for e in sorted(by_date[date], key=lambda x: x.get("symbol", "")):
+            printf_earning(e)
+
+
+def cmd_check(symbols):
+    """Check next earnings date for specific symbols."""
+    if not symbols:
+        _die("Usage: earnings check <symbol> [symbol...]")
+
+    print("=== Next Earnings Dates ===")
+    print()
+
+    for symbol in symbols:
+        symbol = symbol.upper()
+        # Fetch earnings for next 90 days
+        start = _today()
+        end = (datetime.now() + timedelta(days=90)).strftime("%Y-%m-%d")
+        data = _finnhub("/calendar/earnings", {"from": start, "to": end, "symbol": symbol})
+        earnings = data.get("earningsCalendar", [])
+
+        if earnings:
+            # Find the nearest future date
+            future = [e for e in earnings if e.get("date", "") >= start]
+            if future:
+                e = sorted(future, key=lambda x: x["date"])[0]
+                days_away = (datetime.strptime(e["date"], "%Y-%m-%d") - datetime.now()).days
+                hour = e.get("hour", "unknown")
+                est_eps = e.get("epsEstimate")
+                est_rev = e.get("revenueEstimate")
+                eps_str = f"EPS est: ${est_eps:.2f}" if est_eps else "EPS est: N/A"
+                rev_str = f"Rev est: ${est_rev / 1e9:.1f}B" if est_rev else ""
+                timing = f"({hour})" if hour and hour != "unknown" else ""
+                print(f"  {symbol:>6}: {e['date']} {timing} ({days_away}d away) — {eps_str} {rev_str}")
+            else:
+                print(f"  {symbol:>6}: no upcoming earnings in next 90 days")
+        else:
+            print(f"  {symbol:>6}: no earnings data available")
+
+
+def cmd_watchlist():
+    """Check earnings for all watchlist symbols this week."""
+    symbols = _load_watchlists()
+    if not symbols:
+        _die("No watchlist symbols found (check WATCHLISTS.json)")
+
+    start, end = _week_range()
+    data = _finnhub("/calendar/earnings", {"from": start, "to": end})
+    all_earnings = data.get("earningsCalendar", [])
+
+    # Filter to watchlist symbols
+    watchlist_set = set(s.upper() for s in symbols)
+    matches = [e for e in all_earnings if e.get("symbol", "").upper() in watchlist_set]
+
+    if not matches:
+        print(f"No watchlist symbols reporting earnings this week ({start} to {end}).")
+        print(f"Checked: {', '.join(symbols[:20])}{'...' if len(symbols) > 20 else ''}")
+        return
+
+    print(f"=== Watchlist Earnings This Week ({len(matches)} matches) ===")
+    print()
+    printf_header()
+    for e in sorted(matches, key=lambda x: (x.get("date", ""), x.get("symbol", ""))):
+        printf_earning(e)
+
+
+def cmd_economic(days=7):
+    """Economic calendar (FOMC, CPI, NFP, etc.)."""
+    start = _today()
+    end = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+
+    # Finnhub economic calendar
+    data = _finnhub("/calendar/economic", {"from": start, "to": end})
+    events = data.get("economicCalendar", data.get("result", []))
+
+    if not events:
+        print(f"No economic events in next {days} days.")
+        return
+
+    # Filter to high-impact US events
+    high_impact = []
+    for ev in events:
+        country = ev.get("country", "")
+        impact = ev.get("impact", "")
+        if country in ("US", "United States", "") and impact in ("high", "medium", "3", "2", 3, 2):
+            high_impact.append(ev)
+
+    if not high_impact:
+        # Fall back to all US events
+        high_impact = [ev for ev in events if ev.get("country", "") in ("US", "United States", "")]
+
+    print(f"=== Economic Calendar ({start} to {end}) ===")
+    print()
+
+    for ev in sorted(high_impact, key=lambda x: x.get("time", x.get("date", ""))):
+        date = ev.get("date", ev.get("time", "?"))[:10]
+        time = ev.get("time", "")
+        if len(time) > 10:
+            time = time[11:16]
+        event = ev.get("event", ev.get("name", "Unknown"))
+        impact = ev.get("impact", "?")
+        estimate = ev.get("estimate", "")
+        previous = ev.get("prev", ev.get("previous", ""))
+
+        impact_str = "HIGH" if str(impact) in ("high", "3") else "MED" if str(impact) in ("medium", "2") else "LOW"
+        est_str = f"est: {estimate}" if estimate else ""
+        prev_str = f"prev: {previous}" if previous else ""
+        detail = f" — {est_str} {prev_str}".strip(" —") if est_str or prev_str else ""
+
+        print(f"  {date} {time:>5}  [{impact_str:>4}]  {event}{detail}")
+
+
+# --- Formatting helpers ---
+
+def printf_header():
+    print(f"  {'SYMBOL':>8}  {'DATE':>12}  {'HOUR':>6}  {'EPS Est':>8}  {'EPS Act':>8}  {'Rev Est':>10}")
+    print(f"  {'------':>8}  {'----':>12}  {'----':>6}  {'-------':>8}  {'-------':>8}  {'-------':>10}")
+
+
+def printf_earning(e):
+    sym = e.get("symbol", "?")
+    date = e.get("date", "?")
+    hour = e.get("hour", "?")
+    eps_est = e.get("epsEstimate")
+    eps_act = e.get("epsActual")
+    rev_est = e.get("revenueEstimate")
+
+    eps_est_str = f"${eps_est:.2f}" if eps_est is not None else "N/A"
+    eps_act_str = f"${eps_act:.2f}" if eps_act is not None else "—"
+    rev_str = f"${rev_est / 1e9:.1f}B" if rev_est else "N/A"
+
+    # Beat/miss indicator
+    beat = ""
+    if eps_est is not None and eps_act is not None:
+        beat = " BEAT" if eps_act > eps_est else " MISS" if eps_act < eps_est else " MET"
+
+    print(f"  {sym:>8}  {date:>12}  {hour:>6}  {eps_est_str:>8}  {eps_act_str:>8}{beat}  {rev_str:>10}")
+
+
+# --- CLI ---
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__.strip())
+        sys.exit(0)
+
+    cmd = sys.argv[1]
+
+    if cmd in ("help", "--help", "-h"):
+        print(__doc__.strip())
+        sys.exit(0)
+    elif cmd == "today":
+        cmd_today()
+    elif cmd == "week":
+        cmd_week()
+    elif cmd == "check":
+        cmd_check(sys.argv[2:])
+    elif cmd == "watchlist":
+        cmd_watchlist()
+    elif cmd in ("economic", "econ", "calendar"):
+        days = 7
+        if "--days" in sys.argv:
+            idx = sys.argv.index("--days")
+            if idx + 1 < len(sys.argv):
+                days = int(sys.argv[idx + 1])
+        cmd_economic(days)
+    else:
+        _die(f"Unknown command: {cmd} (try: earnings --help)")
+
+
+if __name__ == "__main__":
+    main()

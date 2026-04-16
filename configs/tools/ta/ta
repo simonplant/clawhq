@@ -1,0 +1,458 @@
+#!/usr/bin/env python3
+"""ta — Technical analysis CLI for trading tools.
+
+Computes indicators from price data fetched via the tradier tool.
+Python stdlib only — no numpy, pandas, or ta-lib.
+
+Usage:
+  ta ma <symbol> [--periods 8,21,200] [--days 250]  — moving averages (SMA + EMA)
+  ta rsi <symbol> [--period 14] [--days 60]          — RSI
+  ta macd <symbol> [--days 120]                      — MACD (12/26/9)
+  ta bbands <symbol> [--period 20] [--days 60]       — Bollinger Bands
+  ta atr <symbol> [--period 14] [--days 60]          — Average True Range
+  ta rvol <symbol> [--period 20]                     — Relative volume vs average
+  ta full <symbol> [--days 250]                      — All indicators
+  ta levels <symbol> [--days 250]                    — Key MA levels for DP-style analysis
+
+Examples:
+  ta ma SPY --periods 8,21,200
+  ta rsi AAPL
+  ta full QQQ
+  ta levels META                  — "META at 521.50: above 8d(519), above 21d(515), below 50d(525)"
+
+Environment:
+  CRED_PROXY_URL — credential proxy (passed to tradier for data)
+"""
+
+import json
+import os
+import subprocess
+import sys
+from math import sqrt
+
+# --- Data fetching ---
+
+def fetch_bars(symbol, days=250):
+    """Fetch daily bars via tradier tool, return list of {date, open, high, low, close, volume}."""
+    try:
+        # Use tradier bars in a way that captures the raw JSON
+        api = os.environ.get("CRED_PROXY_URL", "")
+        if not api:
+            _die("CRED_PROXY_URL not set")
+
+        import urllib.request
+        url = f"{api}/tradier/v1/markets/history?symbol={symbol}&interval=daily&start="
+        from datetime import datetime, timedelta
+        end = datetime.now().strftime("%Y-%m-%d")
+        start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        url = f"{api}/tradier/v1/markets/history?symbol={symbol}&interval=daily&start={start}&end={end}"
+
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+
+        bars = data.get("history", {}).get("day", [])
+        if isinstance(bars, dict):
+            bars = [bars]
+        if not bars:
+            _die(f"No bar data returned for {symbol}")
+        return bars
+    except Exception as e:
+        _die(f"Failed to fetch bars for {symbol}: {e}")
+
+
+def fetch_quote(symbol):
+    """Fetch current quote via tradier API."""
+    try:
+        api = os.environ.get("CRED_PROXY_URL", "")
+        if not api:
+            return None
+        import urllib.request
+        url = f"{api}/tradier/v1/markets/quotes?symbols={symbol}"
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+        quote = data.get("quotes", {}).get("quote", {})
+        if isinstance(quote, list):
+            quote = quote[0] if quote else {}
+        return quote
+    except Exception:
+        return None
+
+
+# --- Indicator calculations (stdlib only) ---
+
+def sma(prices, period):
+    """Simple Moving Average."""
+    if len(prices) < period:
+        return None
+    return sum(prices[-period:]) / period
+
+
+def ema(prices, period):
+    """Exponential Moving Average."""
+    if len(prices) < period:
+        return None
+    k = 2 / (period + 1)
+    # Seed with SMA of first 'period' values
+    result = sum(prices[:period]) / period
+    for price in prices[period:]:
+        result = price * k + result * (1 - k)
+    return result
+
+
+def calc_rsi(prices, period=14):
+    """Relative Strength Index."""
+    if len(prices) < period + 1:
+        return None
+    deltas = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
+    gains = [d if d > 0 else 0 for d in deltas]
+    losses = [-d if d < 0 else 0 for d in deltas]
+
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+
+    for i in range(period, len(gains)):
+        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
+
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+
+def calc_macd(prices, fast=12, slow=26, signal=9):
+    """MACD line, signal line, histogram."""
+    if len(prices) < slow + signal:
+        return None, None, None
+    fast_ema = ema(prices, fast)
+    slow_ema = ema(prices, slow)
+    if fast_ema is None or slow_ema is None:
+        return None, None, None
+
+    # Build MACD line series for signal calculation
+    # Fast EMA needs to be warmed up from index 0 to slow-1 before we start recording
+    macd_series = []
+    k_fast = 2 / (fast + 1)
+    k_slow = 2 / (slow + 1)
+    ema_f = sum(prices[:fast]) / fast
+    ema_s = sum(prices[:slow]) / slow
+    # Warm up fast EMA through the gap between fast and slow periods
+    for i in range(fast, slow):
+        ema_f = prices[i] * k_fast + ema_f * (1 - k_fast)
+    # Now both EMAs are seeded; compute MACD series from slow onwards
+    for i in range(slow, len(prices)):
+        ema_f = prices[i] * k_fast + ema_f * (1 - k_fast)
+        ema_s = prices[i] * k_slow + ema_s * (1 - k_slow)
+        macd_series.append(ema_f - ema_s)
+
+    macd_line = macd_series[-1] if macd_series else None
+
+    # Signal line is EMA of MACD series
+    if len(macd_series) >= signal:
+        k_sig = 2 / (signal + 1)
+        sig = sum(macd_series[:signal]) / signal
+        for val in macd_series[signal:]:
+            sig = val * k_sig + sig * (1 - k_sig)
+    else:
+        sig = None
+
+    hist = (macd_line - sig) if (macd_line is not None and sig is not None) else None
+    return macd_line, sig, hist
+
+
+def calc_bbands(prices, period=20, num_std=2):
+    """Bollinger Bands: upper, middle (SMA), lower."""
+    if len(prices) < period:
+        return None, None, None
+    middle = sma(prices, period)
+    variance = sum((p - middle) ** 2 for p in prices[-period:]) / period
+    std = sqrt(variance)
+    return middle + num_std * std, middle, middle - num_std * std
+
+
+def calc_atr(bars, period=14):
+    """Average True Range from OHLC bars."""
+    if len(bars) < period + 1:
+        return None
+    trs = []
+    for i in range(1, len(bars)):
+        h = float(bars[i]["high"])
+        l = float(bars[i]["low"])
+        pc = float(bars[i - 1]["close"])
+        tr = max(h - l, abs(h - pc), abs(l - pc))
+        trs.append(tr)
+    if len(trs) < period:
+        return None
+    # Wilder's smoothed ATR
+    atr_val = sum(trs[:period]) / period
+    for tr in trs[period:]:
+        atr_val = (atr_val * (period - 1) + tr) / period
+    return atr_val
+
+
+def calc_rvol(bars, period=20):
+    """Relative volume: today's volume / average volume over period."""
+    if len(bars) < period + 1:
+        return None
+    volumes = [float(b["volume"]) for b in bars]
+    today_vol = volumes[-1]
+    avg_vol = sum(volumes[-(period + 1):-1]) / period
+    if avg_vol == 0:
+        return None
+    return today_vol / avg_vol
+
+
+# --- Commands ---
+
+def cmd_ma(symbol, periods_str="8,10,21,50,100,200", days=250):
+    periods = [int(p.strip()) for p in periods_str.split(",")]
+    bars = fetch_bars(symbol, days)
+    closes = [float(b["close"]) for b in bars]
+    current = closes[-1]
+
+    print(f"=== {symbol} Moving Averages (close: ${current:.2f}) ===")
+    print(f"{'Period':>8}  {'SMA':>10}  {'EMA':>10}  {'vs Price':>10}  {'Signal':>8}")
+    print(f"{'------':>8}  {'---':>10}  {'---':>10}  {'--------':>10}  {'------':>8}")
+
+    for p in periods:
+        s = sma(closes, p)
+        e = ema(closes, p)
+        if s is not None and s != 0:
+            diff_pct = ((current - s) / s) * 100
+            signal = "ABOVE" if current > s else "BELOW"
+            print(f"{p:>5}-day  ${s:>9.2f}  ${e:>9.2f}  {diff_pct:>+9.2f}%  {signal:>8}")
+        else:
+            print(f"{p:>5}-day  {'N/A':>10}  {'N/A':>10}  {'N/A':>10}  {'N/A':>8}")
+
+
+def cmd_rsi(symbol, period=14, days=60):
+    bars = fetch_bars(symbol, days)
+    closes = [float(b["close"]) for b in bars]
+    rsi = calc_rsi(closes, period)
+
+    print(f"=== {symbol} RSI({period}) ===")
+    if rsi is not None:
+        zone = "OVERBOUGHT" if rsi > 70 else "OVERSOLD" if rsi < 30 else "NEUTRAL"
+        print(f"RSI: {rsi:.2f}  [{zone}]")
+    else:
+        print("RSI: insufficient data")
+
+
+def cmd_macd(symbol, days=120):
+    bars = fetch_bars(symbol, days)
+    closes = [float(b["close"]) for b in bars]
+    macd_line, signal_line, histogram = calc_macd(closes)
+
+    print(f"=== {symbol} MACD (12/26/9) ===")
+    if macd_line is not None:
+        trend = "BULLISH" if histogram > 0 else "BEARISH"
+        cross = "above" if macd_line > signal_line else "below"
+        print(f"MACD:      {macd_line:>+.4f}")
+        print(f"Signal:    {signal_line:>+.4f}")
+        print(f"Histogram: {histogram:>+.4f}  [{trend}]")
+        print(f"MACD is {cross} signal line")
+    else:
+        print("MACD: insufficient data")
+
+
+def cmd_bbands(symbol, period=20, days=60):
+    bars = fetch_bars(symbol, days)
+    closes = [float(b["close"]) for b in bars]
+    current = closes[-1]
+    upper, middle, lower = calc_bbands(closes, period)
+
+    print(f"=== {symbol} Bollinger Bands ({period}, 2) ===")
+    if upper is not None:
+        width = ((upper - lower) / middle) * 100
+        pos = "UPPER" if current > upper else "LOWER" if current < lower else "MIDDLE"
+        print(f"Upper:   ${upper:.2f}")
+        print(f"Middle:  ${middle:.2f}")
+        print(f"Lower:   ${lower:.2f}")
+        print(f"Current: ${current:.2f}  [{pos} band]")
+        print(f"Width:   {width:.2f}%")
+    else:
+        print("BBands: insufficient data")
+
+
+def cmd_atr(symbol, period=14, days=60):
+    bars = fetch_bars(symbol, days)
+    atr_val = calc_atr(bars, period)
+    current = float(bars[-1]["close"])
+
+    print(f"=== {symbol} ATR({period}) ===")
+    if atr_val is not None and current > 0:
+        atr_pct = (atr_val / current) * 100
+        print(f"ATR:     ${atr_val:.2f}")
+        print(f"ATR %:   {atr_pct:.2f}% of price")
+        print(f"Current: ${current:.2f}")
+        print(f"1-ATR range: ${current - atr_val:.2f} — ${current + atr_val:.2f}")
+    else:
+        print("ATR: insufficient data")
+
+
+def cmd_rvol(symbol, period=20):
+    bars = fetch_bars(symbol, max(period + 5, 30))
+    rv = calc_rvol(bars, period)
+    today_vol = int(float(bars[-1]["volume"]))
+
+    print(f"=== {symbol} Relative Volume ({period}-day) ===")
+    if rv is not None:
+        flag = "HIGH" if rv > 1.5 else "LOW" if rv < 0.5 else "NORMAL"
+        print(f"Today's volume: {today_vol:,}")
+        print(f"Relative volume: {rv:.2f}x  [{flag}]")
+    else:
+        print("RVOL: insufficient data")
+
+
+def cmd_levels(symbol, days=250):
+    """DP-style level analysis: where is price relative to key MAs?"""
+    bars = fetch_bars(symbol, days)
+    closes = [float(b["close"]) for b in bars]
+    current = closes[-1]
+
+    dp_periods = [8, 10, 21, 50, 100, 200]
+    mas = {}
+    for p in dp_periods:
+        s = sma(closes, p)
+        if s is not None:
+            mas[p] = s
+
+    rsi = calc_rsi(closes, 14)
+    atr_val = calc_atr(bars, 14)
+    rv = calc_rvol(bars, 20)
+
+    print(f"=== {symbol} Level Analysis (${current:.2f}) ===")
+    print()
+
+    # Position vs MAs
+    above = [p for p, v in mas.items() if current > v]
+    below = [p for p, v in mas.items() if current <= v]
+
+    if above:
+        print(f"ABOVE: {', '.join(f'{p}d(${mas[p]:.2f})' for p in sorted(above))}")
+    if below:
+        print(f"BELOW: {', '.join(f'{p}d(${mas[p]:.2f})' for p in sorted(below))}")
+    print()
+
+    # Nearest MAs (potential entry/resistance)
+    distances = [(p, v, abs(current - v) / current * 100 if current > 0 else 0) for p, v in mas.items()]
+    distances.sort(key=lambda x: x[2])
+
+    print("Nearest MAs:")
+    for p, v, dist in distances[:3]:
+        direction = "above" if current > v else "below"
+        print(f"  {p}-day: ${v:.2f} ({dist:.1f}% {direction})")
+    print()
+
+    # DP entry zones
+    if 21 in mas:
+        dist_21 = ((current - mas[21]) / mas[21]) * 100
+        if -2 <= dist_21 <= 0:
+            print(f"** DP ENTRY ZONE: Price at 21-day MA (${mas[21]:.2f}) — primary pullback level **")
+        elif -4 <= dist_21 < -2:
+            print(f"** EXTENDED PULLBACK: {dist_21:.1f}% below 21-day — watch for bounce **")
+
+    if 200 in mas:
+        dist_200 = ((current - mas[200]) / mas[200]) * 100
+        if -2 <= dist_200 <= 0:
+            print(f"** DP MAJOR ENTRY: Price at 200-day MA (${mas[200]:.2f}) — sizable position level **")
+
+    # Context
+    print()
+    if rsi is not None:
+        zone = "OVERBOUGHT" if rsi > 70 else "OVERSOLD" if rsi < 30 else "neutral"
+        print(f"RSI(14): {rsi:.1f} [{zone}]")
+    if atr_val is not None and current > 0:
+        print(f"ATR(14): ${atr_val:.2f} ({atr_val / current * 100:.1f}%)")
+    if rv is not None:
+        flag = "HIGH" if rv > 1.5 else "LOW" if rv < 0.5 else "normal"
+        print(f"RVOL(20): {rv:.1f}x [{flag}]")
+
+
+def cmd_full(symbol, days=250):
+    """Run all indicators."""
+    cmd_levels(symbol, days)
+    print()
+    cmd_macd(symbol, min(days, 120))
+    print()
+    cmd_bbands(symbol, 20, min(days, 60))
+
+
+# --- CLI ---
+
+def _die(msg):
+    print(f"Error: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _help():
+    print(__doc__.strip())
+    sys.exit(0)
+
+
+def parse_args(args):
+    """Parse named args from command line."""
+    opts = {}
+    positional = []
+    i = 0
+    while i < len(args):
+        if args[i].startswith("--"):
+            key = args[i][2:]
+            if i + 1 < len(args) and not args[i + 1].startswith("--"):
+                opts[key] = args[i + 1]
+                i += 2
+            else:
+                opts[key] = True
+                i += 1
+        else:
+            positional.append(args[i])
+            i += 1
+    return positional, opts
+
+
+def main():
+    if len(sys.argv) < 2:
+        _help()
+
+    cmd = sys.argv[1]
+    rest = sys.argv[2:]
+    positional, opts = parse_args(rest)
+
+    if cmd in ("help", "--help", "-h"):
+        _help()
+
+    symbol = positional[0].upper() if positional else None
+    if not symbol:
+        _die(f"Usage: ta {cmd} <symbol> [options]")
+
+    days = int(opts.get("days", 250))
+
+    if cmd == "ma":
+        periods = opts.get("periods", "8,10,21,50,100,200")
+        cmd_ma(symbol, periods, days)
+    elif cmd == "rsi":
+        period = int(opts.get("period", 14))
+        cmd_rsi(symbol, period, min(days, 60))
+    elif cmd == "macd":
+        cmd_macd(symbol, min(days, 120))
+    elif cmd == "bbands":
+        period = int(opts.get("period", 20))
+        cmd_bbands(symbol, period, min(days, 60))
+    elif cmd == "atr":
+        period = int(opts.get("period", 14))
+        cmd_atr(symbol, period, min(days, 60))
+    elif cmd == "rvol":
+        period = int(opts.get("period", 20))
+        cmd_rvol(symbol, period)
+    elif cmd == "levels":
+        cmd_levels(symbol, days)
+    elif cmd == "full":
+        cmd_full(symbol, days)
+    else:
+        _die(f"Unknown command: {cmd} (try: ta --help)")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,4 +1,8 @@
-# eod-review
+# eod-review (SUPERSEDED)
+
+> **This is the generic blueprint version.** The full trading eod-review with Phase 6 REVIEW
+> (mark-to-market, pot comparison, level accuracy, feed-forward) lives at
+> `configs/skills/eod-review/SKILL.md` and is what gets deployed for the life-ops profile.
 
 End-of-day market review skill for Markets profiles. After market close, pulls the day's price action for the user's watchlist and portfolio, compares against morning expectations or open positions, and delivers a concise performance summary with notable movers and sector trends.
 

@@ -72,6 +72,14 @@ tools:
     category: trading
     description: "Shared trading module — config, watchlists, risk logic, journal backend"
     required: false
+  - name: ta
+    category: trading
+    description: "Technical analysis — MAs, RSI, MACD, Bollinger Bands, ATR, RVOL, DP-style level analysis"
+    required: false
+  - name: earnings
+    category: trading
+    description: "Earnings calendar and economic events — Finnhub API (today, week, check, watchlist, economic)"
+    required: false
 
 skills:
   - morning-brief
@@ -79,7 +87,10 @@ skills:
   - construct
   - mancini-fetch
   - eod-review
-  # dp-parse is event-driven (triggered when user pastes content), not cron-scheduled
+  - dp-parse          # event-driven (triggered when user pastes content), not cron-scheduled
+  - focus25-fetch
+  - premarket-brief
+  - swing-scanner
 
 integrations:
   required: [messaging, email, calendar]
