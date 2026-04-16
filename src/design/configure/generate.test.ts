@@ -917,6 +917,20 @@ describe("renderCronJobsFile", () => {
     expect(content.trim().startsWith("{")).toBe(true);
   });
 
+  it("defaults state: {} on every emitted job", () => {
+    // OpenClaw's scheduler crashes at boot when job.state is undefined
+    // ("Cannot read properties of undefined (reading 'runningAtMs')"). Regression
+    // guard: the renderer must always emit an initial state object.
+    const answers = makeAnswers();
+    const bundle = generateBundle(answers);
+    const content = renderCronJobsFile(bundle.cronJobs);
+    const parsed = JSON.parse(content) as { jobs: Array<Record<string, unknown>> };
+    for (const job of parsed.jobs) {
+      expect(job.state).toBeDefined();
+      expect(typeof job.state).toBe("object");
+    }
+  });
+
   it("strips ClawHQ-only extension fields (fallbacks, activeHours)", () => {
     const answers = makeAnswers();
     const bundle = generateBundle(answers);

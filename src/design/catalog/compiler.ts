@@ -934,6 +934,7 @@ function renderCronJobs(
       delivery: { mode: shouldAnnounce ? "announce" : "none" },
       payload: { kind: "agentTurn", message, model },
       sessionTarget: "isolated",
+      state: {},
     });
   }
 
@@ -955,6 +956,7 @@ function renderCronJobs(
         model: isLocal ? primary : "opus",
       },
       sessionTarget: "isolated",
+      state: {},
     });
   }
 

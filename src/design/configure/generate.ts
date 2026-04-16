@@ -91,8 +91,16 @@ const DOCKER_BRIDGE_GATEWAY = "172.17.0.1";
  * activeHours) that don't belong in OpenClaw's native schema.
  */
 export function renderCronJobsFile(cronJobs: readonly CronJobDefinition[]): string {
-  const stripped = cronJobs.map(({ fallbacks: _f, activeHours: _a, ...rest }) => rest);
-  return JSON.stringify({ version: 1, jobs: stripped }, null, 2) + "\n";
+  // Strip ClawHQ-only fields and ensure every job carries an empty state
+  // object. OpenClaw's scheduler dereferences job.state.runningAtMs at boot;
+  // jobs without a state object crash the scheduler with
+  // "Cannot read properties of undefined". Fresh jobs from the compiler have
+  // no state (state is runtime-only), so we default it here.
+  const normalized = cronJobs.map(({ fallbacks: _f, activeHours: _a, ...rest }) => ({
+    ...rest,
+    state: rest.state ?? {},
+  }));
+  return JSON.stringify({ version: 1, jobs: normalized }, null, 2) + "\n";
 }
 
 export function generateBundle(answers: WizardAnswers): DeploymentBundle {
