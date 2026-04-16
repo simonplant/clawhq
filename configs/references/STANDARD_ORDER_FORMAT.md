@@ -69,23 +69,25 @@ Every ORDER block is self-contained. Each one has everything needed to monitor a
 
 ```
 ORDER N | [conviction] | [status]
-  source:     [mancini / dp / focus25 / scanner]
-  pot:        [A / B / C]
-  ticker:     [symbol]
-  exec_as:    [execution symbol, e.g. SPY for ES]
-  direction:  [LONG / SHORT]
-  setup:      [type] — "[quality words or thesis <=20 words]"
-  why:        [what makes this actionable <=15 words]
-  entry:      [price] LMT
-  stop:       [price] — [source: stated / MA-2% / flush-4 / next support / derived]
-  t1:         [price] (75%) — [source: stated / next R / estimated]
-  t2:         [price] (15%) — [source: stated / estimated]
-  runner:     10% trail BE after T1
-  risk:       [amount per share] | [qty] shares | $[total risk]
-  caveat:     [warning verbatim from source or "none"]
-  kills:      [conditions that invalidate: dp_flat, gap_killed, level_broken, etc.]
-  activation: [for CONDITIONAL: what must happen first, or "immediate"]
-  verify:     [what needs checking, or "none"]
+  source:       [mancini / dp / focus25 / scanner]
+  pot:          [A / B / C]
+  ticker:       [symbol]
+  exec_as:      [execution symbol, e.g. SPY for ES]
+  direction:    [LONG / SHORT]
+  setup:        [type] — "[quality words or thesis <=20 words]"
+  why:          [what makes this actionable <=15 words]
+  entry:        [price] LMT
+  stop:         [price] — [source: stated / MA-2% / flush-4 / next support / derived]
+  t1:           [price] (75%) — [source: stated / next R / estimated]
+  t2:           [price] (15%) — [source: stated / estimated]
+  runner:       10% trail BE after T1
+  risk:         [amount per share] | [qty] shares | $[total risk]
+  confirmation: [PENDING_TA / CONFIRMED / MANUAL]
+  confluence:   [none / DP+MANCINI / DP+FOCUS25 / etc.]
+  caveat:       [warning verbatim from source or "none"]
+  kills:        [conditions that invalidate: dp_flat, gap_killed, level_broken, etc.]
+  activation:   [for CONDITIONAL: what must happen first, or "immediate"]
+  verify:       [what needs checking, or "none"]
 ```
 
 ### Field definitions:
@@ -105,10 +107,38 @@ ORDER N | [conviction] | [status]
 | `t2` | Yes | Second target (15% scale) + derivation |
 | `runner` | Yes | Runner rule (typically 10% trail BE after T1) |
 | `risk` | Yes | Per-share risk, quantity, total dollar risk |
+| `confirmation` | Yes | TA confirmation state (see Confirmation below) |
+| `confluence` | Yes | Cross-source agreement, or "none" |
 | `caveat` | Yes | Source's warning verbatim, or "none" |
 | `kills` | Yes | Conditions that invalidate the order |
 | `activation` | Yes | What must happen before order is live, or "immediate" |
 | `verify` | Yes | What needs human checking, or "none" |
+
+### Confirmation field:
+
+All Phase 2 skills emit `PENDING_TA`. The ta-enrichment skill (Phase 3) evaluates whether TA supports the level and upgrades to `CONFIRMED`. Simon can override to `MANUAL` for discretionary trades.
+
+| Value | Meaning |
+|-------|---------|
+| `PENDING_TA` | Signal generated from source, TA confirmation not yet applied |
+| `CONFIRMED` | TA enrichment confirms level aligns with indicators (MA support, RSI, volume) |
+| `MANUAL` | Simon manually confirmed or overrode — execute at his discretion |
+
+**The heartbeat treats these differently:**
+- `PENDING_TA` — alert as "watch only, TA unconfirmed"
+- `CONFIRMED` — alert as "TRIGGERED, execute?"
+- `MANUAL` — alert as "TRIGGERED" (Simon already confirmed)
+
+### Confluence field:
+
+When the same ticker appears in multiple sources with aligned direction and overlapping entry zones, emit a single merged ORDER with the confluence field set. When sources disagree on the same ticker, emit both ORDER blocks with `divergence` noted.
+
+| Value | Meaning |
+|-------|---------|
+| `none` | Single-source signal |
+| `DP+MANCINI` | Both sources aligned on direction and level zone |
+| `DP+FOCUS25` | DP signal + Focus 25 RS confirmation |
+| `divergence: [see ORDER N]` | Same ticker, opposing direction or conflicting levels — both blocks emitted |
 
 ### Conviction levels:
 
@@ -121,7 +151,7 @@ Categorical labels used across all sources. When scoring, map source-specific la
 | **LOW** | Weak or speculative | Watch list only, no order | 0.30-0.49 |
 | **Exclude** | Source explicitly warns against | Omit entirely | <0.30 |
 
-See `DP.md` for DP-specific conviction language mapping. See `analyze-mancini.md` for Mancini-specific quality word mapping. When cross-referencing sources in the premarket brief, use categorical labels (HIGH/MEDIUM/LOW) for comparison.
+See `knowledge/trading/wiki/dp-conviction-scoring.md` for DP language mapping. See `knowledge/trading/wiki/mancini-extraction-rules.md` for Mancini quality word mapping.
 
 ### Status values:
 
@@ -133,6 +163,7 @@ See `DP.md` for DP-specific conviction language mapping. See `analyze-mancini.md
 | `FILLED` | Position opened |
 | `CLOSED` | Position closed |
 | `KILLED` | Invalidated by a kill condition |
+| `BLOCKED` | Risk governor rejected (reason logged) |
 
 ---
 
@@ -181,9 +212,9 @@ SECTOR THEMES:
 
 ## How This Format is Used
 
-1. **Extractors** (mancini-fetch, dp-parse, focus25-fetch, swing-scanner) produce ORDER blocks
-2. **Daily brief** (`memory/trading-YYYY-MM-DD.md`) accumulates ORDER blocks from all sources
-3. **Premarket-brief** reads all ORDER blocks, cross-references, ranks by conviction, outputs the morning brief
-4. **Heartbeat** reads ORDER blocks, monitors entry/stop/target prices for proximity alerts
-5. **Session loop** reads ORDER blocks, executes Pot B/C mechanically on trigger confirmation
+1. **Extractors** (mancini-fetch, dp-parse, focus25-fetch, swing-scanner) produce ORDER blocks with `confirmation: PENDING_TA`
+2. **TA enrichment** (Phase 3) evaluates levels against indicators, upgrades to `CONFIRMED` where warranted
+3. **Daily brief** (`memory/trading-YYYY-MM-DD.md` `## Orders` section) accumulates ORDER blocks from all sources
+4. **Premarket-brief** reads all ORDER blocks, detects confluence/divergence, ranks by conviction + confirmation, outputs the morning brief
+5. **Heartbeat** reads ORDER blocks, monitors proximity, alerts Simon (alert-only — Simon executes)
 6. **EOD review** reads ORDER blocks, categorizes as TRIGGERED/NEAR/WATCH, reports accuracy

@@ -97,11 +97,13 @@ Fetches the daily Focus 25 email from FastMail and parses it into a structured s
 - **No fabrication.** Only extract data present in the email. Don't invent RS scores or posture readings.
 - **Informational.** Actionable cards are for Simon's review, not automatic execution.
 
-## Fallback Behavior
+## Failure Modes
 
-- Email not found → log `Focus 25: not yet received (checked HH:MM PT)` in the brief section
-- Email found but unparseable → log the error, include raw subject line, flag for Simon
-- Multiple Focus 25 emails → use the most recent one
+- **Email not yet arrived** → log `Focus 25: not yet received (checked HH:MM PT)` in brief section. Next heartbeat retries. After 3 retries (90min), alert Simon: "Focus 25 email not received — check si.plant@gmail.com."
+- **Email found but HTML parse fails** (table structure changed) → dump raw email body to brief section, flag `parse_failed: true`, alert Simon: "Focus 25 format changed — raw content preserved."
+- **FastMail API unreachable** → retry with 30s/60s/120s backoff. After 3 failures, alert Simon: "FastMail unreachable — Focus 25 skipped." Log `focus25_unavailable: true` in brief.
+- **Multiple Focus 25 emails same day** → use most recent by date header.
+- **email-fastmail tool unavailable** → alert Simon, log error. Do not silently skip.
 
 ## References
 

@@ -50,6 +50,8 @@ When Simon sends a message, determine if it contains DP content:
    - LOW conviction → WATCH section
    - Exclude → omit entirely
    - All ORDER blocks: `pot: B`, sizing per dp-methodology rules (1% risk, max 15% per position)
+   - All ORDER blocks must include: `confirmation: PENDING_TA` (TA enrichment upgrades later)
+   - All ORDER blocks must include: `confluence: none` (premarket-brief detects cross-source alignment)
 
 5. **Write to daily brief.** Append the full trade plan output to `memory/trading-YYYY-MM-DD.md` under `## DP/Inner Circle (Source 3)`. Also append ORDER blocks to the `## Orders` section. Preserve existing sections.
 
@@ -60,8 +62,8 @@ When Simon sends a message, determine if it contains DP content:
    This creates an audit trail. The heartbeat will log status transitions (TRIGGERED, FILLED, KILLED).
 
 7. **Cross-reference with Mancini.** Read the Mancini section of today's brief:
-   - Flag alignment: "DP and Mancini both watching ES [level] zone" → higher confidence
-   - Flag divergence: "DP bearish but Mancini sees FB setup for longs at [level]"
+   - Same ticker + aligned direction + overlapping level zone → update ORDER: `confluence: DP+MANCINI`
+   - Same ticker + opposing direction → emit both ORDERs with `confluence: divergence: [see ORDER N]`
    - If no Mancini section exists, skip cross-reference
 
 8. **Deliver summary.** One message to Simon:
@@ -111,6 +113,15 @@ When Simon sends a message, determine if it contains DP content:
 - **Batch VTF alerts.** If multiple alerts arrive close together, batch into one message + one set of trade-journal commands. Don't send one message per alert.
 - **Don't nag about missing DP.** If Simon hasn't pasted the AM Call yet, note "DP section pending" once. Don't ask again.
 - **Risk governor is the hard gate.** Every trade passes through `risk_governor.py check` before execution. If blocked, report to Simon and don't override.
+
+## Failure Modes
+
+- **Ambiguous input** (200-500 chars, no clear keyword/headers) → quarantine with "Clarify: AM Call or VTF alert?" message. Do not guess.
+- **Malformed AM Call** (dp-brief returns partial/error) → emit partial ORDER blocks with `incomplete: [missing fields]` flag. Do not silently fill gaps.
+- **VTF parse fails** (unrecognized format, garbled text) → quarantine raw text, alert Simon: "Could not parse VTF content. Raw text preserved."
+- **dp-brief tool unavailable** → alert Simon: "dp-brief tool not available. Raw text saved to daily brief DP section for manual review."
+- **Price sanity check fails** (extracted price outside expected range) → flag `verify: "price [X] outside expected range for [TICKER]"`. Do not omit the ORDER.
+- **Risk governor blocks trade** → log block reason to journal, include in Simon's confirmation message. Do not retry or override.
 
 ## References
 

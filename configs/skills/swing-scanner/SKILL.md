@@ -84,11 +84,12 @@ For each setup found, score using DP.md conviction framework:
 
 ### 4. Produce ORDER Blocks
 
-For HIGH and MEDIUM setups, produce standard ORDER blocks per `references/STANDARD_ORDER_FORMAT.md`:
+For HIGH and MEDIUM setups, produce standard ORDER blocks per `references/STANDARD_ORDER_FORMAT.md`.
+Every ORDER must include `confirmation: PENDING_TA` and `confluence: none`:
 ```
 ORDER N | [conviction] | CONDITIONAL
-  source:     scanner
-  pot:        A
+  source:       scanner
+  pot:          A
   ticker:     [symbol]
   exec_as:    [symbol]
   direction:  [LONG/SHORT]

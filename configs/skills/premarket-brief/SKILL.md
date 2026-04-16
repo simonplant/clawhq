@@ -54,11 +54,17 @@ Phase 1 (RESEARCH) crons have been filling `memory/trading-YYYY-MM-DD.md` since 
    - **Focus 25 overlap:** RS leaders appearing in DP watchlist → potential thesis
    - **Overnight confirmation:** X-scan findings that reinforce or contradict brief levels
 
-6. **Synthesize Ranked Trade Ideas.** Read all ORDER blocks from filled sections. Rank by:
+6. **Detect confluence/divergence.** Compare ORDER blocks across sources:
+   - Same ticker + aligned direction + overlapping level zone → merge into single ORDER with `confluence: DP+MANCINI` (or other combination)
+   - Same ticker + opposing direction → keep both ORDERs with `confluence: divergence: [see ORDER N]`. Simon decides.
+
+7. **Synthesize Ranked Trade Ideas.** Read all ORDER blocks from filled sections. Rank by:
+   - **Confirmation** (CONFIRMED > PENDING_TA — all Phase 2 blocks are PENDING_TA)
+   - **Confluence** (multi-source aligned > single source)
    - **Conviction level** (HIGH > MEDIUM)
-   - **Source agreement** (multiple sources aligned > single source)
-   - **Setup quality** (pre-planned > reactive)
    - **Risk/reward** (best R:R at top)
+
+   Brief header must include: "Orders are watch-list signals with confirmation: PENDING_TA until TA enrichment is available."
 
    For each ranked idea, produce an order-ready signal:
    ```
@@ -121,6 +127,16 @@ If Simon pastes the DP AM Call after the brief has been delivered:
 2. dp-parse delivers a **DP Update** supplement — not a full re-brief
 3. The supplement contains: new ORDER blocks, cross-reference findings, any changes to ranked ideas
 4. This is handled by dp-parse, not premarket-brief
+
+## Failure Modes
+
+- **Missing DP section** (Simon hasn't pasted AM Call) → ship brief with DP section flagged `awaiting_input`. Do not block delivery.
+- **Missing Mancini section** (mancini-fetch failed or post not published) → ship brief with Mancini section flagged `unavailable`. Do not block.
+- **Quote tool fails** (tradier unreachable) → ship brief with `market_context_unavailable: true` in header. Do not block.
+- **Earnings tool unavailable** → emit Calendar Risk section with `pending_earnings_tool: true`. Do not block.
+- **Daily brief file doesn't exist** → create scaffold (mancini-fetch should have done this, but defensive fallback). Log warning.
+- **Sources conflict on same ticker** → emit both ORDER blocks with `confluence: divergence`. Do not resolve silently — Simon decides.
+- **All sections empty** (catastrophic failure, no data) → send one-liner: "Pre-market brief unavailable — all data sources failed. Check system health." Do not send an empty template.
 
 ## Anti-Patterns
 

@@ -120,6 +120,15 @@ TOMORROW'S SETUP
 - **Mancini pull** at 2:30 PM PT begins tomorrow's RESEARCH phase automatically
 - Write EOD data to `memory/trading-YYYY-MM-DD-eod.md` for the portfolio review cron
 
+## Failure Modes
+
+- **trade-journal mark fails** → run remaining steps (compare, reconcile, level review). Flag `journal_incomplete: mark` in report header.
+- **trade-journal compare fails** → skip pot comparison section. Flag `journal_incomplete: compare`.
+- **trade-journal reconcile fails** → skip reconciliation. Flag `journal_incomplete: reconcile`.
+- **Quote fetch fails** (tradier unreachable) → skip level review and closing prices. Alert Simon: "EOD prices unavailable — level accuracy deferred."
+- **Daily brief file missing** → skip level review entirely. Report pot performance only.
+- **Limitation (Phase 2):** TRIGGERED/NEAR/WATCH categorization uses closing prices only (no intraday bars). A level hit and reverted mid-day will be miscategorized as WATCH. Note this in report header until Phase 3 ta-enrichment is available.
+
 ## Boundaries
 
 - **Read-only for positions.** This skill reviews and reports. It does NOT place orders, close positions, or modify the portfolio. Exception: it runs `trade-journal mark` which updates prices (not positions).

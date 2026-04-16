@@ -66,11 +66,11 @@ Fetches Mancini's latest Substack post and produces an ultra-compact Quick Brief
    - EXECUTION line
    - YESTERDAY line (carry from previous day)
 
-5. **Write to daily brief.** Write the Quick Brief to `memory/trading-YYYY-MM-DD.md` under the `## Mancini (Source 1)` section. Also produce standard ORDER blocks (per `references/STANDARD_ORDER_FORMAT.md`) for each HIGH/MEDIUM setup and append them to the `## Orders` section. Preserve existing sections.
+5. **Write to daily brief.** Write the Quick Brief to `memory/trading-YYYY-MM-DD.md` under the `## Mancini (Source 1)` section. Also produce standard ORDER blocks (per `references/STANDARD_ORDER_FORMAT.md`) for each HIGH/MEDIUM setup and append them to the `## Orders` section. Every ORDER block must include `confirmation: PENDING_TA` and `confluence: none`. Preserve existing sections.
 
 6. **Log ORDER blocks to journal.** For each ORDER block produced:
    ```
-   journal append order '{"source":"mancini","pot":"C","ticker":"ES","exec_as":"SPY","direction":"LONG","conviction":"HIGH","entry":5530,"stop":5518,"status":"CONDITIONAL","activation":"recovery above 5525 with acceptance"}'
+   journal append order '{"source":"mancini","pot":"C","ticker":"ES","exec_as":"SPY","direction":"LONG","conviction":"HIGH","entry":5530,"stop":5518,"status":"CONDITIONAL","confirmation":"PENDING_TA","confluence":"none","activation":"recovery above 5525 with acceptance"}'
    ```
 
 7. **Return.** Emit a one-line Telegram-ready summary: `Mancini Brief — YYYY-MM-DD | [regime] | [top setup summary]`. The full brief lives in the file.

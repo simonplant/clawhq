@@ -48,7 +48,7 @@
   "loops": {
     "portfolio": { "enabled": true, "phase": 1, "cadence": "daily" },
     "swing": { "enabled": true, "phase": 2, "cadence": "hourly" },
-    "session": { "enabled": true, "phase": 3, "cadence": "2min" }
+    "session": { "enabled": true, "phase": 3, "cadence": "2min", "mode": "alert_only" }
   },
 
   "data": {
@@ -64,6 +64,6 @@
   "features": {
     "auto_execute": false,
     "auto_rebalance": false,
-    "day_trading": true
+    "day_trading": false
   }
 }
