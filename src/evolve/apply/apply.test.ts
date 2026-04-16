@@ -139,6 +139,45 @@ composition:
     expect(preserved).toBe(memoryContent);
   });
 
+  it("preserves existing engine/credentials.json (seeded once, never overwritten)", async () => {
+    // Pre-populate credentials.json with real integration secrets (simulates
+    // post-`clawhq integrate add` state)
+    const realCreds = JSON.stringify({ tradier: { access_token: "real-key-xyz" } }, null, 2) + "\n";
+    await writeFile(join(testDir, "engine", "credentials.json"), realCreds);
+    await writeFile(join(testDir, "clawhq.yaml"), `
+version: 0.2.0
+composition:
+  profile: life-ops
+  personality: digital-assistant
+`);
+
+    const result = await apply({ deployDir: testDir });
+    expect(result.success).toBe(true);
+    expect(result.report.skipped).toContain("engine/credentials.json");
+
+    // Real secrets must not have been wiped back to `{}`
+    const preserved = await readFile(join(testDir, "engine", "credentials.json"), "utf-8");
+    expect(preserved).toBe(realCreds);
+    expect(preserved).toContain("real-key-xyz");
+  });
+
+  it("seeds engine/credentials.json on first apply when missing", async () => {
+    // No pre-existing credentials.json — this is the fresh-install case
+    await writeFile(join(testDir, "clawhq.yaml"), `
+version: 0.2.0
+composition:
+  profile: life-ops
+  personality: digital-assistant
+`);
+
+    const result = await apply({ deployDir: testDir });
+    expect(result.success).toBe(true);
+
+    // File should now exist with the empty template
+    const seeded = await readFile(join(testDir, "engine", "credentials.json"), "utf-8");
+    expect(seeded.trim()).toBe("{}");
+  });
+
   it("preserves existing .env credentials", async () => {
     // Pre-populate .env with a real credential
     await writeFile(join(testDir, ".env"), "OPENCLAW_GATEWAY_TOKEN=real-secret-token-123\nTAVILY_API_KEY=tavily-key-456\n");

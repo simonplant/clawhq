@@ -32,6 +32,17 @@ const SKIP_PATHS = new Set([
   "engine/docker-compose.yml",                  // owned by clawhq build — apply must not overwrite
 ]);
 
+/**
+ * Files the compiler seeds with an empty template but never overwrites after.
+ * credentials.json is populated by `clawhq integrate add` — every subsequent
+ * apply would have wiped real integration secrets back to `{}` if this set
+ * didn't exist.
+ */
+const SEED_ONCE_PATHS = new Set([
+  "engine/credentials.json",
+  "credentials.json",
+]);
+
 /** Files where apply merges compiled output with existing runtime state. */
 const MERGE_PATHS = new Set([
   "cron/jobs.json",                              // compiler owns job definitions, preserve runtime state
@@ -106,7 +117,15 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
     report("compile", "done", `${compiled.files.length} files compiled`);
 
     // 5. Filter stateful files + merge where needed
-    let files: CompiledFile[] = compiled.files.filter((f) => !SKIP_PATHS.has(f.relativePath));
+    //    - SKIP_PATHS: always excluded (user-owned or separately managed)
+    //    - SEED_ONCE_PATHS: emitted only if the file doesn't already exist
+    let files: CompiledFile[] = compiled.files.filter((f) => {
+      if (SKIP_PATHS.has(f.relativePath)) return false;
+      if (SEED_ONCE_PATHS.has(f.relativePath) && existsSync(join(deployDir, f.relativePath))) {
+        return false;
+      }
+      return true;
+    });
 
     // Merge cron/jobs.json: compiled definitions + preserved runtime state
     for (let i = 0; i < files.length; i++) {
@@ -154,11 +173,16 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
       report("write", "done", `${diffReport.added.length + diffReport.changed.length} file(s) written`);
     }
 
+    // Report skipped paths truthfully: always-skipped + seed-once paths that
+    // actually existed and were therefore preserved.
+    const seedOnceSkipped = [...SEED_ONCE_PATHS].filter((p) =>
+      existsSync(join(deployDir, p)),
+    );
     return {
       success: true,
       report: {
         ...diffReport,
-        skipped: [...SKIP_PATHS],
+        skipped: [...SKIP_PATHS, ...seedOnceSkipped],
       },
     };
   } catch (err) {
