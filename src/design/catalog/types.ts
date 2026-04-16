@@ -87,6 +87,10 @@ export interface CompositionConfig {
   readonly extra_tools?: readonly string[];
   /** Override the default model (e.g. "ollama/gemma4:26b"). */
   readonly model?: string;
+  /** Override the model's contextWindow in openclaw.json (caps KV cache / VRAM). */
+  readonly modelContextWindow?: number;
+  /** Override fallback models (ollama-prefixed strings). */
+  readonly modelFallbacks?: readonly string[];
 }
 
 /** User context from config file. */

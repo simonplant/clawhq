@@ -62,7 +62,16 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
     }
 
     const raw = yamlParse(readFileSync(configPath, "utf-8")) as Record<string, unknown>;
-    const comp = raw.composition as { profile?: string; personality?: string; providers?: Record<string, string> } | undefined;
+    const comp = raw.composition as
+      | {
+          profile?: string;
+          personality?: string;
+          providers?: Record<string, string>;
+          model?: string;
+          modelContextWindow?: number;
+          modelFallbacks?: string[];
+        }
+      | undefined;
 
     if (!comp?.profile) {
       report("read", "failed", "No composition.profile in clawhq.yaml");
@@ -85,6 +94,9 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
         profile: comp.profile,
         personality: comp.personality ?? "digital-assistant",
         providers: comp.providers,
+        model: comp.model,
+        modelContextWindow: comp.modelContextWindow,
+        modelFallbacks: comp.modelFallbacks,
       },
       user,
       deployDir,

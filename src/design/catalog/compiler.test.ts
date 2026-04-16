@@ -126,4 +126,62 @@ describe("compile", () => {
     const allowlist = result.files.find((f) => f.relativePath === "ops/firewall/allowlist.yaml");
     expect(allowlist?.content).toContain("imap.gmail.com");
   });
+
+  it("emits ollama model entry with contextWindow when modelContextWindow is set", () => {
+    const result = compile(
+      {
+        profile: "life-ops",
+        personality: "digital-assistant",
+        model: "ollama/qwen2.5:14b",
+        modelContextWindow: 16384,
+      },
+      TEST_USER,
+      "/tmp/test",
+    );
+    const openclaw = result.files.find((f) => f.relativePath === "openclaw.json");
+    expect(openclaw).toBeDefined();
+    const parsed = JSON.parse(openclaw!.content) as {
+      agents: { defaults: { model: { primary: string } } };
+      models: {
+        providers: {
+          ollama: { models: Array<{ id: string; name: string; contextWindow: number }> };
+        };
+      };
+    };
+    expect(parsed.agents.defaults.model.primary).toBe("ollama/qwen2.5:14b");
+    expect(parsed.models.providers.ollama.models).toEqual([
+      { id: "qwen2.5:14b", name: "qwen2.5:14b", contextWindow: 16384 },
+    ]);
+  });
+
+  it("omits ollama model entry when modelContextWindow is not set", () => {
+    const result = compile(
+      { profile: "life-ops", personality: "digital-assistant" },
+      TEST_USER,
+      "/tmp/test",
+    );
+    const openclaw = result.files.find((f) => f.relativePath === "openclaw.json");
+    const parsed = JSON.parse(openclaw!.content) as {
+      models: { providers: { ollama: { models: unknown[] } } };
+    };
+    expect(parsed.models.providers.ollama.models).toEqual([]);
+  });
+
+  it("applies modelFallbacks override", () => {
+    const result = compile(
+      {
+        profile: "life-ops",
+        personality: "digital-assistant",
+        model: "ollama/qwen2.5:14b",
+        modelFallbacks: ["ollama/gemma4:26b"],
+      },
+      TEST_USER,
+      "/tmp/test",
+    );
+    const openclaw = result.files.find((f) => f.relativePath === "openclaw.json");
+    const parsed = JSON.parse(openclaw!.content) as {
+      agents: { defaults: { model: { primary: string; fallbacks: string[] } } };
+    };
+    expect(parsed.agents.defaults.model.fallbacks).toEqual(["ollama/gemma4:26b"]);
+  });
 });

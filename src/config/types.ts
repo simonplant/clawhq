@@ -408,6 +408,12 @@ export interface ClawHQConfig {
     readonly profile?: string;
     readonly personality?: string;
     readonly providers?: Readonly<Record<string, string>>;
+    /** Override the default model (e.g. "ollama/qwen2.5:14b"). */
+    readonly model?: string;
+    /** Cap the model's contextWindow in openclaw.json to control KV cache / VRAM. */
+    readonly modelContextWindow?: number;
+    /** Fallback models (ollama-prefixed). */
+    readonly modelFallbacks?: readonly string[];
   };
   /** Instance name for multi-agent deployments. Defaults to 'default'. */
   readonly instanceName?: string;

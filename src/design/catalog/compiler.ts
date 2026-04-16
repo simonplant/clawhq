@@ -726,8 +726,17 @@ function renderOpenclawJson(
 ): string {
   // Security posture determines tool restrictions
   const isUnderAttack = profile.security_posture === "under-attack";
-  const modelConfig = buildModelConfig(providers, composition.model);
+  const modelConfig = buildModelConfig(providers, composition.model, composition.modelFallbacks);
   const isLocal = (modelConfig.primary as string).startsWith("ollama/");
+  const ollamaModelEntries: Array<Record<string, unknown>> = [];
+  if (isLocal && composition.modelContextWindow) {
+    const modelName = (modelConfig.primary as string).replace("ollama/", "");
+    ollamaModelEntries.push({
+      id: modelName,
+      name: modelName,
+      contextWindow: composition.modelContextWindow,
+    });
+  }
 
   const config: Record<string, unknown> = {
     tools: {
@@ -803,7 +812,7 @@ function renderOpenclawJson(
       providers: {
         ollama: {
           baseUrl: "http://host.docker.internal:11434",
-          models: [],
+          models: ollamaModelEntries,
         },
       },
     },
@@ -1094,10 +1103,14 @@ function buildChannels(config: CompositionConfig): Record<string, unknown> {
 /** Default local model - gemma4:26b (MoE, fits in 32GB VRAM without offloading). */
 const DEFAULT_LOCAL_MODEL = "ollama/gemma4:26b";
 
-function buildModelConfig(providers: Provider[], modelOverride?: string): Record<string, unknown> {
+function buildModelConfig(
+  providers: Provider[],
+  modelOverride?: string,
+  fallbacksOverride?: readonly string[],
+): Record<string, unknown> {
   // User-specified model takes priority
   if (modelOverride) {
-    return { primary: modelOverride, fallbacks: [] };
+    return { primary: modelOverride, fallbacks: fallbacksOverride ? [...fallbacksOverride] : [] };
   }
 
   const modelProvider = providers.find((p) => p.domain === "models");

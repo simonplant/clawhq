@@ -60,6 +60,87 @@
       "groomedAt": "2026-04-08",
       "groomingNotes": "One-line fix: replace 'return \"0 7 * * *\"' at generate.ts:836 with a throw. Tests go in generate.test.ts.",
       "passes": true
+    },
+    {
+      "id": "BUG-003",
+      "title": "Ollama model loaded with native max context causing massive VRAM waste",
+      "intent": "Compiler must cap the Ollama model's contextWindow so KV cache doesn't consume multiples of the actual need. On 2026-04-16 Clawdius's gemma4:26b loaded with 262K context, pinning ~24GB VRAM and causing the reported GPU/perf degradation.",
+      "description": "When composition.modelContextWindow is unset, models.providers.ollama.models[] is empty, and OpenClaw auto-discovers the model's native context (262K for gemma4:26b). Ollama allocates KV cache for the full context. Fixed for gemma4:26b by setting modelContextWindow: 16384 in clawhq.yaml. Compiler should either set a sane default or warn when unset on local models.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Decide on default contextWindow for auto-discovered ollama models (e.g. 16384 or 32768)",
+        "Emit that default in renderOpenclawJson when isLocal and modelContextWindow unset",
+        "Add doctor check: flag when models.providers.ollama.models[] is empty AND a local model is primary",
+        "Document modelContextWindow in clawhq.yaml reference"
+      ],
+      "acceptanceCriteria": [
+        "New deployments on ollama don't load the model with the full native context window",
+        "doctor surfaces the condition with actionable remediation",
+        "composition.modelContextWindow override still wins"
+      ],
+      "scope": [
+        "src/design/catalog/compiler.ts",
+        "src/operate/doctor/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Partial fix shipped 2026-04-16 (modelContextWindow user-surface in clawhq.yaml + compiler emit). This item covers the default + doctor-check follow-up."
+    },
+    {
+      "id": "BUG-004",
+      "title": "Default local model gemma4:26b is unreliable for agentic tool use",
+      "intent": "Default local model must handle tool calls without runaway loops. gemma4:26b triggered a 10h GPU pin via a tool-call loop on 2026-04-16 (project_runaway_session_20260416).",
+      "description": "DEFAULT_LOCAL_MODEL in compiler.ts is 'ollama/gemma4:26b'. doctor already flags it as unreliable for tool use via model-agentic-capable check. Default should be an agentic-capable model (qwen2.5:14b or similar) that fits comfortably in 32GB VRAM with sensible context.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Evaluate candidate local models: qwen2.5:14b, qwen2.5:32b, llama3.3:70b — size, tool-call reliability, VRAM footprint",
+        "Update DEFAULT_LOCAL_MODEL in src/design/catalog/compiler.ts",
+        "Update model-alias-defaults if applicable",
+        "Update doctor model-agentic-capable allowlist",
+        "Migration note in clawhq update for existing gemma4:26b deployments"
+      ],
+      "acceptanceCriteria": [
+        "doctor model-agentic-capable passes on fresh install",
+        "Default model fits in 32GB VRAM with 32K context",
+        "Existing deployments get a migration suggestion, not an abrupt switch"
+      ],
+      "scope": [
+        "src/design/catalog/compiler.ts",
+        "src/operate/doctor/",
+        "src/operate/updater/migrations/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Origin: 2026-04-16 Clawdius triage. Runaway-session incident today traced to gemma4:26b tool-call loop. Doctor already has the warning — this bug is to eliminate the warning by picking a better default."
+    },
+    {
+      "id": "BUG-005",
+      "title": "openclaw.json.clobbered backup files accumulate indefinitely",
+      "intent": "Config write path creates .clobbered.* backups on every overwrite without cleanup. In 2026-04-16 Clawdius triage, ~/.clawhq had 20+ .clobbered files spanning 5 days, which led a concurrent Claude session to misdiagnose the deployment as actively thrashing.",
+      "description": "Apply writes a .clobbered.TIMESTAMP backup each time openclaw.json changes. No rotation. Over time this (a) wastes disk, (b) clutters diagnostics, (c) actively misleads operators into thinking an agent is iterating.",
+      "priority": "could",
+      "category": "hygiene",
+      "steps": [
+        "Add rotation: keep last N=5 .clobbered files, delete older",
+        "Add doctor check: warn if .clobbered file count > 5",
+        "Consider a single rolling .bak instead of timestamped chain"
+      ],
+      "acceptanceCriteria": [
+        "~/.clawhq never accumulates more than 5 .clobbered files",
+        "doctor surfaces stale backups"
+      ],
+      "scope": [
+        "src/evolve/apply/",
+        "src/operate/doctor/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Discovered during 2026-04-16 GPU triage — purged manually. Low priority but a recurring source of diagnostic noise."
     }
   ]
 }
