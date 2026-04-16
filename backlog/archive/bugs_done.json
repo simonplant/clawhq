@@ -16,6 +16,36 @@
     "completedAt": "2026-03-19T08:04:56-07:00"
   },
   {
+    "id": "BUG-002",
+    "title": "normalizeMorningBrief() silently defaults to 7am on invalid input instead of throwing",
+    "intent": "Blueprint config errors must surface at generation time, not silently produce wrong schedules. A typo like '7:00 AM' or '07:00 UTC' must fail fast, not run the morning brief at an unexpected time.",
+    "description": "normalizeMorningBrief() in generate.ts falls back to '0 7 * * *' when the input doesn't match HH:MM format. This silently masks blueprint errors. normalizeCronExpr() correctly throws on invalid input — normalizeMorningBrief should be consistent.",
+    "priority": "should",
+    "category": "core",
+    "steps": [
+      "Replace the fallback return '0 7 * * *' with a thrown Error that includes the invalid input string",
+      "Error message should suggest the expected HH:MM format",
+      "Add test: normalizeMorningBrief('7:00 AM') throws with descriptive message",
+      "Add test: normalizeMorningBrief('07:00 UTC') throws",
+      "Add test: normalizeMorningBrief('7h00') throws",
+      "Verify existing tests for valid inputs ('07:00', '6:30') still pass"
+    ],
+    "acceptanceCriteria": [
+      "normalizeMorningBrief('7:00 AM') throws an Error mentioning expected HH:MM format",
+      "normalizeMorningBrief('07:00') still returns '0 7 * * *' (valid input unchanged)",
+      "normalizeMorningBrief('23:59') still returns '59 23 * * *' (edge case valid)",
+      "TypeScript compiles cleanly"
+    ],
+    "scope": [
+      "src/design/configure/generate.ts"
+    ],
+    "status": "done",
+    "readyForSprint": true,
+    "groomedAt": "2026-04-08",
+    "groomingNotes": "One-line fix: replace 'return \"0 7 * * *\"' at generate.ts:836 with a throw. Tests go in generate.test.ts.",
+    "passes": true
+  },
+  {
     "id": "BUG-006",
     "title": "src/ scaffold has server/ and ui/ dirs not in target architecture",
     "description": "Empty scaffold dirs src/server/ and src/ui/ exist but are absent from target architecture in CLAUDE.md and ARCHITECTURE.md. Fix: update both docs to include src/server/ (Hono server for CQ-040) and src/ui/ (htmx assets). Doc-only change. Steps: 1. Update CLAUDE.md Key Source Layout — add src/server/ and src/ui/ with their purpose. 2. Update docs/ARCHITECTURE.md package structure to match. 3. Verify no other spec contradicts.",

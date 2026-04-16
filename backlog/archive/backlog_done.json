@@ -2830,5 +2830,95 @@
     "groomedAt": "2026-03-31",
     "groomingNotes": "Meta-item: this tracks the entire Clawdius→ClawHQ replication effort. Size S. Should be done first to organize the remaining work.",
     "completedAt": "2026-03-31"
+  },
+  {
+    "id": "FEAT-159",
+    "title": "Deduplicate identity file generation — generate once, derive metadata and content from same source",
+    "intent": "The deployment bundle must be internally consistent. Identity files generated twice with independent calls can diverge. Generate once, use the result for both metadata and content.",
+    "description": "buildIdentityFiles() in generate.ts calls generateIdentityFiles() to produce full content, then discards it and keeps only metadata (name, path, sizeBytes). The writer later calls generateIdentityFiles() again independently to get the content. This means identity files are rendered twice per forge, and the metadata in the bundle may not match the content the writer eventually writes (different timestamps, nondeterministic rendering). The DeploymentBundle should carry content alongside metadata, or the generator should produce both from a single call.",
+    "priority": "should",
+    "category": "core",
+    "steps": [
+      "Extend DeploymentBundle.identityFiles type to include content (add content field to IdentityFileInfo, or create a new IdentityFileWithContent type)",
+      "Update buildIdentityFiles() in generate.ts to return both metadata and content from a single generateIdentityFiles() call",
+      "Update the writer (bundleToFiles or equivalent) to use the content from the bundle instead of regenerating",
+      "Remove any secondary generateIdentityFiles() call from the write path",
+      "Add test: generateBundle() produces identityFiles where sizeBytes matches Buffer.byteLength(content)",
+      "Verify existing generate.test.ts and writer.test.ts tests still pass"
+    ],
+    "acceptanceCriteria": [
+      "generateBundle() returns identityFiles entries that include both metadata (sizeBytes) and content",
+      "sizeBytes in each entry matches Buffer.byteLength(content, 'utf-8') for every identity file",
+      "The writer uses bundle content without calling generateIdentityFiles() again",
+      "TypeScript compiles cleanly",
+      "Existing tests pass"
+    ],
+    "scope": [
+      "src/design/configure/generate.ts",
+      "src/config/types.ts"
+    ],
+    "status": "done",
+    "readyForSprint": true,
+    "groomedAt": "2026-04-08",
+    "groomingNotes": "Confirmed: buildIdentityFiles() (generate.ts:506-517) calls generateIdentityFiles() then maps to metadata-only. The writer path must regenerate independently. Fix approach: extend IdentityFileInfo to include an optional content field, or create IdentityFileBundleEntry = IdentityFileInfo & { content: string }. The same pattern applies to buildToolFiles() and buildSkillFiles() — consider fixing all three for consistency, but scope this item to identity files only.",
+    "passes": true
+  },
+  {
+    "id": "FEAT-160",
+    "title": "Deduplicate delegated rules compilation — single build, derive metadata and content",
+    "intent": "The delegation rules compilation must produce consistent metadata and content. Two independent calls with separate Date.now() timestamps is a correctness defect in a deployment bundle that must be internally consistent.",
+    "description": "buildDelegatedRulesFile() and generateDelegatedRulesContent() in generate.ts independently construct the same CompiledDelegationRules object with separate new Date().toISOString() calls. If both are called for the same bundle, they produce different generatedAt timestamps. The metadata (ruleCount, categoryCount) and content (JSON string) should come from a single compilation.",
+    "priority": "should",
+    "category": "core",
+    "steps": [
+      "Create a single compileDelegationRules(blueprint) function that returns both the JSON content string and the metadata (categoryCount, ruleCount, sizeBytes)",
+      "Update buildDelegatedRulesFile() to call compileDelegationRules() and return metadata",
+      "Update generateDelegatedRulesContent() to call compileDelegationRules() and return content, or deprecate it in favor of the unified function",
+      "Add test: calling the compilation function twice returns consistent ruleCount and categoryCount",
+      "Add test: generated content is valid JSON with version and generatedAt fields"
+    ],
+    "acceptanceCriteria": [
+      "A single function produces both delegation rules content and metadata",
+      "buildDelegatedRulesFile() and generateDelegatedRulesContent() share the compilation result or one delegates to the other",
+      "Metadata ruleCount matches the number of rules in the generated JSON content",
+      "TypeScript compiles cleanly"
+    ],
+    "scope": [
+      "src/design/configure/generate.ts"
+    ],
+    "status": "done",
+    "readyForSprint": true,
+    "groomedAt": "2026-04-08",
+    "groomingNotes": "Confirmed: generate.ts has buildDelegatedRulesFile() (line 598) and generateDelegatedRulesContent() (line 626) both constructing CompiledDelegationRules independently. Fix: single compileDelegationRules() returning { content: string, metadata: DelegatedRulesFileInfo }. Both public functions become thin wrappers. XS scope.",
+    "passes": true
+  },
+  {
+    "id": "FEAT-162",
+    "title": "Sanitize user description in smart inference prompt",
+    "intent": "All user-provided text that enters an LLM prompt must be sanitized. The smart inference path interpolates raw user input into the Ollama prompt without the sanitization applied everywhere else in the codebase.",
+    "description": "smart.ts:227 interpolates the user's natural language description directly into the Ollama prompt string. While this currently runs locally, the codebase consistently sanitizes user input via sanitizeContentSync() everywhere else (soul.ts customization answers, user.ts context). The smart inference path is the only place where user text enters an LLM prompt unsanitized. Consistency matters — if smart inference is ever exposed via API or if the description comes from a config file, this is a prompt injection surface.",
+    "priority": "should",
+    "category": "security",
+    "steps": [
+      "Import sanitizeContentSync from src/secure/sanitizer/index.ts in smart.ts",
+      "Sanitize the user description before interpolating into the Ollama prompt: sanitizeContentSync(description, { source: 'user-input' })",
+      "Use sanitized.text in the prompt template",
+      "Add test: description containing 'ignore previous instructions' is sanitized before reaching buildInferencePrompt",
+      "Add test: normal description passes through unchanged"
+    ],
+    "acceptanceCriteria": [
+      "User description in smart inference is sanitized via sanitizeContentSync before prompt interpolation",
+      "A description containing known injection patterns is cleaned before reaching Ollama",
+      "Normal descriptions pass through with no modification",
+      "TypeScript compiles cleanly"
+    ],
+    "scope": [
+      "src/design/configure/smart.ts"
+    ],
+    "status": "done",
+    "readyForSprint": true,
+    "groomedAt": "2026-04-08",
+    "groomingNotes": "Confirmed: smart.ts:227 uses raw ${description} in template literal. sanitizeContentSync is already used in soul.ts (line 148) for customization answers. Import path: '../../secure/sanitizer/index.js'. Apply before buildInferencePrompt call, not inside it — keeps the prompt builder pure. Tests go in smart.test.ts. XS scope.",
+    "passes": true
   }
 ]

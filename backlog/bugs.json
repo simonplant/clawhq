@@ -2,66 +2,6 @@
   "description": "Bugs and tech debt",
   "items": [
     {
-      "id": "BUG-001",
-      "title": "fixCronField() expands bare N/step to minute range regardless of field position",
-      "intent": "Cron expressions must be correct. A field fix that silently writes 0-59 into a day-of-month slot produces an invalid schedule that OpenClaw either rejects or runs at wrong times.",
-      "description": "fixCronField() in generate.ts always expands bare N/step to 0-59/step. It's called via .map(fixCronField) on all 5 cron fields. A bare 5/15 in the hour field (range 0-23) becomes 0-59/15 which is out of range. The function needs the field position index to select the correct range from CRON_FIELD_RANGES.",
-      "priority": "must",
-      "category": "core",
-      "steps": [
-        "Update fixCronField() signature to accept the field index parameter",
-        "Use CRON_FIELD_RANGES[index] to compute the correct range (e.g. 0-23 for hours, 1-31 for day-of-month)",
-        "Update the .map() call site to pass the index: .map((field, i) => fixCronField(field, i))",
-        "Add test cases: bare N/step in minute field → 0-59/step, in hour field → 0-23/step, in day-of-month field → 1-31/step",
-        "Add test case: bare N/step in day-of-week field → 0-7/step"
-      ],
-      "acceptanceCriteria": [
-        "fixCronField('5/15', 0) returns '0-59/15' (minute field)",
-        "fixCronField('5/15', 1) returns '0-23/15' (hour field)",
-        "fixCronField('5/15', 2) returns '1-31/15' (day-of-month field)",
-        "fixCronField('5/15', 4) returns '0-7/15' (day-of-week field)",
-        "normalizeCronExpr('*/10 5/3 * * *') produces a valid 5-field expression with correct ranges"
-      ],
-      "scope": [
-        "src/design/configure/generate.ts"
-      ],
-      "status": "done",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-08",
-      "groomingNotes": "Confirmed: fixCronField (generate.ts:845-851) hardcodes 0-59 for all fields. CRON_FIELD_RANGES (generate.ts:693-699) already defines correct ranges per position. Fix is mechanical: pass index, lookup range. Tests go in generate.test.ts alongside existing cron validation tests.",
-      "passes": true
-    },
-    {
-      "id": "BUG-002",
-      "title": "normalizeMorningBrief() silently defaults to 7am on invalid input instead of throwing",
-      "intent": "Blueprint config errors must surface at generation time, not silently produce wrong schedules. A typo like '7:00 AM' or '07:00 UTC' must fail fast, not run the morning brief at an unexpected time.",
-      "description": "normalizeMorningBrief() in generate.ts falls back to '0 7 * * *' when the input doesn't match HH:MM format. This silently masks blueprint errors. normalizeCronExpr() correctly throws on invalid input — normalizeMorningBrief should be consistent.",
-      "priority": "should",
-      "category": "core",
-      "steps": [
-        "Replace the fallback return '0 7 * * *' with a thrown Error that includes the invalid input string",
-        "Error message should suggest the expected HH:MM format",
-        "Add test: normalizeMorningBrief('7:00 AM') throws with descriptive message",
-        "Add test: normalizeMorningBrief('07:00 UTC') throws",
-        "Add test: normalizeMorningBrief('7h00') throws",
-        "Verify existing tests for valid inputs ('07:00', '6:30') still pass"
-      ],
-      "acceptanceCriteria": [
-        "normalizeMorningBrief('7:00 AM') throws an Error mentioning expected HH:MM format",
-        "normalizeMorningBrief('07:00') still returns '0 7 * * *' (valid input unchanged)",
-        "normalizeMorningBrief('23:59') still returns '59 23 * * *' (edge case valid)",
-        "TypeScript compiles cleanly"
-      ],
-      "scope": [
-        "src/design/configure/generate.ts"
-      ],
-      "status": "done",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-08",
-      "groomingNotes": "One-line fix: replace 'return \"0 7 * * *\"' at generate.ts:836 with a throw. Tests go in generate.test.ts.",
-      "passes": true
-    },
-    {
       "id": "BUG-003",
       "title": "Ollama model loaded with native max context causing massive VRAM waste",
       "intent": "Compiler must cap the Ollama model's contextWindow so KV cache doesn't consume multiples of the actual need. On 2026-04-16 Clawdius's gemma4:26b loaded with 262K context, pinning ~24GB VRAM and causing the reported GPU/perf degradation.",
@@ -166,7 +106,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-16",
-      "groomingNotes": "Origin: 2026-04-16 thinking-toolkit stress test on the ctx sizing recommendation. All three attacks (VRAM scaling extrapolation, lost-in-the-middle, assumed truncation) were WOUNDED by lack of data. This bug closes that gap."
+      "groomingNotes": "Updating AC with verify commands. Implementation path: (1) identify where OpenClaw logs usage_metadata per turn — likely in the gateway WebSocket frame handler or agent event emitter; (2) add a summarizer in src/operate/logs/ that parses these log entries; (3) expose via clawhq logs --tokens and clawhq doctor. Context-fill ratio = input_tokens / modelContextWindow — surface as a percentage. The p95 recommendation logic belongs in doctor, not in the log parser. p50/p95 calculation requires storing at least N=100 recent turn records."
     },
     {
       "id": "BUG-007",
@@ -194,7 +134,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-16",
-      "groomingNotes": "Pairs with BUG-006 — compaction lets you run a smaller modelContextWindow safely. Fixing this is higher leverage than tuning ctx size."
+      "groomingNotes": "Updating AC with verify commands. The 15s slug-generation timeout is in the upstream OpenClaw session-memory hook. Option A (deterministic slug — first 40 chars of first message) is the safest local fix: no LLM call, no timeout risk. Implement Option A first as an override in renderOpenclawJson when isLocal:true, then re-enable session-memory. The upstream fix (Option C) can follow separately. Key test: compiler.test.ts must verify that when isLocal:true, session-memory hook is NOT disabled in the compiled output."
     },
     {
       "id": "BUG-009",
@@ -222,7 +162,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-16",
-      "groomingNotes": "Origin: 2026-04-16 Telegram outage. verify.ts already has the probe logic — needs to be runnable standalone and on a timer."
+      "groomingNotes": "Updating AC with verify commands. verify.ts already has probe logic for post-deploy integration checks — reuse those probes for the continuous health command. The live probe must hit the actual provider API (Telegram getMe, X /2/users/me, etc.), not just check if the credential proxy is running. ops timer implementation: a cron or systemd timer that runs clawhq creds --probe on a schedule and writes to ops/creds-health.json. Doctor reads ops/creds-health.json to surface stale results. The probe must not log credential values — only provider name, status, and timestamp."
     },
     {
       "id": "BUG-010",
