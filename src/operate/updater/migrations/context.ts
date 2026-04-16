@@ -9,6 +9,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { FILE_MODE_CONFIG, FILE_MODE_SECRET } from "../../../config/defaults.js";
+import { loadRuntimeConfig, saveRuntimeConfig } from "../../../openclaw/runtime-config.js";
 
 import type { MigrationContext } from "./types.js";
 
@@ -28,10 +29,10 @@ export async function createMigrationContext(
 
   let config: Record<string, unknown> = {};
   try {
-    const raw = await readFile(configPath, "utf-8");
-    config = JSON.parse(raw) as Record<string, unknown>;
+    config = loadRuntimeConfig(configPath);
   } catch {
-    // Config may not exist yet
+    // Config may not exist yet, or malformed. Migrations receive an empty
+    // object; write path will replace it wholesale.
   }
 
   let compose = "";
@@ -56,10 +57,10 @@ export async function createMigrationContext(
     env,
 
     async writeConfig(newConfig: Record<string, unknown>): Promise<void> {
-      await writeFile(configPath, JSON.stringify(newConfig, null, 2) + "\n", {
-        encoding: "utf-8",
-        mode: FILE_MODE_CONFIG,
-      });
+      // Atomic write via the single openclaw.json writer. Migrations
+      // cannot leave torn files on crash, unlike the previous direct
+      // writeFile path.
+      saveRuntimeConfig(configPath, newConfig);
     },
 
     async writeCompose(newCompose: string): Promise<void> {

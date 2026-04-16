@@ -12,6 +12,7 @@ import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
 import { CONTAINER_USER, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { InvalidCronStoreError, loadCronStore, saveCronStore } from "../../openclaw/cron-store.js";
+import { InvalidRuntimeConfigError, loadRuntimeConfig, saveRuntimeConfig } from "../../openclaw/runtime-config.js";
 import { archiveSession, listSessions } from "../sessions/index.js";
 
 import type { DoctorCheckResult, DoctorCheckName, FixReport, FixResult } from "./types.js";
@@ -76,8 +77,7 @@ async function fixLoopDetection(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "loop-detection-enabled";
   const configPath = join(deployDir, "engine", "openclaw.json");
   try {
-    const raw = await readFile(configPath, "utf-8");
-    const config = JSON.parse(raw) as Record<string, unknown>;
+    const config = loadRuntimeConfig(configPath);
 
     let tools = config["tools"] as Record<string, unknown> | undefined;
     if (!tools) {
@@ -104,13 +104,16 @@ async function fixLoopDetection(deployDir: string): Promise<FixResult> {
     }
     config["diagnostics"] = diagnostics;
 
-    await writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+    saveRuntimeConfig(configPath, config);
     return {
       name,
       success: true,
       message: "Enabled tools.loopDetection and set diagnostics.stuckSessionWarnMs",
     };
   } catch (err) {
+    if (err instanceof InvalidRuntimeConfigError) {
+      return { name, success: false, message: err.message };
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return { name, success: false, message: `Failed to patch loop detection: ${msg}` };
   }
@@ -180,8 +183,7 @@ async function fixConfigLandmines(deployDir: string): Promise<FixResult> {
   const configPath = join(deployDir, "engine", "openclaw.json");
 
   try {
-    const raw = await readFile(configPath, "utf-8");
-    const config = JSON.parse(raw) as Record<string, unknown>;
+    const config = loadRuntimeConfig(configPath);
     const fixes: string[] = [];
 
     // LM-01: dangerouslyDisableDeviceAuth
@@ -246,9 +248,12 @@ async function fixConfigLandmines(deployDir: string): Promise<FixResult> {
       return { name, success: true, message: "No landmine fixes needed" };
     }
 
-    await writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+    saveRuntimeConfig(configPath, config);
     return { name, success: true, message: `Fixed ${fixes.length} landmine(s): ${fixes.join("; ")}` };
   } catch (err) {
+    if (err instanceof InvalidRuntimeConfigError) {
+      return { name, success: false, message: err.message };
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return { name, success: false, message: `Failed to fix config: ${msg}` };
   }
@@ -304,8 +309,7 @@ async function fixToolAccessGrants(deployDir: string): Promise<FixResult> {
   const configPath = join(deployDir, "engine", "openclaw.json");
 
   try {
-    const raw = await readFile(configPath, "utf-8");
-    const config = JSON.parse(raw) as Record<string, unknown>;
+    const config = loadRuntimeConfig(configPath);
 
     let tools = config["tools"] as Record<string, unknown> | undefined;
     if (!tools) {
@@ -319,9 +323,12 @@ async function fixToolAccessGrants(deployDir: string): Promise<FixResult> {
     }
 
     tools["accessGrants"] = [{ type: "user", value: "*" }];
-    await writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+    saveRuntimeConfig(configPath, config);
     return { name, success: true, message: 'Added tools.accessGrants: [{"type":"user","value":"*"}]' };
   } catch (err) {
+    if (err instanceof InvalidRuntimeConfigError) {
+      return { name, success: false, message: err.message };
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return { name, success: false, message: `Failed to fix tool access grants: ${msg}` };
   }
