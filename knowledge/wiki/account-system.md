@@ -93,6 +93,6 @@ EXECUTED TODAY:
 ## Related
 
 - [[dp-methodology]] — Trade ideas for all accounts
-- [[dp-conviction-scoring]] — How DP language maps to sizing
+- [[dp-extraction-rules]] — Extraction rules including conviction scoring
 - [[mancini-methodology]] — ES setups (TOS only via /MES)
 - [[standard-order-format]] — ORDER blocks list eligible accounts

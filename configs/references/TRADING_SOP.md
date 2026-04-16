@@ -354,7 +354,7 @@ How trading signals flow from source to action: INGEST → PARSE → BRIEF → D
 
 | Source | Ingest | Parse | Brief Section | Detect | Execute | Accounts |
 |--------|--------|-------|---------------|--------|---------|----------|
-| Mancini | mancini-fetch cron 2:30 PM PT | v4.0-QR extraction | Mancini (Source 1) | Heartbeat: ES price vs levels | tos,ira (longs),tradier (alert) | tos,ira,tradier |
+| Mancini | mancini-fetch cron 2:30 PM PT | Quick Brief extraction | Mancini (Source 1) | Heartbeat: ES price vs levels | tos (via /MES) | tos |
 | DP AM Call | Simon pastes into Telegram | dp-brief tool | DP (Source 3) | Heartbeat: stock prices vs levels | tos,ira (longs),tradier (alert) | tos,ira,tradier |
 | DP VTF | Simon pastes alerts | dp-parse detects action lines | DP events | Immediate — alerts ARE triggers | tos,ira (longs),tradier (alert) | tos,ira,tradier |
 | Focus 25 | focus25-fetch cron 4:30 PM PT | Email HTML parsing | Focus 25 (Source 2) | Premarket cross-reference | Informs all accounts | tos,ira,tradier |

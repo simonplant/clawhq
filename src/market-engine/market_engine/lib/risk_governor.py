@@ -5,7 +5,7 @@ The LLM cannot override this. Every proposed trade passes through check_trade()
 before any order is placed. If the governor says BLOCKED, the trade does not happen.
 
 Usage:
-  risk_governor check <side> <qty> <symbol> --price N [--pot P] [--sector S] [--loop L]
+  risk_governor check <side> <qty> <symbol> --price N [--account A] [--sector S] [--loop L]
   risk_governor status
   risk_governor limits
 
@@ -26,6 +26,8 @@ MARKETS_DIR = Path(os.environ.get("MARKETS_DIR",
 CONFIG_PATH = MARKETS_DIR / "CONFIG.json"
 STATE_PATH = MARKETS_DIR / "STATE.json"
 JOURNAL_DIR = MARKETS_DIR / "journal"
+
+ACCOUNT_IDS = ("tos", "ira", "tradier")
 
 
 def load_json(path):
@@ -109,62 +111,103 @@ class RiskVerdict:
             return f"APPROVED ({len(self.checks_passed)} checks passed)"
 
 
-def check_trade(side, qty, symbol, price, pot=None, sector=None, loop=None):
-    """Run all risk checks. Returns RiskVerdict.
+def _get_account_constraints(config, account_id):
+    """Get constraints for a specific account, with defaults."""
+    acct = config.get("accounts", {}).get(account_id, {})
+    c = acct.get("constraints", {})
+    return {
+        "max_position_pct": c.get("max_position_pct", 15.0),
+        "max_total_exposure_pct": c.get("max_total_exposure_pct", 60.0),
+        "max_sector_pct": c.get("max_sector_pct", 35.0),
+        "max_daily_loss": c.get("max_daily_loss", 1000.0),
+        "max_daily_loss_pct": c.get("max_daily_loss_pct", 2.0),
+        "max_drawdown_pct": c.get("max_drawdown_pct", 10.0),
+        "max_trades_per_day": c.get("max_trades_per_day", 10),
+        "max_open_positions": c.get("max_open_positions", 10),
+        "pdt_guard": c.get("pdt_guard", False),
+        "shorting": c.get("shorting", True),
+        "futures": c.get("futures", True),
+    }
 
-    Args:
-        side: 'buy' or 'sell'
-        qty: number of shares
-        symbol: ticker symbol
-        price: per-share price
-        pot: pot ID (A/B/C) if using pot system
-        sector: sector name for concentration check
-        loop: 'portfolio', 'swing', or 'session'
-    """
+
+def _account_exposure(acct):
+    """Total exposure for an account from its positions."""
+    positions = acct.get("positions", {})
+    if isinstance(positions, dict):
+        return sum(
+            p["qty"] * p.get("current_price", p["avg_cost"])
+            for p in positions.values()
+        )
+    return 0.0
+
+
+def check_trade(side, qty, symbol, price, account=None, sector=None, loop=None):
+    """Run all risk checks. Returns RiskVerdict."""
     config = load_config()
     state = load_state()
-    risk = config["risk"]
     passed = []
 
+    # Determine which account and its constraints
+    if account and account in config.get("accounts", {}):
+        constraints = _get_account_constraints(config, account)
+        acct_state = state.get("accounts", {}).get(account, {})
+        acct_balance = acct_state.get("balance", config["accounts"][account].get("balance", 0))
+    else:
+        # Global fallback — use combined capital
+        constraints = {
+            "max_position_pct": 5.0,
+            "max_total_exposure_pct": 60.0,
+            "max_sector_pct": 35.0,
+            "max_daily_loss": 5000.0,
+            "max_daily_loss_pct": 2.0,
+            "max_drawdown_pct": 10.0,
+            "max_trades_per_day": 20,
+            "max_open_positions": 30,
+            "pdt_guard": False,
+            "shorting": True,
+            "futures": True,
+        }
+        acct_state = {}
+        acct_balance = sum(
+            a.get("balance", 0) for a in state.get("accounts", {}).values()
+        )
+
     trade_value = qty * price
-    portfolio_value = state["account"]["portfolio_value"]
-    if portfolio_value <= 0:
-        return RiskVerdict(RiskVerdict.BLOCKED, "Portfolio value is zero or negative")
+    if acct_balance <= 0:
+        return RiskVerdict(RiskVerdict.BLOCKED, "Account balance is zero or negative")
 
-    # ── Check 1: Paper mode guard ──────────────────────────────────────
-    if risk.get("paper_mode", True) and not state["account"].get("paper_mode", True):
+    # ── Check 1: Account halt ─────────────────────────────────────────
+    if acct_state.get("halted"):
         return RiskVerdict(RiskVerdict.BLOCKED,
-            "Paper mode enabled in config but account is live")
-    passed.append("paper_mode_guard")
+            f"Account {account} is HALTED: {acct_state.get('halt_reason', 'no reason given')}")
+    passed.append("account_halt_check")
 
-    # ── Check 2: Circuit breaker ───────────────────────────────────────
+    # ── Check 2: Circuit breaker (drawdown) ───────────────────────────
     risk_snap = state.get("risk_snapshot", {})
     drawdown = risk_snap.get("drawdown_from_hwm_pct", 0)
-    if drawdown >= risk["max_drawdown_pct"]:
+    if drawdown >= constraints["max_drawdown_pct"]:
         return RiskVerdict(RiskVerdict.BLOCKED,
-            f"Circuit breaker: drawdown {drawdown:.1f}% >= {risk['max_drawdown_pct']}% limit. "
-            f"Cooldown {risk['circuit_breaker_cooldown_hours']}h required.")
+            f"Circuit breaker: drawdown {drawdown:.1f}% >= {constraints['max_drawdown_pct']}% limit")
     passed.append("circuit_breaker")
 
-    # ── Check 3: Daily loss limit ──────────────────────────────────────
+    # ── Check 3: Daily loss limit ─────────────────────────────────────
     daily_pnl = today_realized_pnl(JOURNAL_DIR)
     daily_pnl += risk_snap.get("daily_unrealized_pnl", 0)
-    if daily_pnl <= -risk["max_daily_loss"]:
+    if daily_pnl <= -constraints["max_daily_loss"]:
         return RiskVerdict(RiskVerdict.BLOCKED,
-            f"Daily loss limit: P&L ${daily_pnl:.2f} breached ${risk['max_daily_loss']:.2f} limit")
-    daily_pnl_pct = (daily_pnl / portfolio_value) * 100 if portfolio_value else 0
-    if daily_pnl_pct <= -risk["max_daily_loss_pct"]:
+            f"Daily loss limit: P&L ${daily_pnl:.2f} breached ${constraints['max_daily_loss']:.2f} limit")
+    daily_pnl_pct = (daily_pnl / acct_balance) * 100 if acct_balance else 0
+    if daily_pnl_pct <= -constraints["max_daily_loss_pct"]:
         return RiskVerdict(RiskVerdict.BLOCKED,
-            f"Daily loss %: {daily_pnl_pct:.1f}% breached {risk['max_daily_loss_pct']}% limit")
+            f"Daily loss %: {daily_pnl_pct:.1f}% breached {constraints['max_daily_loss_pct']}% limit")
     passed.append("daily_loss_limit")
 
-    # ── Check 4: Position size ─────────────────────────────────────────
+    # ── Check 4: Position size ────────────────────────────────────────
     if side == "buy":
-        is_daytrade = loop == "session"
-        max_pct = risk["max_position_pct_daytrade"] if is_daytrade else risk["max_position_pct"]
-        position_pct = (trade_value / portfolio_value) * 100
+        max_pct = constraints["max_position_pct"]
+        position_pct = (trade_value / acct_balance) * 100
         if position_pct > max_pct:
-            max_qty = int((portfolio_value * max_pct / 100) / price)
+            max_qty = int((acct_balance * max_pct / 100) / price)
             if max_qty <= 0:
                 return RiskVerdict(RiskVerdict.BLOCKED,
                     f"Position size: {position_pct:.1f}% exceeds {max_pct}% limit, "
@@ -172,112 +215,75 @@ def check_trade(side, qty, symbol, price, pot=None, sector=None, loop=None):
             return RiskVerdict(RiskVerdict.REDUCED,
                 f"Position size: {position_pct:.1f}% exceeds {max_pct}% limit",
                 new_qty=max_qty)
-
-        # Also check pot-level constraints
-        if pot and config.get("pots", {}).get("enabled"):
-            pot_data = state.get("pots", {}).get(pot, {})
-            pot_alloc = pot_data.get("allocation", 0)
-            if pot_alloc > 0:
-                pot_max_pct = config["pots"]["max_per_position_pct"]
-                pot_position_pct = (trade_value / pot_alloc) * 100
-                if pot_position_pct > pot_max_pct:
-                    max_qty = int((pot_alloc * pot_max_pct / 100) / price)
-                    if max_qty <= 0:
-                        return RiskVerdict(RiskVerdict.BLOCKED,
-                            f"Pot {pot} position size: {pot_position_pct:.1f}% exceeds "
-                            f"{pot_max_pct}% pot limit")
-                    return RiskVerdict(RiskVerdict.REDUCED,
-                        f"Pot {pot} position size: {pot_position_pct:.1f}% exceeds "
-                        f"{pot_max_pct}% pot limit",
-                        new_qty=max_qty)
     passed.append("position_size")
 
-    # ── Check 5: Total exposure ────────────────────────────────────────
+    # ── Check 5: Total exposure ───────────────────────────────────────
     if side == "buy":
-        current_exposure = risk_snap.get("total_exposure_pct", 0)
-        added_exposure = (trade_value / portfolio_value) * 100
-        new_exposure = current_exposure + added_exposure
-        if new_exposure > risk["max_total_exposure_pct"]:
+        current_exposure = _account_exposure(acct_state) if acct_state else 0
+        added_exposure_pct = (trade_value / acct_balance) * 100
+        current_exposure_pct = (current_exposure / acct_balance) * 100 if acct_balance else 0
+        new_exposure_pct = current_exposure_pct + added_exposure_pct
+        if new_exposure_pct > constraints["max_total_exposure_pct"]:
             return RiskVerdict(RiskVerdict.BLOCKED,
-                f"Total exposure: would be {new_exposure:.1f}% "
-                f"(limit {risk['max_total_exposure_pct']}%)")
-
-        # Pot-level exposure check
-        if pot and config.get("pots", {}).get("enabled"):
-            pot_data = state.get("pots", {}).get(pot, {})
-            pot_alloc = pot_data.get("allocation", 0)
-            pot_cash = pot_data.get("cash", 0)
-            pot_exposure = ((pot_alloc - pot_cash) / pot_alloc * 100) if pot_alloc > 0 else 0
-            pot_added = (trade_value / pot_alloc * 100) if pot_alloc > 0 else 100
-            if pot_exposure + pot_added > config["pots"]["max_exposure_pct"]:
-                return RiskVerdict(RiskVerdict.BLOCKED,
-                    f"Pot {pot} exposure: would be {pot_exposure + pot_added:.1f}% "
-                    f"(limit {config['pots']['max_exposure_pct']}%)")
+                f"Total exposure: would be {new_exposure_pct:.1f}% "
+                f"(limit {constraints['max_total_exposure_pct']}%)")
     passed.append("total_exposure")
 
-    # ── Check 6: Sector concentration ──────────────────────────────────
+    # ── Check 6: Sector concentration ─────────────────────────────────
     if side == "buy" and sector:
         sectors = risk_snap.get("sector_concentration", {})
         current_sector_pct = sectors.get(sector, 0)
-        added_pct = (trade_value / portfolio_value) * 100
-        if current_sector_pct + added_pct > risk["max_sector_pct"]:
+        added_pct = (trade_value / acct_balance) * 100
+        if current_sector_pct + added_pct > constraints["max_sector_pct"]:
             return RiskVerdict(RiskVerdict.BLOCKED,
                 f"Sector concentration: {sector} would be "
-                f"{current_sector_pct + added_pct:.1f}% (limit {risk['max_sector_pct']}%)")
+                f"{current_sector_pct + added_pct:.1f}% (limit {constraints['max_sector_pct']}%)")
     passed.append("sector_concentration")
 
-    # ── Check 7: Open position count ───────────────────────────────────
+    # ── Check 7: Open position count ──────────────────────────────────
     if side == "buy":
-        open_count = len(state.get("positions", []))
-        if open_count >= risk["max_open_positions"]:
+        open_count = len(acct_state.get("positions", {})) if acct_state else 0
+        if open_count >= constraints["max_open_positions"]:
             return RiskVerdict(RiskVerdict.BLOCKED,
-                f"Max positions: {open_count} open (limit {risk['max_open_positions']})")
+                f"Max positions: {open_count} open (limit {constraints['max_open_positions']})")
     passed.append("position_count")
 
-    # ── Check 8: PDT guard ─────────────────────────────────────────────
-    if risk.get("pdt_guard") and loop == "session":
-        day_trade_count = state["account"].get("day_trade_count", 0)
-        portfolio_val = state["account"].get("portfolio_value", 0)
-        if portfolio_val < 25000 and day_trade_count >= 3:
+    # ── Check 8: PDT guard ────────────────────────────────────────────
+    if constraints.get("pdt_guard") and loop == "session":
+        # For PDT-limited accounts, check day trade count
+        day_trade_count = acct_state.get("day_trade_count", 0)
+        if acct_balance < 25000 and day_trade_count >= 3:
             return RiskVerdict(RiskVerdict.BLOCKED,
                 f"PDT guard: {day_trade_count} day trades with "
-                f"${portfolio_val:.0f} account (need $25K for unlimited)")
+                f"${acct_balance:.0f} account (need $25K for unlimited)")
     passed.append("pdt_guard")
 
-    # ── Check 9: Day trade session limit ───────────────────────────────
-    if loop == "session":
-        session_trades = count_today_trades(JOURNAL_DIR, loop="session")
-        if session_trades >= risk["max_trades_per_day_daytrade"]:
-            return RiskVerdict(RiskVerdict.BLOCKED,
-                f"Session trade limit: {session_trades} trades today "
-                f"(limit {risk['max_trades_per_day_daytrade']})")
-    elif loop == "swing":
-        swing_trades = count_today_trades(JOURNAL_DIR, loop="swing")
-        if swing_trades >= risk["max_trades_per_day_swing"]:
-            return RiskVerdict(RiskVerdict.BLOCKED,
-                f"Swing trade limit: {swing_trades} trades today "
-                f"(limit {risk['max_trades_per_day_swing']})")
+    # ── Check 9: Trade count limit ────────────────────────────────────
+    max_trades = constraints.get("max_trades_per_day", 10)
+    today_trades = count_today_trades(JOURNAL_DIR)
+    if today_trades >= max_trades:
+        return RiskVerdict(RiskVerdict.BLOCKED,
+            f"Trade count limit: {today_trades} trades today (limit {max_trades})")
     passed.append("trade_count_limit")
 
-    # ── Check 10: Time guard (day trades) ──────────────────────────────
+    # ── Check 10: Time guard (day trades) ─────────────────────────────
     if loop == "session" and side == "buy":
-        cutoff = risk.get("force_close_daytrades_by", "15:50")
         now_et = datetime.now(timezone(timedelta(hours=-4)))
-        cutoff_h, cutoff_m = map(int, cutoff.split(":"))
-        cutoff_time = now_et.replace(hour=cutoff_h, minute=cutoff_m, second=0)
+        cutoff_time = now_et.replace(hour=15, minute=50, second=0)
         if now_et >= cutoff_time:
             return RiskVerdict(RiskVerdict.BLOCKED,
-                f"Time guard: no new day trade entries after {cutoff} ET "
+                f"Time guard: no new day trade entries after 15:50 ET "
                 f"(current: {now_et.strftime('%H:%M')} ET)")
     passed.append("time_guard")
 
-    # ── Check 11: Pot halt check ───────────────────────────────────────
-    if pot and config.get("pots", {}).get("enabled"):
-        pot_data = state.get("pots", {}).get(pot, {})
-        if pot_data.get("halted"):
-            return RiskVerdict(RiskVerdict.BLOCKED,
-                f"Pot {pot} is HALTED: {pot_data.get('halt_reason', 'no reason given')}")
-    passed.append("pot_halt_check")
+    # ── Check 11: Short/futures restrictions ───────────────────────────
+    if side == "sell" and not constraints.get("shorting", True):
+        return RiskVerdict(RiskVerdict.BLOCKED,
+            f"Account {account} does not allow shorting")
+    if symbol in ("/MES", "/ES", "ES=F", "NQ=F", "/NQ") and not constraints.get("futures", True):
+        return RiskVerdict(RiskVerdict.BLOCKED,
+            f"Account {account} does not allow futures trading")
+    passed.append("instrument_restrictions")
 
     return RiskVerdict(RiskVerdict.APPROVED, checks_passed=passed)
 
@@ -286,61 +292,36 @@ def risk_status():
     """Return current risk utilization vs limits."""
     config = load_config()
     state = load_state()
-    risk = config["risk"]
-    snap = state.get("risk_snapshot", {})
-    pv = state["account"]["portfolio_value"]
+    risk_snap = state.get("risk_snapshot", {})
 
     status = {
-        "portfolio_value": pv,
-        "paper_mode": risk.get("paper_mode", True),
-        "utilization": {
-            "total_exposure": {
-                "current": snap.get("total_exposure_pct", 0),
-                "limit": risk["max_total_exposure_pct"],
-                "remaining": risk["max_total_exposure_pct"] - snap.get("total_exposure_pct", 0)
-            },
-            "long_exposure": {
-                "current": snap.get("long_exposure_pct", 0),
-                "limit": risk["max_long_exposure_pct"]
-            },
-            "short_exposure": {
-                "current": snap.get("short_exposure_pct", 0),
-                "limit": risk["max_short_exposure_pct"]
-            },
-            "largest_position": {
-                "current": snap.get("largest_position_pct", 0),
-                "limit": risk["max_position_pct"]
-            },
-            "open_positions": {
-                "current": len(state.get("positions", [])),
-                "limit": risk["max_open_positions"]
-            },
-            "drawdown": {
-                "current": snap.get("drawdown_from_hwm_pct", 0),
-                "limit": risk["max_drawdown_pct"],
-                "hwm": snap.get("high_water_mark", pv)
-            },
-            "daily_pnl": {
-                "realized": snap.get("daily_realized_pnl", 0),
-                "unrealized": snap.get("daily_unrealized_pnl", 0),
-                "limit": risk["max_daily_loss"]
-            }
-        },
-        "pots": {}
+        "accounts": {},
+        "global": {
+            "drawdown_pct": risk_snap.get("drawdown_from_hwm_pct", 0),
+            "high_water_mark": risk_snap.get("high_water_mark", 0),
+            "daily_realized_pnl": risk_snap.get("daily_realized_pnl", 0),
+            "daily_unrealized_pnl": risk_snap.get("daily_unrealized_pnl", 0),
+        }
     }
 
-    for pot_id, pot_data in state.get("pots", {}).items():
-        alloc = pot_data.get("allocation", 0)
-        cash = pot_data.get("cash", 0)
-        exposure = ((alloc - cash) / alloc * 100) if alloc > 0 else 0
-        status["pots"][pot_id] = {
-            "name": pot_data.get("name"),
-            "allocation": alloc,
-            "cash": cash,
-            "exposure_pct": round(exposure, 1),
-            "exposure_limit": config.get("pots", {}).get("max_exposure_pct", 60),
-            "realized_pnl": pot_data.get("realized_pnl", 0),
-            "halted": pot_data.get("halted", False)
+    for acct_id in ACCOUNT_IDS:
+        acct_config = config.get("accounts", {}).get(acct_id, {})
+        acct_state = state.get("accounts", {}).get(acct_id, {})
+        constraints = _get_account_constraints(config, acct_id)
+        balance = acct_state.get("balance", acct_config.get("balance", 0))
+        exposure = _account_exposure(acct_state)
+        exposure_pct = (exposure / balance * 100) if balance else 0
+
+        status["accounts"][acct_id] = {
+            "name": acct_config.get("name", acct_id),
+            "balance": balance,
+            "cash": acct_state.get("cash", balance),
+            "exposure_pct": round(exposure_pct, 1),
+            "exposure_limit": constraints["max_total_exposure_pct"],
+            "positions": len(acct_state.get("positions", {})),
+            "position_limit": constraints["max_open_positions"],
+            "realized_pnl": acct_state.get("realized_pnl", 0),
+            "halted": acct_state.get("halted", False),
         }
 
     return status
@@ -349,33 +330,25 @@ def risk_status():
 def format_status(status):
     """Human-readable risk status."""
     lines = []
-    lines.append(f"Portfolio: ${status['portfolio_value']:,.2f} "
-                 f"({'PAPER' if status['paper_mode'] else 'LIVE'})")
+
+    g = status["global"]
+    lines.append(f"Drawdown: {g['drawdown_pct']:.1f}% (HWM: ${g['high_water_mark']:,.2f})")
+    lines.append(f"Daily P&L: ${g['daily_realized_pnl']:.2f} realized, ${g['daily_unrealized_pnl']:.2f} unrealized")
     lines.append("")
 
-    u = status["utilization"]
-    lines.append("Risk Utilization:")
-    lines.append(f"  Exposure:  {u['total_exposure']['current']:.1f}% / "
-                 f"{u['total_exposure']['limit']}% "
-                 f"({u['total_exposure']['remaining']:.1f}% remaining)")
-    lines.append(f"  Positions: {u['open_positions']['current']} / "
-                 f"{u['open_positions']['limit']}")
-    lines.append(f"  Drawdown:  {u['drawdown']['current']:.1f}% / "
-                 f"{u['drawdown']['limit']}% "
-                 f"(HWM: ${u['drawdown']['hwm']:,.2f})")
-    lines.append(f"  Daily P&L: ${u['daily_pnl']['realized']:.2f} realized, "
-                 f"${u['daily_pnl']['unrealized']:.2f} unrealized "
-                 f"(limit: -${u['daily_pnl']['limit']:.2f})")
-    lines.append("")
-
-    lines.append("Pots:")
-    for pot_id, p in sorted(status["pots"].items()):
-        halt = " [HALTED]" if p["halted"] else ""
-        lines.append(f"  {pot_id} ({p['name']}): "
-                     f"${p['cash']:,.2f} cash, "
-                     f"{p['exposure_pct']}% exposed "
-                     f"(limit {p['exposure_limit']}%), "
-                     f"P&L ${p['realized_pnl']:,.2f}{halt}")
+    lines.append("Accounts:")
+    for acct_id in ACCOUNT_IDS:
+        a = status["accounts"].get(acct_id)
+        if not a:
+            continue
+        halt = " [HALTED]" if a["halted"] else ""
+        lines.append(f"  {acct_id} ({a['name']}): "
+                     f"${a['cash']:,.2f} cash, "
+                     f"{a['exposure_pct']}% exposed "
+                     f"(limit {a['exposure_limit']}%), "
+                     f"{a['positions']} positions "
+                     f"(limit {a['position_limit']}), "
+                     f"P&L ${a['realized_pnl']:,.2f}{halt}")
 
     return "\n".join(lines)
 
@@ -390,7 +363,7 @@ def main():
     if cmd == "check":
         if len(sys.argv) < 5:
             print("Usage: risk_governor check <side> <qty> <symbol> --price N "
-                  "[--pot P] [--sector S] [--loop L]")
+                  "[--account A] [--sector S] [--loop L]")
             sys.exit(2)
 
         side = sys.argv[2].lower()
@@ -403,7 +376,7 @@ def main():
 
         # Parse named args
         price = None
-        pot = None
+        account = None
         sector = None
         loop = None
         i = 5
@@ -411,8 +384,8 @@ def main():
             if sys.argv[i] == "--price" and i + 1 < len(sys.argv):
                 price = float(sys.argv[i + 1])
                 i += 2
-            elif sys.argv[i] == "--pot" and i + 1 < len(sys.argv):
-                pot = sys.argv[i + 1].upper()
+            elif sys.argv[i] in ("--account", "--pot") and i + 1 < len(sys.argv):
+                account = sys.argv[i + 1].lower()
                 i += 2
             elif sys.argv[i] == "--sector" and i + 1 < len(sys.argv):
                 sector = sys.argv[i + 1].lower()
@@ -421,7 +394,7 @@ def main():
                 loop = sys.argv[i + 1].lower()
                 i += 2
             elif sys.argv[i] == "--json":
-                i += 1  # handled below
+                i += 1
             else:
                 print(f"Unknown arg: {sys.argv[i]}")
                 sys.exit(2)
@@ -430,7 +403,7 @@ def main():
             print("Error: --price is required")
             sys.exit(2)
 
-        verdict = check_trade(side, qty, symbol, price, pot=pot, sector=sector, loop=loop)
+        verdict = check_trade(side, qty, symbol, price, account=account, sector=sector, loop=loop)
 
         if "--json" in sys.argv:
             print(json.dumps(verdict.to_dict(), indent=2))
@@ -450,7 +423,11 @@ def main():
 
     elif cmd == "limits":
         config = load_config()
-        print(json.dumps(config["risk"], indent=2))
+        for acct_id in ACCOUNT_IDS:
+            acct = config.get("accounts", {}).get(acct_id, {})
+            print(f"=== {acct_id}: {acct.get('name', acct_id)} ===")
+            print(json.dumps(acct.get("constraints", {}), indent=2))
+            print()
 
     else:
         print(f"Unknown command: {cmd}")

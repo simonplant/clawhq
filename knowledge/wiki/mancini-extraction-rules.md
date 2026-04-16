@@ -1,14 +1,14 @@
 ---
-tags: [extraction, mancini, v4-qr, order-format]
-date: 2026-04-15
+tags: [extraction, mancini, order-format]
+date: 2026-04-16
 source-count: 2
 confidence: established
-last-verified: 2026-04-15
+last-verified: 2026-04-16
 ---
 
 # Mancini Extraction Rules
 
-How to parse Mancini's daily Substack newsletter into ORDER blocks. Two output modes: v4.0-QR Quick Brief (for daily brief) and Standard ORDER Format (for execution).
+How to parse Mancini's daily Substack newsletter into the daily brief and ORDER blocks. Two outputs: Quick Brief (compact summary for the daily brief) and Standard ORDER blocks (for execution and monitoring).
 
 ## Skip List
 
@@ -29,7 +29,7 @@ In "In terms of lvls I'd bid" prose, find conditional chains:
 
 ### 2. Entry (NAP Rule)
 
-Non-Acceptance Protocol: `entry = significant_low + 5`. Clears the danger zone.
+Non-Acceptance Protocol: `entry = significant_low + 5`. Clears the danger zone (0-5pts above recovered low = negative expectancy without acceptance).
 
 ### 3. Stop
 
@@ -37,31 +37,31 @@ If flush target stated → `stop = flush_target - 4`. If not → next support be
 
 ### 4. Targets
 
-`T1 = first level ≥ 8pts above entry` (prefer majors). `T2 = next level ≥ 8pts above T1`. Why ≥8pts: level-to-level moves are 8-15pts.
+`T1 = first level >= 8pts above entry` (prefer majors). `T2 = next level >= 8pts above T1`. Why >=8pts: level-to-level moves are 8-15pts.
 
 ### 5. Conviction Mapping
 
 | His words | Conviction |
 |-----------|-----------|
 | "A+", "powerful", "clear significant low", "I get very interested" | HIGH |
-| "quality Failed Breakdown", "actionable" | HIGH |
-| "decent support" | MEDIUM |
-| "lower quality", "may be an entry" | LOW |
+| "quality Failed Breakdown", "actionable", "obviously actionable" | HIGH |
+| "mildly interesting", "decent support", "one could bid" | MEDIUM |
+| "lower quality", "may be an entry", "I personally won't be here" | LOW |
 | "would not bid/engage", "too well tested", "risky" | Exclude |
 
 ### 6. Supports and Resistances
 
-Copy full lists from "Supports are:" and "Resistances are:". Preserve (major) tags.
+Copy full lists from "Supports are:" and "Resistances are:". Preserve (major) tags exactly as stated.
 
-## v4.0-QR Quick Brief Output
+## Quick Brief Output
 
-Ultra-compact, 2000 words max. Structure:
+Ultra-compact summary for the daily brief. 2000 words max. Structure:
 - Header: ES price, regime, mode, volatility
 - TL;DR: one sentence
 - SETUPS: code blocks only (Low/Flush/Accept/Entry/Stop/T1/T2/Run), max 3
-- LEVELS: bullet lists (S: level * level * level / R: level * level)
-- RUNNERS: one-liners (Entry → Current (+PL) | Stop | Target)
-- SCENARIOS: hold [level] → path / lose [level] → path
+- LEVELS: bullet lists (S: level | level | level / R: level | level)
+- RUNNERS: one-liners (Entry -> Current (+PL) | Stop | Target)
+- SCENARIOS: hold [level] -> path / lose [level] -> path
 - EXECUTION: accept duration, avoid window, critical risk
 - YESTERDAY: one-line outcome + learning
 
@@ -71,9 +71,9 @@ Word budget: TL;DR 50, SETUPS 1000, LEVELS 300, RUNNERS 200, SCENARIOS 200, EXEC
 
 See [[standard-order-format]] for the unified format. Mancini-specific:
 - `source: mancini`, `accounts: tos`, `ticker: ES`, `exec_as: /MES`
-- Execute as /MES (Micro E-mini, $5/pt) on TOS. NOT SPY. 10 /MES = 1 /ES.
-- Risk per setup: 15pt stop × $5/pt × N contracts. 2 /MES = $150 risk. 4 /MES = $300 risk.
-- Session rules: max 2 fills. Win #1 → done. Lose #1 → one more. Lose #2 → done.
+- Execute as /MES (Micro E-mini, $5/pt) on TOS. 10 /MES = 1 /ES.
+- Risk per setup: stop distance x $5/pt x N contracts. 2 /MES = $150 risk on 15pt stop.
+- Session rules: max 2 fills. Win #1 -> done. Lose #1 -> one more. Lose #2 -> done.
 
 ## What Is Extracted vs Derived vs Never Fabricated
 
@@ -88,4 +88,4 @@ See [[standard-order-format]] for the unified format. Mancini-specific:
 - [[mancini-methodology]] — The underlying trading system
 - [[standard-order-format]] — Unified ORDER block spec
 - [[dp-extraction-rules]] — DP's equivalent extraction contract
-- [[pot-system]] — Account system and ES→SPY conversion
+- [[account-system]] — Account sizing and constraints

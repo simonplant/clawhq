@@ -1,14 +1,14 @@
 ---
 tags: [methodology, dp, inner-circle, stocks, swing]
-date: 2026-04-15
+date: 2026-04-16
 source-count: 2
 confidence: established
-last-verified: 2026-04-15
+last-verified: 2026-04-16
 ---
 
 # DP Methodology
 
-David Prince / Inner Circle trading system. Theme-driven stock trading with core position model. Source: AM Calls (Dropbox transcriptions) and VTF intraday alerts.
+David Prince / Inner Circle trading system. Theme-driven stock trading with core position model. Source: AM Calls (transcriptions) and VTF intraday alerts.
 
 ## Core Philosophy
 
@@ -24,11 +24,11 @@ DP's system produces signals at three layers with different reliability:
 
 | Layer | Source | Reliability | Use |
 |-------|--------|------------|-----|
-| **AM Call thesis** | DP's morning transcript | Directional bias + watchlist. Levels are aspirational — moderators rarely wait for them. | Set the watchlist and bias for the day. Do NOT treat levels as executable entries. |
+| **AM Call thesis** | DP's morning transcript | Directional bias + watchlist. Levels are aspirational — moderators rarely wait for them. | Set the watchlist and bias for the day. NOT executable entries. |
 | **VTF alerts** | Real-time chat posts | Actual entries at market prices. Time-sensitive. | Generate ORDER blocks at current price (not AM Call level). |
-| **Kira's execution** | Moderator trade log | Optimal timing and position management. Kira enters names DP identifies but at market prices with precise timing. | Reference for entry timing, trim cadence, and reversal patterns. |
+| **Kira's execution** | Moderator trade log | Optimal timing and position management. Kira enters names DP identifies but at market prices with precise timing. | Reference for entry timing, trim cadence, reversal patterns. |
 
-**Critical insight:** DP says "AMZN buyable at 241" (AM Call thesis). Kira buys AMZN calls at $248 (execution). The AM Call sets the thesis. Kira's timing is the actual signal. Track the gap between thesis level and execution price — this is where the real edge data lives.
+**Critical insight:** DP says "AMZN buyable at 241" (AM Call). Kira buys AMZN calls at $248 (execution). The AM Call sets the thesis. Kira's timing is the actual signal. Track the gap between thesis level and execution price.
 
 ## Core Position Model
 
@@ -61,27 +61,27 @@ DP's system produces signals at three layers with different reliability:
 | **200-day MA** | Major — "sizable position" entries |
 | **VWAP** | Intraday reference |
 
-## Risk & Money Management
+## Risk and Money Management
 
 - **1% Rule:** Max risk per trade = 1% of capital
 - **3-4 positions max** at any time
 - **Take profits quickly:** Lower targets, "look for less"
 - **Go to cash when needed:** Don't force trades
 
-See [[dp-conviction-scoring]] for language → conviction mapping.
+See [[dp-extraction-rules]] for language -> conviction mapping.
 See [[dp-extraction-rules]] for parsing AM Calls and VTF alerts.
 
 ## Entry Patterns
 
-- **Buy quality in the hole:** Pullback to key MA → buy level, stop below
+- **Buy quality in the hole:** Pullback to key MA -> buy level, stop below
 - **Relative strength:** RS stocks go red-to-green (long), weak stocks drop faster (short)
-- **Post-earnings day-after:** Pro-gap → day-after range → enter above day-after high
+- **Post-earnings day-after:** Pro-gap -> day-after range -> enter above day-after high
 - **Buy-the-dip on events:** Ignore "sell-the-news", set up for bounce
-- **Retests signal weakness:** Repeated retests without bounce → flush coming
+- **Retests signal weakness:** Repeated retests without bounce -> flush coming
 
 ## Related
 
-- [[dp-conviction-scoring]] — Language → conviction + sizing
+- [[dp-extraction-rules]] — Extraction rules including conviction scoring
 - [[dp-extraction-rules]] — AM Call and VTF parsing
 - [[mancini-methodology]] — Complementary ES futures approach
-- [[pot-system]] — Account system and sizing rules
+- [[account-system]] — Account sizing and constraints

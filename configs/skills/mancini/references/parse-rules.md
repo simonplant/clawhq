@@ -1,6 +1,6 @@
 # Parse Rules: Mancini Post → Quick Brief
 
-The primary extraction contract is `knowledge/trading/wiki/mancini-extraction-rules.md` (v4.0-QR). This file covers supplementary parsing guidance not in the main contract.
+The primary extraction contract is `knowledge/trading/wiki/mancini-extraction-rules.md`. This file covers supplementary parsing guidance not in the main contract.
 
 ## Setup Classification
 

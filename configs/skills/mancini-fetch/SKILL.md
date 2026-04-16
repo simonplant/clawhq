@@ -1,11 +1,11 @@
 ---
 name: mancini-fetch
-description: "Fetch Adam Mancini's latest Futures Daily post and extract the trading plan into Quick Brief format (v4.0-QR). Writes to memory/trading-YYYY-MM-DD.md for heartbeat, premarket-brief, and EOD review. Call when Simon asks for Mancini's plan, or via cron at 14:30 PT weekdays (fallback 19:00 PT). NOT for: general market data (use quote), live level monitoring (use heartbeat)."
+description: "Fetch Adam Mancini's latest Futures Daily post and extract the trading plan into Quick Brief format. Writes to memory/trading-YYYY-MM-DD.md for heartbeat, premarket-brief, and EOD review. Call when Simon asks for Mancini's plan, or via cron at 14:30 PT weekdays (fallback 19:00 PT). NOT for: general market data (use quote), live level monitoring (use heartbeat)."
 ---
 
 # mancini-fetch
 
-Fetches Mancini's latest Substack post and produces an ultra-compact Quick Brief following `knowledge/trading/wiki/mancini-extraction-rules.md` (v4.0-QR format). Purely declarative — the agent does the extraction; no regex scripts.
+Fetches Mancini's latest Substack post and produces an ultra-compact Quick Brief following `knowledge/trading/wiki/mancini-extraction-rules.md`. Purely declarative — the agent does the extraction; no regex scripts.
 
 ## Procedure
 
@@ -100,7 +100,7 @@ Fetches Mancini's latest Substack post and produces an ultra-compact Quick Brief
 
 - `CRED_PROXY_URL` env var (Substack cookies injected server-side, SEC-022)
 - `substack` workspace tool
-- `knowledge/trading/wiki/mancini-extraction-rules.md` (v4.0-QR extraction contract)
+- `knowledge/trading/wiki/mancini-extraction-rules.md` (extraction contract)
 - `knowledge/trading/wiki/mancini-methodology.md` (methodology reference for edge cases)
 
 ## References

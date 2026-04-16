@@ -10,7 +10,7 @@ metadata:
 Parses Adam Mancini's Substack posts into ultra-compact quick briefs. Writes daily briefs to `memory/trading-YYYY-MM-DD.md`. Checks levels during heartbeats.
 
 Before first use, consult the trading wiki: `knowledge/trading/wiki/mancini-methodology.md` for the Mancini framework.
-Before parsing, read `knowledge/trading/wiki/mancini-extraction-rules.md` for the v4.0-QR extraction rules and output format.
+Before parsing, read `knowledge/trading/wiki/mancini-extraction-rules.md` for the extraction rules and output format.
 
 ## Workflows
 
@@ -19,7 +19,7 @@ Before parsing, read `knowledge/trading/wiki/mancini-extraction-rules.md` for th
 1. Fetch: `curl -s "https://adamsmancini.substack.com/api/v1/posts?limit=1" | jq '.[0]'`
 2. If body truncated or paywalled, `web_fetch` the post URL.
 3. If unavailable, report "Post not accessible." Stop.
-4. Read `knowledge/trading/wiki/mancini-extraction-rules.md` (the v4.0-QR extraction contract).
+4. Read `knowledge/trading/wiki/mancini-extraction-rules.md` (the extraction contract).
 5. Skip everything before "Trade Plan [Day]" per the skip list.
 6. Extract setups in ultra-compact code block format: Low/Flush/Accept/Entry/Stop/T1/T2/Run. Max 3 setups.
 7. Extract flat level grid as bullet lists (no prose).

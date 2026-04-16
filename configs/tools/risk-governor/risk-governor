@@ -4,13 +4,14 @@
 The LLM cannot override this. Every trade must pass check before execution.
 
 Commands:
-  risk-governor check <side> <qty> <symbol> --price N [--pot P] [--sector S] [--loop L] [--json]
+  risk-governor check <side> <qty> <symbol> --price N [--account A] [--sector S] [--loop L] [--json]
   risk-governor status [--json]
   risk-governor limits
 
 Examples:
-  risk-governor check buy 20 NVDA --price 190 --pot A --sector tech
-  risk-governor check buy 50 SPY --price 520 --loop swing
+  risk-governor check buy 20 NVDA --price 190 --account tos --sector tech
+  risk-governor check buy 2 /MES --price 7020 --account tos --loop session
+  risk-governor check buy 50 SPY --price 520 --account ira --loop swing
   risk-governor status
 
 Exit codes: 0=APPROVED/REDUCED, 1=BLOCKED, 2=ERROR

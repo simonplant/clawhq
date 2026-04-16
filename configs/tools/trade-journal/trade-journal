@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-"""trade-journal — three-pot paper trading experiment tracker.
+"""trade-journal — trade tracker across three accounts (tos, ira, tradier).
 
-Tracks a $100K Tradier account split into three strategy pots:
-  A — Clawdius System (TA/market structure/fundamentals)
-  B — Mirror DP (mechanically follow VTF trade alerts)
-  C — Mirror Mancini (mechanically follow Mancini ES levels/setups)
+Tracks positions and P&L for:
+  tos     — $100K ThinkOrSwim (Simon executes, full capability)
+  ira     — $100K Fidelity IRA (Simon executes, long-only)
+  tradier — $3K Tradier (Clawdius executes, alert-only)
 
 Usage: trade-journal <command> [args]
 
 Commands:
-  init                                — initialize portfolio ($100K, 3 pots)
-  log <pot> <side> <qty> <symbol>     — log a trade (--price, --notes, --execute)
-  close <pot> <symbol>                — close position (--qty, --price, --notes, --execute)
-  mark                                — EOD mark-to-market all positions
-  summary [pot]                       — P&L summary
-  compare                             — pot-vs-pot-vs-SPY comparison
-  positions [pot]                     — open positions
-  reconcile                           — reconcile vs Tradier positions
-  halt <pot> <reason>                 — halt trading for a pot
-  unhalt <pot>                        — resume trading
+  init                                    — initialize portfolio state
+  log <account> <side> <qty> <symbol>     — log a trade (--price, --notes, --execute)
+  close <account> <symbol>                — close position (--qty, --price, --notes, --execute)
+  mark                                    — EOD mark-to-market all positions
+  summary [account]                       — P&L summary
+  compare                                 — account comparison vs SPY
+  positions [account]                     — open positions
+  reconcile                               — reconcile vs Tradier positions
+  halt <account> <reason>                 — halt trading for an account
+  unhalt <account>                        — resume trading
 
 Options (for log/close):
   --price N       override auto-quote
@@ -43,17 +43,12 @@ from pathlib import Path
 WORKSPACE = Path(os.environ.get("HOME", "/home/node")) / ".openclaw" / "workspace"
 JOURNAL = WORKSPACE / "trade-journal.json"
 STATE = WORKSPACE / "portfolio-state.json"
+MARKETS = WORKSPACE / "markets"
+CONFIG_PATH = MARKETS / "CONFIG.json"
+STATE_PATH = MARKETS / "STATE.json"
 PROXY = os.environ.get("CRED_PROXY_URL", "")
 
-POTS = {
-    "A": ("Clawdius System", "TA/market structure/fundamentals"),
-    "B": ("Mirror DP", "Mechanically follow VTF trade alerts"),
-    "C": ("Mirror Mancini", "Mechanically follow Mancini ES levels/setups"),
-}
-POT_ALLOC = {"A": 33333.33, "B": 33333.33, "C": 33333.34}
-TOTAL = 100000.00
-MAX_POS = 0.15   # 15% of pot per position
-MAX_EXP = 0.60   # 60% total pot exposure
+ACCOUNT_IDS = ("tos", "ira", "tradier")
 
 
 # --- I/O ---
@@ -67,10 +62,14 @@ def _save(path, data):
 
 
 def _state():
-    s = _load(STATE)
+    s = _load(STATE_PATH)
     if not s:
         _die("Portfolio not initialized. Run: trade-journal init")
     return s
+
+
+def _config():
+    return _load(CONFIG_PATH, {})
 
 
 def _journal():
@@ -103,7 +102,7 @@ def _quote(symbol):
 
 
 def _tradier_positions():
-    """All Tradier positions as list of dicts (normalized to common format)."""
+    """All Tradier positions as list of dicts."""
     account_id = os.environ.get("TRADIER_ACCOUNT_ID", "")
     if not account_id:
         return []
@@ -115,7 +114,6 @@ def _tradier_positions():
         return []
     if isinstance(positions, dict):
         positions = [positions]
-    # Normalize to trade-journal expected format: symbol, qty, side
     result = []
     for p in positions:
         qty = p.get("quantity", 0)
@@ -148,10 +146,10 @@ def _trade_id(journal):
     return f"{today}-{n + 1:03d}"
 
 
-def _pot_exposure(ps):
+def _account_exposure(acct):
     return sum(
         p["qty"] * p.get("current_price", p["avg_cost"])
-        for p in ps["positions"].values()
+        for p in acct["positions"].values()
     )
 
 
@@ -173,60 +171,94 @@ def _parse_opts(args, start=0):
     return opts
 
 
+def _get_constraints(account_id):
+    """Get risk constraints for an account from CONFIG.json."""
+    config = _config()
+    acct_config = config.get("accounts", {}).get(account_id, {})
+    constraints = acct_config.get("constraints", {})
+    return {
+        "max_position_pct": constraints.get("max_position_pct", 15.0) / 100,
+        "max_exposure_pct": constraints.get("max_total_exposure_pct", 60.0) / 100,
+    }
+
+
 # --- Commands ---
 
 def cmd_init(args):
-    if STATE.exists() and "--force" not in args:
+    if STATE_PATH.exists() and "--force" not in args:
         _die("Already initialized. Use --force to reset.")
 
+    config = _config()
     spy = _quote("SPY")
+
     state = {
+        "version": 2,
+        "updated_at": datetime.now().isoformat(),
         "inception": datetime.now().strftime("%Y-%m-%d"),
-        "pots": {},
-        "last_mark": None,
+        "accounts": {},
+        "risk_snapshot": {
+            "total_exposure_pct": 0.0,
+            "long_exposure_pct": 0.0,
+            "short_exposure_pct": 0.0,
+            "largest_position_pct": 0.0,
+            "sector_concentration": {},
+            "daily_realized_pnl": 0.0,
+            "daily_unrealized_pnl": 0.0,
+            "high_water_mark": 0.0,
+            "drawdown_from_hwm_pct": 0.0,
+        },
         "spy_inception_price": spy,
+        "last_mark": None,
     }
-    for pot_id, (name, strategy) in POTS.items():
-        state["pots"][pot_id] = {
-            "name": name,
-            "strategy": strategy,
-            "allocation": POT_ALLOC[pot_id],
-            "cash": POT_ALLOC[pot_id],
+
+    total = 0.0
+    for acct_id in ACCOUNT_IDS:
+        acct_config = config.get("accounts", {}).get(acct_id, {})
+        balance = acct_config.get("balance", 0)
+        total += balance
+        state["accounts"][acct_id] = {
+            "name": acct_config.get("name", acct_id),
+            "balance": balance,
+            "cash": balance,
             "positions": {},
             "realized_pnl": 0.0,
             "halted": False,
             "halt_reason": None,
         }
-    _save(STATE, state)
+
+    state["risk_snapshot"]["high_water_mark"] = total
+    _save(STATE_PATH, state)
+
     if not JOURNAL.exists():
         _save(JOURNAL, {"trades": []})
 
-    print(f"Portfolio initialized: ${TOTAL:,.2f} across 3 pots")
-    for pid, (name, _) in POTS.items():
-        print(f"  Pot {pid}: {name} — {_money(POT_ALLOC[pid])}")
+    print(f"Portfolio initialized: ${total:,.2f} across {len(ACCOUNT_IDS)} accounts")
+    for acct_id in ACCOUNT_IDS:
+        acct = state["accounts"][acct_id]
+        print(f"  {acct_id}: {acct['name']} — {_money(acct['balance'])}")
     if spy:
         print(f"SPY at inception: ${spy:.2f}")
 
 
 def cmd_log(args):
     if len(args) < 4:
-        _die("Usage: trade-journal log <pot> <side> <qty> <symbol> [--price N] [--notes '...'] [--execute]")
+        _die("Usage: trade-journal log <account> <side> <qty> <symbol> [--price N] [--notes '...'] [--execute]")
 
     state = _state()
-    pot = args[0].upper()
+    account = args[0].lower()
     side = args[1].lower()
     qty = int(args[2])
     symbol = args[3].upper()
     opts = _parse_opts(args, 4)
 
-    if pot not in state["pots"]:
-        _die(f"Unknown pot '{pot}'. Use A, B, or C.")
+    if account not in state["accounts"]:
+        _die(f"Unknown account '{account}'. Use: {', '.join(ACCOUNT_IDS)}")
     if side not in ("buy", "sell"):
         _die("Side must be 'buy' or 'sell'.")
 
-    ps = state["pots"][pot]
-    if ps["halted"]:
-        _die(f"Pot {pot} halted: {ps['halt_reason']}")
+    acct = state["accounts"][account]
+    if acct["halted"]:
+        _die(f"Account {account} halted: {acct['halt_reason']}")
 
     price = opts["price"]
     if price is None:
@@ -235,23 +267,26 @@ def cmd_log(args):
             _die(f"No quote for {symbol}. Use --price to specify.")
 
     notional = qty * price
-    alloc = ps["allocation"]
+    balance = acct["balance"]
+    constraints = _get_constraints(account)
 
-    # Constraint: 15% max position size
-    if notional > alloc * MAX_POS:
-        _die(f"Position {_money(notional)} exceeds 15% of Pot {pot} ({_money(alloc * MAX_POS)})")
+    # Constraint: max position size
+    max_pos = constraints["max_position_pct"]
+    if notional > balance * max_pos:
+        _die(f"Position {_money(notional)} exceeds {max_pos*100:.0f}% of {account} ({_money(balance * max_pos)})")
 
     # Block sell if holding a long (use 'close' instead)
-    if side == "sell" and symbol in ps["positions"] and ps["positions"][symbol]["side"] == "long":
-        _die(f"{symbol} is LONG in Pot {pot} — use 'trade-journal close' to exit, not 'log sell'")
+    if side == "sell" and symbol in acct["positions"] and acct["positions"][symbol]["side"] == "long":
+        _die(f"{symbol} is LONG in {account} — use 'trade-journal close' to exit, not 'log sell'")
 
-    # Constraint: 60% max exposure (both sides)
-    exposure = _pot_exposure(ps)
-    if (exposure + notional) > alloc * MAX_EXP:
-        _die(f"Exposure {_money(exposure + notional)} exceeds 60% of Pot {pot} ({_money(alloc * MAX_EXP)})")
+    # Constraint: max exposure
+    max_exp = constraints["max_exposure_pct"]
+    exposure = _account_exposure(acct)
+    if (exposure + notional) > balance * max_exp:
+        _die(f"Exposure {_money(exposure + notional)} exceeds {max_exp*100:.0f}% of {account} ({_money(balance * max_exp)})")
 
-    if side == "buy" and notional > ps["cash"]:
-        _die(f"Insufficient cash: need {_money(notional)}, have {_money(ps['cash'])}")
+    if side == "buy" and notional > acct["cash"]:
+        _die(f"Insufficient cash: need {_money(notional)}, have {_money(acct['cash'])}")
 
     # Append to journal
     journal = _journal()
@@ -259,7 +294,7 @@ def cmd_log(args):
     journal["trades"].append({
         "id": tid,
         "timestamp": datetime.now().isoformat(),
-        "pot": pot,
+        "account": account,
         "action": "open",
         "side": side,
         "symbol": symbol,
@@ -272,32 +307,32 @@ def cmd_log(args):
 
     # Update portfolio state
     if side == "buy":
-        ps["cash"] = round(ps["cash"] - notional, 2)
-        if symbol in ps["positions"]:
-            p = ps["positions"][symbol]
+        acct["cash"] = round(acct["cash"] - notional, 2)
+        if symbol in acct["positions"]:
+            p = acct["positions"][symbol]
             old_notional = p["qty"] * p["avg_cost"]
             p["qty"] += qty
             p["avg_cost"] = round((old_notional + notional) / p["qty"], 4)
             p["current_price"] = price
         else:
-            ps["positions"][symbol] = {
+            acct["positions"][symbol] = {
                 "qty": qty, "avg_cost": round(price, 4),
                 "current_price": price, "side": "long",
             }
     else:  # sell (short)
-        ps["cash"] = round(ps["cash"] + notional, 2)
-        if symbol in ps["positions"] and ps["positions"][symbol]["side"] == "short":
-            p = ps["positions"][symbol]
+        acct["cash"] = round(acct["cash"] + notional, 2)
+        if symbol in acct["positions"] and acct["positions"][symbol]["side"] == "short":
+            p = acct["positions"][symbol]
             old_notional = p["qty"] * p["avg_cost"]
             p["qty"] += qty
             p["avg_cost"] = round((old_notional + notional) / p["qty"], 4)
             p["current_price"] = price
         else:
-            ps["positions"][symbol] = {
+            acct["positions"][symbol] = {
                 "qty": qty, "avg_cost": round(price, 4),
                 "current_price": price, "side": "short",
             }
-    _save(STATE, state)
+    _save(STATE_PATH, state)
 
     # Execute on Tradier if requested
     if opts["execute"]:
@@ -310,28 +345,28 @@ def cmd_log(args):
         else:
             print(f"Tradier FAILED: {r.stderr.strip()}")
 
-    exposure = _pot_exposure(ps)
-    print(f"[{tid}] Pot {pot}: {side} {qty} {symbol} @ ${price:.2f} ({_money(notional)})")
-    print(f"  Cash: {_money(ps['cash'])}  Exposure: {_pct(exposure / alloc * 100)}")
+    exposure = _account_exposure(acct)
+    print(f"[{tid}] {account}: {side} {qty} {symbol} @ ${price:.2f} ({_money(notional)})")
+    print(f"  Cash: {_money(acct['cash'])}  Exposure: {_pct(exposure / balance * 100)}")
 
 
 def cmd_close(args):
     if len(args) < 2:
-        _die("Usage: trade-journal close <pot> <symbol> [--qty N] [--price N] [--notes '...'] [--execute]")
+        _die("Usage: trade-journal close <account> <symbol> [--qty N] [--price N] [--notes '...'] [--execute]")
 
     state = _state()
-    pot = args[0].upper()
+    account = args[0].lower()
     symbol = args[1].upper()
     opts = _parse_opts(args, 2)
 
-    if pot not in state["pots"]:
-        _die(f"Unknown pot '{pot}'.")
+    if account not in state["accounts"]:
+        _die(f"Unknown account '{account}'.")
 
-    ps = state["pots"][pot]
-    if symbol not in ps["positions"]:
-        _die(f"No {symbol} position in Pot {pot}.")
+    acct = state["accounts"][account]
+    if symbol not in acct["positions"]:
+        _die(f"No {symbol} position in {account}.")
 
-    pos = ps["positions"][symbol]
+    pos = acct["positions"][symbol]
     close_qty = opts["qty"] or pos["qty"]
     if close_qty > pos["qty"]:
         _die(f"Can't close {close_qty} — only hold {pos['qty']}.")
@@ -358,7 +393,7 @@ def cmd_close(args):
     journal["trades"].append({
         "id": tid,
         "timestamp": datetime.now().isoformat(),
-        "pot": pot,
+        "account": account,
         "action": "close",
         "side": close_side,
         "symbol": symbol,
@@ -370,20 +405,20 @@ def cmd_close(args):
     })
     _save(JOURNAL, journal)
 
-    # Update state: return proceeds (long) or pay cover cost (short)
+    # Update state
     if pos["side"] == "long":
-        ps["cash"] = round(ps["cash"] + notional, 2)
+        acct["cash"] = round(acct["cash"] + notional, 2)
     else:
-        ps["cash"] = round(ps["cash"] - notional, 2)
+        acct["cash"] = round(acct["cash"] - notional, 2)
 
-    ps["realized_pnl"] = round(ps.get("realized_pnl", 0) + pnl, 2)
+    acct["realized_pnl"] = round(acct.get("realized_pnl", 0) + pnl, 2)
 
     if close_qty >= pos["qty"]:
-        del ps["positions"][symbol]
+        del acct["positions"][symbol]
     else:
         pos["qty"] -= close_qty
 
-    _save(STATE, state)
+    _save(STATE_PATH, state)
 
     # Execute on Tradier
     if opts["execute"]:
@@ -396,15 +431,15 @@ def cmd_close(args):
         else:
             print(f"Tradier FAILED: {r.stderr.strip()}")
 
-    print(f"[{tid}] Pot {pot}: close {close_qty} {symbol} @ ${price:.2f} — P&L: {_money(pnl)}")
-    print(f"  Cash: {_money(ps['cash'])}  Realized: {_money(ps['realized_pnl'])}")
+    print(f"[{tid}] {account}: close {close_qty} {symbol} @ ${price:.2f} — P&L: {_money(pnl)}")
+    print(f"  Cash: {_money(acct['cash'])}  Realized: {_money(acct['realized_pnl'])}")
 
 
 def cmd_mark(args):
     state = _state()
     symbols = set()
-    for ps in state["pots"].values():
-        symbols.update(ps["positions"].keys())
+    for acct in state["accounts"].values():
+        symbols.update(acct["positions"].keys())
 
     if not symbols:
         print("No positions to mark.")
@@ -419,13 +454,13 @@ def cmd_mark(args):
         else:
             failed.append(sym)
 
-    for ps in state["pots"].values():
-        for sym, pos in ps["positions"].items():
+    for acct in state["accounts"].values():
+        for sym, pos in acct["positions"].items():
             if sym in prices:
                 pos["current_price"] = prices[sym]
 
     state["last_mark"] = datetime.now().isoformat()
-    _save(STATE, state)
+    _save(STATE_PATH, state)
 
     print(f"Marked {len(prices)} positions")
     if failed:
@@ -436,45 +471,48 @@ def cmd_mark(args):
 
 def cmd_summary(args):
     state = _state()
-    pot_filter = args[0].upper() if args else None
-    if pot_filter and pot_filter not in state["pots"]:
-        _die(f"Unknown pot '{pot_filter}'.")
-    _print_summary(state, pot_filter)
+    acct_filter = args[0].lower() if args else None
+    if acct_filter and acct_filter not in state["accounts"]:
+        _die(f"Unknown account '{acct_filter}'. Use: {', '.join(ACCOUNT_IDS)}")
+    _print_summary(state, acct_filter)
 
 
-def _print_summary(state, pot_filter=None):
+def _print_summary(state, acct_filter=None):
     total_nav = 0
 
-    for pot_id in ("A", "B", "C"):
-        ps = state["pots"][pot_id]
-        if pot_filter and pot_id != pot_filter:
+    for acct_id in ACCOUNT_IDS:
+        if acct_id not in state["accounts"]:
+            continue
+        acct = state["accounts"][acct_id]
+        if acct_filter and acct_id != acct_filter:
             continue
 
         unrealized = 0
-        for pos in ps["positions"].values():
+        for pos in acct["positions"].values():
             cp = pos.get("current_price", pos["avg_cost"])
             if pos["side"] == "long":
                 unrealized += (cp - pos["avg_cost"]) * pos["qty"]
             else:
                 unrealized += (pos["avg_cost"] - cp) * pos["qty"]
 
-        realized = ps.get("realized_pnl", 0)
-        exposure = _pot_exposure(ps)
-        nav = ps["cash"] + exposure
+        realized = acct.get("realized_pnl", 0)
+        exposure = _account_exposure(acct)
+        nav = acct["cash"] + exposure
         total_nav += nav
-        ret = (nav - ps["allocation"]) / ps["allocation"] * 100
+        balance = acct["balance"]
+        ret = (nav - balance) / balance * 100 if balance else 0
 
-        halted = " [HALTED]" if ps["halted"] else ""
-        print(f"=== Pot {pot_id}: {ps['name']}{halted} ===")
+        halted = " [HALTED]" if acct.get("halted") else ""
+        print(f"=== {acct_id}: {acct['name']}{halted} ===")
         print(f"  NAV:        {_money(nav)}  ({_pct(ret)})")
-        print(f"  Cash:       {_money(ps['cash'])}")
-        print(f"  Exposure:   {_money(exposure)} ({_pct(exposure / ps['allocation'] * 100 if ps['allocation'] else 0)} of alloc)")
+        print(f"  Cash:       {_money(acct['cash'])}")
+        print(f"  Exposure:   {_money(exposure)} ({_pct(exposure / balance * 100 if balance else 0)} of balance)")
         print(f"  Realized:   {_money(realized)}")
         print(f"  Unrealized: {_money(unrealized)}")
         print(f"  Total P&L:  {_money(realized + unrealized)}")
 
-        if ps["positions"]:
-            for sym, pos in sorted(ps["positions"].items()):
+        if acct["positions"]:
+            for sym, pos in sorted(acct["positions"].items()):
                 cp = pos.get("current_price", pos["avg_cost"])
                 if pos["side"] == "long":
                     pl = (cp - pos["avg_cost"]) * pos["qty"]
@@ -483,8 +521,9 @@ def _print_summary(state, pot_filter=None):
                 print(f"    {sym:<8} {pos['qty']:>5} @ ${pos['avg_cost']:.2f} -> ${cp:.2f}  {_money(pl)}")
         print()
 
-    if not pot_filter:
-        total_ret = (total_nav - TOTAL) / TOTAL * 100
+    if not acct_filter:
+        combined = sum(a["balance"] for a in state["accounts"].values())
+        total_ret = (total_nav - combined) / combined * 100 if combined else 0
         print(f"Total NAV: {_money(total_nav)} ({_pct(total_ret)})")
         if state.get("last_mark"):
             print(f"Last mark: {state['last_mark'][:19]}")
@@ -495,27 +534,30 @@ def cmd_compare(args):
     spy_now = _quote("SPY")
     spy_inception = state.get("spy_inception_price")
 
-    print("=== Pot Comparison ===\n")
-    print(f"  {'Pot':<5} {'Strategy':<35} {'NAV':>12} {'Return':>8} {'Realized':>10} {'Unrealized':>10}")
-    print(f"  {'---':<5} {'---':<35} {'---':>12} {'---':>8} {'---':>10} {'---':>10}")
+    print("=== Account Comparison ===\n")
+    print(f"  {'Account':<10} {'Name':<25} {'NAV':>12} {'Return':>8} {'Realized':>10} {'Unrealized':>10}")
+    print(f"  {'-------':<10} {'----':<25} {'---':>12} {'---':>8} {'---':>10} {'---':>10}")
 
-    for pot_id in ("A", "B", "C"):
-        ps = state["pots"][pot_id]
-        exposure = _pot_exposure(ps)
-        nav = ps["cash"] + exposure
-        ret = (nav - ps["allocation"]) / ps["allocation"] * 100
-        realized = ps.get("realized_pnl", 0)
+    for acct_id in ACCOUNT_IDS:
+        if acct_id not in state["accounts"]:
+            continue
+        acct = state["accounts"][acct_id]
+        exposure = _account_exposure(acct)
+        nav = acct["cash"] + exposure
+        balance = acct["balance"]
+        ret = (nav - balance) / balance * 100 if balance else 0
+        realized = acct.get("realized_pnl", 0)
         unrealized = sum(
             ((p.get("current_price", p["avg_cost"]) - p["avg_cost"]) * p["qty"]
              if p["side"] == "long"
              else (p["avg_cost"] - p.get("current_price", p["avg_cost"])) * p["qty"])
-            for p in ps["positions"].values()
+            for p in acct["positions"].values()
         )
-        print(f"  {pot_id:<5} {ps['name']:<35} {_money(nav):>12} {_pct(ret):>8} {_money(realized):>10} {_money(unrealized):>10}")
+        print(f"  {acct_id:<10} {acct['name']:<25} {_money(nav):>12} {_pct(ret):>8} {_money(realized):>10} {_money(unrealized):>10}")
 
     if spy_inception and spy_now:
         spy_ret = (spy_now - spy_inception) / spy_inception * 100
-        print(f"\n  {'SPY':<5} {'Buy & hold benchmark':<35} {'':>12} {_pct(spy_ret):>8}")
+        print(f"\n  {'SPY':<10} {'Buy & hold benchmark':<25} {'':>12} {_pct(spy_ret):>8}")
         print(f"  (Inception ${spy_inception:.2f} -> Now ${spy_now:.2f})")
 
     print(f"\n  Inception: {state['inception']}")
@@ -523,22 +565,25 @@ def cmd_compare(args):
 
 def cmd_positions(args):
     state = _state()
-    pot_filter = args[0].upper() if args else None
+    acct_filter = args[0].lower() if args else None
     found = False
 
-    for pot_id in ("A", "B", "C"):
-        ps = state["pots"][pot_id]
-        if pot_filter and pot_id != pot_filter:
+    for acct_id in ACCOUNT_IDS:
+        if acct_id not in state["accounts"]:
             continue
-        if not ps["positions"]:
+        acct = state["accounts"][acct_id]
+        if acct_filter and acct_id != acct_filter:
+            continue
+        if not acct["positions"]:
             continue
 
         found = True
-        print(f"=== Pot {pot_id}: {ps['name']} ===")
-        print(f"  {'Symbol':<8} {'Side':<5} {'Qty':>5} {'Avg':>10} {'Current':>10} {'P&L':>10} {'P&L%':>7} {'%Pot':>7}")
-        print(f"  {'------':<8} {'----':<5} {'---':>5} {'---':>10} {'-------':>10} {'---':>10} {'----':>7} {'----':>7}")
+        balance = acct["balance"]
+        print(f"=== {acct_id}: {acct['name']} ===")
+        print(f"  {'Symbol':<8} {'Side':<5} {'Qty':>5} {'Avg':>10} {'Current':>10} {'P&L':>10} {'P&L%':>7} {'%Acct':>7}")
+        print(f"  {'------':<8} {'----':<5} {'---':>5} {'---':>10} {'-------':>10} {'---':>10} {'----':>7} {'-----':>7}")
 
-        for sym, pos in sorted(ps["positions"].items()):
+        for sym, pos in sorted(acct["positions"].items()):
             cp = pos.get("current_price", pos["avg_cost"])
             if pos["side"] == "long":
                 pl = (cp - pos["avg_cost"]) * pos["qty"]
@@ -546,8 +591,8 @@ def cmd_positions(args):
                 pl = (pos["avg_cost"] - cp) * pos["qty"]
             cost = pos["avg_cost"] * pos["qty"]
             pl_pct = (pl / cost * 100) if cost else 0
-            pot_pct = (pos["qty"] * cp) / ps["allocation"] * 100
-            print(f"  {sym:<8} {pos['side']:<5} {pos['qty']:>5} ${pos['avg_cost']:>9.2f} ${cp:>9.2f} {_money(pl):>10} {_pct(pl_pct):>7} {_pct(pot_pct):>7}")
+            acct_pct = (pos["qty"] * cp) / balance * 100 if balance else 0
+            print(f"  {sym:<8} {pos['side']:<5} {pos['qty']:>5} ${pos['avg_cost']:>9.2f} ${cp:>9.2f} {_money(pl):>10} {_pct(pl_pct):>7} {_pct(acct_pct):>7}")
         print()
 
     if not found:
@@ -557,10 +602,10 @@ def cmd_positions(args):
 def cmd_reconcile(args):
     state = _state()
 
-    # Sum journal positions across all pots
+    # Sum journal positions across all accounts
     journal_totals = {}
-    for ps in state["pots"].values():
-        for sym, pos in ps["positions"].items():
+    for acct in state["accounts"].values():
+        for sym, pos in acct["positions"].items():
             journal_totals.setdefault(sym, 0)
             if pos["side"] == "long":
                 journal_totals[sym] += pos["qty"]
@@ -604,34 +649,34 @@ def cmd_reconcile(args):
 
 def cmd_halt(args):
     if len(args) < 2:
-        _die("Usage: trade-journal halt <pot> <reason>")
+        _die("Usage: trade-journal halt <account> <reason>")
 
     state = _state()
-    pot = args[0].upper()
+    account = args[0].lower()
     reason = " ".join(args[1:])
 
-    if pot not in state["pots"]:
-        _die(f"Unknown pot '{pot}'.")
+    if account not in state["accounts"]:
+        _die(f"Unknown account '{account}'. Use: {', '.join(ACCOUNT_IDS)}")
 
-    state["pots"][pot]["halted"] = True
-    state["pots"][pot]["halt_reason"] = reason
-    _save(STATE, state)
-    print(f"Pot {pot} halted: {reason}")
+    state["accounts"][account]["halted"] = True
+    state["accounts"][account]["halt_reason"] = reason
+    _save(STATE_PATH, state)
+    print(f"Account {account} halted: {reason}")
 
 
 def cmd_unhalt(args):
     if not args:
-        _die("Usage: trade-journal unhalt <pot>")
+        _die("Usage: trade-journal unhalt <account>")
 
     state = _state()
-    pot = args[0].upper()
-    if pot not in state["pots"]:
-        _die(f"Unknown pot '{pot}'.")
+    account = args[0].lower()
+    if account not in state["accounts"]:
+        _die(f"Unknown account '{account}'. Use: {', '.join(ACCOUNT_IDS)}")
 
-    state["pots"][pot]["halted"] = False
-    state["pots"][pot]["halt_reason"] = None
-    _save(STATE, state)
-    print(f"Pot {pot} resumed.")
+    state["accounts"][account]["halted"] = False
+    state["accounts"][account]["halt_reason"] = None
+    _save(STATE_PATH, state)
+    print(f"Account {account} resumed.")
 
 
 # --- Main ---
