@@ -60,6 +60,77 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
   const engineDir = join(deployDir, "engine");
   const report = progress(onProgress);
 
+  // ── Step 0: Auto-detect and execute missing lifecycle steps ─────────────
+  // Makes `clawhq up` a single command that handles everything:
+  // not installed → install. not built → build. then deploy.
+  // Init (wizard) cannot be auto-run — it's interactive.
+
+  if (!options.skipPreflight) {
+    // Check 1: Is ClawHQ installed (directories + clawhq.yaml)?
+    if (!existsSync(join(deployDir, "clawhq.yaml"))) {
+      report("auto-install", "running", "Platform not installed — running install…");
+      try {
+        const { install } = await import("../installer/index.js");
+        const installResult = await install({ deployDir });
+        if (!installResult.success) {
+          report("auto-install", "failed", `Install failed: ${installResult.error ?? "unknown error"}`);
+          return { success: false, preflight: null, healthy: false, error: `Auto-install failed: ${installResult.error}` };
+        }
+        report("auto-install", "done", "Platform installed");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        report("auto-install", "failed", msg);
+        return { success: false, preflight: null, healthy: false, error: `Auto-install failed: ${msg}` };
+      }
+    }
+
+    // Check 2: Is config initialized (openclaw.json exists)?
+    if (!existsSync(join(engineDir, "openclaw.json"))) {
+      report("preflight", "failed", "Agent not configured — run `clawhq init --guided` first");
+      return {
+        success: false,
+        preflight: null,
+        healthy: false,
+        error: "No agent config found. Run: clawhq init --guided (or clawhq quickstart)",
+      };
+    }
+
+    // Check 3: Is the Docker image built?
+    const manifest = await readManifest(deployDir);
+    if (!manifest?.imageTag) {
+      report("auto-build", "running", "No build manifest — running build…");
+      try {
+        const { build } = await import("../docker/index.js");
+        const { scanWorkspaceManifest } = await import("../../design/configure/generate.js");
+        const { getRequiredBinaries } = await import("../docker/index.js");
+
+        const posture = readCurrentPosture(deployDir) ?? DEFAULT_POSTURE;
+        const workspace = scanWorkspaceManifest(deployDir);
+        const buildResult = await build({
+          deployDir,
+          stage1: { baseImage: "node:24-slim", aptPackages: [] },
+          stage2: {
+            binaries: getRequiredBinaries(deployDir),
+            workspaceTools: [],
+            skills: [],
+            workspace,
+          },
+          posture,
+        });
+
+        if (!buildResult.success) {
+          report("auto-build", "failed", `Build failed: ${buildResult.error}`);
+          return { success: false, preflight: null, healthy: false, error: `Auto-build failed: ${buildResult.error}` };
+        }
+        report("auto-build", "done", `Image built: ${buildResult.manifest?.imageTag ?? "openclaw:custom"}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        report("auto-build", "failed", msg);
+        return { success: false, preflight: null, healthy: false, error: `Auto-build failed: ${msg}` };
+      }
+    }
+  }
+
   // ── Step 1: Preflight ──────────────────────────────────────────────────
 
   if (!options.skipPreflight) {

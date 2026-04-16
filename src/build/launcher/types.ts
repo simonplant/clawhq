@@ -46,6 +46,8 @@ export interface PreflightReport {
 
 /** Named steps in the deploy sequence, reported via progress callback. */
 export type DeployStepName =
+  | "auto-install"
+  | "auto-build"
   | "preflight"
   | "compose-up"
   | "identity-lock"

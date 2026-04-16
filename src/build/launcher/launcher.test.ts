@@ -23,6 +23,8 @@ beforeEach(async () => {
   testDir = join(tmpdir(), `clawhq-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   await mkdir(join(testDir, "engine"), { recursive: true });
   await mkdir(join(testDir, "ops", "firewall"), { recursive: true });
+  // Write clawhq.yaml so auto-install detection is satisfied
+  await writeFile(join(testDir, "clawhq.yaml"), "version: 0.1.0\ninstallMethod: cache\n");
 });
 
 afterEach(async () => {
@@ -270,7 +272,7 @@ describe("firewall", () => {
 // ── Deploy Orchestrator Tests ───────────────────────────────────────────────
 
 describe("deploy", () => {
-  it("fails with actionable error on preflight failure", async () => {
+  it("fails with actionable error when not initialized", async () => {
     const progress: DeployProgress[] = [];
 
     const result = await deploy({
@@ -281,14 +283,11 @@ describe("deploy", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
-    expect(result.error).toContain("Preflight failed");
-
-    // Progress was reported
-    const preflightEvents = progress.filter((p) => p.step === "preflight");
-    expect(preflightEvents.length).toBeGreaterThanOrEqual(1);
+    // Auto-detect catches missing openclaw.json before preflight
+    expect(result.error).toContain("clawhq init");
   });
 
-  it("reports progress for each step", async () => {
+  it("reports progress through auto-detect", async () => {
     const progress: DeployProgress[] = [];
 
     await deploy({
@@ -297,8 +296,7 @@ describe("deploy", () => {
       onProgress: (p) => progress.push(p),
     });
 
-    // At minimum, preflight running + failed
-    expect(progress.some((p) => p.step === "preflight" && p.status === "running")).toBe(true);
+    // Should have a preflight failed event (no config)
     expect(progress.some((p) => p.step === "preflight" && p.status === "failed")).toBe(true);
   });
 
