@@ -72,14 +72,31 @@ Review signals delivered to Simon today:
 - DP VTF signals (if any): how did those ideas perform across accounts?
 - Mancini setups (if any): how did those ideas perform across accounts?
 
-### 8. Journal Summary
+### 8. Score Today's Orders
+
+For each ORDER block from today's brief, score the outcome:
+```
+track-record score <order_id> <WIN|LOSS|SCRATCH|OPEN> --pnl <dollars> --notes "..."
+```
+
+Order ID format: `source-setup-conviction-ticker-date` (e.g., `mancini-FB-HIGH-SPY-20260415`).
+
+Scoring rules:
+- **WIN** — price hit T1 or better during the session
+- **LOSS** — price hit stop during the session
+- **SCRATCH** — closed near breakeven (<0.5% move)
+- **OPEN** — still active, not yet resolved (carry to tomorrow)
+
+After scoring, run `track-record stats` to see rolling performance. Include the stats summary in the EOD report.
+
+### 9. Journal Summary
 
 ```
 journal summary
 ```
 Count: signals received, risk checks run, orders placed, fills, governor blocks. This is the audit trail.
 
-### 9. Produce EOD Report
+### 10. Produce EOD Report
 
 One message:
 

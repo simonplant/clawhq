@@ -84,6 +84,10 @@ tools:
     category: trading
     description: "Price monitor — polls every 30s via system cron, compares vs ORDER levels, writes alerts for heartbeat"
     required: false
+  - name: track-record
+    category: trading
+    description: "ORDER outcome tracking — score WIN/LOSS/SCRATCH, rolling stats per source × setup × conviction"
+    required: false
 
 skills:
   - morning-brief

@@ -27,67 +27,62 @@ Phase 1 (RESEARCH) crons have been filling `memory/trading-YYYY-MM-DD.md` since 
 
 ## Procedure
 
-1. **Read today's brief.** Open `memory/trading-YYYY-MM-DD.md`. Note which sections are filled vs pending.
+Simon has ~20 minutes (6:00-6:20 AM) to read, decide, and place orders. The brief is structured for speed: regime → portfolio → trades → context.
 
-2. **Fill Market Context.** Fetch current data (use tradier for real-time):
+### Phase A: Assess (what's the environment?)
+
+1. **Regime detection.** Run `ta regime`. This returns the market regime (TRENDING/CHOPPY/VOLATILE/CRISIS) with sizing rules and per-account guidance. The regime determines everything that follows — sizing, trade types, number of ideas.
+
+2. **Calendar risk.** Run `earnings today` + `earnings check` for watchlist + `earnings economic --days 2`. Flag any market-moving events (FOMC, CPI, earnings on held positions). FOMC/CPI days → force VOLATILE regime regardless of VIX.
+
+### Phase B: Portfolio (what do I hold right now?)
+
+3. **Current positions.** Run `trade-journal positions` for each account. Present:
    ```
-   tradier quote ES=F NQ=F YM=F CL=F GC=F
+   PORTFOLIO
+   tos:     NVDA 100sh @ $118.50 (+$280, +2.4%) | SPY 50sh @ $695 (+$247) | Cash: $82K | Exp: 18%
+   ira:     META 30sh @ $655 (+$497) | AAPL 40sh @ $258 (+$337) | Cash: $73K | Exp: 26%
+   tradier: flat | Cash: $3K
    ```
-   Add VIX and TNX if available. Capture: futures price, overnight change, direction.
+   This is the first thing Simon sees. He knows where he stands before reading any trade ideas.
 
-3. **Fill Calendar Risk.** Check for:
-   - Earnings reports today (for watchlist names)
-   - FOMC, CPI, NFP, other economic events
-   - Fed speeches, options expiration
-   - If `earnings` tool available: `earnings today` + `earnings check` for watchlist
-   - If no earnings tool: note what's known from overnight intelligence
+4. **Position alerts.** For any open position approaching stop or target (from market-monitor alerts), flag it: "NVDA approaching T1 ($125) — consider scaling 75%."
 
-4. **Check section completeness.** Note what's available:
-   - Mancini: present / missing
-   - Focus 25: present / missing
-   - DP: present / pending (typical — Simon hasn't pasted yet)
-   - Overnight: present / empty
+### Phase C: Today's Trades (what should I do?)
 
-5. **Cross-reference sources.** When multiple sections are filled:
-   - **Alignment:** "DP and Mancini both watching ES [level] zone" → higher confidence
-   - **Divergence:** "DP bearish but Mancini sees FB setup for longs at [level]" → caution
-   - **Focus 25 overlap:** RS leaders appearing in DP watchlist → potential thesis
-   - **Overnight confirmation:** X-scan findings that reinforce or contradict brief levels
+5. **Read today's brief.** Open `memory/trading-YYYY-MM-DD.md`. Note which sections are filled vs pending.
 
-6. **Detect confluence/divergence.** Compare ORDER blocks across sources:
-   - Same ticker + aligned direction + overlapping level zone → merge into single ORDER with `confluence: DP+MANCINI` (or other combination)
-   - Same ticker + opposing direction → keep both ORDERs with `confluence: divergence: [see ORDER N]`. Simon decides.
+6. **Cross-reference sources.** When multiple sections are filled:
+   - Same ticker + aligned direction → merge ORDER with `confluence: DP+MANCINI`
+   - Same ticker + opposing direction → keep both with `divergence` flag. Simon decides.
 
-7. **Cross-account exposure check.** Before finalizing ideas, check: if the same ticker appears in ORDER blocks for multiple accounts, calculate total dollar exposure across all accounts. Per CONFIG.json `cross_account_risk`: max 10% of combined capital ($20,300) in any single name. If exceeded, flag: "NVDA total exposure across tos+ira would be $20K (9.9%) — at limit." Reduce sizing or drop from lower-priority accounts.
+7. **Cross-account exposure check.** If same ticker across multiple accounts exceeds 10% of combined capital ($20,300), flag and reduce.
 
-8. **Synthesize Ranked Trade Ideas.** Read all ORDER blocks from filled sections. Rank by:
-   - **Confirmation** (CONFIRMED > PENDING_TA — all Phase 2 blocks are PENDING_TA)
-   - **Confluence** (multi-source aligned > single source)
-   - **Conviction level** (HIGH > MEDIUM)
-   - **Risk/reward** (best R:R at top)
+8. **Synthesize and rank.** Read all ORDER blocks. Apply regime sizing (from step 1). Rank by:
+   - **Regime-adjusted conviction** (HIGH in TRENDING = full size. HIGH in CHOPPY = half size.)
+   - **Confluence** (multi-source > single source)
+   - **Risk/reward**
 
-   **Max 5 trade ideas.** If more than 5 pass conviction filtering, keep the top 5. Cash is always a valid position. Over-trading destroys returns.
+   **Max 5 trade ideas.** Cash is always a valid position.
 
-   Brief header must include: "Orders are watch-list signals with confirmation: PENDING_TA until TA enrichment is available."
-
-   For each ranked idea, produce an order-ready signal:
+   For each idea, produce order-ready output sized per account:
    ```
-   #1  [Symbol] [Direction] @ [Level] — [Conviction: HIGH/MED] [Trade type]
-       LIMIT: [buy/sell] [price]
-       Stop: [level]  Targets: [T1, T2]
-       Risk: $[amount] per share x [qty] = $[total] ([pct]% of account)
-       DP says: "[exact quote]" (if DP section available)
-       Sources: [DP / Mancini / Both aligned / Focus 25 RS]
+   #1  BUY SPY @ $695 — Mancini FB, HIGH conviction [TRENDING → full size]
+       tos: 50 shares ($34,750). Stop $690, T1 $705, T2 $710. Risk $250.
+       ira: 50 shares ($34,750). Stop $690, T1 $705, T2 $710. Risk $250.
+       tradier: SKIP (SPY $700 > max_share_price $150)
+       Sources: Mancini + DP aligned. Confluence: DP+MANCINI.
    ```
 
-   If conviction isn't high enough for a specific LIMIT price → WATCH list, not trade idea.
+### Phase D: Context (if Simon wants more)
 
-7. **Check account status.** Run `trade-journal positions`:
-   - tos ($100K TOS): current positions or "flat" — full capability
-   - ira ($100K Fidelity IRA): current positions or "flat" — long-only, no margin
-   - tradier ($3K Tradier): current positions or "flat" — Clawdius's own, alert-only
-   - Any positions near stops or targets
-   - Exposure levels per account
+9. **Market context.** Futures, overnight moves, VIX/oil/bonds.
+
+10. **Overnight intelligence.** Batched X findings, news — high-signal items only.
+
+11. **Key levels.** Unified level grid from Mancini + DP + Focus 25.
+
+12. **Source status.** Mancini [Y/N] | Focus 25 [Y/N] | DP [pending] | Overnight [Y/N]
 
 8. **Deliver the brief.** One message in this format:
 

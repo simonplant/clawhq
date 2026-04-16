@@ -13,6 +13,7 @@ Usage:
   ta rvol <symbol> [--period 20]                     — Relative volume vs average
   ta full <symbol> [--days 250]                      — All indicators
   ta levels <symbol> [--days 250]                    — Key MA levels for DP-style analysis
+  ta regime                                          — Market regime (VIX + breadth + trend → sizing rules)
 
 Examples:
   ta ma SPY --periods 8,21,200
@@ -453,6 +454,113 @@ def cmd_levels(symbol, days=250):
         print(f"RVOL(20): {rv:.1f}x [{flag}]")
 
 
+def cmd_regime(days=60):
+    """Assess market regime from VIX, breadth (SPY RSI as proxy), and volatility."""
+    # Fetch VIX
+    vix_bars = fetch_bars("^VIX", min(days, 30))
+    vix_current = float(vix_bars[-1]["close"]) if vix_bars else None
+
+    # VIX term structure proxy: current vs 20-day SMA
+    vix_closes = [float(b["close"]) for b in vix_bars] if vix_bars else []
+    vix_sma20 = sma(vix_closes, 20) if len(vix_closes) >= 20 else None
+    vix_elevated = vix_sma20 and vix_current and vix_current > vix_sma20 * 1.1
+
+    # SPY for breadth/trend proxy
+    spy_bars = fetch_bars("SPY", days)
+    spy_closes = [float(b["close"]) for b in spy_bars]
+    spy_current = spy_closes[-1]
+    spy_rsi = calc_rsi(spy_closes, 14)
+    spy_atr = calc_atr(spy_bars, 14)
+    spy_atr_pct = (spy_atr / spy_current * 100) if spy_atr and spy_current > 0 else None
+
+    # SPY trend: above or below 50-day MA
+    spy_50d = sma(spy_closes, 50)
+    above_50d = spy_current > spy_50d if spy_50d else None
+
+    # Classify regime
+    regime = "UNKNOWN"
+    sizing = "normal"
+    playbook = ""
+
+    if vix_current is not None:
+        if vix_current > 35:
+            regime = "CRISIS"
+            sizing = "cash"
+            playbook = "No new positions. Defensive only. All accounts reduce to 20% max exposure. Protect capital."
+        elif vix_current > 25:
+            regime = "VOLATILE"
+            sizing = "quarter"
+            playbook = "Quarter size only. Mancini FB setups preferred (edge in volatility). TOS scalps only. IRA cash or hedged."
+        elif vix_current > 18:
+            regime = "CHOPPY"
+            sizing = "half"
+            playbook = "Half size. Day trades and quick swings. Lock T1 fast (75% off at first level). IRA: investment entries only at major levels."
+        else:
+            regime = "TRENDING"
+            sizing = "full"
+            playbook = "Full size. Swing holds. Let runners run. All accounts active. Best environment for DP core positions."
+
+    # Override: if VIX is low but SPY below 50d, it's a stealth decline
+    if regime == "TRENDING" and above_50d is False:
+        regime = "CHOPPY"
+        sizing = "half"
+        playbook = "Half size. VIX calm but SPY below 50-day — trend weakening. Selective entries only."
+
+    # Override: crisis + VIX declining from peak = recovery candidate
+    if regime == "VOLATILE" and vix_elevated is False and above_50d:
+        playbook += " VIX declining from elevated — potential regime transition to CHOPPY. Watch for FB setups."
+
+    print(f"=== MARKET REGIME ===")
+    print()
+    print(f"Regime:    {regime}")
+    print(f"Sizing:    {sizing}")
+    print()
+
+    if vix_current is not None:
+        vix_zone = "CRISIS" if vix_current > 35 else "HIGH" if vix_current > 25 else "ELEVATED" if vix_current > 18 else "LOW"
+        vix_vs_avg = ""
+        if vix_sma20:
+            vix_vs_avg = f" (20d avg: {vix_sma20:.1f}, {'above' if vix_current > vix_sma20 else 'below'})"
+        print(f"VIX:       {vix_current:.2f} [{vix_zone}]{vix_vs_avg}")
+
+    if spy_rsi is not None:
+        rsi_zone = "OVERBOUGHT" if spy_rsi > 70 else "OVERSOLD" if spy_rsi < 30 else "neutral"
+        print(f"SPY RSI:   {spy_rsi:.1f} [{rsi_zone}]")
+
+    if spy_atr_pct is not None:
+        print(f"SPY ATR:   {spy_atr_pct:.1f}% daily range")
+
+    if spy_50d is not None:
+        trend = "ABOVE" if spy_current > spy_50d else "BELOW"
+        dist = (spy_current - spy_50d) / spy_50d * 100
+        print(f"SPY 50d:   ${spy_50d:.2f} ({trend}, {dist:+.1f}%)")
+
+    print()
+    print(f"Playbook:  {playbook}")
+    print()
+
+    # Account-specific guidance
+    print("Account guidance:")
+    if regime == "CRISIS":
+        print("  tos:     Reduce to 20% exposure. Close day trades. Hold only core swings with tight stops.")
+        print("  ira:     Move to 50%+ cash. Hold only long-term conviction positions.")
+        print("  tradier: FLAT. No new trades until regime changes.")
+    elif regime == "VOLATILE":
+        print("  tos:     Quarter size. Mancini FB only. Scalps OK with tight stops.")
+        print("  ira:     No new positions. Hold existing with wider stops. Consider hedges (long puts).")
+        print("  tradier: Swing entries only at major levels. Max 1 new position.")
+    elif regime == "CHOPPY":
+        print("  tos:     Half size. Day trades and quick swings. Lock profits fast.")
+        print("  ira:     Investment entries at major MAs only. No day trades.")
+        print("  tradier: Selective. 1-2 swing positions max.")
+    else:  # TRENDING
+        print("  tos:     Full size. Swing holds. Let runners run. DP core positions.")
+        print("  ira:     Full allocation. Quality names at key MAs. Build positions.")
+        print("  tradier: Active. Follow best ideas at reduced size.")
+
+    return {"regime": regime, "sizing": sizing, "vix": vix_current, "spy_rsi": spy_rsi}
+
+
 def cmd_full(symbol, days=250):
     """Run all indicators."""
     cmd_levels(symbol, days)
@@ -504,6 +612,12 @@ def main():
 
     if cmd in ("help", "--help", "-h"):
         _help()
+
+    # regime doesn't need a symbol
+    if cmd == "regime":
+        days = int(opts.get("days", 60))
+        cmd_regime(days)
+        sys.exit(0)
 
     symbol = positional[0].upper() if positional else None
     if not symbol:

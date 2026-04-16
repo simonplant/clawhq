@@ -1,0 +1,313 @@
+#!/usr/bin/env python3
+"""track-record — ORDER outcome tracking and performance stats.
+
+Logs ORDER outcomes (WIN/LOSS/SCRATCH) and computes rolling stats
+per source × setup type × conviction. Used by EOD review to score
+the day's orders, and by premarket-brief to weight ideas by track record.
+
+Usage:
+  track-record score <order_id> <outcome> [--pnl N] [--notes '...']
+                                          — score an ORDER (WIN/LOSS/SCRATCH/OPEN)
+  track-record stats [--source X] [--days N]  — rolling performance stats
+  track-record best [--days 30]               — best performing source × setup combos
+  track-record worst [--days 30]              — worst performing (candidates to cut)
+  track-record today                          — today's scored and unscored orders
+
+Outcomes:
+  WIN     — hit T1 or better
+  LOSS    — hit stop
+  SCRATCH — closed near breakeven (< 0.5% move)
+  OPEN    — still active, not yet resolved
+
+Environment:
+  WORKSPACE_DIR  — workspace root (default: ~/.openclaw/workspace)
+"""
+
+import json
+import os
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+WORKSPACE = Path(os.environ.get("WORKSPACE_DIR",
+    os.path.join(os.environ.get("HOME", "/home/node"), ".openclaw", "workspace")))
+RECORD_FILE = WORKSPACE / "state" / "track-record.jsonl"
+
+
+def _load_records(days=None):
+    """Load all records, optionally filtered to last N days."""
+    if not RECORD_FILE.exists():
+        return []
+    records = []
+    cutoff = None
+    if days:
+        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    for line in RECORD_FILE.read_text().strip().split("\n"):
+        if not line:
+            continue
+        try:
+            r = json.loads(line)
+            if cutoff and r.get("date", "") < cutoff:
+                continue
+            records.append(r)
+        except Exception:
+            continue
+    return records
+
+
+def _append_record(record):
+    """Append a record to the JSONL file."""
+    RECORD_FILE.parent.mkdir(parents=True, exist_ok=True)
+    record["date"] = datetime.now().strftime("%Y-%m-%d")
+    record["time"] = datetime.now().strftime("%H:%M:%S")
+    with open(RECORD_FILE, "a") as f:
+        f.write(json.dumps(record) + "\n")
+
+
+# --- Commands ---
+
+def cmd_score(order_id, outcome, pnl=None, notes=None):
+    """Score an ORDER outcome."""
+    outcome = outcome.upper()
+    if outcome not in ("WIN", "LOSS", "SCRATCH", "OPEN"):
+        print(f"Error: outcome must be WIN, LOSS, SCRATCH, or OPEN", file=sys.stderr)
+        sys.exit(1)
+
+    record = {
+        "order_id": order_id,
+        "outcome": outcome,
+    }
+    if pnl is not None:
+        record["pnl"] = float(pnl)
+    if notes:
+        record["notes"] = notes
+
+    # Try to extract source/setup/conviction from the order_id format
+    # Expected format: "mancini-FB-HIGH-SPY-20260415" or similar
+    parts = order_id.split("-")
+    if len(parts) >= 3:
+        record["source"] = parts[0]
+        record["setup"] = parts[1]
+        record["conviction"] = parts[2]
+    if len(parts) >= 4:
+        record["ticker"] = parts[3]
+
+    _append_record(record)
+    print(f"Scored: {order_id} → {outcome}" + (f" (${pnl:+.2f})" if pnl else ""))
+
+
+def cmd_stats(source=None, days=30):
+    """Rolling performance stats."""
+    records = _load_records(days)
+    if not records:
+        print(f"No records in last {days} days.")
+        return
+
+    # Filter by source if specified
+    if source:
+        records = [r for r in records if r.get("source", "").lower() == source.lower()]
+
+    # Group by source × setup
+    groups = {}
+    for r in records:
+        key = f"{r.get('source', '?')} | {r.get('setup', '?')}"
+        if key not in groups:
+            groups[key] = {"wins": 0, "losses": 0, "scratches": 0, "open": 0, "total_pnl": 0}
+        g = groups[key]
+        outcome = r.get("outcome", "OPEN")
+        if outcome == "WIN":
+            g["wins"] += 1
+        elif outcome == "LOSS":
+            g["losses"] += 1
+        elif outcome == "SCRATCH":
+            g["scratches"] += 1
+        else:
+            g["open"] += 1
+        g["total_pnl"] += r.get("pnl", 0)
+
+    total_r = len(records)
+    total_wins = sum(g["wins"] for g in groups.values())
+    total_losses = sum(g["losses"] for g in groups.values())
+    resolved = total_wins + total_losses + sum(g["scratches"] for g in groups.values())
+    total_pnl = sum(g["total_pnl"] for g in groups.values())
+
+    print(f"=== Track Record ({days} days, {total_r} orders) ===")
+    print(f"Overall: {total_wins}W / {total_losses}L" +
+          (f" ({total_wins/resolved*100:.0f}% win rate)" if resolved > 0 else "") +
+          f" | P&L: ${total_pnl:+,.2f}")
+    print()
+
+    print(f"{'Source | Setup':30} {'W':>4} {'L':>4} {'S':>4} {'Rate':>7} {'P&L':>10}")
+    print(f"{'-'*30} {'--':>4} {'--':>4} {'--':>4} {'----':>7} {'---':>10}")
+
+    for key in sorted(groups.keys()):
+        g = groups[key]
+        resolved_g = g["wins"] + g["losses"] + g["scratches"]
+        rate = f"{g['wins']/resolved_g*100:.0f}%" if resolved_g > 0 else "N/A"
+        print(f"{key:30} {g['wins']:>4} {g['losses']:>4} {g['scratches']:>4} {rate:>7} ${g['total_pnl']:>+9,.2f}")
+
+
+def cmd_best(days=30):
+    """Best performing source × setup combos."""
+    records = _load_records(days)
+    if not records:
+        print(f"No records in last {days} days.")
+        return
+
+    groups = {}
+    for r in records:
+        key = f"{r.get('source', '?')} | {r.get('setup', '?')} | {r.get('conviction', '?')}"
+        if key not in groups:
+            groups[key] = {"wins": 0, "losses": 0, "total": 0, "pnl": 0}
+        g = groups[key]
+        outcome = r.get("outcome", "OPEN")
+        if outcome in ("WIN", "LOSS", "SCRATCH"):
+            g["total"] += 1
+        if outcome == "WIN":
+            g["wins"] += 1
+        elif outcome == "LOSS":
+            g["losses"] += 1
+        g["pnl"] += r.get("pnl", 0)
+
+    # Sort by win rate (min 3 trades)
+    ranked = []
+    for key, g in groups.items():
+        if g["total"] >= 3:
+            rate = g["wins"] / g["total"] * 100
+            ranked.append((key, rate, g))
+    ranked.sort(key=lambda x: (-x[1], -x[2]["pnl"]))
+
+    print(f"=== Best Setups ({days} days, min 3 trades) ===")
+    print()
+    for key, rate, g in ranked[:5]:
+        print(f"  {rate:.0f}% win rate — {key} ({g['wins']}W/{g['losses']}L, ${g['pnl']:+,.2f})")
+
+
+def cmd_worst(days=30):
+    """Worst performing — candidates to cut."""
+    records = _load_records(days)
+    if not records:
+        print(f"No records in last {days} days.")
+        return
+
+    groups = {}
+    for r in records:
+        key = f"{r.get('source', '?')} | {r.get('setup', '?')} | {r.get('conviction', '?')}"
+        if key not in groups:
+            groups[key] = {"wins": 0, "losses": 0, "total": 0, "pnl": 0}
+        g = groups[key]
+        outcome = r.get("outcome", "OPEN")
+        if outcome in ("WIN", "LOSS", "SCRATCH"):
+            g["total"] += 1
+        if outcome == "WIN":
+            g["wins"] += 1
+        elif outcome == "LOSS":
+            g["losses"] += 1
+        g["pnl"] += r.get("pnl", 0)
+
+    ranked = []
+    for key, g in groups.items():
+        if g["total"] >= 3:
+            rate = g["wins"] / g["total"] * 100
+            ranked.append((key, rate, g))
+    ranked.sort(key=lambda x: (x[1], x[2]["pnl"]))
+
+    print(f"=== Worst Setups ({days} days, min 3 trades) — candidates to cut ===")
+    print()
+    for key, rate, g in ranked[:5]:
+        flag = "CUT" if rate < 35 else "REVIEW"
+        print(f"  [{flag}] {rate:.0f}% win rate — {key} ({g['wins']}W/{g['losses']}L, ${g['pnl']:+,.2f})")
+
+
+def cmd_today():
+    """Show today's scored and unscored orders."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    records = [r for r in _load_records() if r.get("date") == today]
+
+    if not records:
+        print("No orders scored today.")
+        return
+
+    scored = [r for r in records if r.get("outcome") != "OPEN"]
+    unscored = [r for r in records if r.get("outcome") == "OPEN"]
+
+    if scored:
+        print(f"=== Scored Today ({len(scored)}) ===")
+        for r in scored:
+            pnl = f" ${r['pnl']:+.2f}" if "pnl" in r else ""
+            print(f"  {r['order_id']}: {r['outcome']}{pnl}")
+
+    if unscored:
+        print(f"\n=== Unscored ({len(unscored)}) ===")
+        for r in unscored:
+            print(f"  {r['order_id']}: OPEN — needs scoring at EOD")
+
+
+# --- CLI ---
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__.strip())
+        sys.exit(0)
+
+    cmd = sys.argv[1]
+
+    if cmd in ("help", "--help", "-h"):
+        print(__doc__.strip())
+        sys.exit(0)
+    elif cmd == "score":
+        if len(sys.argv) < 4:
+            print("Usage: track-record score <order_id> <WIN|LOSS|SCRATCH|OPEN> [--pnl N] [--notes '...']")
+            sys.exit(1)
+        order_id = sys.argv[2]
+        outcome = sys.argv[3]
+        pnl = None
+        notes = None
+        i = 4
+        while i < len(sys.argv):
+            if sys.argv[i] == "--pnl" and i + 1 < len(sys.argv):
+                pnl = float(sys.argv[i + 1])
+                i += 2
+            elif sys.argv[i] == "--notes" and i + 1 < len(sys.argv):
+                notes = sys.argv[i + 1]
+                i += 2
+            else:
+                i += 1
+        cmd_score(order_id, outcome, pnl, notes)
+    elif cmd == "stats":
+        source = None
+        days = 30
+        i = 2
+        while i < len(sys.argv):
+            if sys.argv[i] == "--source" and i + 1 < len(sys.argv):
+                source = sys.argv[i + 1]
+                i += 2
+            elif sys.argv[i] == "--days" and i + 1 < len(sys.argv):
+                days = int(sys.argv[i + 1])
+                i += 2
+            else:
+                i += 1
+        cmd_stats(source, days)
+    elif cmd == "best":
+        days = 30
+        if "--days" in sys.argv:
+            idx = sys.argv.index("--days")
+            if idx + 1 < len(sys.argv):
+                days = int(sys.argv[idx + 1])
+        cmd_best(days)
+    elif cmd == "worst":
+        days = 30
+        if "--days" in sys.argv:
+            idx = sys.argv.index("--days")
+            if idx + 1 < len(sys.argv):
+                days = int(sys.argv[idx + 1])
+        cmd_worst(days)
+    elif cmd == "today":
+        cmd_today()
+    else:
+        print(f"Unknown command: {cmd}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
