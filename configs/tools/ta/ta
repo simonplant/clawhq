@@ -30,18 +30,61 @@ import subprocess
 import sys
 from math import sqrt
 
+# --- Cache ---
+
+CACHE_DIR = "/tmp/ta_cache"
+
+
+def _cache_path(symbol, days):
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+    return os.path.join(CACHE_DIR, f"{symbol}_{days}d_{today}.json")
+
+
+def _cache_read(symbol, days):
+    """Return cached bars if fresh, else None."""
+    path = _cache_path(symbol, days)
+    if not os.path.exists(path):
+        return None
+    try:
+        mtime = os.path.getmtime(path)
+        import time
+        age = time.time() - mtime
+        # Daily bars: cache valid for 4 hours during market, all day after close
+        if age > 14400:  # 4 hours
+            return None
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _cache_write(symbol, days, bars):
+    """Write bars to cache."""
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        path = _cache_path(symbol, days)
+        with open(path, "w") as f:
+            json.dump(bars, f)
+    except Exception:
+        pass  # Cache write failure is non-fatal
+
+
 # --- Data fetching ---
 
 def fetch_bars(symbol, days=250):
-    """Fetch daily bars via tradier tool, return list of {date, open, high, low, close, volume}."""
+    """Fetch daily bars via tradier API. Cached to avoid redundant API calls."""
+    # Check cache first
+    cached = _cache_read(symbol, days)
+    if cached:
+        return cached
+
     try:
-        # Use tradier bars in a way that captures the raw JSON
         api = os.environ.get("CRED_PROXY_URL", "")
         if not api:
             _die("CRED_PROXY_URL not set")
 
         import urllib.request
-        url = f"{api}/tradier/v1/markets/history?symbol={symbol}&interval=daily&start="
         from datetime import datetime, timedelta
         end = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
@@ -56,6 +99,8 @@ def fetch_bars(symbol, days=250):
             bars = [bars]
         if not bars:
             _die(f"No bar data returned for {symbol}")
+
+        _cache_write(symbol, days, bars)
         return bars
     except Exception as e:
         _die(f"Failed to fetch bars for {symbol}: {e}")

@@ -9,8 +9,8 @@ metadata:
 
 Parses Adam Mancini's Substack posts into ultra-compact quick briefs. Writes daily briefs to `memory/trading-YYYY-MM-DD.md`. Checks levels during heartbeats.
 
-Before first use, read `{baseDir}/references/methodology.md` for the Mancini framework.
-Before parsing, read `references/EXTRACT_MANCINI.md` for the v4.0-QR extraction rules and output format.
+Before first use, consult the trading wiki: `knowledge/trading/wiki/mancini-methodology.md` for the Mancini framework.
+Before parsing, read `knowledge/trading/wiki/mancini-extraction-rules.md` for the v4.0-QR extraction rules and output format.
 
 ## Workflows
 
@@ -19,13 +19,13 @@ Before parsing, read `references/EXTRACT_MANCINI.md` for the v4.0-QR extraction 
 1. Fetch: `curl -s "https://adamsmancini.substack.com/api/v1/posts?limit=1" | jq '.[0]'`
 2. If body truncated or paywalled, `web_fetch` the post URL.
 3. If unavailable, report "Post not accessible." Stop.
-4. Read `references/EXTRACT_MANCINI.md` (the v4.0-QR extraction contract).
+4. Read `knowledge/trading/wiki/mancini-extraction-rules.md` (the v4.0-QR extraction contract).
 5. Skip everything before "Trade Plan [Day]" per the skip list.
 6. Extract setups in ultra-compact code block format: Low/Flush/Accept/Entry/Stop/T1/T2/Run. Max 3 setups.
 7. Extract flat level grid as bullet lists (no prose).
 8. Extract runners as one-liners, protection mode status.
 9. Extract two scenario paths (hold/lose) and one "Expect" line.
-10. Write `memory/trading-YYYY-MM-DD.md` in the Quick Brief format defined in EXTRACT_MANCINI.md.
+10. Write `memory/trading-YYYY-MM-DD.md` in the Quick Brief format defined in mancini-extraction-rules.
 11. Carry forward runners/positions from previous day's brief if it exists.
 12. Total output must be under 2000 words. Code blocks for setups, bullet lists for levels, no paragraphs in setups section.
 13. Confirm to user: regime, top setup with confidence, protection mode, level count.

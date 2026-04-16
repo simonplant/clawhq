@@ -9,7 +9,7 @@ metadata:
 
 Scans watchlist symbols hourly during market hours for DP-style swing trading setups. Feeds Pot A (Clawdius System) with discretionary trade ideas based on technical analysis. This is the supplementary algorithmic signal source (priority 3) that complements the human-curated sources (Mancini priority 1, DP priority 1, Focus 25 priority 2).
 
-Read `references/DP.md` for the trading methodology this scanner implements.
+Consult the trading wiki: `knowledge/trading/wiki/dp-methodology.md` for the trading methodology this scanner implements.
 
 ## Schedule
 
@@ -134,9 +134,9 @@ For routine scans with no new setups: log silently, don't message.
 
 ## References
 
-- `references/DP.md` — DP methodology this scanner implements (MAs, RS, day-after trades)
+- `knowledge/trading/` — trading wiki (query for dp-methodology, conviction scoring, trade types)
+- `references/TRADING_SOP.md` — daily cycle, phases, signal routing
 - `references/STANDARD_ORDER_FORMAT.md` — ORDER block format
-- `references/TRADING_PIPELINE.md` — Signal source priority (scanner = priority 3)
 
 ## Requires
 

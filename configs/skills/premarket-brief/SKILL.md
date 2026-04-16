@@ -29,9 +29,9 @@ Phase 1 (RESEARCH) crons have been filling `memory/trading-YYYY-MM-DD.md` since 
 
 1. **Read today's brief.** Open `memory/trading-YYYY-MM-DD.md`. Note which sections are filled vs pending.
 
-2. **Fill Market Context.** Fetch current data:
+2. **Fill Market Context.** Fetch current data (use tradier for real-time):
    ```
-   quote ES=F NQ=F YM=F CL=F GC=F --json
+   tradier quote ES=F NQ=F YM=F CL=F GC=F
    ```
    Add VIX and TNX if available. Capture: futures price, overnight change, direction.
 
@@ -132,11 +132,9 @@ If Simon pastes the DP AM Call after the brief has been delivered:
 
 ## References
 
-- `references/TRADING_SOP.md` — Phase 2 (PLAN), brief format, quality bar
+- `knowledge/trading/` — trading wiki (query for dp-methodology, mancini-methodology, conviction scoring)
+- `references/TRADING_SOP.md` — daily cycle, phases, signal routing
 - `references/STANDARD_ORDER_FORMAT.md` — ORDER block format
-- `references/DP.md` — DP conviction scoring, for cross-reference
-- `references/MANCINI.md` — Mancini methodology, for cross-reference
-- `references/TRADING_PIPELINE.md` — Signal routing overview
 
 ## Requires
 

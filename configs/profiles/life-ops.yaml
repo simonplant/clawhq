@@ -144,19 +144,39 @@ cron_prompts:
 
     1. Read today's brief: memory/trading-YYYY-MM-DD.md
        - If it doesn't exist or is stale, note it and move on
-       - Know the Mancini ranked setups (Rank 1-3) and DP levels if present
+       - Find the ## Orders section — extract all ORDER blocks
+       - Each ORDER block has: source, pot, ticker, exec_as, direction, entry,
+         stop, t1, t2, runner, risk, conviction, status, kills, activation
 
     2. Check paper portfolio: trade-journal positions
-       - If Pot B or C have open positions, note them
-       - If all pots are flat, skip position monitoring
+       - Note open Pot B and Pot C positions
+       - If all pots flat, skip position monitoring
 
-    3. Fetch ES price: quote ES=F --json
-       - Compare vs Mancini Rank 1-3 flush targets from the brief
-       - Within 10 pts of flush target: log to daily memory (no Telegram)
-       - Within 5 pts: alert Simon "ES approaching Rank N zone at [price]"
-       - Recovery confirmed above flush level: log Pot C trade
+    3. For each ORDER block with status ACTIVE or CONDITIONAL:
+       a. Fetch real-time price: tradier quote <exec_as symbol>
+       b. If CONDITIONAL — check activation condition from the ORDER:
+          - Activation met (price in zone + criteria) → update status to TRIGGERED
+          - Kill condition met (from kills field) → update status to KILLED, log reason
+       c. If ACTIVE or TRIGGERED — check proximity to entry:
+          - Within 2% of entry → alert Simon: "[setup] approaching at [price]"
+          - At entry level → run: risk_governor.py check <side> <qty> <symbol>
+            --price <entry> --pot <pot>
+            If APPROVED: trade-journal log <pot> <side> <qty> <exec_as>
+            --price <entry> --notes "ORDER triggered" --execute
+            If BLOCKED: note reason, don't override
+          - Log status change to journal: journal append order_trigger <json>
 
-    4. Check Pot B positions vs DP targets/stops
+    4. For each FILLED position (from trade-journal positions):
+       a. Fetch current price: tradier quote <symbol>
+       b. Check ORDER targets from the brief:
+          - Price at T1 → trade-journal close <pot> <symbol> --qty 75%
+            --notes "T1 scale"
+          - Price at T2 → trade-journal close <pot> <symbol> --qty 60%
+            --notes "T2 scale" (60% of remaining = 15% of original)
+          - Price at stop → trade-journal close <pot> <symbol>
+            --notes "Stop hit"
+          - After T1 hit: trail stop at breakeven for runner (10%)
+       c. Alert Simon on >2% adverse move or target approach
 
     5. When nothing is near a level: skip trading section silently. HEARTBEAT_OK.
 
@@ -170,7 +190,7 @@ cron_prompts:
   mancini_fetch: >
     Run skill mancini-fetch: pull Mancini's latest Futures Daily post from
     Substack using substack read mancini. Extract trade plan per
-    references/EXTRACT_MANCINI.md — regime, ranked setups, level grid,
+    knowledge/trading/wiki/mancini-extraction-rules.md — regime, ranked setups, level grid,
     protection mode. Write to memory/trading-YYYY-MM-DD.md Mancini section.
     This is Source 1 of the daily trading brief and feeds tomorrow's
     premarket-brief.

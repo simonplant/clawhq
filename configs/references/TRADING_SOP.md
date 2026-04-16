@@ -209,13 +209,14 @@ When DP posts FLAT/COVERED:
 
 ### Pot C (Mirror Mancini) — Level-Triggered
 
-Heartbeat every 30 min during market hours:
-1. Read brief → extract Rank 1-3 Mancini setups
-2. `quote ES=F` → compare to flush targets
-3. Within 10 pts → log to memory (don't bother Simon)
-4. Within 5 pts → alert Simon: "ES approaching Rank N zone"
-5. Acceptance confirmed → execute: `trade-journal log C buy <qty> SPY --execute`
-6. Follow Mancini protocol: T1 scale, T2 scale, runner with trailing stop
+Heartbeat every 15 min during market hours:
+1. Read brief → find `## Orders` section → extract Mancini ORDER blocks
+2. `tradier quote ES=F` → compare to flush targets (use tradier for real-time, not Yahoo)
+3. Within 10 pts of flush target → log to memory (don't bother Simon)
+4. Within 5 pts → alert Simon: "ES approaching [setup] zone at [price]"
+5. Acceptance confirmed → `risk_governor.py check` → `trade-journal log C buy <qty> SPY --execute`
+6. Follow Mancini protocol: T1 scale (75%), T2 scale (15%), runner (10%) with trailing stop at BE
+7. ES → SPY conversion: 1 ES point ≈ $0.18 on SPY. Monitor ES via `tradier quote ES=F`, execute as SPY.
 
 ### Pot A (Clawdius System) — Discretionary
 
@@ -345,12 +346,52 @@ Things Clawdius must NOT do:
 
 ---
 
+## Signal Source Routing
+
+How trading signals flow from source to action: INGEST → PARSE → BRIEF → DETECT → EXECUTE → REPORT.
+
+| Source | Ingest | Parse | Brief Section | Detect | Execute | Pot |
+|--------|--------|-------|---------------|--------|---------|-----|
+| Mancini | mancini-fetch cron 2:30 PM PT | v4.0-QR extraction | Mancini (Source 1) | Heartbeat: ES price vs levels | Pot C mechanical | C |
+| DP AM Call | Simon pastes into Telegram | dp-brief tool | DP (Source 3) | Heartbeat: stock prices vs levels | Pot B on VTF | B |
+| DP VTF | Simon pastes alerts | dp-parse detects action lines | DP events | Immediate — alerts ARE triggers | Pot B mechanical | B |
+| Focus 25 | focus25-fetch cron 4:30 PM PT | Email HTML parsing | Focus 25 (Source 2) | Premarket cross-reference | Informs Pot A | A |
+| X Intelligence | x-scan cron every 15 min | Quality filter | Overnight Intelligence | Cross-ref with brief levels | Alert Simon | — |
+| Swing Scanner | Hourly during market hours | ta tool + earnings | Scanner section | ORDER blocks monitored | Pot A candidates | A |
+
+**Rule:** Human-curated signals (Mancini, DP) take priority over algorithmic (scanner) when they conflict.
+
+## Heartbeat Trading Integration
+
+During market hours (Mon-Fri, 9:30 AM - 4:00 PM ET), heartbeat MUST:
+
+1. **Read the brief:** `memory/trading-YYYY-MM-DD.md` — find `## Orders` section, extract ORDER blocks
+2. **Check positions:** `trade-journal positions` — know what's open in Pot B/C
+3. **Fetch real-time prices:** `tradier quote ES=F` for Mancini, `tradier quote <symbol>` for stock positions
+4. **Monitor ORDER blocks:** For each ACTIVE/CONDITIONAL order, check proximity to entry/stop/targets
+5. **Execute on trigger:** `risk_governor.py check` → `trade-journal log <pot> <side> <qty> <symbol> --execute`
+6. **Scale-out on targets:** T1 hit → close 75%. T2 hit → close 15%. Runner trails at BE.
+7. **Cross-reference sources:** Mancini + DP agree on level → higher confidence. Disagree → flag divergence.
+8. **When nothing near a level:** `HEARTBEAT_OK` — don't report noise.
+
+## Pipeline Health Checks
+
+In each heartbeat during market hours, verify:
+- Today's trading brief exists and has Mancini section
+- DP section present (if Simon has pasted AM call or VTF alerts)
+- Pot B/C positions match expectations (no phantom trades)
+- No stale prices in portfolio state (mark if >4h old)
+
+**Missing data escalation:**
+- No Mancini brief by 7 PM PT → mancini-fallback handles it
+- No Focus 25 by 8 PM PT → note in daily log, carry forward
+- No DP AM Call by 9:30 AM ET → note "DP pending" in brief. Don't nag Simon.
+
 ## Reference Documents
 
 | Doc | Purpose |
 |-----|---------|
-| `DP.md` | DP methodology — conviction mapping, sizing, language signals |
-| `MANCINI.md` | Mancini methodology — Failed Breakdowns, acceptance, protection mode |
-| `TRADING_PIPELINE.md` | Signal routing — which tool processes which input |
-| `CRON_TRADING_PROMPTS.md` | Exact text for cron prompt updates |
-| `trade-journal` skill | Pot B/C/A execution workflows |
+| `knowledge/trading/` | Trading wiki — methodology, extraction rules, conviction, pot system |
+| `STANDARD_ORDER_FORMAT.md` | Unified ORDER block spec (also in wiki as [[standard-order-format]]) |
+| `trade-journal` tool | Pot B/C/A execution |
+| `risk_governor.py` | Hard constraint enforcement |

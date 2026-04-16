@@ -9,7 +9,7 @@ metadata:
 
 Processes two types of DP content that Simon pastes into Telegram: AM Call transcriptions and VTF intraday alerts. Produces standard ORDER blocks per `references/STANDARD_ORDER_FORMAT.md`. Writes to `memory/trading-YYYY-MM-DD.md` DP section. Executes Pot B trades mechanically for VTF alerts.
 
-Before first use, read `references/DP.md` for the DP methodology and `references/analyze-dp.md` for the extraction contract.
+Before first use, consult the trading wiki: `knowledge/trading/wiki/dp-methodology.md` for the DP methodology and `knowledge/trading/wiki/dp-extraction-rules.md` for the extraction contract.
 
 ## Detection
 
@@ -39,26 +39,32 @@ When Simon sends a message, determine if it contains DP content:
 
 2. **Review dp-brief output.** Check extracted tickers make sense (no phantom tickers from garbled speech). Flag any `VERIFY` items.
 
-3. **Apply extraction rules.** Read `references/analyze-dp.md` — the full extraction contract. For each stock DP discusses:
+3. **Apply extraction rules.** Read `knowledge/trading/wiki/dp-extraction-rules.md` — the full extraction contract. For each stock DP discusses:
    - Is there an actionable level? (specific price or MA)
    - What's the direction? (long, short, observation)
-   - What's the conviction? (from language → conviction table in DP.md)
+   - What's the conviction? (from language → conviction table in dp-methodology.md)
    - What's the trade type? (CORE_SWING, PLANNED, EVENT, RS, SCALP)
 
 4. **Produce standard ORDER blocks.** Per `references/STANDARD_ORDER_FORMAT.md`:
    - HIGH and MEDIUM conviction → ORDER blocks with entry, stop, targets, risk
    - LOW conviction → WATCH section
    - Exclude → omit entirely
-   - All ORDER blocks: `pot: B`, sizing per DP.md rules (1% risk, max 15% per position)
+   - All ORDER blocks: `pot: B`, sizing per dp-methodology rules (1% risk, max 15% per position)
 
-5. **Write to daily brief.** Append the full trade plan output to `memory/trading-YYYY-MM-DD.md` under `## DP/Inner Circle (Source 3)`. Preserve existing sections (Mancini, Focus 25, etc.).
+5. **Write to daily brief.** Append the full trade plan output to `memory/trading-YYYY-MM-DD.md` under `## DP/Inner Circle (Source 3)`. Also append ORDER blocks to the `## Orders` section. Preserve existing sections.
 
-6. **Cross-reference with Mancini.** Read the Mancini section of today's brief:
+6. **Log ORDER blocks to journal.** For each ORDER block produced:
+   ```
+   journal append order '{"source":"dp","pot":"B","ticker":"META","direction":"SHORT","conviction":"HIGH","entry":520,"stop":525,"status":"ACTIVE"}'
+   ```
+   This creates an audit trail. The heartbeat will log status transitions (TRIGGERED, FILLED, KILLED).
+
+7. **Cross-reference with Mancini.** Read the Mancini section of today's brief:
    - Flag alignment: "DP and Mancini both watching ES [level] zone" → higher confidence
    - Flag divergence: "DP bearish but Mancini sees FB setup for longs at [level]"
    - If no Mancini section exists, skip cross-reference
 
-7. **Deliver summary.** One message to Simon:
+8. **Deliver summary.** One message to Simon:
    - Bias, number of orders generated, top conviction idea
    - Any VERIFY items that need his attention
    - Cross-reference findings (alignment/divergence)
@@ -69,17 +75,17 @@ When Simon sends a message, determine if it contains DP content:
 
 1. **Parse alert lines.** Each line is a trade action. Extract:
    - Action: SHORT, LONG, COVERED, TRIMMED, FLAT, ADDED, SOLD
-   - Ticker: resolve typos per DP.md (mera→META, queues→QQQ, etc.)
+   - Ticker: resolve typos per dp-methodology (mera→META, queues→QQQ, etc.)
    - Price: if stated
    - Context: any qualifier ("half", "starter", "full size", "aggressive")
 
-2. **Map to trade-journal commands.** Per `references/DP.md` Pot B mirror rules:
+2. **Map to trade-journal commands.** Per dp-methodology Pot B mirror rules:
    - SHORT/LONG → `trade-journal log B <side> <qty> <symbol> --notes "VTF: <original text>" --execute`
    - COVERED/FLAT → `trade-journal close B <symbol> --notes "VTF: <original text>" --execute`
    - TRIMMED/SOLD → `trade-journal close B <symbol> --qty <partial> --notes "VTF: <original text>" --execute`
    - ADDED → `trade-journal log B <side> <qty> <symbol> --notes "VTF: added" --execute`
 
-3. **Size per DP.md rules.**
+3. **Size per dp-methodology rules.**
    - Planned trades: full size (up to 15% of pot per position)
    - Scalps: half size
    - 1% risk rule: max ~$333 risk per trade on $33K pot
@@ -108,11 +114,9 @@ When Simon sends a message, determine if it contains DP content:
 
 ## References
 
-- `references/DP.md` — DP methodology, conviction scoring, sizing, trade types, Pot B rules
-- `references/analyze-dp.md` — AM Call extraction contract, standard ORDER format output
-- `references/STANDARD_ORDER_FORMAT.md` — Shared ORDER block format
-- `references/TRADING_PIPELINE.md` — Signal routing (Source 2 and Source 5 sections)
-- `references/TRADING_SOP.md` — Phase 3 (FOCUS) and Phase 4 (EXECUTE)
+- `knowledge/trading/` — trading wiki (query for dp-methodology, dp-extraction-rules, conviction scoring)
+- `references/TRADING_SOP.md` — daily cycle, phases, signal routing
+- `references/STANDARD_ORDER_FORMAT.md` — ORDER block format
 
 ## Requires
 

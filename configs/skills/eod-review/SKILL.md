@@ -52,9 +52,9 @@ Current risk utilization: exposure, drawdown, daily P&L, pot halts.
 
 Read today's trading brief (`memory/trading-YYYY-MM-DD.md`). For each ORDER block and key level:
 
-Fetch closing prices:
+Fetch closing prices (use tradier for accuracy):
 ```
-quote SPY QQQ ES=F [+ any symbols from ORDER blocks]
+tradier quote SPY QQQ ES=F [+ any symbols from ORDER blocks]
 ```
 
 Categorize each level:
@@ -128,9 +128,9 @@ TOMORROW'S SETUP
 
 ## References
 
-- `references/TRADING_SOP.md` — Phase 6 (REVIEW), EOD report format
-- `references/TRADING_PIPELINE.md` — EOD Reconciliation section
-- `references/STANDARD_ORDER_FORMAT.md` — ORDER block format for level review
+- `knowledge/trading/` — trading wiki (query for methodology, conviction scoring)
+- `references/TRADING_SOP.md` — daily cycle, phases, signal routing
+- `references/STANDARD_ORDER_FORMAT.md` — ORDER block format
 
 ## Requires
 

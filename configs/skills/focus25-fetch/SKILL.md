@@ -105,8 +105,8 @@ Fetches the daily Focus 25 email from FastMail and parses it into a structured s
 
 ## References
 
-- `references/TRADING_PIPELINE.md` — Source 3 routing
-- `references/TRADING_SOP.md` — Phase 1 (RESEARCH), timing at 4:30 PM PT
+- `knowledge/trading/` — trading wiki (query for methodology, signal routing)
+- `references/TRADING_SOP.md` — daily cycle, phases, signal routing
 
 ## Requires
 
