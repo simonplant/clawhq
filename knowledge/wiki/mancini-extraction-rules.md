@@ -87,3 +87,4 @@ See [[standard-order-format]] for the unified format. Mancini-specific:
 - [[mancini-methodology]] — The underlying trading system
 - [[standard-order-format]] — Unified ORDER block spec
 - [[dp-extraction-rules]] — DP's equivalent extraction contract
+- [[pot-system]] — Pot C mirrors Mancini mechanically (ES→SPY conversion)

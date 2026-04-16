@@ -8,65 +8,40 @@ last-verified: 2026-04-15
 
 # Standard Order Format
 
-All source extractors produce this identical format. One format, one monitoring loop, one execution path. Plain text, key:value pairs — no markdown tables, no JSON.
+All source extractors produce this identical format. One format, one monitoring loop, one execution path.
 
-## ORDER Block
+**Authoritative spec:** `references/STANDARD_ORDER_FORMAT.md` — the full field definitions and formatting rules. This wiki page summarizes the key concepts.
 
-```
-ORDER N | [conviction] | [status]
-  source:     [mancini / dp / focus25 / scanner]
-  pot:        [A / B / C]
-  ticker:     [symbol]
-  exec_as:    [execution symbol, e.g. SPY for ES]
-  direction:  [LONG / SHORT]
-  setup:      [type] — "[quality words ≤20 words]"
-  why:        [what makes this actionable ≤15 words]
-  entry:      [price] LMT
-  stop:       [price] — [source: stated / MA-2% / flush-4 / derived]
-  t1:         [price] (75%)
-  t2:         [price] (15%)
-  runner:     10% trail BE after T1
-  risk:       [per share] | [qty] shares | $[total]
-  caveat:     [warning verbatim or "none"]
-  kills:      [dp_flat, gap_killed, level_broken, etc.]
-  activation: [what must happen first, or "immediate"]
-  verify:     [what needs checking, or "none"]
-```
+## ORDER Block (summary)
+
+Plain text, key:value pairs. Each block is self-contained — everything needed to monitor and execute.
+
+Key fields: `source`, `pot`, `ticker`, `exec_as`, `direction`, `entry`, `stop`, `t1`, `t2`, `runner`, `risk`, `conviction`, `status`, `kills`, `activation`, `verify`.
 
 ## Conviction Levels
 
-| Level | Meaning | Action | DP numeric |
-|-------|---------|--------|-----------|
-| HIGH | Strong endorsement | Full size, LIMIT | 0.70+ |
-| MEDIUM | Conditional/moderate | Half size, LIMIT | 0.50-0.69 |
-| LOW | Speculative | Watch only | 0.30-0.49 |
-| Exclude | Warned against | Omit | <0.30 |
+| Level | Action | DP numeric |
+|-------|--------|-----------|
+| HIGH | Full size, LIMIT | 0.70+ |
+| MEDIUM | Half size, LIMIT | 0.50-0.69 |
+| LOW | Watch only | 0.30-0.49 |
+| Exclude | Omit | <0.30 |
 
 See [[dp-conviction-scoring]] for DP language mapping. See [[mancini-extraction-rules]] for Mancini quality word mapping.
 
-## Status Values
+## Status Lifecycle
 
-| Status | Meaning |
-|--------|---------|
-| ACTIVE | Live, monitoring in progress |
-| CONDITIONAL | Waiting for activation condition |
-| TRIGGERED | Entry condition met, execution pending |
-| FILLED | Position opened |
-| CLOSED | Position closed |
-| KILLED | Invalidated by kill condition |
-| BLOCKED | Risk governor rejected |
+CONDITIONAL → TRIGGERED → FILLED → CLOSED (or KILLED / BLOCKED at any point)
 
-## CONTEXT Block (source-specific)
+The heartbeat monitors ORDER blocks and manages status transitions. Status changes are logged to the journal for audit.
 
-**Mancini:** source, bias, bull_ctrl, bear_trig, chop, calendar, runner
-**DP:** source, bias, outlook, positions, calendar
+## How It Flows
 
-## Supplementary Sections
-
-**Mancini:** SHORTS (reference), LEVELS (S/R grid), SCENARIOS (hold/lose paths)
-**DP:** ANALYST ACTIONS, DAT CANDIDATES, SECTOR THEMES
-
-Agent monitors ORDER blocks only. Supplementary sections are for context.
+1. **Extractors** ([[dp-extraction-rules]], [[mancini-extraction-rules]]) produce ORDER blocks
+2. **Daily brief** (`memory/trading-YYYY-MM-DD.md` `## Orders` section) accumulates them
+3. **Premarket-brief** synthesizes and ranks across sources
+4. **Heartbeat** monitors proximity, triggers, executes, scales
+5. **EOD review** categorizes as TRIGGERED/NEAR/WATCH
 
 ## Related
 

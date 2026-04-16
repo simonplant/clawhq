@@ -49,6 +49,19 @@ Three-pot paper trading experiment. $100K split equally to compare strategies ag
 - swing-scanner feeds candidates
 - Tracked independently of B and C
 
+## DP vs Mancini: Why Two Pots
+
+| Dimension | Pot B (DP) | Pot C (Mancini) |
+|-----------|-----------|-----------------|
+| Instrument | Individual stocks + QQQ/SPY | ES futures (executed as SPY) |
+| Timeframe | Day trade + swing (overnight) | Intraday ES |
+| Entry style | Theme + relative strength + MAs | Failed Breakdowns + flush zones |
+| Key levels | 8d, 10d, 21d, 200d MAs | Price levels from newsletter |
+| Sizing | Conviction-based, 1% risk | Protocol-based (75/15/10) |
+| Delivery | Live VTF alerts + AM Call | Daily Substack post |
+
+When both sources align on a level → higher confidence. When they disagree → each pot follows its own source mechanically.
+
 ## Performance Tracking
 
 - Daily: `trade-journal mark` (mark-to-market), `trade-journal compare` (pot vs pot vs SPY)
@@ -58,5 +71,6 @@ Three-pot paper trading experiment. $100K split equally to compare strategies ag
 ## Related
 
 - [[dp-methodology]] — Pot B's source system
+- [[dp-conviction-scoring]] — How DP language maps to conviction and sizing
 - [[mancini-methodology]] — Pot C's source system
 - [[standard-order-format]] — ORDER blocks route to pots via `pot` field

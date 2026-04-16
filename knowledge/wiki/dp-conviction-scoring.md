@@ -1,5 +1,5 @@
 ---
-tags: [extraction, dp, conviction, sizing]
+tags: [extraction, dp, conviction]
 date: 2026-04-15
 source-count: 1
 confidence: established
@@ -8,7 +8,7 @@ last-verified: 2026-04-15
 
 # DP Conviction Scoring
 
-How to map David Prince's language to conviction levels and trade sizing. Used by [[dp-extraction-rules]] when parsing AM Calls.
+How to map David Prince's language to conviction levels. Used by [[dp-extraction-rules]] when parsing AM Calls and by the heartbeat when evaluating ORDER blocks.
 
 ## Language → Conviction
 
@@ -46,29 +46,10 @@ How to map David Prince's language to conviction levels and trade sizing. Used b
 | "Lazy long" | LOW conviction entry |
 | "Gifting positions" | Holding overnight to trim next day |
 
-## Pot B Sizing Rules
-
-- **Planned trades:** full size (up to 15% of pot)
-- **Scalps:** half size
-- **1% rule:** max ~$333 risk per trade (1% of $33K pot)
-- **Max 3-4 concurrent positions**
-- **Max 60% exposure**
-- Follow DP's flat calls exactly — when he says FLAT, close all
-
-## Cross-Reference with Mancini
-
-| Dimension | DP | Mancini |
-|-----------|----|---------| 
-| Instrument | Individual stocks + QQQ/SPY | ES futures |
-| Timeframe | Day + swing (overnight) | Intraday ES |
-| Entry style | Theme + RS + MAs | Failed Breakdowns + flush zones |
-| Sizing | Conviction-based, 1% risk | Protocol-based (75/15/10) |
-
-When both sources align on a level → higher confidence. When they disagree → note divergence, each pot follows its own source.
+For sizing rules and pot constraints, see [[pot-system]].
 
 ## Related
 
 - [[dp-methodology]] — Core trading system
 - [[dp-extraction-rules]] — AM Call and VTF parsing
-- [[mancini-methodology]] — Complementary approach
-- [[pot-system]] — Pot allocation and sizing
+- [[pot-system]] — Pot B sizing rules and constraints
