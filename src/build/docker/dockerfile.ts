@@ -85,10 +85,16 @@ export function generateStage2Dockerfile(
     validateBinaryUrl(binary.url);
     validateBinaryDestPath(binary.destPath);
     validateBinarySha256(binary.sha256);
+    if (!/^[a-zA-Z0-9._-]+$/.test(binary.name)) {
+      throw new Error(`Unsafe binary name: ${binary.name} (must be alphanumeric with dots/dashes)`);
+    }
 
     if (binary.url.endsWith(".tgz") || binary.url.endsWith(".tar.gz")) {
       // Tarball: download, verify, extract the binary
       const binaryBasename = binary.destPath.split("/").pop() ?? binary.name;
+      if (!/^[a-zA-Z0-9._-]+$/.test(binaryBasename)) {
+        throw new Error(`Unsafe binary basename: ${binaryBasename} (from destPath: ${binary.destPath})`);
+      }
       lines.push(
         `# Install ${binary.name} (SHA256: ${binary.sha256})`,
         `RUN set -euo pipefail && \\`,
@@ -142,7 +148,7 @@ export function generateStage2Dockerfile(
     // Make tool scripts executable
     if (config.workspace.immutable.some(f => f.startsWith("tools/"))) {
       lines.push(
-        `RUN chmod +x ${OPENCLAW_CONTAINER_WORKSPACE}/tools/*`,
+        `RUN find ${OPENCLAW_CONTAINER_WORKSPACE}/tools -type f -exec chmod +x {} + 2>/dev/null || true`,
       );
     }
     lines.push("");
@@ -164,7 +170,7 @@ export function generateStage2Dockerfile(
         );
       }
       lines.push(
-        `RUN chmod +x ${OPENCLAW_CONTAINER_WORKSPACE}/tools/*`,
+        `RUN find ${OPENCLAW_CONTAINER_WORKSPACE}/tools -type f -exec chmod +x {} + 2>/dev/null || true`,
         "",
       );
     }

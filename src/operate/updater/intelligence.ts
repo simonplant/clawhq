@@ -17,7 +17,7 @@ import { generateFingerprint } from "../../cloud/sentinel/fingerprint.js";
 import {
   analyzeUpstreamCommits,
 } from "../../cloud/sentinel/monitor.js";
-import type { UpstreamCommit } from "../../cloud/sentinel/types.js";
+import type { BreakageReport, UpstreamAnalysis, UpstreamCommit } from "../../cloud/sentinel/types.js";
 import { GITHUB_API_BASE, OPENCLAW_GITHUB_REPO } from "../../config/defaults.js";
 
 import { buildMigrationPlan } from "./migrations/index.js";

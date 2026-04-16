@@ -38,7 +38,12 @@ export function spawnWithStdin(
       reject(err);
     });
 
-    proc.stdin.write(stdinData);
-    proc.stdin.end();
+    try {
+      proc.stdin.write(stdinData);
+      proc.stdin.end();
+    } catch (err) {
+      clearTimeout(timer);
+      reject(err instanceof Error ? err : new Error(String(err)));
+    }
   });
 }

@@ -42,6 +42,13 @@ export interface VerifyReport {
   readonly healthy: boolean;
 }
 
+// ── Shell Safety ──────────────────────────────────────────────────────────
+
+/** Strip characters unsafe for shell interpolation. Only allows alphanumeric, dots, dashes, underscores, colons, and slashes. */
+function shellSafe(s: string): string {
+  return s.replace(/[^a-zA-Z0-9._:/-]/g, "");
+}
+
 // ── Container Exec Helper ──────────────────────────────────────────────────
 
 /** Run a command inside the running OpenClaw container. Returns stdout or null on failure. */
@@ -79,7 +86,7 @@ async function checkReachable(
   const start = Date.now();
   const result = await containerExec(
     deployDir,
-    ["bash", "-c", `timeout 5 bash -c "echo > /dev/tcp/${host}/${port}" 2>&1`],
+    ["bash", "-c", `timeout 5 bash -c 'echo > /dev/tcp/'${shellSafe(host)}'/'${shellSafe(String(port))} 2>&1`],
     10_000,
   );
 
@@ -253,7 +260,7 @@ export async function verifyIntegrations(options: VerifyOptions): Promise<Verify
         // Quick generate test from host to measure actual latency
         const genResult = await containerExec(
           deployDir,
-          ["bash", "-c", `curl -s -m 120 -X POST ${ollamaHost}/api/generate -d '{"model":"${env.OLLAMA_MODEL || "llama3:8b"}","prompt":"Reply OK","stream":false}' | head -c 100`],
+          ["bash", "-c", `curl -s -m 120 -X POST ${shellSafe(ollamaHost)}/api/generate -d '{"model":"${shellSafe(env.OLLAMA_MODEL || "llama3:8b")}","prompt":"Reply OK","stream":false}' | head -c 100`],
           130_000,
         );
 

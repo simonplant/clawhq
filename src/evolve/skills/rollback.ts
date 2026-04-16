@@ -93,6 +93,11 @@ export async function createSnapshot(
   while (snapshots.length > MAX_SNAPSHOTS) {
     const oldest = snapshots.shift();
     if (oldest && existsSync(oldest.path)) {
+      // Validate path is within the rollback directory to prevent directory traversal
+      const rollbackRoot = join(deployDir, ROLLBACK_DIR);
+      if (!oldest.path.startsWith(rollbackRoot)) {
+        throw new Error(`Snapshot path ${oldest.path} is outside rollback directory`);
+      }
       await rm(oldest.path, { recursive: true, force: true });
     }
   }
