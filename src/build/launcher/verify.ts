@@ -257,10 +257,21 @@ export async function verifyIntegrations(options: VerifyOptions): Promise<Verify
       checks.push(reachResult);
 
       if (reachResult.passed) {
-        // Quick generate test from host to measure actual latency
+        // Quick generate test from host to measure actual latency.
+        // Body built with JSON.stringify and passed as an argv arg — no shell, no interpolation.
+        const body = JSON.stringify({
+          model: env.OLLAMA_MODEL || "gemma4:26b",
+          prompt: "Reply OK",
+          stream: false,
+        });
         const genResult = await containerExec(
           deployDir,
-          ["bash", "-c", `curl -s -m 120 -X POST ${shellSafe(ollamaHost)}/api/generate -d '{"model":"${shellSafe(env.OLLAMA_MODEL || "gemma4:26b")}","prompt":"Reply OK","stream":false}' | head -c 100`],
+          [
+            "curl", "-s", "-m", "120", "-X", "POST",
+            `${ollamaHost}/api/generate`,
+            "-H", "Content-Type: application/json",
+            "-d", body,
+          ],
           130_000,
         );
 
