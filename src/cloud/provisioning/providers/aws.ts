@@ -211,7 +211,10 @@ export function createAwsAdapter(token: string, region = "us-east-1"): ProviderA
       if (signal?.aborted) return undefined;
       const result = await ec2Request({ Action: "DescribeInstances", "InstanceId.1": instanceId }, signal);
       if (result.ok) {
-        const state = extractXmlValue(result.body, "name");
+        // Extract state from <instanceState><name>running</name></instanceState>
+        // Can't use generic extractXmlValue("name") — it matches other <name> tags first
+        const stateMatch = result.body.match(/<instanceState>\s*<code>\d+<\/code>\s*<name>([^<]*)<\/name>/);
+        const state = stateMatch?.[1];
         const ip = extractXmlValue(result.body, "publicIp") ?? extractXmlValue(result.body, "ipAddress");
         if (state === "running" && ip) return ip;
       }

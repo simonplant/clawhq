@@ -111,7 +111,7 @@ async function getContainerStatus(
 
     // docker compose ps --format json outputs one JSON object per line
     const lines = stdout.trim().split("\n");
-    const containers = lines.filter(l => l.trim()).map(l => JSON.parse(l) as {
+    const containers = lines.filter(l => l.trim() && l.trim().startsWith("{")).map(l => JSON.parse(l) as {
       Name?: string;
       Service?: string;
       Image?: string;
