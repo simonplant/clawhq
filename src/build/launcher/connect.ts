@@ -12,7 +12,7 @@
  */
 
 import { execFile } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -101,9 +101,9 @@ export async function validateWhatsAppToken(
 /**
  * Read openclaw.json, enable the selected channel, and write back.
  */
-export function updateChannelConfig(deployDir: string, channel: ChannelName): void {
+export async function updateChannelConfig(deployDir: string, channel: ChannelName): Promise<void> {
   const configPath = join(deployDir, "engine", "openclaw.json");
-  const raw = readFileSync(configPath, "utf-8");
+  const raw = await readFile(configPath, "utf-8");
   let config: Record<string, unknown>;
   try {
     config = JSON.parse(raw) as Record<string, unknown>;
@@ -123,7 +123,7 @@ export function updateChannelConfig(deployDir: string, channel: ChannelName): vo
 
   config["channels"] = channels;
 
-  writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+  await writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
 }
 
 // ── Gateway Health Ping ──────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ export async function connectChannel(options: ConnectOptions): Promise<ConnectRe
   onProgress?.({ step: "update-config", status: "running", message: "Updating channel config…" });
 
   try {
-    updateChannelConfig(deployDir, channel);
+    await updateChannelConfig(deployDir, channel);
     onProgress?.({ step: "update-config", status: "done", message: `Channel "${channel}" enabled in openclaw.json` });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

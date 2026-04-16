@@ -211,8 +211,6 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           signal: ac.signal,
         });
 
-        spinner.stop();
-
         if (result.success) {
           console.log(chalk.green("\n✔ Agent is live and responding to messages"));
         } else {
@@ -246,8 +244,6 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           onProgress,
           signal: ac.signal,
         });
-
-        spinner.stop();
 
         if (result.success) {
           console.log(chalk.green("\n✔ Agent stopped"));
@@ -313,8 +309,6 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           onProgress,
           signal: ac.signal,
         });
-
-        spinner.stop();
 
         if (result.success) {
           console.log(chalk.green("\n✔ Agent restarted and reachable"));
@@ -542,8 +536,6 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           service: name as ServiceName,
           port,
         });
-
-        spinner.stop();
 
         if (result.success) {
           console.log(chalk.green(`\n✔ Service "${name}" configured`));

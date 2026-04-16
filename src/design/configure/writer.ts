@@ -112,10 +112,21 @@ const ENV_PLACEHOLDER = "CHANGE_ME";
 function parseEnvValue(raw: string): string {
   const first = raw.charAt(0);
 
-  // Quoted value — extract content between matching quotes
+  // Quoted value — extract content between matching quotes (handling escaped quotes)
   if ((first === '"' || first === "'") && raw.length >= 2) {
-    const end = raw.indexOf(first, 1);
-    if (end !== -1) return raw.slice(1, end);
+    let i = 1;
+    while (i < raw.length) {
+      if (raw[i] === "\\" && i + 1 < raw.length) {
+        i += 2; // skip escaped character
+        continue;
+      }
+      if (raw[i] === first) {
+        return raw.slice(1, i).replace(/\\(.)/g, "$1"); // unescape
+      }
+      i++;
+    }
+    // No closing quote found — return as-is minus opening quote
+    return raw.slice(1);
   }
 
   // Unquoted — strip inline comment (# preceded by whitespace)

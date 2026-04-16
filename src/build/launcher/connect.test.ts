@@ -36,7 +36,7 @@ describe("updateChannelConfig", () => {
       channels: { telegram: { enabled: false } },
     }, null, 2));
 
-    updateChannelConfig(testDir, "telegram");
+    await updateChannelConfig(testDir, "telegram");
 
     const updated = JSON.parse(await readFile(configPath, "utf-8"));
     expect(updated.channels.telegram.enabled).toBe(true);
@@ -49,7 +49,7 @@ describe("updateChannelConfig", () => {
     const configPath = join(testDir, "engine", "openclaw.json");
     await writeFile(configPath, JSON.stringify({ gateway: { port: GATEWAY_DEFAULT_PORT } }, null, 2));
 
-    updateChannelConfig(testDir, "whatsapp");
+    await updateChannelConfig(testDir, "whatsapp");
 
     const updated = JSON.parse(await readFile(configPath, "utf-8"));
     expect(updated.channels.whatsapp.enabled).toBe(true);
@@ -65,7 +65,7 @@ describe("updateChannelConfig", () => {
       },
     }, null, 2));
 
-    updateChannelConfig(testDir, "whatsapp");
+    await updateChannelConfig(testDir, "whatsapp");
 
     const updated = JSON.parse(await readFile(configPath, "utf-8"));
     expect(updated.channels.telegram.enabled).toBe(true);
