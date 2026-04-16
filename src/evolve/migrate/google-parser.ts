@@ -133,14 +133,14 @@ async function parseActivityFile(filePath: string): Promise<ParseResult> {
   let raw: string;
   try {
     raw = await readFile(filePath, { encoding: "utf-8" });
-  } catch (err) {
+  } catch {
     return {
       success: false,
       source: "google-assistant",
       messages: [],
       routines: [],
       itemCount: 0,
-      error: `Cannot read file: ${err instanceof Error ? err.message : String(err)}`,
+      error: "Cannot read file",
     };
   }
 
@@ -169,7 +169,7 @@ async function parseActivityFile(filePath: string): Promise<ParseResult> {
       };
     }
     activities = parsed as GoogleAssistantActivity[];
-  } catch (err) {
+  } catch {
     return {
       success: false,
       source: "google-assistant",
@@ -223,7 +223,7 @@ async function parseRoutineFile(filePath: string): Promise<ParsedRoutine[]> {
   let raw: string;
   try {
     raw = await readFile(filePath, { encoding: "utf-8" });
-  } catch (err) {
+  } catch {
     return [];
   }
 
@@ -246,7 +246,7 @@ async function parseRoutineFile(filePath: string): Promise<ParsedRoutine[]> {
           .join(", ") ?? r.name,
         source: "google-assistant" as const,
       }));
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -265,7 +265,7 @@ async function findFiles(
   let entries: string[];
   try {
     entries = await readdir(dir);
-  } catch (err) {
+  } catch {
     return [];
   }
 
@@ -296,7 +296,7 @@ async function findRoutineFiles(
   let entries: string[];
   try {
     entries = await readdir(dir);
-  } catch (err) {
+  } catch {
     return [];
   }
 

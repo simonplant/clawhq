@@ -94,7 +94,7 @@ async function checkImages(
 
   try {
     await access(manifestFile, constants.R_OK);
-  } catch (e) {
+  } catch {
     return {
       name,
       passed: false,
@@ -113,7 +113,7 @@ async function checkImages(
       signal,
     });
     return { name, passed: true, message: `Image ${tag} is available` };
-  } catch (e) {
+  } catch {
     return {
       name,
       passed: false,
@@ -282,7 +282,7 @@ async function checkPorts(port: number, signal?: AbortSignal): Promise<Preflight
     }
 
     return { name, passed: true, message: `Port ${port} is available` };
-  } catch (e) {
+  } catch {
     // ss not available (macOS) — try lsof
     try {
       await execFileAsync("lsof", ["-i", `:${port}`, "-sTCP:LISTEN"], {
@@ -296,7 +296,7 @@ async function checkPorts(port: number, signal?: AbortSignal): Promise<Preflight
         message: `Port ${port} is already in use`,
         fix: `Stop the process using port ${port} or change the gateway port in openclaw.json`,
       };
-    } catch (e) {
+    } catch {
       // lsof exits non-zero when port is free
       return { name, passed: true, message: `Port ${port} is available` };
     }

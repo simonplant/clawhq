@@ -536,7 +536,7 @@ export async function loadAllowlist(deployDir: string): Promise<FirewallAllowEnt
     }
 
     return entries;
-  } catch (e) {
+  } catch {
     // No allowlist file or invalid YAML — return empty (default: block all non-DNS egress)
     return [];
   }
@@ -622,7 +622,7 @@ async function ensureChain(cmd: IptablesCmd, signal?: AbortSignal): Promise<void
   try {
     // Try to create the chain
     await runIptablesCmd(cmd, ["-N", CHAIN_NAME], signal);
-  } catch (e) {
+  } catch {
     // Chain already exists — flush it
     await runIptablesCmd(cmd, ["-F", CHAIN_NAME], signal);
   }
@@ -632,7 +632,7 @@ async function attachToForward(cmd: IptablesCmd, signal?: AbortSignal): Promise<
   try {
     // Check if already attached
     await runIptablesCmd(cmd, ["-C", "FORWARD", "-j", CHAIN_NAME], signal);
-  } catch (e) {
+  } catch {
     // Not attached — add it
     await runIptablesCmd(cmd, ["-I", "FORWARD", "-j", CHAIN_NAME], signal);
   }

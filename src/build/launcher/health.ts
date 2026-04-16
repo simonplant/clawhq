@@ -64,7 +64,7 @@ export async function verifyHealth(options: HealthVerifyOptions): Promise<Health
           elapsedMs: Date.now() - start,
         };
       }
-    } catch (e) {
+    } catch {
       // Gateway not ready yet — retry
     }
 

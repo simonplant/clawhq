@@ -180,7 +180,7 @@ function parsePreferencesResponse(
         preference: String(item.preference),
         confidence: normalizeConfidence(String(item.confidence)),
       }));
-  } catch (err) {
+  } catch {
     return [];
   }
 }

@@ -34,7 +34,6 @@ import {
 } from "./firewall.js";
 import { smokeTest, verifyHealth } from "./health.js";
 import { runPreflight } from "./preflight.js";
-import { formatVerifyReport, verifyIntegrations } from "./verify.js";
 import type {
   DeployOptions,
   DeployProgress,
@@ -45,6 +44,7 @@ import type {
   ShutdownOptions,
   ShutdownResult,
 } from "./types.js";
+import { formatVerifyReport, verifyIntegrations } from "./verify.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -231,7 +231,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
           { timeout: 5000 },
         );
         report("compose-up", "done", "Ollama firewall rule applied");
-      } catch {
+      } catch (err) {
         // sudo not available — non-fatal, doctor will flag it
       }
     }

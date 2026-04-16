@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ta — Technical analysis CLI for trading tools.
 
-Computes indicators from price data fetched via the tradier tool.
+Computes indicators from price data fetched via Yahoo Finance API.
 Python stdlib only — no numpy, pandas, or ta-lib.
 
 Usage:
@@ -26,8 +26,10 @@ Environment:
 
 import json
 import os
-import subprocess
 import sys
+import time as _time_module
+import urllib.request
+from datetime import datetime, timedelta
 from math import sqrt
 
 # --- Cache ---
@@ -36,7 +38,6 @@ CACHE_DIR = "/tmp/ta_cache"
 
 
 def _cache_path(symbol, days):
-    from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
     return os.path.join(CACHE_DIR, f"{symbol}_{days}d_{today}.json")
 
@@ -48,8 +49,7 @@ def _cache_read(symbol, days):
         return None
     try:
         mtime = os.path.getmtime(path)
-        import time
-        age = time.time() - mtime
+        age = _time_module.time() - mtime
         # Daily bars: cache valid for 4 hours during market, all day after close
         if age > 14400:  # 4 hours
             return None
@@ -84,19 +84,29 @@ def fetch_bars(symbol, days=250):
         if not api:
             _die("CRED_PROXY_URL not set")
 
-        import urllib.request
-        from datetime import datetime, timedelta
-        import time as _time
-
         # Yahoo Finance chart API — same source as the quote tool
-        end_ts = int(_time.time())
+        end_ts = int(_time_module.time())
         start_ts = int((datetime.now() - timedelta(days=days)).timestamp())
         url = (f"{api}/yahoo/v8/finance/chart/{symbol}"
                f"?period1={start_ts}&period2={end_ts}&interval=1d")
 
-        req = urllib.request.Request(url, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode())
+        req = urllib.request.Request(url, headers={
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0",
+        })
+
+        # Retry with backoff on 429 (Yahoo rate limits aggressively)
+        data = None
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read().decode())
+                break
+            except urllib.request.HTTPError as e:
+                if e.code == 429 and attempt < 2:
+                    _time_module.sleep(2 ** attempt)  # 1s, 2s
+                    continue
+                raise
 
         # Parse Yahoo chart response into standard bar format
         result = data.get("chart", {}).get("result", [])
@@ -139,7 +149,6 @@ def fetch_quote(symbol):
         api = os.environ.get("CRED_PROXY_URL", "")
         if not api:
             return None
-        import urllib.request
         url = f"{api}/yahoo/v8/finance/chart/{symbol}?interval=1d&range=1d"
         req = urllib.request.Request(url, headers={"Accept": "application/json"})
         with urllib.request.urlopen(req, timeout=15) as resp:

@@ -19,6 +19,7 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 
 import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
+
 import { checkCache, computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
 import { generateStage2Dockerfile } from "./dockerfile.js";
@@ -235,7 +236,7 @@ async function getImageInfo(tag: string): Promise<ImageInfo> {
         },
       ],
     };
-  } catch (e) {
+  } catch {
     return {
       id: "unknown",
       hash: "unknown",

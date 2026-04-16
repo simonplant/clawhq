@@ -260,7 +260,7 @@ async function getImageDigest(tag: string): Promise<string | undefined> {
       tag,
     ]);
     return stdout.trim() || undefined;
-  } catch (e) {
+  } catch {
     return undefined;
   }
 }

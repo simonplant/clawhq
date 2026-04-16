@@ -99,7 +99,7 @@ export async function parseChatGPTExport(
       };
     }
     conversations = parsed as ChatGPTConversation[];
-  } catch (err) {
+  } catch {
     return {
       success: false,
       source: "chatgpt",

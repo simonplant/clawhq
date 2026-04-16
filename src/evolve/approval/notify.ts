@@ -135,8 +135,7 @@ export async function sendResolutionConfirmation(
         parse_mode: "MarkdownV2",
       }),
     });
-  } catch (err) {
-  }
+  } catch { /* best-effort notification */ }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

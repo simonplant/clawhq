@@ -7,12 +7,12 @@
  */
 
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
-import { chmod, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { build } from "../../build/docker/build.js";
 import type { Stage1Config, Stage2Config } from "../../build/docker/types.js";
-import { DIR_MODE_SECRET, FILE_MODE_EXEC } from "../../config/defaults.js";
+import { DIR_MODE_SECRET } from "../../config/defaults.js";
 
 import {
   loadToolManifest,
@@ -336,7 +336,7 @@ async function getInstalledSkillNames(deployDir: string): Promise<string[]> {
     return manifest.skills
       .filter((s) => s.status === "active")
       .map((s) => s.name);
-  } catch (err) {
+  } catch {
     return [];
   }
 }

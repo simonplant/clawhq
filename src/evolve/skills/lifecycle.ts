@@ -42,7 +42,7 @@ export async function loadManifest(deployDir: string): Promise<SkillManifest> {
   try {
     const raw = await readFile(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
+  } catch {
     return { version: 1, skills: [] };
   }
   if (parsed.version !== 1) {
@@ -96,7 +96,7 @@ function progress(
 export async function installSkill(
   options: SkillInstallOptions,
 ): Promise<SkillInstallResult> {
-  const { deployDir, source, autoApprove, onProgress } = options;
+  const { deployDir, source, onProgress } = options;
 
   // ── Step 0: Rollback snapshot ──────────────────────────────────────────
   const snapshot = await createSnapshot(

@@ -1,18 +1,18 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import type { Command } from "commander";
 
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
 import { build, getPostureConfig, getRequiredBinaries } from "../../build/docker/index.js";
-import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import { install } from "../../build/installer/index.js";
 import { deploy } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
+import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import {
   createInquirerPrompter,
   generateBundle,
@@ -26,9 +26,9 @@ import {
   formatDoctorTable,
   runDoctor,
 } from "../../operate/doctor/index.js";
-
 import { CommandError } from "../errors.js";
-import { createCommandScope, renderError, validatePort, ensureInstalled } from "../ux.js";
+import { createCommandScope, renderError, validatePort } from "../ux.js";
+
 import { bundleToFiles, createConnectProgressHandler, createProgressHandler, formatPrereqCheck } from "./helpers.js";
 
 const DEFAULT_DEPLOY_DIR = join(homedir(), ".clawhq");

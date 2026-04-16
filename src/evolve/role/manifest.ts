@@ -56,7 +56,7 @@ export function loadRoleManifest(deployDir: string): RoleManifest {
   try {
     const raw = readFileSync(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
+  } catch {
     return { version: 1, roles: [...BUILTIN_ROLES], assignments: {} };
   }
   if (parsed.version !== 1) {
