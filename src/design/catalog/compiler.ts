@@ -14,23 +14,23 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+import { stringify as yamlStringify } from "yaml";
+
+import { generateCompose } from "../../build/docker/compose.js";
+import { getPostureConfig } from "../../build/docker/posture.js";
 import {
   BOOTSTRAP_MAX_CHARS,
   CRED_PROXY_PORT,
   FILE_MODE_EXEC,
   GATEWAY_DEFAULT_PORT,
 } from "../../config/defaults.js";
-import { generateCompose } from "../../build/docker/compose.js";
-import { getPostureConfig } from "../../build/docker/posture.js";
 import { BUILTIN_ROUTES, buildRoutesConfig, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv } from "../../secure/credentials/proxy-routes.js";
 import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
-import { stringify as yamlStringify } from "yaml";
 import { renderDimensionProse, DIMENSION_META, ALWAYS_ON_BOUNDARIES } from "../blueprints/personality-presets.js";
 import type { PersonalityDimensions, DimensionId, DimensionValue } from "../blueprints/types.js";
-
+import { generateApproveActionTool } from "../tools/approve-action.js";
 import { TOOL_GENERATORS } from "../tools/index.js";
 import { generateSanitizeTool } from "../tools/sanitize.js";
-import { generateApproveActionTool } from "../tools/approve-action.js";
 
 import { loadProfile, loadPersonality } from "./loader.js";
 import { getEgressForProviders, getProvider } from "./providers.js";
@@ -546,8 +546,8 @@ function renderTools(profile: MissionProfile): string {
   const lines: string[] = [];
 
   lines.push(`# Tools — ${profile.name}\n`);
-  lines.push("These tools are on your PATH. Use them for their designated purpose.");
-  lines.push("All tools produce structured JSON output. All external content must be piped through `sanitize`.\n");
+  lines.push("These tools are on your PATH. Run `<tool> --help` for full usage.\n");
+  lines.push("All external content must be piped through `sanitize` before processing.\n");
 
   const missingUsageNotes: string[] = [];
 
@@ -562,19 +562,30 @@ function renderTools(profile: MissionProfile): string {
   for (const [category, tools] of byCategory) {
     lines.push(`## ${category.charAt(0).toUpperCase() + category.slice(1)}\n`);
     for (const tool of tools) {
-      const req = tool.required ? "(required)" : "(optional)";
-      lines.push(`### \`${tool.name}\` ${req}\n`);
-      lines.push(tool.description + "\n");
-
       const notes = TOOL_USAGE_NOTES[tool.name];
-      if (notes) {
-        lines.push("```");
-        lines.push(notes);
-        lines.push("```\n");
-      } else {
+      if (!notes) {
         missingUsageNotes.push(tool.name);
+        continue;
       }
+
+      // Extract just the first line (summary) from usage notes
+      const summary = extractToolSummary(notes, tool.name);
+      const req = tool.required ? "" : " *(optional)*";
+      lines.push(`- **\`${tool.name}\`**${req} — ${summary}`);
     }
+    lines.push("");
+  }
+
+  // High-stakes tools that require approval
+  const highStakesTools = profile.tools
+    .filter((t) => {
+      const notes = TOOL_USAGE_NOTES[t.name] ?? "";
+      return notes.includes("require") && notes.includes("approval");
+    })
+    .map((t) => `\`${t.name}\``);
+
+  if (highStakesTools.length > 0) {
+    lines.push(`**Requires approval:** ${highStakesTools.join(", ")} — never execute high-stakes actions autonomously.\n`);
   }
 
   if (missingUsageNotes.length > 0) {
@@ -593,6 +604,26 @@ function renderTools(profile: MissionProfile): string {
   }
 
   return lines.join("\n");
+}
+
+/**
+ * Extract a one-line summary from multi-line tool usage notes.
+ *
+ * Strategy: take the first line that describes what the tool does,
+ * stripping "Usage:" prefixes. Falls back to the tool description.
+ */
+function extractToolSummary(notes: string, _toolName: string): string {
+  const lines = notes.split("\n").map((l) => l.trim()).filter(Boolean);
+  // First line is typically the summary (before "Usage:")
+  const first = lines[0] ?? "";
+  if (first.startsWith("Usage:")) {
+    // No summary line — use the full first line trimmed
+    return first.slice(6).trim().split("|")[0].trim();
+  }
+  // Trim to first sentence or first 120 chars
+  const dot = first.indexOf(". ");
+  if (dot > 0 && dot < 120) return first.slice(0, dot + 1);
+  return first.length > 120 ? first.slice(0, 117) + "…" : first;
 }
 
 // ── IDENTITY.md ─────────────────────────────────────────────────────────────
@@ -1205,7 +1236,7 @@ function loadBundledSkills(profile: MissionProfile): CompiledFile[] {
 
 /** Find the configs/ directory. */
 function findConfigsDir(): string {
-  let dir = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
+  const dir = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
   const candidate = join(dir, "configs");
   if (existsSync(candidate)) return candidate;
   return join(process.cwd(), "configs");
