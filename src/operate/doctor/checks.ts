@@ -22,6 +22,7 @@ import { collectIntegrationDomains, IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadA
 import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 import { isTimerActive } from "../automation/install.js";
+import { listSessions } from "../sessions/index.js";
 import { compareVersions } from "../updater/calver.js";
 
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
@@ -151,6 +152,7 @@ export async function runChecks(
     checkOllamaModelAvailable(deployDir, signal),
     checkConfigSync(deployDir),
     checkOllamaUrl(deployDir),
+    checkSessionRunaway(signal),
   ]);
 }
 
@@ -2016,5 +2018,34 @@ async function checkOllamaUrl(deployDir: string): Promise<DoctorCheckResult> {
       return ok(name, "Config not found — skipped", "info");
     }
     return ok(name, `Cannot parse Ollama URL — skipped (${msg})`, "info");
+  }
+}
+
+/**
+ * Detect runaway sessions — tool-call loops that inflate the session file
+ * into the thousands of messages. Left alone, these hammer the LLM, pin the
+ * GPU, and re-enter the loop on every auto-compact. Fix archives the session
+ * and restarts the container (matches the manual recovery on 2026-04-16).
+ */
+async function checkSessionRunaway(signal?: AbortSignal): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "session-runaway";
+  try {
+    const sessions = await listSessions(undefined, signal);
+    const runaway = sessions.filter((s) => s.flags.length > 0);
+    if (runaway.length === 0) {
+      return ok(name, `No runaway sessions (${sessions.length} healthy)`);
+    }
+    const worst = runaway[0];
+    const sizeMb = (worst.sizeBytes / 1024 / 1024).toFixed(1);
+    return fail(
+      name,
+      "error",
+      `Runaway session detected: ${worst.id.slice(0, 8)} (${worst.messageCount} msgs, ${sizeMb} MB, flags: ${worst.flags.join(",")})`,
+      `Run: clawhq session archive ${worst.id}`,
+      true,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return ok(name, `Session check skipped (${msg})`, "info");
   }
 }

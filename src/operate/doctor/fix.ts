@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
 import { CONTAINER_USER, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { archiveSession, listSessions } from "../sessions/index.js";
 
 import type { DoctorCheckResult, DoctorCheckName, FixReport, FixResult } from "./types.js";
 
@@ -60,7 +61,40 @@ const fixers: Partial<Record<DoctorCheckName, Fixer>> = {
   "user-uid": fixUserUid,
   "tool-access-grants": fixToolAccessGrants,
   "cron-health": fixCronHealth,
+  "session-runaway": fixSessionRunaway,
 };
+
+/** Archive all runaway sessions detected inside the container, then restart. */
+async function fixSessionRunaway(deployDir: string): Promise<FixResult> {
+  const name: DoctorCheckName = "session-runaway";
+  try {
+    const sessions = await listSessions();
+    const runaway = sessions.filter((s) => s.flags.length > 0);
+    if (runaway.length === 0) {
+      return { name, success: true, message: "No runaway sessions to archive" };
+    }
+    const archived: string[] = [];
+    const failed: string[] = [];
+    for (let i = 0; i < runaway.length; i++) {
+      // Only restart on the last archive to avoid multiple restarts.
+      const restart = i === runaway.length - 1;
+      const res = await archiveSession(runaway[i].id, deployDir, { restart });
+      if (res.success) archived.push(res.sessionId.slice(0, 8));
+      else failed.push(`${res.sessionId.slice(0, 8)}: ${res.message}`);
+    }
+    if (failed.length > 0) {
+      return {
+        name,
+        success: false,
+        message: `Archived ${archived.length}, failed ${failed.length}: ${failed.join("; ")}`,
+      };
+    }
+    return { name, success: true, message: `Archived ${archived.length} runaway session(s): ${archived.join(", ")}` };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { name, success: false, message: `Failed to archive runaway sessions: ${msg}` };
+  }
+}
 
 /** Fix .env file permissions to 0600. */
 async function fixSecretsPerms(deployDir: string): Promise<FixResult> {

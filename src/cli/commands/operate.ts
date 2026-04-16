@@ -28,6 +28,10 @@ import {
 } from "../../operate/monitor/index.js";
 import type { MonitorEvent, NotificationChannel, TelegramNotificationChannel } from "../../operate/monitor/index.js";
 import {
+  archiveSession,
+  listSessions,
+} from "../../operate/sessions/index.js";
+import {
   formatStatusJson,
   formatStatusTable,
   getStatus,
@@ -620,6 +624,79 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
         } else {
           console.log(formatMonitorStateTable(state));
         }
+      } finally {
+        cleanup();
+      }
+    });
+
+  const session = program
+    .command("session")
+    .description("Inspect and recover OpenClaw conversation sessions");
+
+  session
+    .command("list")
+    .description("List sessions inside the running container, flagging any runaway tool-call loops")
+    .option("--json", "Output as JSON")
+    .action(async (opts: { json?: boolean }) => {
+      const { signal, cleanup } = createCommandScope();
+      try {
+        const sessions = await listSessions(undefined, signal);
+        if (opts.json) {
+          console.log(JSON.stringify(sessions, null, 2));
+          return;
+        }
+        if (sessions.length === 0) {
+          console.log(chalk.dim("No sessions found (container may be stopped)."));
+          return;
+        }
+        console.log(chalk.bold(`\n${sessions.length} session(s):\n`));
+        for (const s of sessions) {
+          const sizeMb = (s.sizeBytes / 1024 / 1024).toFixed(2);
+          const flag = s.flags.length > 0
+            ? chalk.red(` ⚠ ${s.flags.join(",")}`)
+            : chalk.green(" ✓");
+          const key = s.indexKey ? chalk.dim(` [${s.indexKey}]`) : "";
+          console.log(`  ${s.id.slice(0, 8)}  ${s.messageCount.toString().padStart(6)} msgs  ${sizeMb.padStart(8)} MB  ${s.mtime}${key}${flag}`);
+        }
+        const runaway = sessions.filter((s) => s.flags.length > 0);
+        if (runaway.length > 0) {
+          console.log("");
+          console.log(chalk.yellow(`  ${runaway.length} runaway session(s). Recover with: clawhq session archive <id>`));
+        }
+      } finally {
+        cleanup();
+      }
+    });
+
+  session
+    .command("archive <sessionId>")
+    .description("Archive a session, strip it from sessions.json, and restart the container")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .option("--no-restart", "Do not restart the container after archiving")
+    .action(async (sessionId: string, opts: { deployDir: string; restart: boolean }) => {
+      ensureInstalled(opts.deployDir);
+      const { signal, cleanup } = createCommandScope();
+      const spinner = ora(`Archiving session ${sessionId.slice(0, 8)}…`);
+      spinner.start();
+      try {
+        const result = await archiveSession(sessionId, opts.deployDir, {
+          restart: opts.restart,
+          signal,
+        });
+        spinner.stop();
+        if (!result.success) {
+          console.error(chalk.red(`✘ ${result.message}`));
+          throw new CommandError("", 1);
+        }
+        console.log(chalk.green(`✔ ${result.message}`));
+        if (result.archivedFiles.length > 0) {
+          console.log(chalk.dim(`  Archived: ${result.archivedFiles.join(", ")}`));
+        }
+      } catch (error) {
+        spinner.stop();
+        if (error instanceof CommandError) throw error;
+        console.error(renderError(error));
+        throw new CommandError("", 1);
       } finally {
         cleanup();
       }

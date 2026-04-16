@@ -44,7 +44,8 @@ export type DoctorCheckName =
   | "ollama-reachable"
   | "ollama-model-available"
   | "config-sync"
-  | "ollama-url";
+  | "ollama-url"
+  | "session-runaway";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 
