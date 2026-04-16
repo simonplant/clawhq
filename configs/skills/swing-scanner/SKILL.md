@@ -1,13 +1,13 @@
 ---
 name: swing-scanner
-description: "Hourly scan of watchlist symbols for DP-style swing setups: pullbacks to key MAs (8d/10d/21d/200d), relative strength leaders/laggards, post-earnings day-after candidates, and volume surges. Produces Pot A thesis candidates and refreshes the swing_candidates watchlist. Runs hourly during market hours."
+description: "Hourly scan of watchlist symbols for DP-style swing setups: pullbacks to key MAs (8d/10d/21d/200d), relative strength leaders/laggards, post-earnings day-after candidates, and volume surges. Produces trade candidates for all eligible accounts and refreshes the swing_candidates watchlist. Runs hourly during market hours."
 metadata:
   { "openclaw": { "emoji": "🔍", "requires": { "bins": ["python3", "curl", "jq"] } } }
 ---
 
 # swing-scanner — Algorithmic Swing Setup Detection
 
-Scans watchlist symbols hourly during market hours for DP-style swing trading setups. Feeds Pot A (Clawdius System) with discretionary trade ideas based on technical analysis. This is the supplementary algorithmic signal source (priority 3) that complements the human-curated sources (Mancini priority 1, DP priority 1, Focus 25 priority 2).
+Scans watchlist symbols hourly during market hours for DP-style swing trading setups. Generates trade candidates for all eligible accounts (tos, ira, tradier) based on technical analysis. This is the supplementary algorithmic signal source (priority 3) that complements the human-curated sources (Mancini priority 1, DP priority 1, Focus 25 priority 2).
 
 Consult the trading wiki: `knowledge/trading/wiki/dp-methodology.md` for the trading methodology this scanner implements.
 
@@ -89,7 +89,7 @@ Every ORDER must include `confirmation: PENDING_TA` and `confluence: none`:
 ```
 ORDER N | [conviction] | CONDITIONAL
   source:       scanner
-  pot:          A
+  accounts:     tos,ira,tradier
   ticker:     [symbol]
   exec_as:    [symbol]
   direction:  [LONG/SHORT]
@@ -128,8 +128,8 @@ For routine scans with no new setups: log silently, don't message.
 
 ## Boundaries
 
-- **Pot A only.** Scanner generates Pot A thesis candidates. Pot B (DP) and Pot C (Mancini) are mechanical mirrors — scanner doesn't touch them.
-- **No auto-execution.** Scanner produces ORDER blocks with status CONDITIONAL. Simon or the premarket-brief decides whether to promote to ACTIVE.
+- **All eligible accounts.** Scanner generates candidates for tos, ira (long-only setups), and tradier. Account constraints filter eligibility (e.g., IRA can't take short ideas from Screen D).
+- **No auto-execution.** Scanner produces ORDER blocks with status CONDITIONAL. Simon executes on TOS/Fidelity; tradier is alert-only.
 - **Human-curated signals take priority.** Per CONFIG.json: "human-curated signals take priority over algorithmic when they conflict." If scanner and DP disagree on a name, note the divergence but defer to DP.
 - **Don't spam.** Hourly scan, but only alert on HIGH conviction new setups. Most scans should be silent.
 

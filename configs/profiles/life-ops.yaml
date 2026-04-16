@@ -164,9 +164,9 @@ cron_prompts:
        - Is there confluence? (DP + Mancini aligned = higher confidence)
        - Deliver to Simon with context, not just the raw alert
 
-    3. Check paper portfolio: trade-journal positions
-       - If Pot B or C have open positions, check vs stop/target alerts
-       - If all pots flat and no alerts, skip trading section
+    3. Check portfolio: trade-journal positions
+       - If any account (tos, ira, tradier) has open positions, check vs stop/target alerts
+       - If all accounts flat and no alerts, skip trading section
 
     4. Kill condition check: if a kill condition from an ORDER is met
        (e.g., DP went flat, level broken), update the ORDER status to
@@ -216,7 +216,7 @@ cron_prompts:
     Output format:
     === Pre-Market Brief — YYYY-MM-DD ===
     MARKET CONTEXT / OVERNIGHT INTELLIGENCE / TODAY'S TRADE IDEAS (order-ready) /
-    WATCH LIST / KEY LEVELS / CALENDAR RISK / POT STATUS
+    WATCH LIST / KEY LEVELS / CALENDAR RISK / ACCOUNT STATUS
 
     Trade ideas must be order-ready: LIMIT price, stop, targets, risk.
 
@@ -235,10 +235,10 @@ cron_prompts:
     as TRIGGERED (<0.5%), NEAR (<2%), or WATCH. Write to
     memory/trading-YYYY-MM-DD-eod.md.
 
-    Paper Account: trade-journal mark, trade-journal compare. Include pot
-    comparison in EOD report. Flag any pot drawn down >10% for halt review.
+    Accounts: trade-journal mark, trade-journal compare. Include account
+    comparison in EOD report. Flag any account drawn down >10% for halt review.
 
-    Output: === EOD Review === MARKET SUMMARY / LEVEL ACCURACY / POT PERFORMANCE /
+    Output: === EOD Review === MARKET SUMMARY / LEVEL ACCURACY / ACCOUNT PERFORMANCE /
     TOMORROW'S SETUP
 
   morning_brief: >
@@ -253,16 +253,16 @@ cron_prompts:
 
     Steps:
     1. risk-governor status — current risk utilization
-    2. trade-journal summary — today's pot performance
-    3. trade-journal compare — pot-vs-pot-vs-SPY
+    2. trade-journal summary — today's account performance
+    3. trade-journal compare — account-vs-account-vs-SPY
     4. quote SPY QQQ ES=F --json — closing levels
     5. Read memory/trading-YYYY-MM-DD.md — what was the plan?
     6. Read memory/trading-YYYY-MM-DD-eod.md — what happened?
     7. journal summary — signals, risk checks, blocks today
 
-    Assess: portfolio health, signal quality, regime, governor blocks.
-    Write to markets/reports/daily-report.md and deliver via Telegram.
-    Keep concise — Simon reads on mobile.
+    Assess: portfolio health across accounts (tos, ira, tradier), signal quality,
+    regime, governor blocks. Write to markets/reports/daily-report.md and deliver
+    via Telegram. Keep concise — Simon reads on mobile.
 
   x_scan: >
     Run X intelligence scan: x scan

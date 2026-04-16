@@ -70,7 +70,7 @@ Every ORDER block is self-contained. Each one has everything needed to monitor a
 ```
 ORDER N | [conviction] | [status]
   source:       [mancini / dp / focus25 / scanner]
-  pot:          [A / B / C]
+  accounts:     [tos / ira / tradier] (comma-separated if multiple eligible)
   ticker:       [symbol]
   exec_as:      [execution symbol, e.g. SPY for ES]
   direction:    [LONG / SHORT]
@@ -95,7 +95,7 @@ ORDER N | [conviction] | [status]
 | Field | Required | Description |
 |-------|----------|-------------|
 | `source` | Yes | Which extractor produced this order |
-| `pot` | Yes | Which paper trading pot (A=Clawdius, B=Mirror DP, C=Mirror Mancini) |
+| `accounts` | Yes | Eligible accounts: tos, ira, tradier (comma-separated). Filtered by account constraints. |
 | `ticker` | Yes | The instrument being analyzed (e.g. ES, META) |
 | `exec_as` | Yes | The symbol to actually trade (e.g. SPY when ticker is ES) |
 | `direction` | Yes | LONG or SHORT |
@@ -169,7 +169,7 @@ See `knowledge/trading/wiki/dp-conviction-scoring.md` for DP language mapping. S
 
 ## Supplementary Sections (source-specific)
 
-These sections provide context. The agent monitors ORDER blocks only. Supplementary sections are for Simon's context and Pot A thesis generation.
+These sections provide context. The agent monitors ORDER blocks only. Supplementary sections are for Simon's context and discretionary thesis generation.
 
 ### Mancini supplementary:
 ```

@@ -1,11 +1,11 @@
 ---
 name: eod-review
-description: "End-of-day trading review per TRADING_SOP.md Phase 6 (REVIEW). Marks positions to market, compares pots vs SPY, reconciles journal vs Tradier, reviews level accuracy, and produces the EOD report. Feeds lessons into tomorrow's RESEARCH phase. Cron at 13:15 PT weekdays (4:15 PM ET, after market close)."
+description: "End-of-day trading review per TRADING_SOP.md Phase 6 (REVIEW). Marks positions to market, compares accounts vs SPY, reconciles journal vs brokers, reviews level accuracy, and produces the EOD report. Feeds lessons into tomorrow's RESEARCH phase. Cron at 13:15 PT weekdays (4:15 PM ET, after market close)."
 ---
 
 # eod-review — End-of-Day Trading Review
 
-Phase 6 (REVIEW) of the daily trading cycle. After market close, assess what happened: mark positions, compare strategies, check level accuracy, and feed lessons forward.
+Phase 6 (REVIEW) of the daily trading cycle. After market close, assess what happened: mark positions, compare accounts, check level accuracy, and feed lessons forward.
 
 Read `references/TRADING_SOP.md` Phase 6 for the full specification.
 
@@ -27,26 +27,26 @@ trade-journal mark
 ```
 Update all open position prices to closing values.
 
-### 3. Compare Pots
+### 3. Compare Accounts
 
 ```
 trade-journal compare
 ```
-Pot A vs Pot B vs Pot C vs SPY benchmark. This is the core experiment metric — which strategy is winning?
+tos vs ira vs tradier vs SPY benchmark. Compare account performance.
 
 ### 4. Reconcile
 
 ```
 trade-journal reconcile
 ```
-Verify the paper journal matches actual Tradier positions. Flag any mismatches (phantom trades, missed fills, stale positions).
+Verify the journal matches actual broker positions (TOS, Fidelity, Tradier). Flag any mismatches (phantom trades, missed fills, stale positions).
 
 ### 5. Risk Status
 
 ```
 risk_governor.py status
 ```
-Current risk utilization: exposure, drawdown, daily P&L, pot halts.
+Current risk utilization: exposure, drawdown, daily P&L, account halts.
 
 ### 6. Level Review
 
@@ -69,8 +69,8 @@ For each triggered level: did the setup work? Did the predicted direction play o
 Review signals delivered to Simon today:
 - Premarket brief trade ideas: which were correct?
 - Heartbeat alerts: were they timely and accurate?
-- DP VTF signals (if any): how did Pot B trades perform?
-- Mancini setups (if any): how did Pot C trades perform?
+- DP VTF signals (if any): how did those ideas perform across accounts?
+- Mancini setups (if any): how did those ideas perform across accounts?
 
 ### 8. Journal Summary
 
@@ -90,11 +90,11 @@ MARKET SUMMARY
 [ES close, % change, session character (trend/chop/reversal)]
 [Key macro drivers of the day]
 
-POT PERFORMANCE
-Pot A (Clawdius):  $X P&L (+Y%)  [positions: ...]
-Pot B (Mirror DP): $X P&L (+Y%)  [positions: ...]
-Pot C (Mancini):   $X P&L (+Y%)  [positions: ...]
-SPY benchmark:     +Z%
+ACCOUNT PERFORMANCE
+tos ($100K TOS):       $X P&L (+Y%)  [positions: ...]
+ira ($100K Fidelity):  $X P&L (+Y%)  [positions: ...]
+tradier ($3K Tradier): $X P&L (+Y%)  [positions: ...]
+SPY benchmark:         +Z%
 
 LEVEL ACCURACY
 [For each ORDER block: TRIGGERED/NEAR/WATCH, outcome if triggered]
@@ -107,15 +107,15 @@ SIGNAL REVIEW
 TOMORROW'S SETUP
 [Mancini pull running at 2:30 PM — key carryforward levels/positions]
 [Open positions carrying overnight with current stops]
-[Any strategy halt flags (pot down >10%)]
+[Any strategy halt flags (account down >10%)]
 ```
 
 ### 10. Feed Forward
 
 - **Open positions** carry into tomorrow's RESEARCH phase
 - **Lessons** → append to `memory/trading-YYYY-MM-DD.md` notes section
-- **Strategy concerns** → if a pot is consistently losing, flag for halt review:
-  - Pot down >10% from allocation → recommend `trade-journal halt <pot> "drawdown review"`
+- **Strategy concerns** → if an account is consistently losing, flag for halt review:
+  - Account down >10% from allocation → recommend `trade-journal halt <account> "drawdown review"`
   - 3+ consecutive losing days → flag pattern
 - **Mancini pull** at 2:30 PM PT begins tomorrow's RESEARCH phase automatically
 - Write EOD data to `memory/trading-YYYY-MM-DD-eod.md` for the portfolio review cron
@@ -123,10 +123,10 @@ TOMORROW'S SETUP
 ## Failure Modes
 
 - **trade-journal mark fails** → run remaining steps (compare, reconcile, level review). Flag `journal_incomplete: mark` in report header.
-- **trade-journal compare fails** → skip pot comparison section. Flag `journal_incomplete: compare`.
+- **trade-journal compare fails** → skip account comparison section. Flag `journal_incomplete: compare`.
 - **trade-journal reconcile fails** → skip reconciliation. Flag `journal_incomplete: reconcile`.
 - **Quote fetch fails** (tradier unreachable) → skip level review and closing prices. Alert Simon: "EOD prices unavailable — level accuracy deferred."
-- **Daily brief file missing** → skip level review entirely. Report pot performance only.
+- **Daily brief file missing** → skip level review entirely. Report account performance only.
 - **Limitation (Phase 2):** TRIGGERED/NEAR/WATCH categorization uses closing prices only (no intraday bars). A level hit and reverted mid-day will be miscategorized as WATCH. Note this in report header until Phase 3 ta-enrichment is available.
 
 ## Boundaries

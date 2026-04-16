@@ -78,4 +78,4 @@ Size down dramatically. Expect double/triple traps. Failed Breakdowns mandatory 
 
 - [[mancini-extraction-rules]] — How to parse newsletters into ORDER blocks
 - [[dp-methodology]] — DP's complementary approach (stocks, not futures)
-- [[pot-system]] — Pot C mirrors Mancini mechanically
+- [[pot-system]] — Account system and sizing

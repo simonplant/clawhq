@@ -52,4 +52,4 @@ For sizing rules and pot constraints, see [[pot-system]].
 
 - [[dp-methodology]] — Core trading system
 - [[dp-extraction-rules]] — AM Call and VTF parsing
-- [[pot-system]] — Pot B sizing rules and constraints
+- [[pot-system]] — Account system and sizing rules

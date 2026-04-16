@@ -72,4 +72,4 @@ See [[dp-extraction-rules]] for parsing AM Calls and VTF alerts.
 - [[dp-conviction-scoring]] — Language → conviction + sizing
 - [[dp-extraction-rules]] — AM Call and VTF parsing
 - [[mancini-methodology]] — Complementary ES futures approach
-- [[pot-system]] — Pot B mirrors DP mechanically
+- [[pot-system]] — Account system and sizing rules

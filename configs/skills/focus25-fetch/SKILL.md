@@ -38,7 +38,7 @@ Fetches the daily Focus 25 email from FastMail and parses it into a structured s
    **RS Leaders (top relative strength):**
    - Ticker, RS score, sector, price change
    - These are stocks showing strength vs the market
-   - Relevant for DP-style "relative strength" trades (Pot A thesis)
+   - Relevant for DP-style "relative strength" trades (candidates for all accounts)
 
    **RS Laggards (weakest relative strength):**
    - Ticker, RS score, sector, price change
@@ -81,7 +81,7 @@ Fetches the daily Focus 25 email from FastMail and parses it into a structured s
 
 6. **Cross-reference with watchlists.** Check if any Focus 25 names overlap with:
    - DP watchlist (from WATCHLISTS.json `dp_watchlist`)
-   - Existing ORDER blocks in today's brief
+   - Existing ORDER blocks in today's brief (for any account)
    - Flag overlaps: "NVDA appears in Focus 25 RS leaders AND DP watchlist"
 
 7. **Deliver summary.** One Telegram message:
@@ -92,7 +92,7 @@ Fetches the daily Focus 25 email from FastMail and parses it into a structured s
 
 ## Boundaries
 
-- **Read-only.** No trade execution. Focus 25 informs Pot A thesis and next-day premarket synthesis.
+- **Read-only.** No trade execution. Focus 25 informs trade candidates for all accounts and next-day premarket synthesis.
 - **Email only.** Only reads from FastMail via `email-fastmail` tool. No other data sources.
 - **No fabrication.** Only extract data present in the email. Don't invent RS scores or posture readings.
 - **Informational.** Actionable cards are for Simon's review, not automatic execution.

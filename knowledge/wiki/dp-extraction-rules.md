@@ -63,7 +63,7 @@ VTF execution is **mechanical** — mirror DP exactly.
 ## Standard ORDER Format Output
 
 See [[standard-order-format]]. DP-specific fields:
-- `source: dp`, `pot: B`
+- `source: dp`, `accounts: tos,ira,tradier` (IRA excludes short ideas)
 - Active positions go in CONTEXT block (not ORDER blocks)
 - Analyst actions → ANALYST ACTIONS section (supplementary, context only)
 - Sector themes → SECTOR THEMES section (context only)

@@ -70,7 +70,7 @@ Word budget: TL;DR 50, SETUPS 1000, LEVELS 300, RUNNERS 200, SCENARIOS 200, EXEC
 ## Standard ORDER Format Output
 
 See [[standard-order-format]] for the unified format. Mancini-specific:
-- `source: mancini`, `pot: C`, `ticker: ES`, `exec_as: SPY`
+- `source: mancini`, `accounts: tos,ira,tradier`, `ticker: ES`, `exec_as: SPY`
 - ES → SPY conversion: 1 ES point ≈ $0.18 on SPY
 - Session rules: max 2 fills. Win #1 → done. Lose #1 → one more. Lose #2 → done.
 
@@ -87,4 +87,4 @@ See [[standard-order-format]] for the unified format. Mancini-specific:
 - [[mancini-methodology]] — The underlying trading system
 - [[standard-order-format]] — Unified ORDER block spec
 - [[dp-extraction-rules]] — DP's equivalent extraction contract
-- [[pot-system]] — Pot C mirrors Mancini mechanically (ES→SPY conversion)
+- [[pot-system]] — Account system and ES→SPY conversion

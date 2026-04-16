@@ -145,8 +145,10 @@ KEY LEVELS TO WATCH
 CALENDAR RISK
 [Earnings, FOMC, NFP, speeches — anything that could move the market today]
 
-POT STATUS
-[Pot A/B/C: current positions or "flat — awaiting signals"]
+ACCOUNT STATUS
+tos:     [positions or "flat"] — Simon executes (full capability)
+ira:     [positions or "flat"] — Simon executes (long-only)
+tradier: [positions or "flat"] — Clawdius's own (alert-only)
 ```
 
 **Trade ideas must be order-ready.** Not "watch this area" — give Simon a price to set a LIMIT order at, a stop, and targets. If the conviction isn't high enough for a specific limit price, it's a WATCH, not a trade idea.
@@ -174,7 +176,7 @@ POT STATUS
 1. **Score each trade idea per `DP.md`** — apply conviction scoring and trade type classification. Output HIGH + MEDIUM ideas as order-ready signals, LOW as watch list.
 2. **Output order-ready signals** — LIMIT price, stop, targets, risk, DP's exact words. See brief template below.
 3. **Be available and responsive** — Simon is placing orders, answer questions fast
-4. **Process VTF alerts** as they arrive — parse, update brief, generate Pot B commands
+4. **Process VTF alerts** as they arrive — parse, update brief, generate ORDER blocks for eligible accounts
 5. **If DP AM Call arrives now**: process via `dp-brief`, score ideas, deliver supplement
 6. **Size calculations on request**: output exact share quantities based on risk rules in `DP.md`
 
@@ -194,37 +196,38 @@ POT STATUS
 
 **Timing:** Market hours. Heartbeat monitors every 30 min.
 
-### Pot B (Mirror DP) — Mechanical
+### DP Signals — Advisory
 
 When Simon pastes VTF alerts:
 1. `vtf-parse` → structured events
-2. Size per `DP.md` rules (planned = full, scalps = half, max 1% risk)
-3. `trade-journal log B ... --execute`
-4. Confirm to Simon: position taken, current Pot B state
+2. Size per account: tos ($100K, 1% risk), ira ($100K, long-only — skip shorts), tradier ($3K, alert-only)
+3. Present sized ORDER blocks to Simon for tos/ira execution
+4. Log to `trade-journal log <account> ...` for each eligible account
 
 When DP posts FLAT/COVERED:
 1. `vtf-parse` detects close action
-2. `trade-journal close B ... --execute`
-3. Report P&L on the closed trade
+2. Flag all accounts holding that ticker for closure
+3. Report P&L on closed positions per account
 
-### Pot C (Mirror Mancini) — Level-Triggered
+### Mancini Signals — Level-Triggered
 
 Heartbeat every 15 min during market hours:
 1. Read brief → find `## Orders` section → extract Mancini ORDER blocks
 2. `tradier quote ES=F` → compare to flush targets (use tradier for real-time, not Yahoo)
 3. Within 10 pts of flush target → log to memory (don't bother Simon)
 4. Within 5 pts → alert Simon: "ES approaching [setup] zone at [price]"
-5. Acceptance confirmed → `risk_governor.py check` → `trade-journal log C buy <qty> SPY --execute`
+5. Acceptance confirmed → `risk_governor.py check` → present to Simon for tos/ira execution, log for tradier
 6. Follow Mancini protocol: T1 scale (75%), T2 scale (15%), runner (10%) with trailing stop at BE
 7. ES → SPY conversion: 1 ES point ≈ $0.18 on SPY. Monitor ES via `tradier quote ES=F`, execute as SPY.
+8. IRA: eligible for long setups only. Tradier: alert-only mode.
 
-### Pot A (Clawdius System) — Discretionary
+### Scanner / Swing Ideas — Discretionary
 
 Clawdius's own analysis. Uses all sources plus own TA:
 1. Identify setups from brief + real-time data
-2. Document thesis in `--notes`
-3. `trade-journal log A ... --execute`
-4. Track independently of DP and Mancini
+2. Generate ORDER blocks for all eligible accounts
+3. `trade-journal log <account> ...` with thesis in `--notes`
+4. Simon executes on TOS/Fidelity; tradier is alert-only
 
 ### Trade Signals for Simon
 
@@ -250,21 +253,20 @@ Throughout the day, surface actionable setups when levels are tested:
 ### Position Monitoring
 
 Every heartbeat (30 min):
-1. `trade-journal positions` — check all Pot B/C positions
+1. `trade-journal positions` — check all account positions
 2. `tradier quote <symbol>` for each position
 3. Alert on:
    - Position >2% against entry (approaching stop)
    - Position hitting T1 target (time to scale out)
-   - Pot exposure approaching 60% limit
-   - Any pot down >5% for the day
+   - Account exposure approaching 60% limit
+   - Any account down >5% for the day
 
-### Risk Rules (from DP.md)
+### Risk Rules (per account)
 
-- Max 1% risk per trade per pot (~$333)
-- Max 15% of pot per position (~$5K)
-- Max 60% total pot exposure (~$20K)
-- 3-4 positions max per pot
-- **Halt a pot if down >10% from allocation** — review before resuming
+- **tos** ($100K): 1% risk per trade ($1,000), max 15% per position ($15K), max 60% exposure ($60K), 3-4 positions max
+- **ira** ($100K): 1% risk per trade ($1,000), max 15% per position ($15K), long-only, no margin, no shorting, no day trading
+- **tradier** ($3K): 1% risk per trade ($30), max 15% per position ($450), full capability but alert-only mode
+- **Halt an account if down >10% from allocation** — review before resuming
 
 ### Simon's Signals Management
 
@@ -284,8 +286,8 @@ When Simon's signals are active:
 ### EOD Checklist
 
 1. **Mark to market**: `trade-journal mark`
-2. **Compare pots**: `trade-journal compare` — Pot A vs B vs C vs SPY
-3. **Reconcile**: `trade-journal reconcile` — journal matches Tradier?
+2. **Compare accounts**: `trade-journal compare` — tos vs ira vs tradier vs SPY
+3. **Reconcile**: `trade-journal reconcile` — journal matches broker positions?
 4. **Level review**: Which Mancini levels triggered? Which DP targets hit?
 5. **Signal review**: Which signals to Simon were correct? Which missed?
 
@@ -297,11 +299,11 @@ When Simon's signals are active:
 MARKET SUMMARY
 [ES close, % change, session character (trend/chop/reversal)]
 
-POT PERFORMANCE
-Pot A (Clawdius):  $X P&L (+Y%)  [positions: ...]
-Pot B (Mirror DP): $X P&L (+Y%)  [positions: ...]
-Pot C (Mancini):   $X P&L (+Y%)  [positions: ...]
-SPY benchmark:     +Z%
+ACCOUNT PERFORMANCE
+tos ($100K TOS):       $X P&L (+Y%)  [positions: ...]
+ira ($100K Fidelity):  $X P&L (+Y%)  [positions: ...]
+tradier ($3K Tradier): $X P&L (+Y%)  [positions: ...]
+SPY benchmark:         +Z%
 
 LEVEL ACCURACY
 [Which setups triggered? Which levels held? What was the regime?]
@@ -312,9 +314,9 @@ TOMORROW'S SETUP
 
 ### Feed Forward
 
-- Open positions carry into tomorrow's RESEARCH phase
+- Open positions carry into tomorrow's RESEARCH phase (per account)
 - Lessons learned → `memory/trading-YYYY-MM-DD.md` notes section
-- If a strategy is consistently losing → flag for halt review
+- If an account is consistently losing → flag for halt review
 - Mancini pull (2:30 PM PT) begins tomorrow's RESEARCH phase automatically
 
 ---
@@ -326,8 +328,8 @@ TOMORROW'S SETUP
 | RESEARCH | Close → 5 AM | Clawdius (cron) | Sleeps | Full — gather, scan, accumulate |
 | PLAN | 5:00-6:00 AM | Clawdius + Simon | Pastes DP AM Call | Full for synthesis; Simon triggers DP input |
 | FOCUS | 6:00-6:30 AM | Simon | Places LIMIT orders by 6:10 AM | On standby — answer questions, process VTF |
-| EXECUTE | 6:30 AM-1 PM | Both | Pastes VTF alerts, manages orders | Full for paper pots; signals only for Simon |
-| MANAGE | Concurrent | Clawdius | Reviews alerts | Full for paper pots; advisory for Simon |
+| EXECUTE | 6:30 AM-1 PM | Both | Pastes VTF alerts, manages orders | Advisory for tos/ira; autonomous for tradier (alert-only) |
+| MANAGE | Concurrent | Clawdius | Reviews alerts | Monitors all accounts; advisory for Simon |
 | REVIEW | 1:15 PM → evening | Clawdius (cron) | Reads EOD report | Full — mark, compare, reconcile |
 
 ---
@@ -350,14 +352,14 @@ Things Clawdius must NOT do:
 
 How trading signals flow from source to action: INGEST → PARSE → BRIEF → DETECT → EXECUTE → REPORT.
 
-| Source | Ingest | Parse | Brief Section | Detect | Execute | Pot |
-|--------|--------|-------|---------------|--------|---------|-----|
-| Mancini | mancini-fetch cron 2:30 PM PT | v4.0-QR extraction | Mancini (Source 1) | Heartbeat: ES price vs levels | Pot C mechanical | C |
-| DP AM Call | Simon pastes into Telegram | dp-brief tool | DP (Source 3) | Heartbeat: stock prices vs levels | Pot B on VTF | B |
-| DP VTF | Simon pastes alerts | dp-parse detects action lines | DP events | Immediate — alerts ARE triggers | Pot B mechanical | B |
-| Focus 25 | focus25-fetch cron 4:30 PM PT | Email HTML parsing | Focus 25 (Source 2) | Premarket cross-reference | Informs Pot A | A |
+| Source | Ingest | Parse | Brief Section | Detect | Execute | Accounts |
+|--------|--------|-------|---------------|--------|---------|----------|
+| Mancini | mancini-fetch cron 2:30 PM PT | v4.0-QR extraction | Mancini (Source 1) | Heartbeat: ES price vs levels | tos,ira (longs),tradier (alert) | tos,ira,tradier |
+| DP AM Call | Simon pastes into Telegram | dp-brief tool | DP (Source 3) | Heartbeat: stock prices vs levels | tos,ira (longs),tradier (alert) | tos,ira,tradier |
+| DP VTF | Simon pastes alerts | dp-parse detects action lines | DP events | Immediate — alerts ARE triggers | tos,ira (longs),tradier (alert) | tos,ira,tradier |
+| Focus 25 | focus25-fetch cron 4:30 PM PT | Email HTML parsing | Focus 25 (Source 2) | Premarket cross-reference | Informs all accounts | tos,ira,tradier |
 | X Intelligence | x-scan cron every 15 min | Quality filter | Overnight Intelligence | Cross-ref with brief levels | Alert Simon | — |
-| Swing Scanner | Hourly during market hours | ta tool + earnings | Scanner section | ORDER blocks monitored | Pot A candidates | A |
+| Swing Scanner | Hourly during market hours | ta tool + earnings | Scanner section | ORDER blocks monitored | tos,ira (longs),tradier (alert) | tos,ira,tradier |
 
 **Rule:** Human-curated signals (Mancini, DP) take priority over algorithmic (scanner) when they conflict.
 
@@ -366,10 +368,10 @@ How trading signals flow from source to action: INGEST → PARSE → BRIEF → D
 During market hours (Mon-Fri, 9:30 AM - 4:00 PM ET), heartbeat MUST:
 
 1. **Read the brief:** `memory/trading-YYYY-MM-DD.md` — find `## Orders` section, extract ORDER blocks
-2. **Check positions:** `trade-journal positions` — know what's open in Pot B/C
+2. **Check positions:** `trade-journal positions` — know what's open across accounts
 3. **Fetch real-time prices:** `tradier quote ES=F` for Mancini, `tradier quote <symbol>` for stock positions
 4. **Monitor ORDER blocks:** For each ACTIVE/CONDITIONAL order, check proximity to entry/stop/targets
-5. **Execute on trigger:** `risk_governor.py check` → `trade-journal log <pot> <side> <qty> <symbol> --execute`
+5. **Alert on trigger:** `risk_governor.py check` → present to Simon for tos/ira execution, log for tradier
 6. **Scale-out on targets:** T1 hit → close 75%. T2 hit → close 15%. Runner trails at BE.
 7. **Cross-reference sources:** Mancini + DP agree on level → higher confidence. Disagree → flag divergence.
 8. **When nothing near a level:** `HEARTBEAT_OK` — don't report noise.
@@ -379,7 +381,7 @@ During market hours (Mon-Fri, 9:30 AM - 4:00 PM ET), heartbeat MUST:
 In each heartbeat during market hours, verify:
 - Today's trading brief exists and has Mancini section
 - DP section present (if Simon has pasted AM call or VTF alerts)
-- Pot B/C positions match expectations (no phantom trades)
+- Account positions match expectations (no phantom trades)
 - No stale prices in portfolio state (mark if >4h old)
 
 **Missing data escalation:**
@@ -391,7 +393,7 @@ In each heartbeat during market hours, verify:
 
 | Doc | Purpose |
 |-----|---------|
-| `knowledge/trading/` | Trading wiki — methodology, extraction rules, conviction, pot system |
+| `knowledge/trading/` | Trading wiki — methodology, extraction rules, conviction, account system |
 | `STANDARD_ORDER_FORMAT.md` | Unified ORDER block spec (also in wiki as [[standard-order-format]]) |
-| `trade-journal` tool | Pot B/C/A execution |
+| `trade-journal` tool | Account trade logging (tos/ira/tradier) |
 | `risk_governor.py` | Hard constraint enforcement |

@@ -78,10 +78,12 @@ Phase 1 (RESEARCH) crons have been filling `memory/trading-YYYY-MM-DD.md` since 
 
    If conviction isn't high enough for a specific LIMIT price → WATCH list, not trade idea.
 
-7. **Check pot status.** Run `trade-journal positions`:
-   - Pot A/B/C: current positions or "flat"
+7. **Check account status.** Run `trade-journal positions`:
+   - tos ($100K TOS): current positions or "flat" — full capability
+   - ira ($100K Fidelity IRA): current positions or "flat" — long-only, no margin
+   - tradier ($3K Tradier): current positions or "flat" — Clawdius's own, alert-only
    - Any positions near stops or targets
-   - Exposure levels
+   - Exposure levels per account
 
 8. **Deliver the brief.** One message in this format:
 
@@ -107,8 +109,10 @@ Phase 1 (RESEARCH) crons have been filling `memory/trading-YYYY-MM-DD.md` since 
    CALENDAR RISK
    [Earnings, FOMC, NFP, speeches]
 
-   POT STATUS
-   [Pot A/B/C: current positions or "flat — awaiting signals"]
+   ACCOUNT STATUS
+   tos:     [positions or "flat"] — Simon executes (stocks, options, futures, shorting, margin)
+   ira:     [positions or "flat"] — Simon executes (long-only, no margin, no shorting, no day trading)
+   tradier: [positions or "flat"] — Clawdius's own (alert-only mode)
 
    SOURCES: Mancini [Y/N] | Focus 25 [Y/N] | DP [pending] | Overnight [Y/N]
    ```
@@ -155,5 +159,5 @@ If Simon pastes the DP AM Call after the brief has been delivered:
 ## Requires
 
 - `quote` workspace tool (for futures/market data)
-- `trade-journal` workspace tool (for pot status)
+- `trade-journal` workspace tool (for account status)
 - `earnings` workspace tool (for calendar risk, when available)
