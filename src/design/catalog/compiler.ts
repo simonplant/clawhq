@@ -500,6 +500,27 @@ WATCHLISTS.json (portfolio, DP, Mancini symbols), and Python modules
 for journal, market_calendar, and risk_governor backends.
 Not invoked directly — used by journal, market-calendar, and risk-governor tools.`,
 
+  ta: `Technical analysis — compute indicators from price data via tradier.
+Usage: \`ta ma <symbol> [--periods 8,21,200]\` — moving averages (SMA + EMA)
+  \`ta rsi <symbol> [--period 14]\` — RSI
+  \`ta macd <symbol>\` — MACD (12/26/9)
+  \`ta bbands <symbol>\` — Bollinger Bands
+  \`ta atr <symbol>\` — Average True Range
+  \`ta rvol <symbol>\` — Relative volume vs average
+  \`ta full <symbol>\` — all indicators at once
+  \`ta levels <symbol>\` — key MA levels for DP-style analysis
+Output: JSON. Requires tradier tool for price data. No external deps beyond stdlib.
+Use \`ta levels\` for quick support/resistance reference before trade decisions.`,
+
+  earnings: `Earnings calendar and economic events — Finnhub API.
+Usage: \`earnings today\` — today's earnings reports
+  \`earnings week\` — this week's earnings
+  \`earnings check <symbol> [symbol...]\` — next earnings date for specific symbols
+  \`earnings watchlist\` — earnings this week for all watchlist symbols
+  \`earnings economic [--days N]\` — economic calendar (FOMC, CPI, NFP, etc.)
+Output: JSON. Requires FINNHUB_API_KEY in environment.
+Check earnings before taking positions — avoid holding through surprise reports.`,
+
   "email-fastmail": `FastMail JMAP email — Simon's personal email account (simon@simonplant.com).
 Usage: \`email-fastmail inbox\` | \`email-fastmail all [--limit N]\` | \`email-fastmail read <id>\`
   \`email-fastmail triage [--limit N]\` — smart triage with priority + action recommendations
