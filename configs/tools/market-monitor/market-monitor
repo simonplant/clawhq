@@ -29,9 +29,38 @@ from pathlib import Path
 WORKSPACE = Path(os.environ.get("WORKSPACE_DIR",
     os.path.join(os.environ.get("HOME", "/home/node"), ".openclaw", "workspace")))
 BRIEF_DIR = WORKSPACE / "memory"
-ALERTS_FILE = WORKSPACE / "state" / "market-alerts.jsonl"
+ALERTS_DIR = WORKSPACE / "state"
 CACHE_FILE = WORKSPACE / "state" / "price-cache.json"
 PROXY = os.environ.get("CRED_PROXY_URL", "")
+
+
+def _today():
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def _alerts_file():
+    """Date-rotated alerts file — one per day, auto-cleans."""
+    return ALERTS_DIR / f"market-alerts-{_today()}.jsonl"
+
+
+def _log(msg):
+    """Log to stderr (visible in cron logs, not stdout)."""
+    print(f"[market-monitor] {msg}", file=sys.stderr)
+
+
+def _is_market_hours():
+    """Check if US market is open (Mon-Fri, 9:30 AM - 4:00 PM ET).
+    Approximate — doesn't handle holidays. Good enough for skipping overnight polls."""
+    from datetime import timezone, timedelta
+    now_et = datetime.now(timezone(timedelta(hours=-4)))  # ET (not DST-aware, close enough)
+    weekday = now_et.weekday()  # 0=Mon, 6=Sun
+    if weekday >= 5:  # Weekend
+        return False
+    hour, minute = now_et.hour, now_et.minute
+    market_minutes = hour * 60 + minute
+    # Pre-market starts 4:00 AM ET, regular 9:30-16:00, after-hours until 20:00
+    # We monitor from 6:00 AM ET (pre-market briefs) to 16:30 ET (post-close buffer)
+    return 360 <= market_minutes <= 990  # 6:00 AM to 4:30 PM ET
 
 
 # --- Price fetching ---
@@ -275,18 +304,21 @@ def today_brief_path():
 # --- File I/O ---
 
 def write_cache(prices):
-    """Write price cache to shared state file."""
+    """Write price cache atomically (temp file + rename)."""
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     data = {"ts": int(time.time()), "prices": prices}
-    CACHE_FILE.write_text(json.dumps(data, indent=2))
+    tmp = CACHE_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2))
+    tmp.rename(CACHE_FILE)
 
 
 def write_alerts(alerts):
-    """Append alerts to JSONL file."""
+    """Append alerts to today's JSONL file (date-rotated)."""
     if not alerts:
         return
-    ALERTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(ALERTS_FILE, "a") as f:
+    af = _alerts_file()
+    af.parent.mkdir(parents=True, exist_ok=True)
+    with open(af, "a") as f:
         for alert in alerts:
             alert["ts"] = int(time.time())
             alert["time"] = datetime.now().strftime("%H:%M:%S")
@@ -304,11 +336,12 @@ def read_cache():
 
 
 def read_alerts():
-    """Read today's alerts."""
-    if not ALERTS_FILE.exists():
+    """Read today's alerts (date-rotated file)."""
+    af = _alerts_file()
+    if not af.exists():
         return []
     alerts = []
-    for line in ALERTS_FILE.read_text().strip().split("\n"):
+    for line in af.read_text().strip().split("\n"):
         if line:
             try:
                 alerts.append(json.loads(line))
@@ -321,12 +354,19 @@ def read_alerts():
 
 def cmd_run():
     """One polling cycle: fetch prices, compare levels, write alerts."""
+    # Skip outside market hours (saves API calls, avoids stale data alerts)
+    if not _is_market_hours():
+        return  # Silent — cron runs but nothing to do
+
     # Parse ORDER blocks from today's brief
     brief = today_brief_path()
-    orders = parse_order_blocks(brief)
+    if not brief.exists():
+        _log(f"No brief at {brief}")
+        return
 
+    orders = parse_order_blocks(brief)
     if not orders:
-        # No orders to monitor — still cache prices for watchlist
+        _log("No ORDER blocks in brief")
         return
 
     # Collect symbols to fetch
@@ -337,12 +377,20 @@ def cmd_run():
             symbols.add(sym)
 
     if not symbols:
+        _log("No symbols to monitor")
         return
 
     # Fetch prices
     prices = fetch_prices(list(symbols))
     if not prices:
+        _log("Price fetch failed for all symbols: " + ", ".join(symbols))
         return
+
+    # Log partial failures
+    fetched = set(prices.keys())
+    missed = symbols - fetched
+    if missed:
+        _log(f"Price fetch failed for: {', '.join(missed)}")
 
     # Write price cache (other tools can read this)
     write_cache(prices)
@@ -362,10 +410,7 @@ def cmd_run():
         if new_alerts:
             for a in new_alerts:
                 print(a["msg"])
-        else:
-            print("No new alerts (deduped)")
-    else:
-        print("No levels in range")
+    # Silent when no alerts — that's the normal case
 
 
 def cmd_status():
@@ -392,8 +437,9 @@ def cmd_status():
 
 def cmd_clear():
     """Clear today's alerts."""
-    if ALERTS_FILE.exists():
-        ALERTS_FILE.unlink()
+    af = _alerts_file()
+    if af.exists():
+        af.unlink()
         print("Alerts cleared")
     else:
         print("No alerts to clear")
