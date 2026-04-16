@@ -1468,6 +1468,39 @@
       "status": "todo",
       "readyForSprint": true,
       "track": "core"
+    },
+    {
+      "id": "FEAT-186",
+      "title": "Multi-agent: clawhq up <name> \u2014 named instances with fleet directory layout",
+      "intent": "When managing multiple agents, clawhq up needs to know which one. Default to the only agent if there is one, require the name if there are multiple.",
+      "description": "Today clawhq is hardcoded to ~/.clawhq with a single agent. Multi-agent requires: instance naming (clawhq up clawdius), directory layout (~/.clawhq/instances/<name>/), fleet registry for discovery, and CLI argument threading through all commands. The instanceName parameter already exists in build/compose types but is never wired to the CLI.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Design instance directory layout (~/.clawhq/instances/<name>/ vs current flat ~/.clawhq/)",
+        "Add optional <name> positional argument to all CLI commands (up, down, doctor, status, etc.)",
+        "Create fleet registry (instances.json) for multi-agent discovery",
+        "Default to single instance when only one exists, require name when multiple",
+        "Migrate existing ~/.clawhq/ layout to instances/default/ with backwards compat",
+        "Wire instanceName through to compose (agentImageTag, agentNetworkName already support it)",
+        "Update clawhq.yaml schema for per-instance config"
+      ],
+      "acceptanceCriteria": [
+        "clawhq up works unchanged for single-agent (backwards compatible)",
+        "clawhq up clawdius deploys a named instance",
+        "clawhq status shows all instances when no name given",
+        "Each instance has isolated config, workspace, engine, and Docker resources",
+        "Existing single-agent deployments auto-migrate on first run"
+      ],
+      "scope": [
+        "src/cli/",
+        "src/config/",
+        "src/build/launcher/",
+        "src/build/docker/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "track": "core"
     }
   ]
 }
