@@ -525,6 +525,13 @@ Usage: \`market-monitor run\` — one polling cycle (fetch, compare, write alert
 Runs via system cron (not LLM cron). Writes alerts to JSONL for heartbeat to read.
 Read alerts during heartbeat, add context, and deliver to the user.`,
 
+  "track-record": `ORDER outcome tracking — score WIN/LOSS/SCRATCH, rolling stats per source × setup × conviction.
+Usage: \`track-record score <order_id> <outcome> [--pnl N]\` — score an ORDER
+  \`track-record stats [--source X] [--days N]\` — rolling performance stats
+  \`track-record best [--days 30]\` | \`track-record worst [--days 30]\` — best/worst combos
+  \`track-record today\` — today's scored and unscored orders
+Used by EOD review and premarket-brief to weight ideas by track record.`,
+
   "email-fastmail": `FastMail JMAP email — Simon's personal email account (simon@simonplant.com).
 Usage: \`email-fastmail inbox\` | \`email-fastmail all [--limit N]\` | \`email-fastmail read <id>\`
   \`email-fastmail triage [--limit N]\` — smart triage with priority + action recommendations
@@ -795,7 +802,7 @@ function renderOpenclawJson(
     models: {
       providers: {
         ollama: {
-          baseUrl: "http://ollama:11434",
+          baseUrl: "http://host.docker.internal:11434",
           models: [],
         },
       },
@@ -809,6 +816,9 @@ function renderOpenclawJson(
     plugins: {
       entries: {
         ...(isLocal ? { ollama: { enabled: true } } : {}),
+        // Device-pair requires interactive pairing from inside the container —
+        // incompatible with dmPolicy:open and blocks sub-agent WebSocket connections.
+        "device-pair": { enabled: false },
       },
     },
     hooks: {
@@ -1043,7 +1053,8 @@ function buildChannels(config: CompositionConfig): Record<string, unknown> {
   const channels: Record<string, Record<string, unknown>> = {
     telegram: {
       enabled: true,
-      dmPolicy: "pairing",
+      dmPolicy: "open",
+      allowFrom: ["*"],
       groupPolicy: "disabled",
       linkPreview: false,
     },
