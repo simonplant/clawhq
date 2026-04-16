@@ -36,6 +36,7 @@ export async function runPreflight(
     checkDocker(signal),
     checkImages(deployDir, signal),
     checkConfig(deployDir),
+    checkCompose(deployDir),
     checkSecrets(deployDir),
     checkPorts(port, signal),
     checkOllama(signal),
@@ -146,6 +147,82 @@ async function checkConfig(deployDir: string): Promise<PreflightCheckResult> {
       passed: false,
       message: `Config file has invalid JSON: ${msg}`,
       fix: "Fix the JSON syntax in engine/openclaw.json or re-run: clawhq init --guided",
+    };
+  }
+}
+
+/**
+ * 3b. docker-compose.yml has valid structure for deploy.
+ *
+ * Catches the "skeleton compose" problem: a compose file that exists but
+ * is missing the image field, extra_hosts, or tmpfs — causing silent failures
+ * (container can't start, can't reach Ollama, read-only fs errors).
+ */
+async function checkCompose(deployDir: string): Promise<PreflightCheckResult> {
+  const name: PreflightCheckName = "compose";
+  const composePath = join(deployDir, "engine", "docker-compose.yml");
+
+  try {
+    const raw = await readFile(composePath, "utf-8");
+    const { parse: yamlParse } = await import("yaml");
+    const compose = yamlParse(raw) as Record<string, unknown> | null;
+
+    if (!compose || typeof compose !== "object") {
+      return {
+        name,
+        passed: false,
+        message: "docker-compose.yml is empty or invalid YAML",
+        fix: "Run: clawhq build",
+      };
+    }
+
+    const services = compose["services"] as Record<string, unknown> | undefined;
+    const openclaw = services?.["openclaw"] as Record<string, unknown> | undefined;
+
+    if (!openclaw) {
+      return {
+        name,
+        passed: false,
+        message: "docker-compose.yml missing 'openclaw' service definition",
+        fix: "Run: clawhq build",
+      };
+    }
+
+    if (!openclaw["image"]) {
+      return {
+        name,
+        passed: false,
+        message: "docker-compose.yml has no image field — container cannot start",
+        fix: "Run: clawhq build (regenerates compose from current config)",
+      };
+    }
+
+    const extraHosts = openclaw["extra_hosts"] as string[] | undefined;
+    if (!extraHosts || !extraHosts.some((h) => h.includes("host.docker.internal"))) {
+      return {
+        name,
+        passed: false,
+        message: "docker-compose.yml missing extra_hosts — Ollama will be unreachable from container",
+        fix: "Run: clawhq build (regenerates compose with host mappings)",
+      };
+    }
+
+    return { name, passed: true, message: "Compose file structure is valid" };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("ENOENT")) {
+      return {
+        name,
+        passed: false,
+        message: "docker-compose.yml not found",
+        fix: "Run: clawhq build",
+      };
+    }
+    return {
+      name,
+      passed: false,
+      message: `Cannot parse docker-compose.yml: ${msg}`,
+      fix: "Run: clawhq build",
     };
   }
 }

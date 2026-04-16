@@ -42,7 +42,8 @@ export type DoctorCheckName =
   | "egress-domains-coverage"
   | "ollama-reachable"
   | "ollama-model-available"
-  | "config-sync";
+  | "config-sync"
+  | "ollama-url";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

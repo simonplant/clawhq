@@ -13,6 +13,7 @@ export type PreflightCheckName =
   | "docker"
   | "images"
   | "config"
+  | "compose"
   | "secrets"
   | "ports"
   | "ollama"

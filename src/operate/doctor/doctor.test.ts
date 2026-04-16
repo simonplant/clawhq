@@ -58,7 +58,7 @@ async function writeValidConfig(): Promise<void> {
   );
 }
 
-/** Write a minimal docker-compose.yml. */
+/** Write a minimal docker-compose.yml with all required structure. */
 async function writeValidCompose(): Promise<void> {
   const compose = `
 services:
@@ -69,6 +69,12 @@ services:
       - ALL
     security_opt:
       - no-new-privileges
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "ollama:host-gateway"
+    tmpfs:
+      - /tmp:size=100m,noexec,nosuid
+      - /home/node/.openclaw:exec,nosuid,size=256m,uid=1000,gid=1000
     volumes:
       - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
 `;
@@ -326,7 +332,7 @@ describe("checks", { timeout: 30_000 }, () => {
 
   it("runs all checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(33);
+    expect(checks.length).toBe(34);
   });
 });
 
@@ -342,7 +348,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(33);
+    expect(report.checks.length).toBe(34);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -811,9 +817,9 @@ services:
     expect(check.message).toContain("underscore-prefixed methods");
   });
 
-  it("runs all 33 checks", async () => {
+  it("runs all 34 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(33);
+    expect(checks.length).toBe(34);
   });
 });
 

@@ -149,6 +149,7 @@ export async function runChecks(
     checkEgressDomainsCoverage(deployDir),
     checkOllamaModelAvailable(deployDir, signal),
     checkConfigSync(deployDir),
+    checkOllamaUrl(deployDir),
   ]);
 }
 
@@ -217,15 +218,68 @@ async function checkConfigValid(deployDir: string): Promise<DoctorCheckResult> {
   }
 }
 
-/** 3. docker-compose.yml exists. */
+/** 3. docker-compose.yml exists and has valid structure. */
 async function checkComposeExists(deployDir: string): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "compose-exists";
   const composePath = join(deployDir, "engine", "docker-compose.yml");
   try {
-    await access(composePath, constants.R_OK);
-    return ok(name, "Compose file exists");
-  } catch {
-    return fail(name, "error", "docker-compose.yml not found at engine/docker-compose.yml", "Run: clawhq init --guided");
+    const raw = await readFile(composePath, "utf-8");
+    const { parse: yamlParse } = await import("yaml");
+    const compose = yamlParse(raw) as Record<string, unknown> | null;
+
+    if (!compose || typeof compose !== "object") {
+      return fail(name, "error", "docker-compose.yml is empty or invalid YAML", "Run: clawhq build");
+    }
+
+    const services = compose["services"] as Record<string, unknown> | undefined;
+    const openclaw = services?.["openclaw"] as Record<string, unknown> | undefined;
+
+    if (!openclaw) {
+      return fail(name, "error", "docker-compose.yml missing 'openclaw' service", "Run: clawhq build");
+    }
+
+    // Image field is required — without it, docker compose up fails with a cryptic error
+    if (!openclaw["image"]) {
+      return fail(
+        name,
+        "error",
+        "docker-compose.yml 'openclaw' service has no image field — container cannot start",
+        "Run: clawhq build (regenerates compose from current config)",
+        true,
+      );
+    }
+
+    // Check for extra_hosts (required for Ollama connectivity from container)
+    const extraHosts = openclaw["extra_hosts"] as string[] | undefined;
+    if (!extraHosts || !extraHosts.some((h) => h.includes("host.docker.internal"))) {
+      return fail(
+        name,
+        "warning",
+        "docker-compose.yml missing extra_hosts for host.docker.internal — Ollama unreachable from container",
+        "Run: clawhq build (regenerates compose with correct host mappings)",
+        true,
+      );
+    }
+
+    // Check for tmpfs at OpenClaw container root (required for runtime state writes)
+    const tmpfs = openclaw["tmpfs"] as string[] | undefined;
+    if (!tmpfs || !tmpfs.some((t) => t.includes("/home/node/.openclaw"))) {
+      return fail(
+        name,
+        "warning",
+        "docker-compose.yml missing tmpfs for /home/node/.openclaw — OpenClaw runtime writes will fail on read-only rootfs",
+        "Run: clawhq build (regenerates compose with runtime tmpfs)",
+        true,
+      );
+    }
+
+    return ok(name, "Compose file valid (image, extra_hosts, tmpfs present)");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("ENOENT")) {
+      return fail(name, "error", "docker-compose.yml not found at engine/docker-compose.yml", "Run: clawhq build");
+    }
+    return fail(name, "error", `docker-compose.yml parse error: ${msg}`, "Run: clawhq build");
   }
 }
 
@@ -1844,5 +1898,68 @@ async function checkConfigSync(deployDir: string): Promise<DoctorCheckResult> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return fail(name, "warning", `Cannot check config sync: ${msg}`);
+  }
+}
+
+/**
+ * Check that the Ollama baseUrl in openclaw.json is container-reachable.
+ *
+ * Common mistake: configuring localhost or 127.0.0.1 which refers to the
+ * container itself, not the host running Ollama. Must use host.docker.internal
+ * or a hostname mapped via extra_hosts.
+ */
+async function checkOllamaUrl(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "ollama-url";
+
+  try {
+    const configPath = join(deployDir, "engine", "openclaw.json");
+    const raw = await readFile(configPath, "utf-8");
+    const config = JSON.parse(raw) as Record<string, unknown>;
+
+    // Check if Ollama is the configured provider
+    const agents = config["agents"] as Record<string, unknown> | undefined;
+    const defaults = agents?.["defaults"] as Record<string, unknown> | undefined;
+    const model = defaults?.["model"] as Record<string, unknown> | undefined;
+    const primary = (model?.["primary"] ?? "") as string;
+
+    if (!primary.startsWith("ollama/")) {
+      return ok(name, "Not using Ollama — skipped");
+    }
+
+    // Extract the configured baseUrl
+    const models = config["models"] as Record<string, unknown> | undefined;
+    const providers = models?.["providers"] as Record<string, unknown> | undefined;
+    const ollama = providers?.["ollama"] as Record<string, unknown> | undefined;
+    const baseUrl = (ollama?.["baseUrl"] ?? "") as string;
+
+    if (!baseUrl) {
+      return fail(
+        name,
+        "warning",
+        "No Ollama baseUrl configured in openclaw.json — OpenClaw will use its default (may not be container-reachable)",
+        "Set models.providers.ollama.baseUrl to http://host.docker.internal:11434 in openclaw.json",
+      );
+    }
+
+    // Detect localhost URLs that won't work from inside a container
+    const url = new URL(baseUrl);
+    const host = url.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return fail(
+        name,
+        "error",
+        `Ollama baseUrl is ${baseUrl} — localhost inside a Docker container refers to the container, not the host`,
+        "Change models.providers.ollama.baseUrl to http://host.docker.internal:11434 in openclaw.json, then run: clawhq up",
+        true,
+      );
+    }
+
+    return ok(name, `Ollama baseUrl is container-reachable (${host})`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("ENOENT")) {
+      return ok(name, "Config not found — skipped", "info");
+    }
+    return ok(name, `Cannot parse Ollama URL — skipped (${msg})`, "info");
   }
 }
