@@ -48,7 +48,9 @@ describe("scaffoldDirs", () => {
       "workspace/identity",
       "workspace/tools",
       "workspace/skills",
+      "workspace/state",
       "workspace/memory",
+      "shared",
       "ops",
       "ops/doctor",
       "ops/monitor",
@@ -66,8 +68,8 @@ describe("scaffoldDirs", () => {
     }
 
     expect(result.deployDir).toBe(deployDir);
-    // Root + 16 subdirectories
-    expect(result.created).toHaveLength(17);
+    // Root + 18 subdirectories
+    expect(result.created).toHaveLength(19);
   });
 
   it("creates security/ and cloud/ with DIR_MODE_SECRET (0o700)", () => {
