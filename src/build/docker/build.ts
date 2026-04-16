@@ -13,9 +13,9 @@
  */
 
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import { cpSync, existsSync } from "node:fs";
 import { chmod, copyFile, mkdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
@@ -121,6 +121,9 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 
   // Get image info for manifest
   const imageInfo = await getImageInfo(stage2Tag);
+
+  // Stage market-engine sidecar if source exists in the repo
+  await stageMarketEngine(engineDir);
 
   // Generate docker-compose.yml
   // Auto-detect cred-proxy: if init/apply generated the proxy files, enable the sidecar
@@ -269,6 +272,37 @@ async function stageWorkspaceFiles(
     await mkdir(dirname(dst), { recursive: true });
     await copyFile(src, dst);
   }
+}
+
+/**
+ * Stage the market-engine sidecar into engine/market-engine/ for Docker build.
+ *
+ * Looks for src/market-engine/ relative to the ClawHQ project root.
+ * Copies the entire Python project (excluding __pycache__, .egg-info, .pytest_cache)
+ * into the engine directory so docker-compose can build it as a sidecar.
+ */
+async function stageMarketEngine(engineDir: string): Promise<void> {
+  // Resolve project root: this file is at src/build/docker/build.ts → 3 levels up
+  const projectRoot = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
+  const sourceDir = join(projectRoot, "src", "market-engine");
+
+  if (!existsSync(join(sourceDir, "Dockerfile"))) return;
+
+  const destDir = join(engineDir, "market-engine");
+  await mkdir(destDir, { recursive: true });
+
+  cpSync(sourceDir, destDir, {
+    recursive: true,
+    filter: (src) => {
+      // Skip build artifacts, caches, and dev-only files
+      const name = src.split("/").pop() ?? "";
+      if (name === "__pycache__" || name === ".pytest_cache") return false;
+      if (name.endsWith(".egg-info")) return false;
+      if (name === ".gitignore") return false;
+      if (name === "tests") return false; // Don't ship tests in the container
+      return true;
+    },
+  });
 }
 
 // ── YAML Serialization ──────────────────────────────────────────────────────

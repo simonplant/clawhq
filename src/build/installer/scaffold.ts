@@ -29,6 +29,8 @@ const SCAFFOLD_DIRS = [
   "workspace/identity",
   "workspace/tools",
   "workspace/skills",
+  "workspace/state",
+  "shared",
   "ops",
   "ops/doctor",
   "ops/monitor",

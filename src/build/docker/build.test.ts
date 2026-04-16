@@ -818,6 +818,104 @@ describe("1Password Docker integration", () => {
   });
 });
 
+// ── Market Engine Sidecar Tests ───────────────────────────────────────────
+
+describe("generateCompose with market-engine", () => {
+  it("does not include market-engine service by default", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
+    expect(compose.services["market-engine"]).toBeUndefined();
+  });
+
+  it("includes market-engine service when enableMarketEngine is true", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+    });
+    expect(compose.services["market-engine"]).toBeDefined();
+  });
+
+  it("market-engine runs as non-root with read-only rootfs", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+    });
+    const me = compose.services["market-engine"];
+    expect(me).toBeDefined();
+    expect(me?.user).toBe("1000:1000");
+    expect(me?.read_only).toBe(true);
+    expect(me?.cap_drop).toContain("ALL");
+    expect(me?.security_opt).toContain("no-new-privileges");
+  });
+
+  it("market-engine mounts shared and workspace/memory volumes", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+    });
+    const me = compose.services["market-engine"];
+    expect(me).toBeDefined();
+    const sharedVol = me?.volumes.find((v) => v.includes("/shared"));
+    const memoryVol = me?.volumes.find((v) => v.includes("/workspace/memory"));
+    expect(sharedVol).toBeDefined();
+    expect(memoryVol).toContain(":ro");
+  });
+
+  it("market-engine shares the same network as openclaw", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+    });
+    const me = compose.services["market-engine"];
+    expect(me).toBeDefined();
+    expect(me?.networks).toContain("clawhq_net");
+  });
+
+  it("market-engine depends on cred-proxy", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+    });
+    const me = compose.services["market-engine"];
+    expect(me).toBeDefined();
+    expect(me?.depends_on).toHaveProperty("cred-proxy");
+    expect(me?.depends_on["cred-proxy"].condition).toBe("service_healthy");
+  });
+
+  it("market-engine has healthcheck", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+    });
+    const me = compose.services["market-engine"];
+    expect(me).toBeDefined();
+    expect(me?.healthcheck).toBeDefined();
+    expect(me?.healthcheck.test[0]).toBe("CMD");
+  });
+
+  it("market-engine has CRED_PROXY_URL in environment", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+    });
+    const me = compose.services["market-engine"];
+    expect(me).toBeDefined();
+    expect(me?.environment.CRED_PROXY_URL).toContain("cred-proxy");
+  });
+
+  it("market-engine uses build context with Dockerfile", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+      marketEngineDir: "/home/user/.clawhq/engine/market-engine",
+    });
+    const me = compose.services["market-engine"];
+    expect(me).toBeDefined();
+    expect(me?.build.context).toBe("/home/user/.clawhq/engine/market-engine");
+    expect(me?.build.dockerfile).toBe("Dockerfile");
+  });
+});
+
 describe("formatHashMismatch", () => {
   it("produces clear error with tool name, expected, and actual hash", () => {
     const msg = formatHashMismatch({

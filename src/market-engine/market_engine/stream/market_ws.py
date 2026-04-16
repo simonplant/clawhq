@@ -131,6 +131,7 @@ class MarketStream:
             "sessionid": self._session_id,
             "filter": FILTERS,
             "linebreak": True,
+            "validOnly": True,
         }
         await ws.send(json.dumps(payload))
         logger.debug("Subscribed to %d symbols", len(self._symbols))

@@ -82,9 +82,11 @@ class Engine:
             on_order=self._on_order_event,
         )
 
+        # Queue for passing alerts from sync callbacks to async broadcaster
+        self._alert_queue: asyncio.Queue[dict] = asyncio.Queue()
         self._running = True
 
-    # ── Callbacks (called from stream threads) ──────────────────────────────
+    # ── Callbacks (called from within async dispatch — sync functions) ───────
 
     def _on_quote(self, msg: dict) -> None:
         self.price_store.update_quote(msg)
@@ -105,7 +107,7 @@ class Engine:
         self.position_store.handle_order_event(msg)
 
     def _check_levels(self, symbol: str) -> None:
-        """Run level checks and broadcast any alerts."""
+        """Run level checks and queue any alerts for async broadcast."""
         if not symbol:
             return
         price = self.price_store.get_last(symbol)
@@ -115,14 +117,11 @@ class Engine:
         alerts = self.level_engine.check_price(symbol, price)
         for alert in alerts:
             entry = self.alert_store.record(alert)
-            # Fire SSE broadcast (schedule on event loop)
+            # Put on queue — the _alert_broadcaster task drains this
             try:
-                loop = asyncio.get_running_loop()
-                loop.call_soon_threadsafe(
-                    lambda e=entry: asyncio.ensure_future(self.broadcaster.broadcast_alert(e))
-                )
-            except RuntimeError:
-                pass  # No event loop running yet
+                self._alert_queue.put_nowait(entry)
+            except asyncio.QueueFull:
+                logger.warning("Alert queue full, dropping alert for %s", symbol)
 
     # ── Data accessors (for web app) ────────────────────────────────────────
 
@@ -239,6 +238,17 @@ class Engine:
                 logger.error("Position writer error: %s", e)
             await asyncio.sleep(5)
 
+    async def _alert_broadcaster(self) -> None:
+        """Drain the alert queue and broadcast via SSE."""
+        while self._running:
+            try:
+                entry = await asyncio.wait_for(self._alert_queue.get(), timeout=1.0)
+                await self.broadcaster.broadcast_alert(entry)
+            except asyncio.TimeoutError:
+                continue
+            except Exception as e:
+                logger.error("Alert broadcaster error: %s", e)
+
     async def _price_broadcaster(self) -> None:
         """Periodically broadcast prices via SSE."""
         while self._running:
@@ -330,6 +340,7 @@ class Engine:
                 self._file_watcher(),
                 self._status_writer(),
                 self._position_writer(),
+                self._alert_broadcaster(),
                 self._price_broadcaster(),
                 self._market_hours_monitor(),
             )

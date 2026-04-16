@@ -92,9 +92,12 @@ class PriceStore:
             self._dirty = True
 
     def update_timesale(self, msg: dict) -> None:
-        """Update from a Tradier timesale event."""
+        """Update from a Tradier timesale event. Skips cancels and corrections."""
         sym = msg.get("symbol", "")
         if not sym:
+            return
+        # Skip cancelled or corrected trades — bad data
+        if msg.get("cancel") or msg.get("correction"):
             return
         with self._lock:
             snap = self._prices.setdefault(sym, PriceSnapshot())
