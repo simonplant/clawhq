@@ -16,6 +16,9 @@ import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { DeployLockBusyError, withDeployLock } from "../../config/lock.js";
 import { compile } from "../../design/catalog/index.js";
 import { loadCronStore } from "../../openclaw/cron-store.js";
+import { loadRuntimeConfig } from "../../openclaw/runtime-config.js";
+
+import { withTransaction } from "./transaction.js";
 import type { CompiledFile } from "../../design/catalog/types.js";
 import type { UserConfig } from "../../design/catalog/types.js";
 import { writeBundle } from "../../design/configure/writer.js";
@@ -194,15 +197,31 @@ async function applyCore(
       `${diffReport.added.length} added, ${diffReport.changed.length} changed, ${diffReport.unchanged.length} unchanged`,
     );
 
-    // 8. Write (unless dry-run)
+    // 8. Write (unless dry-run) — tree-scoped transaction wraps the write
+    //    so any mid-write failure OR post-write validation failure rolls
+    //    every touched file back to pre-apply state. All-or-nothing.
     if (!dryRun) {
       report("write", "running", "Writing files…");
-      writeBundle(deployDir, files.map((f) => ({
-        relativePath: f.relativePath,
-        content: f.content,
-        mode: f.mode,
-      })));
-      report("write", "done", `${diffReport.added.length + diffReport.changed.length} file(s) written`);
+      const touchedPaths = [...diffReport.added, ...diffReport.changed];
+      try {
+        await withTransaction(deployDir, touchedPaths, async () => {
+          writeBundle(deployDir, files.map((f) => ({
+            relativePath: f.relativePath,
+            content: f.content,
+            mode: f.mode,
+          })));
+          // Post-write validation: the new OpenClaw surfaces must load
+          // through their strict readers. A broken compile that escapes
+          // earlier checks triggers rollback here rather than shipping
+          // a deployment that won't boot.
+          validatePostWrite(deployDir, touchedPaths);
+        });
+        report("write", "done", `${diffReport.added.length + diffReport.changed.length} file(s) written`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        report("write", "failed", `Apply aborted — rolled back: ${msg}`);
+        return { success: false, error: `Apply aborted and rolled back: ${msg}`, report: emptyReport() };
+      }
     }
 
     // Report skipped paths truthfully: always-skipped + seed-once paths that
@@ -220,6 +239,31 @@ async function applyCore(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, error: message, report: emptyReport() };
+  }
+}
+
+// ── Post-write validation ──────────────────────────────────────────────────
+
+/**
+ * After apply writes the new deployment state, re-read every OpenClaw file
+ * surface we have a strict loader for and confirm it parses. Any throw
+ * here is caught by the surrounding transaction and triggers full
+ * rollback — the deployment never sees a shape the scheduler / gateway
+ * would reject at boot.
+ *
+ * Only validates surfaces that were actually written this apply, so a
+ * no-change run is free and a cron-only change doesn't reload openclaw.json.
+ */
+function validatePostWrite(deployDir: string, touchedPaths: readonly string[]): void {
+  const touched = new Set(touchedPaths);
+  if (touched.has("cron/jobs.json")) {
+    loadCronStore(join(deployDir, "cron/jobs.json"));
+  }
+  if (touched.has("engine/openclaw.json")) {
+    loadRuntimeConfig(join(deployDir, "engine/openclaw.json"));
+  }
+  if (touched.has("openclaw.json")) {
+    loadRuntimeConfig(join(deployDir, "openclaw.json"));
   }
 }
 
