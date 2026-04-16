@@ -529,7 +529,7 @@ ClawHQ integrates through four surfaces — all programmatic:
 The update system goes beyond mechanical pull-restart. It understands what changed, predicts impact, and migrates config automatically.
 
 ```
-check → analyze → backup → pull → migrate → blue-green restart → verify → (rollback on failure)
+check → analyze → backup → pull → migrate → restart → verify → (rollback on failure)
 ```
 
 | Capability | What It Does |
@@ -547,7 +547,6 @@ update:
   channel: stable          # security | stable | latest | pinned
   pinnedVersion: v2026.4.12  # only if channel=pinned
   stableDelayDays: 7       # delay for stable channel
-  blueGreen: true          # default: true
 ```
 
 **OpenClaw versioning:** CalVer format `vYYYY.M.PATCH` (e.g. `v2026.4.12`). Switched from semver (v0.8.x) in early 2026. ClawHQ's CalVer parser handles both formats.
@@ -890,7 +889,7 @@ Content access in managed mode is architecturally blocked — no code path exist
 Agent workspace uses Docker layer/mount topology to enforce immutability — tools, identity, and security guardrails are baked into the read-only image layer, not protected by policy flags.
 
 ### AD-07: Update intelligence
-Updates are not mechanical pull-restart cycles. The update system understands what changed upstream, predicts deployment-specific breakage, migrates config automatically, and keeps the agent alive during updates via blue-green deploy. The pipeline: `check → analyze → backup → pull → migrate → blue-green restart → verify → rollback`. Four update channels (security/stable/latest/pinned) control update policy.
+Updates are not mechanical pull-restart cycles. The update system understands what changed upstream, predicts deployment-specific breakage, migrates config automatically, and rolls back on failure. The pipeline: `check → analyze → backup → pull → migrate → restart → verify → rollback`. Four update channels (security/stable/latest/pinned) control update policy.
 
 ---
 

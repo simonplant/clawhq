@@ -1,7 +1,7 @@
 /**
  * Update intelligence system — public API.
  *
- * Change intelligence, versioned migrations, blue-green deploy,
+ * Change intelligence, versioned migrations,
  * update channels, and automatic rollback.
  */
 
@@ -18,13 +18,6 @@ export { analyzeUpdate, classifyRelease, fetchReleaseNotes, generateRecommendati
 // Update channels
 export { resolveTargetVersion } from "./channels.js";
 
-// Blue-green deploy
-export { blueGreenUpdate } from "./blue-green.js";
-export type { BlueGreenOptions, BlueGreenResult } from "./blue-green.js";
-
-// Connection awareness
-export { snapshotConnections } from "./connections.js";
-export type { ConnectionSnapshot } from "./connections.js";
 
 // Terminal formatting
 export { formatIntelligenceJson, formatIntelligenceReport, formatMigrationPlan } from "./format.js";

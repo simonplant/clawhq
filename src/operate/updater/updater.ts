@@ -1,6 +1,6 @@
 /**
  * Update intelligence system — safe upstream updates with change intelligence,
- * versioned migrations, blue-green deploy, and automatic rollback.
+ * versioned migrations, and automatic rollback.
  *
  * Pipeline: check → analyze → backup → pull/build → migrate → restart → verify → (rollback on failure)
  *
@@ -337,22 +337,6 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     return { success: false, error: "Update aborted", backupId };
   }
 
-  // ── BUG-7 FIX: Snapshot active connections before update ──────────────
-  try {
-    const { snapshotConnections } = await import("./connections.js");
-    const snapshot = await snapshotConnections({
-      deployDir,
-      gatewayPort: options.gatewayPort,
-      signal,
-    });
-    if (snapshot.activeChannels.length > 0) {
-      report("check", "running",
-        `Active channels will be interrupted: ${snapshot.activeChannels.join(", ")}`);
-    }
-  } catch {
-    // Best-effort — don't fail the update
-  }
-
   // ── Step 2: Pull source / image ────────────────────────────────────────
 
   let targetVersion: string | undefined;
@@ -519,33 +503,6 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
 
   // ── Step 4: Restart containers ────────────────────────────────────────
 
-  // BUG-1 FIX: Wire blue-green deploy when enabled (default)
-  if (options.blueGreen !== false) {
-    report("restart", "running", "Starting blue-green deploy…");
-    try {
-      const { blueGreenUpdate } = await import("./blue-green.js");
-      const bgResult = await blueGreenUpdate({
-        deployDir,
-        newImageTag: await getImageName(deployDir) ?? "openclaw:custom",
-        gatewayToken: options.gatewayToken,
-        signal,
-        onProgress: options.onProgress,
-      });
-
-      if (bgResult.success) {
-        report("restart", "done", "Blue-green deploy complete");
-        return { success: true, backupId, migrationsApplied, blueGreen: true };
-      }
-
-      // Blue-green failed — fall through to restart-in-place
-      report("restart", "skipped", `Blue-green failed (${bgResult.error}) — falling back to restart-in-place`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      report("restart", "skipped", `Blue-green error (${message}) — falling back to restart-in-place`);
-    }
-  }
-
-  // Restart-in-place fallback (or --no-blue-green)
   report("restart", "running", "Restarting containers…");
   try {
     // BUG-12 FIX: Use longer timeout for compose down to allow graceful container stop

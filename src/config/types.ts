@@ -366,8 +366,6 @@ export interface UpdateChannelConfig {
   readonly pinnedVersion?: string;
   /** Delay in days for stable channel (default: 7). */
   readonly stableDelayDays?: number;
-  /** Use blue-green deploy for zero-downtime updates (default: true). */
-  readonly blueGreen?: boolean;
 }
 
 /**
@@ -401,7 +399,7 @@ export interface ClawHQConfig {
   readonly sentinel?: SentinelConfig;
   readonly monitor?: MonitorConfig;
   readonly ops?: OpsAutomationConfig;
-  /** Update intelligence configuration (channels, blue-green, etc.). */
+  /** Update intelligence configuration (channels, migrations, etc.). */
   readonly update?: UpdateChannelConfig;
   readonly paths?: {
     readonly deployDir?: string;

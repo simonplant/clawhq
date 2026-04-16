@@ -124,7 +124,6 @@ clawhq status [--watch]       — Single-pane dashboard
 clawhq backup create/list/restore — Encrypted snapshots
 clawhq update [--check]       — Update with change intelligence + migration plan
 clawhq update --channel <ch>  — Override channel (security/stable/latest/pinned)
-clawhq update --no-blue-green — Force restart-in-place (skip zero-downtime deploy)
 clawhq update --dry-run       — Show migration plan without applying
 clawhq logs                   — Stream agent logs
 
@@ -187,7 +186,7 @@ src/
 │   ├── doctor/                 — Diagnostics + auto-fix
 │   ├── monitor/                — Health monitoring daemon
 │   ├── backup/                 — Encrypted backup/restore
-│   ├── updater/                — Update intelligence (change analysis, migrations, blue-green, channels)
+│   ├── updater/                — Update intelligence (change analysis, migrations, channels)
 │   ├── status/                 — Dashboard
 │   └── logs/                   — Log streaming
 │
@@ -219,7 +218,7 @@ src/
 - Post-deploy integration verification → `src/build/launcher/verify.ts`
 - Binary integrity (SHA256 verification) → `src/build/docker/integrity.ts`
 - Landmine validation (14 rules) → `src/config/validate.ts`
-- Update intelligence (change analysis, migrations, blue-green) → `src/operate/updater/`
+- Update intelligence (change analysis, migrations) → `src/operate/updater/`
 - CalVer version parsing (shared) → `src/operate/updater/calver.ts`
 
 **Note:** Current source layout differs from target in other modules. The module reorganization is planned work (Track E).

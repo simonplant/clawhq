@@ -347,7 +347,6 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     .option("-t, --token <token>", "Gateway auth token for post-update verification")
     .option("--port <port>", "Gateway port", String(GATEWAY_DEFAULT_PORT))
     .option("--channel <channel>", "Update channel: security, stable, latest, pinned")
-    .option("--no-blue-green", "Force restart-in-place (skip blue-green deploy)")
     .option("--dry-run", "Show migration plan without applying")
     .action(async (opts: {
       deployDir: string;
@@ -356,7 +355,6 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
       token?: string;
       port: string;
       channel?: string;
-      blueGreen?: boolean;
       dryRun?: boolean;
     }) => {
       ensureInstalled(opts.deployDir);
@@ -431,7 +429,6 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
             gatewayToken: token,
             gatewayPort,
             channel,
-            blueGreen: opts.blueGreen,
             dryRun: opts.dryRun,
             onProgress,
             signal: ac.signal,

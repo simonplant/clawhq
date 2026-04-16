@@ -4,14 +4,13 @@
  * `clawhq update [--check]` updates the OpenClaw engine with:
  *   - Change intelligence (deployment-specific impact analysis)
  *   - Versioned config migrations (automatic, reversible)
- *   - Blue-green deploy (zero-downtime container swap)
  *   - Update channels (security/stable/latest/pinned)
  *
  * Two install modes:
  *   - "cache": docker pull latest image
  *   - "source": git pull + two-stage Docker build
  *
- * Pipeline: check → analyze → backup → pull/build → migrate → restart/blue-green → verify → (rollback on failure)
+ * Pipeline: check → analyze → backup → pull/build → migrate → restart → verify → (rollback on failure)
  */
 
 import type { MigrationPlan } from "./migrations/types.js";
@@ -27,9 +26,6 @@ export type UpdateStep =
   | "build"
   | "migrate"
   | "restart"
-  | "canary-start"
-  | "canary-verify"
-  | "swap"
   | "verify"
   | "rollback";
 
@@ -106,8 +102,6 @@ export interface UpdateResult {
   readonly backupId?: string;
   /** Number of config migrations applied. */
   readonly migrationsApplied?: number;
-  /** Whether blue-green deploy was used. */
-  readonly blueGreen?: boolean;
   readonly error?: string;
 }
 
@@ -126,8 +120,6 @@ export interface UpdateOptions {
   readonly gatewayPort?: number;
   /** Update channel override (reads from clawhq.yaml if not set). */
   readonly channel?: UpdateChannel;
-  /** Use blue-green deploy (default: true). */
-  readonly blueGreen?: boolean;
   /** Dry run — show migration plan without applying. */
   readonly dryRun?: boolean;
   /** Progress callback. */
