@@ -120,9 +120,9 @@ describe("preflight", () => {
     expect(imagesCheck.fix).toContain("clawhq build");
   });
 
-  it("runs all 7 checks", async () => {
+  it("runs all 8 checks", async () => {
     const report = await runPreflight(testDir);
-    expect(report.checks).toHaveLength(7);
+    expect(report.checks).toHaveLength(8);
     const names = report.checks.map((c) => c.name);
     expect(names).toContain("docker");
     expect(names).toContain("images");
@@ -130,6 +130,7 @@ describe("preflight", () => {
     expect(names).toContain("secrets");
     expect(names).toContain("ports");
     expect(names).toContain("ollama");
+    expect(names).toContain("project-ownership");
   });
 
   it("reports all failures in one pass", async () => {
@@ -188,7 +189,7 @@ describe("preflight", () => {
     ac.abort();
     // Should still complete (preflight is fail-safe)
     const report = await runPreflight(testDir, ac.signal);
-    expect(report.checks).toHaveLength(7);
+    expect(report.checks).toHaveLength(8);
   });
 });
 

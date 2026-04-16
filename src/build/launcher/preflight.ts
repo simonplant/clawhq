@@ -40,6 +40,7 @@ export async function runPreflight(
     checkSecrets(deployDir),
     checkPorts(port, signal),
     checkOllama(signal),
+    checkProjectOwnership(deployDir, signal),
     ...(runtime === "runsc" ? [checkGvisor(signal)] : []),
   ]);
 
@@ -341,7 +342,84 @@ async function checkOllama(signal?: AbortSignal): Promise<PreflightCheckResult> 
 }
 
 /**
- * 7. gVisor (runsc) runtime is installed and registered with Docker.
+ * 8. No foreign containers running under the same compose project name.
+ *
+ * Catches the split-deploy-root failure mode: two directories named `engine/`
+ * produce the same compose project name, so `docker compose up` in either
+ * merges their containers into one phantom project. The symptom is ghost
+ * containers that clawhq can't find because they were launched from a
+ * different compose file than the one under deployDir.
+ *
+ * Warning, not a hard blocker — user may need to clawhq up to recover.
+ */
+async function checkProjectOwnership(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<PreflightCheckResult> {
+  const name: PreflightCheckName = "project-ownership";
+  const ownedCompose = join(deployDir, "engine", "docker-compose.yml");
+
+  try {
+    const { stdout } = await execFileAsync(
+      "docker",
+      [
+        "ps",
+        "-a",
+        "--filter",
+        "label=com.docker.compose.project=engine",
+        "--format",
+        "{{.Names}}\t{{.Label \"com.docker.compose.project.config_files\"}}",
+      ],
+      { timeout: PREFLIGHT_EXEC_TIMEOUT_MS, signal },
+    );
+
+    const lines = stdout.trim().split("\n").filter((l) => l.length > 0);
+    if (lines.length === 0) {
+      return { name, passed: true, message: "No existing compose project to conflict with" };
+    }
+
+    const foreign = lines
+      .map((l) => {
+        const [container, configPath] = l.split("\t");
+        return { container, configPath };
+      })
+      .filter((c) => c.configPath && c.configPath !== ownedCompose);
+
+    if (foreign.length === 0) {
+      return { name, passed: true, message: "Compose project ownership is consistent" };
+    }
+
+    const culprits = foreign
+      .map((c) => `  ${c.container} ← ${c.configPath}`)
+      .join("\n");
+    const otherRoots = Array.from(new Set(foreign.map((c) => c.configPath))).join(", ");
+
+    return {
+      name,
+      passed: false,
+      warning: true,
+      message:
+        `Containers in compose project "engine" were launched from a different compose ` +
+        `file than ${ownedCompose}. Docker merges these into one phantom project, so ` +
+        `clawhq operations will drift from reality:\n${culprits}`,
+      fix:
+        `Pick one canonical deploy root and stop the other. Either: ` +
+        `(a) cd to ${otherRoots} and run \`docker compose down\`, then \`clawhq up\` here; ` +
+        `or (b) adopt the other root as canonical and remove ${deployDir}/engine/.`,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      name,
+      passed: false,
+      warning: true,
+      message: `Could not verify compose project ownership: ${msg}`,
+    };
+  }
+}
+
+/**
+ * 9. gVisor (runsc) runtime is installed and registered with Docker.
  *
  * Only checked when the posture requests gVisor (hardened/under-attack).
  * Warning, not a blocker - if runsc isn't installed, compose omits

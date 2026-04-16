@@ -9,10 +9,12 @@
  * Commands grouped by lifecycle phase for --help display only.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { parse as yamlParse } from "yaml";
 
 import { Command } from "commander";
 
@@ -36,7 +38,55 @@ const pkg = JSON.parse(
   readFileSync(join(fileURLToPath(import.meta.url), "../../../package.json"), "utf-8"),
 ) as { version: string; description: string };
 
-const DEFAULT_DEPLOY_DIR = join(homedir(), ".clawhq");
+/**
+ * Resolve the default deploy dir with git-style discovery.
+ *
+ * Order:
+ * 1. $CLAWHQ_DEPLOY_DIR env var
+ * 2. Walk up from cwd looking for clawhq.yaml; read its paths.deployDir
+ * 3. Fallback: ~/.clawhq
+ *
+ * This prevents the split-deploy-root bug where a user has a real deploy in
+ * /some/path but commands without --deploy-dir silently write to ~/.clawhq/,
+ * producing a ghost tree that clawhq operates on while the running containers
+ * live elsewhere.
+ */
+function resolveDefaultDeployDir(): string {
+  const fallback = join(homedir(), ".clawhq");
+
+  const envOverride = process.env["CLAWHQ_DEPLOY_DIR"];
+  if (envOverride && envOverride.length > 0) {
+    return envOverride;
+  }
+
+  try {
+    let dir = resolve(process.cwd());
+    const ceiling = resolve("/");
+    // Walk at most 32 levels to avoid pathological symlink loops.
+    for (let i = 0; i < 32 && dir !== ceiling; i++) {
+      const candidate = join(dir, "clawhq.yaml");
+      if (existsSync(candidate)) {
+        const raw = readFileSync(candidate, "utf-8");
+        const cfg = yamlParse(raw) as { paths?: { deployDir?: string } } | null;
+        const declared = cfg?.paths?.deployDir;
+        if (declared && declared.length > 0) {
+          return isAbsolute(declared) ? declared : resolve(dir, declared);
+        }
+        // Found clawhq.yaml but no paths.deployDir — that file's dir IS the deploy root.
+        return dir;
+      }
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+  } catch {
+    // Any discovery error → silently fall through to homedir default.
+  }
+
+  return fallback;
+}
+
+const DEFAULT_DEPLOY_DIR = resolveDefaultDeployDir();
 
 const program = new Command();
 

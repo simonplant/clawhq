@@ -1023,11 +1023,29 @@ async function checkOllamaReachable(
     // Fall through to failure
   }
 
+  // Detect UFW so we can suggest the correct persistent fix. A raw iptables
+  // INPUT rule is wiped the next time UFW reloads, so on UFW hosts we must
+  // go through ufw itself.
+  let ufwActive = false;
+  try {
+    const { stdout } = await execFileAsync("systemctl", ["is-active", "ufw"], {
+      timeout: 2000,
+      signal,
+    });
+    ufwActive = stdout.trim() === "active";
+  } catch {
+    // systemctl not present, or ufw unit not found — leave ufwActive=false
+  }
+
+  const fixMessage = ufwActive
+    ? "UFW is active. Fix: sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp comment 'clawhq→ollama' && sudo ufw reload"
+    : "Fix: sudo iptables -I INPUT -s 172.16.0.0/12 -p tcp --dport 11434 -j ACCEPT";
+
   return fail(
     name,
     "error",
     "Ollama runs on host but container cannot reach it — host firewall is blocking Docker bridge traffic on port 11434",
-    "Fix: sudo iptables -I INPUT -s 172.16.0.0/12 -p tcp --dport 11434 -j ACCEPT",
+    fixMessage,
     false,
   );
 }

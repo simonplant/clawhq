@@ -17,7 +17,8 @@ export type PreflightCheckName =
   | "secrets"
   | "ports"
   | "ollama"
-  | "gvisor";
+  | "gvisor"
+  | "project-ownership";
 
 /** Result of a single preflight check. */
 export interface PreflightCheckResult {
