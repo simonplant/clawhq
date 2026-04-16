@@ -492,9 +492,16 @@ async function regenerateCompose(deployDir: string): Promise<boolean> {
     const manifest = await readManifest(deployDir);
     if (!manifest?.imageTag) return false;
 
-    // Read posture (or default)
+    // Read posture (or default), stripping gVisor if not installed
     const posture = readCurrentPosture(deployDir) ?? DEFAULT_POSTURE;
-    const postureConfig = getPostureConfig(posture);
+    let postureConfig = getPostureConfig(posture);
+    if (postureConfig.runtime === "runsc") {
+      try {
+        await execFileAsync("runsc", ["--version"], { timeout: 5000 });
+      } catch {
+        postureConfig = { ...postureConfig, runtime: undefined };
+      }
+    }
 
     // Detect cred-proxy availability
     const credProxyScript = join(engineDir, "cred-proxy.js");

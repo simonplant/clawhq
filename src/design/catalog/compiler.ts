@@ -519,6 +519,13 @@ Usage: \`earnings today\` — today's earnings reports
 Output: JSON. Requires FINNHUB_API_KEY in environment.
 Check earnings before taking positions — avoid holding through surprise reports.`,
 
+  "market-monitor": `Price monitor — polls prices via system cron, compares against ORDER block levels.
+Usage: \`market-monitor run\` — one polling cycle (fetch, compare, write alerts)
+  \`market-monitor status\` — show price cache + active alerts
+  \`market-monitor clear\` — clear today's alerts after review
+Runs via system cron (not LLM cron). Writes alerts to JSONL for heartbeat to read.
+Read alerts during heartbeat, add context, and deliver to the user.`,
+
   "email-fastmail": `FastMail JMAP email — Simon's personal email account (simon@simonplant.com).
 Usage: \`email-fastmail inbox\` | \`email-fastmail all [--limit N]\` | \`email-fastmail read <id>\`
   \`email-fastmail triage [--limit N]\` — smart triage with priority + action recommendations

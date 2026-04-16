@@ -367,8 +367,12 @@ function buildVolumes(deployDir: string, options?: ComposeOptions): string[] {
     // Immutable paths: no mount — files come from the Docker image layer.
     // Ephemeral paths: future tmpfs support (not yet wired).
   } else {
-    // Backwards compatibility: blanket mount of entire deploy dir
-    volumes.push(`${deployDir}:${OPENCLAW_CONTAINER_ROOT}`);
+    // No manifest — mount the minimum required paths.
+    // Cannot blanket-mount deployDir at OPENCLAW_CONTAINER_ROOT because
+    // that conflicts with the tmpfs at the same path (needed for OpenClaw
+    // runtime state: telegram/, agents/, canvas/, logs/, exec-approval).
+    volumes.push(`${deployDir}/engine/openclaw.json:${OPENCLAW_CONTAINER_CONFIG}:ro`);
+    volumes.push(`${deployDir}/engine/credentials.json:${OPENCLAW_CONTAINER_CREDENTIALS}:ro`);
     volumes.push(`${deployDir}/workspace:${ws}`);
     volumes.push(`${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`);
   }

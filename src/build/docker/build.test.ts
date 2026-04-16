@@ -281,12 +281,16 @@ describe("generateCompose", () => {
     expect(compose.services.openclaw.read_only).toBe(true);
   });
 
-  it("mounts deploy dir as writable volume", () => {
+  it("mounts config and workspace as granular volumes (no blanket mount)", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
 
     const volumes = compose.services.openclaw.volumes;
-    expect(volumes).toContain("/home/user/.clawhq:/home/node/.openclaw");
+    // No blanket mount — conflicts with tmpfs at /home/node/.openclaw
+    expect(volumes).not.toContain("/home/user/.clawhq:/home/node/.openclaw");
+    // Granular mounts for config, credentials, workspace, cron
+    expect(volumes).toContain("/home/user/.clawhq/engine/openclaw.json:/home/node/.openclaw/openclaw.json:ro");
+    expect(volumes).toContain("/home/user/.clawhq/workspace:/home/node/.openclaw/workspace");
   });
 
   it("disables ICC for hardened posture (LM-13)", () => {
