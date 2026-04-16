@@ -180,7 +180,10 @@ export const BUILTIN_ROUTES: readonly ProxyRoute[] = [
   {
     id: "tradier",
     pathPrefix: "/tradier",
-    upstream: "https://api.tradier.com",
+    // Paper vs live is deployment-configurable via TRADIER_UPSTREAM in .env.
+    // Sandbox (paper): https://sandbox.tradier.com
+    // Live (real $):   https://api.tradier.com
+    upstream: "env:TRADIER_UPSTREAM",
     auth: {
       type: "header",
       header: "Authorization",
