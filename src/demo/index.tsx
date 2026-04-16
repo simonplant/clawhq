@@ -18,6 +18,7 @@ import { loadBlueprint } from "../design/blueprints/index.js";
 import {
   generateBundle,
   generateIdentityFiles,
+  renderCronJobsFile,
   writeBundle,
 } from "../design/configure/index.js";
 
@@ -146,7 +147,7 @@ export async function runDemo(
     },
     {
       relativePath: "cron/jobs.json",
-      content: JSON.stringify({ version: 1, jobs: bundle.cronJobs }, null, 2) + "\n",
+      content: renderCronJobsFile(bundle.cronJobs),
     },
     {
       relativePath: "clawhq.yaml",

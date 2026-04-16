@@ -24,6 +24,7 @@ import {
 import {
   generateBundle,
   generateIdentityFiles,
+  renderCronJobsFile,
   writeBundle,
 } from "../design/configure/index.js";
 import {
@@ -357,7 +358,7 @@ export function createApp(options: DashboardOptions): Hono {
         },
         {
           relativePath: "cron/jobs.json",
-          content: JSON.stringify(bundle.cronJobs, null, 2) + "\n",
+          content: renderCronJobsFile(bundle.cronJobs),
         },
         {
           relativePath: "clawhq.yaml",

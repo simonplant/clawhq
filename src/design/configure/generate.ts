@@ -80,6 +80,21 @@ const DOCKER_BRIDGE_GATEWAY = "172.17.0.1";
  * - LM-13: ICC disabled on agent network
  * - LM-14: fs.workspaceOnly explicitly set
  */
+/**
+ * Render the canonical cron/jobs.json file contents.
+ *
+ * OpenClaw's cron loader requires a {"version":1,"jobs":[...]} envelope; anything
+ * else (notably a bare JSON array) loads as empty and leaves every scheduled job
+ * silently inactive. This is the single source of truth for that format — any
+ * code path that writes cron/jobs.json MUST route through here instead of
+ * hand-rolling the envelope inline. Also strips ClawHQ-only fields (fallbacks,
+ * activeHours) that don't belong in OpenClaw's native schema.
+ */
+export function renderCronJobsFile(cronJobs: readonly CronJobDefinition[]): string {
+  const stripped = cronJobs.map(({ fallbacks: _f, activeHours: _a, ...rest }) => rest);
+  return JSON.stringify({ version: 1, jobs: stripped }, null, 2) + "\n";
+}
+
 export function generateBundle(answers: WizardAnswers): DeploymentBundle {
   const port = answers.gatewayPort || DEFAULT_GATEWAY_PORT;
   const networkName = agentNetworkName(answers.instanceName);

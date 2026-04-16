@@ -4,7 +4,7 @@ import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
 import { loadBlueprint } from "../blueprints/loader.js";
 
-import { generateAllowlistContent, generateBundle, generateDelegatedRulesContent, generateSkillFiles, validateCronExpr } from "./generate.js";
+import { generateAllowlistContent, generateBundle, generateDelegatedRulesContent, generateSkillFiles, renderCronJobsFile, validateCronExpr } from "./generate.js";
 import type { WizardAnswers } from "./types.js";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -896,6 +896,33 @@ describe("generateSkillFiles", () => {
     // Should have exactly 1 SKILL.md, not duplicated
     const skillMds = cronDoctorFiles.filter((f) => f.relativePath.endsWith("SKILL.md"));
     expect(skillMds).toHaveLength(1);
+  });
+});
+
+// ── renderCronJobsFile ───────────────────────────────────────────────────────
+
+describe("renderCronJobsFile", () => {
+  it("wraps jobs in the {version:1, jobs:[...]} envelope", () => {
+    const content = renderCronJobsFile([]);
+    const parsed = JSON.parse(content);
+    expect(parsed).toEqual({ version: 1, jobs: [] });
+  });
+
+  it("never emits a bare array — even when no jobs are configured", () => {
+    // OpenClaw silently treats bare-array jobs.json as empty, making every
+    // scheduled job inactive with no error signal. Regression guard: this
+    // renderer is the sole source of truth for the envelope shape.
+    const content = renderCronJobsFile([]);
+    expect(content.trim().startsWith("[")).toBe(false);
+    expect(content.trim().startsWith("{")).toBe(true);
+  });
+
+  it("strips ClawHQ-only extension fields (fallbacks, activeHours)", () => {
+    const answers = makeAnswers();
+    const bundle = generateBundle(answers);
+    const content = renderCronJobsFile(bundle.cronJobs);
+    expect(content).not.toContain("fallbacks");
+    expect(content).not.toContain("activeHours");
   });
 });
 

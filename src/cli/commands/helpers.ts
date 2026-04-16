@@ -7,8 +7,7 @@ import { stringify as yamlStringify } from "yaml";
 import type { PrereqCheckResult } from "../../build/installer/index.js";
 import type { DeployProgress } from "../../build/launcher/index.js";
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
-import type { CronJobDefinition } from "../../config/types.js";
-import { generateAllowlistContent, generateBundle, generateSkillFiles, generateToolFiles } from "../../design/configure/index.js";
+import { generateAllowlistContent, generateBundle, generateSkillFiles, generateToolFiles, renderCronJobsFile } from "../../design/configure/index.js";
 import { generateOpsAutomationFiles } from "../../operate/automation/index.js";
 
 export function formatPrereqCheck(check: PrereqCheckResult): void {
@@ -109,7 +108,7 @@ export function bundleToFiles(
     },
     {
       relativePath: "cron/jobs.json",
-      content: JSON.stringify({ version: 1, jobs: stripClawHQExtensions(bundle.cronJobs) }, null, 2) + "\n",
+      content: renderCronJobsFile(bundle.cronJobs),
     },
     {
       relativePath: "clawhq.yaml",
@@ -158,12 +157,3 @@ export function bundleToFiles(
   ];
 }
 
-/**
- * Strip ClawHQ-only extension fields (fallbacks, activeHours) from cron jobs
- * before writing to OpenClaw's native jobs.json format.
- */
-function stripClawHQExtensions(
-  cronJobs: readonly CronJobDefinition[],
-): Record<string, unknown>[] {
-  return cronJobs.map(({ fallbacks: _f, activeHours: _a, ...rest }) => rest);
-}
