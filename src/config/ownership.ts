@@ -68,6 +68,20 @@ export const OWNERSHIP_RULES: readonly OwnershipRule[] = [
     reason: "init creates, user edits via integrate add / direct" },
   { pattern: "clawhq.yaml.bak", owner: "clawhq",
     reason: "automatic backup of clawhq.yaml" },
+  { pattern: "update-check.json", owner: "clawhq",
+    reason: "updater's last-check cache" },
+
+  // ── Install-from-source topology (engine/source) ─────────────────────────
+  // When OpenClaw is installed from source, the deployDir root *is* the
+  // openclaw deploy dir — so openclaw.json/.env/credentials.json appear at
+  // root as well as under engine/. Classify them the same as their engine/
+  // siblings (topology-agnostic).
+  { pattern: "openclaw.json", owner: "clawhq",
+    reason: "root copy for install-from-source topology" },
+  { pattern: ".env", owner: "merged",
+    reason: "root copy for install-from-source topology" },
+  { pattern: "credentials.json", owner: "seeded-once",
+    reason: "root copy for install-from-source topology (Phase 0)" },
 
   // ── Identity files (OWNED_BY_CLAWHQ per BLUEPRINT-SPEC.md §143) ──────────
   // Read-only mount (chmod 444, Docker :ro) is the supply-chain-attack
@@ -109,6 +123,14 @@ export const OWNERSHIP_RULES: readonly OwnershipRule[] = [
     reason: "credential proxy sidecar" },
   { pattern: "engine/cred-proxy-routes.json", owner: "clawhq",
     reason: "credential proxy route config" },
+  { pattern: "engine/Dockerfile.stage1", owner: "build",
+    reason: "two-stage Docker base image" },
+  { pattern: "engine/workspace-integrity.json", owner: "clawhq",
+    reason: "workspace integrity manifest for drift detection" },
+  { pattern: "engine/clawwall/**", owner: "build",
+    reason: "ClawWall security wrapper (curl-egress-wrapper, etc.)" },
+  { pattern: "engine/market-engine/**", owner: "clawhq",
+    reason: "market-engine sidecar container (real-time streaming)" },
   { pattern: "engine/credentials", owner: "openclaw",
     reason: "openclaw-managed channel credentials dir" },
   { pattern: "engine/source/**", owner: "build",
@@ -133,6 +155,18 @@ export const OWNERSHIP_RULES: readonly OwnershipRule[] = [
     reason: "tool wrappers compiled from blueprint" },
   { pattern: "workspace/delegated-rules.json", owner: "clawhq",
     reason: "compiled delegation rule set" },
+  { pattern: "workspace/identity/**", owner: "clawhq",
+    reason: "identity subdir artifacts (per ARCHITECTURE.md §717)" },
+
+  // ── User-curated workspace content ───────────────────────────────────────
+  { pattern: "workspace/knowledge/**", owner: "user",
+    reason: "user knowledge base (wiki, references)" },
+  { pattern: "workspace/references/**", owner: "user",
+    reason: "user-curated reference docs" },
+  { pattern: "workspace/markets/**", owner: "user",
+    reason: "markets tool workspace — user-editable CONFIG.json + caches" },
+  { pattern: "workspace/state/**", owner: "openclaw",
+    reason: "openclaw workspace runtime state" },
 
   // ── Ops ──────────────────────────────────────────────────────────────────
   { pattern: "ops/firewall/allowlist.yaml", owner: "clawhq",
@@ -179,8 +213,22 @@ export const OWNERSHIP_RULES: readonly OwnershipRule[] = [
     reason: "openclaw-managed identity artifacts (source-install layout)" },
   { pattern: "qqbot/**", owner: "openclaw",
     reason: "openclaw qq channel state" },
+  { pattern: "memory/**", owner: "user",
+    reason: "root-level memory dir (source-install topology)" },
+  { pattern: "tasks/**", owner: "openclaw",
+    reason: "openclaw task runs log" },
   { pattern: "exec-approvals.json", owner: "openclaw",
     reason: "openclaw tool approval queue" },
+
+  // ── Transient backups (clawhq + openclaw both produce these) ─────────────
+  { pattern: "**/*.bak", owner: "openclaw",
+    reason: "transient backup (saveCronStore, compose fix, etc.)" },
+
+  // ── Workspace runtime state (per-tool JSON files) ────────────────────────
+  { pattern: "workspace/.openclaw/**", owner: "openclaw",
+    reason: "openclaw hidden workspace state" },
+  { pattern: "**/*-state.json", owner: "openclaw",
+    reason: "per-tool runtime state (email-state, portfolio-state, etc.)" },
 ];
 
 // ── Classification API ──────────────────────────────────────────────────────
@@ -212,6 +260,13 @@ function matchesPattern(path: string, pattern: string): boolean {
   if (pattern.endsWith("/**")) {
     const prefix = pattern.slice(0, -3);
     return path === prefix || path.startsWith(prefix + "/");
+  }
+  // Tail suffix: "**/*.bak" matches any path ending in ".bak"
+  if (pattern.startsWith("**/*")) {
+    const suffix = pattern.slice(3);
+    if (suffix.startsWith("*")) {
+      return path.endsWith(suffix.slice(1));
+    }
   }
   // Exact path match
   return path === pattern;
