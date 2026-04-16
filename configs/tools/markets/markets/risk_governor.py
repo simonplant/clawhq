@@ -39,7 +39,30 @@ def load_config():
     return load_json(CONFIG_PATH)
 
 
+DEFAULT_STATE = {
+    "risk_snapshot": {
+        "high_water_mark": 0,
+        "drawdown_from_hwm_pct": 0,
+        "daily_realized_pnl": 0,
+        "daily_unrealized_pnl": 0,
+    },
+    "accounts": {a: {"equity": 0, "positions": [], "day_trades_used": 0} for a in ACCOUNT_IDS},
+}
+
+
 def load_state():
+    """Load risk state, seeding STATE.json with safe defaults on first run.
+
+    A missing STATE.json means the governor has never been initialized.
+    Returning defaults rather than crashing lets `risk-governor status` give
+    a clean "no activity" readout instead of a stack trace, and persists the
+    file so subsequent writers have something to update.
+    """
+    if not STATE_PATH.exists():
+        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(STATE_PATH, "w") as f:
+            json.dump(DEFAULT_STATE, f, indent=2)
+        return dict(DEFAULT_STATE)
     return load_json(STATE_PATH)
 
 

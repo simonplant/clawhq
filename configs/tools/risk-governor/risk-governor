@@ -19,6 +19,10 @@ Exit codes: 0=APPROVED/REDUCED, 1=BLOCKED, 2=ERROR
 import os
 import sys
 
+if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help", "help"):
+    print(__doc__)
+    sys.exit(0)
+
 MARKETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "markets")
 os.environ["MARKETS_DIR"] = MARKETS_DIR
 sys.path.insert(0, MARKETS_DIR)

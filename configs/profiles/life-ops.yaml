@@ -70,7 +70,7 @@ tools:
     required: false
   - name: markets
     category: trading
-    description: "Shared trading module — config, watchlists, risk logic, journal backend"
+    description: "Shared trading library (Python modules used by journal/market-calendar/risk-governor) — not directly invoked"
     required: false
   - name: ta
     category: trading

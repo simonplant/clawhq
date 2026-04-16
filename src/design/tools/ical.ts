@@ -27,17 +27,17 @@ case "\${1:-}" in help|--help|-h|"")
   sed -n '2,10p' "$0" | sed 's/^# \\?//'
   exit 0 ;; esac
 
-# Auth: prefer credential proxy, fall back to direct env vars
-if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
-  CALDAV_BASE="\${CRED_PROXY_URL}/caldav"
-  _curl() { curl -sS --fail-with-body "$@"; }
-else
-  CALDAV_URL="\${CALDAV_URL:?Set CALDAV_URL or CRED_PROXY_URL}"
-  CALDAV_USER="\${CALDAV_USER:?Set CALDAV_USER}"
-  CALDAV_PASS="\${CALDAV_PASS:?Set CALDAV_PASS}"
-  CALDAV_BASE="$CALDAV_URL"
-  _curl() { curl -sS --fail-with-body -u "$CALDAV_USER:$CALDAV_PASS" "$@"; }
-fi
+# Auth: always use direct basic-auth. iCloud's CalDAV discovery returns
+# absolute URLs to partition servers (e.g. https://p01-caldav.icloud.com/…)
+# that cannot be routed back through the cred-proxy, so using the proxy
+# breaks every request after calendar-home-set discovery. The password must
+# already be in the container's env for the proxy to inject it, so routing
+# through the proxy provides no security benefit for CalDAV.
+CALDAV_URL="\${CALDAV_URL:?Set CALDAV_URL}"
+CALDAV_USER="\${CALDAV_USER:?Set CALDAV_USER}"
+CALDAV_PASS="\${CALDAV_PASS:?Set CALDAV_PASS}"
+CALDAV_BASE="$CALDAV_URL"
+_curl() { curl -sS --fail-with-body -u "$CALDAV_USER:$CALDAV_PASS" "$@"; }
 
 # ClawWall: sanitize external calendar content before passing to agent
 _sanitize() {

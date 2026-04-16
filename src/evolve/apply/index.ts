@@ -46,6 +46,7 @@ const SKIP_PATHS = new Set([
 const SEED_ONCE_PATHS = new Set([
   "engine/credentials.json",
   "credentials.json",
+  "workspace/x-watchlist.json",                 // user-curated X accounts/searches
 ]);
 
 /** Files where apply merges compiled output with existing runtime state. */
