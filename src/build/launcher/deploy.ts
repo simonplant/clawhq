@@ -286,26 +286,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     );
     report("compose-up", "done", "Containers started");
 
-    // Ensure Ollama is reachable from container (iptables rule may be lost on network recreation)
-    try {
-      await execFileAsync(
-        "sudo",
-        ["iptables", "-C", "FORWARD", "-s", "172.16.0.0/12", "-p", "tcp", "--dport", "11434", "-j", "ACCEPT"],
-        { timeout: 5000 },
-      );
-    } catch {
-      // Rule doesn't exist — add it
-      try {
-        await execFileAsync(
-          "sudo",
-          ["iptables", "-I", "FORWARD", "-s", "172.16.0.0/12", "-p", "tcp", "--dport", "11434", "-j", "ACCEPT"],
-          { timeout: 5000 },
-        );
-        report("compose-up", "done", "Ollama firewall rule applied");
-      } catch {
-        // sudo not available — non-fatal, doctor will flag it
-      }
-    }
+    await ensureOllamaReachable(report);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     report("compose-up", "failed", "Failed to start containers");
@@ -542,6 +523,64 @@ function aborted(): DeployResult {
     healthy: false,
     error: "Deploy aborted",
   };
+}
+
+// ── Host Firewall: Ollama Reachability ────────────────────────────────────
+
+/**
+ * Allow container → host traffic to Ollama (port 11434) on the Docker bridges.
+ *
+ * On UFW hosts a raw iptables rule is wiped by the next `ufw reload` — today's
+ * recurring "Clawdius went silent after reboot" bug. UFW allow rules persist
+ * across reloads and reboots and cover INPUT + FORWARD, which matches how
+ * docker-compose attaches containers to custom bridges (traffic to the
+ * bridge gateway hits INPUT, not FORWARD).
+ *
+ * Fallback to raw iptables when UFW is inactive. Best-effort: no sudo → skip
+ * and let doctor flag it with an actionable fix.
+ */
+async function ensureOllamaReachable(
+  report: (step: DeployStepName, status: DeployStepStatus, message: string) => void,
+): Promise<void> {
+  const subnet = "172.16.0.0/12";
+  const port = "11434";
+
+  let ufwActive = false;
+  try {
+    const { stdout } = await execFileAsync("systemctl", ["is-active", "ufw"], { timeout: 2000 });
+    ufwActive = stdout.trim() === "active";
+  } catch {
+    // systemctl missing / ufw unit absent → treat as inactive
+  }
+
+  try {
+    if (ufwActive) {
+      await execFileAsync(
+        "sudo",
+        ["ufw", "allow", "from", subnet, "to", "any", "port", port, "proto", "tcp",
+         "comment", "clawhq→ollama"],
+        { timeout: 5000 },
+      );
+      report("compose-up", "done", "Ollama reachability rule applied (ufw)");
+    } else {
+      try {
+        await execFileAsync(
+          "sudo",
+          ["iptables", "-C", "FORWARD", "-s", subnet, "-p", "tcp", "--dport", port, "-j", "ACCEPT"],
+          { timeout: 5000 },
+        );
+      } catch {
+        await execFileAsync(
+          "sudo",
+          ["iptables", "-I", "FORWARD", "-s", subnet, "-p", "tcp", "--dport", port, "-j", "ACCEPT"],
+          { timeout: 5000 },
+        );
+        report("compose-up", "done", "Ollama reachability rule applied (iptables)");
+      }
+    }
+  } catch {
+    // sudo unavailable or rule add failed — non-fatal, doctor surfaces it.
+  }
 }
 
 // ── Compose Self-Healing ──────────────────────────────────────────────────
