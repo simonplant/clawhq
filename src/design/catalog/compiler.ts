@@ -27,6 +27,7 @@ import { generateProxyServerScript } from "../../secure/credentials/proxy-server
 import { renderDimensionProse, DIMENSION_META, ALWAYS_ON_BOUNDARIES } from "../blueprints/personality-presets.js";
 import type { PersonalityDimensions, DimensionId, DimensionValue } from "../blueprints/types.js";
 import { generateApproveActionTool } from "../tools/approve-action.js";
+import { generateHimalayaConfig } from "../tools/himalaya-config.js";
 import { TOOL_GENERATORS } from "../tools/index.js";
 import { generateSanitizeTool } from "../tools/sanitize.js";
 
@@ -159,6 +160,15 @@ export function compile(
 
     // Substack publication aliases — user-managed, created empty on init
     { relativePath: "workspace/config/substack-aliases.json", content: "{}\n" },
+
+    // Himalaya config — generated only when a himalaya-backed email provider
+    // is configured. Passwords are read from .env via backend.auth.cmd.
+    ...(() => {
+      const content = generateHimalayaConfig(resolvedProviders, existingEnv);
+      return content
+        ? [{ relativePath: "workspace/config/himalaya/config.toml", content, mode: 0o600 }]
+        : [];
+    })(),
 
     // Ops — egress includes provider-specific domains
     { relativePath: "ops/firewall/allowlist.yaml", content: renderAllowlistFromDomains(profile, [...egressSet]) },
