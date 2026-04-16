@@ -23,6 +23,7 @@ import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEO
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 import { isTimerActive } from "../automation/install.js";
 import { listSessions } from "../sessions/index.js";
+import { takeSnapshot, unclassifiedEntries } from "../snapshot/snapshot.js";
 import { compareVersions } from "../updater/calver.js";
 
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
@@ -155,6 +156,7 @@ export async function runChecks(
     checkSessionRunaway(signal),
     checkLoopDetectionEnabled(deployDir),
     checkModelAgenticCapable(deployDir),
+    checkDeployUnclassified(deployDir),
   ]);
 }
 
@@ -2136,5 +2138,37 @@ async function checkSessionRunaway(signal?: AbortSignal): Promise<DoctorCheckRes
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return ok(name, `Session check skipped (${msg})`, "info");
+  }
+}
+
+/**
+ * Surface files in the deployment tree that aren't classified by the
+ * ownership table (src/config/ownership.ts). Each unclassified path is a
+ * candidate future-bug: clawhq has no model for who owns it, so drift,
+ * overwrites, and silent loss are all invisible to the reconciler.
+ *
+ * Warning severity, not error — a clean deployment will always have some
+ * long-tail paths, and the correct response is usually "add a rule" not
+ * "delete the file". The intent is observability, not gating.
+ */
+async function checkDeployUnclassified(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "deploy-unclassified";
+  try {
+    const snap = await takeSnapshot(deployDir);
+    const unclassified = unclassifiedEntries(snap);
+    if (unclassified.length === 0) {
+      return ok(name, `All ${snap.entries.length} deployment file(s) classified`);
+    }
+    const sample = unclassified.slice(0, 5).map((e) => e.path).join(", ");
+    const suffix = unclassified.length > 5 ? `, +${unclassified.length - 5} more` : "";
+    return fail(
+      name,
+      "warning",
+      `${unclassified.length} deployment file(s) not classified by ownership table: ${sample}${suffix}`,
+      "Add rules to src/config/ownership.ts for each path, or remove the files if stale",
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return ok(name, `Classification check skipped (${msg})`, "info");
   }
 }

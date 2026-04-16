@@ -141,6 +141,86 @@
       "readyForSprint": true,
       "groomedAt": "2026-04-16",
       "groomingNotes": "Discovered during 2026-04-16 GPU triage — purged manually. Low priority but a recurring source of diagnostic noise."
+    },
+    {
+      "id": "BUG-006",
+      "title": "No instrumentation of per-turn token usage — context sizing is guesswork",
+      "intent": "Operators can't size modelContextWindow intelligently without knowing actual token usage per turn. Today's 2026-04-16 triage picked 32K based on hardware headroom, not observed p95 — which is line-go-up VRAM utilization theater, not engineering.",
+      "description": "OpenClaw emits logs but there's no aggregated view of prompt tokens, completion tokens, or context-fill ratio per turn. Without it: (1) operators over-allocate VRAM defensively, (2) can't detect truncation pain, (3) can't tell when session history is the bottleneck vs tool output bloat. Three levers all unlit.",
+      "priority": "should",
+      "category": "observability",
+      "steps": [
+        "Identify where OpenClaw logs per-turn token counts (gateway WS frames or agent logs)",
+        "Add a clawhq logs --tokens mode or a doctor check that summarises p50/p95 input/output tokens over last N turns",
+        "Surface context-fill ratio (input_tokens / contextWindow) so operators see headroom",
+        "Recommend modelContextWindow based on observed p95 + 2x safety factor"
+      ],
+      "acceptanceCriteria": [
+        "clawhq surfaces observed token usage without requiring grep through raw logs",
+        "doctor suggests a data-driven modelContextWindow when current value is > 4x observed p95 (over-allocated) or < 1.5x observed p95 (at risk of truncation)"
+      ],
+      "scope": [
+        "src/operate/logs/",
+        "src/operate/doctor/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Origin: 2026-04-16 thinking-toolkit stress test on the ctx sizing recommendation. All three attacks (VRAM scaling extrapolation, lost-in-the-middle, assumed truncation) were WOUNDED by lack of data. This bug closes that gap."
+    },
+    {
+      "id": "BUG-007",
+      "title": "session-memory hook disabled for local models — forces unbounded history growth",
+      "intent": "session-memory is OpenClaw's built-in conversation compaction. Disabling it for local models means every session grows monotonically until the context ceiling, which (a) wastes tokens on old content, (b) triggers truncation on long sessions, (c) promotes 'lost in the middle' attention degradation.",
+      "description": "renderOpenclawJson disables session-memory when isLocal is true (compiler.ts around the hooks.internal block). Comment says the LLM slug generator has a hardcoded 15s timeout that large local models can't meet. That's a workaround — the real fix is a shorter/simpler slug prompt or longer timeout upstream. Current state makes large ctx windows a liability instead of an asset.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Investigate the 15s slug-generation timeout — is it configurable upstream?",
+        "Option A: shorter deterministic slug (first 40 chars of first user message, no LLM call)",
+        "Option B: wire configurable slug timeout through clawhq.yaml",
+        "Option C: contribute upstream fix to OpenClaw",
+        "Re-enable session-memory for local models when whichever path lands"
+      ],
+      "acceptanceCriteria": [
+        "session-memory works reliably on gemma4:26b and similar local models",
+        "Long sessions compact instead of accumulating to context ceiling",
+        "No spurious 15s timeout errors in logs"
+      ],
+      "scope": [
+        "src/design/catalog/compiler.ts",
+        "engine/source/ (upstream)"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Pairs with BUG-006 — compaction lets you run a smaller modelContextWindow safely. Fixing this is higher leverage than tuning ctx size."
+    },
+    {
+      "id": "BUG-008",
+      "title": "Verbose tool outputs bloat context — no per-tool output caps",
+      "intent": "Tools like email, news, search, quote, and market-data tools can return multi-KB payloads that flow straight into the model's context. A single tool call can consume more tokens than the entire identity + user message. Caps don't exist.",
+      "description": "Tool scripts don't truncate or summarise output. A full email body, a news scan with 20 articles, or a market-data JSON dump all hit the model as-is. Two consequences: (a) context fills fast, driving premature truncation or large modelContextWindow allocation, (b) the model spends attention on mostly-irrelevant detail.",
+      "priority": "could",
+      "category": "tools",
+      "steps": [
+        "Audit each generated tool in src/design/tools/ for output size distribution",
+        "Add a max-output-bytes default per tool (e.g. email: headers + 2KB snippet; news: titles + urls only; quote: tabular summary)",
+        "Provide a --full or --raw flag to bypass the cap when the agent explicitly needs more",
+        "Document the caps in TOOLS.md so the agent knows to re-request with --full"
+      ],
+      "acceptanceCriteria": [
+        "No tool's default output exceeds ~2KB without an explicit flag",
+        "Full content still accessible via explicit override",
+        "Measured per-turn token usage drops for tool-heavy sessions"
+      ],
+      "scope": [
+        "src/design/tools/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Third leg of the context-streamlining triad with BUG-006 (measure) and BUG-007 (compact). BUG-008 bounds inputs. Ship in that order — measure before trimming, compact before capping."
     }
   ]
 }

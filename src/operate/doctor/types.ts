@@ -47,7 +47,8 @@ export type DoctorCheckName =
   | "ollama-url"
   | "session-runaway"
   | "loop-detection-enabled"
-  | "model-agentic-capable";
+  | "model-agentic-capable"
+  | "deploy-unclassified";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 
