@@ -264,42 +264,47 @@ async function checkSecrets(deployDir: string): Promise<PreflightCheckResult> {
 /** 5. Gateway port is not already in use. */
 async function checkPorts(port: number, signal?: AbortSignal): Promise<PreflightCheckResult> {
   const name: PreflightCheckName = "ports";
+
+  // Retry briefly: on `clawhq down` → `up`, docker-proxy may linger for a
+  // second or two after the container stops, causing a transient false-positive.
+  // Two quick retries keeps us correct against real conflicts (which persist)
+  // without adding latency in the happy path.
+  let inUse = await isPortInUse(port, signal);
+  for (let i = 0; i < 2 && inUse; i++) {
+    await new Promise((r) => setTimeout(r, 1000));
+    inUse = await isPortInUse(port, signal);
+  }
+
+  if (inUse) {
+    return {
+      name,
+      passed: false,
+      message: `Port ${port} is already in use`,
+      fix: `Stop the process using port ${port} or change the gateway port in openclaw.json`,
+    };
+  }
+  return { name, passed: true, message: `Port ${port} is available` };
+}
+
+/** True when something is listening on `port`. Silent on tool errors → treats port as free. */
+async function isPortInUse(port: number, signal?: AbortSignal): Promise<boolean> {
   try {
     const { stdout } = await execFileAsync(
       "ss",
       ["-tlnp", `sport = :${port}`],
       { timeout: PREFLIGHT_EXEC_TIMEOUT_MS, signal },
     );
-
-    // ss always outputs a header line; if there's a second line, port is in use
-    const lines = stdout.trim().split("\n");
-    if (lines.length > 1) {
-      return {
-        name,
-        passed: false,
-        message: `Port ${port} is already in use`,
-        fix: `Stop the process using port ${port} or change the gateway port in openclaw.json`,
-      };
-    }
-
-    return { name, passed: true, message: `Port ${port} is available` };
+    // ss always prints a header; a second line means the port is bound.
+    return stdout.trim().split("\n").length > 1;
   } catch {
-    // ss not available (macOS) — try lsof
     try {
       await execFileAsync("lsof", ["-i", `:${port}`, "-sTCP:LISTEN"], {
         timeout: PREFLIGHT_EXEC_TIMEOUT_MS,
         signal,
       });
-      // lsof exits 0 if port is in use
-      return {
-        name,
-        passed: false,
-        message: `Port ${port} is already in use`,
-        fix: `Stop the process using port ${port} or change the gateway port in openclaw.json`,
-      };
+      return true; // lsof exits 0 when port is in use
     } catch {
-      // lsof exits non-zero when port is free
-      return { name, passed: true, message: `Port ${port} is available` };
+      return false; // lsof exits non-zero when port is free
     }
   }
 }
