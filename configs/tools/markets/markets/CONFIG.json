@@ -34,23 +34,24 @@
       "balance": 100000.00,
       "broker": "fidelity",
       "execution": "simon",
-      "description": "Simon's IRA — all trade types (investment, swing, day, scalp). Optimized for growth.",
+      "description": "Simon's IRA — investment, swing, day, scalp. No margin, no naked shorts. Inverse ETFs for bearish exposure. Covered calls + long puts for options.",
       "constraints": {
         "max_position_pct": 10.0,
         "max_total_exposure_pct": 95.0,
         "max_long_exposure_pct": 95.0,
-        "max_short_exposure_pct": 30.0,
+        "max_short_exposure_pct": 20.0,
         "max_sector_pct": 30.0,
         "max_daily_loss": 3000.00,
         "max_daily_loss_pct": 3.0,
         "max_drawdown_pct": 15.0,
         "max_trades_per_day": 10,
         "max_open_positions": 20,
-        "shorting": true,
-        "options": true,
+        "shorting": "inverse_etf_only",
+        "short_instruments": {"SPY": "SH", "QQQ": "SQQQ", "IWM": "RWM"},
+        "options": "covered_calls_and_long_puts",
         "futures": false,
         "margin": false,
-        "pdt_guard": true
+        "pdt_guard": false
       }
     },
     "tradier": {
@@ -59,7 +60,7 @@
       "balance": 3000.00,
       "broker": "tradier",
       "execution": "clawdius",
-      "description": "Clawdius's own account — full discretion, small size. Learning account.",
+      "description": "Clawdius's own account — full discretion, small size. Swing and investment focus due to PDT + balance constraints.",
       "constraints": {
         "max_position_pct": 15.0,
         "max_total_exposure_pct": 60.0,
@@ -69,15 +70,26 @@
         "max_daily_loss": 100.00,
         "max_daily_loss_pct": 3.0,
         "max_drawdown_pct": 10.0,
-        "max_trades_per_day": 5,
+        "max_trades_per_day": 3,
         "max_open_positions": 5,
+        "max_share_price": 150.00,
+        "preferred_trade_types": ["investment", "swing"],
+        "avoid_trade_types": ["scalp"],
         "shorting": false,
         "options": false,
         "futures": false,
         "margin": false,
-        "pdt_guard": true
+        "pdt_guard": true,
+        "pdt_note": "Max 3 day trades per 5 rolling business days ($3K < $25K threshold). Prefer swing holds to conserve day trade allowance."
       }
     }
+  },
+
+  "cross_account_risk": {
+    "max_single_ticker_pct": 10.0,
+    "combined_capital": 203000.00,
+    "description": "Total exposure to any single ticker across ALL accounts. Prevents correlated drawdown across supposedly independent accounts.",
+    "max_single_ticker_dollars": 20300.00
   },
 
   "signal_sources": {

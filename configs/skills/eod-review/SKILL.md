@@ -110,7 +110,28 @@ TOMORROW'S SETUP
 [Any strategy halt flags (account down >10%)]
 ```
 
-### 10. Feed Forward
+### 10. Forced Reconciliation (MANDATORY)
+
+**The EOD report does not publish until Simon confirms positions.** Present the shadow portfolio for each account and ask Simon to confirm or correct:
+
+```
+RECONCILIATION — please confirm positions are correct:
+
+TOS: [list positions from shadow portfolio]
+  Correct? (reply "yes" or paste corrections)
+
+IRA: [list positions from shadow portfolio]
+  Correct? (reply "yes" or paste corrections)
+
+TRADIER: [list positions from shadow portfolio]
+  Correct? (reply "yes" or paste corrections)
+```
+
+If Simon corrects a position, update the shadow portfolio before publishing the EOD report. If Simon doesn't respond within 30 minutes, publish with a warning: "Positions unconfirmed — shadow portfolio may be drifted."
+
+This step exists because the shadow portfolio has no API connection to TOS or Fidelity. Without daily reconciliation, every position sizing calculation drifts from reality.
+
+### 11. Feed Forward
 
 - **Open positions** carry into tomorrow's RESEARCH phase
 - **Lessons** → append to `memory/trading-YYYY-MM-DD.md` notes section
@@ -119,6 +140,7 @@ TOMORROW'S SETUP
   - 3+ consecutive losing days → flag pattern
 - **Mancini pull** at 2:30 PM PT begins tomorrow's RESEARCH phase automatically
 - Write EOD data to `memory/trading-YYYY-MM-DD-eod.md` for the portfolio review cron
+- **Cross-account exposure** → log combined exposure per ticker for tomorrow's premarket check
 
 ## Failure Modes
 

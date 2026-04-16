@@ -58,11 +58,15 @@ Phase 1 (RESEARCH) crons have been filling `memory/trading-YYYY-MM-DD.md` since 
    - Same ticker + aligned direction + overlapping level zone → merge into single ORDER with `confluence: DP+MANCINI` (or other combination)
    - Same ticker + opposing direction → keep both ORDERs with `confluence: divergence: [see ORDER N]`. Simon decides.
 
-7. **Synthesize Ranked Trade Ideas.** Read all ORDER blocks from filled sections. Rank by:
+7. **Cross-account exposure check.** Before finalizing ideas, check: if the same ticker appears in ORDER blocks for multiple accounts, calculate total dollar exposure across all accounts. Per CONFIG.json `cross_account_risk`: max 10% of combined capital ($20,300) in any single name. If exceeded, flag: "NVDA total exposure across tos+ira would be $20K (9.9%) — at limit." Reduce sizing or drop from lower-priority accounts.
+
+8. **Synthesize Ranked Trade Ideas.** Read all ORDER blocks from filled sections. Rank by:
    - **Confirmation** (CONFIRMED > PENDING_TA — all Phase 2 blocks are PENDING_TA)
    - **Confluence** (multi-source aligned > single source)
    - **Conviction level** (HIGH > MEDIUM)
    - **Risk/reward** (best R:R at top)
+
+   **Max 5 trade ideas.** If more than 5 pass conviction filtering, keep the top 5. Cash is always a valid position. Over-trading destroys returns.
 
    Brief header must include: "Orders are watch-list signals with confirmation: PENDING_TA until TA enrichment is available."
 
