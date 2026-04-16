@@ -310,6 +310,33 @@
       "groomingNotes": "Surfaced during 2026-04-16 Telegram diagnostic. Not urgent but each failed tool call burns context and may trigger model confusion / retry."
     },
     {
+      "id": "BUG-014",
+      "title": "devices/paired.json not protected in apply SKIP_PATHS — future regressions could wipe pairings",
+      "intent": "Pairing state (devices/paired.json, devices/pending.json) is critical user state — losing it means every paired device has to be re-approved. Today's audit shows clawhq source has zero explicit handling for the devices/ directory. It survives today only because the compiler happens not to emit anything there. Anyone adding a devices-related compiler output without knowing this would silently wipe approved pairings.",
+      "description": "grep across src/ shows 'devices' mentioned only in src/config/ownership.ts (the classification table) and its test. The apply SKIP_PATHS set in src/evolve/apply/index.ts lists workspace/MEMORY.md, clawhq.yaml, credentials seeds, and docker-compose.yml — but not devices/paired.json or devices/pending.json. A future compiler change that emits a devices/* file (e.g. a template or placeholder) would get written on every apply, clobbering real pairing state.",
+      "priority": "could",
+      "category": "hygiene",
+      "steps": [
+        "Add 'devices/paired.json' and 'devices/pending.json' to SKIP_PATHS in src/evolve/apply/index.ts",
+        "OR add a broader devices/ rule to ownership.ts marked stateful-user",
+        "Add an apply test that seeds a paired.json with a fake device and confirms it survives an apply cycle",
+        "Document the protection in ARCHITECTURE.md or a short comment on SKIP_PATHS"
+      ],
+      "acceptanceCriteria": [
+        "devices/paired.json is explicitly protected in code, not accidentally by omission",
+        "Regression test fails if someone removes the protection",
+        "ownership.ts deploy-unclassified check recognises these as stateful"
+      ],
+      "scope": [
+        "src/evolve/apply/index.ts",
+        "src/config/ownership.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Prophylactic — today paired.json survives because nothing emits to devices/. This bug is the belt-and-braces fix so it keeps surviving when someone adds a devices/ compiler output without reading every code path. Complements BUG-011 (audit log) — once both land, pairing state is (a) explicitly protected and (b) any future clobbering attempt leaves a trail."
+    },
+    {
       "id": "BUG-013",
       "title": "ownership.ts table incomplete — 117 deployment files unclassified",
       "intent": "The new deploy-unclassified doctor check (added in the ownership refactor) flags 117 files without an ownership rule. The check is useful but its companion table is a stub. Either the table gets filled out or the check stays noisy and operators learn to ignore it — which defeats both.",
