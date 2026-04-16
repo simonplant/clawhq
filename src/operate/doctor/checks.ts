@@ -153,6 +153,8 @@ export async function runChecks(
     checkConfigSync(deployDir),
     checkOllamaUrl(deployDir),
     checkSessionRunaway(signal),
+    checkLoopDetectionEnabled(deployDir),
+    checkModelAgenticCapable(deployDir),
   ]);
 }
 
@@ -760,6 +762,14 @@ async function checkCronHealth(deployDir: string): Promise<DoctorCheckResult> {
     for (const job of jobs) {
       const id = typeof job.id === "string" ? job.id : "unknown";
       const state = job.state as Record<string, unknown> | undefined;
+
+      // Missing `state` entirely crashes the scheduler at boot with
+      // "Cannot read properties of undefined (reading 'runningAtMs')" —
+      // the engine assumes state is always an object. Root cause of the
+      // 2026-04-16 cron outage.
+      if (job.state === undefined || job.state === null) {
+        issues.push(`${id}: missing state object — scheduler will crash at boot with undefined.runningAtMs`);
+      }
 
       // Stale error state crashes the scheduler on startup
       if (state && (state.lastRunStatus === "error" || state.lastError || state.consecutiveErrors)) {
@@ -2018,6 +2028,85 @@ async function checkOllamaUrl(deployDir: string): Promise<DoctorCheckResult> {
       return ok(name, "Config not found — skipped", "info");
     }
     return ok(name, `Cannot parse Ollama URL — skipped (${msg})`, "info");
+  }
+}
+
+/**
+ * Tool-loop detection must be enabled in openclaw.json.
+ *
+ * OpenClaw ships with `tools.loopDetection.enabled = false`. A weak
+ * agentic model (e.g. gemma4:26b) without loop detection will spin on
+ * the same tool call until the context window overflows — the exact
+ * failure mode behind the 2026-04-16 GPU pin incident.
+ */
+async function checkLoopDetectionEnabled(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "loop-detection-enabled";
+  const configPath = join(deployDir, "engine", "openclaw.json");
+  try {
+    const raw = await readFile(configPath, "utf-8");
+    const config = JSON.parse(raw) as Record<string, unknown>;
+    const tools = config["tools"] as Record<string, unknown> | undefined;
+    const loop = tools?.["loopDetection"] as Record<string, unknown> | undefined;
+    if (loop?.["enabled"] !== true) {
+      return fail(
+        name,
+        "error",
+        "tools.loopDetection.enabled is not true — a runaway tool-call loop will not be stopped",
+        "Run: clawhq doctor --fix (or regenerate with clawhq init)",
+        true,
+      );
+    }
+    return ok(name, "Tool-loop detection enabled");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("ENOENT")) {
+      return ok(name, "Config not found — skipped", "info");
+    }
+    return ok(name, `Cannot read config — skipped (${msg})`, "info");
+  }
+}
+
+/**
+ * Warn when the primary agent model is a known-weak option for agentic
+ * (tool-calling) workloads. Small/mid local models tend to spin in
+ * tool-call loops — even with loop detection on, they're a poor default.
+ */
+async function checkModelAgenticCapable(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "model-agentic-capable";
+  const configPath = join(deployDir, "engine", "openclaw.json");
+  // Models known to be unreliable for agentic tool use.
+  const WEAK_AGENTIC = [
+    "gemma4:26b", "gemma4:7b", "gemma2:9b",
+    "llama3:8b", "llama3.1:8b", "llama3.2:3b",
+    "mistral:7b", "qwen2:7b",
+  ];
+  try {
+    const raw = await readFile(configPath, "utf-8");
+    const config = JSON.parse(raw) as Record<string, unknown>;
+    const agents = config["agents"] as Record<string, unknown> | undefined;
+    const defaults = agents?.["defaults"] as Record<string, unknown> | undefined;
+    const model = defaults?.["model"] as Record<string, unknown> | undefined;
+    const primary = typeof model?.["primary"] === "string" ? (model["primary"] as string) : "";
+    if (!primary) {
+      return ok(name, "No primary model configured — skipped", "info");
+    }
+    // Match on the tail after "provider/"
+    const tag = primary.includes("/") ? primary.split("/").slice(1).join("/") : primary;
+    if (WEAK_AGENTIC.some((m) => tag === m || tag.startsWith(m + "-"))) {
+      return fail(
+        name,
+        "warning",
+        `Primary model ${primary} is known to be unreliable for agentic tool use — runaway tool loops are likely`,
+        "Switch to a stronger model (e.g. qwen2.5:32b, llama3.3:70b, or a hosted Claude) via clawhq init",
+      );
+    }
+    return ok(name, `Primary model ${primary} OK for agentic use`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("ENOENT")) {
+      return ok(name, "Config not found — skipped", "info");
+    }
+    return ok(name, `Cannot read config — skipped (${msg})`, "info");
   }
 }
 

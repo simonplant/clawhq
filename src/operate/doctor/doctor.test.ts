@@ -49,6 +49,7 @@ async function writeValidConfig(): Promise<void> {
     tools: {
       exec: { host: "gateway", security: "full" },
       accessGrants: [{ type: "user", value: "*" }],
+      loopDetection: { enabled: true },
     },
     fs: { workspaceOnly: true },
   };
@@ -100,6 +101,7 @@ async function writeValidCron(): Promise<void> {
         delivery: { mode: "none" },
         payload: { kind: "agentTurn", message: "Run heartbeat" },
         sessionTarget: "isolated",
+        state: {},
       },
     ],
   };
@@ -348,7 +350,7 @@ describe("checks", { timeout: 30_000 }, () => {
 
   it("runs all checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(35);
+    expect(checks.length).toBe(38);
   });
 });
 
@@ -364,7 +366,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(35);
+    expect(report.checks.length).toBe(38);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -833,9 +835,9 @@ services:
     expect(check.message).toContain("underscore-prefixed methods");
   });
 
-  it("runs all 35 checks", async () => {
+  it("runs all 38 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(35);
+    expect(checks.length).toBe(38);
   });
 });
 

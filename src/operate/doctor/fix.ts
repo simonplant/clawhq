@@ -62,7 +62,58 @@ const fixers: Partial<Record<DoctorCheckName, Fixer>> = {
   "tool-access-grants": fixToolAccessGrants,
   "cron-health": fixCronHealth,
   "session-runaway": fixSessionRunaway,
+  "loop-detection-enabled": fixLoopDetection,
 };
+
+/**
+ * Enable tool-loop detection in openclaw.json with safe thresholds.
+ *
+ * Matches the defaults written by `clawhq init` so this fix brings an
+ * existing deployment up to the same baseline.
+ */
+async function fixLoopDetection(deployDir: string): Promise<FixResult> {
+  const name: DoctorCheckName = "loop-detection-enabled";
+  const configPath = join(deployDir, "engine", "openclaw.json");
+  try {
+    const raw = await readFile(configPath, "utf-8");
+    const config = JSON.parse(raw) as Record<string, unknown>;
+
+    let tools = config["tools"] as Record<string, unknown> | undefined;
+    if (!tools) {
+      tools = {};
+      config["tools"] = tools;
+    }
+    tools["loopDetection"] = {
+      enabled: true,
+      historySize: 30,
+      warningThreshold: 10,
+      criticalThreshold: 20,
+      globalCircuitBreakerThreshold: 30,
+      unknownToolThreshold: 5,
+      detectors: {
+        genericRepeat: true,
+        knownPollNoProgress: true,
+        pingPong: true,
+      },
+    };
+
+    const diagnostics = (config["diagnostics"] as Record<string, unknown> | undefined) ?? {};
+    if (diagnostics["stuckSessionWarnMs"] === undefined) {
+      diagnostics["stuckSessionWarnMs"] = 5 * 60_000;
+    }
+    config["diagnostics"] = diagnostics;
+
+    await writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+    return {
+      name,
+      success: true,
+      message: "Enabled tools.loopDetection and set diagnostics.stuckSessionWarnMs",
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { name, success: false, message: `Failed to patch loop detection: ${msg}` };
+  }
+}
 
 /** Archive all runaway sessions detected inside the container, then restart. */
 async function fixSessionRunaway(deployDir: string): Promise<FixResult> {

@@ -37,6 +37,27 @@ export interface ToolAccessGrant {
   readonly value: string;
 }
 
+/**
+ * Tool-loop detection settings.
+ *
+ * OpenClaw ships loop detection but defaults enabled=false. Without it a
+ * weak agentic model (e.g. gemma4:26b) can spin forever calling the same
+ * tool; ClawHQ always enables it at a conservative threshold.
+ */
+export interface LoopDetectionConfig {
+  readonly enabled: boolean;
+  readonly historySize?: number;
+  readonly warningThreshold?: number;
+  readonly criticalThreshold?: number;
+  readonly globalCircuitBreakerThreshold?: number;
+  readonly unknownToolThreshold?: number;
+  readonly detectors?: {
+    readonly genericRepeat?: boolean;
+    readonly knownPollNoProgress?: boolean;
+    readonly pingPong?: boolean;
+  };
+}
+
 /** Tool configuration. */
 export interface ToolsConfig {
   readonly profile?: "coding" | "messaging" | "custom";
@@ -45,6 +66,12 @@ export interface ToolsConfig {
   readonly exec: ToolExecConfig;
   readonly accessGrants?: readonly ToolAccessGrant[];
   readonly fs?: FsConfig;
+  readonly loopDetection?: LoopDetectionConfig;
+}
+
+/** Diagnostics — stuck-session warnings and health heartbeats. */
+export interface DiagnosticsConfig {
+  readonly stuckSessionWarnMs?: number;
 }
 
 /** Gateway server configuration. */
@@ -161,6 +188,7 @@ export interface OpenClawConfig {
   readonly channels?: Record<string, ChannelConfig & Record<string, unknown>>;
   readonly cron?: CronConfig;
   readonly session?: SessionConfig;
+  readonly diagnostics?: DiagnosticsConfig;
   readonly [key: string]: unknown;
 }
 

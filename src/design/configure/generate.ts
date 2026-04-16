@@ -147,6 +147,30 @@ function buildOpenClawConfig(
         // LM-14: Filesystem access — workspace only by default
         workspaceOnly: true,
       },
+      // LM-15: Tool-loop detection — OpenClaw defaults this to disabled,
+      // which lets a weak agentic model spin forever (see 2026-04-16
+      // incident: 31K-message runaway pinned the GPU for 10h). Enable
+      // with thresholds tight enough to bail well before context overflow.
+      loopDetection: {
+        enabled: true,
+        historySize: 30,
+        warningThreshold: 10,
+        criticalThreshold: 20,
+        globalCircuitBreakerThreshold: 30,
+        unknownToolThreshold: 5,
+        detectors: {
+          genericRepeat: true,
+          knownPollNoProgress: true,
+          pingPong: true,
+        },
+      },
+    },
+
+    // Stuck-session warning — gateway logs a warning when a session has
+    // been in "processing" state longer than this, giving clawhq monitor
+    // an upstream signal before the session file balloons.
+    diagnostics: {
+      stuckSessionWarnMs: 5 * 60_000,
     },
 
     // Gateway config with security settings nested correctly
