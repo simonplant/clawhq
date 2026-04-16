@@ -1,0 +1,130 @@
+{
+  "version": 2,
+  "updated_at": "2026-04-15T00:00:00Z",
+
+  "accounts": {
+    "tos": {
+      "name": "ThinkOrSwim",
+      "type": "margin",
+      "balance": 100000.00,
+      "broker": "thinkorswim",
+      "execution": "simon",
+      "description": "Simon's main trading account — stocks, options, /MES micro futures. Full capability.",
+      "constraints": {
+        "max_position_pct": 5.0,
+        "max_total_exposure_pct": 80.0,
+        "max_long_exposure_pct": 80.0,
+        "max_short_exposure_pct": 30.0,
+        "max_sector_pct": 35.0,
+        "max_daily_loss": 2000.00,
+        "max_daily_loss_pct": 2.0,
+        "max_drawdown_pct": 10.0,
+        "max_trades_per_day": 10,
+        "max_open_positions": 15,
+        "shorting": true,
+        "options": true,
+        "futures": true,
+        "futures_instrument": "/MES",
+        "futures_multiplier": 5.0,
+        "futures_note": "Use /MES (Micro E-mini, $5/pt) not /ES ($50/pt). Scale up contract count as confidence grows. 10 /MES = 1 /ES.",
+        "margin": true,
+        "pdt_guard": false
+      }
+    },
+    "ira": {
+      "name": "Fidelity IRA",
+      "type": "retirement",
+      "balance": 100000.00,
+      "broker": "fidelity",
+      "execution": "simon",
+      "description": "Simon's IRA — investment, swing, day, scalp. No margin, no naked shorts. Inverse ETFs for bearish exposure. Covered calls + long puts for options.",
+      "constraints": {
+        "max_position_pct": 10.0,
+        "max_total_exposure_pct": 95.0,
+        "max_long_exposure_pct": 95.0,
+        "max_short_exposure_pct": 20.0,
+        "max_sector_pct": 30.0,
+        "max_daily_loss": 3000.00,
+        "max_daily_loss_pct": 3.0,
+        "max_drawdown_pct": 15.0,
+        "max_trades_per_day": 10,
+        "max_open_positions": 20,
+        "shorting": "inverse_etf_only",
+        "short_instruments": {"SPY": "SH", "QQQ": "SQQQ", "IWM": "RWM"},
+        "options": "covered_calls_and_long_puts",
+        "futures": false,
+        "margin": false,
+        "pdt_guard": false
+      }
+    },
+    "tradier": {
+      "name": "Tradier",
+      "type": "brokerage",
+      "balance": 3000.00,
+      "broker": "tradier",
+      "execution": "clawdius",
+      "description": "Clawdius's own account — full discretion, small size. Swing and investment focus due to PDT + balance constraints.",
+      "constraints": {
+        "max_position_pct": 15.0,
+        "max_total_exposure_pct": 60.0,
+        "max_long_exposure_pct": 60.0,
+        "max_short_exposure_pct": 0.0,
+        "max_sector_pct": 50.0,
+        "max_daily_loss": 100.00,
+        "max_daily_loss_pct": 3.0,
+        "max_drawdown_pct": 10.0,
+        "max_trades_per_day": 3,
+        "max_open_positions": 5,
+        "max_share_price": 150.00,
+        "preferred_trade_types": ["investment", "swing"],
+        "avoid_trade_types": ["scalp"],
+        "shorting": false,
+        "options": false,
+        "futures": false,
+        "margin": false,
+        "pdt_guard": true,
+        "pdt_note": "Max 3 day trades per 5 rolling business days ($3K < $25K threshold). Prefer swing holds to conserve day trade allowance."
+      }
+    }
+  },
+
+  "cross_account_risk": {
+    "max_single_ticker_pct": 10.0,
+    "combined_capital": 203000.00,
+    "description": "Total exposure to any single ticker across ALL accounts. Prevents correlated drawdown across supposedly independent accounts.",
+    "max_single_ticker_dollars": 20300.00
+  },
+
+  "signal_sources": {
+    "primary": [
+      { "id": "mancini", "type": "human-curated", "skill": "mancini-fetch", "priority": 1 },
+      { "id": "dp", "type": "human-curated", "skill": "dp-parse", "priority": 1 },
+      { "id": "focus25", "type": "human-curated", "skill": "focus25-fetch", "priority": 2 }
+    ],
+    "supplementary": [
+      { "id": "scanner", "type": "algorithmic", "skill": "swing-scanner", "priority": 3 }
+    ],
+    "rule": "human-curated signals take priority over algorithmic when they conflict"
+  },
+
+  "loops": {
+    "portfolio": { "enabled": true, "cadence": "daily" },
+    "swing": { "enabled": true, "cadence": "hourly" },
+    "session": { "enabled": true, "cadence": "2min", "mode": "alert_only" }
+  },
+
+  "data": {
+    "quote_tool": "quote",
+    "ta_tool": "ta",
+    "earnings_tool": "earnings",
+    "finnhub_api_key_env": "FINNHUB_API_KEY",
+    "tradier_api_key_env": "TRADIER_API_KEY",
+    "tradier_account_id_env": "TRADIER_ACCOUNT_ID"
+  },
+
+  "features": {
+    "auto_execute_tradier": false,
+    "auto_rebalance": false,
+    "day_trading": false
+  }
+}

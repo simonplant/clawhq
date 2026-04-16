@@ -12,6 +12,7 @@ import {
   CRED_PROXY_PORT,
   CRED_PROXY_ROUTES_PATH,
   CRED_PROXY_SCRIPT_PATH,
+  MARKET_ENGINE_PORT,
 } from "../../config/defaults.js";
 import {
   OPENCLAW_CONTAINER_CONFIG,
@@ -37,6 +38,10 @@ export interface ComposeOptions {
   readonly credProxyRoutesPath?: string;
   /** Workspace manifest for granular volume mounts. When set, replaces single workspace mount. */
   readonly workspaceManifest?: WorkspaceManifest;
+  /** Enable market-engine sidecar — real-time Tradier streaming + trading dashboard. */
+  readonly enableMarketEngine?: boolean;
+  /** Host path to the market-engine source directory (contains Dockerfile + market_engine/). */
+  readonly marketEngineDir?: string;
   /** Enable Tailscale sidecar for secure remote access. */
   readonly enableTailscale?: boolean;
   /** Tailscale auth key for automatic node registration. */
@@ -53,6 +58,7 @@ export interface ComposeOutput {
   readonly services: {
     readonly openclaw: ComposeServiceOutput;
     readonly "cred-proxy"?: ComposeCredProxyServiceOutput;
+    readonly "market-engine"?: ComposeMarketEngineServiceOutput;
     readonly tailscale?: ComposeTailscaleServiceOutput;
   };
   readonly networks: Record<string, ComposeNetworkOutput>;
@@ -136,6 +142,28 @@ interface ComposeTailscaleServiceOutput {
   readonly networks: readonly string[];
   readonly environment: Record<string, string>;
   readonly restart: string;
+  readonly healthcheck: {
+    readonly test: readonly string[];
+    readonly interval: string;
+    readonly timeout: string;
+    readonly retries: number;
+  };
+}
+
+/** Market-engine sidecar service — real-time Tradier streaming + trading dashboard. */
+interface ComposeMarketEngineServiceOutput {
+  readonly build: { readonly context: string; readonly dockerfile: string };
+  readonly user: string;
+  readonly read_only: boolean;
+  readonly cap_drop: readonly string[];
+  readonly security_opt: readonly string[];
+  readonly volumes: readonly string[];
+  readonly networks: readonly string[];
+  readonly env_file: readonly string[];
+  readonly environment: Record<string, string>;
+  readonly restart: string;
+  readonly tmpfs: readonly string[];
+  readonly depends_on: Record<string, { readonly condition: string }>;
   readonly healthcheck: {
     readonly test: readonly string[];
     readonly interval: string;
@@ -302,11 +330,52 @@ export function generateCompose(
       }
     : undefined;
 
+  // Build market-engine sidecar if enabled — real-time Tradier streaming + trading dashboard
+  const enableMarketEngine = options?.enableMarketEngine ?? false;
+  const marketEngineDir = options?.marketEngineDir ?? `${deployDir}/engine/market-engine`;
+
+  const marketEngineService: ComposeMarketEngineServiceOutput | undefined = enableMarketEngine
+    ? {
+        build: {
+          context: marketEngineDir,
+          dockerfile: "Dockerfile",
+        },
+        user: "1000:1000",
+        read_only: true,
+        cap_drop: ["ALL"],
+        security_opt: ["no-new-privileges"],
+        volumes: [
+          `${deployDir}/shared:/shared`,
+          `${deployDir}/workspace/memory:/workspace/memory:ro`,
+        ],
+        networks: [networkName],
+        env_file: [".env"],
+        environment: {
+          CRED_PROXY_URL: `http://cred-proxy:${CRED_PROXY_PORT}`,
+          SHARED_DIR: "/shared",
+          WORKSPACE_MEMORY_DIR: "/workspace/memory",
+          TZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+        restart: "unless-stopped",
+        tmpfs: ["/tmp:size=32m,noexec,nosuid"],
+        depends_on: {
+          "cred-proxy": { condition: "service_healthy" },
+        },
+        healthcheck: {
+          test: ["CMD", "python", "-c", `import urllib.request; urllib.request.urlopen('http://localhost:${MARKET_ENGINE_PORT}/health')`],
+          interval: "15s",
+          timeout: "5s",
+          retries: 3,
+        },
+      }
+    : undefined;
+
   return {
     version: "3.8",
     services: {
       openclaw: service,
       ...(credProxyService ? { "cred-proxy": credProxyService } : {}),
+      ...(marketEngineService ? { "market-engine": marketEngineService } : {}),
       ...(tailscaleService ? { tailscale: tailscaleService } : {}),
     },
     networks,

@@ -128,11 +128,17 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   const credProxyRoutesPath = join(engineDir, "cred-proxy-routes.json");
   const enableCredProxy = existsSync(credProxyScriptPath) && existsSync(credProxyRoutesPath);
 
+  // Auto-detect market-engine: if the market-engine directory exists with a Dockerfile, enable the sidecar
+  const marketEngineDir = join(engineDir, "market-engine");
+  const enableMarketEngine = existsSync(join(marketEngineDir, "Dockerfile"));
+
   const compose = generateCompose(stage2Tag, postureConfig, deployDir, networkName, {
     enableCredProxy,
     credProxyScriptPath,
     credProxyRoutesPath,
     workspaceManifest: stage2.workspace,
+    enableMarketEngine,
+    marketEngineDir,
   });
   const composePath = join(engineDir, "docker-compose.yml");
   await writeFile(composePath, serializeYaml(compose), "utf-8");
@@ -378,6 +384,51 @@ export function serializeYaml(compose: ReturnType<typeof generateCompose>): stri
     lines.push(`      interval: ${cp.healthcheck.interval}`);
     lines.push(`      timeout: ${cp.healthcheck.timeout}`);
     lines.push(`      retries: ${cp.healthcheck.retries}`);
+  }
+
+  // Market-engine sidecar
+  if (compose.services["market-engine"]) {
+    const me = compose.services["market-engine"];
+    lines.push("", "  market-engine:");
+    lines.push("    build:");
+    lines.push(`      context: ${me.build.context}`);
+    lines.push(`      dockerfile: ${me.build.dockerfile}`);
+    lines.push(`    user: "${me.user}"`);
+    lines.push(`    read_only: ${me.read_only}`);
+    lines.push(`    restart: ${me.restart}`);
+    lines.push("    cap_drop:");
+    for (const cap of me.cap_drop) lines.push(`      - ${cap}`);
+    lines.push("    security_opt:");
+    for (const opt of me.security_opt) lines.push(`      - ${opt}`);
+    lines.push("    volumes:");
+    for (const v of me.volumes) lines.push(`      - "${v}"`);
+    lines.push("    networks:");
+    for (const n of me.networks) lines.push(`      - ${n}`);
+    lines.push("    env_file:");
+    for (const e of me.env_file) lines.push(`      - ${e}`);
+    lines.push("    environment:");
+    for (const [key, val] of Object.entries(me.environment)) {
+      lines.push(`      ${key}: "${val}"`);
+    }
+    lines.push("    tmpfs:");
+    for (const t of me.tmpfs) lines.push(`      - "${t}"`);
+    lines.push("    depends_on:");
+    for (const [svc, cond] of Object.entries(me.depends_on)) {
+      lines.push(`      ${svc}:`);
+      lines.push(`        condition: ${(cond as { condition: string }).condition}`);
+    }
+    lines.push("    healthcheck:");
+    lines.push("      test:");
+    for (const t of me.healthcheck.test) {
+      if (t.includes('"')) {
+        lines.push(`        - '${t}'`);
+      } else {
+        lines.push(`        - "${t}"`);
+      }
+    }
+    lines.push(`      interval: ${me.healthcheck.interval}`);
+    lines.push(`      timeout: ${me.healthcheck.timeout}`);
+    lines.push(`      retries: ${me.healthcheck.retries}`);
   }
 
   // Tailscale sidecar

@@ -278,6 +278,14 @@ export const CRED_PROXY_ROUTES_PATH = "/app/routes.json";
 /** Container-internal path to the proxy audit log directory. */
 export const CRED_PROXY_AUDIT_DIR = "/app/audit";
 
+// ── Market engine sidecar defaults ──────────────────────────────────────────
+
+/** Default port for the market-engine web dashboard. */
+export const MARKET_ENGINE_PORT = 8080;
+
+/** Docker image for the market-engine sidecar (Python runtime). */
+export const MARKET_ENGINE_IMAGE = "python:3.12-slim";
+
 // ── OpenClaw environment variable defaults (v0.8.6+) ────────────────────────
 
 /** Default WebSocket event caller timeout in milliseconds.
