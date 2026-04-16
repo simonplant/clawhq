@@ -225,9 +225,16 @@ export function generateCompose(
     },
     tmpfs: [
       `/tmp:size=${posture.tmpfs.sizeMb}m,${posture.tmpfs.options}`,
+      // XDG-writable $HOME surface. Read-only rootfs preserves anti-persistence
+      // for system paths (/usr, /etc) while skills get a predictable, FHS-correct
+      // writable home. Each mount owned by the node user (uid/gid=1000) so tools
+      // like Node/npm/Python that create cache dirs at runtime just work.
+      "/home/node/.config:exec,nosuid,size=64m,uid=1000,gid=1000",
+      // 1Password CLI token cache overlays .config with stricter noexec.
       "/home/node/.config/op:noexec,nosuid,size=10m,uid=1000,gid=1000",
-      "/home/node/.local:exec,nosuid,size=512m",
-      "/home/node/.cache:exec,nosuid,size=512m",
+      "/home/node/.local:exec,nosuid,size=512m,uid=1000,gid=1000",
+      "/home/node/.cache:exec,nosuid,size=512m,uid=1000,gid=1000",
+      "/home/node/.npm:exec,nosuid,size=128m,uid=1000,gid=1000",
       // OpenClaw runtime state: exec-approval temp files, plugin state, and
       // directories created at startup (telegram/, agents/, canvas/, logs/).
       // Bind mounts for persistent paths (workspace, cron, config) overlay this.
