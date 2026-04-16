@@ -25,8 +25,32 @@ export function generateEmailTool(): string {
 #   folders              - list available folders
 set -euo pipefail
 
-HIMALAYA="\${HIMALAYA_BIN:-himalaya}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Himalaya config lives in workspace/config; the default XDG path
+# (/home/node/.config/himalaya) is on the container's read-only rootfs,
+# so we must tell himalaya explicitly where to read it from.
+_himalaya_bin="\${HIMALAYA_BIN:-himalaya}"
+_resolve_himalaya_config() {
+  if [[ -n "\${HIMALAYA_CONFIG:-}" && -f "$HIMALAYA_CONFIG" ]]; then
+    echo "$HIMALAYA_CONFIG"; return 0
+  fi
+  for p in \\
+    "$SCRIPT_DIR/config/himalaya/config.toml" \\
+    "$SCRIPT_DIR/config/himalaya.toml"
+  do
+    if [[ -f "$p" ]]; then echo "$p"; return 0; fi
+  done
+  return 1
+}
+himalaya_cmd() {
+  local cfg
+  if cfg=$(_resolve_himalaya_config); then
+    "$_himalaya_bin" --config "$cfg" "$@"
+  else
+    "$_himalaya_bin" "$@"
+  fi
+}
 
 # ClawWall: sanitize untrusted inbound email content
 _sanitize() {
@@ -53,13 +77,13 @@ shift 2>/dev/null || true
 
 case "$cmd" in
   inbox)
-    "$HIMALAYA" envelope list --output json "$@" -- not flag seen | _sanitize
+    himalaya_cmd envelope list --output json "$@" -- not flag seen | _sanitize
     ;;
   all)
-    "$HIMALAYA" envelope list --output json "$@" | _sanitize
+    himalaya_cmd envelope list --output json "$@" | _sanitize
     ;;
   read)
-    "$HIMALAYA" message read --output json "$@" | _sanitize
+    himalaya_cmd message read --output json "$@" | _sanitize
     ;;
   send)
     to="\${1:?Usage: email send <to> <subject>}"
@@ -74,28 +98,28 @@ case "$cmd" in
     body="$(cat)"
     _egress_check "$subject $body"
     printf 'To: %s\\r\\nSubject: %s\\r\\nMIME-Version: 1.0\\r\\nContent-Type: text/plain; charset=utf-8\\r\\n\\r\\n%s\\n' \\
-      "$to" "$subject" "$body" | "$HIMALAYA" message send
+      "$to" "$subject" "$body" | himalaya_cmd message send
     jq -n --arg to "$to" --arg subj "$subject" '{status:"sent",to:$to,subject:$subj}'
     ;;
   reply)
     id="\${1:?Usage: email reply <id>}"
     body="$(cat)"
     _egress_check "$body"
-    echo "$body" | "$HIMALAYA" message reply "$id"
+    echo "$body" | himalaya_cmd message reply "$id"
     ;;
   mark-read)
-    "$HIMALAYA" flag add "\${1:?Usage: email mark-read <id>}" seen
+    himalaya_cmd flag add "\${1:?Usage: email mark-read <id>}" seen
     jq -n --arg id "$1" '{status:"marked_read",id:$id}'
     ;;
   delete)
-    "$HIMALAYA" message delete "\${1:?Usage: email delete <id>}"
+    himalaya_cmd message delete "\${1:?Usage: email delete <id>}"
     jq -n --arg id "$1" '{status:"deleted",id:$id}'
     ;;
   search)
-    "$HIMALAYA" envelope list --output json -- subject "$*" | _sanitize
+    himalaya_cmd envelope list --output json -- subject "$*" | _sanitize
     ;;
   folders)
-    "$HIMALAYA" folder list --output json "$@" | _sanitize
+    himalaya_cmd folder list --output json "$@" | _sanitize
     ;;
   help|--help|-h|"")
     sed -n '2,14p' "$0" | sed 's/^# \\?//'

@@ -430,7 +430,12 @@ function buildVolumes(deployDir: string, options?: ComposeOptions): string[] {
     // Cron jobs
     volumes.push(`${deployDir}/cron:${OPENCLAW_CONTAINER_CRON}`);
 
-    // Persistent workspace directories — read-write
+    // Workspace root — bind-mount the whole workspace so tool scripts and
+    // other files at the root survive the tmpfs shadow at /home/node/.openclaw.
+    // Persistent/config subdirs below are nested binds that overlay this.
+    volumes.push(`${deployDir}/workspace:${ws}`);
+
+    // Persistent workspace directories — read-write (nested on top of workspace bind)
     for (const dir of manifest.persistent) {
       volumes.push(`${deployDir}/workspace/${dir}:${ws}/${dir}`);
     }
@@ -440,7 +445,9 @@ function buildVolumes(deployDir: string, options?: ComposeOptions): string[] {
       volumes.push(`${deployDir}/workspace/${path}:${ws}/${path}:ro`);
     }
 
-    // Immutable paths: no mount — files come from the Docker image layer.
+    // Immutable paths: baked into the image layer. Kept even though the
+    // workspace bind above re-shadows them — the image copy provides a
+    // fallback if the deploy-dir workspace is missing/detached.
     // Ephemeral paths: future tmpfs support (not yet wired).
   } else {
     // No manifest — mount the minimum required paths.
