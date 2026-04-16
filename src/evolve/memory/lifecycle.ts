@@ -10,7 +10,8 @@ import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { DIR_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+import { writeFileAtomic } from "../../design/configure/writer.js";
 import { maskPii } from "../lifecycle/mask.js";
 
 import { summarizeMemory } from "./summarize.js";
@@ -57,12 +58,25 @@ export async function loadManifest(
   if (!existsSync(path)) {
     return { version: 1, entries: [] };
   }
+  // Corruption no longer silently degrades to an empty manifest — the next
+  // saveManifest would otherwise persist the empty form, losing every
+  // memory-tier classification.
+  const raw = await readFile(path, "utf-8");
+  let parsed: unknown;
   try {
-    const raw = await readFile(path, "utf-8");
-    return JSON.parse(raw) as MemoryManifest;
-  } catch {
-    return { version: 1, entries: [] };
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `memory manifest at ${path} is corrupt: ${msg}. ` +
+      `Memory files in workspace/memory/ are unaffected; restore the manifest from a backup (.bak) ` +
+      `or rebuild it with \`clawhq evolve memory scan\`.`,
+    );
   }
+  if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as Record<string, unknown>).entries)) {
+    throw new Error(`memory manifest at ${path} is missing the \`entries\` array`);
+  }
+  return parsed as MemoryManifest;
 }
 
 async function saveManifest(
@@ -71,7 +85,8 @@ async function saveManifest(
 ): Promise<void> {
   const dir = join(deployDir, MEMORY_BASE);
   mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
-  await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2));
+  // Atomic write + 0600 mode (manifest contains PII-masked memory index)
+  writeFileAtomic(manifestPath(deployDir), JSON.stringify(manifest, null, 2) + "\n", FILE_MODE_SECRET);
 }
 
 // ── Directory Helpers ────────────────────────────────────────────────────────

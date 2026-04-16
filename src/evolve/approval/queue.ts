@@ -13,7 +13,8 @@ import { existsSync, mkdirSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { DIR_MODE_SECRET } from "../../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+import { writeFileAtomic } from "../../design/configure/writer.js";
 import { logApprovalResolution } from "../../secure/audit/logger.js";
 import type { AuditTrailConfig } from "../../secure/audit/types.js";
 
@@ -42,12 +43,25 @@ export async function loadQueue(deployDir: string): Promise<ApprovalQueue> {
   if (!existsSync(path)) {
     return { version: 1, items: [] };
   }
+  // Silent empty-fallback here used to drop every pending approval on a
+  // single corrupted write. Now fails loud so the user can inspect the
+  // .bak or re-queue manually.
+  const raw = await readFile(path, "utf-8");
+  let parsed: unknown;
   try {
-    const raw = await readFile(path, "utf-8");
-    return JSON.parse(raw) as ApprovalQueue;
-  } catch {
-    return { version: 1, items: [] };
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `approval queue at ${path} is corrupt: ${msg}. ` +
+      `Pending approvals need to be inspected manually (.bak may help) or re-proposed; ` +
+      `do not run \`clawhq\` commands that enqueue approvals until this is resolved.`,
+    );
   }
+  if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as Record<string, unknown>).items)) {
+    throw new Error(`approval queue at ${path} is missing the \`items\` array`);
+  }
+  return parsed as ApprovalQueue;
 }
 
 async function saveQueue(
@@ -56,7 +70,7 @@ async function saveQueue(
 ): Promise<void> {
   const dir = join(deployDir, "workspace", "memory");
   mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
-  await writeFile(queuePath(deployDir), JSON.stringify(queue, null, 2), { mode: 0o600 });
+  writeFileAtomic(queuePath(deployDir), JSON.stringify(queue, null, 2) + "\n", FILE_MODE_SECRET);
 }
 
 // ── Generate ID ─────────────────────────────────────────────────────────────

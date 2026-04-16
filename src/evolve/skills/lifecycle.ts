@@ -10,6 +10,7 @@ import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { DIR_MODE_SECRET, FILE_MODE_EXEC, FILE_MODE_SECRET } from "../../config/defaults.js";
+import { writeFileAtomic } from "../../design/configure/writer.js";
 
 import { createSnapshot, restoreSnapshot } from "./rollback.js";
 import { createStagedEntry, readStagedFiles, stageSkill } from "./stage.js";
@@ -38,18 +39,29 @@ export async function loadManifest(deployDir: string): Promise<SkillManifest> {
   if (!existsSync(path)) {
     return { version: 1, skills: [] };
   }
+  // A corrupted manifest used to silently become an empty manifest, which
+  // the next saveManifest would then persist — de-registering every
+  // installed skill. Now fails loud with an actionable message.
+  const raw = await readFile(path, "utf-8");
   let parsed: Record<string, unknown>;
   try {
-    const raw = await readFile(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return { version: 1, skills: [] };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `skill manifest at ${path} is corrupt: ${msg}. ` +
+      `Existing skills may still be installed in workspace/skills/ — restore the manifest from a backup (.bak) ` +
+      `or re-register them with \`clawhq skill install\`.`,
+    );
   }
   if (parsed.version !== 1) {
     throw new Error(
       `Unsupported skill manifest version ${String(parsed.version)} (expected 1). ` +
       `The manifest at ${path} may have been created by a newer version of ClawHQ.`,
     );
+  }
+  if (!Array.isArray(parsed.skills)) {
+    throw new Error(`skill manifest at ${path} is missing the \`skills\` array`);
   }
   return parsed as unknown as SkillManifest;
 }
@@ -61,7 +73,8 @@ async function saveManifest(
   const dir = join(deployDir, "workspace", "skills");
   mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
   chmodSync(dir, DIR_MODE_SECRET);
-  await writeFile(manifestPath(deployDir), JSON.stringify(manifest, null, 2) + "\n", { mode: FILE_MODE_SECRET });
+  // Atomic write via tmp+rename; prevents torn manifest on crash.
+  writeFileAtomic(manifestPath(deployDir), JSON.stringify(manifest, null, 2) + "\n", FILE_MODE_SECRET);
 }
 
 function updateEntry(

@@ -247,11 +247,16 @@ describe("loadQueue", () => {
     expect(queue.items).toHaveLength(0);
   });
 
-  it("returns empty queue when file is invalid JSON", async () => {
+  it("throws loud on corrupt JSON (was silently returning empty queue, which clobbered pending approvals on next save)", async () => {
     const queueFile = join(deployDir, "workspace", "memory", "approval-queue.json");
     writeFileSync(queueFile, "not valid json");
-    const queue = await loadQueue(deployDir);
-    expect(queue.items).toHaveLength(0);
+    await expect(loadQueue(deployDir)).rejects.toThrow(/corrupt/);
+  });
+
+  it("throws when items array is missing from envelope", async () => {
+    const queueFile = join(deployDir, "workspace", "memory", "approval-queue.json");
+    writeFileSync(queueFile, JSON.stringify({ version: 1 }));
+    await expect(loadQueue(deployDir)).rejects.toThrow(/items/);
   });
 });
 

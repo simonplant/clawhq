@@ -161,10 +161,18 @@ export async function loadPreferences(
   const path = join(deployDir, PREFERENCES_DIR, PREFERENCES_FILE);
   if (!existsSync(path)) return null;
 
+  // Previously, any parse error silently returned null — preferences would
+  // appear "missing" to callers and the next save would rebuild from
+  // scratch, dropping prior classifications. Now ENOENT-vs-corruption is
+  // distinguished: missing file is null, corrupt file is a thrown error.
+  const raw = await readFile(path, "utf-8");
   try {
-    const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as PreferenceReport;
-  } catch {
-    return null;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `preference report at ${path} is corrupt: ${msg}. ` +
+      `Delete the file to reset preferences, or restore from a backup.`,
+    );
   }
 }
