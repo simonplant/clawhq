@@ -9,7 +9,7 @@
       "balance": 100000.00,
       "broker": "thinkorswim",
       "execution": "simon",
-      "description": "Simon's main trading account — stocks, options, futures. Full capability.",
+      "description": "Simon's main trading account — stocks, options, /MES micro futures. Full capability.",
       "constraints": {
         "max_position_pct": 5.0,
         "max_total_exposure_pct": 80.0,
@@ -24,6 +24,9 @@
         "shorting": true,
         "options": true,
         "futures": true,
+        "futures_instrument": "/MES",
+        "futures_multiplier": 5.0,
+        "futures_note": "Use /MES (Micro E-mini, $5/pt) not /ES ($50/pt). Scale up contract count as confidence grows. 10 /MES = 1 /ES.",
         "margin": true,
         "pdt_guard": false
       }

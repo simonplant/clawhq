@@ -70,7 +70,7 @@ Fetches Mancini's latest Substack post and produces an ultra-compact Quick Brief
 
 6. **Log ORDER blocks to journal.** For each ORDER block produced:
    ```
-   journal append order '{"source":"mancini","accounts":"tos,ira,tradier","ticker":"ES","exec_as":"SPY","direction":"LONG","conviction":"HIGH","entry":5530,"stop":5518,"status":"CONDITIONAL","confirmation":"PENDING_TA","confluence":"none","activation":"recovery above 5525 with acceptance"}'
+   journal append order '{"source":"mancini","accounts":"tos","ticker":"ES","exec_as":"/MES","direction":"LONG","conviction":"HIGH","entry":7016,"stop":6998,"status":"CONDITIONAL","confirmation":"PENDING_TA","confluence":"none","activation":"recovery above 7021 with acceptance"}'
    ```
    Note: SHORT setups exclude IRA (long-only). All three accounts are eligible for long setups.
 

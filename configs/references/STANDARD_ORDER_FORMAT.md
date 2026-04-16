@@ -72,7 +72,7 @@ ORDER N | [conviction] | [status]
   source:       [mancini / dp / focus25 / scanner]
   accounts:     [tos / ira / tradier] (comma-separated if multiple eligible)
   ticker:       [symbol]
-  exec_as:      [execution symbol, e.g. SPY for ES]
+  exec_as:      [execution symbol, e.g. /MES for ES futures, or ticker for stocks]
   direction:    [LONG / SHORT]
   setup:        [type] — "[quality words or thesis <=20 words]"
   why:          [what makes this actionable <=15 words]
@@ -97,7 +97,7 @@ ORDER N | [conviction] | [status]
 | `source` | Yes | Which extractor produced this order |
 | `accounts` | Yes | Eligible accounts: tos, ira, tradier (comma-separated). Filtered by account constraints. |
 | `ticker` | Yes | The instrument being analyzed (e.g. ES, META) |
-| `exec_as` | Yes | The symbol to actually trade (e.g. SPY when ticker is ES) |
+| `exec_as` | Yes | The symbol to actually trade (e.g. /MES for ES futures on TOS, or stock ticker) |
 | `direction` | Yes | LONG or SHORT |
 | `setup` | Yes | Trade type + quality words from the source |
 | `why` | Yes | One-line actionability reason |

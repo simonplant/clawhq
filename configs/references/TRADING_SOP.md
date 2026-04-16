@@ -218,7 +218,7 @@ Heartbeat every 15 min during market hours:
 4. Within 5 pts → alert Simon: "ES approaching [setup] zone at [price]"
 5. Acceptance confirmed → `risk_governor.py check` → present to Simon for tos/ira execution, log for tradier
 6. Follow Mancini protocol: T1 scale (75%), T2 scale (15%), runner (10%) with trailing stop at BE
-7. ES → SPY conversion: 1 ES point ≈ $0.18 on SPY. Monitor ES via `tradier quote ES=F`, execute as SPY.
+7. Execute Mancini setups as /MES (Micro E-mini, $5/pt) on TOS. NOT SPY. Monitor ES via `tradier quote ES=F`, execute as /MES contracts. 10 /MES = 1 /ES. Scale contract count by conviction and regime.
 8. IRA: eligible for long setups only. Tradier: alert-only mode.
 
 ### Scanner / Swing Ideas — Discretionary

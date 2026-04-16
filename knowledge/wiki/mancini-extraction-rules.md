@@ -70,8 +70,9 @@ Word budget: TL;DR 50, SETUPS 1000, LEVELS 300, RUNNERS 200, SCENARIOS 200, EXEC
 ## Standard ORDER Format Output
 
 See [[standard-order-format]] for the unified format. Mancini-specific:
-- `source: mancini`, `accounts: tos,ira,tradier`, `ticker: ES`, `exec_as: SPY`
-- ES → SPY conversion: 1 ES point ≈ $0.18 on SPY
+- `source: mancini`, `accounts: tos`, `ticker: ES`, `exec_as: /MES`
+- Execute as /MES (Micro E-mini, $5/pt) on TOS. NOT SPY. 10 /MES = 1 /ES.
+- Risk per setup: 15pt stop × $5/pt × N contracts. 2 /MES = $150 risk. 4 /MES = $300 risk.
 - Session rules: max 2 fills. Win #1 → done. Lose #1 → one more. Lose #2 → done.
 
 ## What Is Extracted vs Derived vs Never Fabricated
