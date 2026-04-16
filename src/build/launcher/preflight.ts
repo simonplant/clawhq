@@ -294,7 +294,6 @@ async function isPortInUse(port: number, signal?: AbortSignal): Promise<boolean>
       ["-tlnp", `sport = :${port}`],
       { timeout: PREFLIGHT_EXEC_TIMEOUT_MS, signal },
     );
-    // ss always prints a header; a second line means the port is bound.
     return stdout.trim().split("\n").length > 1;
   } catch {
     try {
@@ -302,9 +301,9 @@ async function isPortInUse(port: number, signal?: AbortSignal): Promise<boolean>
         timeout: PREFLIGHT_EXEC_TIMEOUT_MS,
         signal,
       });
-      return true; // lsof exits 0 when port is in use
+      return true;
     } catch {
-      return false; // lsof exits non-zero when port is free
+      return false;
     }
   }
 }
