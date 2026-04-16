@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
 import { CONTAINER_USER, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { InvalidCronStoreError, loadCronStore, saveCronStore } from "../../openclaw/cron-store.js";
 import { archiveSession, listSessions } from "../sessions/index.js";
 
 import type { DoctorCheckResult, DoctorCheckName, FixReport, FixResult } from "./types.js";
@@ -339,24 +340,10 @@ async function fixCronHealth(deployDir: string): Promise<FixResult> {
   const cronPath = join(deployDir, "cron", "jobs.json");
 
   try {
-    const raw = await readFile(cronPath, "utf-8");
-    const parsed = JSON.parse(raw) as unknown;
-
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed) ||
-      !Array.isArray((parsed as Record<string, unknown>).jobs)
-    ) {
-      return {
-        name,
-        success: false,
-        message:
-          'cron/jobs.json schema invalid: expected {"version":1,"jobs":[...]} envelope. ' +
-          "Run `clawhq apply` to regenerate from the blueprint.",
-      };
-    }
-    const envelope = parsed as Record<string, unknown>;
+    // loadCronStore throws InvalidCronStoreError on envelope drift — caught
+    // below and surfaced as a fix failure with a clear "run clawhq apply"
+    // pointer, matching the message users see from the cron-schema check.
+    const envelope = loadCronStore(cronPath);
     const jobs = envelope.jobs as Array<Record<string, unknown>>;
 
     const fixes: string[] = [];
@@ -399,9 +386,15 @@ async function fixCronHealth(deployDir: string): Promise<FixResult> {
 
     const backupPath = cronPath + ".bak";
     await copyFile(cronPath, backupPath);
-    await writeFile(cronPath, JSON.stringify(envelope, null, 2) + "\n", "utf-8");
+    // saveCronStore writes atomically (tmp+rename) and guarantees canonical
+    // envelope — eliminates the non-atomic writeFile that previously left
+    // the file inconsistent on crash.
+    saveCronStore(cronPath, { version: 1, jobs });
     return { name, success: true, message: `Fixed ${fixes.length} issue(s): ${fixes.join("; ")}` };
   } catch (err) {
+    if (err instanceof InvalidCronStoreError) {
+      return { name, success: false, message: err.message };
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return { name, success: false, message: `Failed to fix cron health: ${msg}` };
   }

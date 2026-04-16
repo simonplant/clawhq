@@ -16,6 +16,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { CronJobDefinition } from "../../config/types.js";
+import { loadCronStore, saveCronStore } from "../../openclaw/cron-store.js";
 import {
   emptyMaskReport,
   maskPii,
@@ -280,7 +281,7 @@ async function writeImportResults(
 
   // Merge imported cron jobs with existing jobs
   if (data.cronJobs.length > 0) {
-    await mergeCronJobs(cronDir, data.cronJobs);
+    mergeCronJobs(cronDir, data.cronJobs);
   }
 
   // Write unmapped routines for user review
@@ -328,32 +329,31 @@ function formatPreferencesMarkdown(
   return lines.join("\n");
 }
 
-/** Merge imported cron jobs into the existing jobs.json. */
-async function mergeCronJobs(
+/**
+ * Merge imported cron jobs into the existing jobs.json.
+ *
+ * Routes read through loadCronStore (strict envelope validation) and write
+ * through saveCronStore (atomic + canonical). A corrupt existing jobs.json
+ * surfaces as a thrown InvalidCronStoreError rather than silently dropping
+ * every pre-existing scheduled job onto the floor.
+ */
+function mergeCronJobs(
   cronDir: string,
   newJobs: readonly CronJobDefinition[],
-): Promise<void> {
+): void {
   const jobsPath = join(cronDir, "jobs.json");
 
-  let existingJobs: CronJobDefinition[] = [];
-  try {
-    const raw = await readFile(jobsPath, "utf-8");
-    const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      existingJobs = parsed as CronJobDefinition[];
-    } else if (parsed && typeof parsed === "object" && "jobs" in parsed && Array.isArray((parsed as Record<string, unknown>).jobs)) {
-      existingJobs = (parsed as Record<string, unknown>).jobs as CronJobDefinition[];
-    }
-  } catch { /* ignore malformed cron file */ }
+  const existingStore = loadCronStore(jobsPath);
+  const existingJobs = existingStore.jobs as unknown as CronJobDefinition[];
 
   // Don't duplicate jobs by ID
   const existingIds = new Set(existingJobs.map((j) => j.id));
   const mergedJobs = [
     ...existingJobs,
     ...newJobs.filter((j) => !existingIds.has(j.id)),
-  ];
+  ] as unknown as Record<string, unknown>[];
 
-  await writeFile(jobsPath, JSON.stringify({ version: 1, jobs: mergedJobs }, null, 2) + "\n", "utf-8");
+  saveCronStore(jobsPath, { version: 1, jobs: mergedJobs });
 }
 
 // ── Failure Helper ───────────────────────────────────────────────────────────

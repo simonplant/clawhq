@@ -81,27 +81,12 @@ const DOCKER_BRIDGE_GATEWAY = "172.17.0.1";
  * - LM-14: fs.workspaceOnly explicitly set
  */
 /**
- * Render the canonical cron/jobs.json file contents.
- *
- * OpenClaw's cron loader requires a {"version":1,"jobs":[...]} envelope; anything
- * else (notably a bare JSON array) loads as empty and leaves every scheduled job
- * silently inactive. This is the single source of truth for that format — any
- * code path that writes cron/jobs.json MUST route through here instead of
- * hand-rolling the envelope inline. Also strips ClawHQ-only fields (fallbacks,
- * activeHours) that don't belong in OpenClaw's native schema.
+ * Cron/jobs.json rendering now lives in `src/openclaw/cron-store.ts` —
+ * the single source of truth for every OpenClaw file-surface read and
+ * write. Re-exported here to preserve the existing import path for
+ * configure-module callers.
  */
-export function renderCronJobsFile(cronJobs: readonly CronJobDefinition[]): string {
-  // Strip ClawHQ-only fields and ensure every job carries an empty state
-  // object. OpenClaw's scheduler dereferences job.state.runningAtMs at boot;
-  // jobs without a state object crash the scheduler with
-  // "Cannot read properties of undefined". Fresh jobs from the compiler have
-  // no state (state is runtime-only), so we default it here.
-  const normalized = cronJobs.map(({ fallbacks: _f, activeHours: _a, ...rest }) => ({
-    ...rest,
-    state: rest.state ?? {},
-  }));
-  return JSON.stringify({ version: 1, jobs: normalized }, null, 2) + "\n";
-}
+export { renderCronJobsFile } from "../../openclaw/cron-store.js";
 
 export function generateBundle(answers: WizardAnswers): DeploymentBundle {
   const port = answers.gatewayPort || DEFAULT_GATEWAY_PORT;

@@ -14,6 +14,7 @@
  */
 
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { access, constants, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -21,6 +22,7 @@ import { promisify } from "node:util";
 import { collectIntegrationDomains, IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadAllowlist, loadIpsetMeta } from "../../build/launcher/firewall.js";
 import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
+import { InvalidCronStoreError, loadCronStore } from "../../openclaw/cron-store.js";
 import { isTimerActive } from "../automation/install.js";
 import { listSessions } from "../sessions/index.js";
 import { takeSnapshot, unclassifiedEntries } from "../snapshot/snapshot.js";
@@ -656,30 +658,18 @@ async function checkCronSchema(deployDir: string): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "cron-schema";
   const cronPath = join(deployDir, "cron", "jobs.json");
 
+  if (!existsSync(cronPath)) {
+    return ok(name, "No cron jobs file (optional)", "info");
+  }
   try {
-    const raw = await readFile(cronPath, "utf-8");
-    const parsed: unknown = JSON.parse(raw);
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed) ||
-      !Array.isArray((parsed as Record<string, unknown>).jobs)
-    ) {
-      return fail(
-        name,
-        "error",
-        'cron/jobs.json is not a valid {"version":1,"jobs":[...]} envelope — OpenClaw will load it as empty and no scheduled jobs will run',
-        "Run `clawhq apply` to regenerate cron/jobs.json from the blueprint",
-      );
-    }
-    const jobCount = ((parsed as Record<string, unknown>).jobs as unknown[]).length;
-    return ok(name, `cron/jobs.json envelope valid (${jobCount} job(s))`);
+    const envelope = loadCronStore(cronPath);
+    return ok(name, `cron/jobs.json envelope valid (${envelope.jobs.length} job(s))`);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("ENOENT")) {
-      return ok(name, "No cron jobs file (optional)", "info");
+    if (err instanceof InvalidCronStoreError) {
+      return fail(name, "error", err.message, "Run `clawhq apply` to regenerate cron/jobs.json");
     }
-    return fail(name, "error", `cron/jobs.json unreadable or invalid JSON: ${msg}`, "Run `clawhq apply` to regenerate");
+    const msg = err instanceof Error ? err.message : String(err);
+    return fail(name, "error", `cron/jobs.json unreadable: ${msg}`, "Run `clawhq apply` to regenerate");
   }
 }
 
@@ -689,17 +679,15 @@ async function checkCronSyntax(deployDir: string): Promise<DoctorCheckResult> {
   const cronPath = join(deployDir, "cron", "jobs.json");
 
   try {
-    const raw = await readFile(cronPath, "utf-8");
-    const parsed: unknown = JSON.parse(raw);
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed) ||
-      !Array.isArray((parsed as Record<string, unknown>).jobs)
-    ) {
+    // Short-circuit cleanly if the envelope is corrupt — cron-schema
+    // already reported it; no point re-raising the same failure here.
+    let envelope;
+    try {
+      envelope = loadCronStore(cronPath);
+    } catch {
       return ok(name, "Skipped — cron-schema failed", "info");
     }
-    const jobs = (parsed as { jobs: Array<{ id: string; kind?: string; expr?: string; schedule?: { kind?: string; expr?: string } }> }).jobs;
+    const jobs = envelope.jobs as Array<{ id: string; kind?: string; expr?: string; schedule?: { kind?: string; expr?: string } }>;
 
     const invalid: string[] = [];
     for (const job of jobs) {
@@ -743,17 +731,13 @@ async function checkCronHealth(deployDir: string): Promise<DoctorCheckResult> {
   const cronPath = join(deployDir, "cron", "jobs.json");
 
   try {
-    const raw = await readFile(cronPath, "utf-8");
-    const parsed: unknown = JSON.parse(raw);
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed) ||
-      !Array.isArray((parsed as Record<string, unknown>).jobs)
-    ) {
+    let envelope;
+    try {
+      envelope = loadCronStore(cronPath);
+    } catch {
       return ok(name, "Skipped — cron-schema failed", "info");
     }
-    const jobs = (parsed as { jobs: Array<Record<string, unknown>> }).jobs;
+    const jobs = envelope.jobs as Array<Record<string, unknown>>;
 
     if (jobs.length === 0) {
       return ok(name, "No cron jobs configured", "info");

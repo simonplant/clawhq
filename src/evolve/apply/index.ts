@@ -15,6 +15,7 @@ import { parse as yamlParse } from "yaml";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { DeployLockBusyError, withDeployLock } from "../../config/lock.js";
 import { compile } from "../../design/catalog/index.js";
+import { loadCronStore } from "../../openclaw/cron-store.js";
 import type { CompiledFile } from "../../design/catalog/types.js";
 import type { UserConfig } from "../../design/catalog/types.js";
 import { writeBundle } from "../../design/configure/writer.js";
@@ -230,36 +231,20 @@ async function applyCore(
  * Compiled jobs are the source of truth for definitions (expr, task, delivery,
  * model). Runtime state fields (state, updatedAtMs, runningAtMs) are preserved
  * from the existing deployed file so we don't lose run history.
+ *
+ * Load side goes through loadCronStore (src/openclaw/cron-store.ts) which
+ * throws on schema drift. On that error we log and fall through to using the
+ * compiled output as-is — the corrupt file will be overwritten on write.
  */
-/**
- * Extract jobs array from cron file, handling both formats:
- * - Wrapped: { version: N, jobs: [...] }
- * - Bare: [...]
- */
-function extractCronJobs(data: unknown): Record<string, unknown>[] {
-  if (
-    typeof data === "object" &&
-    data !== null &&
-    !Array.isArray(data) &&
-    Array.isArray((data as Record<string, unknown>).jobs)
-  ) {
-    return (data as Record<string, unknown>).jobs as Record<string, unknown>[];
-  }
-  throw new Error(
-    'cron/jobs.json schema invalid: expected {"version":1,"jobs":[...]} envelope. ' +
-      "Run `clawhq apply` to regenerate from the blueprint.",
-  );
-}
-
 function mergeCronJobs(deployDir: string, compiled: CompiledFile): CompiledFile {
   const existingPath = join(deployDir, compiled.relativePath);
   if (!existsSync(existingPath)) return compiled;
 
   try {
-    const existingRaw = JSON.parse(readFileSync(existingPath, "utf-8"));
+    const existingStore = loadCronStore(existingPath);
     const compiledRaw = JSON.parse(compiled.content);
 
-    const existingJobs = extractCronJobs(existingRaw);
+    const existingJobs = existingStore.jobs;
     const compiledEnvelope = compiledRaw as { version: number; jobs: Record<string, unknown>[] };
 
     // Build lookup of existing runtime state by job ID

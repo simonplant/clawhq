@@ -534,7 +534,7 @@ describe("runMigration", () => {
     ];
     await writeFile(
       join(deployDir, "cron", "jobs.json"),
-      JSON.stringify(existingJobs),
+      JSON.stringify({ version: 1, jobs: existingJobs }),
     );
 
     const conversations: ChatGPTConversation[] = [
