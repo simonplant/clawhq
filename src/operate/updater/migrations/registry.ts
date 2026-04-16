@@ -9,7 +9,7 @@
  * `from < migration.toVersion <= to`, ordered by target version.
  */
 
-import { compareVersions, parseCalVer } from "../calver.js";
+import { compareVersions } from "../calver.js";
 
 import type {
   Migration,

@@ -70,7 +70,7 @@ export async function checkCache(
     const manifest = JSON.parse(raw) as BuildManifest;
     previousStage1Hash = manifest.stage1Hash;
     previousStage2Hash = manifest.stage2Hash;
-  } catch (e) {
+  } catch {
     // No previous manifest — treat as changed
   }
 

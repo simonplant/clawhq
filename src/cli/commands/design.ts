@@ -1,9 +1,8 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 import { parse as yamlParse } from "yaml";
 
@@ -14,6 +13,13 @@ import {
   validateBlueprint,
 } from "../../design/blueprints/index.js";
 import type { Blueprint } from "../../design/blueprints/index.js";
+import {
+  compile,
+  getDomains,
+  getProvidersForDomain,
+  loadAllPersonalities,
+  loadAllProfiles,
+} from "../../design/catalog/index.js";
 import {
   ConfigFileError,
   createInquirerPrompter,
@@ -27,16 +33,9 @@ import {
   WizardAbortError,
   writeBundle,
 } from "../../design/configure/index.js";
-import {
-  compile,
-  getDomains,
-  getProvidersForDomain,
-  loadAllPersonalities,
-  loadAllProfiles,
-} from "../../design/catalog/index.js";
-
 import { CommandError } from "../errors.js";
 import { renderError } from "../ux.js";
+
 import { bundleToFiles } from "./helpers.js";
 
 /** Print a full blueprint preview to stdout. */
@@ -276,7 +275,8 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
             value: p.id,
           })),
         });
-        const profile = profiles.find((p) => p.id === profileId)!;
+        const profile = profiles.find((p) => p.id === profileId);
+        if (!profile) throw new Error(`Profile ${profileId} not found`);
 
         // Step 2: Pick personality
         const personalities = loadAllPersonalities();
@@ -308,8 +308,11 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
           if (available.length === 0) continue;
 
           if (available.length === 1) {
-            providerSelections[domain] = available[0]!.id;
-            console.log(chalk.dim(`  ${domain}: ${available[0]!.name} (only option)`));
+            const onlyProvider = available[0];
+            if (onlyProvider) {
+              providerSelections[domain] = onlyProvider.id;
+              console.log(chalk.dim(`  ${domain}: ${onlyProvider.name} (only option)`));
+            }
           } else {
             providerSelections[domain] = await select({
               message: `${domain.charAt(0).toUpperCase() + domain.slice(1)} provider:`,
@@ -587,7 +590,8 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         });
 
         // Step 3: Pick providers for each domain the profile needs
-        const profile = profiles.find((p) => p.id === profileId)!;
+        const profile = profiles.find((p) => p.id === profileId);
+        if (!profile) throw new Error(`Profile ${profileId} not found`);
         const domains = [...new Set(profile.tools.map((t) => t.category))];
         const providerSelections: Record<string, string> = {};
 
@@ -607,8 +611,11 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
           if (available.length === 0) continue;
 
           if (available.length === 1) {
-            providerSelections[domain] = available[0]!.id;
-            console.log(chalk.dim(`  ${domain}: ${available[0]!.name} (only option)`));
+            const onlyProvider = available[0];
+            if (onlyProvider) {
+              providerSelections[domain] = onlyProvider.id;
+              console.log(chalk.dim(`  ${domain}: ${onlyProvider.name} (only option)`));
+            }
           } else {
             providerSelections[domain] = await select({
               message: `${domain.charAt(0).toUpperCase() + domain.slice(1)} provider:`,

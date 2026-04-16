@@ -6,8 +6,9 @@ import { describe, expect, it } from "vitest";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import type { OpenClawConfig } from "../../config/types.js";
-import { breakageToAlerts, predictBreakage } from "./analyzer.js";
+
 import { deliverAlert, formatAlert, formatAlerts } from "./alerts.js";
+import { breakageToAlerts, predictBreakage } from "./analyzer.js";
 import { generateFingerprint } from "./fingerprint.js";
 import {
   analyzeUpstreamCommits,

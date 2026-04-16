@@ -8,7 +8,9 @@
  * Snapshot version is tracked and auto-rebuilt when clawhq version changes.
  */
 
-import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { generateCloudInit } from "./cloud-init.js";
 import { resolveAdapter } from "./engine.js";
@@ -38,8 +40,9 @@ const DESTROY_VERIFY_ATTEMPTS = 5;
 /** Read the current clawhq version from package.json. */
 export function getClawhqVersion(): string {
   try {
-    const require = createRequire(import.meta.url);
-    const pkg = require("../../../package.json") as { version: string };
+    const pkg = JSON.parse(
+      readFileSync(join(fileURLToPath(import.meta.url), "../../../../package.json"), "utf-8"),
+    ) as { version: string };
     return pkg.version;
   } catch {
     return "unknown";

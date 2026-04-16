@@ -16,13 +16,12 @@ import { promisify } from "node:util";
 import { getRequiredBinaries } from "../../build/docker/binary-deps.js";
 import { generateStage2Dockerfile } from "../../build/docker/dockerfile.js";
 import type { Stage2Config } from "../../build/docker/types.js";
-import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import {
   UPDATER_EXEC_TIMEOUT_MS,
   UPDATER_PULL_TIMEOUT_MS,
   UPDATER_SHUTDOWN_TIMEOUT_MS,
 } from "../../config/defaults.js";
-
+import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import { detectOpenClawVersion } from "../doctor/checks.js";
 
 import {
@@ -31,7 +30,6 @@ import {
   executeMigrationPlan,
   rollbackMigrations,
 } from "./migrations/index.js";
-
 import type {
   UpdateCheckResult,
   UpdateOptions,

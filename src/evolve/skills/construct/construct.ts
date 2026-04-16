@@ -16,6 +16,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { installSkill, loadManifest } from "../lifecycle.js";
+
 import {
   loadConstructState,
   recordArtifact,
@@ -31,7 +32,6 @@ import type {
   ConstructPhase,
   ConstructPhaseResult,
   ConstructPhaseStatus,
-  ConstructProgress,
   ConstructProgressCallback,
   ConstructProposal,
   ConstructRunOptions,

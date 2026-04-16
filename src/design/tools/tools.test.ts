@@ -9,6 +9,7 @@ import { generateHaTool } from "./ha.js";
 import { generateSubstackTool } from "./substack.js";
 import { generateVaultTool } from "./vault.js";
 import { generateXTool } from "./x.js";
+
 import { generateToolWrappers } from "./index.js";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────

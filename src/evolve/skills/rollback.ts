@@ -39,7 +39,7 @@ async function loadSnapshots(deployDir: string): Promise<RollbackSnapshot[]> {
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as RollbackSnapshot[];
-  } catch (err) {
+  } catch {
     return [];
   }
 }

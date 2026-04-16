@@ -26,7 +26,9 @@ let spawnError: Error | undefined;
 let capturedSpawnArgs: string[] = [];
 
 vi.mock("node:child_process", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- vi.mock factories are hoisted before imports; require is the only synchronous option
   const { EventEmitter } = require("node:events");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Readable } = require("node:stream");
 
   return {

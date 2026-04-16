@@ -13,8 +13,8 @@
 import { CONTAINER_USER } from "../../config/defaults.js";
 import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
 
-import type { Stage2Config } from "./types.js";
 import { validateBinarySha256, OP_CLI_URL, OP_CLI_SHA256, OP_CLI_DEST } from "./binary-manifest.js";
+import type { Stage2Config } from "./types.js";
 
 // ── Binary Validation ───────────────────────────────────────────────────────
 

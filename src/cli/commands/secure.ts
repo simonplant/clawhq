@@ -1,8 +1,7 @@
 import { join } from "node:path";
 
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
 import {
@@ -13,7 +12,6 @@ import {
   readAuditReport,
 } from "../../secure/audit/index.js";
 import { formatProbeReport, runProbes } from "../../secure/credentials/health.js";
-
 import { CommandError } from "../errors.js";
 import { renderError, ensureInstalled } from "../ux.js";
 

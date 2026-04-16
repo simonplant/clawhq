@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { matchGlob } from "./delegation-types.js";
 import {
   APPOINTMENT_CONFIRM,
   EMAIL_DELEGATION_DEFAULTS,
   UNSUBSCRIBE,
   VENDOR_REPLY,
 } from "./delegation-defaults.js";
+import { matchGlob } from "./delegation-types.js";
 import { loadBlueprint } from "./loader.js";
 import { validateBlueprint } from "./validate.js";
-import { parse as parseYaml } from "yaml";
+
 
 // ── matchGlob Tests ─────────────────────────────────────────────────────────
 
@@ -112,7 +112,7 @@ describe("delegation_rules validation", () => {
   it("email-manager blueprint validates with delegation_rules", () => {
     const loaded = loadBlueprint("email-manager");
     expect(loaded.blueprint.delegation_rules).toBeDefined();
-    expect(loaded.blueprint.delegation_rules!.categories.length).toBeGreaterThan(0);
+    expect(loaded.blueprint.delegation_rules?.categories.length).toBeGreaterThan(0);
   });
 
   it("validates delegation_rules categories have required fields", () => {

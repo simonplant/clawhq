@@ -9,6 +9,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { FILE_MODE_CONFIG, FILE_MODE_SECRET } from "../../../config/defaults.js";
+
 import type { MigrationContext } from "./types.js";
 
 /**

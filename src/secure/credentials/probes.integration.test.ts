@@ -17,6 +17,7 @@
 import { describe, expect, it } from "vitest";
 
 import { OLLAMA_DEFAULT_URL, OLLAMA_PROBE_TIMEOUT_MS } from "../../config/defaults.js";
+
 import { probe1Password, probeAnthropic, probeOpenAI, probeTelegram } from "./probes.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ describe("probeAnthropic (live)", () => {
   const key = process.env["ANTHROPIC_API_KEY"];
 
   it.skipIf(!key)("returns valid:true for a real API key", async () => {
-    const result = await probeAnthropic({ ANTHROPIC_API_KEY: key! });
+    const result = await probeAnthropic({ ANTHROPIC_API_KEY: key as string });
     expect(result.ok).toBe(true);
     expect(result.integration).toBe("Anthropic");
     expect(result.envKey).toBe("ANTHROPIC_API_KEY");
@@ -59,7 +60,7 @@ describe("probeOpenAI (live)", () => {
   const key = process.env["OPENAI_API_KEY"];
 
   it.skipIf(!key)("returns valid:true for a real API key", async () => {
-    const result = await probeOpenAI({ OPENAI_API_KEY: key! });
+    const result = await probeOpenAI({ OPENAI_API_KEY: key as string });
     expect(result.ok).toBe(true);
     expect(result.integration).toBe("OpenAI");
     expect(result.envKey).toBe("OPENAI_API_KEY");
@@ -78,7 +79,7 @@ describe("probeTelegram (live)", () => {
   const token = process.env["TELEGRAM_BOT_TOKEN"];
 
   it.skipIf(!token)("returns valid:true for a real bot token", async () => {
-    const result = await probeTelegram({ TELEGRAM_BOT_TOKEN: token! });
+    const result = await probeTelegram({ TELEGRAM_BOT_TOKEN: token as string });
     expect(result.ok).toBe(true);
     expect(result.integration).toBe("Telegram");
     expect(result.envKey).toBe("TELEGRAM_BOT_TOKEN");
@@ -98,7 +99,7 @@ describe("probe1Password (live)", () => {
   const token = process.env["OP_SERVICE_ACCOUNT_TOKEN"];
 
   it.skipIf(!token)("returns valid:true for a real service account token", async () => {
-    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: token! });
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: token as string });
     expect(result.ok).toBe(true);
     expect(result.integration).toBe("1Password");
     expect(result.envKey).toBe("OP_SERVICE_ACCOUNT_TOKEN");

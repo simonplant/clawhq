@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import type { Migration, MigrationContext, MigrationStepResult } from "./types.js";
 import {
   buildMigrationPlan,
   buildMigrationPlanFrom,
@@ -8,6 +7,7 @@ import {
   isConfigOnlyPlan,
   rollbackMigrations,
 } from "./registry.js";
+import type { Migration, MigrationContext, MigrationStepResult } from "./types.js";
 
 // ── Test Migrations ───────────────────────────────────────────────────────
 

@@ -1,11 +1,11 @@
 import { join } from "node:path";
 
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { installOpsAutomation } from "../../operate/automation/index.js";
 import {
   createBackup,
   listSnapshots,
@@ -20,7 +20,6 @@ import {
   runDoctorWithFix,
 } from "../../operate/doctor/index.js";
 import { streamLogs } from "../../operate/logs/index.js";
-import { installOpsAutomation } from "../../operate/automation/index.js";
 import {
   formatMonitorEvent,
   formatMonitorStateJson,
@@ -40,7 +39,6 @@ import {
   formatIntelligenceReport,
 } from "../../operate/updater/index.js";
 import type { UpdateChannel, UpdateProgress } from "../../operate/updater/index.js";
-
 import { CommandError } from "../errors.js";
 import { createCommandScope, renderError, validatePort, ensureInstalled } from "../ux.js";
 
@@ -93,7 +91,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     }) => {
       ensureInstalled(opts.deployDir);
 
-      const { signal, cleanup } = createCommandScope();
+      const { signal } = createCommandScope();
 
       const format = opts.json ? "json" : "table";
 
@@ -358,7 +356,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
       const gatewayPort = validatePort(opts.port);
 
-      const { signal, cleanup } = createCommandScope();
+      const { signal } = createCommandScope();
 
       const spinner = ora();
       const onProgress = (event: UpdateProgress): void => {

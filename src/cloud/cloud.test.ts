@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { DIR_MODE_SECRET, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../config/defaults.js";
 
 import {
   commandQueuePath,
@@ -754,15 +754,15 @@ describe("replay protection", () => {
       enqueueCommand(deployDir, command);
       const result1 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
       expect(result1).toBeDefined();
-      expect(result1!.executed).toBe(true);
+      expect(result1?.executed).toBe(true);
 
       // Enqueue the same command again (replay attack)
       enqueueCommand(deployDir, command);
       const result2 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
       expect(result2).toBeDefined();
-      expect(result2!.executed).toBe(false);
-      expect(result2!.error).toContain("Replayed command rejected");
-      expect(result2!.error).toContain("duplicate command ID");
+      expect(result2?.executed).toBe(false);
+      expect(result2?.error).toContain("Replayed command rejected");
+      expect(result2?.error).toContain("duplicate command ID");
     });
 
     it("allows different commands with unique IDs", () => {
@@ -780,11 +780,11 @@ describe("replay protection", () => {
 
       enqueueCommand(deployDir, cmd1);
       const result1 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
-      expect(result1!.executed).toBe(true);
+      expect(result1?.executed).toBe(true);
 
       enqueueCommand(deployDir, cmd2);
       const result2 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
-      expect(result2!.executed).toBe(true);
+      expect(result2?.executed).toBe(true);
     });
 
     it("detects replays even for blocked commands", () => {
@@ -798,13 +798,13 @@ describe("replay protection", () => {
       // First attempt blocked by paranoid mode
       enqueueCommand(deployDir, command);
       const result1 = processNextCommand(deployDir, "paranoid", publicKey, TEST_VERIFY);
-      expect(result1!.disposition).toBe("blocked");
+      expect(result1?.disposition).toBe("blocked");
 
       // Second attempt with same ID — replay detected before trust mode check
       enqueueCommand(deployDir, command);
       const result2 = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
-      expect(result2!.executed).toBe(false);
-      expect(result2!.error).toContain("Replayed command rejected");
+      expect(result2?.executed).toBe(false);
+      expect(result2?.error).toContain("Replayed command rejected");
     });
   });
 });
@@ -835,7 +835,7 @@ describe("command handler dispatch", () => {
     });
 
     expect(handlerCalled).toBe(true);
-    expect(result!.executed).toBe(true);
+    expect(result?.executed).toBe(true);
   });
 
   it("reports handler failure without crashing", () => {
@@ -856,9 +856,9 @@ describe("command handler dispatch", () => {
       handlers,
     });
 
-    expect(result!.executed).toBe(false);
-    expect(result!.error).toContain("Handler failed");
-    expect(result!.error).toContain("disk full");
+    expect(result?.executed).toBe(false);
+    expect(result?.error).toContain("Handler failed");
+    expect(result?.error).toContain("disk full");
   });
 
   it("catches handler exceptions", () => {
@@ -881,9 +881,9 @@ describe("command handler dispatch", () => {
       handlers,
     });
 
-    expect(result!.executed).toBe(false);
-    expect(result!.error).toContain("Handler error");
-    expect(result!.error).toContain("unexpected failure");
+    expect(result?.executed).toBe(false);
+    expect(result?.error).toContain("Handler error");
+    expect(result?.error).toContain("unexpected failure");
   });
 
   it("executes without handler when none registered (backward compatible)", () => {
@@ -897,8 +897,8 @@ describe("command handler dispatch", () => {
     enqueueCommand(deployDir, command);
     const result = processNextCommand(deployDir, "managed", publicKey, TEST_VERIFY);
 
-    expect(result!.executed).toBe(true);
-    expect(result!.disposition).toBe("allowed");
+    expect(result?.executed).toBe(true);
+    expect(result?.disposition).toBe("allowed");
   });
 
   it("does not dispatch handler for blocked commands", () => {

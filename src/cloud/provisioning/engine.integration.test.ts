@@ -11,8 +11,8 @@
  * ssh-keyscan is also mocked (requires a real SSH server binary).
  */
 
-import { createServer, type Server } from "node:net";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -244,7 +244,7 @@ describe("integration: full provisioning state machine", () => {
     // ── Step 3: Query status ──
     const status = await getInstanceStatus({
       deployDir: testDir,
-      instanceId: result.instanceId!,
+      instanceId: result.instanceId as string,
     });
     expect(status.state).toBe("active");
     expect(status.monthlyCost).toBe(24);
@@ -252,7 +252,7 @@ describe("integration: full provisioning state machine", () => {
     // ── Step 4: Destroy ──
     const destroyResult = await destroyInstance({
       deployDir: testDir,
-      instanceId: result.instanceId!,
+      instanceId: result.instanceId as string,
     });
     expect(destroyResult.success).toBe(true);
     expect(destroyResult.destroyed).toBe(true);
@@ -284,7 +284,7 @@ describe("integration: full provisioning state machine", () => {
     expect(result.success).toBe(true);
 
     // Verify the adapter was called (credentials were resolved from filesystem)
-    expect((shared.mockAdapter!.createVm as ReturnType<typeof vi.fn>)).toHaveBeenCalledOnce();
+    expect((shared.mockAdapter?.createVm as ReturnType<typeof vi.fn>)).toHaveBeenCalledOnce();
   });
 });
 
@@ -369,7 +369,7 @@ describe("integration: destroy failure", () => {
 
     const destroyResult = await destroyInstance({
       deployDir: testDir,
-      instanceId: provisionResult.instanceId!,
+      instanceId: provisionResult.instanceId as string,
     });
 
     expect(destroyResult.success).toBe(false);

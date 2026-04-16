@@ -11,8 +11,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { BinaryInstall } from "./types.js";
 import type { BinaryVerificationResult, VerificationReport } from "./binary-manifest.js";
+import type { BinaryInstall } from "./types.js";
 
 /**
  * Download each binary and verify its SHA256 hash against the pinned value.

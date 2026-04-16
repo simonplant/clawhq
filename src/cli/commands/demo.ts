@@ -1,13 +1,11 @@
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
 import { getDemoCostEstimate, runCloudDemo } from "../../demo/cloud.js";
 import type { CloudDemoProgress } from "../../demo/cloud.js";
 import { runDemo } from "../../demo/index.js";
 import type { DemoProgress } from "../../demo/index.js";
-
 import { CommandError } from "../errors.js";
 
 /** Cloud demo CLI action — provisions ephemeral DO droplet, opens browser, destroys on exit. */

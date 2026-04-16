@@ -4,8 +4,8 @@ import chalk from "chalk";
 import ora from "ora";
 import { stringify as yamlStringify } from "yaml";
 
-import type { DeployProgress } from "../../build/launcher/index.js";
 import type { PrereqCheckResult } from "../../build/installer/index.js";
+import type { DeployProgress } from "../../build/launcher/index.js";
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
 import type { CronJobDefinition } from "../../config/types.js";
 import { generateAllowlistContent, generateBundle, generateSkillFiles, generateToolFiles } from "../../design/configure/index.js";

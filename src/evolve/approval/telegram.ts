@@ -101,7 +101,7 @@ export async function startApprovalBot(opts: ApprovalBotOptions): Promise<void> 
           );
         }
       }
-    } catch (err) {
+    } catch {
       if (signal?.aborted) break;
       await sleep(5000, signal);
     }
@@ -148,8 +148,7 @@ async function answerCallback(
         text,
       }),
     });
-  } catch (err) {
-  }
+  } catch { /* best-effort notification */ }
 }
 
 // ── Parse Callback Data ──────────────────────────────────────────────────────

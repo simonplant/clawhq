@@ -1,6 +1,5 @@
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
 import type { CloudProvider, DeployUpdateProgress, ProvisionProgress, SnapshotBuildProgress } from "../../cloud/index.js";
@@ -34,7 +33,6 @@ import {
   loadAllBuiltinBlueprints,
 } from "../../design/blueprints/index.js";
 import { startDashboard } from "../../web/index.js";
-
 import { CommandError } from "../errors.js";
 import { validatePort } from "../ux.js";
 

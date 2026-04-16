@@ -21,7 +21,7 @@ import { createApp } from "./server.js";
 /** Extract CSRF token from rendered HTML (from hx-headers on body). */
 function extractCsrfToken(html: string): string {
   const match = html.match(/X-CSRF-Token&quot;:&quot;([^&]+)&quot;/);
-  if (match) return match[1]!;
+  if (match) return match[1] ?? "";
   // Try unescaped variant (raw JSON in attribute)
   const rawMatch = html.match(/X-CSRF-Token":"([^"]+)"/);
   return rawMatch?.[1] ?? "";

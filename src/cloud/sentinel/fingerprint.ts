@@ -27,6 +27,7 @@ import {
   validateLM05,
   validateLM14,
 } from "../../config/validate.js";
+
 import type { ConfigFingerprint } from "./types.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────

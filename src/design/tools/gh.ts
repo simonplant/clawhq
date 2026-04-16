@@ -25,27 +25,27 @@ export function generateGhTool(): string {
 #   release <owner/repo> <tag>                 Get release by tag (JSON)
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "\$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Help works without credentials
 case "\${1:-}" in help|--help|-h|"")
-  sed -n '2,14p' "\$0" | sed 's/^# \\?//'
+  sed -n '2,14p' "$0" | sed 's/^# \\?//'
   exit 0 ;; esac
 
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/github"
-  _curl() { curl -sS --fail-with-body -H "Accept: application/vnd.github+json" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Accept: application/vnd.github+json" "$@"; }
 else
   API="https://api.github.com"
   TOKEN="\${GH_TOKEN:?Set GH_TOKEN or CRED_PROXY_URL}"
-  _curl() { curl -sS --fail-with-body -H "Accept: application/vnd.github+json" -H "Authorization: Bearer \$TOKEN" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $TOKEN" "$@"; }
 fi
 
 # ClawWall: sanitize external content
 _sanitize() {
-  if [[ -x "\$SCRIPT_DIR/sanitize" ]]; then
-    "\$SCRIPT_DIR/sanitize" --source gh --log
+  if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
+    "$SCRIPT_DIR/sanitize" --source gh --log
   else
     cat
   fi
@@ -54,41 +54,41 @@ _sanitize() {
 cmd="\${1:-help}"
 shift 2>/dev/null || true
 
-case "\$cmd" in
+case "$cmd" in
   repo)
     local_repo="\${1:?Usage: gh repo <owner/repo>}"
-    _curl "\$API/repos/\$local_repo" | _sanitize
+    _curl "$API/repos/$local_repo" | _sanitize
     ;;
   issues)
     local_repo="\${1:?Usage: gh issues <owner/repo>}"
     shift
     state="\${1:-open}"
-    [[ "\$state" == "--state" ]] && state="\${2:-open}"
-    _curl "\$API/repos/\$local_repo/issues?state=\$state&per_page=30" | _sanitize
+    [[ "$state" == "--state" ]] && state="\${2:-open}"
+    _curl "$API/repos/$local_repo/issues?state=$state&per_page=30" | _sanitize
     ;;
   issue)
     local_repo="\${1:?Usage: gh issue <owner/repo> <number>}"
     number="\${2:?Usage: gh issue <owner/repo> <number>}"
-    _curl "\$API/repos/\$local_repo/issues/\$number" | _sanitize
+    _curl "$API/repos/$local_repo/issues/$number" | _sanitize
     ;;
   issue-create)
     local_repo="\${1:?Usage: gh issue-create <owner/repo> <title> [body]}"
     title="\${2:?Usage: gh issue-create <owner/repo> <title> [body]}"
     body="\${3:-}"
-    payload=\$(jq -n --arg t "\$title" --arg b "\$body" '{title: \$t, body: \$b}')
-    _curl -X POST -H "Content-Type: application/json" -d "\$payload" "\$API/repos/\$local_repo/issues" | _sanitize
+    payload=$(jq -n --arg t "$title" --arg b "$body" '{title: $t, body: $b}')
+    _curl -X POST -H "Content-Type: application/json" -d "$payload" "$API/repos/$local_repo/issues" | _sanitize
     ;;
   prs)
     local_repo="\${1:?Usage: gh prs <owner/repo>}"
     shift
     state="\${1:-open}"
-    [[ "\$state" == "--state" ]] && state="\${2:-open}"
-    _curl "\$API/repos/\$local_repo/pulls?state=\$state&per_page=30" | _sanitize
+    [[ "$state" == "--state" ]] && state="\${2:-open}"
+    _curl "$API/repos/$local_repo/pulls?state=$state&per_page=30" | _sanitize
     ;;
   pr)
     local_repo="\${1:?Usage: gh pr <owner/repo> <number>}"
     number="\${2:?Usage: gh pr <owner/repo> <number>}"
-    _curl "\$API/repos/\$local_repo/pulls/\$number" | _sanitize
+    _curl "$API/repos/$local_repo/pulls/$number" | _sanitize
     ;;
   pr-create)
     local_repo="\${1:?Usage: gh pr-create <owner/repo> <title> <head> <base> [body]}"
@@ -96,24 +96,24 @@ case "\$cmd" in
     head="\${3:?Usage: gh pr-create <owner/repo> <title> <head> <base>}"
     base="\${4:?Usage: gh pr-create <owner/repo> <title> <head> <base>}"
     body="\${5:-}"
-    payload=\$(jq -n --arg t "\$title" --arg h "\$head" --arg b "\$base" --arg bd "\$body" \\
-      '{title: \$t, head: \$h, base: \$b, body: \$bd}')
-    _curl -X POST -H "Content-Type: application/json" -d "\$payload" "\$API/repos/\$local_repo/pulls" | _sanitize
+    payload=$(jq -n --arg t "$title" --arg h "$head" --arg b "$base" --arg bd "$body" \\
+      '{title: $t, head: $h, base: $b, body: $bd}')
+    _curl -X POST -H "Content-Type: application/json" -d "$payload" "$API/repos/$local_repo/pulls" | _sanitize
     ;;
   releases)
     local_repo="\${1:?Usage: gh releases <owner/repo>}"
-    _curl "\$API/repos/\$local_repo/releases?per_page=10" | _sanitize
+    _curl "$API/repos/$local_repo/releases?per_page=10" | _sanitize
     ;;
   release)
     local_repo="\${1:?Usage: gh release <owner/repo> <tag>}"
     tag="\${2:?Usage: gh release <owner/repo> <tag>}"
-    _curl "\$API/repos/\$local_repo/releases/tags/\$tag" | _sanitize
+    _curl "$API/repos/$local_repo/releases/tags/$tag" | _sanitize
     ;;
   help|--help|-h|"")
-    sed -n '2,14p' "\$0" | sed 's/^# \\?//'
+    sed -n '2,14p' "$0" | sed 's/^# \\?//'
     ;;
   *)
-    echo "gh: unknown command '\$cmd'" >&2
+    echo "gh: unknown command '$cmd'" >&2
     exit 1
     ;;
 esac

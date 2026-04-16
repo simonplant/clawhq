@@ -219,7 +219,7 @@ describe("provision — SSH host key collection (BUG-113)", () => {
     expect(result.success).toBe(true);
     expect(result.instanceId).toBeDefined();
 
-    const instance = findInstance(testDir, result.instanceId!);
+    const instance = findInstance(testDir, result.instanceId as string);
     expect(instance?.sshHostKey).toBe("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIRealKey");
   });
 
@@ -236,7 +236,7 @@ describe("provision — SSH host key collection (BUG-113)", () => {
     expect(result.instanceId).toBeDefined();
 
     // sshHostKey should remain unset
-    const instance = findInstance(testDir, result.instanceId!);
+    const instance = findInstance(testDir, result.instanceId as string);
     expect(instance?.sshHostKey).toBeUndefined();
 
     // Warning should be logged
@@ -250,7 +250,6 @@ describe("provision — SSH host key collection (BUG-113)", () => {
   it("does not attempt host key collection when health check fails", async () => {
     // Override health mock for this test — unhealthy result
     const healthMod = await import("./health.js");
-    const origPoll = healthMod.pollInstanceHealth;
     vi.spyOn(healthMod, "pollInstanceHealth").mockResolvedValueOnce({
       healthy: false,
       attempts: 10,
@@ -268,7 +267,7 @@ describe("provision — SSH host key collection (BUG-113)", () => {
     expect(result.healthy).toBe(false);
 
     // Host key should NOT be stored when health check fails
-    const instance = findInstance(testDir, result.instanceId!);
+    const instance = findInstance(testDir, result.instanceId as string);
     expect(instance?.sshHostKey).toBeUndefined();
   });
 });

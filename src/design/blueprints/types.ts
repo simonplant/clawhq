@@ -59,7 +59,7 @@ export function parseDimensions(input: Record<string, number>): PersonalityDimen
     if (!(key in input)) {
       errors.push(`missing key: ${key}`);
     } else {
-      const val = input[key]!;
+      const val = input[key];
       if (!Number.isInteger(val) || val < 1 || val > 5) {
         errors.push(`${key}: value must be an integer 1-5 (got ${val})`);
       }

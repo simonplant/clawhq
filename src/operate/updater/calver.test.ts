@@ -9,6 +9,13 @@ import {
   sortVersions,
 } from "./calver.js";
 
+/** Parse CalVer or throw — test helper to avoid non-null assertions. */
+function mustParseCalVer(raw: string) {
+  const v = parseCalVer(raw);
+  if (!v) throw new Error(`parseCalVer("${raw}") returned null`);
+  return v;
+}
+
 describe("parseCalVer", () => {
   it("parses CalVer with v prefix", () => {
     const v = parseCalVer("v2026.4.12");
@@ -67,38 +74,38 @@ describe("parseCalVer", () => {
 
 describe("compareCalVer", () => {
   it("detects a < b by year", () => {
-    const a = parseCalVer("v2025.1.0")!;
-    const b = parseCalVer("v2026.1.0")!;
+    const a = mustParseCalVer("v2025.1.0");
+    const b = mustParseCalVer("v2026.1.0");
     expect(compareCalVer(a, b)).toBeLessThan(0);
   });
 
   it("detects a < b by minor", () => {
-    const a = parseCalVer("v2026.3.0")!;
-    const b = parseCalVer("v2026.4.0")!;
+    const a = mustParseCalVer("v2026.3.0");
+    const b = mustParseCalVer("v2026.4.0");
     expect(compareCalVer(a, b)).toBeLessThan(0);
   });
 
   it("detects a < b by patch", () => {
-    const a = parseCalVer("v2026.4.11")!;
-    const b = parseCalVer("v2026.4.12")!;
+    const a = mustParseCalVer("v2026.4.11");
+    const b = mustParseCalVer("v2026.4.12");
     expect(compareCalVer(a, b)).toBeLessThan(0);
   });
 
   it("detects equality", () => {
-    const a = parseCalVer("v2026.4.12")!;
-    const b = parseCalVer("2026.4.12")!;
+    const a = mustParseCalVer("v2026.4.12");
+    const b = mustParseCalVer("2026.4.12");
     expect(compareCalVer(a, b)).toBe(0);
   });
 
   it("detects a > b", () => {
-    const a = parseCalVer("v2026.4.12")!;
-    const b = parseCalVer("v2026.4.11")!;
+    const a = mustParseCalVer("v2026.4.12");
+    const b = mustParseCalVer("v2026.4.11");
     expect(compareCalVer(a, b)).toBeGreaterThan(0);
   });
 
   it("correctly orders CalVer vs legacy semver", () => {
-    const legacy = parseCalVer("v0.8.7")!;
-    const calver = parseCalVer("v2026.4.12")!;
+    const legacy = mustParseCalVer("v0.8.7");
+    const calver = mustParseCalVer("v2026.4.12");
     expect(compareCalVer(legacy, calver)).toBeLessThan(0);
   });
 });
@@ -124,28 +131,28 @@ describe("compareVersions", () => {
 });
 
 describe("calVerInRange", () => {
-  const from = parseCalVer("v2026.4.9")!;
-  const to = parseCalVer("v2026.4.12")!;
+  const from = mustParseCalVer("v2026.4.9");
+  const to = mustParseCalVer("v2026.4.12");
 
   it("returns true for version in range", () => {
-    expect(calVerInRange(parseCalVer("v2026.4.10")!, from, to)).toBe(true);
-    expect(calVerInRange(parseCalVer("v2026.4.11")!, from, to)).toBe(true);
+    expect(calVerInRange(mustParseCalVer("v2026.4.10"), from, to)).toBe(true);
+    expect(calVerInRange(mustParseCalVer("v2026.4.11"), from, to)).toBe(true);
   });
 
   it("returns true for version equal to upper bound (inclusive)", () => {
-    expect(calVerInRange(parseCalVer("v2026.4.12")!, from, to)).toBe(true);
+    expect(calVerInRange(mustParseCalVer("v2026.4.12"), from, to)).toBe(true);
   });
 
   it("returns false for version equal to lower bound (exclusive)", () => {
-    expect(calVerInRange(parseCalVer("v2026.4.9")!, from, to)).toBe(false);
+    expect(calVerInRange(mustParseCalVer("v2026.4.9"), from, to)).toBe(false);
   });
 
   it("returns false for version below range", () => {
-    expect(calVerInRange(parseCalVer("v2026.4.8")!, from, to)).toBe(false);
+    expect(calVerInRange(mustParseCalVer("v2026.4.8"), from, to)).toBe(false);
   });
 
   it("returns false for version above range", () => {
-    expect(calVerInRange(parseCalVer("v2026.4.13")!, from, to)).toBe(false);
+    expect(calVerInRange(mustParseCalVer("v2026.4.13"), from, to)).toBe(false);
   });
 });
 

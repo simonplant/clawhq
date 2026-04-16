@@ -9,6 +9,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createHetznerAdapter } from "./hetzner.js";
@@ -223,14 +224,14 @@ describe("Hetzner live API tests", () => {
   const token = process.env.CLAWHQ_TEST_HETZNER_TOKEN;
 
   it.skipIf(!token)("validates real token against live API", async () => {
-    const adapter = createHetznerAdapter(token!);
+    const adapter = createHetznerAdapter(token as string);
     const result = await adapter.validateToken();
 
     expect(result.valid).toBe(true);
   });
 
   it.skipIf(!token)("lists SSH keys from live API", async () => {
-    const adapter = createHetznerAdapter(token!);
+    const adapter = createHetznerAdapter(token as string);
     const keys = await adapter.listSshKeys();
 
     expect(Array.isArray(keys)).toBe(true);

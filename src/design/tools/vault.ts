@@ -19,17 +19,17 @@ export function generateVaultTool(): string {
 #   list <vault>                     List items in a vault (titles only, no secrets)
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "\$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Help works without credentials
 case "\${1:-}" in help|--help|-h|"")
-  sed -n '2,9p' "\$0" | sed 's/^# \\?//'
+  sed -n '2,9p' "$0" | sed 's/^# \\?//'
   exit 0 ;; esac
 
 # ClawWall: sanitize external content
 _sanitize() {
-  if [[ -x "\$SCRIPT_DIR/sanitize" ]]; then
-    "\$SCRIPT_DIR/sanitize" --source vault --log
+  if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
+    "$SCRIPT_DIR/sanitize" --source vault --log
   else
     cat
   fi
@@ -39,44 +39,44 @@ _sanitize() {
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/op"
   _get_item() {
-    local vault="\$1" item="\$2" field="\${3:-password}"
-    curl -sS --fail-with-body "\$API/v1/vaults/\$vault/items/\$item?fields=\$field"
+    local vault="$1" item="$2" field="\${3:-password}"
+    curl -sS --fail-with-body "$API/v1/vaults/$vault/items/$item?fields=$field"
   }
   _list_items() {
-    local vault="\$1"
-    curl -sS --fail-with-body "\$API/v1/vaults/\$vault/items"
+    local vault="$1"
+    curl -sS --fail-with-body "$API/v1/vaults/$vault/items"
   }
 else
   : "\${OP_SERVICE_ACCOUNT_TOKEN:?Set OP_SERVICE_ACCOUNT_TOKEN or CRED_PROXY_URL}"
   _get_item() {
-    local vault="\$1" item="\$2" field="\${3:-password}"
-    op item get "\$item" --vault "\$vault" --fields "\$field" --format json 2>/dev/null
+    local vault="$1" item="$2" field="\${3:-password}"
+    op item get "$item" --vault "$vault" --fields "$field" --format json 2>/dev/null
   }
   _list_items() {
-    local vault="\$1"
-    op item list --vault "\$vault" --format json 2>/dev/null
+    local vault="$1"
+    op item list --vault "$vault" --format json 2>/dev/null
   }
 fi
 
 cmd="\${1:-help}"
 shift 2>/dev/null || true
 
-case "\$cmd" in
+case "$cmd" in
   get)
     vault="\${1:?Usage: vault get <vault> <item> [field]}"
     item="\${2:?Usage: vault get <vault> <item> [field]}"
     field="\${3:-password}"
-    _get_item "\$vault" "\$item" "\$field" | _sanitize
+    _get_item "$vault" "$item" "$field" | _sanitize
     ;;
   list)
     vault="\${1:?Usage: vault list <vault>}"
-    _list_items "\$vault" | _sanitize
+    _list_items "$vault" | _sanitize
     ;;
   help|--help|-h|"")
-    sed -n '2,9p' "\$0" | sed 's/^# \\?//'
+    sed -n '2,9p' "$0" | sed 's/^# \\?//'
     ;;
   *)
-    echo "vault: unknown command '\$cmd'" >&2
+    echo "vault: unknown command '$cmd'" >&2
     exit 1
     ;;
 esac

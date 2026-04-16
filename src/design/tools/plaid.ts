@@ -102,7 +102,7 @@ case "$cmd" in
     ;;
   transactions)
     days=30
-    while [[ \$# -gt 0 ]]; do
+    while [[ $# -gt 0 ]]; do
       case "$1" in
         --days) days="\${2:?--days requires a number}"; shift 2 ;;
         *) echo "plaid transactions: unknown option '$1'" >&2; exit 1 ;;

@@ -231,7 +231,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
           { timeout: 5000 },
         );
         report("compose-up", "done", "Ollama firewall rule applied");
-      } catch (err) {
+      } catch {
         // sudo not available — non-fatal, doctor will flag it
       }
     }

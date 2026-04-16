@@ -68,7 +68,7 @@ async function loadSnapshots(
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as CapabilitySnapshot[];
-  } catch (err) {
+  } catch {
     return [];
   }
 }

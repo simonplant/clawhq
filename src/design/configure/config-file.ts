@@ -10,8 +10,8 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { homedir } from "node:os";
+import { resolve } from "node:path";
 
 import { parse as yamlParse } from "yaml";
 
@@ -20,6 +20,7 @@ import { loadBlueprint } from "../blueprints/loader.js";
 import { parseDimensions } from "../blueprints/types.js";
 import { compile } from "../catalog/index.js";
 import type { CompiledWorkspace } from "../catalog/types.js";
+
 import type { WizardAnswers } from "./types.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────

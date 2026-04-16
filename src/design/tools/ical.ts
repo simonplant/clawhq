@@ -51,9 +51,9 @@ _sanitize() {
 # CalDAV auto-discovery (required for iCloud which redirects to partition servers)
 # Discovers: base URL -> principal -> calendar-home, caches in /tmp for session
 _discover_home() {
-  local cache_dir="\$HOME/.cache/clawhq"
-  mkdir -p "\$cache_dir"
-  local cache="\$cache_dir/.caldav-home-\${CALDAV_USER:-proxy}"
+  local cache_dir="$HOME/.cache/clawhq"
+  mkdir -p "$cache_dir"
+  local cache="$cache_dir/.caldav-home-\${CALDAV_USER:-proxy}"
   if [[ -f "$cache" ]]; then
     cat "$cache"
     return

@@ -19,7 +19,6 @@ import { stringify as yamlStringify } from "yaml";
 import { generateCompose } from "../../build/docker/compose.js";
 import { getPostureConfig } from "../../build/docker/posture.js";
 import {
-  BOOTSTRAP_MAX_CHARS,
   CRED_PROXY_PORT,
   FILE_MODE_EXEC,
   GATEWAY_DEFAULT_PORT,
@@ -47,7 +46,6 @@ import type {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const DOCKER_HOST_GATEWAY = "host.docker.internal";
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -1052,15 +1050,17 @@ function buildChannels(config: CompositionConfig): Record<string, unknown> {
       if (!channels[name]) {
         channels[name] = { enabled: true };
       }
+      const channel = channels[name];
+      if (!channel) continue;
       for (const [key, value] of Object.entries(values)) {
         if (CHANNEL_SECRET_KEYS.has(key)) {
           // Replace literal secret with env var reference
-          channels[name]![key] = CHANNEL_ENV_VARS[name]?.[key] ?? `\${${name.toUpperCase()}_${key.toUpperCase()}}`;
+          channel[key] = CHANNEL_ENV_VARS[name]?.[key] ?? `\${${name.toUpperCase()}_${key.toUpperCase()}}`;
         } else if (key === "streaming" && typeof value === "string") {
           // Convert legacy scalar streaming to new object format
-          channels[name]![key] = { mode: value };
+          channel[key] = { mode: value };
         } else {
-          channels[name]![key] = value;
+          channel[key] = value;
         }
       }
     }

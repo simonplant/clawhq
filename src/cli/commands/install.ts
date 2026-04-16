@@ -1,12 +1,11 @@
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
 import { detectLegacyInstallation, install, migrateDeployDir } from "../../build/installer/index.js";
-
 import { CommandError } from "../errors.js";
 import { renderError } from "../ux.js";
+
 import { formatPrereqCheck } from "./helpers.js";
 
 export function registerInstallCommands(program: Command, defaultDeployDir: string): void {

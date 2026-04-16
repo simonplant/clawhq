@@ -5,15 +5,14 @@
  * and stateful data. Safe to run any time.
  */
 
-import type { Command } from "commander";
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
-import { apply } from "../../evolve/apply/index.js";
-import type { ApplyProgress } from "../../evolve/apply/index.js";
 import { readCurrentPosture, getPostureConfig, DEFAULT_POSTURE } from "../../build/docker/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
-
+import { apply } from "../../evolve/apply/index.js";
+import type { ApplyProgress } from "../../evolve/apply/index.js";
 import { CommandError } from "../errors.js";
 import { ensureInstalled } from "../ux.js";
 

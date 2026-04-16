@@ -30,10 +30,8 @@ import type {
   ConstructArtifact,
   ConstructCycle,
   ConstructGap,
-  ConstructPhase,
   ConstructProgress,
   ConstructProposal,
-  ConstructState,
 } from "./types.js";
 import { CONSTRUCT_PHASE_ORDER } from "./types.js";
 
@@ -550,10 +548,10 @@ describe("construct-built skill output validation", () => {
     const manifest = await loadManifest(deployDir);
     const entry = manifest.skills.find((s) => s.name === "slack-notify");
     expect(entry).toBeDefined();
-    expect(entry!.status).toBe("active");
-    expect(entry!.vetResult?.passed).toBe(true);
-    expect(entry!.vetResult?.criticalCount).toBe(0);
-    expect(entry!.vetResult?.highCount).toBe(0);
+    expect(entry?.status).toBe("active");
+    expect(entry?.vetResult?.passed).toBe(true);
+    expect(entry?.vetResult?.criticalCount).toBe(0);
+    expect(entry?.vetResult?.highCount).toBe(0);
   });
 
   it("construct-built skills with security threats are rejected", async () => {

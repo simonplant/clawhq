@@ -11,9 +11,14 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
+import type { WorkspaceManifest } from "../../build/docker/types.js";
+import {
+  buildAllowlistFromBlueprint,
+  collectIntegrationDomains,
+  serializeAllowlist,
+} from "../../build/launcher/firewall.js";
 import {
   agentNetworkName,
-  BOOTSTRAP_MAX_CHARS,
   CONTAINER_USER,
   CRED_PROXY_PORT,
   ENABLE_AUDIT_STDOUT,
@@ -34,27 +39,19 @@ import type {
   SkillFileInfo,
   ToolFileInfo,
 } from "../../config/types.js";
-import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
-import { isValidProfileId, mergeProfileDeny, MISSION_PROFILE_DEFAULTS } from "../blueprints/profiles.js";
-import type { CompiledDelegationRules } from "../blueprints/delegation-types.js";
-import type { UserContext } from "./types.js";
-import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../identity/index.js";
-import type { IdentityFileContent } from "../identity/index.js";
-import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../tools/index.js";
-import type { ToolFileContent } from "../tools/index.js";
-import { loadBlueprintSkills, loadPlatformSkills } from "../skills/index.js";
-import type { SkillFileEntry } from "../skills/index.js";
-
-import type { WorkspaceManifest } from "../../build/docker/types.js";
-
-import {
-  buildAllowlistFromBlueprint,
-  collectIntegrationDomains,
-  serializeAllowlist,
-} from "../../build/launcher/firewall.js";
-
 import { BUILTIN_ROUTES, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv, buildRoutesConfig } from "../../secure/credentials/proxy-routes.js";
 import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
+import type { CompiledDelegationRules } from "../blueprints/delegation-types.js";
+import { isValidProfileId, mergeProfileDeny, MISSION_PROFILE_DEFAULTS } from "../blueprints/profiles.js";
+import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
+import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../identity/index.js";
+import type { IdentityFileContent } from "../identity/index.js";
+import { loadBlueprintSkills, loadPlatformSkills } from "../skills/index.js";
+import type { SkillFileEntry } from "../skills/index.js";
+import { generateToolWrappers as generateToolWrappersFromBlueprint } from "../tools/index.js";
+import type { ToolFileContent } from "../tools/index.js";
+
+import type { UserContext } from "./types.js";
 import type { WizardAnswers } from "./types.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -278,9 +275,6 @@ function buildComposeConfig(
   port: number,
   networkName: string,
 ): ComposeConfig {
-  const bp = answers.blueprint;
-  const posture = bp.security_posture.posture;
-
   // Resource limits — same across postures, security is controls not starvation
   const resourceLimits = { cpus: "4", memory: "4g" };
 
@@ -495,8 +489,8 @@ function parseQuietHoursToActiveHours(quietHours: string, timezone?: string): Ac
   const match = quietHours.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
   if (!match) return undefined;
 
-  const quietStart = parseInt(match[1]!, 10);
-  const quietEnd = parseInt(match[3]!, 10);
+  const quietStart = parseInt(match[1] ?? "", 10);
+  const quietEnd = parseInt(match[3] ?? "", 10);
 
   // Invert: active hours run from quiet end to quiet start
   return {
@@ -744,7 +738,7 @@ function validateCronFieldPart(
   // Step on wildcard: */N
   const wildcardStep = part.match(/^\*\/(\d+)$/);
   if (wildcardStep) {
-    const step = parseInt(wildcardStep[1]!, 10);
+    const step = parseInt(wildcardStep[1] ?? "", 10);
     if (step === 0) return `${range.name}: step value cannot be 0 in "${part}"`;
     return null;
   }
@@ -752,8 +746,8 @@ function validateCronFieldPart(
   // Range with optional step: N-M or N-M/S
   const rangeMatch = part.match(/^(\d+)-(\d+)(?:\/(\d+))?$/);
   if (rangeMatch) {
-    const lo = parseInt(rangeMatch[1]!, 10);
-    const hi = parseInt(rangeMatch[2]!, 10);
+    const lo = parseInt(rangeMatch[1] ?? "", 10);
+    const hi = parseInt(rangeMatch[2] ?? "", 10);
     if (lo < range.min || lo > range.max)
       return `${range.name}: value ${lo} out of range ${range.min}-${range.max}`;
     if (hi < range.min || hi > range.max)
@@ -788,8 +782,9 @@ export function validateCronExpr(expr: string): string[] {
 
   const errors: string[] = [];
   for (let i = 0; i < 5; i++) {
-    const field = fields[i]!;
-    const range = CRON_FIELD_RANGES[i]!;
+    const field = fields[i];
+    const range = CRON_FIELD_RANGES[i];
+    if (!field || !range) continue;
 
     // Each field can be a comma-separated list
     for (const part of field.split(",")) {

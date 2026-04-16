@@ -16,8 +16,8 @@ import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 
-import type { AuditTrailConfig } from "../audit/types.js";
 import { logSecretEvent } from "../audit/logger.js";
+import type { AuditTrailConfig } from "../audit/types.js";
 
 const execFileAsync = promisify(execFile);
 

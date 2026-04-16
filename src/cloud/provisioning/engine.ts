@@ -30,9 +30,9 @@ import {
   updateInstanceSshHostKey,
   updateInstanceStatus,
 } from "./registry.js";
-import { collectHostKey } from "./ssh-keyscan.js";
 import { generateSnapshotInit } from "./snapshot-init.js";
 import { generateSshKeypair } from "./ssh-keygen.js";
+import { collectHostKey } from "./ssh-keyscan.js";
 import type {
   CloudProvider,
   DestroyOptions,

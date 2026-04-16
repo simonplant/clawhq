@@ -11,9 +11,9 @@ let portMap: Record<number, boolean> = {};
 
 vi.mock("node:net", () => ({
   createConnection: (opts: { port: number }) => {
-    const emitter = new EventEmitter();
+    const emitter = new EventEmitter() as EventEmitter & { destroy: () => void };
     // Stub destroy so cleanup() doesn't throw
-    (emitter as any).destroy = () => {};
+    emitter.destroy = () => {};
 
     const reachable = portMap[opts.port] ?? false;
     // Emit asynchronously so the caller can attach listeners first

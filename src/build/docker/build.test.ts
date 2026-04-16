@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
+
 import { formatHashMismatch, validateBinarySha256 } from "./binary-manifest.js";
 import { computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
@@ -429,10 +430,11 @@ describe("generateCompose with credential proxy", () => {
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
-    const proxy = compose.services["cred-proxy"]!;
-    expect(proxy.user).toBe("1000:1000");
-    expect(proxy.read_only).toBe(true);
-    expect(proxy.cap_drop).toContain("ALL");
+    const proxy = compose.services["cred-proxy"];
+    expect(proxy).toBeDefined();
+    expect(proxy?.user).toBe("1000:1000");
+    expect(proxy?.read_only).toBe(true);
+    expect(proxy?.cap_drop).toContain("ALL");
   });
 
   it("cred-proxy mounts script and routes read-only", () => {
@@ -440,9 +442,10 @@ describe("generateCompose with credential proxy", () => {
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
-    const proxy = compose.services["cred-proxy"]!;
-    const scriptVol = proxy.volumes.find((v) => v.includes("proxy.js"));
-    const routesVol = proxy.volumes.find((v) => v.includes("routes.json"));
+    const proxy = compose.services["cred-proxy"];
+    expect(proxy).toBeDefined();
+    const scriptVol = proxy?.volumes.find((v) => v.includes("proxy.js"));
+    const routesVol = proxy?.volumes.find((v) => v.includes("routes.json"));
     expect(scriptVol).toContain(":ro");
     expect(routesVol).toContain(":ro");
   });
@@ -452,9 +455,10 @@ describe("generateCompose with credential proxy", () => {
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
-    const proxy = compose.services["cred-proxy"]!;
-    expect(proxy.healthcheck).toBeDefined();
-    expect(proxy.healthcheck.test[0]).toBe("CMD");
+    const proxy = compose.services["cred-proxy"];
+    expect(proxy).toBeDefined();
+    expect(proxy?.healthcheck).toBeDefined();
+    expect(proxy?.healthcheck.test[0]).toBe("CMD");
   });
 
   it("cred-proxy shares the same network as openclaw", () => {
@@ -462,8 +466,9 @@ describe("generateCompose with credential proxy", () => {
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
-    const proxy = compose.services["cred-proxy"]!;
-    expect(proxy.networks).toContain("clawhq_net");
+    const proxy = compose.services["cred-proxy"];
+    expect(proxy).toBeDefined();
+    expect(proxy?.networks).toContain("clawhq_net");
   });
 
   it("enables ICC when cred-proxy is active (agent must reach proxy)", () => {
@@ -481,8 +486,9 @@ describe("generateCompose with credential proxy", () => {
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableCredProxy: true,
     });
-    const proxy = compose.services["cred-proxy"]!;
-    expect(proxy.env_file).toContain(".env");
+    const proxy = compose.services["cred-proxy"];
+    expect(proxy).toBeDefined();
+    expect(proxy?.env_file).toContain(".env");
   });
 
   it("supports custom script and routes paths", () => {
@@ -492,9 +498,10 @@ describe("generateCompose with credential proxy", () => {
       credProxyScriptPath: "/custom/proxy.js",
       credProxyRoutesPath: "/custom/routes.json",
     });
-    const proxy = compose.services["cred-proxy"]!;
-    expect(proxy.volumes.some((v) => v.includes("/custom/proxy.js"))).toBe(true);
-    expect(proxy.volumes.some((v) => v.includes("/custom/routes.json"))).toBe(true);
+    const proxy = compose.services["cred-proxy"];
+    expect(proxy).toBeDefined();
+    expect(proxy?.volumes.some((v) => v.includes("/custom/proxy.js"))).toBe(true);
+    expect(proxy?.volumes.some((v) => v.includes("/custom/routes.json"))).toBe(true);
   });
 });
 

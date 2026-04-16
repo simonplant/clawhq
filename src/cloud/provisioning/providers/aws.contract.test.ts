@@ -9,6 +9,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createAwsAdapter } from "./aws.js";
@@ -220,7 +221,7 @@ describe("AWS live API tests", () => {
   const token = process.env.CLAWHQ_TEST_AWS_TOKEN;
 
   it.skipIf(!token)("validates real credentials against live API", async () => {
-    const adapter = createAwsAdapter(token!);
+    const adapter = createAwsAdapter(token as string);
     const result = await adapter.validateToken();
 
     expect(result.valid).toBe(true);
@@ -228,7 +229,7 @@ describe("AWS live API tests", () => {
   });
 
   it.skipIf(!token)("lists SSH key pairs from live API", async () => {
-    const adapter = createAwsAdapter(token!);
+    const adapter = createAwsAdapter(token as string);
     const keys = await adapter.listSshKeys();
 
     expect(Array.isArray(keys)).toBe(true);

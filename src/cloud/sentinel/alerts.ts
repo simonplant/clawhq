@@ -10,6 +10,7 @@
  */
 
 import { SENTINEL_API_BASE, SENTINEL_API_TIMEOUT_MS } from "../../config/defaults.js";
+
 import type { AlertDeliveryResult, SentinelAlert } from "./types.js";
 
 // ── Webhook Delivery ───────────────────────────────────────────────────────

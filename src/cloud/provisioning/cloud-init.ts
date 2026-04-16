@@ -53,7 +53,7 @@ export function generateCloudInit(options: CloudInitOptions): string {
 
   // Validate trustMode if provided
   const VALID_TRUST_MODES = ["paranoid", "zero-trust", "managed"] as const;
-  if (trustMode && !VALID_TRUST_MODES.includes(trustMode as any)) {
+  if (trustMode && !(VALID_TRUST_MODES as readonly string[]).includes(trustMode)) {
     throw new Error(`Invalid trustMode: ${trustMode}. Must be one of: ${VALID_TRUST_MODES.join(", ")}`);
   }
 

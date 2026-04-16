@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -258,9 +258,9 @@ describe("collectIntegrationDomains", () => {
     const imap = entries.find((e) => e.domain === "imap.mail.me.com");
     const smtp = entries.find((e) => e.domain === "smtp.mail.me.com");
     expect(imap).toBeDefined();
-    expect(imap!.port).toBe(993);
+    expect(imap?.port).toBe(993);
     expect(smtp).toBeDefined();
-    expect(smtp!.port).toBe(587);
+    expect(smtp?.port).toBe(587);
   });
 
   it("auto-detects integrations from env vars", () => {
@@ -407,9 +407,9 @@ describe("buildExpectedRules (ipset-based)", () => {
 
     const ipsetRule = rules.find((r) => r.extra.includes("match-set"));
     expect(ipsetRule).toBeDefined();
-    expect(ipsetRule!.extra).toContain(`match-set ${IPSET_NAME} dst`);
-    expect(ipsetRule!.dport).toBe("443");
-    expect(ipsetRule!.destination).toBe("0.0.0.0/0");
+    expect(ipsetRule?.extra).toContain(`match-set ${IPSET_NAME} dst`);
+    expect(ipsetRule?.dport).toBe("443");
+    expect(ipsetRule?.destination).toBe("0.0.0.0/0");
   });
 
   it("creates one ipset match rule per unique port", () => {
@@ -488,10 +488,10 @@ describe("loadIpsetMeta", () => {
 
     const loaded = await loadIpsetMeta(testDir);
     expect(loaded).not.toBeNull();
-    expect(loaded!.lastRefreshed).toBe("2026-03-30T15:00:00.000Z");
-    expect(loaded!.domains).toEqual(["api.example.com", "smtp.gmail.com"]);
-    expect(loaded!.resolvedV4).toBe(4);
-    expect(loaded!.resolvedV6).toBe(2);
+    expect(loaded?.lastRefreshed).toBe("2026-03-30T15:00:00.000Z");
+    expect(loaded?.domains).toEqual(["api.example.com", "smtp.gmail.com"]);
+    expect(loaded?.resolvedV4).toBe(4);
+    expect(loaded?.resolvedV6).toBe(2);
   });
 
   it("returns null when metadata file doesn't exist", async () => {
@@ -532,8 +532,8 @@ describe("stale ipset detection", () => {
 
     const loaded = await loadIpsetMeta(testDir);
     expect(loaded).not.toBeNull();
-    const ageMs = Date.now() - new Date(loaded!.lastRefreshed).getTime();
-    const staleThresholdMs = loaded!.refreshIntervalMs * 2;
+    const ageMs = Date.now() - new Date(loaded?.lastRefreshed ?? 0).getTime();
+    const staleThresholdMs = (loaded?.refreshIntervalMs ?? 0) * 2;
     expect(ageMs).toBeLessThan(staleThresholdMs);
   });
 
@@ -556,8 +556,8 @@ describe("stale ipset detection", () => {
 
     const loaded = await loadIpsetMeta(testDir);
     expect(loaded).not.toBeNull();
-    const ageMs = Date.now() - new Date(loaded!.lastRefreshed).getTime();
-    const staleThresholdMs = loaded!.refreshIntervalMs * 2; // 10 min
+    const ageMs = Date.now() - new Date(loaded?.lastRefreshed ?? 0).getTime();
+    const staleThresholdMs = (loaded?.refreshIntervalMs ?? 0) * 2; // 10 min
     expect(ageMs).toBeGreaterThan(staleThresholdMs);
   });
 
@@ -592,7 +592,7 @@ describe("stale ipset detection", () => {
     const loaded = await loadIpsetMeta(testDir);
     const allowlist = await (await import("./firewall.js")).loadAllowlist(testDir);
     const currentDomains = allowlist.map((e) => e.domain).sort();
-    const metaDomains = [...loaded!.domains].sort();
+    const metaDomains = [...(loaded?.domains ?? [])].sort();
 
     expect(JSON.stringify(currentDomains)).not.toBe(JSON.stringify(metaDomains));
   });

@@ -240,11 +240,11 @@ describe("destroyAgent", () => {
   it("receipt contains all destroyed files", async () => {
     const result = await destroyAgent({ deployDir, confirm: true });
     expect(result.receipt).toBeDefined();
-    const receipt = result.receipt!;
+    const receipt = result.receipt;
 
-    expect(receipt.files.length).toBeGreaterThan(0);
-    expect(receipt.totalBytes).toBeGreaterThan(0);
-    expect(receipt.destroyedAt).toBeDefined();
+    expect(receipt?.files.length).toBeGreaterThan(0);
+    expect(receipt?.totalBytes).toBeGreaterThan(0);
+    expect(receipt?.destroyedAt).toBeDefined();
   });
 
   it("receipt can be read back from JSON", async () => {

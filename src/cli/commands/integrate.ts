@@ -1,6 +1,5 @@
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
 import {
@@ -34,7 +33,6 @@ import {
   removeRoleCmd,
 } from "../../evolve/role/index.js";
 import type { Permission } from "../../evolve/role/index.js";
-
 import { CommandError } from "../errors.js";
 import { renderError, ensureInstalled } from "../ux.js";
 

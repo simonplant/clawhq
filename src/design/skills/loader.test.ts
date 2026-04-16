@@ -106,8 +106,8 @@ describe("loadBlueprintSkills — profile skills", () => {
         (s) => s.skillName === name && s.relativePath.endsWith("SKILL.md"),
       );
       expect(skillMd, `${name}: SKILL.md should exist`).toBeDefined();
-      expect(skillMd!.content).toContain("## Behavior");
-      expect(skillMd!.content).toContain("## Boundaries");
+      expect(skillMd?.content).toContain("## Behavior");
+      expect(skillMd?.content).toContain("## Boundaries");
     }
   });
 

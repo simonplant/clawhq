@@ -22,17 +22,17 @@ export function generateHaTool(): string {
 #   history <entity_id> [hours]      Get entity history (JSON, default 24h)
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "\$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Help works without credentials
 case "\${1:-}" in help|--help|-h|"")
-  sed -n '2,10p' "\$0" | sed 's/^# \\?//'
+  sed -n '2,10p' "$0" | sed 's/^# \\?//'
   exit 0 ;; esac
 
 # ClawWall: sanitize external content before passing to agent
 _sanitize() {
-  if [[ -x "\$SCRIPT_DIR/sanitize" ]]; then
-    "\$SCRIPT_DIR/sanitize" --source home --log
+  if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
+    "$SCRIPT_DIR/sanitize" --source home --log
   else
     cat
   fi
@@ -41,47 +41,47 @@ _sanitize() {
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/ha"
-  _curl() { curl -sS --fail-with-body -H "Content-Type: application/json" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Content-Type: application/json" "$@"; }
 else
   HA_BASE="\${HA_URL:?Set HA_URL or CRED_PROXY_URL}"
   TOKEN="\${HA_TOKEN:?Set HA_TOKEN or CRED_PROXY_URL}"
   API="\${HA_BASE}/api"
-  _curl() { curl -sS --fail-with-body -H "Content-Type: application/json" -H "Authorization: Bearer \$TOKEN" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" "$@"; }
 fi
 
 # Entity allow/deny list for safety
 # HA_ENTITY_ALLOW: comma-separated list of allowed entity ID prefixes (e.g. "light.,sensor.,switch.")
 # HA_ENTITY_DENY: comma-separated list of denied entity ID prefixes (e.g. "lock.,alarm_control_panel.")
 _check_entity() {
-  local entity="\$1"
+  local entity="$1"
   local deny="\${HA_ENTITY_DENY:-}"
   local allow="\${HA_ENTITY_ALLOW:-}"
 
   # If deny list is set, check entity is not denied
-  if [[ -n "\$deny" ]]; then
-    IFS=',' read -ra DENIED <<< "\$deny"
+  if [[ -n "$deny" ]]; then
+    IFS=',' read -ra DENIED <<< "$deny"
     for prefix in "\${DENIED[@]}"; do
-      prefix=\$(echo "\$prefix" | xargs)
-      if [[ "\$entity" == \$prefix* ]]; then
-        echo "home: entity '\$entity' is denied by HA_ENTITY_DENY" >&2
+      prefix=$(echo "$prefix" | xargs)
+      if [[ "$entity" == $prefix* ]]; then
+        echo "home: entity '$entity' is denied by HA_ENTITY_DENY" >&2
         exit 1
       fi
     done
   fi
 
   # If allow list is set, check entity is allowed
-  if [[ -n "\$allow" ]]; then
-    IFS=',' read -ra ALLOWED <<< "\$allow"
+  if [[ -n "$allow" ]]; then
+    IFS=',' read -ra ALLOWED <<< "$allow"
     local matched=false
     for prefix in "\${ALLOWED[@]}"; do
-      prefix=\$(echo "\$prefix" | xargs)
-      if [[ "\$entity" == \$prefix* ]]; then
+      prefix=$(echo "$prefix" | xargs)
+      if [[ "$entity" == $prefix* ]]; then
         matched=true
         break
       fi
     done
-    if [[ "\$matched" == "false" ]]; then
-      echo "home: entity '\$entity' is not in HA_ENTITY_ALLOW" >&2
+    if [[ "$matched" == "false" ]]; then
+      echo "home: entity '$entity' is not in HA_ENTITY_ALLOW" >&2
       exit 1
     fi
   fi
@@ -90,39 +90,39 @@ _check_entity() {
 cmd="\${1:-help}"
 shift 2>/dev/null || true
 
-case "\$cmd" in
+case "$cmd" in
   states)
-    _curl "\$API/states" | _sanitize
+    _curl "$API/states" | _sanitize
     ;;
   state)
     entity="\${1:?Usage: ha state <entity_id>}"
-    _check_entity "\$entity"
-    _curl "\$API/states/\$entity" | _sanitize
+    _check_entity "$entity"
+    _curl "$API/states/$entity" | _sanitize
     ;;
   services)
-    _curl "\$API/services" | _sanitize
+    _curl "$API/services" | _sanitize
     ;;
   call-service)
     domain="\${1:?Usage: ha call-service <domain> <service> <entity_id> [data_json]}"
     service="\${2:?Usage: ha call-service <domain> <service> <entity_id>}"
     entity="\${3:?Usage: ha call-service <domain> <service> <entity_id>}"
     data="\${4:-\\{\\}}"
-    _check_entity "\$entity"
-    payload=\$(jq -n --arg e "\$entity" --argjson d "\$data" '{entity_id: \$e} + \$d')
-    _curl -X POST -d "\$payload" "\$API/services/\$domain/\$service" | _sanitize
+    _check_entity "$entity"
+    payload=$(jq -n --arg e "$entity" --argjson d "$data" '{entity_id: $e} + $d')
+    _curl -X POST -d "$payload" "$API/services/$domain/$service" | _sanitize
     ;;
   history)
     entity="\${1:?Usage: ha history <entity_id> [hours]}"
     hours="\${2:-24}"
-    _check_entity "\$entity"
-    start=\$(date -u -d "-\${hours} hours" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-\${hours}H +%Y-%m-%dT%H:%M:%SZ)
-    _curl "\$API/history/period/\$start?filter_entity_id=\$entity" | _sanitize
+    _check_entity "$entity"
+    start=$(date -u -d "-\${hours} hours" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-\${hours}H +%Y-%m-%dT%H:%M:%SZ)
+    _curl "$API/history/period/$start?filter_entity_id=$entity" | _sanitize
     ;;
   help|--help|-h|"")
-    sed -n '2,10p' "\$0" | sed 's/^# \\?//'
+    sed -n '2,10p' "$0" | sed 's/^# \\?//'
     ;;
   *)
-    echo "home: unknown command '\$cmd'" >&2
+    echo "home: unknown command '$cmd'" >&2
     exit 1
     ;;
 esac

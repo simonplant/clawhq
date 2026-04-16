@@ -219,12 +219,12 @@ for entry in entries:
 }
 
 case "\${1:-}" in
-  add)     shift; cmd_add "\$@" ;;
-  list)    shift; cmd_list "\$@" ;;
-  count)   shift; cmd_count "\$@" ;;
+  add)     shift; cmd_add "$@" ;;
+  list)    shift; cmd_list "$@" ;;
+  count)   shift; cmd_count "$@" ;;
   search)  shift; cmd_search "\${1:?query required}" ;;
   -h|--help|help|"") usage ;;
-  *) echo "journal: unknown command '\$1'" >&2; usage >&2; exit 1 ;;
+  *) echo "journal: unknown command '$1'" >&2; usage >&2; exit 1 ;;
 esac
 `;
 }

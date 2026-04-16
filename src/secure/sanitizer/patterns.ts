@@ -107,7 +107,7 @@ export const SECRET_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
   { pattern: /(?:aws_secret_access_key|AWS_SECRET)\s*[:=]\s*[A-Za-z0-9/+=]{40}/, type: "aws_secret" },
   { pattern: /ghp_[A-Za-z0-9_]{36,}/, type: "github_pat" },
   { pattern: /ghs_[A-Za-z0-9_]{36,}/, type: "github_server_token" },
-  { pattern: /xox[baprs]-[A-Za-z0-9\-]{10,}/, type: "slack_token" },
+  { pattern: /xox[baprs]-[A-Za-z0-9-]{10,}/, type: "slack_token" },
   { pattern: /sk-[A-Za-z0-9]{20,}/, type: "openai_api_key" },
   { pattern: /-----BEGIN\s+(?:RSA\s+|EC\s+|DSA\s+|OPENSSH\s+)?PRIVATE\s+KEY-----/, type: "private_key" },
   { pattern: /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+/, type: "jwt_token" },

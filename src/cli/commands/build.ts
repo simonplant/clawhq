@@ -1,19 +1,16 @@
-import { join } from "node:path";
-
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
 import { build, DEFAULT_POSTURE, formatHashMismatch, getPostureConfig, getRequiredBinaries, readCurrentPosture, verifyBinaryHashes } from "../../build/docker/index.js";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
-import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import { checkDocker } from "../../build/installer/index.js";
 import { deploy, restart, shutdown } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
-
+import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import { CommandError } from "../errors.js";
 import { createCommandScope, renderError, validatePort, ensureInstalled } from "../ux.js";
+
 import { createConnectProgressHandler, createProgressHandler, resolveGatewayToken } from "./helpers.js";
 
 export function registerBuildCommands(program: Command, defaultDeployDir: string): void {

@@ -344,8 +344,7 @@ async function mergeCronJobs(
     } else if (parsed && typeof parsed === "object" && "jobs" in parsed && Array.isArray((parsed as Record<string, unknown>).jobs)) {
       existingJobs = (parsed as Record<string, unknown>).jobs as CronJobDefinition[];
     }
-  } catch (err) {
-  }
+  } catch { /* ignore malformed cron file */ }
 
   // Don't duplicate jobs by ID
   const existingIds = new Set(existingJobs.map((j) => j.id));

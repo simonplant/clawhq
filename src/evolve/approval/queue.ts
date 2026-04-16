@@ -45,7 +45,7 @@ export async function loadQueue(deployDir: string): Promise<ApprovalQueue> {
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as ApprovalQueue;
-  } catch (err) {
+  } catch {
     return { version: 1, items: [] };
   }
 }

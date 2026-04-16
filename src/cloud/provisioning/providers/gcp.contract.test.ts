@@ -10,6 +10,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createGcpAdapter } from "./gcp.js";
@@ -269,7 +270,7 @@ describe("GCP live API tests", () => {
   const token = process.env.CLAWHQ_TEST_GCP_TOKEN;
 
   it.skipIf(!token)("validates real credentials against live API", async () => {
-    const adapter = createGcpAdapter(token!);
+    const adapter = createGcpAdapter(token as string);
     const result = await adapter.validateToken();
 
     expect(result.valid).toBe(true);
@@ -277,7 +278,7 @@ describe("GCP live API tests", () => {
   });
 
   it.skipIf(!token)("lists SSH keys from live API", async () => {
-    const adapter = createGcpAdapter(token!);
+    const adapter = createGcpAdapter(token as string);
     const keys = await adapter.listSshKeys();
 
     expect(Array.isArray(keys)).toBe(true);

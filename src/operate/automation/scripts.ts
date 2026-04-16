@@ -38,7 +38,7 @@ set -euo pipefail
 
 DEPLOY_DIR="${deployDir}"
 LOG_DIR="\${DEPLOY_DIR}/ops/automation/logs"
-LOG_FILE="\${LOG_DIR}/autoupdate-\$(date +%Y%m%d-%H%M%S).log"
+LOG_FILE="\${LOG_DIR}/autoupdate-$(date +%Y%m%d-%H%M%S).log"
 MODE="\${AUTO_UPDATE_MODE:-notify}"
 
 # Load .env for notification credentials
@@ -51,21 +51,21 @@ fi
 mkdir -p "\${LOG_DIR}"
 
 log() {
-  echo "[\$(date -Iseconds)] \$*" | tee -a "\${LOG_FILE}"
+  echo "[$(date -Iseconds)] $*" | tee -a "\${LOG_FILE}"
 }
 
 send_telegram() {
-  local subject="\$1"
-  local body="\$2"
+  local subject="$1"
+  local body="$2"
   if [ -z "\${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "\${TELEGRAM_CHAT_ID:-}" ]; then
     log "Telegram not configured — skipping notification"
     return 0
   fi
   # Escape MarkdownV2 special characters
   local escaped_subject
-  escaped_subject=\$(echo "\${subject}" | sed 's/[_*\\[\\]()~\`>#+\\-=|{}.!]/\\\\&/g')
+  escaped_subject=$(echo "\${subject}" | sed 's/[_*\\[\\]()~\`>#+\\-=|{}.!]/\\\\&/g')
   local escaped_body
-  escaped_body=\$(echo "\${body}" | sed 's/[_*\\[\\]()~\`>#+\\-=|{}.!]/\\\\&/g')
+  escaped_body=$(echo "\${body}" | sed 's/[_*\\[\\]()~\`>#+\\-=|{}.!]/\\\\&/g')
   local text="*\${escaped_subject}*
 
 \${escaped_body}"
@@ -78,7 +78,7 @@ send_telegram() {
 log "Auto-update started (mode: \${MODE})"
 
 # Check for updates
-CHECK_OUTPUT=\$(clawhq update --check --deploy-dir "\${DEPLOY_DIR}" 2>&1) || {
+CHECK_OUTPUT=$(clawhq update --check --deploy-dir "\${DEPLOY_DIR}" 2>&1) || {
   log "Update check failed: \${CHECK_OUTPUT}"
   exit 1
 }
@@ -94,7 +94,7 @@ else
 fi
 
 # Extract version/commit info for notification
-UPDATE_SUMMARY=\$(echo "\${CHECK_OUTPUT}" | grep -E "commit|latest:" | head -3 || echo "New release available")
+UPDATE_SUMMARY=$(echo "\${CHECK_OUTPUT}" | grep -E "commit|latest:" | head -3 || echo "New release available")
 
 if [ "\${MODE}" = "notify" ]; then
   # Notify only — don't apply
@@ -150,23 +150,23 @@ set -euo pipefail
 DEPLOY_DIR="${deployDir}"
 LOG_DIR="\${DEPLOY_DIR}/ops/automation/logs"
 STATE_DIR="\${DEPLOY_DIR}/ops/automation/state"
-LOG_FILE="\${LOG_DIR}/security-\$(date +%Y%m%d-%H%M%S).log"
+LOG_FILE="\${LOG_DIR}/security-$(date +%Y%m%d-%H%M%S).log"
 SEEN_FILE="\${STATE_DIR}/seen-advisories.txt"
 ALERT_FILE="\${DEPLOY_DIR}/ops/automation/alerts/security-alerts.json"
 ADVISORIES_URL="${GITHUB_ADVISORIES_URL}"
 SEVERITIES=(${sevFilter})
 
-mkdir -p "\${LOG_DIR}" "\${STATE_DIR}" "\$(dirname "\${ALERT_FILE}")"
+mkdir -p "\${LOG_DIR}" "\${STATE_DIR}" "$(dirname "\${ALERT_FILE}")"
 touch "\${SEEN_FILE}"
 
 log() {
-  echo "[\$(date -Iseconds)] \$*" | tee -a "\${LOG_FILE}"
+  echo "[$(date -Iseconds)] $*" | tee -a "\${LOG_FILE}"
 }
 
 log "Security monitor started"
 
 # Fetch advisories from GitHub API (public, no auth required for public repos)
-RESPONSE=\$(curl -sfL \\
+RESPONSE=$(curl -sfL \\
   -H "Accept: application/vnd.github+json" \\
   -H "X-GitHub-Api-Version: 2022-11-28" \\
   "\${ADVISORIES_URL}" 2>>\${LOG_FILE}) || {
@@ -177,10 +177,10 @@ RESPONSE=\$(curl -sfL \\
 # Parse advisories and check for new critical/high CVEs
 NEW_ALERTS=0
 echo "\${RESPONSE}" | jq -c '.[]' 2>/dev/null | while IFS= read -r advisory; do
-  GHSA_ID=\$(echo "\${advisory}" | jq -r '.ghsa_id // empty')
-  SEVERITY=\$(echo "\${advisory}" | jq -r '.severity // "unknown"')
-  CVE_ID=\$(echo "\${advisory}" | jq -r '.cve_id // "none"')
-  SUMMARY=\$(echo "\${advisory}" | jq -r '.summary // "No summary"')
+  GHSA_ID=$(echo "\${advisory}" | jq -r '.ghsa_id // empty')
+  SEVERITY=$(echo "\${advisory}" | jq -r '.severity // "unknown"')
+  CVE_ID=$(echo "\${advisory}" | jq -r '.cve_id // "none"')
+  SUMMARY=$(echo "\${advisory}" | jq -r '.summary // "No summary"')
 
   # Skip if already seen
   if grep -qF "\${GHSA_ID}" "\${SEEN_FILE}" 2>/dev/null; then
@@ -206,11 +206,11 @@ echo "\${RESPONSE}" | jq -c '.[]' 2>/dev/null | while IFS= read -r advisory; do
       --arg cve "\${CVE_ID}" \\
       --arg severity "\${SEVERITY}" \\
       --arg summary "\${SUMMARY}" \\
-      --arg detected "\$(date -Iseconds)" \\
-      '{ghsa_id: \$ghsa, cve_id: \$cve, severity: \$severity, summary: \$summary, detected_at: \$detected}' \\
+      --arg detected "$(date -Iseconds)" \\
+      '{ghsa_id: $ghsa, cve_id: $cve, severity: $severity, summary: $summary, detected_at: $detected}' \\
       >> "\${ALERT_FILE}"
 
-    NEW_ALERTS=\$((NEW_ALERTS + 1))
+    NEW_ALERTS=$((NEW_ALERTS + 1))
   else
     # Track non-matching advisories too so we don't re-check them
     echo "\${GHSA_ID}" >> "\${SEEN_FILE}"
@@ -251,15 +251,15 @@ DEPLOY_DIR="${deployDir}"
 BACKUP_DIR="${backupTarget}"
 RETENTION_DAYS=${retentionDays}
 LOG_DIR="\${DEPLOY_DIR}/ops/automation/logs"
-LOG_FILE="\${LOG_DIR}/backup-\$(date +%Y%m%d-%H%M%S).log"
-TIMESTAMP=\$(date +%Y%m%d-%H%M%S)
+LOG_FILE="\${LOG_DIR}/backup-$(date +%Y%m%d-%H%M%S).log"
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 SNAPSHOT_DIR="\${BACKUP_DIR}/\${TIMESTAMP}"
 LATEST_LINK="\${BACKUP_DIR}/latest"
 
 mkdir -p "\${LOG_DIR}" "\${BACKUP_DIR}"
 
 log() {
-  echo "[\$(date -Iseconds)] \$*" | tee -a "\${LOG_FILE}"
+  echo "[$(date -Iseconds)] $*" | tee -a "\${LOG_FILE}"
 }
 
 log "Workspace backup started"
@@ -309,15 +309,15 @@ log "Backup snapshot created: \${SNAPSHOT_DIR}"
 REMOVED=0
 for old_snap in "\${BACKUP_DIR}"/20*; do
   [ -d "\${old_snap}" ] || continue
-  snap_name=\$(basename "\${old_snap}")
+  snap_name=$(basename "\${old_snap}")
   # Parse timestamp from directory name (YYYYMMDD-HHMMSS)
-  snap_date=\$(echo "\${snap_name}" | cut -c1-8)
-  cutoff_date=\$(date -d "-\${RETENTION_DAYS} days" +%Y%m%d 2>/dev/null || date -v-\${RETENTION_DAYS}d +%Y%m%d 2>/dev/null || echo "")
+  snap_date=$(echo "\${snap_name}" | cut -c1-8)
+  cutoff_date=$(date -d "-\${RETENTION_DAYS} days" +%Y%m%d 2>/dev/null || date -v-\${RETENTION_DAYS}d +%Y%m%d 2>/dev/null || echo "")
 
   if [ -n "\${cutoff_date}" ] && [ "\${snap_date}" '<' "\${cutoff_date}" ]; then
     log "Removing expired snapshot: \${snap_name}"
     rm -rf "\${old_snap}"
-    REMOVED=\$((REMOVED + 1))
+    REMOVED=$((REMOVED + 1))
   fi
 done
 

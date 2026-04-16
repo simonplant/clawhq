@@ -22,14 +22,14 @@ export function listServices(options: ServiceListOptions): ServiceListResult {
   let composeRaw: string;
   try {
     composeRaw = readFileSync(composePath, "utf-8");
-  } catch (e) {
+  } catch {
     return { services: [] };
   }
 
   let compose: Record<string, unknown>;
   try {
     compose = yamlParse(composeRaw) as Record<string, unknown>;
-  } catch (e) {
+  } catch {
     return { services: [] };
   }
 

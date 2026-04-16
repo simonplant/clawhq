@@ -18,11 +18,12 @@ import { access, constants, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
-
 import { collectIntegrationDomains, IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadAllowlist, loadIpsetMeta } from "../../build/launcher/firewall.js";
+import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 import { isTimerActive } from "../automation/install.js";
+import { compareVersions } from "../updater/calver.js";
+
 import type { DoctorCheckName, DoctorCheckResult, DoctorSeverity } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -52,7 +53,6 @@ function fail(
  * Delegates to the shared CalVer module which handles both
  * calendar-based (v2026.4.12) and legacy semver (v0.8.7) formats.
  */
-import { compareVersions } from "../updater/calver.js";
 export { compareVersions };
 
 /**
@@ -584,15 +584,15 @@ function validateCronFieldPart(
 
   const wildcardStep = part.match(/^\*\/(\d+)$/);
   if (wildcardStep) {
-    const step = parseInt(wildcardStep[1]!, 10);
+    const step = parseInt(wildcardStep[1] ?? "", 10);
     if (step === 0) return `${range.name}: step value cannot be 0`;
     return null;
   }
 
   const rangeMatch = part.match(/^(\d+)-(\d+)(?:\/(\d+))?$/);
   if (rangeMatch) {
-    const lo = parseInt(rangeMatch[1]!, 10);
-    const hi = parseInt(rangeMatch[2]!, 10);
+    const lo = parseInt(rangeMatch[1] ?? "", 10);
+    const hi = parseInt(rangeMatch[2] ?? "", 10);
     if (lo < range.min || lo > range.max)
       return `${range.name}: value ${lo} out of range ${range.min}-${range.max}`;
     if (hi < range.min || hi > range.max)
@@ -625,8 +625,9 @@ function validateCronExpr(expr: string): string[] {
   }
   const errors: string[] = [];
   for (let i = 0; i < 5; i++) {
-    const field = fields[i]!;
-    const range = CRON_FIELD_RANGES[i]!;
+    const field = fields[i];
+    const range = CRON_FIELD_RANGES[i];
+    if (!field || !range) continue;
     for (const part of field.split(",")) {
       const err = validateCronFieldPart(part, range);
       if (err) errors.push(err);

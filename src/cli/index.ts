@@ -9,9 +9,10 @@
  * Commands grouped by lifecycle phase for --help display only.
  */
 
-import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
 
@@ -31,8 +32,9 @@ import { registerSecureCommands } from "./commands/secure.js";
 import { CommandError } from "./errors.js";
 import { renderError } from "./ux.js";
 
-const require = createRequire(import.meta.url);
-const pkg = require("../../package.json") as { version: string; description: string };
+const pkg = JSON.parse(
+  readFileSync(join(fileURLToPath(import.meta.url), "../../../package.json"), "utf-8"),
+) as { version: string; description: string };
 
 const DEFAULT_DEPLOY_DIR = join(homedir(), ".clawhq");
 

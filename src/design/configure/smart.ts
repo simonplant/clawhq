@@ -13,8 +13,8 @@ import { join } from "node:path";
 
 import chalk from "chalk";
 
-import { sanitizeContentSync } from "../../secure/sanitizer/index.js";
 import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
+import { sanitizeContentSync } from "../../secure/sanitizer/index.js";
 import { loadAllBuiltinBlueprints, loadBlueprint } from "../blueprints/loader.js";
 import type { LoadedBlueprint } from "../blueprints/loader.js";
 

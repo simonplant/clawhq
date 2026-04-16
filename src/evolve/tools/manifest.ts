@@ -31,7 +31,7 @@ export async function loadToolManifest(deployDir: string): Promise<ToolManifest>
   try {
     const raw = await readFile(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
+  } catch {
     return { version: 1, tools: [] };
   }
   if (parsed.version !== 1) {

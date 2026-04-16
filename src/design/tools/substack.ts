@@ -26,37 +26,37 @@ export function generateSubstackTool(): string {
 # Example: { "mancini": "tradecompanion" } → "substack latest mancini" fetches tradecompanion.
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "\$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COOKIE="\${SUBSTACK_COOKIE:-}"
 ALIASES_FILE="\${SCRIPT_DIR}/config/substack-aliases.json"
 
 # Resolve publication alias → subdomain
 _resolve_pub() {
-  local name="\$1"
-  if [[ -f "\$ALIASES_FILE" ]] && command -v jq >/dev/null 2>&1; then
+  local name="$1"
+  if [[ -f "$ALIASES_FILE" ]] && command -v jq >/dev/null 2>&1; then
     local resolved
-    resolved=\$(jq -r --arg n "\$name" '.[\$n] // empty' "\$ALIASES_FILE" 2>/dev/null)
-    if [[ -n "\$resolved" ]]; then
-      echo "\$resolved"
+    resolved=$(jq -r --arg n "$name" '.[$n] // empty' "$ALIASES_FILE" 2>/dev/null)
+    if [[ -n "$resolved" ]]; then
+      echo "$resolved"
       return
     fi
   fi
   # No alias — use as-is (it's the subdomain)
-  echo "\$name"
+  echo "$name"
 }
 
 _curl() {
-  if [[ -n "\$COOKIE" ]]; then
-    curl -sS --fail-with-body -H "Cookie: \$COOKIE" "\$@"
+  if [[ -n "$COOKIE" ]]; then
+    curl -sS --fail-with-body -H "Cookie: $COOKIE" "$@"
   else
-    curl -sS --fail-with-body "\$@"
+    curl -sS --fail-with-body "$@"
   fi
 }
 
 # ClawWall: sanitize external content
 _sanitize() {
-  if [[ -x "\$SCRIPT_DIR/sanitize" ]]; then
-    "\$SCRIPT_DIR/sanitize" --source substack --log
+  if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
+    "$SCRIPT_DIR/sanitize" --source substack --log
   else
     cat
   fi
@@ -65,37 +65,37 @@ _sanitize() {
 cmd="\${1:-help}"
 shift 2>/dev/null || true
 
-case "\$cmd" in
+case "$cmd" in
   latest)
-    pub=\$(_resolve_pub "\${1:?Usage: substack latest <publication>}")
-    _curl "https://\$pub.substack.com/api/v1/posts?limit=10" | \\
+    pub=$(_resolve_pub "\${1:?Usage: substack latest <publication>}")
+    _curl "https://$pub.substack.com/api/v1/posts?limit=10" | \\
       jq '[.[] | {title, slug, post_date, subtitle, audience, canonical_url, wordcount, description: .truncated_body_text[0:200]}]' 2>/dev/null | _sanitize
     ;;
   search)
-    pub=\$(_resolve_pub "\${1:?Usage: substack search <publication> <query>}")
+    pub=$(_resolve_pub "\${1:?Usage: substack search <publication> <query>}")
     query="\${*:2}"
-    [[ -z "\$query" ]] && { echo "Usage: substack search <publication> <query>" >&2; exit 1; }
-    encoded=\$(jq -rn --arg q "\$query" '\$q | @uri')
-    _curl "https://\$pub.substack.com/api/v1/posts?query=\$encoded&limit=10" | \\
+    [[ -z "$query" ]] && { echo "Usage: substack search <publication> <query>" >&2; exit 1; }
+    encoded=$(jq -rn --arg q "$query" '$q | @uri')
+    _curl "https://$pub.substack.com/api/v1/posts?query=$encoded&limit=10" | \\
       jq '[.[] | {title, slug, post_date, subtitle, audience, canonical_url, wordcount, description: .truncated_body_text[0:200]}]' 2>/dev/null | _sanitize
     ;;
   read)
-    pub=\$(_resolve_pub "\${1:?Usage: substack read <publication> <slug>}")
+    pub=$(_resolve_pub "\${1:?Usage: substack read <publication> <slug>}")
     slug="\${2:?Usage: substack read <publication> <slug>}"
-    _curl "https://\$pub.substack.com/api/v1/posts/\$slug" | _sanitize
+    _curl "https://$pub.substack.com/api/v1/posts/$slug" | _sanitize
     ;;
   aliases)
-    if [[ -f "\$ALIASES_FILE" ]]; then
-      jq '.' "\$ALIASES_FILE"
+    if [[ -f "$ALIASES_FILE" ]]; then
+      jq '.' "$ALIASES_FILE"
     else
-      echo "No aliases configured. Create \$ALIASES_FILE"
+      echo "No aliases configured. Create $ALIASES_FILE"
     fi
     ;;
   help|--help|-h|"")
-    sed -n '2,12p' "\$0" | sed 's/^# \\?//'
+    sed -n '2,12p' "$0" | sed 's/^# \\?//'
     ;;
   *)
-    echo "substack: unknown command '\$cmd'" >&2
+    echo "substack: unknown command '$cmd'" >&2
     exit 1
     ;;
 esac

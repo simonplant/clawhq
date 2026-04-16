@@ -10,6 +10,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDigitalOceanAdapter } from "./digitalocean.js";
@@ -271,7 +272,7 @@ describe("DigitalOcean live API tests", () => {
   const token = process.env.CLAWHQ_TEST_DO_TOKEN;
 
   it.skipIf(!token)("validates real token against live API", async () => {
-    const adapter = createDigitalOceanAdapter(token!);
+    const adapter = createDigitalOceanAdapter(token as string);
     const result = await adapter.validateToken();
 
     expect(result.valid).toBe(true);
@@ -279,7 +280,7 @@ describe("DigitalOcean live API tests", () => {
   });
 
   it.skipIf(!token)("lists SSH keys from live API", async () => {
-    const adapter = createDigitalOceanAdapter(token!);
+    const adapter = createDigitalOceanAdapter(token as string);
     const keys = await adapter.listSshKeys();
 
     // Should return an array (may be empty)

@@ -7,6 +7,7 @@
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+
 import { parse as yamlParse } from "yaml";
 
 import type { MissionProfile, PersonalityPreset } from "./types.js";
@@ -15,7 +16,7 @@ import type { MissionProfile, PersonalityPreset } from "./types.js";
 
 function findConfigsDir(): string {
   // Walk up from dist/design/catalog/ to find configs/
-  let dir = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
+  const dir = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
   const candidate = join(dir, "configs");
   if (existsSync(candidate)) return candidate;
   return join(process.cwd(), "configs");

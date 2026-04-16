@@ -171,7 +171,7 @@ export async function readStagedFiles(
     try {
       const content = await readFile(join(stagingDir, file), "utf-8");
       results.push({ file, content });
-    } catch (err) {
+    } catch {
       // Unreadable staged file — skip it
     }
   }

@@ -1,8 +1,7 @@
 import { join } from "node:path";
 
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
 import {
@@ -14,6 +13,7 @@ import {
   startApprovalBot,
 } from "../../evolve/approval/index.js";
 import type { TelegramConfig } from "../../evolve/approval/index.js";
+import { listIntegrations } from "../../evolve/integrate/index.js";
 import {
   destroyAgent,
   exportBundle,
@@ -54,9 +54,7 @@ import {
   listTools,
   removeTool,
 } from "../../evolve/tools/index.js";
-import { listIntegrations } from "../../evolve/integrate/index.js";
 import { createAuditConfig } from "../../secure/audit/index.js";
-
 import { CommandError } from "../errors.js";
 import { createCommandScope, renderError, ensureInstalled } from "../ux.js";
 

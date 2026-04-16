@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 
 import {
@@ -14,7 +15,7 @@ import {
   writeRoutesConfig,
 } from "./proxy-routes.js";
 import { generateProxyServerScript } from "./proxy-server.js";
-import type { ProxyRoute, ProxyRoutesConfig } from "./proxy-types.js";
+import type { ProxyRoutesConfig } from "./proxy-types.js";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 

@@ -15,8 +15,8 @@
  */
 
 import { BOOTSTRAP_MAX_CHARS } from "../../config/defaults.js";
-import type { UserContext } from "../configure/types.js";
 import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
+import type { UserContext } from "../configure/types.js";
 
 import { generateAgents } from "./agents.js";
 import { generateSoul } from "./soul.js";

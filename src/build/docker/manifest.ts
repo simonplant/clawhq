@@ -61,7 +61,7 @@ export async function readManifest(
   try {
     const raw = await readFile(manifestPath(deployDir), "utf-8");
     return JSON.parse(raw) as BuildManifest;
-  } catch (e) {
+  } catch {
     return null;
   }
 }

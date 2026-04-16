@@ -10,18 +10,19 @@
  * - Value constraints (non-empty strings, valid formats)
  */
 
-import type {
-  BlueprintValidationReport,
-  BlueprintValidationResult,
-  BlueprintValidationSeverity,
-} from "./types.js";
+import { KNOWN_MODELS } from "../../config/defaults.js";
+
 import {
   isValidProfileId,
   mergeProfileDeny,
   MISSION_PROFILE_DEFAULTS,
   MISSION_PROFILE_IDS,
 } from "./profiles.js";
-import { KNOWN_MODELS } from "../../config/defaults.js";
+import type {
+  BlueprintValidationReport,
+  BlueprintValidationResult,
+  BlueprintValidationSeverity,
+} from "./types.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

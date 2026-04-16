@@ -67,7 +67,7 @@ describe("generateBundle", () => {
     const bundle = generateBundle(makeAnswers());
     const fs = bundle.openclawConfig.tools?.fs;
     expect(fs).toBeDefined();
-    expect(fs!.workspaceOnly).toBe(true);
+    expect(fs?.workspaceOnly).toBe(true);
   });
 
   it("sets LM-06: container user to 1000:1000", () => {
@@ -534,10 +534,10 @@ describe("delegated action rules", () => {
     const bundle = generateBundle(answers);
 
     expect(bundle.delegatedRulesFile).toBeDefined();
-    expect(bundle.delegatedRulesFile!.path).toBe("workspace/delegated-rules.json");
-    expect(bundle.delegatedRulesFile!.categoryCount).toBeGreaterThan(0);
-    expect(bundle.delegatedRulesFile!.ruleCount).toBeGreaterThan(0);
-    expect(bundle.delegatedRulesFile!.sizeBytes).toBeGreaterThan(0);
+    expect(bundle.delegatedRulesFile?.path).toBe("workspace/delegated-rules.json");
+    expect(bundle.delegatedRulesFile?.categoryCount).toBeGreaterThan(0);
+    expect(bundle.delegatedRulesFile?.ruleCount).toBeGreaterThan(0);
+    expect(bundle.delegatedRulesFile?.sizeBytes).toBeGreaterThan(0);
   });
 
   it("omits delegatedRulesFile when blueprint has no delegation_rules", () => {
@@ -556,12 +556,13 @@ describe("delegated action rules", () => {
       blueprintPath: loaded.sourcePath,
     });
     const bundle = generateBundle(answers);
-    const info = bundle.delegatedRulesFile!;
+    const info = bundle.delegatedRulesFile;
+    expect(info).toBeDefined();
 
     // email-manager has 3 categories (appointment-confirm, vendor-reply, unsubscribe)
-    expect(info.categoryCount).toBe(3);
+    expect(info?.categoryCount).toBe(3);
     // Total rules across all categories
-    expect(info.ruleCount).toBeGreaterThanOrEqual(8);
+    expect(info?.ruleCount).toBeGreaterThanOrEqual(8);
   });
 
   it("metadata sizeBytes matches actual content size", () => {
@@ -571,10 +572,10 @@ describe("delegated action rules", () => {
       blueprint: loaded.blueprint,
       blueprintPath: loaded.sourcePath,
     }));
-    const info = bundle.delegatedRulesFile!;
+    const info = bundle.delegatedRulesFile;
 
     expect(content).toBeDefined();
-    expect(info.sizeBytes).toBe(Buffer.byteLength(content!, "utf-8"));
+    expect(info?.sizeBytes).toBe(Buffer.byteLength(content ?? "", "utf-8"));
   });
 
   it("metadata ruleCount matches rules in generated content", () => {
@@ -584,14 +585,14 @@ describe("delegated action rules", () => {
       blueprint: loaded.blueprint,
       blueprintPath: loaded.sourcePath,
     }));
-    const info = bundle.delegatedRulesFile!;
+    const info = bundle.delegatedRulesFile;
 
-    const parsed = JSON.parse(content!);
+    const parsed = JSON.parse(content ?? "");
     const contentRuleCount = parsed.categories.reduce(
       (sum: number, cat: { rules: unknown[] }) => sum + cat.rules.length, 0,
     );
-    expect(info.ruleCount).toBe(contentRuleCount);
-    expect(info.categoryCount).toBe(parsed.categories.length);
+    expect(info?.ruleCount).toBe(contentRuleCount);
+    expect(info?.categoryCount).toBe(parsed.categories.length);
   });
 });
 

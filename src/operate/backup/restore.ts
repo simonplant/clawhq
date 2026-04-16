@@ -22,7 +22,6 @@ import { BACKUP_RESTORE_GPG_TIMEOUT_MS, BACKUP_RESTORE_TAR_TIMEOUT_MS, DIR_MODE_
 import { runDoctor } from "../doctor/doctor.js";
 import type { DoctorReport } from "../doctor/types.js";
 
-import { SNAPSHOTS_DIR, spawnWithStdin } from "./utils.js";
 import type {
   BackupProgressCallback,
   BackupRestoreOptions,
@@ -31,6 +30,7 @@ import type {
   SnapshotManifest,
   StepStatus,
 } from "./types.js";
+import { SNAPSHOTS_DIR, spawnWithStdin } from "./utils.js";
 
 const execFileAsync = promisify(execFile);
 

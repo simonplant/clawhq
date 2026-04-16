@@ -23,7 +23,6 @@ import { createGzip } from "node:zlib";
 
 import { BACKUP_GPG_TIMEOUT_MS, DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
-import { SNAPSHOTS_DIR, spawnWithStdin } from "./utils.js";
 import type {
   BackupCreateOptions,
   BackupCreateResult,
@@ -33,6 +32,7 @@ import type {
   SnapshotSummary,
   StepStatus,
 } from "./types.js";
+import { SNAPSHOTS_DIR, spawnWithStdin } from "./utils.js";
 
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

@@ -67,7 +67,7 @@ export async function readTraces(
       .split("\n")
       .filter((line) => line.trim().length > 0)
       .map((line) => JSON.parse(line) as DecisionTrace);
-  } catch (err) {
+  } catch {
     return [];
   }
 }

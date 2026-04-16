@@ -277,7 +277,7 @@ async function fixCronHealth(deployDir: string): Promise<FixResult> {
         let cleared = false;
         for (const key of staleKeys) {
           if (key in state) {
-            delete state[key];
+            Reflect.deleteProperty(state, key);
             cleared = true;
           }
         }

@@ -9,8 +9,8 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import type { Command } from "commander";
 import chalk from "chalk";
+import type { Command } from "commander";
 
 import { CommandError } from "../errors.js";
 import { ensureInstalled } from "../ux.js";

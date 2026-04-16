@@ -50,7 +50,7 @@ export function loadTelegramConfig(deployDir: string): TelegramConfig | undefine
     const chatId = parseEnvVar(content, "TELEGRAM_CHAT_ID");
     if (!botToken || !chatId) return undefined;
     return { botToken, chatId };
-  } catch (err) {
+  } catch {
     return undefined;
   }
 }

@@ -1,9 +1,7 @@
-import type { Command } from "commander";
-
 import chalk from "chalk";
+import type { Command } from "commander";
 import ora from "ora";
 
-import type { TrustMode } from "../../config/types.js";
 import {
   connectCloud,
   connectSentinel,
@@ -36,7 +34,7 @@ import {
   switchTrustMode,
   unregisterAgent,
 } from "../../cloud/index.js";
-
+import type { TrustMode } from "../../config/types.js";
 import { CommandError } from "../errors.js";
 import { ensureInstalled } from "../ux.js";
 

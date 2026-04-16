@@ -8,13 +8,13 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { analyzeHealth } from "./alerts.js";
 import { buildDigest, formatDigestMessage } from "./digest.js";
-import { sendNotification } from "./notify.js";
 import {
   formatDigestTable,
   formatMonitorEvent,
   formatMonitorStateJson,
   formatMonitorStateTable,
 } from "./format.js";
+import { sendNotification } from "./notify.js";
 import { RecoveryTracker } from "./recovery.js";
 import type {
   DigestContent,

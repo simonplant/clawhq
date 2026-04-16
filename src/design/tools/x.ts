@@ -20,27 +20,27 @@ export function generateXTool(): string {
 #   user <username>                  Look up user by username (JSON)
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "\$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Help works without credentials
 case "\${1:-}" in help|--help|-h|"")
-  sed -n '2,9p' "\$0" | sed 's/^# \\?//'
+  sed -n '2,9p' "$0" | sed 's/^# \\?//'
   exit 0 ;; esac
 
 # Auth: prefer credential proxy, fall back to direct token
 if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/x"
-  _curl() { curl -sS --fail-with-body "\$@"; }
+  _curl() { curl -sS --fail-with-body "$@"; }
 else
   API="https://api.twitter.com/2"
   TOKEN="\${X_BEARER_TOKEN:?Set X_BEARER_TOKEN or CRED_PROXY_URL}"
-  _curl() { curl -sS --fail-with-body -H "Authorization: Bearer \$TOKEN" "\$@"; }
+  _curl() { curl -sS --fail-with-body -H "Authorization: Bearer $TOKEN" "$@"; }
 fi
 
 # ClawWall: sanitize external content
 _sanitize() {
-  if [[ -x "\$SCRIPT_DIR/sanitize" ]]; then
-    "\$SCRIPT_DIR/sanitize" --source x --log
+  if [[ -x "$SCRIPT_DIR/sanitize" ]]; then
+    "$SCRIPT_DIR/sanitize" --source x --log
   else
     cat
   fi
@@ -49,25 +49,25 @@ _sanitize() {
 cmd="\${1:-help}"
 shift 2>/dev/null || true
 
-case "\$cmd" in
+case "$cmd" in
   search)
     query="\${*:?Usage: x search <query>}"
-    encoded=\$(jq -rn --arg q "\$query" '\$q | @uri')
-    _curl "\$API/tweets/search/recent?query=\$encoded&max_results=10&tweet.fields=created_at,author_id,public_metrics" | _sanitize
+    encoded=$(jq -rn --arg q "$query" '$q | @uri')
+    _curl "$API/tweets/search/recent?query=$encoded&max_results=10&tweet.fields=created_at,author_id,public_metrics" | _sanitize
     ;;
   timeline)
     user_id="\${1:?Usage: x timeline <user_id>}"
-    _curl "\$API/users/\$user_id/tweets?max_results=10&tweet.fields=created_at,public_metrics" | _sanitize
+    _curl "$API/users/$user_id/tweets?max_results=10&tweet.fields=created_at,public_metrics" | _sanitize
     ;;
   user)
     username="\${1:?Usage: x user <username>}"
-    _curl "\$API/users/by/username/\$username?user.fields=description,public_metrics,created_at" | _sanitize
+    _curl "$API/users/by/username/$username?user.fields=description,public_metrics,created_at" | _sanitize
     ;;
   help|--help|-h|"")
-    sed -n '2,9p' "\$0" | sed 's/^# \\?//'
+    sed -n '2,9p' "$0" | sed 's/^# \\?//'
     ;;
   *)
-    echo "x: unknown command '\$cmd'" >&2
+    echo "x: unknown command '$cmd'" >&2
     exit 1
     ;;
 esac

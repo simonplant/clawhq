@@ -8,16 +8,15 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { realpathSync } from "node:fs";
 
 import { Hono } from "hono";
 import { stringify as yamlStringify } from "yaml";
 
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
 import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../config/defaults.js";
-import { readEnvValue } from "../secure/credentials/env-store.js";
 import {
   loadAllBuiltinBlueprints,
   loadBlueprint,
@@ -43,6 +42,7 @@ import {
 } from "../operate/doctor/index.js";
 import { streamLogs } from "../operate/logs/index.js";
 import { getStatus } from "../operate/status/index.js";
+import { readEnvValue } from "../secure/credentials/env-store.js";
 
 import { ApprovalsPage, ApprovalList } from "./pages/approvals.js";
 import { DeployPage, DeployResult } from "./pages/deploy.js";
@@ -154,7 +154,7 @@ export function createApp(options: DashboardOptions): Hono {
   app.get("/api/logs", async (c) => {
     // Rate limiting
     const now = Date.now();
-    while (logRequestTimes.length > 0 && logRequestTimes[0]! < now - LOG_RATE_WINDOW_MS) {
+    while (logRequestTimes.length > 0 && (logRequestTimes[0] ?? 0) < now - LOG_RATE_WINDOW_MS) {
       logRequestTimes.shift();
     }
     if (logRequestTimes.length >= LOG_RATE_LIMIT) {

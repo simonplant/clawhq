@@ -8,8 +8,8 @@
  * Identity files are read-only at runtime (LM-12 prevention).
  */
 
-import type { Blueprint, ToolEntry } from "../blueprints/types.js";
 import { getQuirksForCategory } from "../../evolve/integrate/registry.js";
+import type { Blueprint, ToolEntry } from "../blueprints/types.js";
 
 /**
  * Generate TOOLS.md content from a blueprint's toolbelt.
@@ -39,7 +39,8 @@ export function generateTools(blueprint: Blueprint): string {
   sections.push("## Tools by Category", "");
 
   for (const category of categories) {
-    const tools = byCategory.get(category)!;
+    const tools = byCategory.get(category);
+    if (!tools) continue;
     sections.push(`### ${formatCategory(category)}`, "");
 
     for (const tool of tools) {

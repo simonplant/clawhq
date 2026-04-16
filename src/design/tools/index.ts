@@ -14,9 +14,9 @@ import { FILE_MODE_EXEC } from "../../config/defaults.js";
 import type { Blueprint } from "../blueprints/types.js";
 
 import { generateApproveActionTool } from "./approve-action.js";
+import { generateBacklogTool } from "./backlog.js";
 import { generateEmailTool } from "./email.js";
 import { generateGhTool } from "./gh.js";
-import { generateBacklogTool } from "./backlog.js";
 import { generateHaTool } from "./ha.js";
 import { generateIcalTool } from "./ical.js";
 import { generateJournalTool } from "./journal.js";

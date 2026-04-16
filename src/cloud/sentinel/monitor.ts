@@ -20,6 +20,7 @@ import {
   SENTINEL_API_TIMEOUT_MS,
   SENTINEL_MAX_COMMITS_PER_CHECK,
 } from "../../config/defaults.js";
+
 import type { ConfigImpact, ConfigImpactLevel, UpstreamAnalysis, UpstreamCommit } from "./types.js";
 
 // ── Config-Impacting File Patterns ─────────────────────────────────────────
