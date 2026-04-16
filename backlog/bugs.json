@@ -197,6 +197,144 @@
       "groomingNotes": "Pairs with BUG-006 — compaction lets you run a smaller modelContextWindow safely. Fixing this is higher leverage than tuning ctx size."
     },
     {
+      "id": "BUG-009",
+      "title": "No continuous credential health probe — silent rot between deploys",
+      "intent": "Credentials validated at `clawhq up` (via verify step) can go bad any time after — token regenerated, API access revoked, quota exhausted. Nothing re-probes. Operator finds out when a channel stops responding, by which time the agent has been degraded for hours or days.",
+      "description": "On 2026-04-16 Clawdius's Telegram bot token went invalid between the morning's `clawhq up` and the afternoon. Bot auto-restarted 6+ times against 401s, spamming logs for ~30 minutes with no alert. doctor's cred-proxy-healthy check passed because the proxy was up — the token was dead server-side but the proxy didn't know. Same pattern already observed today for 1Password (401) and X (403).",
+      "priority": "should",
+      "category": "observability",
+      "steps": [
+        "Add per-channel live probe to clawhq creds (not just the proxy — hit the actual provider's whoami/getMe)",
+        "Add doctor check that runs the same probes on-demand (reuse verify.ts probes)",
+        "Add an ops timer that runs creds probe every N hours and alerts on failure",
+        "Failed-credential alerts route through the agent's messaging channel if healthy, otherwise host notification"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq creds` reports live validity for every configured channel/provider",
+        "doctor surfaces the same information without manual invocation",
+        "Silent credential rot is detected within one ops cycle, not when the user notices"
+      ],
+      "scope": [
+        "src/secure/credentials/",
+        "src/operate/doctor/",
+        "src/build/launcher/verify.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Origin: 2026-04-16 Telegram outage. verify.ts already has the probe logic — needs to be runnable standalone and on a timer."
+    },
+    {
+      "id": "BUG-010",
+      "title": "Telegram channel retries forever on permanent auth failures",
+      "intent": "When a bot token is 401 Unauthorized, no amount of restarting will fix it. Exponential-backoff retrying a permanently-dead credential wastes resources, spams logs, and delays operator attention. The retry loop should classify 401/403 as permanent and surface the failure, not absorb it.",
+      "description": "Today's logs showed telegram provider restarting 6/10 times at 5s, 11s, 21s, 40s, 83s, 170s backoff — every attempt failing with `GrammyError: 401 Unauthorized` on deleteWebhook/setMyCommands. The loop eventually gives up after 10 attempts but nothing escalates. Between session restarts, the counter resets — so it can retry forever without the operator learning.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "In OpenClaw's telegram provider (upstream), classify GrammyError 401/403 as unrecoverable",
+        "On unrecoverable: stop retrying, mark channel as failed-auth, emit a distinct event",
+        "In clawhq: doctor check that flags channels in failed-auth state",
+        "Surface in logs at ERROR level (currently mixed DEBUG/ERROR noise) and in status dashboard"
+      ],
+      "acceptanceCriteria": [
+        "401/403 on Telegram API stops the retry loop after 1 attempt, not 10",
+        "Operator sees 'Telegram token invalid — regenerate via @BotFather' prominently, not buried in a retry spam stream",
+        "Other transient failures (network, 5xx) still retry with backoff"
+      ],
+      "scope": [
+        "engine/source/ (upstream OpenClaw)",
+        "src/operate/doctor/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Upstream fix preferred; clawhq-side detection is the fallback. Pairs with BUG-009."
+    },
+    {
+      "id": "BUG-011",
+      "title": "No audit trail for credential changes — can't tell what/when clobbered a secret",
+      "intent": "When a credential goes bad, operator can't answer: did clawhq apply overwrite it? did clawhq init reset it? did a build step touch it? was it only a provider-side revocation? Without a log, every incident becomes archaeology. User explicitly raised this concern on 2026-04-16.",
+      "description": "clawhq writes to .env via writer.ts with credential-preservation logic (protectCredentials in apply/index.ts) — but emits no audit entry when a secret is written, preserved, or detected changed. Similarly build and init flows touch credentials without a durable record. When the .clobbered.* files accumulated earlier this week (BUG-005), there was no trace of what agent or command triggered each rewrite.",
+      "priority": "should",
+      "category": "observability",
+      "steps": [
+        "Define a credential-events log (append-only JSONL at .clawhq/audit/credentials.jsonl)",
+        "Emit events from: apply writer, build compose gen, init wizard, integrate add/remove, connect",
+        "Event fields: timestamp, command, file, field, action (write|preserve|detect-changed|skip), reason",
+        "Add `clawhq audit credentials [--since=DATE]` to query the log",
+        "Redact secret values — log only field names and hash of value for change detection"
+      ],
+      "acceptanceCriteria": [
+        "Every credential write/preserve is recorded with source command and timestamp",
+        "`clawhq audit credentials --since=yesterday` shows what clawhq touched",
+        "No secret values ever appear in the audit log"
+      ],
+      "scope": [
+        "src/secure/audit/",
+        "src/design/configure/writer.ts",
+        "src/evolve/apply/",
+        "src/build/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Origin: 2026-04-16 user question 'is our devops process clobbering config'. Today's Telegram rot was a provider-side revocation, not clawhq — but we couldn't prove that without reading .env mtime and guessing. Audit log settles the question."
+    },
+    {
+      "id": "BUG-012",
+      "title": "Agent reads non-existent workspace files — identity or tool config drift",
+      "intent": "Tool logs show repeated read failures for files the agent expects to exist: WATCHLISTS.json, memory/YYYY-MM-DD.md, and a path-escape attempt for /app/skills/swing-scanner/SKILL.md. Either the identity files point to stale paths, skills reference files outside the sandbox, or boot hooks aren't seeding daily memory files.",
+      "description": "Errors observed on 2026-04-16: (1) `ENOENT ~/.openclaw/workspace/memory/2026-04-16.md` — daily memory file not being seeded; (2) `ENOENT WATCHLISTS.json` — referenced by agent/identity but not generated; (3) `Path escapes sandbox root: /app/skills/swing-scanner/SKILL.md` — skill instructing the agent to read from /app/ which is outside the workspace sandbox.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Audit identity files (AGENTS.md, TOOLS.md, WATCHLISTS refs) for paths that don't get generated",
+        "Fix or remove references that escape sandbox (/app/skills/*/SKILL.md is a skill-authoring path, not a runtime read path)",
+        "If daily memory files are expected, add a boot hook or cron job to seed memory/YYYY-MM-DD.md",
+        "If WATCHLISTS.json is expected, generate it or remove the reference"
+      ],
+      "acceptanceCriteria": [
+        "No ENOENT read failures for files the agent is told exist",
+        "No path-escape errors in normal operation",
+        "Agent identity and skills reference only paths that exist or are optional"
+      ],
+      "scope": [
+        "src/design/identity/",
+        "src/design/catalog/compiler.ts",
+        "workspace/skills/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Surfaced during 2026-04-16 Telegram diagnostic. Not urgent but each failed tool call burns context and may trigger model confusion / retry."
+    },
+    {
+      "id": "BUG-013",
+      "title": "ownership.ts table incomplete — 117 deployment files unclassified",
+      "intent": "The new deploy-unclassified doctor check (added in the ownership refactor) flags 117 files without an ownership rule. The check is useful but its companion table is a stub. Either the table gets filled out or the check stays noisy and operators learn to ignore it — which defeats both.",
+      "description": "`doctor` on 2026-04-16 reported: 117 deployment file(s) not classified — .env, clawhq.yaml.pre-cron-fix.bak, credentials.json, engine/Dockerfile.stage1, engine/clawwall/curl-egress-wrapper, +112 more.",
+      "priority": "could",
+      "category": "hygiene",
+      "steps": [
+        "Inventory the 117 flagged paths",
+        "Add rules to src/config/ownership.ts covering the standard generated+stateful file set",
+        "Decide per-path: compiler-owned, stateful-user, stale-backup, or platform-managed",
+        "Prune stale backups (.pre-cron-fix.bak pattern) as a separate hygiene pass"
+      ],
+      "acceptanceCriteria": [
+        "doctor deploy-unclassified reports 0 unclassified files on a standard deployment",
+        "ownership.ts covers every path the compiler emits plus stateful paths apply skips"
+      ],
+      "scope": [
+        "src/config/ownership.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "groomedAt": "2026-04-16",
+      "groomingNotes": "Companion to the ownership work landed earlier. Noise reduction — check is correct, table is stub."
+    },
+    {
       "id": "BUG-008",
       "title": "Verbose tool outputs bloat context — no per-tool output caps",
       "intent": "Tools like email, news, search, quote, and market-data tools can return multi-KB payloads that flow straight into the model's context. A single tool call can consume more tokens than the entire identity + user message. Caps don't exist.",
