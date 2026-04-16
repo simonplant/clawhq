@@ -70,6 +70,8 @@ export const OWNERSHIP_RULES: readonly OwnershipRule[] = [
     reason: "automatic backup of clawhq.yaml" },
   { pattern: "update-check.json", owner: "clawhq",
     reason: "updater's last-check cache" },
+  { pattern: ".clawhq.lock", owner: "clawhq",
+    reason: "deploy-dir advisory lock (src/config/lock.ts)" },
 
   // ── Install-from-source topology (engine/source) ─────────────────────────
   // When OpenClaw is installed from source, the deployDir root *is* the

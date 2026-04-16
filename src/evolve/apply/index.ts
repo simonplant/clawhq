@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { parse as yamlParse } from "yaml";
 
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { DeployLockBusyError, withDeployLock } from "../../config/lock.js";
 import { compile } from "../../design/catalog/index.js";
 import type { CompiledFile } from "../../design/catalog/types.js";
 import type { UserConfig } from "../../design/catalog/types.js";
@@ -63,14 +64,44 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
   const { deployDir, dryRun } = options;
   const report = progress(options.onProgress);
 
+  // Precheck clawhq.yaml presence *before* trying to lock, so the error
+  // for a missing deployment is "clawhq.yaml not found" rather than a
+  // confusing ENOENT from the lock primitive.
+  const configPath = join(deployDir, "clawhq.yaml");
+  if (!existsSync(configPath)) {
+    report("read", "failed", "clawhq.yaml not found");
+    return { success: false, error: `clawhq.yaml not found at ${configPath}`, report: emptyReport() };
+  }
+
+  // Dry-run skips the lock entirely — it's a read-only operation and
+  // taking the lock would serialize dry-runs unnecessarily against live
+  // applies. For actual writes, hold the lock across compile→diff→write
+  // so two concurrent clawhq processes cannot interleave.
+  const runCore = async (): Promise<ApplyResult> => applyCore(options, report);
+  if (dryRun) {
+    return runCore();
+  }
   try {
-    // 1. Read clawhq.yaml
+    return await withDeployLock(deployDir, runCore);
+  } catch (err) {
+    if (err instanceof DeployLockBusyError) {
+      report("read", "failed", err.message);
+      return { success: false, error: err.message, report: emptyReport() };
+    }
+    throw err;
+  }
+}
+
+async function applyCore(
+  options: ApplyOptions,
+  report: ReturnType<typeof progress>,
+): Promise<ApplyResult> {
+  const { deployDir, dryRun } = options;
+
+  try {
+    // 1. Read clawhq.yaml (presence already verified by apply())
     report("read", "running", "Reading clawhq.yaml…");
     const configPath = join(deployDir, "clawhq.yaml");
-    if (!existsSync(configPath)) {
-      report("read", "failed", "clawhq.yaml not found");
-      return { success: false, error: `clawhq.yaml not found at ${configPath}`, report: emptyReport() };
-    }
 
     const raw = yamlParse(readFileSync(configPath, "utf-8")) as Record<string, unknown>;
     const comp = raw.composition as
