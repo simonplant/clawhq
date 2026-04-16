@@ -10,7 +10,7 @@
  */
 
 // Build orchestrator
-export { build } from "./build.js";
+export { build, serializeYaml } from "./build.js";
 
 // Dockerfile generation
 export {

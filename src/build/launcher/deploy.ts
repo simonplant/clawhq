@@ -10,11 +10,20 @@
  */
 
 import { execFile } from "node:child_process";
-import { copyFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { chmod, copyFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
+import { DEPLOY_COMPOSE_TIMEOUT_MS, FILE_MODE_SECRET } from "../../config/defaults.js";
+import {
+  DEFAULT_POSTURE,
+  generateCompose,
+  getPostureConfig,
+  readCurrentPosture,
+  readManifest,
+  serializeYaml,
+} from "../docker/index.js";
 
 import {
   applyFirewall,
@@ -67,18 +76,49 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     }
 
     if (!preflight.passed) {
-      const errors = preflight.failed
-        .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
-        .join("\n");
+      // Self-heal: if compose is among the failures, attempt auto-regeneration
+      const composeFailure = preflight.failed.some((c) => c.name === "compose");
 
-      report("preflight", "failed", `${preflight.failed.length} preflight check(s) failed`);
+      if (composeFailure) {
+        report("preflight", "running", "Compose file is invalid — attempting auto-regeneration…");
+        const regenerated = await regenerateCompose(deployDir);
 
-      return {
-        success: false,
-        preflight,
-        healthy: false,
-        error: `Preflight failed:\n${errors}`,
-      };
+        if (regenerated) {
+          report("preflight", "running", "Compose regenerated — re-running preflight…");
+          const retry = await runPreflight(deployDir, signal, options.gatewayPort, options.runtime);
+
+          if (retry.warnings.length > 0) {
+            const warns = retry.warnings
+              .map((c) => `  ⚠ ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
+              .join("\n");
+            report("preflight", "running", `Warning:\n${warns}`);
+          }
+
+          if (!retry.passed) {
+            const retryErrors = retry.failed
+              .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
+              .join("\n");
+            report("preflight", "failed", `${retry.failed.length} preflight check(s) still failing after compose regeneration`);
+            return { success: false, preflight: retry, healthy: false, error: `Preflight failed:\n${retryErrors}` };
+          }
+
+          report("preflight", "done", "Preflight passed after compose auto-regeneration");
+        } else {
+          // Regeneration failed — report original errors
+          const errors = preflight.failed
+            .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
+            .join("\n");
+          report("preflight", "failed", `Compose auto-regeneration failed (no build manifest?) — ${preflight.failed.length} check(s) failed`);
+          return { success: false, preflight, healthy: false, error: `Preflight failed:\n${errors}` };
+        }
+      } else {
+        // Non-compose failure — original error path
+        const errors = preflight.failed
+          .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
+          .join("\n");
+        report("preflight", "failed", `${preflight.failed.length} preflight check(s) failed`);
+        return { success: false, preflight, healthy: false, error: `Preflight failed:\n${errors}` };
+      }
     }
 
     if (preflight.warnings.length > 0) {
@@ -431,6 +471,51 @@ function aborted(): DeployResult {
     healthy: false,
     error: "Deploy aborted",
   };
+}
+
+// ── Compose Self-Healing ──────────────────────────────────────────────────
+
+/**
+ * Regenerate docker-compose.yml from the existing build manifest and posture.
+ *
+ * Called when preflight detects a broken compose file. Uses the same
+ * generateCompose + serializeYaml pipeline as `clawhq build`, but skips
+ * the Docker image build (image already exists).
+ *
+ * Returns true if compose was successfully regenerated.
+ */
+async function regenerateCompose(deployDir: string): Promise<boolean> {
+  try {
+    const engineDir = join(deployDir, "engine");
+
+    // Need a build manifest to know the image tag
+    const manifest = await readManifest(deployDir);
+    if (!manifest?.imageTag) return false;
+
+    // Read posture (or default)
+    const posture = readCurrentPosture(deployDir) ?? DEFAULT_POSTURE;
+    const postureConfig = getPostureConfig(posture);
+
+    // Detect cred-proxy availability
+    const credProxyScript = join(engineDir, "cred-proxy.js");
+    const credProxyRoutes = join(engineDir, "cred-proxy-routes.json");
+    const enableCredProxy = existsSync(credProxyScript) && existsSync(credProxyRoutes);
+
+    // Generate and write compose
+    const compose = generateCompose(manifest.imageTag, postureConfig, deployDir, "clawhq_net", {
+      enableCredProxy,
+      credProxyScriptPath: credProxyScript,
+      credProxyRoutesPath: credProxyRoutes,
+    });
+
+    const composePath = join(engineDir, "docker-compose.yml");
+    await writeFile(composePath, serializeYaml(compose), "utf-8");
+    await chmod(composePath, FILE_MODE_SECRET);
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ── Identity File Immutability ────────────────────────────────────────────

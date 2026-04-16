@@ -272,7 +272,7 @@ async function stageWorkspaceFiles(
  * Uses simple serialization rather than a YAML library to avoid
  * adding complexity for a well-known structure.
  */
-function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
+export function serializeYaml(compose: ReturnType<typeof generateCompose>): string {
   const lines: string[] = [];
   const svc = compose.services.openclaw;
 
