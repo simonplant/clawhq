@@ -77,6 +77,7 @@ class TestWatchlistManager:
         wm = WatchlistManager(self.shared, self.lib)
         wm.update_order_symbols({"SPY"})
         wm.update_clawdius_watchlist()
-        # SPY appears in all 3 sources but should be in set only once
-        assert wm.symbols.count("SPY") if isinstance(wm.symbols, list) else True
-        assert len([s for s in wm.symbols if s == "SPY"]) == 1
+        # SPY appears in all 3 sources but set deduplicates
+        assert "SPY" in wm.symbols
+        # A set can only contain each element once by definition
+        assert isinstance(wm.symbols, set)

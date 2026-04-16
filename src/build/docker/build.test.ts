@@ -871,15 +871,27 @@ describe("generateCompose with market-engine", () => {
     expect(me?.networks).toContain("clawhq_net");
   });
 
-  it("market-engine depends on cred-proxy", () => {
+  it("market-engine depends on cred-proxy when cred-proxy is enabled", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableMarketEngine: true,
+      enableCredProxy: true,
     });
     const me = compose.services["market-engine"];
     expect(me).toBeDefined();
     expect(me?.depends_on).toHaveProperty("cred-proxy");
-    expect(me?.depends_on["cred-proxy"].condition).toBe("service_healthy");
+    expect(me?.depends_on?.["cred-proxy"].condition).toBe("service_healthy");
+  });
+
+  it("market-engine has no depends_on when cred-proxy is disabled", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+      enableCredProxy: false,
+    });
+    const me = compose.services["market-engine"];
+    expect(me).toBeDefined();
+    expect(me?.depends_on).toBeUndefined();
   });
 
   it("market-engine has healthcheck", () => {

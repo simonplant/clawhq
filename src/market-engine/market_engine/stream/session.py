@@ -38,6 +38,8 @@ def create_market_session(cred_proxy_url: str) -> str:
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             body = json.loads(resp.read())
+    except json.JSONDecodeError as e:
+        raise SessionError(f"Invalid JSON in session response: {e}") from e
     except HTTPError as e:
         raise SessionError(f"HTTP {e.code} creating session: {e.reason}") from e
     except URLError as e:
@@ -74,6 +76,8 @@ def create_account_session(cred_proxy_url: str) -> str:
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             body = json.loads(resp.read())
+    except json.JSONDecodeError as e:
+        raise SessionError(f"Invalid JSON in account session response: {e}") from e
     except HTTPError as e:
         raise SessionError(f"HTTP {e.code} creating account session: {e.reason}") from e
     except URLError as e:

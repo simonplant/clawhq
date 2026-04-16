@@ -56,10 +56,14 @@ class MarketStream:
     def update_symbols(self, symbols: set[str]) -> None:
         """Update the symbol set. Triggers resubscribe on next tick if connected."""
         old = self._symbols
-        self._symbols = symbols
-        if old != symbols and self._ws and self._ws.open:
+        self._symbols = set(symbols)  # Defensive copy
+        if old != self._symbols and self._ws and self._ws.open:
             # Schedule resubscribe (fire-and-forget)
-            asyncio.get_event_loop().create_task(self._resubscribe())
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._resubscribe())
+            except RuntimeError:
+                pass  # No running loop — resubscribe on next connect
 
     async def run(self) -> None:
         """Main loop — connect, stream, reconnect on failure. Runs forever."""

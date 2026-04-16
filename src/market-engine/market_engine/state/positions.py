@@ -47,6 +47,7 @@ class PositionStore:
         self._price_store = price_store
         self._cred_proxy_url = cred_proxy_url
         self._account_id = account_id
+        self._needs_reload = False
 
     def load_from_broker(self) -> None:
         """Fetch current positions from Tradier via cred-proxy."""
@@ -86,11 +87,15 @@ class PositionStore:
         logger.info("Loaded %d positions from broker", len(self._positions))
 
     def handle_order_event(self, msg: dict) -> None:
-        """Handle an account WebSocket order event (fill, cancel, etc.)."""
+        """Handle an account WebSocket order event (fill, cancel, etc.).
+
+        Sets a reload flag instead of blocking — the periodic position writer
+        calls load_from_broker() via asyncio.to_thread() on the next cycle.
+        """
         event_type = msg.get("type", "")
         if event_type == "order" and msg.get("status") == "filled":
-            # Reload positions on fill — simplest correct approach
-            self.load_from_broker()
+            self._needs_reload = True
+            logger.info("Order filled — flagging position reload")
 
     def update_pnl(self) -> None:
         """Recompute P&L for all positions using current prices."""

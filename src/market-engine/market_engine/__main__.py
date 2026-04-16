@@ -82,8 +82,11 @@ class Engine:
             on_order=self._on_order_event,
         )
 
-        # Queue for passing alerts from sync callbacks to async broadcaster
-        self._alert_queue: asyncio.Queue[dict] = asyncio.Queue()
+        # Alert queue created lazily in run() when event loop exists
+        self._alert_queue: asyncio.Queue[dict] | None = None
+        # Instance-level order state (NOT class-level)
+        self._current_orders: list = []
+        self._brief_mtime: float = 0.0
         self._running = True
 
     # ── Callbacks (called from within async dispatch — sync functions) ───────
@@ -118,10 +121,11 @@ class Engine:
         for alert in alerts:
             entry = self.alert_store.record(alert)
             # Put on queue — the _alert_broadcaster task drains this
-            try:
-                self._alert_queue.put_nowait(entry)
-            except asyncio.QueueFull:
-                logger.warning("Alert queue full, dropping alert for %s", symbol)
+            if self._alert_queue is not None:
+                try:
+                    self._alert_queue.put_nowait(entry)
+                except asyncio.QueueFull:
+                    logger.warning("Alert queue full, dropping alert for %s", symbol)
 
     # ── Data accessors (for web app) ────────────────────────────────────────
 
@@ -175,9 +179,6 @@ class Engine:
 
     # ── Brief & watchlist management ────────────────────────────────────────
 
-    _current_orders: list = []
-    _brief_mtime: float = 0.0
-
     def _today_brief_path(self) -> Path:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         return self.cfg.workspace_memory_dir / f"trading-{today}.md"
@@ -230,9 +231,12 @@ class Engine:
             await asyncio.sleep(30)
 
     async def _position_writer(self) -> None:
-        """Periodically write positions.json."""
+        """Periodically write positions.json and reload on fill events."""
         while self._running:
             try:
+                if self.position_store._needs_reload:
+                    self.position_store._needs_reload = False
+                    await asyncio.to_thread(self.position_store.load_from_broker)
                 self.position_store.write_file()
             except Exception as e:
                 logger.error("Position writer error: %s", e)
@@ -273,7 +277,7 @@ class Engine:
                     self._refresh_watchlist()
                     self.market_stream.update_symbols(self.watchlist.symbols)
                     try:
-                        self.position_store.load_from_broker()
+                        await asyncio.to_thread(self.position_store.load_from_broker)
                     except Exception as e:
                         logger.warning("Initial position load failed: %s", e)
             else:
@@ -292,6 +296,9 @@ class Engine:
         """Main entry point — start all components."""
         logger.info("Market Engine starting...")
 
+        # Create alert queue now that event loop exists
+        self._alert_queue = asyncio.Queue(maxsize=1000)
+
         # Initial state
         if is_market_hours():
             self.engine_status.set_mode("active")
@@ -300,7 +307,7 @@ class Engine:
             self._refresh_watchlist()
             self.market_stream.update_symbols(self.watchlist.symbols)
             try:
-                self.position_store.load_from_broker()
+                await asyncio.to_thread(self.position_store.load_from_broker)
             except Exception as e:
                 logger.warning("Initial position load failed: %s", e)
         else:

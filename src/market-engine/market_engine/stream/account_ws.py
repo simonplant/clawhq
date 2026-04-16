@@ -103,6 +103,7 @@ class AccountStream:
                 try:
                     msg = json.loads(raw)
                 except json.JSONDecodeError:
+                    logger.debug("Non-JSON account message: %s", raw[:100])
                     continue
 
                 if self.on_order:

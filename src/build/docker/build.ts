@@ -446,10 +446,12 @@ export function serializeYaml(compose: ReturnType<typeof generateCompose>): stri
     }
     lines.push("    tmpfs:");
     for (const t of me.tmpfs) lines.push(`      - "${t}"`);
-    lines.push("    depends_on:");
-    for (const [svc, cond] of Object.entries(me.depends_on)) {
-      lines.push(`      ${svc}:`);
-      lines.push(`        condition: ${(cond as { condition: string }).condition}`);
+    if (me.depends_on && Object.keys(me.depends_on).length > 0) {
+      lines.push("    depends_on:");
+      for (const [svc, cond] of Object.entries(me.depends_on)) {
+        lines.push(`      ${svc}:`);
+        lines.push(`        condition: ${(cond as { condition: string }).condition}`);
+      }
     }
     lines.push("    healthcheck:");
     lines.push("      test:");

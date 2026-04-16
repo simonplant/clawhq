@@ -1,6 +1,7 @@
 """Configuration loader — env vars, CONFIG.json, WATCHLISTS.json."""
 
 import json
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -54,16 +55,22 @@ def load_config() -> EngineConfig:
     accounts = {}
     config_path = lib_dir / "CONFIG.json"
     if config_path.exists():
-        with open(config_path) as f:
-            raw = json.load(f)
-            accounts = raw.get("accounts", {})
+        try:
+            with open(config_path) as f:
+                raw = json.load(f)
+                accounts = raw.get("accounts", {})
+        except (json.JSONDecodeError, KeyError) as e:
+            logging.getLogger(__name__).warning("Failed to parse CONFIG.json: %s", e)
 
     # Load WATCHLISTS.json
     watchlists = {}
     watchlists_path = lib_dir / "WATCHLISTS.json"
     if watchlists_path.exists():
-        with open(watchlists_path) as f:
-            watchlists = json.load(f)
+        try:
+            with open(watchlists_path) as f:
+                watchlists = json.load(f)
+        except json.JSONDecodeError as e:
+            logging.getLogger(__name__).warning("Failed to parse WATCHLISTS.json: %s", e)
 
     return EngineConfig(
         cred_proxy_url=os.environ.get("CRED_PROXY_URL", "http://cred-proxy:9876"),

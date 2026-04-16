@@ -53,11 +53,15 @@ class SSEBroadcaster:
 
     async def broadcast_price(self, symbol: str, data: dict) -> None:
         """Broadcast a price update (throttled per symbol)."""
-        now = time.time()
+        now = time.monotonic()
         last = self._price_throttle.get(symbol, 0)
         if now - last < PRICE_THROTTLE_SECONDS:
             return
         self._price_throttle[symbol] = now
+        # Periodic cleanup of throttle dict (remove symbols not seen in 60s)
+        if len(self._price_throttle) > 200:
+            cutoff = now - 60.0
+            self._price_throttle = {k: v for k, v in self._price_throttle.items() if v > cutoff}
         await self._broadcast(SSEEvent(event="price", data={"symbol": symbol, **data}))
 
     async def broadcast_alert(self, alert_data: dict) -> None:

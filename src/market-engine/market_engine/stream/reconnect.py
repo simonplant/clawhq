@@ -4,11 +4,12 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
-# Eastern Time offset (simplified — not DST-aware, close enough for market hours)
-ET = timezone(timedelta(hours=-4))
+# Eastern Time (DST-aware via zoneinfo)
+ET = ZoneInfo("America/New_York")
 
 
 @dataclass

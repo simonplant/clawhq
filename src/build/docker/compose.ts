@@ -163,7 +163,7 @@ interface ComposeMarketEngineServiceOutput {
   readonly environment: Record<string, string>;
   readonly restart: string;
   readonly tmpfs: readonly string[];
-  readonly depends_on: Record<string, { readonly condition: string }>;
+  readonly depends_on?: Record<string, { readonly condition: string }>;
   readonly healthcheck: {
     readonly test: readonly string[];
     readonly interval: string;
@@ -358,9 +358,9 @@ export function generateCompose(
         },
         restart: "unless-stopped",
         tmpfs: ["/tmp:size=32m,noexec,nosuid"],
-        depends_on: {
-          "cred-proxy": { condition: "service_healthy" },
-        },
+        ...(enableCredProxy
+          ? { depends_on: { "cred-proxy": { condition: "service_healthy" } } }
+          : {}),
         healthcheck: {
           test: ["CMD", "python", "-c", `import urllib.request; urllib.request.urlopen('http://localhost:${MARKET_ENGINE_PORT}/health')`],
           interval: "15s",

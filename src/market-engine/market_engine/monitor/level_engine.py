@@ -207,13 +207,6 @@ class LevelEngine:
     ) -> list[Alert]:
         """Check proximity to a target level (T1/T2)."""
         sym = order.exec_as or order.ticker
-        direction = order.direction
-
-        # Direction-aware: LONG = price rising toward target; SHORT = price falling
-        if direction == "LONG" and price < target * (1 - THRESHOLD_TARGET / 100):
-            return []
-        if direction == "SHORT" and price > target * (1 + THRESHOLD_TARGET / 100):
-            return []
 
         dist_pct = abs(price - target) / target * 100
         if dist_pct > THRESHOLD_TARGET:
