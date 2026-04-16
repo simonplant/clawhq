@@ -14,9 +14,8 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { stringify as yamlStringify } from "yaml";
-
 import { generateCompose } from "../../build/docker/compose.js";
+import { serializeYaml } from "../../build/docker/build.js";
 import { getPostureConfig } from "../../build/docker/posture.js";
 import {
   CRED_PROXY_PORT,
@@ -129,7 +128,7 @@ export function compile(
     enableTailscale: tailscaleEnabled,
     tailscaleHostname,
   });
-  const composeYaml = yamlStringify(composeOutput);
+  const composeYaml = serializeYaml(composeOutput);
 
   const openclawJson = renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config);
 

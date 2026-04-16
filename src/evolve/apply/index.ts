@@ -29,6 +29,7 @@ const SKIP_PATHS = new Set([
   "workspace/MEMORY.md",                        // user's curated memory
   "clawhq.yaml",                                // we're reading from it — don't overwrite
   "workspace/config/substack-aliases.json",      // user's publication aliases
+  "engine/docker-compose.yml",                  // owned by clawhq build — apply must not overwrite
 ]);
 
 /** Files where apply merges compiled output with existing runtime state. */
