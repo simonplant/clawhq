@@ -141,6 +141,9 @@ export const LOGS_EXEC_TIMEOUT_MS = 30_000;
 /** Timeout for shell commands in updater (ms). */
 export const UPDATER_EXEC_TIMEOUT_MS = 30_000;
 
+/** Timeout for docker compose down during updates (ms) — longer than EXEC to allow graceful container stop. */
+export const UPDATER_SHUTDOWN_TIMEOUT_MS = 90_000;
+
 /** Default interval for the monitor health polling loop (ms). */
 export const MONITOR_HEALTH_INTERVAL_MS = 30_000;
 

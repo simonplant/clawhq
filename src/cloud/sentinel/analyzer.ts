@@ -128,6 +128,17 @@ export function predictBreakage(
 ): BreakageReport {
   const predictions: BreakagePrediction[] = [];
 
+  // If config failed to load, we can't predict breakage — flag as risk
+  if (fingerprint.configLoadFailed) {
+    return {
+      agentId: fingerprint.agentId,
+      commitsAnalyzed: analysis.commits.length,
+      predictions: [],
+      shouldHoldUpdate: true,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   for (const impact of analysis.impacts) {
     const checker = AREA_TO_FINGERPRINT[impact.configPath];
     if (!checker) continue;

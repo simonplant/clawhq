@@ -378,6 +378,12 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
         }
       };
 
+      const validChannels = new Set(["security", "stable", "latest", "pinned"]);
+      if (opts.channel && !validChannels.has(opts.channel)) {
+        console.error(chalk.red(`\n✘ Invalid channel: ${opts.channel}`));
+        console.error(chalk.dim(`  Valid channels: ${[...validChannels].join(", ")}`));
+        throw new CommandError("", 1);
+      }
       const channel = opts.channel as UpdateChannel | undefined;
 
       try {

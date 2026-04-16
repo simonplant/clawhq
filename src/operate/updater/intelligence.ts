@@ -16,9 +16,8 @@ import { predictBreakage } from "../../cloud/sentinel/analyzer.js";
 import { generateFingerprint } from "../../cloud/sentinel/fingerprint.js";
 import {
   analyzeUpstreamCommits,
-  fetchUpstreamCommits,
 } from "../../cloud/sentinel/monitor.js";
-import type { BreakageReport, UpstreamAnalysis } from "../../cloud/sentinel/types.js";
+import type { UpstreamCommit } from "../../cloud/sentinel/types.js";
 import { GITHUB_API_BASE, OPENCLAW_GITHUB_REPO } from "../../config/defaults.js";
 
 import { buildMigrationPlan } from "./migrations/index.js";
@@ -50,8 +49,8 @@ export async function analyzeUpdate(options: {
 }): Promise<ChangeIntelligenceReport> {
   const { deployDir, currentVersion, targetVersion, signal } = options;
 
-  // 1. Fetch upstream commits between versions
-  const commits = await fetchUpstreamCommits({ signal });
+  // 1. Fetch commits between the two version tags via GitHub compare API
+  const commits = await fetchCommitsBetweenVersions(currentVersion, targetVersion, signal);
 
   // 2. Analyze commits for config-impacting changes
   const upstream = analyzeUpstreamCommits(commits);
@@ -85,6 +84,58 @@ export async function analyzeUpdate(options: {
     recommendation,
     releaseNotes: releaseNotes ?? undefined,
   };
+}
+
+// ── Version-Scoped Commit Fetching ───────────────────────────────────────
+
+/**
+ * Fetch commits between two version tags using the GitHub compare API.
+ *
+ * BUG-8 FIX: Uses compare endpoint to scope commits to the actual version
+ * range, instead of fetchUpstreamCommits which returns all recent commits.
+ */
+async function fetchCommitsBetweenVersions(
+  fromVersion: string,
+  toVersion: string,
+  signal?: AbortSignal,
+): Promise<readonly UpstreamCommit[]> {
+  try {
+    const url = `${GITHUB_API_BASE}/repos/${OPENCLAW_GITHUB_REPO}/compare/${fromVersion}...${toVersion}`;
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "ClawHQ-Updater/1.0",
+      },
+      signal: signal ?? AbortSignal.timeout(10_000),
+    });
+
+    if (!response.ok) {
+      // Fall back to unscoped fetch if compare fails (e.g. tags don't exist on remote)
+      const { fetchUpstreamCommits } = await import("../../cloud/sentinel/monitor.js");
+      return fetchUpstreamCommits({ signal });
+    }
+
+    const data = (await response.json()) as {
+      commits: readonly {
+        sha: string;
+        commit: { message: string; author: { date: string; name: string } };
+        author?: { login: string } | null;
+        files?: readonly { filename: string }[];
+      }[];
+    };
+
+    return data.commits.map((c): UpstreamCommit => ({
+      sha: c.sha,
+      message: c.commit.message.split("\n")[0],
+      date: c.commit.author.date,
+      author: c.author?.login ?? c.commit.author.name,
+      filesChanged: c.files?.map((f) => f.filename) ?? [],
+    }));
+  } catch {
+    // Fall back to unscoped fetch
+    const { fetchUpstreamCommits } = await import("../../cloud/sentinel/monitor.js");
+    return fetchUpstreamCommits({ signal });
+  }
 }
 
 // ── Release Notes ─────────────────────────────────────────────────────────

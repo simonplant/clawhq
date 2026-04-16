@@ -17,7 +17,11 @@ import { getRequiredBinaries } from "../../build/docker/binary-deps.js";
 import { generateStage2Dockerfile } from "../../build/docker/dockerfile.js";
 import type { Stage2Config } from "../../build/docker/types.js";
 import { scanWorkspaceManifest } from "../../design/configure/generate.js";
-import { UPDATER_EXEC_TIMEOUT_MS, UPDATER_PULL_TIMEOUT_MS } from "../../config/defaults.js";
+import {
+  UPDATER_EXEC_TIMEOUT_MS,
+  UPDATER_PULL_TIMEOUT_MS,
+  UPDATER_SHUTDOWN_TIMEOUT_MS,
+} from "../../config/defaults.js";
 
 import { detectOpenClawVersion } from "../doctor/checks.js";
 
@@ -46,7 +50,7 @@ const execFileAsync = promisify(execFile);
  * Check for available updates with change intelligence.
  *
  * - source installs: git fetch + compare HEAD to latest release tag
- * - cache installs: docker pull + compare image digests
+ * - cache installs: compare local image digest to registry (no pull)
  *
  * When an update is available, enriches the result with migration plan
  * and change intelligence (deployment-specific impact analysis).
@@ -60,7 +64,7 @@ export async function checkForUpdates(options: UpdateOptions): Promise<UpdateChe
 
   let result: UpdateCheckResult;
   if (installMethod === "source") {
-    result = await checkForSourceUpdates(deployDir, signal, report);
+    result = await checkForSourceUpdates(deployDir, options.channel, signal, report);
   } else {
     result = await checkForCacheUpdates(deployDir, signal, report);
   }
@@ -90,6 +94,7 @@ export async function checkForUpdates(options: UpdateOptions): Promise<UpdateChe
 /** Check for updates in a from-source installation (git fetch + compare to latest release tag). */
 async function checkForSourceUpdates(
   deployDir: string,
+  channel: UpdateOptions["channel"],
   signal: AbortSignal | undefined,
   report: ReturnType<typeof progress>,
 ): Promise<UpdateCheckResult> {
@@ -103,7 +108,7 @@ async function checkForSourceUpdates(
     });
 
     const currentTag = await getCurrentTag(sourceDir, signal);
-    const latestTag = await getLatestReleaseTag(sourceDir, signal);
+    const latestTag = await resolveTargetTag(sourceDir, channel, signal);
 
     if (!latestTag) {
       report("check", "failed", "No release tags found in upstream");
@@ -149,7 +154,7 @@ async function checkForSourceUpdates(
   }
 }
 
-/** Check for updates in a cache installation (docker pull + digest compare). */
+/** Check for updates in a cache installation (registry digest compare — no pull). */
 async function checkForCacheUpdates(
   deployDir: string,
   signal: AbortSignal | undefined,
@@ -174,23 +179,36 @@ async function checkForCacheUpdates(
       // Local image may not exist yet
     }
 
-    // Detect current version before pulling
+    // Detect current version before checking
     const currentVersion = await detectOpenClawVersion(deployDir, signal) ?? undefined;
 
-    await execFileAsync(
-      "docker",
-      ["pull", "--quiet", image],
-      { timeout: UPDATER_PULL_TIMEOUT_MS, signal },
-    );
+    // BUG-18 FIX: Use `docker manifest inspect` to compare digests without pulling.
+    // This avoids mutating the local image during a check-only operation.
+    let remoteDigest: string | undefined;
+    try {
+      const { stdout } = await execFileAsync(
+        "docker",
+        ["manifest", "inspect", image, "--verbose"],
+        { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+      );
+      // Extract the config digest from manifest output
+      const digestMatch = stdout.match(/"digest":\s*"(sha256:[a-f0-9]+)"/);
+      remoteDigest = digestMatch ? digestMatch[1] : undefined;
+    } catch {
+      // manifest inspect may not be supported or image may be local-only
+    }
 
-    const { stdout: newDigestOut } = await execFileAsync(
-      "docker",
-      ["image", "inspect", image, "--format", "{{.Id}}"],
-      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
-    );
-    const newDigest = newDigestOut.trim();
+    if (!remoteDigest) {
+      // Local-only image (e.g. "openclaw:custom") — can't check remotely
+      report("check", "done", "Local image — cannot check for remote updates");
+      return {
+        available: false,
+        currentImage: image,
+        currentVersion,
+      };
+    }
 
-    const available = !localDigest || localDigest !== newDigest;
+    const available = !localDigest || localDigest !== remoteDigest;
 
     // Extract target version from image tag (e.g. "ghcr.io/openclaw/openclaw:v2026.4.14")
     const tagMatch = image.match(/:v?(\d+\.\d+\.\d+)$/);
@@ -204,7 +222,7 @@ async function checkForCacheUpdates(
       currentImage: image,
       currentVersion,
       targetVersion,
-      latestDigest: newDigest,
+      latestDigest: remoteDigest,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -226,6 +244,66 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
 
   // Detect current version before starting
   const currentVersion = await detectOpenClawVersion(deployDir, signal) ?? undefined;
+
+  const installMethod = await detectInstallMethod(deployDir);
+
+  // ── BUG-4 FIX: Check if already up-to-date before doing anything ─────
+  if (installMethod === "source" && !options.dryRun) {
+    const sourceDir = join(deployDir, "engine", "source");
+    try {
+      await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags"], {
+        timeout: UPDATER_PULL_TIMEOUT_MS,
+        signal,
+      });
+      const latestTag = await resolveTargetTag(sourceDir, options.channel, signal);
+      if (latestTag) {
+        const { stdout: currentCommit } = await execFileAsync(
+          "git", ["-C", sourceDir, "rev-parse", "HEAD"],
+          { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+        );
+        const { stdout: latestCommit } = await execFileAsync(
+          "git", ["-C", sourceDir, "rev-parse", latestTag],
+          { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+        );
+        if (currentCommit.trim() === latestCommit.trim()) {
+          report("check", "done", `Already on latest release (${latestTag})`);
+          return { success: true, migrationsApplied: 0 };
+        }
+      }
+    } catch {
+      // If check fails, proceed with update anyway
+    }
+  }
+
+  // ── BUG-3 FIX: dry-run only needs version detection, not actual pull ──
+  if (options.dryRun) {
+    let targetVersion: string | undefined;
+    if (installMethod === "source") {
+      const sourceDir = join(deployDir, "engine", "source");
+      try {
+        await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags"], {
+          timeout: UPDATER_PULL_TIMEOUT_MS, signal,
+        });
+        targetVersion = await resolveTargetTag(sourceDir, options.channel, signal) ?? undefined;
+      } catch { /* best effort */ }
+    } else {
+      const image = await getImageName(deployDir);
+      if (image) {
+        const tagMatch = image.match(/:v?(\d+\.\d+\.\d+)$/);
+        if (tagMatch) targetVersion = `v${tagMatch[1]}`;
+      }
+    }
+
+    if (currentVersion && targetVersion) {
+      const plan = buildMigrationPlan(currentVersion, targetVersion);
+      report("migrate", "done", plan.migrations.length > 0
+        ? `Dry run: ${plan.migrations.length} migration(s) would be applied`
+        : "Dry run: no config migrations needed");
+      return { success: true, migrationsApplied: 0 };
+    }
+    report("migrate", "skipped", "Dry run: version detection unavailable — cannot show migration plan");
+    return { success: true, migrationsApplied: 0 };
+  }
 
   // ── Step 1: Pre-update backup ─────────────────────────────────────────
   let backupId: string | undefined;
@@ -259,9 +337,24 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     return { success: false, error: "Update aborted", backupId };
   }
 
+  // ── BUG-7 FIX: Snapshot active connections before update ──────────────
+  try {
+    const { snapshotConnections } = await import("./connections.js");
+    const snapshot = await snapshotConnections({
+      deployDir,
+      gatewayPort: options.gatewayPort,
+      signal,
+    });
+    if (snapshot.activeChannels.length > 0) {
+      report("check", "running",
+        `Active channels will be interrupted: ${snapshot.activeChannels.join(", ")}`);
+    }
+  } catch {
+    // Best-effort — don't fail the update
+  }
+
   // ── Step 2: Pull source / image ────────────────────────────────────────
 
-  const installMethod = await detectInstallMethod(deployDir);
   let targetVersion: string | undefined;
 
   if (installMethod === "source") {
@@ -275,7 +368,7 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
         signal,
       });
 
-      const latestTag = await getLatestReleaseTag(sourceDir, signal);
+      const latestTag = await resolveTargetTag(sourceDir, options.channel, signal);
       if (!latestTag) {
         report("pull", "failed", "No release tags found in upstream");
         return { success: false, error: "No release tags found in upstream", backupId };
@@ -294,8 +387,9 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
       return { success: false, error: `Source pull failed: ${message}`, backupId };
     }
 
+    // BUG-15 FIX: Check abort between checkout and build
     if (signal?.aborted) {
-      return { success: false, error: "Update aborted", backupId };
+      return { success: false, error: "Update aborted after checkout", backupId };
     }
 
     // Two-stage build: base image from source, then custom image with tools
@@ -354,17 +448,24 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     const tagMatch = image.match(/:v?(\d+\.\d+\.\d+)$/);
     if (tagMatch) targetVersion = `v${tagMatch[1]}`;
 
-    report("pull", "running", `Pulling ${image}…`);
-    try {
-      await execFileAsync("docker", ["pull", image], {
-        timeout: UPDATER_PULL_TIMEOUT_MS,
-        signal,
-      });
-      report("pull", "done", "Image pulled");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      report("pull", "failed", `Pull failed: ${message}`);
-      return { success: false, error: `Image pull failed: ${message}`, backupId };
+    // BUG-14 FIX: Skip pull for local-only image tags (e.g. "openclaw:custom").
+    // These are built locally by the two-stage build and can't be pulled from a registry.
+    const isLocalImage = !image.includes("/") && !image.includes(".");
+    if (isLocalImage) {
+      report("pull", "skipped", `Local image ${image} — skipping pull (use from-source update instead)`);
+    } else {
+      report("pull", "running", `Pulling ${image}…`);
+      try {
+        await execFileAsync("docker", ["pull", image], {
+          timeout: UPDATER_PULL_TIMEOUT_MS,
+          signal,
+        });
+        report("pull", "done", "Image pulled");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        report("pull", "failed", `Pull failed: ${message}`);
+        return { success: false, error: `Image pull failed: ${message}`, backupId };
+      }
     }
   }
 
@@ -380,15 +481,6 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     const plan = buildMigrationPlan(currentVersion, targetVersion);
 
     if (plan.migrations.length > 0) {
-      if (options.dryRun) {
-        report("migrate", "done", `Dry run: ${plan.migrations.length} migration(s) would be applied`);
-        return {
-          success: true,
-          backupId,
-          migrationsApplied: 0,
-        };
-      }
-
       report("migrate", "running", `Applying ${plan.migrations.length} config migration(s)…`);
       try {
         const ctx = await createMigrationContext(deployDir, signal);
@@ -427,12 +519,40 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
 
   // ── Step 4: Restart containers ────────────────────────────────────────
 
+  // BUG-1 FIX: Wire blue-green deploy when enabled (default)
+  if (options.blueGreen !== false) {
+    report("restart", "running", "Starting blue-green deploy…");
+    try {
+      const { blueGreenUpdate } = await import("./blue-green.js");
+      const bgResult = await blueGreenUpdate({
+        deployDir,
+        newImageTag: await getImageName(deployDir) ?? "openclaw:custom",
+        gatewayToken: options.gatewayToken,
+        signal,
+        onProgress: options.onProgress,
+      });
+
+      if (bgResult.success) {
+        report("restart", "done", "Blue-green deploy complete");
+        return { success: true, backupId, migrationsApplied, blueGreen: true };
+      }
+
+      // Blue-green failed — fall through to restart-in-place
+      report("restart", "skipped", `Blue-green failed (${bgResult.error}) — falling back to restart-in-place`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      report("restart", "skipped", `Blue-green error (${message}) — falling back to restart-in-place`);
+    }
+  }
+
+  // Restart-in-place fallback (or --no-blue-green)
   report("restart", "running", "Restarting containers…");
   try {
+    // BUG-12 FIX: Use longer timeout for compose down to allow graceful container stop
     await execFileAsync(
       "docker",
       ["compose", "-f", composePath, "down"],
-      { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+      { timeout: UPDATER_SHUTDOWN_TIMEOUT_MS, signal },
     );
     await execFileAsync(
       "docker",
@@ -462,16 +582,32 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
       signal,
     });
 
-    if (doctorReport.healthy) {
-      report("verify", "done", "Agent is healthy after update");
-      return { success: true, backupId, migrationsApplied };
+    if (!doctorReport.healthy) {
+      const errorCount = doctorReport.errors.length;
+      report("verify", "failed", `Doctor found ${errorCount} error(s) after update`);
+      return rollback(options, backupId, `Post-update health check failed: ${errorCount} error(s)`);
     }
 
-    const errorCount = doctorReport.errors.length;
-    report("verify", "failed", `Doctor found ${errorCount} error(s) after update`);
+    // BUG-10 FIX: Also verify the gateway is responding if token/port are provided
+    if (options.gatewayPort) {
+      try {
+        const port = options.gatewayPort;
+        const response = await fetch(`http://127.0.0.1:${port}/healthz`, {
+          signal: signal ?? AbortSignal.timeout(10_000),
+        });
+        if (!response.ok) {
+          report("verify", "failed", `Gateway health check returned HTTP ${response.status}`);
+          return rollback(options, backupId, `Gateway unhealthy after update (HTTP ${response.status})`);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        report("verify", "failed", `Gateway unreachable: ${message}`);
+        return rollback(options, backupId, `Gateway unreachable after update: ${message}`);
+      }
+    }
 
-    // Automatic rollback
-    return rollback(options, backupId, `Post-update health check failed: ${errorCount} error(s)`);
+    report("verify", "done", "Agent is healthy after update");
+    return { success: true, backupId, migrationsApplied };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     report("verify", "failed", `Health check failed: ${message}`);
@@ -503,8 +639,18 @@ async function rollback(
     });
 
     if (restoreResult.success) {
-      // Restart after restore
+      // BUG-11 FIX: Stop any running containers before starting the restored version
       const composePath = join(options.deployDir, "engine", "docker-compose.yml");
+      try {
+        await execFileAsync(
+          "docker",
+          ["compose", "-f", composePath, "down"],
+          { timeout: UPDATER_SHUTDOWN_TIMEOUT_MS, signal: options.signal },
+        );
+      } catch {
+        // Container may already be stopped — continue with restart
+      }
+
       await execFileAsync(
         "docker",
         ["compose", "-f", composePath, "up", "-d", "--wait"],
@@ -532,6 +678,41 @@ async function rollback(
       error: `${reason}. Rollback error: ${message}`,
     };
   }
+}
+
+/**
+ * Resolve target tag using channel policy, falling back to latest release tag.
+ *
+ * BUG-2 FIX: Actually wire channel resolution into the update flow.
+ */
+async function resolveTargetTag(
+  sourceDir: string,
+  channel: UpdateOptions["channel"],
+  signal?: AbortSignal,
+): Promise<string | null> {
+  if (channel) {
+    try {
+      const { stdout } = await execFileAsync(
+        "git", ["-C", sourceDir, "tag", "--list", "v*", "--sort=-version:refname"],
+        { timeout: UPDATER_EXEC_TIMEOUT_MS, signal },
+      );
+      const tags = stdout.trim().split("\n").filter(Boolean);
+
+      if (tags.length > 0) {
+        const { resolveTargetVersion } = await import("./channels.js");
+        const resolved = await resolveTargetVersion(tags, {
+          channel,
+          signal,
+        });
+        if (resolved) return resolved;
+      }
+    } catch {
+      // Fall through to default
+    }
+  }
+
+  // Default: latest release tag
+  return getLatestReleaseTag(sourceDir, signal);
 }
 
 async function getImageName(deployDir: string): Promise<string | null> {

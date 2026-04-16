@@ -118,9 +118,9 @@ describe("preflight", () => {
     expect(imagesCheck.fix).toContain("clawhq build");
   });
 
-  it("runs all 6 checks", async () => {
+  it("runs all 7 checks", async () => {
     const report = await runPreflight(testDir);
-    expect(report.checks).toHaveLength(6);
+    expect(report.checks).toHaveLength(7);
     const names = report.checks.map((c) => c.name);
     expect(names).toContain("docker");
     expect(names).toContain("images");
@@ -186,7 +186,7 @@ describe("preflight", () => {
     ac.abort();
     // Should still complete (preflight is fail-safe)
     const report = await runPreflight(testDir, ac.signal);
-    expect(report.checks).toHaveLength(6);
+    expect(report.checks).toHaveLength(7);
   });
 });
 

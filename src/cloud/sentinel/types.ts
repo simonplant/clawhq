@@ -42,6 +42,8 @@ export interface ConfigFingerprint {
   readonly hasAgentsConfig: boolean;
   /** Landmine rules that passed validation. */
   readonly landminesPassed: readonly string[];
+  /** Whether the config file failed to load (missing or corrupt JSON). */
+  readonly configLoadFailed?: boolean;
   /** ISO 8601 timestamp of fingerprint generation. */
   readonly generatedAt: string;
 }

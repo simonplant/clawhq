@@ -139,12 +139,13 @@ export function generateFingerprint(
   const configPath = join(deployDir, DEPLOY_ENGINE_SUBDIR, DEPLOY_ENGINE_OPENCLAW_JSON);
 
   let config: OpenClawConfig = {};
+  let configLoadFailed = false;
   if (existsSync(configPath)) {
     try {
       const raw = readFileSync(configPath, "utf-8");
       config = JSON.parse(raw) as OpenClawConfig;
     } catch {
-      // Use empty config if parsing fails
+      configLoadFailed = true;
     }
   }
 
@@ -160,6 +161,7 @@ export function generateFingerprint(
     hasGatewayConfig: config.gateway !== undefined,
     hasAgentsConfig: config.agents !== undefined,
     landminesPassed: runLandmineValidation(config),
+    configLoadFailed,
     generatedAt: new Date().toISOString(),
   };
 }
