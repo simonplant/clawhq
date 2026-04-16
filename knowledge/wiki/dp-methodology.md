@@ -18,6 +18,18 @@ David Prince / Inner Circle trading system. Theme-driven stock trading with core
 - **50% failure rate:** Enter with open mind. Management is what matters.
 - **Do less in tough markets:** Singles and doubles, not home runs
 
+## Three Signal Layers
+
+DP's system produces signals at three layers with different reliability:
+
+| Layer | Source | Reliability | Use |
+|-------|--------|------------|-----|
+| **AM Call thesis** | DP's morning transcript | Directional bias + watchlist. Levels are aspirational — moderators rarely wait for them. | Set the watchlist and bias for the day. Do NOT treat levels as executable entries. |
+| **VTF alerts** | Real-time chat posts | Actual entries at market prices. Time-sensitive. | Generate ORDER blocks at current price (not AM Call level). |
+| **Kira's execution** | Moderator trade log | Optimal timing and position management. Kira enters names DP identifies but at market prices with precise timing. | Reference for entry timing, trim cadence, and reversal patterns. |
+
+**Critical insight:** DP says "AMZN buyable at 241" (AM Call thesis). Kira buys AMZN calls at $248 (execution). The AM Call sets the thesis. Kira's timing is the actual signal. Track the gap between thesis level and execution price — this is where the real edge data lives.
+
 ## Core Position Model
 
 1. **Identify quality names** — strong earnings, market leadership, clear levels
