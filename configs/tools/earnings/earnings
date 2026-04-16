@@ -32,7 +32,7 @@ from pathlib import Path
 FINNHUB_KEY = os.environ.get("FINNHUB_API_KEY", "")
 FINNHUB_BASE = "https://finnhub.io/api/v1"
 MARKETS_DIR = Path(os.environ.get("MARKETS_DIR",
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "markets", "markets")))
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "markets")))
 WATCHLISTS_PATH = MARKETS_DIR / "WATCHLISTS.json"
 
 
