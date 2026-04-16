@@ -42,7 +42,7 @@ import {
 import type { UpdateChannel, UpdateProgress } from "../../operate/updater/index.js";
 
 import { CommandError } from "../errors.js";
-import { renderError, validatePort, ensureInstalled } from "../ux.js";
+import { createCommandScope, renderError, validatePort, ensureInstalled } from "../ux.js";
 
 async function loadNotificationChannels(deployDir: string): Promise<NotificationChannel[]> {
   const channels: NotificationChannel[] = [];
@@ -93,9 +93,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     }) => {
       ensureInstalled(opts.deployDir);
 
-      const ac = new AbortController();
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       const format = opts.json ? "json" : "table";
 
@@ -108,7 +106,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
             deployDir: opts.deployDir,
             fix: true,
             format,
-            signal: ac.signal,
+            signal: signal,
           });
 
           if (!opts.json) spinner.stop();
@@ -133,7 +131,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
           const report = await runDoctor({
             deployDir: opts.deployDir,
             format,
-            signal: ac.signal,
+            signal: signal,
           });
 
           if (!opts.json) spinner.stop();
@@ -163,15 +161,13 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
       try {
         if (opts.watch) {
-          const ac = new AbortController();
-          process.on("SIGINT", () => ac.abort());
-          process.on("SIGTERM", () => ac.abort());
+          const { signal: watchSignal, cleanup: watchCleanup } = createCommandScope();
 
           const intervalMs = Math.max(1, parseInt(opts.interval, 10)) * 1000;
 
           await watchStatus({
             deployDir: opts.deployDir,
-            signal: ac.signal,
+            signal: watchSignal,
             intervalMs,
             onUpdate: (snapshot) => {
               // Clear screen for dashboard refresh
@@ -184,6 +180,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
               }
             },
           });
+          watchCleanup();
         } else {
           const spinner = ora("Gathering status…");
           if (!opts.json) spinner.start();
@@ -361,9 +358,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
 
       const gatewayPort = validatePort(opts.port);
 
-      const ac = new AbortController();
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       const spinner = ora();
       const onProgress = (event: UpdateProgress): void => {
@@ -391,7 +386,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
             checkOnly: true,
             channel,
             onProgress,
-            signal: ac.signal,
+            signal: signal,
           });
 
           spinner.stop();
@@ -431,7 +426,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
             channel,
             dryRun: opts.dryRun,
             onProgress,
-            signal: ac.signal,
+            signal: signal,
           });
 
           spinner.stop();
@@ -470,9 +465,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     .action(async (opts: { deployDir: string; follow?: boolean; lines: string }) => {
       ensureInstalled(opts.deployDir);
 
-      const ac = new AbortController();
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       const lineCount = parseInt(opts.lines, 10);
       if (isNaN(lineCount)) {
@@ -485,10 +478,10 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
             deployDir: opts.deployDir,
             follow: true,
             lines: lineCount,
-            signal: ac.signal,
+            signal: signal,
           });
 
-          if (!result.success && !ac.signal.aborted) {
+          if (!result.success && !signal.aborted) {
             console.error(chalk.red(`\n✘ ${result.error}`));
             throw new CommandError("", 1);
           }
@@ -497,7 +490,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
             deployDir: opts.deployDir,
             follow: false,
             lines: lineCount,
-            signal: ac.signal,
+            signal: signal,
           });
 
           if (!result.success) {
@@ -515,6 +508,8 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
         if (error instanceof CommandError) throw error;
         console.error(renderError(error));
         throw new CommandError("", 1);
+      } finally {
+        cleanup();
       }
     });
 
@@ -543,9 +538,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     }) => {
       ensureInstalled(opts.deployDir);
 
-      const ac = new AbortController();
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       // Build notification channels from .env
       const channels = await loadNotificationChannels(opts.deployDir);
@@ -604,29 +597,33 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
       const memoryLifecycleIntervalMs =
         Math.max(1, parsedMemoryLifecycleInterval) * 3600_000;
 
-      const state = await startMonitor({
-        deployDir: opts.deployDir,
-        intervalMs,
-        recovery: {
-          enabled: opts.recovery,
-        },
-        notify: {
-          channels,
-          alertsEnabled: opts.alerts,
-          digestEnabled: opts.digest,
-          digestHour,
-        },
-        memoryLifecycle: opts.memoryLifecycle
-          ? { enabled: true, intervalMs: memoryLifecycleIntervalMs }
-          : undefined,
-        signal: ac.signal,
-        onEvent,
-      });
+      try {
+        const state = await startMonitor({
+          deployDir: opts.deployDir,
+          intervalMs,
+          recovery: {
+            enabled: opts.recovery,
+          },
+          notify: {
+            channels,
+            alertsEnabled: opts.alerts,
+            digestEnabled: opts.digest,
+            digestHour,
+          },
+          memoryLifecycle: opts.memoryLifecycle
+            ? { enabled: true, intervalMs: memoryLifecycleIntervalMs }
+            : undefined,
+          signal,
+          onEvent,
+        });
 
-      if (opts.json) {
-        console.log(formatMonitorStateJson(state));
-      } else {
-        console.log(formatMonitorStateTable(state));
+        if (opts.json) {
+          console.log(formatMonitorStateJson(state));
+        } else {
+          console.log(formatMonitorStateTable(state));
+        }
+      } finally {
+        cleanup();
       }
     });
 
@@ -639,9 +636,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     .action(async (opts: { deployDir: string }) => {
       ensureInstalled(opts.deployDir);
 
-      const ac = new AbortController();
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       const spinner = ora("Installing ops automation…");
       spinner.start();
@@ -649,7 +644,7 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
       try {
         const result = await installOpsAutomation({
           deployDir: opts.deployDir,
-          signal: ac.signal,
+          signal: signal,
         });
 
         spinner.stop();
@@ -664,10 +659,12 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
         console.log(chalk.dim(`  Enabled:   ${result.enabled.join(", ")}`));
         console.log(chalk.dim("\n  Check status: systemctl list-timers 'clawhq-*'"));
       } catch (error) {
-        spinner.stop();
         if (error instanceof CommandError) throw error;
         console.error(renderError(error));
         throw new CommandError("", 1);
+      } finally {
+        spinner.stop();
+        cleanup();
       }
     });
 }

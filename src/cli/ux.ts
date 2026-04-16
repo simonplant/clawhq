@@ -86,6 +86,40 @@ export function renderError(error: unknown): string {
   return lines.join("\n");
 }
 
+// ── Cancellable Command Scope ────────────────────────────────────────────────
+
+/**
+ * Create an AbortController with SIGINT/SIGTERM wired up and auto-cleanup.
+ *
+ * Every CLI command that supports cancellation needs this boilerplate:
+ * create AbortController, register signal handlers, remove them after.
+ * This utility does it once, correctly.
+ *
+ * Usage:
+ * ```ts
+ * const { signal, cleanup } = createCommandScope();
+ * try {
+ *   await doWork(signal);
+ * } finally {
+ *   cleanup();
+ * }
+ * ```
+ */
+export function createCommandScope(): { signal: AbortSignal; cleanup: () => void } {
+  const ac = new AbortController();
+  const onSignal = () => ac.abort();
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+
+  return {
+    signal: ac.signal,
+    cleanup: () => {
+      process.removeListener("SIGINT", onSignal);
+      process.removeListener("SIGTERM", onSignal);
+    },
+  };
+}
+
 // ── Port Validation ─────────────────────────────────────────────────────────
 
 /**

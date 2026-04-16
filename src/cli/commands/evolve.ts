@@ -58,7 +58,7 @@ import { listIntegrations } from "../../evolve/integrate/index.js";
 import { createAuditConfig } from "../../secure/audit/index.js";
 
 import { CommandError } from "../errors.js";
-import { renderError, ensureInstalled } from "../ux.js";
+import { createCommandScope, renderError, ensureInstalled } from "../ux.js";
 
 function createSkillProgressHandler(spinner: ReturnType<typeof ora>) {
   return (event: SkillProgress): void => {
@@ -576,24 +576,25 @@ export function registerEvolveCommands(program: Command, defaultDeployDir: strin
 
       const telegramConfig: TelegramConfig = { botToken, chatId };
       const auditConfig = createAuditConfig(opts.deployDir, "");
-      const ac = new AbortController();
-
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       console.log(chalk.green("Approval bot started. Listening for Telegram callbacks..."));
       console.log(chalk.dim("Press Ctrl+C to stop.\n"));
 
-      await startApprovalBot({
-        deployDir: opts.deployDir,
-        telegramConfig,
-        auditConfig,
-        signal: ac.signal,
-        onResolution: (itemId, resolution) => {
-          const color = resolution === "approved" ? chalk.green : chalk.red;
-          console.log(`${color(resolution)}: ${itemId}`);
-        },
-      });
+      try {
+        await startApprovalBot({
+          deployDir: opts.deployDir,
+          telegramConfig,
+          auditConfig,
+          signal,
+          onResolution: (itemId, resolution) => {
+            const color = resolution === "approved" ? chalk.green : chalk.red;
+            console.log(`${color(resolution)}: ${itemId}`);
+          },
+        });
+      } finally {
+        cleanup();
+      }
 
       console.log(chalk.dim("\nApproval bot stopped."));
     });

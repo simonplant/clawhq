@@ -28,7 +28,7 @@ import {
 } from "../../operate/doctor/index.js";
 
 import { CommandError } from "../errors.js";
-import { renderError, validatePort, ensureInstalled } from "../ux.js";
+import { createCommandScope, renderError, validatePort, ensureInstalled } from "../ux.js";
 import { bundleToFiles, createConnectProgressHandler, createProgressHandler, formatPrereqCheck } from "./helpers.js";
 
 const DEFAULT_DEPLOY_DIR = join(homedir(), ".clawhq");
@@ -51,9 +51,7 @@ export function registerQuickstartCommand(program: Command): void {
       port: string;
       ollamaModel?: string;
     }) => {
-      const ac = new AbortController();
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       const spinner = ora();
       const deployDir = opts.deployDir;
@@ -91,7 +89,7 @@ export function registerQuickstartCommand(program: Command): void {
         throw new CommandError("", 1);
       }
 
-      if (ac.signal.aborted) throw new CommandError("", 1);
+      if (signal.aborted) throw new CommandError("", 1);
 
       // ── Phase 2: Init ─────────────────────────────────────────────────────
 
@@ -146,7 +144,7 @@ export function registerQuickstartCommand(program: Command): void {
         throw new CommandError("", 1);
       }
 
-      if (ac.signal.aborted) throw new CommandError("", 1);
+      if (signal.aborted) throw new CommandError("", 1);
 
       // ── Phase 3: Build ────────────────────────────────────────────────────
 
@@ -194,7 +192,7 @@ export function registerQuickstartCommand(program: Command): void {
         throw new CommandError("", 1);
       }
 
-      if (ac.signal.aborted) throw new CommandError("", 1);
+      if (signal.aborted) throw new CommandError("", 1);
 
       // ── Phase 4: Deploy ───────────────────────────────────────────────────
 
@@ -223,7 +221,7 @@ export function registerQuickstartCommand(program: Command): void {
         immutableIdentity: postureConfig.immutableIdentity,
         airGap: postureConfig.airGap,
         onProgress: onDeployProgress,
-        signal: ac.signal,
+        signal: signal,
       });
 
       deploySpinner.stop();
@@ -237,7 +235,7 @@ export function registerQuickstartCommand(program: Command): void {
 
       console.log(chalk.green(`  ${phase("deploy")} Agent is live and responding`));
 
-      if (ac.signal.aborted) throw new CommandError("", 1);
+      if (signal.aborted) throw new CommandError("", 1);
 
       // ── Phase 5: Connect ──────────────────────────────────────────────────
       // Connect is non-fatal — the agent is already running. Failures here
@@ -385,7 +383,7 @@ export function registerQuickstartCommand(program: Command): void {
         const doctorReport = await runDoctor({
           deployDir,
           format: "table",
-          signal: ac.signal,
+          signal: signal,
         });
 
         spinner.stop();
@@ -404,6 +402,8 @@ export function registerQuickstartCommand(program: Command): void {
       }
 
       // ── Done ──────────────────────────────────────────────────────────────
+
+      cleanup();
 
       console.log(chalk.bold.green("\n✔ Quickstart complete\n"));
       console.log(`  Your agent is running at ${chalk.bold(`localhost:${opts.port}`)}`);

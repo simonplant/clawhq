@@ -13,7 +13,7 @@ import { deploy, restart, shutdown } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import { CommandError } from "../errors.js";
-import { renderError, validatePort, ensureInstalled } from "../ux.js";
+import { createCommandScope, renderError, validatePort, ensureInstalled } from "../ux.js";
 import { createConnectProgressHandler, createProgressHandler, resolveGatewayToken } from "./helpers.js";
 
 export function registerBuildCommands(program: Command, defaultDeployDir: string): void {
@@ -172,9 +172,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         console.log(chalk.yellow("⚠ Air-gapped mode: all outbound network traffic will be blocked"));
       }
 
-      const ac = new AbortController();
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       const spinner = ora();
       const onProgress = createProgressHandler(spinner);
@@ -208,7 +206,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           autoFirewall: postureConfig.autoFirewall,
           immutableIdentity: postureConfig.immutableIdentity,
           onProgress,
-          signal: ac.signal,
+          signal,
         });
 
         if (result.success) {
@@ -219,6 +217,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         }
       } finally {
         spinner.stop();
+        cleanup();
       }
     });
 
@@ -230,9 +229,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
     .action(async (opts: { deployDir: string; volumes?: boolean }) => {
       ensureInstalled(opts.deployDir);
 
-      const ac = new AbortController();
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       const spinner = ora();
       const onProgress = createProgressHandler(spinner);
@@ -242,7 +239,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           deployDir: opts.deployDir,
           removeVolumes: opts.volumes,
           onProgress,
-          signal: ac.signal,
+          signal,
         });
 
         if (result.success) {
@@ -253,6 +250,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         }
       } finally {
         spinner.stop();
+        cleanup();
       }
     });
 
@@ -290,9 +288,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         console.log(chalk.yellow("⚠ Air-gapped mode: all outbound network traffic will be blocked"));
       }
 
-      const ac = new AbortController();
-      process.on("SIGINT", () => ac.abort());
-      process.on("SIGTERM", () => ac.abort());
+      const { signal, cleanup } = createCommandScope();
 
       const spinner = ora();
       const onProgress = createProgressHandler(spinner);
@@ -307,7 +303,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           skipVerify: opts.skipVerify,
           airGap: opts.airGap,
           onProgress,
-          signal: ac.signal,
+          signal,
         });
 
         if (result.success) {
@@ -318,6 +314,7 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
         }
       } finally {
         spinner.stop();
+        cleanup();
       }
     });
 
