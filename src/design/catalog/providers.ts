@@ -348,7 +348,7 @@ export const PROVIDERS: readonly Provider[] = [
     envVars: [],
     egressDomains: [],
     auth: "none",
-    setupNotes: "Local inference via Ollama. No data leaves your machine. Install: ollama.ai. Pull a model: ollama pull gemma3:27b",
+    setupNotes: "Local inference via Ollama. No data leaves your machine. Install: ollama.ai. Pull a model: ollama pull gemma4:26b",
   },
   {
     id: "anthropic-api",

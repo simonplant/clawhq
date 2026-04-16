@@ -30,5 +30,5 @@ This is a declarative skill. The cron scheduler triggers the agent with "Run ski
 ## Model Requirements
 
 - Provider: Any configured provider (local or cloud)
-- Minimum model: llama3:8b or equivalent
+- Minimum model: gemma4:26b or equivalent
 - Low token usage — scanner output is structured, not free-form text

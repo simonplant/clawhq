@@ -21,6 +21,7 @@ export type DoctorCheckName =
   | "no-new-privileges"
   | "user-uid"
   | "identity-size"
+  | "cron-schema"
   | "cron-syntax"
   | "cron-health"
   | "env-vars"

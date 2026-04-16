@@ -127,6 +127,7 @@ export async function runChecks(
     checkNoNewPrivileges(deployDir, signal),
     checkUserUid(deployDir, signal),
     checkIdentitySize(deployDir),
+    checkCronSchema(deployDir),
     checkCronSyntax(deployDir),
     checkCronHealth(deployDir),
     checkEnvVars(deployDir),
@@ -636,6 +637,46 @@ function validateCronExpr(expr: string): string[] {
   return errors;
 }
 
+/**
+ * Validate cron/jobs.json schema envelope.
+ *
+ * OpenClaw's loader (cron/store.ts:loadCronStore) silently returns an empty store
+ * when the file is a bare array or otherwise not {"version":1,"jobs":[...]}, which
+ * makes every scheduled job inactive with no error signal. This check surfaces
+ * that drift so downstream checks (cron-syntax, cron-health) can assume the
+ * canonical envelope shape.
+ */
+async function checkCronSchema(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "cron-schema";
+  const cronPath = join(deployDir, "cron", "jobs.json");
+
+  try {
+    const raw = await readFile(cronPath, "utf-8");
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      !Array.isArray((parsed as Record<string, unknown>).jobs)
+    ) {
+      return fail(
+        name,
+        "error",
+        'cron/jobs.json is not a valid {"version":1,"jobs":[...]} envelope — OpenClaw will load it as empty and no scheduled jobs will run',
+        "Run `clawhq apply` to regenerate cron/jobs.json from the blueprint",
+      );
+    }
+    const jobCount = ((parsed as Record<string, unknown>).jobs as unknown[]).length;
+    return ok(name, `cron/jobs.json envelope valid (${jobCount} job(s))`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("ENOENT")) {
+      return ok(name, "No cron jobs file (optional)", "info");
+    }
+    return fail(name, "error", `cron/jobs.json unreadable or invalid JSON: ${msg}`, "Run `clawhq apply` to regenerate");
+  }
+}
+
 /** 12. Cron jobs use valid syntax — field count, value ranges, and stepping. */
 async function checkCronSyntax(deployDir: string): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "cron-syntax";
@@ -643,10 +684,16 @@ async function checkCronSyntax(deployDir: string): Promise<DoctorCheckResult> {
 
   try {
     const raw = await readFile(cronPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    // Handle both bare array and {version, jobs} wrapper (OpenClaw native format)
-    const jobs: Array<{ id: string; kind?: string; expr?: string; schedule?: { kind?: string; expr?: string } }> =
-      Array.isArray(parsed) ? parsed : Array.isArray(parsed?.jobs) ? parsed.jobs : [];
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      !Array.isArray((parsed as Record<string, unknown>).jobs)
+    ) {
+      return ok(name, "Skipped — cron-schema failed", "info");
+    }
+    const jobs = (parsed as { jobs: Array<{ id: string; kind?: string; expr?: string; schedule?: { kind?: string; expr?: string } }> }).jobs;
 
     const invalid: string[] = [];
     for (const job of jobs) {
@@ -691,9 +738,16 @@ async function checkCronHealth(deployDir: string): Promise<DoctorCheckResult> {
 
   try {
     const raw = await readFile(cronPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    const jobs: Array<Record<string, unknown>> =
-      Array.isArray(parsed) ? parsed : Array.isArray(parsed?.jobs) ? parsed.jobs : [];
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      !Array.isArray((parsed as Record<string, unknown>).jobs)
+    ) {
+      return ok(name, "Skipped — cron-schema failed", "info");
+    }
+    const jobs = (parsed as { jobs: Array<Record<string, unknown>> }).jobs;
 
     if (jobs.length === 0) {
       return ok(name, "No cron jobs configured", "info");

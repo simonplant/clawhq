@@ -187,7 +187,7 @@ delegation_rules:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "llama3:8b"
+  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - long_form_writing
     - complex_triage

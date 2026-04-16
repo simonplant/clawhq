@@ -15,7 +15,7 @@ export const DASHBOARD_DEFAULT_PORT = 3737;
 export const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
 
 /** Default Ollama model for local inference. */
-export const OLLAMA_DEFAULT_MODEL = "llama3:8b";
+export const OLLAMA_DEFAULT_MODEL = "gemma4:26b";
 
 /** Canonical WhatsApp / Facebook Graph API version. */
 export const WHATSAPP_API_VERSION = "v21.0";
@@ -52,8 +52,7 @@ export const KNOWN_MODELS: ReadonlySet<string> = new Set([
   // OpenAI family
   "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
   // Local / Ollama models
-  "llama3:8b", "llama3:70b", "mistral:7b", "mixtral:8x7b", "codellama:7b", "codellama:34b",
-  "phi3:mini", "phi3:medium", "gemma:7b", "gemma:2b", "qwen2:7b",
+  "gemma4:26b",
 ]);
 
 // ── Multi-instance helpers ──────────────────────────────────────────────────

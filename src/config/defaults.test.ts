@@ -14,12 +14,8 @@ describe("KNOWN_MODELS", () => {
     // OpenAI family
     expect(models.some((m) => m.startsWith("gpt-4"))).toBe(true);
 
-    // Local / Ollama model families
-    expect(models.some((m) => m.startsWith("llama3"))).toBe(true);
-    expect(models.some((m) => m.startsWith("mistral"))).toBe(true);
-    expect(models.some((m) => m.startsWith("phi3"))).toBe(true);
-    expect(models.some((m) => m.startsWith("gemma"))).toBe(true);
-    expect(models.some((m) => m.startsWith("qwen2"))).toBe(true);
+    // Local / Ollama
+    expect(models.some((m) => m.startsWith("gemma4"))).toBe(true);
   });
 
   it("is a ReadonlySet", () => {

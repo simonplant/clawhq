@@ -145,7 +145,7 @@ describe("writeBundle", () => {
     const files: FileEntry[] = [
       { relativePath: "engine/openclaw.json", content: '{"test": true}\n' },
       { relativePath: "engine/.env", content: "KEY=value\n", mode: 0o600 },
-      { relativePath: "cron/jobs.json", content: "[]\n" },
+      { relativePath: "cron/jobs.json", content: '{"version":1,"jobs":[]}\n' },
     ];
 
     const result = writeBundle(tempDir, files);

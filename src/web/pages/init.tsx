@@ -56,7 +56,7 @@ export function InitPage({ blueprints, csrfToken }: { blueprints: readonly Bluep
           <div class="grid">
             <label>
               Local Model
-              <input type="text" name="localModel" value="llama3:8b" placeholder="e.g. llama3:8b" />
+              <input type="text" name="localModel" value="gemma4:26b" placeholder="e.g. gemma4:26b" />
             </label>
             <label>
               Gateway Port

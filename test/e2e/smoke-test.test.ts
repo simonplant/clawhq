@@ -216,7 +216,7 @@ describe("e2e smoke test — full user journey", () => {
         blueprintPath: BLUEPRINT_FIXTURE,
         channel: "telegram",
         modelProvider: "local" as const,
-        localModel: "llama3:8b",
+        localModel: "gemma4:26b",
         gatewayPort: 18799, // Non-default port to avoid conflicts
         deployDir,
         airGapped: true, // No internet needed for smoke test

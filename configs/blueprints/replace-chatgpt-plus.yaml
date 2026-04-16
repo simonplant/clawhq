@@ -110,7 +110,7 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "llama3:70b"
+  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - deep_research
     - long_form_writing

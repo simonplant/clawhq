@@ -415,7 +415,7 @@ schedule:
 
 model:
   provider: local             # "local" (Ollama) — always the default
-  minimum: "llama3:8b"        # Minimum model capability
+  minimum: "gemma4:26b"        # Minimum model capability
   cloud_escalation: false     # Whether cloud models are allowed
 
 dependencies:

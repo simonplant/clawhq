@@ -200,6 +200,22 @@ describe("checks", { timeout: 30_000 }, () => {
     expect(check.passed).toBe(true);
   });
 
+  it("cron-schema passes with envelope format", async () => {
+    await writeValidCron();
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "cron-schema");
+    expect(check.passed).toBe(true);
+  });
+
+  it("cron-schema fails on bare array", async () => {
+    await writeFile(join(testDir, "cron", "jobs.json"), "[]");
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "cron-schema");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("envelope");
+    expect(check.fix).toContain("clawhq apply");
+  });
+
   it("cron-syntax passes with valid cron expressions", async () => {
     await writeValidCron();
     const checks = await runChecks(testDir);
@@ -332,7 +348,7 @@ describe("checks", { timeout: 30_000 }, () => {
 
   it("runs all checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(34);
+    expect(checks.length).toBe(35);
   });
 });
 
@@ -348,7 +364,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(34);
+    expect(report.checks.length).toBe(35);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -817,9 +833,9 @@ services:
     expect(check.message).toContain("underscore-prefixed methods");
   });
 
-  it("runs all 34 checks", async () => {
+  it("runs all 35 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(34);
+    expect(checks.length).toBe(35);
   });
 });
 

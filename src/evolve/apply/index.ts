@@ -170,11 +170,18 @@ export async function apply(options: ApplyOptions): Promise<ApplyResult> {
  * - Bare: [...]
  */
 function extractCronJobs(data: unknown): Record<string, unknown>[] {
-  if (Array.isArray(data)) return data as Record<string, unknown>[];
-  if (typeof data === "object" && data !== null && "jobs" in data) {
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    !Array.isArray(data) &&
+    Array.isArray((data as Record<string, unknown>).jobs)
+  ) {
     return (data as Record<string, unknown>).jobs as Record<string, unknown>[];
   }
-  return [];
+  throw new Error(
+    'cron/jobs.json schema invalid: expected {"version":1,"jobs":[...]} envelope. ' +
+      "Run `clawhq apply` to regenerate from the blueprint.",
+  );
 }
 
 function mergeCronJobs(deployDir: string, compiled: CompiledFile): CompiledFile {

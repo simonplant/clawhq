@@ -13,7 +13,7 @@ schedule:
 # Model requirements — local preferred, cloud for deep pattern analysis
 model:
   provider: local
-  minimum: "llama3:8b"
+  minimum: "gemma4:26b"
   cloud_escalation: true
 
 # Tools this skill depends on

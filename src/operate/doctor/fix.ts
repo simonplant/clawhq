@@ -255,15 +255,24 @@ async function fixCronHealth(deployDir: string): Promise<FixResult> {
 
   try {
     const raw = await readFile(cronPath, "utf-8");
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = JSON.parse(raw) as unknown;
 
-    // Handle both bare array and {version, jobs} wrapper
-    const isWrapped = !Array.isArray(parsed) && Array.isArray(parsed.jobs);
-    const jobs: Array<Record<string, unknown>> = isWrapped
-      ? (parsed.jobs as Array<Record<string, unknown>>)
-      : Array.isArray(parsed)
-        ? (parsed as Array<Record<string, unknown>>)
-        : [];
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      !Array.isArray((parsed as Record<string, unknown>).jobs)
+    ) {
+      return {
+        name,
+        success: false,
+        message:
+          'cron/jobs.json schema invalid: expected {"version":1,"jobs":[...]} envelope. ' +
+          "Run `clawhq apply` to regenerate from the blueprint.",
+      };
+    }
+    const envelope = parsed as Record<string, unknown>;
+    const jobs = envelope.jobs as Array<Record<string, unknown>>;
 
     const fixes: string[] = [];
 
@@ -303,11 +312,9 @@ async function fixCronHealth(deployDir: string): Promise<FixResult> {
       return { name, success: true, message: "No cron health fixes needed" };
     }
 
-    // Write back, preserving the wrapper format
     const backupPath = cronPath + ".bak";
     await copyFile(cronPath, backupPath);
-    const output = isWrapped ? parsed : jobs;
-    await writeFile(cronPath, JSON.stringify(output, null, 2) + "\n", "utf-8");
+    await writeFile(cronPath, JSON.stringify(envelope, null, 2) + "\n", "utf-8");
     return { name, success: true, message: `Fixed ${fixes.length} issue(s): ${fixes.join("; ")}` };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

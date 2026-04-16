@@ -19,7 +19,7 @@ This guide walks you through installing ClawHQ and forging your first agent — 
 Ollama provides local AI models so nothing leaves your machine. Without it, you'll need a cloud model API key during setup. If Ollama is installed, pull a starter model:
 
 ```
-$ ollama pull llama3:8b
+$ ollama pull gemma4:26b
 pulling manifest... done
 pulling 6a0746a1ec1a... 100% 4.7 GB
 success
@@ -165,7 +165,7 @@ $ clawhq status
   Blueprint:    Email Manager v1.0.0
   Engine:       OpenClaw v4.2.1
   Container:    Hardened (cap_drop ALL, read-only rootfs)
-  Model:        llama3:8b (local via Ollama)
+  Model:        gemma4:26b (local via Ollama)
 
   Integrations
   ─────────────

@@ -14,7 +14,7 @@ export interface OllamaOptions {
   /** Base URL for the Ollama API. */
   readonly baseUrl?: string;
 
-  /** Model to use for inference (default: llama3:8b). */
+  /** Model to use for inference (default: gemma4:26b). */
   readonly model?: string;
 }
 

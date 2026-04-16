@@ -14,7 +14,7 @@ schedule:
 # Model requirements — local preferred, cloud escalation for quality writing
 model:
   provider: local
-  minimum: "llama3:8b"
+  minimum: "gemma4:26b"
   cloud_escalation: true
 
 # Tools this skill depends on

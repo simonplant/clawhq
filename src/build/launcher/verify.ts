@@ -260,7 +260,7 @@ export async function verifyIntegrations(options: VerifyOptions): Promise<Verify
         // Quick generate test from host to measure actual latency
         const genResult = await containerExec(
           deployDir,
-          ["bash", "-c", `curl -s -m 120 -X POST ${shellSafe(ollamaHost)}/api/generate -d '{"model":"${shellSafe(env.OLLAMA_MODEL || "llama3:8b")}","prompt":"Reply OK","stream":false}' | head -c 100`],
+          ["bash", "-c", `curl -s -m 120 -X POST ${shellSafe(ollamaHost)}/api/generate -d '{"model":"${shellSafe(env.OLLAMA_MODEL || "gemma4:26b")}","prompt":"Reply OK","stream":false}' | head -c 100`],
           130_000,
         );
 

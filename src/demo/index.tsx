@@ -112,7 +112,7 @@ export async function runDemo(
     blueprintPath: loaded.sourcePath,
     channel: "web" as const,
     modelProvider: "local" as const,
-    localModel: ollamaAvailable ? "llama3:8b" : "demo-agent",
+    localModel: ollamaAvailable ? "gemma4:26b" : "demo-agent",
     gatewayPort: GATEWAY_DEFAULT_PORT,
     deployDir: ephemeral.path,
     airGapped: true,

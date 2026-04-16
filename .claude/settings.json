@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "llm-wiki context --path knowledge 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

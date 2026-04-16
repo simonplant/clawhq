@@ -16,7 +16,7 @@ function makeAnswers(overrides: Partial<WizardAnswers> = {}): WizardAnswers {
     blueprintPath: loaded.sourcePath,
     channel: "telegram",
     modelProvider: "local",
-    localModel: "llama3:8b",
+    localModel: "gemma4:26b",
     gatewayPort: GATEWAY_DEFAULT_PORT,
     deployDir: "/tmp/clawhq-test",
     airGapped: false,
@@ -125,9 +125,9 @@ describe("generateBundle", () => {
   it("uses local model when modelProvider is local", () => {
     const bundle = generateBundle(makeAnswers({
       modelProvider: "local",
-      localModel: "mistral:7b",
+      localModel: "gemma4:26b",
     }));
-    expect(bundle.openclawConfig.agents?.defaults?.model?.primary).toBe("ollama/mistral:7b");
+    expect(bundle.openclawConfig.agents?.defaults?.model?.primary).toBe("ollama/gemma4:26b");
   });
 
   it("generates cron jobs from blueprint", () => {

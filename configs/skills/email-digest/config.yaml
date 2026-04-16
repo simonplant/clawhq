@@ -14,7 +14,7 @@ schedule:
 # Model requirements — local only, no cloud
 model:
   provider: local
-  minimum: "llama3:8b"
+  minimum: "gemma4:26b"
   cloud_escalation: false
 
 # Tools this skill depends on

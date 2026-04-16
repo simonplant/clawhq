@@ -41,7 +41,7 @@ export interface WizardAnswers {
   /** Model routing: local (Ollama) or cloud provider. */
   readonly modelProvider: "local" | "cloud";
 
-  /** Preferred local model (e.g. "llama3:8b"). Only when modelProvider is local. */
+  /** Preferred local model (e.g. "gemma4:26b"). Only when modelProvider is local. */
   readonly localModel: string;
 
   /** Gateway port (default: GATEWAY_DEFAULT_PORT). */

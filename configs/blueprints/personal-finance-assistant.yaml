@@ -126,7 +126,7 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "llama3:8b"
+  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - trend_analysis
     - anomaly_detection
