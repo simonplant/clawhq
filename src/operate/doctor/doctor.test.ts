@@ -72,7 +72,6 @@ services:
       - no-new-privileges
     extra_hosts:
       - "host.docker.internal:host-gateway"
-      - "ollama:host-gateway"
     tmpfs:
       - /tmp:size=100m,noexec,nosuid
       - /home/node/.openclaw:exec,nosuid,size=256m,uid=1000,gid=1000

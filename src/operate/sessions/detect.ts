@@ -8,13 +8,14 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
+import { resolveOpenclawContainer } from "../../build/docker/container.js";
+
 import type { RunawayFlag, RunawayThresholds, SessionInfo } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const CONTAINER_NAME = "engine-openclaw-1";
 const SESSIONS_DIR = "/home/node/.openclaw/agents/main/sessions";
 const EXEC_TIMEOUT_MS = 10_000;
 
@@ -54,11 +55,12 @@ export async function listSessions(
     done
   `;
 
+  const containerName = await resolveOpenclawContainer(signal);
   let stdout: string;
   try {
     const res = await execFileAsync(
       "docker",
-      ["exec", CONTAINER_NAME, "sh", "-c", script],
+      ["exec", containerName, "sh", "-c", script],
       { timeout: EXEC_TIMEOUT_MS, signal },
     );
     stdout = res.stdout;
@@ -123,10 +125,11 @@ export async function listSessions(
  */
 async function readSessionsIndex(signal?: AbortSignal): Promise<Map<string, string>> {
   const map = new Map<string, string>();
+  const containerName = await resolveOpenclawContainer(signal);
   try {
     const { stdout } = await execFileAsync(
       "docker",
-      ["exec", CONTAINER_NAME, "cat", `${SESSIONS_DIR}/sessions.json`],
+      ["exec", containerName, "cat", `${SESSIONS_DIR}/sessions.json`],
       { timeout: EXEC_TIMEOUT_MS, signal },
     );
     const parsed = JSON.parse(stdout) as Record<string, unknown>;

@@ -243,7 +243,7 @@ export async function verifyIntegrations(options: VerifyOptions): Promise<Verify
   // If using Ollama, check that the model can respond within the timeout budget
   if (env.OLLAMA_HOST || env.OLLAMA_URL) {
     const llmStart = Date.now();
-    const ollamaHost = env.OLLAMA_HOST || env.OLLAMA_URL || "http://host.docker.internal:11434";
+    const ollamaHost = env.OLLAMA_HOST || env.OLLAMA_URL || "http://ollama:11434";
 
     // Test from container: can we reach Ollama?
     try {

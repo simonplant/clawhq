@@ -103,8 +103,22 @@ export async function checkNode(): Promise<PrereqCheckResult> {
   };
 }
 
-/** Check that Ollama is installed and running. */
+/** Check that Ollama is installed and running (host or container). */
 export async function checkOllama(): Promise<PrereqCheckResult> {
+  // Containerized Ollama counts — if a docker container named "ollama" is up,
+  // the compose-bundled service is serving inference and the host CLI isn't
+  // required.
+  const dockerOut = await run("docker", [
+    "ps",
+    "--filter",
+    "name=^ollama$",
+    "--format",
+    "{{.Names}}",
+  ]);
+  if (dockerOut !== null && dockerOut.trim() === "ollama") {
+    return { name: "ollama", ok: true, detail: "Ollama available (container)" };
+  }
+
   const output = await run("ollama", ["--version"]);
   if (output === null) {
     return {

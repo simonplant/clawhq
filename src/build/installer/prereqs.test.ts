@@ -111,8 +111,16 @@ describe("checkNode", () => {
 // ── checkOllama ─────────────────────────────────────────────────────────────
 
 describe("checkOllama", () => {
-  it("passes when ollama is installed and running", async () => {
-    mockExecFile.mockImplementation(succeedsWith("ollama version 0.1.32") as never);
+  it("passes when ollama is installed and running on host", async () => {
+    mockExecFile.mockImplementation(((cmd: string, args: string[], _opts: unknown, cb: ExecCallback) => {
+      // Docker ps probe must not report a container named "ollama" so we fall
+      // through to the host CLI check
+      if (cmd === "docker" && args[0] === "ps") {
+        cb(null, "", "");
+        return;
+      }
+      cb(null, "ollama version 0.1.32", "");
+    }) as never);
 
     const result = await checkOllama();
 
@@ -120,15 +128,32 @@ describe("checkOllama", () => {
     expect(result.detail).toContain("0.1.32");
   });
 
+  it("passes when ollama runs as a sibling container", async () => {
+    mockExecFile.mockImplementation(((cmd: string, args: string[], _opts: unknown, cb: ExecCallback) => {
+      if (cmd === "docker" && args[0] === "ps") {
+        cb(null, "ollama\n", "");
+        return;
+      }
+      cb(new Error("should not be called"), "", "");
+    }) as never);
+
+    const result = await checkOllama();
+
+    expect(result.ok).toBe(true);
+    expect(result.detail).toContain("container");
+  });
+
   it("fails when ollama CLI exists but server is down", async () => {
-    let callCount = 0;
-    mockExecFile.mockImplementation(((_cmd: string, _args: unknown, _opts: unknown, cb: ExecCallback) => {
-      callCount++;
-      if (callCount === 1) {
-        // ollama --version succeeds
+    let ollamaCallCount = 0;
+    mockExecFile.mockImplementation(((cmd: string, args: string[], _opts: unknown, cb: ExecCallback) => {
+      if (cmd === "docker" && args[0] === "ps") {
+        cb(null, "", "");
+        return;
+      }
+      ollamaCallCount++;
+      if (ollamaCallCount === 1) {
         cb(null, "ollama version 0.1.32", "");
       } else {
-        // ollama list fails
         cb(new Error("server not running"), "", "");
       }
     }) as never);

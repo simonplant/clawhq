@@ -19,6 +19,7 @@ import { access, constants, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { resolveOpenclawContainer } from "../../build/docker/container.js";
 import { collectIntegrationDomains, IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadAllowlist, loadIpsetMeta } from "../../build/launcher/firewall.js";
 import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
@@ -992,27 +993,46 @@ async function checkOllamaReachable(
     return ok(name, "Cannot read config — skipped");
   }
 
-  // Check from host side first
+  // If a docker container named "ollama" is running (as a compose sibling
+  // or user-managed sidecar), probe it container→container and skip the
+  // host check entirely — it may not publish a host port.
+  let ollamaContainerized = false;
   try {
-    await execFileAsync(
-      "curl",
-      ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "3", "http://localhost:11434/api/tags"],
-      { timeout: 5000, signal },
+    const { stdout } = await execFileAsync(
+      "docker",
+      ["ps", "--filter", "name=^ollama$", "--format", "{{.Names}}"],
+      { timeout: 3000, signal },
     );
+    ollamaContainerized = stdout.trim() === "ollama";
   } catch {
-    return fail(
-      name,
-      "error",
-      "Ollama is not running on localhost:11434",
-      "Start Ollama: systemctl start ollama (or install from ollama.ai)",
-    );
+    // Docker probe failed — fall through to host check
+  }
+
+  const openclawContainer = await resolveOpenclawContainer(signal);
+
+  if (!ollamaContainerized) {
+    // Host-mode Ollama: must be reachable on localhost first
+    try {
+      await execFileAsync(
+        "curl",
+        ["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "3", "http://localhost:11434/api/tags"],
+        { timeout: 5000, signal },
+      );
+    } catch {
+      return fail(
+        name,
+        "error",
+        "Ollama is not running on localhost:11434",
+        "Start Ollama: systemctl start ollama (or install from ollama.ai)",
+      );
+    }
   }
 
   // Check from inside container
   try {
     const { stdout } = await execFileAsync(
       "docker",
-      ["exec", "engine-openclaw-1", "node", "-e",
+      ["exec", openclawContainer, "node", "-e",
        "fetch('http://ollama:11434/api/tags',{signal:AbortSignal.timeout(3000)}).then(r=>r.ok?'OK':'FAIL').then(console.log).catch(()=>console.log('FAIL'))"],
       { timeout: 8000, signal },
     );
@@ -1035,6 +1055,16 @@ async function checkOllamaReachable(
     ufwActive = stdout.trim() === "active";
   } catch {
     // systemctl not present, or ufw unit not found — leave ufwActive=false
+  }
+
+  if (ollamaContainerized) {
+    return fail(
+      name,
+      "error",
+      "Ollama container is running but openclaw cannot reach it at http://ollama:11434 — check that both services share the same docker network",
+      "Inspect: docker network inspect engine_clawhq_net — both ollama and openclaw should be listed",
+      false,
+    );
   }
 
   const fixMessage = ufwActive
@@ -1885,11 +1915,22 @@ async function checkOllamaModelAvailable(
 
     const modelName = primary.replace("ollama/", "");
 
-    // Query Ollama for available models
+    // Query Ollama via the openclaw container using the configured baseUrl.
+    const models = config["models"] as Record<string, unknown> | undefined;
+    const providers = models?.["providers"] as Record<string, unknown> | undefined;
+    const ollamaCfg = providers?.["ollama"] as Record<string, unknown> | undefined;
+    const baseUrl = (ollamaCfg?.["baseUrl"] ?? "http://ollama:11434") as string;
+    const openclawContainer = await resolveOpenclawContainer(signal);
     const { stdout } = await execFileAsync(
-      "curl",
-      ["-s", "--max-time", "3", "http://localhost:11434/api/tags"],
-      { timeout: 5000, signal },
+      "docker",
+      [
+        "exec",
+        openclawContainer,
+        "node",
+        "-e",
+        `fetch(${JSON.stringify(baseUrl)}+'/api/tags',{signal:AbortSignal.timeout(3000)}).then(r=>r.text()).then(t=>process.stdout.write(t)).catch(()=>process.exit(1))`,
+      ],
+      { timeout: 8000, signal },
     );
 
     const response = JSON.parse(stdout) as { models?: Array<{ name: string }> };
@@ -2008,7 +2049,7 @@ async function checkOllamaUrl(deployDir: string): Promise<DoctorCheckResult> {
         name,
         "warning",
         "No Ollama baseUrl configured in openclaw.json — OpenClaw will use its default (may not be container-reachable)",
-        "Set models.providers.ollama.baseUrl to http://host.docker.internal:11434 in openclaw.json",
+        "Set models.providers.ollama.baseUrl to http://ollama:11434 in openclaw.json",
       );
     }
 
@@ -2020,9 +2061,33 @@ async function checkOllamaUrl(deployDir: string): Promise<DoctorCheckResult> {
         name,
         "error",
         `Ollama baseUrl is ${baseUrl} — localhost inside a Docker container refers to the container, not the host`,
-        "Change models.providers.ollama.baseUrl to http://host.docker.internal:11434 in openclaw.json, then run: clawhq up",
+        "Change models.providers.ollama.baseUrl to http://ollama:11434 in openclaw.json, then run: clawhq up",
         true,
       );
+    }
+
+    // Actively probe the configured URL from inside the container. Catches
+    // stale hostnames (e.g. host.docker.internal after Ollama moved into a
+    // compose service) that would otherwise pass the string checks above.
+    try {
+      const openclawContainer = await resolveOpenclawContainer();
+      const probe = `fetch(${JSON.stringify(baseUrl)}+'/api/tags',{signal:AbortSignal.timeout(3000)}).then(r=>r.ok?'OK':'FAIL').then(console.log).catch(()=>console.log('FAIL'))`;
+      const { stdout } = await execFileAsync(
+        "docker",
+        ["exec", openclawContainer, "node", "-e", probe],
+        { timeout: 8000 },
+      );
+      if (stdout.trim() !== "OK") {
+        return fail(
+          name,
+          "error",
+          `Ollama baseUrl ${baseUrl} is not reachable from the openclaw container`,
+          "Set models.providers.ollama.baseUrl to http://ollama:11434 in openclaw.json (matches the compose service), then run: clawhq up",
+          false,
+        );
+      }
+    } catch {
+      // Container not running — skip active probe
     }
 
     return ok(name, `Ollama baseUrl is container-reachable (${host})`);

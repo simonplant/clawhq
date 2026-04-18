@@ -14,9 +14,9 @@ This guide walks you through installing ClawHQ and forging your first agent — 
 |---|---|---|
 | **Docker** | 20.10+ | `docker --version` |
 | **Node.js** | 22+ | `node --version` |
-| **Ollama** (optional) | Latest | `ollama --version` |
+| **Ollama** (optional) | Latest | `ollama --version` or `docker ps --filter name=^ollama$` |
 
-Ollama provides local AI models so nothing leaves your machine. Without it, you'll need a cloud model API key during setup. If Ollama is installed, pull a starter model:
+Ollama provides local AI models so nothing leaves your machine. Without it, you'll need a cloud model API key during setup. Ollama can run either as a host process (`ollama serve`) or as a sibling Docker container — ClawHQ detects both. If Ollama is installed on the host, pull a starter model:
 
 ```
 $ ollama pull gemma4:26b
@@ -24,6 +24,8 @@ pulling manifest... done
 pulling 6a0746a1ec1a... 100% 4.7 GB
 success
 ```
+
+If you run Ollama as a container on the same Docker network as the agent (service name `ollama`, port 11434), openclaw reaches it over Docker's internal DNS at `http://ollama:11434` — no host port mapping required. This is the default when using GPU-heavy models, since container-native access avoids the host loopback and UFW-bridge round trip.
 
 ---
 

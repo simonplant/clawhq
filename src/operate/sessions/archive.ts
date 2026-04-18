@@ -17,11 +17,12 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { resolveOpenclawContainer } from "../../build/docker/container.js";
+
 import type { ArchiveResult } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
-const CONTAINER_NAME = "engine-openclaw-1";
 const SESSIONS_DIR = "/home/node/.openclaw/agents/main/sessions";
 const ARCHIVE_DIR = `${SESSIONS_DIR}/.archived`;
 const EXEC_TIMEOUT_MS = 15_000;
@@ -55,6 +56,7 @@ export async function archiveSession(
   const archived: string[] = [];
   let indexUpdated = false;
   let containerRestarted = false;
+  const containerName = await resolveOpenclawContainer(signal);
 
   // 1. Make sure .archived/ exists, then move all files that match the session id.
   //    Files can include: <id>.jsonl, <id>.jsonl.lock, <id>.*.checkpoint, etc.
@@ -75,7 +77,7 @@ export async function archiveSession(
   try {
     const { stdout } = await execFileAsync(
       "docker",
-      ["exec", CONTAINER_NAME, "sh", "-c", moveScript],
+      ["exec", containerName, "sh", "-c", moveScript],
       { timeout: EXEC_TIMEOUT_MS, signal },
     );
     for (const name of stdout.trim().split(/\s+/).filter(Boolean)) {
@@ -129,7 +131,7 @@ export async function archiveSession(
   try {
     const { stdout } = await execFileAsync(
       "docker",
-      ["exec", CONTAINER_NAME, "sh", "-c", indexScript],
+      ["exec", containerName, "sh", "-c", indexScript],
       { timeout: EXEC_TIMEOUT_MS, signal },
     );
     indexUpdated = stdout.trim() === "updated";

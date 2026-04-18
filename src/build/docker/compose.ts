@@ -203,10 +203,13 @@ export function generateCompose(
     command: ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789"],
     ports: ["127.0.0.1:18789:18789"],
     init: true,
-    // Map hostnames to host gateway for Ollama and other host services
-    // Note: host firewall must allow Docker bridge traffic to port 11434
-    // clawhq doctor checks this and provides the fix command
-    extra_hosts: ["host.docker.internal:host-gateway", "ollama:host-gateway"],
+    // Map host.docker.internal for services that live on the Docker host.
+    // Do NOT add an "ollama" entry: when Ollama runs as a sibling container on
+    // the same user-defined network, Docker's internal DNS resolves the name
+    // automatically. An extra_hosts entry would shadow that DNS and route
+    // through host-gateway (where nothing is listening unless Ollama also
+    // publishes to the host).
+    extra_hosts: ["host.docker.internal:host-gateway"],
     environment: {
       HOME: "/home/node",
       TERM: "xterm-256color",

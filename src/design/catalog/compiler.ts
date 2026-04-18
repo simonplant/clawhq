@@ -821,7 +821,7 @@ function renderOpenclawJson(
     models: {
       providers: {
         ollama: {
-          baseUrl: "http://host.docker.internal:11434",
+          baseUrl: "http://ollama:11434",
           models: ollamaModelEntries,
         },
       },

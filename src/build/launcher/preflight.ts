@@ -318,6 +318,20 @@ async function isPortInUse(port: number, signal?: AbortSignal): Promise<boolean>
  */
 async function checkOllama(signal?: AbortSignal): Promise<PreflightCheckResult> {
   const name: PreflightCheckName = "ollama";
+  // If Ollama is running as a container (compose service), the host CLI may
+  // not be installed at all. Detect and pass.
+  try {
+    const { stdout } = await execFileAsync(
+      "docker",
+      ["ps", "--filter", "name=^ollama$", "--format", "{{.Names}}"],
+      { timeout: PREFLIGHT_EXEC_TIMEOUT_MS, signal },
+    );
+    if (stdout.trim() === "ollama") {
+      return { name, passed: true, message: "Ollama is running (container)" };
+    }
+  } catch {
+    // Docker probe failed — fall through to host CLI check
+  }
   try {
     await execFileAsync("ollama", ["list"], {
       timeout: PREFLIGHT_EXEC_TIMEOUT_MS,

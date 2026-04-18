@@ -59,6 +59,11 @@ Not every entry needs all four. Facts and gotchas just need a clear statement. B
 - Symptom: First request after idle takes 5-6s (visible as `load_duration` in Ollama response).
 - Cause: Ollama evicts models after the configured keep-alive window. Not a bug.
 
+**Host Ollama vs. container Ollama**
+- Running Ollama on the host via `ollama serve` works but forces container→host traffic through the Docker bridge gateway, which UFW can block (symptom: `ollama-reachable` doctor fail with a UFW fix suggestion).
+- Running Ollama as a sibling container on the same user-defined Docker network (e.g., `engine_clawhq_net`) is faster — benchmarked at ~195 t/s on gemma4:26b vs. ~110 t/s over host — and skips the bridge round trip entirely. The container must be named `ollama` so openclaw's config (`baseUrl: http://ollama:11434`) resolves via Docker's internal DNS.
+- The generated docker-compose no longer adds `ollama:host-gateway` to `extra_hosts`; that entry would shadow Docker DNS and route to the host where nothing listens unless Ollama also publishes port 11434.
+
 ---
 
 ## Docker / Container
