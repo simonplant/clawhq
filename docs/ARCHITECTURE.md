@@ -770,7 +770,8 @@ clawhq/
 │   │   └── launcher/               # Deploy orchestration (up/down/restart)
 │   │
 │   ├── secure/                     # Secure: security and compliance
-│   │   ├── sanitizer/              # Tier 1 prompt injection detection (deterministic)
+│   │   ├── clawwall/                # ClawWall runtime defenses (curl egress wrapper, sanitize tool)
+│   │   ├── sanitizer/              # Tier 1 prompt injection detection (deterministic patterns)
 │   │   ├── credentials/            # Credential store + health probes + credential proxy
 │   │   └── audit/                  # Append-only JSONL audit logging
 │   │

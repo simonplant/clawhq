@@ -2,19 +2,19 @@
 
 > What's built, what's next, and what gates each decision. See [STRATEGY.md](STRATEGY.md) for strategic context.
 
-**Updated:** 2026-04-03
+**Updated:** 2026-04-18
 
 ---
 
 ## What's Built
 
-ClawHQ has a working CLI with 78 commands, ~67,000 lines of TypeScript, and 77 test files across all major subsystems. Built with AI-assisted development (Claude Code). **Pre-launch: all code works but has zero external users. Community validation begins at publication.**
+ClawHQ has a working CLI, ~85,000 lines of TypeScript across 393 source files, and 86 test files across all major subsystems. Built with AI-assisted development (Claude Code). **Pre-launch: all code works but has zero external users. Community validation begins at publication.**
 
-- **Blueprint engine** — 7 working blueprints (Email Manager, Family Hub, Founder's Ops, Replace Google Assistant, Replace ChatGPT Plus, Replace my PA, Research Co-pilot) with guided and AI-powered setup, blueprint-specific customization questions. Current blueprints are monolithic and not yet publishable as standalone configs. The composition model (10 a-la-carte mission profiles with tools, skills, and operational playbooks) is the design direction — refactoring existing blueprints into composable components is in the "Next" track.
+- **Blueprint engine** — 11 working blueprints (Email Manager, Family Hub, Founder's Ops, Research Co-pilot, Content Creator, Personal Finance Assistant, Stock Trading Assistant, Stoic Coach, Replace ChatGPT Plus, Replace Google Assistant, Replace my PA) with guided and AI-powered setup. The composition model (mission profile × personality × providers) is live: `clawhq init --guided` picks a profile and personality, then compiles both plus the chosen provider per category into a flat OpenClaw runtime config. `clawhq apply` regenerates from the resulting `clawhq.yaml` idempotently.
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
 - **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
-- **Diagnostics** — `clawhq doctor` with 30 checks and auto-fix, predictive health alerts, self-healing. Extends (not replaces) OpenClaw's built-in `openclaw doctor`
+- **Diagnostics** — `clawhq doctor` with 39 checks and auto-fix, predictive health alerts, self-healing. Extends (not replaces) OpenClaw's built-in `openclaw doctor`
 - **Skill system** — 6 built-in skills with sandboxed vetting and rollback
 - **Workspace tools** — 7 CLI tool generators (email, tasks, todoist, iCal, market quotes, web search, todoist-sync)
 - **Operational tooling** — encrypted backup/restore, safe updates with rollback, status dashboard, audit trail, log streaming
@@ -93,7 +93,7 @@ After launch tracks complete. Contribution and product development continue in p
 
 ### Product
 
-**Refactor blueprints into composable profiles.** Current 7 blueprints are monolithic. Extract the operational stack (tools, skills, cron, integrations, security, autonomy, playbook) into 10 reusable a-la-carte mission profiles. Personality is NOT a product axis — one professional default tone ships with every profile. Domain-specific behavior lives in skills and operational playbooks (AGENTS.md), not in personality config. Users customize tone via `soul_overrides` (free text) and a warmth slider.
+**Extend the composition model.** The composition model (mission profile × personality × per-category providers) is live for 5 profiles — life-ops, trading, research, home-auto, dev-partner — compiled through `src/design/catalog/compiler.ts`. The 11 monolithic blueprints remain as the top-level "pick a use case" surface; refactoring them to compile down to profile+skill compositions continues. Domain-specific behavior lives in skills and operational playbooks (AGENTS.md), not in personality config.
 
 **Expand the skill library.** Skills carry the real domain behavior — how the agent drafts outreach, structures reports, triages email, runs morning briefs. Each profile needs 2-5 skills that encode domain-specific workflows. This is where the product differentiation actually lives, not in personality.
 

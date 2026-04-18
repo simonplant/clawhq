@@ -188,25 +188,24 @@ Run diagnostics:
 ```
 $ clawhq doctor
 
-  ClawHQ Doctor — 14 checks
+  ClawHQ Doctor — 39 checks
   ──────────────────────────
-  ✔ Container health
-  ✔ Config validation (14 landmine rules)
-  ✔ Credential health (IMAP, SMTP, CalDAV, Telegram)
-  ✔ Egress firewall active
-  ✔ Identity files read-only
-  ✔ Memory within limits (12KB / 120KB)
-  ✔ Cron jobs registered
-  ✔ Skills installed
-  ✔ Workspace permissions
-  ✔ Docker resources
-  ✔ Engine version
-  ✔ Backup configuration
-  ✔ Audit trail active
-  ✔ Security posture: hardened
+  ✔ docker-running, container-running, container-posture
+  ✔ config-valid (14 landmine rules), env-vars, config-sync
+  ✔ cred-proxy-healthy, cred-proxy-routes, creds-perms
+  ✔ egress-domains-coverage, firewall-active, air-gap-active
+  ✔ identity-size, identity-immutable
+  ✔ cron-schema, cron-syntax, cron-health
+  ✔ gateway-reachable, ollama-reachable, ollama-url, ollama-model-available
+  ✔ session-runaway, loop-detection-enabled, model-agentic-capable
+  ✔ workspace-exists, tool-access-grants, sanitize-available
+  ✔ ops-autoupdate-active, ops-backup-recent, ops-security-monitor
+  …
 
   All checks passed.
 ```
+
+Run `clawhq doctor --fix` to apply auto-fixes for issues that have deterministic remediation (cron stale error state, missing loopDetection flag, tool access grants).
 
 ---
 

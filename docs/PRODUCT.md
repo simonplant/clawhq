@@ -26,7 +26,7 @@ The work has three layers:
 Published blueprints, the configuration surface reference, security findings, production postmortems, upstream issue reports and PRs. This is what establishes authority in the ecosystem regardless of what happens with revenue. Content emerges from development and operation — not a separate calendar.
 
 **Layer 2: Tools (open-source, useful, moderate maintenance)**
-Blueprint compiler, config generation with landmine prevention, container hardening, diagnostics, deployment pipeline. 67K lines of TypeScript, 78 commands, 7 working blueprints. These exist and work. They help people. Maintenance stays sustainable by not wrapping upstream commands — generating configs and checking health, not reimplementing what OpenClaw already does.
+Blueprint compiler, composition model (profile × personality × providers), config generation with landmine prevention, container hardening, diagnostics, deployment pipeline. ~85K lines of TypeScript, 11 working blueprints, 39 doctor checks. These exist and work. They help people. Maintenance stays sustainable by not wrapping upstream commands — generating configs and checking health, not reimplementing what OpenClaw already does.
 
 **Layer 3: Services (gated behind demand, not speculative)**
 Monitoring (upstream intelligence, config breakage prediction), premium blueprints, consulting. These only get built when Layer 1 and 2 have generated enough traction to validate demand. Not before.

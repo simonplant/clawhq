@@ -72,11 +72,13 @@ describe("checkOllama (integration)", async () => {
     const result = await checkOllama();
 
     expect(result.name).toBe("ollama");
-    // Ollama binary is present — either server is running or not
+    // Ollama binary is present — either the server is running, the CLI is
+    // present but idle, or a sibling Docker container is serving. Any of
+    // these should pass.
     if (result.ok) {
-      expect(result.detail).toMatch(/Ollama \d+\.\d+/);
+      expect(result.detail).toMatch(/Ollama \d+\.\d+|container/);
     } else {
-      // CLI found but server not running is a valid outcome
+      // CLI found but neither server nor container is serving
       expect(result.detail).toMatch(/not running/);
     }
   });

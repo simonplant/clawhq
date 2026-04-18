@@ -100,15 +100,17 @@ clawhq install --from-source  — Zero-trust: clone, audit, build from source
 # Design
 clawhq init --guided          — Interactive setup → choose blueprint, connect services
 clawhq init --smart           — AI-powered config inference (local Ollama)
+clawhq init --reset           — Archive the existing deployment to a timestamped attic and re-forge
 clawhq blueprint list         — Browse available blueprints
 clawhq blueprint preview      — Preview a blueprint's operational design
+clawhq apply                  — Regenerate files from clawhq.yaml (idempotent; preserves credentials/state)
 
 # Build
 clawhq build                  — Two-stage Docker build with change detection + manifests
 
 # Secure
 clawhq scan                   — Secret scanning via gitleaks (recommends install)
-clawhq creds                  — Credential health probes
+clawhq creds                  — Credential health probes, set/unset/get subcommands
 clawhq audit                  — Tool execution + egress audit trail (append-only JSONL)
 
 # Deploy
@@ -119,7 +121,7 @@ clawhq verify                 — Verify all integrations work from inside conta
 clawhq connect                — Connect messaging channel
 
 # Operate
-clawhq doctor [--fix]         — Preventive diagnostics (30+ checks) with auto-fix
+clawhq doctor [--fix]         — Preventive diagnostics (39 checks) with auto-fix
 clawhq status [--watch]       — Single-pane dashboard
 clawhq backup create/list/restore — Encrypted snapshots
 clawhq update [--check]       — Update with change intelligence + migration plan
@@ -178,6 +180,7 @@ src/
 │   └── launcher/               — Deploy orchestration (up/down/restart), verify, firewall
 │
 ├── secure/                     — Security and compliance
+│   ├── clawwall/                — ClawWall runtime defenses (curl egress wrapper, sanitize tool)
 │   ├── sanitizer/              — Tier 1 prompt injection detection (deterministic patterns only)
 │   ├── credentials/            — Credential store + health probes + credential proxy
 │   └── audit/                  — Append-only JSONL audit logging (tool, secret, egress)

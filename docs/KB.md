@@ -87,6 +87,10 @@ Not every entry needs all four. Facts and gotchas just need a clear statement. B
 - Symptom: Multiple `.clobbered.*` backup files appearing alongside `openclaw.json`.
 - Cause: OpenClaw's integrity system tracks config changes. Normal when ClawHQ writes config.
 
+**`clawhq install` preserves an existing `clawhq.yaml` that has a composition**
+- Ordering matters: if you run `clawhq init --guided --reset` first, it writes `clawhq.yaml` with `composition.profile` + `composition.personality`. `clawhq install` then skips overwriting that file so `clawhq apply` can still regenerate per-tool configs (e.g. himalaya). On a truly fresh host with no prior `clawhq.yaml`, `install` writes a minimal default.
+- Symptom of the old behaviour: `clawhq apply` failed with "No composition.profile in clawhq.yaml" after `init → install`, and tool configs (himalaya.toml) could not be regenerated. Fix is in `src/build/installer/scaffold.ts`.
+
 ---
 
 ## Updates

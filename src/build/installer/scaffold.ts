@@ -5,10 +5,10 @@
  * Uses the atomic writer from design/configure for the clawhq.yaml file.
  */
 
-import { chmodSync, mkdirSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { stringify as yamlStringify } from "yaml";
+import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
 import { DIR_MODE_SECRET } from "../../config/defaults.js";
 import { defaultConfig } from "../../config/loader.js";
@@ -100,6 +100,22 @@ export interface WriteConfigOptions {
 export function writeInitialConfig(options: WriteConfigOptions): string {
   const root = resolve(options.deployDir);
   const configPath = join(root, "clawhq.yaml");
+
+  // If an existing clawhq.yaml already carries a composition.profile (i.e. the
+  // user ran `clawhq init` first), preserve it — the install step must not
+  // stomp composition produced by the init wizard, otherwise `clawhq apply`
+  // loses the profile/personality needed to regenerate per-tool configs.
+  if (existsSync(configPath)) {
+    try {
+      const existing = yamlParse(readFileSync(configPath, "utf-8")) as Record<string, unknown> | null;
+      const comp = existing?.["composition"] as Record<string, unknown> | undefined;
+      if (comp?.["profile"]) {
+        return configPath;
+      }
+    } catch {
+      // Malformed existing config — fall through and overwrite.
+    }
+  }
 
   const config: ClawHQConfig = {
     ...defaultConfig(),
