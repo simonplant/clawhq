@@ -156,7 +156,7 @@ export function compile(
     { relativePath: "engine/docker-compose.yml", content: composeYaml },
 
     // Cron
-    { relativePath: "cron/jobs.json", content: renderCronJobs(profile, resolvedProviders, config.model) },
+    { relativePath: "cron/jobs.json", content: renderCronJobs(profile, resolvedProviders, config.model, user.telegramChatId) },
 
     // Substack publication aliases — user-managed, created empty on init
     { relativePath: "workspace/config/substack-aliases.json", content: "{}\n" },
@@ -359,7 +359,11 @@ function renderUser(user: UserConfig): string {
   lines.push("# About You\n");
   lines.push(`**Name:** ${user.name}`);
   lines.push(`**Timezone:** ${user.timezone}`);
-  lines.push(`**Communication preference:** ${user.communication}\n`);
+  lines.push(`**Communication preference:** ${user.communication}`);
+  if (user.telegramChatId) {
+    lines.push(`**Telegram chat id:** ${user.telegramChatId}`);
+  }
+  lines.push("");
 
   if (user.constraints) {
     lines.push("## Constraints\n");
@@ -697,27 +701,33 @@ function renderHeartbeat(profile: MissionProfile): string {
 function renderBootstrap(profile: MissionProfile): string {
   const tools = profile.tools.filter((t) => t.required).map((t) => t.name);
   const lines: string[] = [
-    "## Startup Sequence",
+    "## Startup Preflight (silent)",
     "",
-    "On every session start, execute this sequence before responding to any message:",
+    "This is an INTERNAL preflight. Do not narrate it, do not announce completion, do not emit status blocks.",
+    "Never say phrases like \"Bootstrap complete\", \"Startup sequence finished\", \"Tools verified\", or list which files you loaded.",
+    "The user should never see any output from this preflight unless a check fails.",
     "",
-    "1. **Load identity**: Read SOUL.md, USER.md, AGENTS.md, IDENTITY.md",
-    "2. **Check tools**: Verify each tool is executable:",
+    "On the first turn of a new session, silently:",
+    "",
+    "1. Load identity context from SOUL.md, USER.md, AGENTS.md, IDENTITY.md (read, don't announce).",
+    "2. Assume required tools are installed. Only probe a tool if you are about to use it and it appears missing.",
   ];
 
-  for (const tool of tools) {
-    lines.push(`   - \`which ${tool} && ${tool} help 2>/dev/null | head -1\``);
+  if (tools.length > 0) {
+    lines.push(`   - Required tools for this profile: ${tools.map((t) => `\`${t}\``).join(", ")}`);
   }
 
   lines.push(
-    "3. **Sync memory**: Read MEMORY.md for context from previous sessions",
-    "4. **Check heartbeat**: If HEARTBEAT.md has checks, run them",
+    "3. Load MEMORY.md for prior-session context (read, don't summarize back).",
+    "4. If HEARTBEAT.md defines checks, run them — but only surface output when a check fails.",
     "",
-    "## Recovery",
+    "Then respond to the user's message directly. No preamble.",
     "",
-    "If any tool fails the health check:",
-    "- Report the failure clearly to the user",
-    "- Continue operating with available tools",
+    "## Recovery (the only time preflight becomes visible)",
+    "",
+    "If a tool probe fails or a check errors:",
+    "- Report the specific failure in one line",
+    "- Continue with available tools",
     "- Do not silently skip broken capabilities",
     "",
   );
@@ -760,6 +770,26 @@ function renderOpenclawJson(
       deny: isUnderAttack
         ? ["exec", "browser", "gateway", "nodes", "canvas", "image"]
         : ["browser", "gateway", "nodes"],
+      // OpenClaw v0.8.7+ hides tools from non-admin users unless accessGrants
+      // is set. Wildcard grant keeps tools visible to every authorized DM.
+      accessGrants: [{ type: "user", value: "*" }],
+      // Tool-loop detection — OpenClaw defaults this off, which lets a weak
+      // agentic model spin forever (2026-04-16 incident: 31K-message runaway
+      // pinned the GPU for 10h). Thresholds tight enough to bail before
+      // context overflow.
+      loopDetection: {
+        enabled: true,
+        historySize: 30,
+        warningThreshold: 10,
+        criticalThreshold: 20,
+        globalCircuitBreakerThreshold: 30,
+        unknownToolThreshold: 5,
+        detectors: {
+          genericRepeat: true,
+          knownPollNoProgress: true,
+          pingPong: true,
+        },
+      },
       fs: {
         workspaceOnly: true,
       },
@@ -787,7 +817,7 @@ function renderOpenclawJson(
       },
       trustedProxies: ["172.17.0.1"],
     },
-    channels: buildChannels(composition),
+    channels: buildChannels(composition, user),
     session: {
       dmScope: "per-channel-peer",
     },
@@ -926,11 +956,20 @@ function renderCronJobs(
   profile: MissionProfile,
   providers: Provider[] = [],
   modelOverride?: string,
+  telegramChatId?: string,
 ): string {
   const jobs: Record<string, unknown>[] = [];
   const modelConfig = buildModelConfig(providers, modelOverride);
   const primary = modelConfig.primary as string;
   const isLocal = primary.startsWith("ollama/");
+
+  const announceDelivery = telegramChatId
+    ? {
+        mode: "announce" as const,
+        channel: "telegram" as const,
+        to: `tg:${telegramChatId}`,
+      }
+    : { mode: "announce" as const };
 
   for (const [id, cronDef] of Object.entries(profile.cron_defaults)) {
     const expr = typeof cronDef === "string" ? cronDef : cronDef.expr;
@@ -950,7 +989,7 @@ function renderCronJobs(
       name: jobId,
       enabled: true,
       schedule: { kind: "cron", expr },
-      delivery: { mode: shouldAnnounce ? "announce" : "none" },
+      delivery: shouldAnnounce ? announceDelivery : { mode: "none" },
       payload: { kind: "agentTurn", message, model },
       sessionTarget: "isolated",
       state: {},
@@ -1070,12 +1109,15 @@ const CHANNEL_ENV_VARS: Record<string, Record<string, string>> = {
   slack: { signingSecret: "${SLACK_SIGNING_SECRET}" },
 };
 
-function buildChannels(config: CompositionConfig): Record<string, unknown> {
+function buildChannels(config: CompositionConfig, user?: UserConfig): Record<string, unknown> {
+  // If the user has a telegramChatId, lock DM access to that single chat.
+  // Otherwise fall back to open+wildcard so pairing can still complete.
+  const hasOwner = !!user?.telegramChatId;
   const channels: Record<string, Record<string, unknown>> = {
     telegram: {
       enabled: true,
-      dmPolicy: "open",
-      allowFrom: ["*"],
+      dmPolicy: hasOwner ? "allowlist" : "open",
+      allowFrom: hasOwner ? [`tg:${user!.telegramChatId}`] : ["*"],
       groupPolicy: "disabled",
       linkPreview: false,
     },

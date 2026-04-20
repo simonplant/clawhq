@@ -347,7 +347,8 @@ export function parseUserMd(content: string): UserConfig {
     commMatch === "detailed" || commMatch === "conversational" ? commMatch : "brief";
   const constraintsMatch = content.match(/## Constraints\n\n([\s\S]*?)(?:\n##|\s*$)/);
   const constraints = constraintsMatch?.[1]?.trim() || undefined;
-  return { name, timezone, communication, constraints };
+  const telegramChatId = content.match(/\*\*Telegram chat id:\*\*\s*(\S+)/)?.[1]?.trim() || undefined;
+  return { name, timezone, communication, constraints, telegramChatId };
 }
 
 function readUserContext(deployDir: string): UserConfig {

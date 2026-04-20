@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import chalk from "chalk";
 import type { Command } from "commander";
 import ora from "ora";
-import { parse as yamlParse } from "yaml";
+import { parseDocument, parse as yamlParse } from "yaml";
 
 import {
   loadAllBuiltinBlueprints,
@@ -15,6 +15,7 @@ import type { Blueprint } from "../../design/blueprints/index.js";
 import {
   compile,
   getDomains,
+  getProvider,
   getProvidersForDomain,
   loadAllPersonalities,
   loadAllProfiles,
@@ -709,6 +710,57 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
 
         console.log("");
       } catch (error) {
+        console.error(renderError(error));
+        throw new CommandError("", 1);
+      }
+    });
+
+  compose
+    .command("set-provider")
+    .description("Set composition.providers.<domain> in clawhq.yaml (e.g. calendar icloud-cal)")
+    .argument("<domain>", "Provider domain (email, calendar, tasks, search, etc.)")
+    .argument("<id>", "Provider id (run `clawhq compose providers <domain>` to list)")
+    .option("-d, --deploy-dir <path>", "Deployment directory", "/home/simon/.clawhq")
+    .option("--dry-run", "Print the change without writing")
+    .action(async (domain: string, id: string, opts: { deployDir: string; dryRun?: boolean }) => {
+      try {
+        const provider = getProvider(id);
+        if (!provider) {
+          throw new CommandError(`Unknown provider id: ${id}. Run \`clawhq compose providers ${domain}\` to list available.`, 1);
+        }
+        if (provider.domain !== domain) {
+          throw new CommandError(
+            `Provider ${id} is for domain "${provider.domain}", not "${domain}". Pick an id from \`clawhq compose providers ${domain}\`.`,
+            1,
+          );
+        }
+
+        const configPath = resolve(opts.deployDir, "clawhq.yaml");
+        if (!existsSync(configPath)) {
+          throw new CommandError(`No clawhq.yaml at ${configPath}. Run \`clawhq init\` first.`, 1);
+        }
+
+        const doc = parseDocument(readFileSync(configPath, "utf-8"));
+        const path = ["composition", "providers", domain];
+        const previous = doc.getIn(path);
+        if (previous === id) {
+          console.log(chalk.dim(`  composition.providers.${domain} is already "${id}" — no change.`));
+          return;
+        }
+        doc.setIn(path, id);
+
+        const output = doc.toString();
+        if (opts.dryRun) {
+          console.log(chalk.dim(`  (dry-run) would set composition.providers.${domain} = ${id} (was ${previous ?? "unset"})`));
+          return;
+        }
+
+        const { writeFileSync } = await import("node:fs");
+        writeFileSync(configPath, output, "utf-8");
+        console.log(chalk.green(`✔ composition.providers.${domain}: ${previous ?? "unset"} → ${id}`));
+        console.log(chalk.dim(`  Next: clawhq apply   (regenerates openclaw.json, allowlist, env)`));
+      } catch (error) {
+        if (error instanceof CommandError) throw error;
         console.error(renderError(error));
         throw new CommandError("", 1);
       }

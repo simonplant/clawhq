@@ -99,6 +99,8 @@ export interface UserConfig {
   readonly timezone: string;
   readonly communication: "brief" | "detailed" | "conversational";
   readonly constraints?: string;
+  /** Telegram chat id for DM delivery. Used for cron delivery target + allowFrom. */
+  readonly telegramChatId?: string;
 }
 
 /** A single file to be written to the deployment directory. */
