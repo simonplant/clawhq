@@ -698,8 +698,24 @@ function renderHeartbeat(profile: MissionProfile): string {
 
 // ── BOOTSTRAP.md ───────────────────────────────────────────────────────────
 
+/**
+ * Detect LLM-maintained knowledge bases from a profile's skill list.
+ * A KB `<kb>` is present when skills include `wiki-<kb>-ingest` (plus the
+ * matching query/review siblings are a soft expectation, but ingest alone
+ * is enough to justify a session-start briefing).
+ */
+function detectProfileKnowledgeBases(profile: MissionProfile): string[] {
+  const names = new Set<string>();
+  for (const skill of profile.skills) {
+    const match = skill.match(/^wiki-([a-z0-9-]+)-ingest$/);
+    if (match && match[1]) names.add(match[1]);
+  }
+  return [...names].sort();
+}
+
 function renderBootstrap(profile: MissionProfile): string {
   const tools = profile.tools.filter((t) => t.required).map((t) => t.name);
+  const kbs = detectProfileKnowledgeBases(profile);
   const lines: string[] = [
     "## Startup Preflight (silent)",
     "",
@@ -720,6 +736,15 @@ function renderBootstrap(profile: MissionProfile): string {
   lines.push(
     "3. Load MEMORY.md for prior-session context (read, don't summarize back).",
     "4. If HEARTBEAT.md defines checks, run them — but only surface output when a check fails.",
+  );
+
+  if (kbs.length > 0) {
+    lines.push(
+      `5. Read \`workspace/state/wiki-context.md\` — current state of the LLM-maintained knowledge base${kbs.length > 1 ? "s" : ""} (${kbs.map((k) => `\`${k}\``).join(", ")}). A cron keeps it fresh via \`llm-wiki context\`; if the file is missing, the wiki-context-refresh cron has not run yet — proceed without it.`,
+    );
+  }
+
+  lines.push(
     "",
     "Then respond to the user's message directly. No preamble.",
     "",

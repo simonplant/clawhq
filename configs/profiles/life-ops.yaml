@@ -99,6 +99,9 @@ skills:
   - focus25-fetch
   - premarket-brief
   - swing-scanner
+  - wiki-trading-ingest  # event-driven — when Simon drops a source
+  - wiki-trading-query   # event-driven — when Simon asks a research question
+  - wiki-trading-review  # weekly cron + on-demand content health check
 
 integrations:
   required: [messaging, email, calendar]
@@ -139,6 +142,12 @@ cron_defaults:
   x_scan_evening:
     expr: "0 19-22 * * *"
     announce: true
+  wiki_trading_review:
+    expr: "0 17 * * 0"     # Sunday 17:00 PT — weekly content health check
+    announce: true
+  wiki_context_refresh:
+    expr: "*/30 * * * *"   # every 30 min — refreshes workspace/state/wiki-context.md
+    announce: false
   news_scan:
     expr: "30 6,12 * * 1-5"
     announce: true
@@ -310,6 +319,19 @@ cron_prompts:
     Alert Simon only for: Fed/FOMC surprises, major earnings on watched names,
     geopolitical events likely to move ES >1%, news impacting open positions.
     Otherwise log to memory/news-YYYY-MM-DD.md and stay silent.
+
+  wiki_trading_review: >
+    Run skill wiki-trading-review: weekly content-level health check of the
+    trading wiki at knowledge/trading/. Surfaces contradictions, stale claims,
+    orphan pages, missing cross-references, and gaps. Prioritized output:
+    Fix-now / Improve / Investigate. Ends with one concrete recommendation
+    Simon can approve in one message. Writes the full review to
+    journal/wiki-review-YYYY-MM-DD.md and DMs a 3-line summary.
+
+  wiki_context_refresh: >
+    Run: llm-wiki context --name trading > workspace/state/wiki-context.md.
+    Silent — this just keeps the session-start briefing file fresh so the
+    agent reads current wiki state at the next heartbeat. No output to Simon.
 
 delegation:
   - action: organize_inbox

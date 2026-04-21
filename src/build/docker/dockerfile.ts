@@ -16,6 +16,16 @@ import { OPENCLAW_CONTAINER_WORKSPACE } from "../../config/paths.js";
 import { validateBinarySha256, OP_CLI_URL, OP_CLI_SHA256, OP_CLI_DEST } from "./binary-manifest.js";
 import type { Stage2Config } from "./types.js";
 
+// ── Pinned External Dependencies ────────────────────────────────────────────
+
+/**
+ * llm-wiki — CLI tooling for the Karpathy LLM-maintained wiki pattern.
+ * Pinned by commit SHA for reproducibility. Update by bumping the SHA after
+ * verifying the upstream release.
+ */
+export const LLM_WIKI_REPO = "simonplant/llm-wiki";
+export const LLM_WIKI_COMMIT = "c90ecf8a9071ead3acabf759da6d0df927e07a43";
+
 // ── Binary Validation ───────────────────────────────────────────────────────
 
 const UNSAFE_PATH_CHARS = /[\n\r"'\\`$]/;
@@ -79,6 +89,16 @@ export function generateStage2Dockerfile(
       "",
     );
   }
+
+  // Install llm-wiki CLI for the LLM-maintained knowledge base.
+  // Pinned to a specific commit SHA for reproducibility — update when the
+  // upstream publishes a new verified release.
+  lines.push(
+    "# Install llm-wiki CLI (LLM-maintained knowledge base — Karpathy pattern)",
+    `RUN npm install -g "github:${LLM_WIKI_REPO}#${LLM_WIKI_COMMIT}" && \\`,
+    `    llm-wiki --version`,
+    "",
+  );
 
   // Install binary tools from URLs with SHA256 verification
   for (const binary of config.binaries) {

@@ -46,6 +46,7 @@ export function generateAgents(blueprint: Blueprint): string {
     "",
     ...formatSkills(blueprint),
     "",
+    ...formatKnowledgeBases(blueprint),
     ...formatApprovalGates(blueprint),
     ...formatHeartbeatBehavior(blueprint),
     ...formatCommunicationRules(blueprint),
@@ -223,6 +224,86 @@ function formatSkills(blueprint: Blueprint): string[] {
     const req = skill.required ? "required" : "optional";
     lines.push(`- **${skill.name}** _(${req})_ — ${skill.description}`);
   }
+  return lines;
+}
+
+// ── Knowledge Bases ───────────────────────────────────────────────────────
+
+/**
+ * Detect LLM-maintained knowledge bases from the blueprint's skill list.
+ *
+ * Convention: a knowledge base named `<kb>` is present when the blueprint
+ * includes `wiki-<kb>-ingest`, `wiki-<kb>-query`, and `wiki-<kb>-review`.
+ * Derived from skills (rather than a blueprint field) so the wiki pattern
+ * can be added or removed by editing the profile's skills list only.
+ */
+function detectKnowledgeBases(blueprint: Blueprint): string[] {
+  const skillNames = new Set(blueprint.toolbelt.skills.map((s) => s.name));
+  const names = new Set<string>();
+  for (const name of skillNames) {
+    const match = name.match(/^wiki-([a-z0-9-]+)-ingest$/);
+    if (!match || !match[1]) continue;
+    const kb = match[1];
+    if (skillNames.has(`wiki-${kb}-query`) && skillNames.has(`wiki-${kb}-review`)) {
+      names.add(kb);
+    }
+  }
+  return [...names].sort();
+}
+
+/**
+ * Emit the Knowledge Bases section for AGENTS.md when the blueprint's skills
+ * indicate one or more KBs are present. Teaches the agent the three layers,
+ * three operations, and two navigation files that make the Karpathy llm-wiki
+ * pattern a discipline rather than a pile of markdown.
+ */
+function formatKnowledgeBases(blueprint: Blueprint): string[] {
+  const kbs = detectKnowledgeBases(blueprint);
+  if (kbs.length === 0) return [];
+
+  const lines: string[] = [
+    "## Knowledge Bases",
+    "",
+    "You maintain an LLM-curated wiki that compounds over time. It is not a document dump — it is the reasoning you will rely on next week. Treat maintenance as load-bearing work.",
+    "",
+  ];
+
+  for (const kb of kbs) {
+    lines.push(
+      `### \`knowledge/${kb}/\``,
+      "",
+      "**Three layers:**",
+      `- \`knowledge/${kb}/raw/\` — immutable sources. You never modify files here.`,
+      `- \`knowledge/${kb}/wiki/\` — curated markdown pages with \`[[wiki links]]\`. You own this layer.`,
+      "- This file (AGENTS.md) — the schema. It defines how the wiki works.",
+      "",
+      "**Three operations** — each has a dedicated skill:",
+      `- **Ingest** (\`wiki-${kb}-ingest\`) — when a new source arrives, read it, discuss takeaways, update every affected page, cross-reference, update \`index.md\` and \`log.md\`. A single ingest commonly touches 10–15 pages.`,
+      `- **Query** (\`wiki-${kb}-query\`) — answer questions wiki-first: load \`index.md\`, drill into relevant pages, cite with \`[[wiki links]]\`. Offer to file substantive syntheses back as new pages so explorations compound.`,
+      `- **Review** (\`wiki-${kb}-review\`) — weekly health check: contradictions, stale claims, orphans, gaps. Complements \`llm-wiki lint\` (structural) with content judgment.`,
+      "",
+      "**Two navigation files:**",
+      `- \`knowledge/${kb}/index.md\` — catalog of every page by category. Read this first on any query.`,
+      `- \`knowledge/${kb}/log.md\` — chronological record. Append on every ingest/review. Entry format: \`## [YYYY-MM-DD] operation | Title\`.`,
+      "",
+      "**CLI** — `llm-wiki` is installed inside the container:",
+      `- \`llm-wiki context --name ${kb}\` — briefing (page count, unprocessed sources, issues, recent activity).`,
+      `- \`llm-wiki stats --name ${kb}\` — health dashboard.`,
+      `- \`llm-wiki lint --fix --name ${kb}\` — structural checks with auto-fix.`,
+      `- \`llm-wiki ingest <file> --name ${kb}\` — stage a source into \`raw/\`.`,
+      "",
+      "**Session start:** read `workspace/state/wiki-context.md` — a cron refreshes it every 30 min with `llm-wiki context`. That tells you the wiki's current state without re-scanning.",
+      "",
+      "**Conventions:**",
+      "- Every wiki page has YAML frontmatter: `tags`, `confidence` (verified/reported/estimated/speculative), `last-verified`, `source-count`.",
+      "- Every claim cites its source: `per [[page-slug]]` or `per raw/<file>.md`.",
+      "- When two sources disagree, document both positions and the evidence — never silently pick one.",
+      "- Update existing pages when topics overlap; only create a new page when a concept genuinely stands alone.",
+      "- File non-trivial query answers back as wiki pages under **Comparisons** or **Analyses**. Don't let valuable syntheses die in chat history.",
+      "",
+    );
+  }
+
   return lines;
 }
 

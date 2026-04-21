@@ -152,6 +152,16 @@ describe("generateStage2Dockerfile", () => {
     const df = generateStage2Dockerfile("openclaw:local", stage2Config());
     expect(df).toContain("USER 1000:1000");
   });
+
+  it("installs llm-wiki CLI pinned to a commit SHA", () => {
+    const df = generateStage2Dockerfile("openclaw:local", stage2Config());
+    // Must reference the llm-wiki repo
+    expect(df).toContain("simonplant/llm-wiki");
+    // Must pin to a 40-char SHA (reproducibility — no floating main)
+    expect(df).toMatch(/simonplant\/llm-wiki#[a-f0-9]{40}/);
+    // Must verify the CLI is available post-install so a bad SHA fails the build
+    expect(df).toContain("llm-wiki --version");
+  });
 });
 
 // ── Binary Validation Tests ─────────────────────────────────────────────
