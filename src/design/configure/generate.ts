@@ -107,7 +107,7 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     openclawConfig: buildOpenClawConfig(answers, port),
     composeConfig: buildComposeConfig(answers, port, networkName),
     envVars,
-    cronJobs: buildCronJobs(answers.blueprint, answers.userContext?.timezone),
+    cronJobs: buildCronJobs(answers.blueprint, answers.userContext?.timezone, answers.modelProvider === "local"),
     identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions, answers.userContext),
     toolFiles: buildToolFiles(answers.blueprint),
     skillFiles: buildSkillFiles(answers.blueprint),
@@ -414,10 +414,24 @@ function buildEnvVars(answers: WizardAnswers): Record<string, string> {
  *
  * Both can be overridden per job via blueprint cron_config.delivery / cron_config.session_target.
  */
-function buildCronJobs(blueprint: Blueprint, timezone?: string): CronJobDefinition[] {
+function buildCronJobs(
+  blueprint: Blueprint,
+  timezone?: string,
+  isLocalModel = false,
+): CronJobDefinition[] {
   const jobs: CronJobDefinition[] = [];
   const cron = blueprint.cron_config;
-  const routing = cron.model_routing;
+  // Blueprint model_routing is cloud-tier-based (haiku/sonnet/opus shorthand
+  // for Anthropic). On a local-Ollama deployment, those shorthands get passed
+  // to the Ollama provider and 404 — `openclaw.json`'s primary is gemma4
+  // (or similar), and "haiku" isn't a known Ollama model. The bug surfaced
+  // 2026-04-21: init with an email-manager-style blueprint over a local-
+  // Ollama deploy broke every cron with `model 'haiku' not found`.
+  //
+  // When the user picked a local model, strip per-job routing so every
+  // job falls back to the daemon's primary (gemma4). Cloud users still
+  // get tier routing from their blueprint.
+  const routing = isLocalModel ? undefined : cron.model_routing;
 
   // Compile activeHours from monitoring.quiet_hours for jobs with 'waking' qualifier
   const wakingActiveHours = parseQuietHoursToActiveHours(blueprint.monitoring.quiet_hours, timezone);

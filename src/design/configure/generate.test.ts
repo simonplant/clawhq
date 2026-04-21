@@ -216,11 +216,12 @@ describe("generateBundle", () => {
     expect(() => generateBundle(answers)).toThrow(/Invalid morning brief time/);
   });
 
-  it("emits model and fallbacks from blueprint cron_config.model_routing", () => {
+  it("emits model and fallbacks from blueprint cron_config.model_routing (cloud)", () => {
     const loaded = loadBlueprint("email-manager");
     const answers = makeAnswers({
       blueprint: loaded.blueprint,
       blueprintPath: loaded.sourcePath,
+      modelProvider: "cloud",
     });
     const bundle = generateBundle(answers);
 
@@ -237,11 +238,29 @@ describe("generateBundle", () => {
     expect(morningBrief?.fallbacks).toEqual(["haiku"]);
   });
 
-  it("skill cron jobs inherit work_session model routing", () => {
+  it("strips blueprint model_routing on local deployments (prevents Ollama 404 on cloud-tier shorthands)", () => {
     const loaded = loadBlueprint("email-manager");
     const answers = makeAnswers({
       blueprint: loaded.blueprint,
       blueprintPath: loaded.sourcePath,
+      modelProvider: "local",
+    });
+    const bundle = generateBundle(answers);
+
+    const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.payload.model).toBeUndefined();
+    expect(heartbeat?.fallbacks).toBeUndefined();
+
+    const workSession = bundle.cronJobs.find((j) => j.id === "work-session");
+    expect(workSession?.payload.model).toBeUndefined();
+  });
+
+  it("skill cron jobs inherit work_session model routing (cloud)", () => {
+    const loaded = loadBlueprint("email-manager");
+    const answers = makeAnswers({
+      blueprint: loaded.blueprint,
+      blueprintPath: loaded.sourcePath,
+      modelProvider: "cloud",
     });
     const bundle = generateBundle(answers);
 
@@ -380,8 +399,11 @@ describe("generateBundle", () => {
     expect(heartbeat?.sessionTarget).toBe("main");
   });
 
-  it("uses cost-efficient defaults: cheap models for frequent jobs", () => {
-    // All 7 blueprints should route heartbeat to haiku (cheapest)
+  it("uses cost-efficient defaults on cloud: cheap models for frequent jobs", () => {
+    // All 7 blueprints should route heartbeat to haiku (cheapest) when the
+    // deploy uses a cloud model provider. On local-Ollama deployments the
+    // daemon's primary model is used for every job instead — see the
+    // "strips blueprint model_routing on local deployments" test.
     const blueprintNames = [
       "email-manager", "family-hub", "founders-ops",
       "replace-chatgpt-plus", "replace-google-assistant", "replace-my-pa",
@@ -393,6 +415,7 @@ describe("generateBundle", () => {
       const answers = makeAnswers({
         blueprint: loaded.blueprint,
         blueprintPath: loaded.sourcePath,
+        modelProvider: "cloud",
       });
       const bundle = generateBundle(answers);
       const heartbeat = bundle.cronJobs.find((j) => j.id === "heartbeat");
