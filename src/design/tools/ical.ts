@@ -106,7 +106,7 @@ _discover_calendars() {
   _curl -X PROPFIND -H "Content-Type: application/xml" -H "Depth: 1" \\
     -d '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:displayname/><d:resourcetype/></d:prop></d:propfind>' \\
     "$home/" | python3 -c "
-import sys, re, json
+import sys, re, json, html
 data = sys.stdin.read()
 cals = []
 for resp in re.finditer(r'<(?:\\w+:)?response[^>]*>(.*?)</(?:\\w+:)?response>', data, re.DOTALL):
@@ -124,7 +124,7 @@ for resp in re.finditer(r'<(?:\\w+:)?response[^>]*>(.*?)</(?:\\w+:)?response>', 
     name = re.search(r'<(?:\\w+:)?displayname[^>]*>(.*?)</(?:\\w+:)?displayname>', block)
     if href:
         cals.append({
-            'name': name.group(1).strip() if name else '(unnamed)',
+            'name': html.unescape(name.group(1).strip()) if name else '(unnamed)',
             'href': href.group(1).strip(),
         })
 print(json.dumps(cals))
@@ -159,9 +159,14 @@ for c in json.load(sys.stdin):
       else
         cal_url="$home/$cal_href"
       fi
+      # <c:expand> asks the server to materialize each RRULE instance within
+      # the time-range as its own VEVENT with instance-specific DTSTART/DTEND,
+      # instead of returning the master event once with the original DTSTART
+      # (which made recurring events appear on their initial date regardless
+      # of query window).
       body='<?xml version="1.0" encoding="utf-8"?>
 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-  <d:prop><d:getetag/><c:calendar-data/></d:prop>
+  <d:prop><d:getetag/><c:calendar-data><c:expand start="'"$start"'" end="'"$end"'"/></c:calendar-data></d:prop>
   <c:filter><c:comp-filter name="VCALENDAR">
     <c:comp-filter name="VEVENT">
       <c:time-range start="'"$start"'" end="'"$end"'"/>
@@ -174,6 +179,19 @@ for c in json.load(sys.stdin):
     done <<< "$cal_paths"
     echo "$all_data" | python3 -c "
 import sys, re, json
+BS = chr(92)  # literal backslash, avoids TS→bash→python escape hell
+def _ical_unescape(s):
+    # iCalendar text escapes per RFC 5545 §3.3.11: \\N/\\n → newline,
+    # \\, → comma, \\; → semicolon, \\\\ → backslash.
+    # Stage through a NUL placeholder so escaped backslashes (\\\\) aren't
+    # re-interpreted when we decode the other escape sequences.
+    PH = chr(0)
+    return (s.replace(BS + BS, PH)
+             .replace(BS + 'N', chr(10))
+             .replace(BS + 'n', chr(10))
+             .replace(BS + ',', ',')
+             .replace(BS + ';', ';')
+             .replace(PH, BS))
 data = sys.stdin.read()
 events = []
 for m in re.finditer(r'BEGIN:VEVENT(.*?)END:VEVENT', data, re.DOTALL):
@@ -183,10 +201,10 @@ for m in re.finditer(r'BEGIN:VEVENT(.*?)END:VEVENT', data, re.DOTALL):
     dtend = re.search(r'DTEND[^:]*:(.*)', block)
     location = re.search(r'LOCATION:(.*)', block)
     events.append({
-        'summary': summary.group(1).strip() if summary else '(no title)',
+        'summary': _ical_unescape(summary.group(1).strip()) if summary else '(no title)',
         'start': dtstart.group(1).strip() if dtstart else '',
         'end': dtend.group(1).strip() if dtend else '',
-        'location': location.group(1).strip() if location else None,
+        'location': _ical_unescape(location.group(1).strip()) if location else None,
     })
 events.sort(key=lambda e: e['start'])
 json.dump(events, sys.stdout, indent=2)
@@ -252,9 +270,14 @@ for c in json.load(sys.stdin):
       else
         cal_url="$home/$cal_href"
       fi
+      # <c:expand> asks the server to materialize each RRULE instance within
+      # the time-range as its own VEVENT with instance-specific DTSTART/DTEND,
+      # instead of returning the master event once with the original DTSTART
+      # (which made recurring events appear on their initial date regardless
+      # of query window).
       body='<?xml version="1.0" encoding="utf-8"?>
 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-  <d:prop><d:getetag/><c:calendar-data/></d:prop>
+  <d:prop><d:getetag/><c:calendar-data><c:expand start="'"$start"'" end="'"$end"'"/></c:calendar-data></d:prop>
   <c:filter><c:comp-filter name="VCALENDAR">
     <c:comp-filter name="VEVENT">
       <c:time-range start="'"$start"'" end="'"$end"'"/>
@@ -267,6 +290,19 @@ for c in json.load(sys.stdin):
     done <<< "$cal_paths"
     echo "$all_data" | python3 -c "
 import sys, re, json
+BS = chr(92)  # literal backslash, avoids TS→bash→python escape hell
+def _ical_unescape(s):
+    # iCalendar text escapes per RFC 5545 §3.3.11: \\N/\\n → newline,
+    # \\, → comma, \\; → semicolon, \\\\ → backslash.
+    # Stage through a NUL placeholder so escaped backslashes (\\\\) aren't
+    # re-interpreted when we decode the other escape sequences.
+    PH = chr(0)
+    return (s.replace(BS + BS, PH)
+             .replace(BS + 'N', chr(10))
+             .replace(BS + 'n', chr(10))
+             .replace(BS + ',', ',')
+             .replace(BS + ';', ';')
+             .replace(PH, BS))
 data = sys.stdin.read()
 events = []
 for m in re.finditer(r'BEGIN:VEVENT(.*?)END:VEVENT', data, re.DOTALL):
@@ -276,10 +312,10 @@ for m in re.finditer(r'BEGIN:VEVENT(.*?)END:VEVENT', data, re.DOTALL):
     dtend = re.search(r'DTEND[^:]*:(.*)', block)
     location = re.search(r'LOCATION:(.*)', block)
     events.append({
-        'summary': summary.group(1).strip() if summary else '(no title)',
+        'summary': _ical_unescape(summary.group(1).strip()) if summary else '(no title)',
         'start': dtstart.group(1).strip() if dtstart else '',
         'end': dtend.group(1).strip() if dtend else '',
-        'location': location.group(1).strip() if location else None,
+        'location': _ical_unescape(location.group(1).strip()) if location else None,
     })
 events.sort(key=lambda e: e['start'])
 json.dump(events, sys.stdout, indent=2)
