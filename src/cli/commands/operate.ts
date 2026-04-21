@@ -19,6 +19,7 @@ import {
   runDoctor,
   runDoctorWithFix,
 } from "../../operate/doctor/index.js";
+import { clean, formatCleanTable } from "../../operate/clean/index.js";
 import { streamLogs } from "../../operate/logs/index.js";
 import {
   formatMonitorEvent,
@@ -148,6 +149,28 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
         } finally {
           spinner.stop();
         }
+      }
+    });
+
+  program
+    .command("clean")
+    .description("Sweep debris doctor doesn't catch — zero-byte workspace files, leaked test sandboxes, stale cron backup rotations, dangling symlinks")
+    .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
+    .option("--dry-run", "Show what would be removed without removing it")
+    .option("--tmp-age-minutes <n>", "Preserve /tmp/clawhq-agent-* sandboxes younger than N minutes (default: 60)", (v) => Number(v))
+    .action(async (opts: { deployDir: string; dryRun?: boolean; tmpAgeMinutes?: number }) => {
+      ensureInstalled(opts.deployDir);
+      try {
+        const report = await clean({
+          deployDir: opts.deployDir,
+          dryRun: opts.dryRun,
+          tmpAgeMinutes: opts.tmpAgeMinutes,
+        });
+        console.log(formatCleanTable(report));
+        if (report.errors.length > 0) throw new CommandError("", 1);
+      } catch (err) {
+        renderError(err);
+        throw new CommandError("", 1);
       }
     });
 
