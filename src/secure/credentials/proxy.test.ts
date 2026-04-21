@@ -112,11 +112,14 @@ describe("BUILTIN_ROUTES", () => {
     }
   });
 
-  it("includes tradier route with bearer auth", () => {
+  it("includes tradier route with bearer auth and env-resolved upstream", () => {
     const tradier = BUILTIN_ROUTES.find((r) => r.id === "tradier");
     expect(tradier).toBeDefined();
     expect(tradier?.pathPrefix).toBe("/tradier");
-    expect(tradier?.upstream).toBe("https://api.tradier.com");
+    // Upstream is an env-var placeholder — runtime picks sandbox vs live
+    // based on TRADIER_UPSTREAM in .env. Paper: sandbox.tradier.com,
+    // live: api.tradier.com.
+    expect(tradier?.upstream).toBe("env:TRADIER_UPSTREAM");
     expect(tradier?.auth.type).toBe("header");
   });
 });
