@@ -42,7 +42,6 @@ from pathlib import Path
 
 WORKSPACE = Path(os.environ.get("HOME", "/home/node")) / ".openclaw" / "workspace"
 JOURNAL = WORKSPACE / "trade-journal.json"
-STATE = WORKSPACE / "portfolio-state.json"
 MARKETS = WORKSPACE / "markets"
 CONFIG_PATH = MARKETS / "CONFIG.json"
 STATE_PATH = MARKETS / "STATE.json"
@@ -65,6 +64,19 @@ def _state():
     s = _load(STATE_PATH)
     if not s:
         _die("Portfolio not initialized. Run: trade-journal init")
+    # Schema validation: positions must be a dict keyed by symbol.
+    # Older state files (or hand-edits) sometimes have positions as a list,
+    # which crashes every account-walking command with AttributeError.
+    accts = s.get("accounts", {})
+    if not isinstance(accts, dict):
+        _die(f"Corrupt state: accounts must be a dict, got {type(accts).__name__}. "
+             "Back up STATE.json and run: trade-journal init --force")
+    for acct_id, acct in accts.items():
+        positions = acct.get("positions")
+        if not isinstance(positions, dict):
+            _die(f"Corrupt state: accounts.{acct_id}.positions must be a dict, "
+                 f"got {type(positions).__name__}. This is schema drift from an "
+                 "older version. Back up STATE.json and run: trade-journal init --force")
     return s
 
 
