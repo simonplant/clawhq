@@ -111,7 +111,14 @@ data = sys.stdin.read()
 cals = []
 for resp in re.finditer(r'<(?:\\w+:)?response[^>]*>(.*?)</(?:\\w+:)?response>', data, re.DOTALL):
     block = resp.group(1)
-    if 'calendar' not in block:
+    # Must be a CalDAV calendar collection. Match only the CalDAV <calendar/>
+    # element inside <resourcetype>, not any substring 'calendar'. Otherwise
+    # the parent /calendars/ collection and scheduling collections (inbox,
+    # outbox, notification) slip through and return 403 on calendar-query.
+    rtype_m = re.search(r'<(?:\\w+:)?resourcetype[^>]*>(.*?)</(?:\\w+:)?resourcetype>', block, re.DOTALL)
+    if not rtype_m:
+        continue
+    if not re.search(r'<(?:\\w+:)?calendar\\b[^>]*/>', rtype_m.group(1)):
         continue
     href = re.search(r'<(?:\\w+:)?href[^>]*>(.*?)</(?:\\w+:)?href>', block)
     name = re.search(r'<(?:\\w+:)?displayname[^>]*>(.*?)</(?:\\w+:)?displayname>', block)
