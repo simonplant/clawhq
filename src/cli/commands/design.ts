@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { resolve } from "node:path";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 
 import chalk from "chalk";
 import type { Command } from "commander";
@@ -720,7 +721,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
     .description("Set composition.providers.<domain> in clawhq.yaml (e.g. calendar icloud-cal)")
     .argument("<domain>", "Provider domain (email, calendar, tasks, search, etc.)")
     .argument("<id>", "Provider id (run `clawhq compose providers <domain>` to list)")
-    .option("-d, --deploy-dir <path>", "Deployment directory", "/home/simon/.clawhq")
+    .option("-d, --deploy-dir <path>", "Deployment directory", join(homedir(), ".clawhq"))
     .option("--dry-run", "Print the change without writing")
     .action(async (domain: string, id: string, opts: { deployDir: string; dryRun?: boolean }) => {
       try {
