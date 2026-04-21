@@ -1,0 +1,407 @@
+#!/usr/bin/env python3
+"""watchlist — focused live-ORDER list for today, extracted from the trading brief.
+
+The daily brief at memory/trading-YYYY-MM-DD.md accumulates narrative, scanner
+logs, and intermediate analysis. Reading all of it on every heartbeat burns
+context. This tool maintains a compact, machine-readable watchlist of the
+LIVE orders for today (entry/stop/targets per ticker) so the heartbeat can
+do proximity checks without re-parsing hundreds of lines of narrative.
+
+Design:
+  - State file: workspace/markets/today-orders.json
+  - `refresh`: parse today's brief, extract ACTIVE/CONDITIONAL/TRIGGERED ORDER
+    blocks, rewrite the state file. Safe to call repeatedly.
+  - `list`: human or JSON view of current orders.
+  - `status`: fetch live prices via `quote`, show proximity to each level
+    with AT / NEAR / NEAR_STOP / NEAR_T1 / NEAR_T2 flags.
+  - `add`: inject an ORDER programmatically (for extractor skills that want
+    to write to the watchlist as they emit, instead of going through the brief).
+  - `kill`: mark an order KILLED with reason; moves to the killed list
+    (preserved for same-day audit, cleared on date rollover).
+
+Usage:
+  watchlist refresh                   — parse brief, rewrite state file
+  watchlist list [--json]             — current live orders
+  watchlist status [--json]           — live prices + proximity
+  watchlist add '<json>'              — add one order (stdin also works)
+  watchlist kill <id> <reason>        — mark killed
+  watchlist clear                     — start fresh (new trading day)
+
+Exit codes: 0 ok, 1 error, 2 bad input.
+
+Environment:
+  WORKSPACE_DIR  — workspace root (default: ~/.openclaw/workspace)
+  CRED_PROXY_URL — for price lookups via the `quote` tool
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+WORKSPACE = Path(
+    os.environ.get(
+        "WORKSPACE_DIR",
+        os.path.join(os.environ.get("HOME", "/home/node"), ".openclaw", "workspace"),
+    )
+)
+BRIEF_DIR = WORKSPACE / "memory"
+MARKETS_DIR = WORKSPACE / "markets"
+STATE_FILE = MARKETS_DIR / "today-orders.json"
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+QUOTE_TOOL = SCRIPT_DIR / "quote"
+
+NEAR_PCT = 2.0  # within 2% = NEAR
+AT_PCT = 0.5  # within 0.5% = AT
+
+
+# ── Helpers ─────────────────────────────────────────────────────────────────
+
+
+def _today_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _brief_path() -> Path:
+    return BRIEF_DIR / f"trading-{datetime.now().strftime('%Y-%m-%d')}.md"
+
+
+def _load_state() -> dict:
+    if not STATE_FILE.exists():
+        return {"version": 1, "date": _today_iso(), "updated_at": _now_iso(), "orders": [], "killed": []}
+    try:
+        data = json.loads(STATE_FILE.read_text())
+        # Auto-rotate on date change: preserve killed-today only for today's date
+        if data.get("date") != _today_iso():
+            return {"version": 1, "date": _today_iso(), "updated_at": _now_iso(), "orders": [], "killed": []}
+        return data
+    except (json.JSONDecodeError, OSError):
+        return {"version": 1, "date": _today_iso(), "updated_at": _now_iso(), "orders": [], "killed": []}
+
+
+def _save_state(state: dict) -> None:
+    MARKETS_DIR.mkdir(parents=True, exist_ok=True)
+    state["updated_at"] = _now_iso()
+    STATE_FILE.write_text(json.dumps(state, indent=2))
+
+
+def _parse_price(raw: str) -> float | None:
+    """Extract the first numeric price from a field like '5530 — MA-2%'."""
+    if not raw:
+        return None
+    m = re.match(r"[\$]?([\d.]+)", raw.strip())
+    return float(m.group(1)) if m else None
+
+
+def _parse_order_blocks(brief_text: str) -> list[dict]:
+    """Extract ORDER blocks from the brief's ## Orders section.
+
+    Falls back to scanning the whole brief for `ORDER N | conv | status` headers
+    if no `## Orders` section exists — the current extractor skills embed ORDERs
+    under source-specific headings, so we accept both shapes.
+    """
+    search_text = brief_text
+    orders_match = re.search(r"^## Orders\s*\n(.*?)(?=^## |\Z)", brief_text, re.MULTILINE | re.DOTALL)
+    if orders_match:
+        search_text = orders_match.group(1)
+
+    orders = []
+    for i, block in enumerate(
+        re.finditer(
+            r"ORDER \d+ \| (\w+) \| (\w+)\n(.*?)(?=\n\s*ORDER \d+|\n## |\n### |\Z)",
+            search_text,
+            re.DOTALL,
+        )
+    ):
+        conviction = block.group(1)
+        status = block.group(2)
+        body = block.group(3)
+
+        order: dict = {"conviction": conviction, "status": status}
+        for line in body.split("\n"):
+            line = line.strip()
+            if not line or ":" not in line:
+                continue
+            key, _, val = line.partition(":")
+            key = key.strip()
+            val = val.strip()
+            if key in ("entry", "stop", "t1", "t2"):
+                price = _parse_price(val)
+                if price is not None:
+                    order[key] = price
+                order[f"{key}_raw"] = val
+            elif key == "accounts":
+                order[key] = [a.strip() for a in val.split(",") if a.strip()]
+            elif key == "kills":
+                order[key] = [k.strip() for k in val.split(",") if k.strip()]
+            else:
+                order[key] = val
+
+        if order.get("ticker") or order.get("exec_as"):
+            order["id"] = _compose_id(order, i)
+            orders.append(order)
+
+    return orders
+
+
+def _compose_id(order: dict, index: int) -> str:
+    source = order.get("source", "unk")
+    ticker = order.get("ticker") or order.get("exec_as", "UNK")
+    conviction = order.get("conviction", "UNK")
+    return f"{source}-{ticker}-{conviction}-{index}"
+
+
+def _fetch_prices(symbols: list[str]) -> dict[str, float | None]:
+    """Batch quote call. Returns {symbol: last_price or None}.
+
+    `quote` returns a dict for single-symbol queries and a list for multi-symbol.
+    Normalize both shapes.
+    """
+    if not symbols or not QUOTE_TOOL.exists():
+        return {s: None for s in symbols}
+    try:
+        result = subprocess.run(
+            [str(QUOTE_TOOL), *symbols, "--json"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode != 0:
+            return {s: None for s in symbols}
+        data = json.loads(result.stdout)
+        if isinstance(data, dict):
+            data = [data]
+        return {
+            entry["symbol"]: entry.get("price")
+            for entry in data
+            if isinstance(entry, dict) and entry.get("symbol")
+        }
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError):
+        return {s: None for s in symbols}
+
+
+def _proximity(price: float, level: float) -> float:
+    if level == 0:
+        return float("inf")
+    return abs(price - level) / level * 100
+
+
+def _proximity_flag(pct: float) -> str:
+    if pct <= AT_PCT:
+        return "AT"
+    if pct <= NEAR_PCT:
+        return "NEAR"
+    return ""
+
+
+# ── Commands ────────────────────────────────────────────────────────────────
+
+
+def cmd_refresh(argv: list[str]) -> int:
+    """Parse today's brief, rewrite the state file."""
+    brief = _brief_path()
+    if not brief.exists():
+        print(f"watchlist: no brief at {brief}", file=sys.stderr)
+        # Still write an empty state so status/list don't fail
+        _save_state(_load_state())
+        return 0
+
+    new_orders = _parse_order_blocks(brief.read_text())
+    state = _load_state()
+
+    # Preserve `killed` list from existing state; replace `orders` with fresh extraction
+    # Skip any new order whose id is already in killed (don't resurrect killed orders)
+    killed_ids = {k["id"] for k in state.get("killed", [])}
+    state["orders"] = [o for o in new_orders if o["id"] not in killed_ids]
+    _save_state(state)
+
+    print(f"watchlist: {len(state['orders'])} active, {len(state.get('killed', []))} killed")
+    return 0
+
+
+def cmd_list(argv: list[str]) -> int:
+    state = _load_state()
+    if "--json" in argv:
+        print(json.dumps(state, indent=2))
+        return 0
+
+    orders = state.get("orders", [])
+    killed = state.get("killed", [])
+    if not orders and not killed:
+        print("watchlist: empty (no orders today)")
+        return 0
+
+    print(f"=== Watchlist {state.get('date', _today_iso())} ===\n")
+    if orders:
+        print(f"Active ({len(orders)}):")
+        for o in orders:
+            ticker = o.get("ticker") or o.get("exec_as", "?")
+            entry = o.get("entry")
+            stop = o.get("stop")
+            t1 = o.get("t1")
+            parts = [
+                f"  {ticker:6} {o.get('direction', '?'):5} {o.get('conviction', '?'):6}",
+                f"[{o.get('source', '?')}]",
+                f"entry {entry}" if entry is not None else "entry ?",
+                f"stop {stop}" if stop is not None else "",
+                f"t1 {t1}" if t1 is not None else "",
+                f"status {o.get('status', '?')}",
+            ]
+            print(" ".join(p for p in parts if p))
+    if killed:
+        print(f"\nKilled today ({len(killed)}):")
+        for k in killed:
+            print(f"  {k.get('id', '?'):32} {k.get('killed_at', '?')} — {k.get('reason', '?')}")
+    return 0
+
+
+def cmd_status(argv: list[str]) -> int:
+    state = _load_state()
+    orders = state.get("orders", [])
+    if not orders:
+        payload = {"date": state.get("date"), "orders": [], "summary": "empty watchlist"}
+        if "--json" in argv:
+            print(json.dumps(payload, indent=2))
+        else:
+            print("watchlist status: empty watchlist (no active orders)")
+        return 0
+
+    symbols = sorted({(o.get("exec_as") or o.get("ticker")) for o in orders if o.get("exec_as") or o.get("ticker")})
+    prices = _fetch_prices(list(symbols))
+
+    results = []
+    for o in orders:
+        sym = o.get("exec_as") or o.get("ticker")
+        price = prices.get(sym)
+        r: dict = {
+            "id": o["id"],
+            "ticker": o.get("ticker"),
+            "direction": o.get("direction"),
+            "conviction": o.get("conviction"),
+            "source": o.get("source"),
+            "price": price,
+            "entry": o.get("entry"),
+            "stop": o.get("stop"),
+            "t1": o.get("t1"),
+            "flags": [],
+        }
+        if price is not None:
+            for level_name in ("entry", "stop", "t1", "t2"):
+                level = o.get(level_name)
+                if level is None:
+                    continue
+                pct = _proximity(price, level)
+                r[f"{level_name}_pct"] = round(pct, 2)
+                flag = _proximity_flag(pct)
+                if flag:
+                    r["flags"].append(f"{flag}_{level_name.upper()}")
+        results.append(r)
+
+    if "--json" in argv:
+        print(json.dumps({"date": state.get("date"), "generated_at": _now_iso(), "orders": results}, indent=2))
+        return 0
+
+    print(f"=== Watchlist Status {state.get('date', _today_iso())} ===\n")
+    any_flagged = False
+    for r in results:
+        flags = " ".join(r["flags"]) if r["flags"] else ""
+        if flags:
+            any_flagged = True
+        price_str = f"${r['price']:.2f}" if r["price"] is not None else "no price"
+        entry_str = f"entry ${r['entry']}" if r.get("entry") is not None else ""
+        print(
+            f"  {r.get('ticker', '?'):6} {r.get('direction', '?'):5} {r.get('conviction', '?'):6} "
+            f"[{r.get('source', '?'):>8}]  {price_str:>10}  {entry_str}  {flags}"
+        )
+    if not any_flagged:
+        print("\nNothing within 2% of any level — HEARTBEAT_OK on watchlist.")
+    return 0
+
+
+def cmd_add(argv: list[str]) -> int:
+    raw = argv[0] if argv else sys.stdin.read()
+    try:
+        new = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"watchlist add: bad JSON ({e})", file=sys.stderr)
+        return 2
+    if not isinstance(new, dict) or not (new.get("ticker") or new.get("exec_as")):
+        print("watchlist add: order must have ticker or exec_as", file=sys.stderr)
+        return 2
+
+    state = _load_state()
+    existing = state.setdefault("orders", [])
+    new.setdefault("id", _compose_id(new, len(existing)))
+    # Replace if same id exists, else append
+    for i, o in enumerate(existing):
+        if o.get("id") == new["id"]:
+            existing[i] = new
+            break
+    else:
+        existing.append(new)
+    _save_state(state)
+    print(f"watchlist: added/updated {new['id']}")
+    return 0
+
+
+def cmd_kill(argv: list[str]) -> int:
+    if len(argv) < 2:
+        print("Usage: watchlist kill <id> <reason>", file=sys.stderr)
+        return 2
+    order_id, reason = argv[0], " ".join(argv[1:])
+    state = _load_state()
+    orders = state.get("orders", [])
+    idx = next((i for i, o in enumerate(orders) if o.get("id") == order_id), -1)
+    if idx < 0:
+        print(f"watchlist kill: no order with id {order_id}", file=sys.stderr)
+        return 1
+    killed = orders.pop(idx)
+    killed_entry = {"id": order_id, "killed_at": _now_iso(), "reason": reason, "order": killed}
+    state.setdefault("killed", []).append(killed_entry)
+    _save_state(state)
+    print(f"watchlist: killed {order_id} ({reason})")
+    return 0
+
+
+def cmd_clear(argv: list[str]) -> int:
+    """Start fresh — discards all orders and killed-today. Use for new trading day."""
+    state = {"version": 1, "date": _today_iso(), "updated_at": _now_iso(), "orders": [], "killed": []}
+    _save_state(state)
+    print("watchlist: cleared")
+    return 0
+
+
+COMMANDS = {
+    "refresh": cmd_refresh,
+    "list": cmd_list,
+    "status": cmd_status,
+    "add": cmd_add,
+    "kill": cmd_kill,
+    "clear": cmd_clear,
+}
+
+
+def main() -> int:
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
+        print(__doc__)
+        return 0
+    cmd = sys.argv[1]
+    fn = COMMANDS.get(cmd)
+    if not fn:
+        print(f"watchlist: unknown command '{cmd}' (see --help)", file=sys.stderr)
+        return 2
+    return fn(sys.argv[2:])
+
+
+if __name__ == "__main__":
+    sys.exit(main())

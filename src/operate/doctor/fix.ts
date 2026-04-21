@@ -303,34 +303,37 @@ async function fixUserUid(deployDir: string): Promise<FixResult> {
   });
 }
 
-/** Fix missing tool access grants in openclaw.json (OpenClaw v0.8.7+). */
-async function fixToolAccessGrants(deployDir: string): Promise<FixResult> {
+/**
+ * Strip obsolete tools.accessGrants from openclaw.json.
+ *
+ * CalVer OpenClaw (v2026.x) rejects the key with "Unrecognized key" and
+ * refuses to start. If a config carried over from an older clawhq version
+ * still has the key, remove it.
+ *
+ * Exported for direct invocation: the paired `checkToolAccessGrants` is a
+ * no-op (passes unconditionally), so `runFixes` never routes here via the
+ * normal failed-check dispatch. Migration paths (e.g. `clawhq update`) can
+ * call this directly when upgrading from a pre-CalVer OpenClaw.
+ */
+export async function fixToolAccessGrants(deployDir: string): Promise<FixResult> {
   const name: DoctorCheckName = "tool-access-grants";
   const configPath = join(deployDir, "engine", "openclaw.json");
 
   try {
     const config = loadRuntimeConfig(configPath);
-
-    let tools = config["tools"] as Record<string, unknown> | undefined;
-    if (!tools) {
-      tools = {};
-      config["tools"] = tools;
+    const tools = config["tools"] as Record<string, unknown> | undefined;
+    if (!tools || !("accessGrants" in tools)) {
+      return { name, success: true, message: "No obsolete accessGrants key present" };
     }
-
-    const existing = tools["accessGrants"] as unknown[] | undefined;
-    if (Array.isArray(existing) && existing.length > 0) {
-      return { name, success: true, message: "Tool access grants already set" };
-    }
-
-    tools["accessGrants"] = [{ type: "user", value: "*" }];
+    delete tools["accessGrants"];
     saveRuntimeConfig(configPath, config);
-    return { name, success: true, message: 'Added tools.accessGrants: [{"type":"user","value":"*"}]' };
+    return { name, success: true, message: "Removed obsolete tools.accessGrants" };
   } catch (err) {
     if (err instanceof InvalidRuntimeConfigError) {
       return { name, success: false, message: err.message };
     }
     const msg = err instanceof Error ? err.message : String(err);
-    return { name, success: false, message: `Failed to fix tool access grants: ${msg}` };
+    return { name, success: false, message: `Failed to strip accessGrants: ${msg}` };
   }
 }
 

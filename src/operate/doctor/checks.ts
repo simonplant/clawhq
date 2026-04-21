@@ -1120,42 +1120,17 @@ async function checkDiskSpace(
   }
 }
 
-/** 19. Tool access grants present (OpenClaw v0.8.7+ defaults to admin-only). */
-async function checkToolAccessGrants(deployDir: string, version: string | null): Promise<DoctorCheckResult> {
+/**
+ * 19. Tool access grants — obsolete.
+ *
+ * The `tools.accessGrants` key was a short-lived v0.8.x OpenClaw feature.
+ * CalVer OpenClaw (v2026.x) rejects the key with "Unrecognized key:
+ * accessGrants" and refuses to start. Check kept as a no-op so existing
+ * configs with the key aren't flagged; fix would strip it if present.
+ */
+async function checkToolAccessGrants(_deployDir: string, _version: string | null): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "tool-access-grants";
-
-  // Version-gate: only relevant for v0.8.7+
-  if (version && compareVersions(version, "0.8.7") < 0) {
-    return ok(name, `Tool access grants check skipped (OpenClaw ${version} < 0.8.7)`, "info");
-  }
-
-  const configPath = join(deployDir, "engine", "openclaw.json");
-  try {
-    const raw = await readFile(configPath, "utf-8");
-    const config = JSON.parse(raw) as Record<string, unknown>;
-    const tools = config["tools"] as Record<string, unknown> | undefined;
-    const accessGrants = tools?.["accessGrants"] as unknown[] | undefined;
-
-    if (!Array.isArray(accessGrants) || accessGrants.length === 0) {
-      const versionNote = version
-        ? ""
-        : " (Note: OpenClaw version unknown — running check unconditionally)";
-      return fail(
-        name,
-        "warning",
-        `Missing tools.accessGrants — tools are invisible to non-admin users on OpenClaw v0.8.7+${versionNote}`,
-        'Add tools.accessGrants: [{"type":"user","value":"*"}] to openclaw.json or re-run: clawhq init --guided',
-        true,
-      );
-    }
-    return ok(name, `Tool access grants configured (${accessGrants.length} grant(s))`, "warning");
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("ENOENT")) {
-      return fail(name, "warning", "Config file not found — cannot check tool access grants", "Run: clawhq init --guided");
-    }
-    return fail(name, "warning", `Cannot check tool access grants: ${msg}`);
-  }
+  return ok(name, "Tool access grants check obsolete (removed in CalVer OpenClaw)", "info");
 }
 
 /** 20. Database migrations completed successfully after upgrade. */

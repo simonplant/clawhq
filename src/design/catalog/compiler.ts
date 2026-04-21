@@ -579,6 +579,15 @@ Usage: \`track-record score <order_id> <outcome> [--pnl N]\` — score an ORDER
   \`track-record today\` — today's scored and unscored orders
 Used by EOD review and premarket-brief to weight ideas by track record.`,
 
+  watchlist: `Focused live-ORDER list for today, extracted from the trading brief.
+Usage: \`watchlist refresh\` — parse today's brief, rewrite state file (workspace/markets/today-orders.json)
+  \`watchlist list [--json]\` — current live orders
+  \`watchlist status [--json]\` — live prices + proximity (AT / NEAR / NEAR_STOP / NEAR_T1 / NEAR_T2)
+  \`watchlist add '<json>'\` — inject an ORDER programmatically (stdin also works)
+  \`watchlist kill <id> <reason>\` — mark killed (preserved for same-day audit)
+  \`watchlist clear\` — start fresh (new trading day)
+Let heartbeat do proximity checks without re-parsing hundreds of lines of brief narrative.`,
+
   "email-fastmail": `FastMail JMAP email — Simon's personal email account (simon@simonplant.com).
 Usage: \`email-fastmail inbox\` | \`email-fastmail all [--limit N]\` | \`email-fastmail read <id>\`
   \`email-fastmail triage [--limit N]\` — smart triage with priority + action recommendations
@@ -828,9 +837,6 @@ function renderOpenclawJson(
       deny: isUnderAttack
         ? ["exec", "browser", "gateway", "nodes", "canvas", "image"]
         : ["browser", "gateway", "nodes"],
-      // OpenClaw v0.8.7+ hides tools from non-admin users unless accessGrants
-      // is set. Wildcard grant keeps tools visible to every authorized DM.
-      accessGrants: [{ type: "user", value: "*" }],
       // Tool-loop detection — OpenClaw defaults this off, which lets a weak
       // agentic model spin forever (2026-04-16 incident: 31K-message runaway
       // pinned the GPU for 10h). Thresholds tight enough to bail before

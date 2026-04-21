@@ -48,7 +48,6 @@ async function writeValidConfig(): Promise<void> {
     trustedProxies: ["172.17.0.1"],
     tools: {
       exec: { host: "gateway", security: "full" },
-      accessGrants: [{ type: "user", value: "*" }],
       loopDetection: { enabled: true },
     },
     fs: { workspaceOnly: true },
@@ -274,7 +273,8 @@ describe("checks", { timeout: 30_000 }, () => {
     expect(check.passed).toBe(true);
   });
 
-  it("tool-access-grants fails when accessGrants missing", async () => {
+  it("tool-access-grants is a no-op (obsolete key rejected by CalVer OpenClaw)", async () => {
+    // Config without accessGrants — the only shape CalVer OpenClaw accepts.
     await writeFile(
       join(testDir, "engine", "openclaw.json"),
       JSON.stringify({
@@ -286,13 +286,12 @@ describe("checks", { timeout: 30_000 }, () => {
     );
     const checks = await runChecks(testDir);
     const check = findCheck(checks, "tool-access-grants");
-    expect(check.passed).toBe(false);
-    expect(check.severity).toBe("warning");
-    expect(check.message).toContain("invisible");
-    expect(check.fixable).toBe(true);
+    expect(check.passed).toBe(true);
+    expect(check.severity).toBe("info");
+    expect(check.message).toContain("obsolete");
   });
 
-  it("tool-access-grants passes when accessGrants present", async () => {
+  it("tool-access-grants passes cleanly when config has no accessGrants key", async () => {
     await writeValidConfig();
     const checks = await runChecks(testDir);
     const check = findCheck(checks, "tool-access-grants");
@@ -433,32 +432,43 @@ describe("auto-fix", { timeout: 30_000 }, () => {
     expect(secretsCheck.passed).toBe(true);
   });
 
-  it("fixes missing tool access grants", async () => {
-    // Write config without accessGrants
+  it("strips obsolete accessGrants key from openclaw.json when present", async () => {
+    // Write config WITH the obsolete accessGrants key (e.g. carried over from
+    // an older clawhq that used to inject it). CalVer OpenClaw rejects this
+    // key on startup — the fix strips it. The paired check is a no-op, so
+    // the migration invokes the fixer directly rather than through runFixes.
     await writeFile(
       join(testDir, "engine", "openclaw.json"),
       JSON.stringify({
         dangerouslyDisableDeviceAuth: true,
         allowedOrigins: [`http://localhost:${GATEWAY_DEFAULT_PORT}`],
         trustedProxies: ["172.17.0.1"],
-        tools: { exec: { host: "gateway", security: "full" } },
+        tools: {
+          exec: { host: "gateway", security: "full" },
+          accessGrants: [{ type: "user", value: "*" }],
+        },
       }),
     );
 
-    const checks = await runChecks(testDir);
-    const fixReport = await runFixes(testDir, checks);
+    const { fixToolAccessGrants } = await import("./fix.js");
+    const result = await fixToolAccessGrants(testDir);
+    expect(result.success).toBe(true);
+    expect(result.message).toMatch(/Removed obsolete/);
 
-    const grantsFix = fixReport.fixes.find((f) => f.name === "tool-access-grants");
-    expect(grantsFix).toBeDefined();
-    expect(grantsFix?.success).toBe(true);
-
-    // Verify the fix was applied
     const raw = await import("node:fs/promises").then((fs) =>
       fs.readFile(join(testDir, "engine", "openclaw.json"), "utf-8"),
     );
     const config = JSON.parse(raw) as Record<string, unknown>;
     const tools = config["tools"] as Record<string, unknown>;
-    expect(tools["accessGrants"]).toEqual([{ type: "user", value: "*" }]);
+    expect(tools["accessGrants"]).toBeUndefined();
+  });
+
+  it("strip-accessGrants fix is a no-op when the key is already absent", async () => {
+    await writeValidConfig();
+    const { fixToolAccessGrants } = await import("./fix.js");
+    const result = await fixToolAccessGrants(testDir);
+    expect(result.success).toBe(true);
+    expect(result.message).toMatch(/No obsolete/);
   });
 
   it("returns empty report when no fixable issues", async () => {
@@ -765,8 +775,10 @@ services:
     expect(check.message).toContain("skipped");
   });
 
-  it("tool-access-grants skipped when version < 0.8.7", async () => {
-    // Write compose with v0.8.6 tag
+  it("tool-access-grants passes regardless of detected OpenClaw version (obsolete key)", async () => {
+    // Any version — the check is a no-op now. The key is obsolete across
+    // all supported OpenClaw versions (semver pre-CalVer never required it
+    // for the general case; CalVer rejects it outright).
     const compose = `
 services:
   openclaw:
@@ -780,7 +792,6 @@ services:
       - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
 `;
     await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
-    // Config without access grants — should still pass because version < 0.8.7
     await writeFile(
       join(testDir, "engine", "openclaw.json"),
       JSON.stringify({
@@ -795,10 +806,10 @@ services:
     const check = findCheck(checks, "tool-access-grants");
     expect(check.passed).toBe(true);
     expect(check.severity).toBe("info");
-    expect(check.message).toContain("skipped");
+    expect(check.message).toContain("obsolete");
   });
 
-  it("tool-access-grants fails when accessGrants missing", async () => {
+  it("tool-access-grants passes even when config omits accessGrants (the CalVer-correct shape)", async () => {
     await writeValidCompose(); // uses "openclaw:custom" — no semver in tag
     await writeFile(
       join(testDir, "engine", "openclaw.json"),
@@ -812,12 +823,8 @@ services:
     await writeValidEnv();
     const checks = await runChecks(testDir);
     const check = findCheck(checks, "tool-access-grants");
-    // The check should fail because accessGrants is missing.
-    // When version is unknown (no running container) the message includes
-    // an advisory note; when version IS detected (e.g. from a running
-    // container) it is omitted.  Either way the core message is present.
-    expect(check.passed).toBe(false);
-    expect(check.message).toContain("Missing tools.accessGrants");
+    expect(check.passed).toBe(true);
+    expect(check.message).toContain("obsolete");
   });
 
   it("underscore-tool-methods fails on underscore-prefixed functions", async () => {

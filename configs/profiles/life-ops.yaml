@@ -84,6 +84,10 @@ tools:
     category: trading
     description: "Price monitor — polls every 30s via system cron, compares vs ORDER levels, writes alerts for heartbeat"
     required: false
+  - name: watchlist
+    category: trading
+    description: "Focused live-ORDER list for today — extracts ORDER blocks from the noisy brief into a compact state file, provides proximity-aware status for heartbeat"
+    required: false
   - name: track-record
     category: trading
     description: "ORDER outcome tracking — score WIN/LOSS/SCRATCH, rolling stats per source × setup × conviction"
@@ -162,14 +166,24 @@ cron_prompts:
     The market-monitor cron script polls prices every 30s and writes alerts.
     Your job: read the alerts, add context, and deliver to Simon.
 
-    1. Read market-monitor alerts: market-monitor status
-       - Shows price cache (current prices) and recent alerts
-       - If alerts exist, read each one — they contain symbol, price, level,
-         source, setup, confirmation, and a pre-formatted message
-       - AT_ENTRY alerts = price at the ORDER level (actionable)
-       - NEAR_ENTRY alerts = within 1% (heads up)
-       - STOP_WARNING alerts = position approaching stop (urgent)
-       - TARGET_T1 alerts = position approaching profit target
+    1. Refresh + scan the focused watchlist:
+       - `watchlist refresh` — reparse today's brief, rewrite
+         markets/today-orders.json with current ACTIVE/CONDITIONAL/TRIGGERED orders
+       - `watchlist status` — batch-fetch current prices for every symbol on the
+         list and print proximity flags (AT_*, NEAR_*) for each level
+       - This is the SHORT list. Do NOT re-read the full trading brief unless
+         the watchlist is empty and you're checking whether ORDERs have been
+         emitted yet today.
+       - Flags to act on:
+         - AT_ENTRY   (≤0.5% from entry) — actionable, alert Simon
+         - NEAR_ENTRY (≤2% from entry)   — heads up, alert Simon
+         - AT_STOP / NEAR_STOP           — urgent if we have an open position
+         - AT_T1 / AT_T2                 — scale-out window, alert Simon
+       - Also read market-monitor alerts: `market-monitor status` — this is
+         the low-latency (30-60s) event feed. Cross-reference with the
+         watchlist; if market-monitor flagged a level you don't have in the
+         watchlist, run `watchlist refresh` again (brief probably got a new
+         ORDER since last refresh).
 
     2. For each alert, add context from today's brief:
        - What's the setup? (FB, Level Reclaim, MA pullback, etc.)
