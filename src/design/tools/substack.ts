@@ -18,9 +18,11 @@ export function generateSubstackTool(): string {
 # All results piped through ClawWall sanitizer for prompt injection defense.
 #
 # Commands:
+#   list                             List the reader's Substack subscriptions (JSON)
 #   latest <publication>             Get latest posts from a publication (JSON)
 #   search <publication> <query>     Search posts in a publication (JSON)
 #   read <publication> <slug>        Read a specific post (JSON)
+#   aliases                          Show configured publication aliases (JSON)
 #
 # Publication aliases are loaded from config/substack-aliases.json.
 # Example: { "mancini": "tradecompanion" } → "substack latest mancini" fetches tradecompanion.
@@ -66,6 +68,30 @@ cmd="\${1:-help}"
 shift 2>/dev/null || true
 
 case "$cmd" in
+  list)
+    # Substack's account-level subscriptions endpoint. Requires the reader's
+    # session cookie. Response contains parallel subscriptions[] and
+    # publications[] arrays joined by publication_id. 301s to /page_v2 — -L
+    # follows it. Host is substack.com (not a publication subdomain).
+    if [[ -z "$COOKIE" ]]; then
+      echo "substack list: SUBSTACK_COOKIE not set (session cookie required)" >&2
+      exit 1
+    fi
+    _curl -L "https://substack.com/api/v1/subscriptions" | \\
+      jq '[
+        .subscriptions[] as $s
+        | (.publications[] | select(.id == $s.publication_id)) as $p
+        | {
+            subdomain: $p.subdomain,
+            name: $p.name,
+            membership_state: $s.membership_state,
+            expiry: $s.expiry,
+            is_favorite: $s.is_favorite,
+            is_founding: $s.is_founding,
+            subscribed_at: $s.created_at
+          }
+      ] | sort_by(.name)' 2>/dev/null | _sanitize
+    ;;
   latest)
     pub=$(_resolve_pub "\${1:?Usage: substack latest <publication>}")
     _curl "https://$pub.substack.com/api/v1/posts?limit=10" | \\
@@ -92,7 +118,7 @@ case "$cmd" in
     fi
     ;;
   help|--help|-h|"")
-    sed -n '2,12p' "$0" | sed 's/^# \\?//'
+    sed -n '2,14p' "$0" | sed 's/^# \\?//'
     ;;
   *)
     echo "substack: unknown command '$cmd'" >&2

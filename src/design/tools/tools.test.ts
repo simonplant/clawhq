@@ -641,6 +641,16 @@ describe("substack tool", () => {
     expect(content).toContain("search)");
     expect(content).toContain("read)");
   });
+
+  it("supports list subcommand against substack.com account endpoint", () => {
+    const content = generateSubstackTool();
+    expect(content).toContain("list)");
+    expect(content).toContain("https://substack.com/api/v1/subscriptions");
+    // Must follow the 301 redirect to /page_v2
+    expect(content).toMatch(/_curl -L/);
+    // Must require the session cookie
+    expect(content).toMatch(/SUBSTACK_COOKIE not set/);
+  });
 });
 
 // ── Home Assistant Tool ─────────────────────────────────────────────────────
