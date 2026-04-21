@@ -127,6 +127,12 @@ async function applyCore(
 
     report("read", "done", `Profile: ${comp.profile}, Personality: ${comp.personality ?? "default"}`);
 
+    // Extract optional top-level access block (runtime host-file mounts, etc.)
+    const accessRaw = raw.access as Record<string, unknown> | undefined;
+    const readOnlyHostMounts = Array.isArray(accessRaw?.readOnlyHostMounts)
+      ? (accessRaw!.readOnlyHostMounts as unknown[]).filter((m): m is string => typeof m === "string")
+      : undefined;
+
     // 2. Extract user context from existing USER.md
     const user = readUserContext(deployDir);
 
@@ -149,6 +155,7 @@ async function applyCore(
       deployDir,
       gatewayPort,
       existingEnv,
+      readOnlyHostMounts ? { readOnlyHostMounts } : {},
     );
     report("compile", "done", `${compiled.files.length} files compiled`);
 

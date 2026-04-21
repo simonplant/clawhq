@@ -129,6 +129,9 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   // Stage market-engine sidecar if source exists in the repo
   await stageMarketEngine(engineDir);
 
+  // Stage clawdius-trading sidecar if source exists in the repo
+  await stageClawdiusTrading(engineDir);
+
   // Generate docker-compose.yml
   // Auto-detect cred-proxy: if init/apply generated the proxy files, enable the sidecar
   const credProxyScriptPath = join(engineDir, "cred-proxy.js");
@@ -139,6 +142,26 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   const marketEngineDir = join(engineDir, "market-engine");
   const enableMarketEngine = existsSync(join(marketEngineDir, "Dockerfile"));
 
+  // Auto-detect clawdius-trading: same pattern.
+  const clawdiusTradingDir = join(engineDir, "clawdius-trading");
+  const enableClawdiusTrading = existsSync(
+    join(clawdiusTradingDir, "Dockerfile"),
+  );
+
+  // Pull access.readOnlyHostMounts from clawhq.yaml so `clawhq build`
+  // preserves inbound host-file mounts configured by the user.
+  let readOnlyHostMounts: readonly string[] | undefined;
+  try {
+    const { readFileSync } = await import("node:fs");
+    const { parse: yamlParse } = await import("yaml");
+    const raw = yamlParse(readFileSync(join(deployDir, "clawhq.yaml"), "utf-8")) as Record<string, unknown>;
+    const access = raw.access as Record<string, unknown> | undefined;
+    const mounts = access?.readOnlyHostMounts;
+    if (Array.isArray(mounts)) {
+      readOnlyHostMounts = mounts.filter((m): m is string => typeof m === "string");
+    }
+  } catch { /* no config or parse error — no mounts */ }
+
   const compose = generateCompose(stage2Tag, postureConfig, deployDir, networkName, {
     enableCredProxy,
     credProxyScriptPath,
@@ -146,6 +169,9 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
     workspaceManifest: stage2.workspace,
     enableMarketEngine,
     marketEngineDir,
+    enableClawdiusTrading,
+    clawdiusTradingDir,
+    readOnlyHostMounts,
   });
   const composePath = join(engineDir, "docker-compose.yml");
   await writeFile(composePath, serializeYaml(compose), "utf-8");
@@ -337,6 +363,51 @@ async function stageMarketEngine(engineDir: string): Promise<void> {
   });
 }
 
+/**
+ * Stage the clawdius-trading sidecar into engine/clawdius-trading/ for Docker build.
+ *
+ * Copies src/trading/ to engine/clawdius-trading/src/ so the container's
+ * tsconfig.json (which sets rootDir: "src") can compile it. Also copies the
+ * self-contained package.json, tsconfig.json, Dockerfile, and .dockerignore.
+ * Excludes *.test.ts and golden fixtures.
+ */
+async function stageClawdiusTrading(engineDir: string): Promise<void> {
+  const projectRoot = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
+  const sourceDir = join(projectRoot, "src", "trading");
+
+  if (!existsSync(join(sourceDir, "Dockerfile"))) return;
+
+  const destDir = join(engineDir, "clawdius-trading");
+  await mkdir(destDir, { recursive: true });
+
+  // Top-level files go directly into destDir.
+  for (const file of ["Dockerfile", ".dockerignore", "package.json", "tsconfig.json"]) {
+    const src = join(sourceDir, file);
+    if (existsSync(src)) {
+      cpSync(src, join(destDir, file));
+    }
+  }
+
+  // TypeScript sources go into destDir/src so the container tsconfig (rootDir: src)
+  // compiles them without reaching outside the build context.
+  const srcDest = join(destDir, "src");
+  await mkdir(srcDest, { recursive: true });
+  cpSync(sourceDir, srcDest, {
+    recursive: true,
+    filter: (src) => {
+      const name = src.split("/").pop() ?? "";
+      // Skip files already staged at the top level.
+      if (name === "Dockerfile" || name === ".dockerignore") return false;
+      if (name === "package.json" || name === "tsconfig.json") return false;
+      if (name === "node_modules" || name === "dist") return false;
+      // Don't ship tests or golden fixtures in the container.
+      if (name.endsWith(".test.ts")) return false;
+      if (src.includes(`${sourceDir}/extract/golden`)) return false;
+      return true;
+    },
+  });
+}
+
 // ── YAML Serialization ──────────────────────────────────────────────────────
 
 /**
@@ -497,6 +568,53 @@ export function serializeYaml(compose: ReturnType<typeof generateCompose>): stri
     lines.push(`      interval: ${me.healthcheck.interval}`);
     lines.push(`      timeout: ${me.healthcheck.timeout}`);
     lines.push(`      retries: ${me.healthcheck.retries}`);
+  }
+
+  // Clawdius-trading sidecar
+  if (compose.services["clawdius-trading"]) {
+    const ct = compose.services["clawdius-trading"];
+    lines.push("", "  clawdius-trading:");
+    lines.push("    build:");
+    lines.push(`      context: ${ct.build.context}`);
+    lines.push(`      dockerfile: ${ct.build.dockerfile}`);
+    lines.push(`    user: "${ct.user}"`);
+    lines.push(`    read_only: ${ct.read_only}`);
+    lines.push(`    restart: ${ct.restart}`);
+    lines.push("    cap_drop:");
+    for (const cap of ct.cap_drop) lines.push(`      - ${cap}`);
+    lines.push("    security_opt:");
+    for (const opt of ct.security_opt) lines.push(`      - ${opt}`);
+    lines.push("    volumes:");
+    for (const v of ct.volumes) lines.push(`      - "${v}"`);
+    lines.push("    networks:");
+    for (const n of ct.networks) lines.push(`      - ${n}`);
+    lines.push("    env_file:");
+    for (const e of ct.env_file) lines.push(`      - ${e}`);
+    lines.push("    environment:");
+    for (const [key, val] of Object.entries(ct.environment)) {
+      lines.push(`      ${key}: "${val}"`);
+    }
+    lines.push("    tmpfs:");
+    for (const t of ct.tmpfs) lines.push(`      - "${t}"`);
+    if (ct.depends_on && Object.keys(ct.depends_on).length > 0) {
+      lines.push("    depends_on:");
+      for (const [svc, cond] of Object.entries(ct.depends_on)) {
+        lines.push(`      ${svc}:`);
+        lines.push(`        condition: ${(cond as { condition: string }).condition}`);
+      }
+    }
+    lines.push("    healthcheck:");
+    lines.push("      test:");
+    for (const t of ct.healthcheck.test) {
+      if (t.includes('"')) {
+        lines.push(`        - '${t}'`);
+      } else {
+        lines.push(`        - "${t}"`);
+      }
+    }
+    lines.push(`      interval: ${ct.healthcheck.interval}`);
+    lines.push(`      timeout: ${ct.healthcheck.timeout}`);
+    lines.push(`      retries: ${ct.healthcheck.retries}`);
   }
 
   // Tailscale sidecar

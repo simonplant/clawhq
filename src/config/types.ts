@@ -441,6 +441,20 @@ export interface ClawHQConfig {
     readonly workspaceDir?: string;
     readonly opsDir?: string;
   };
+  /**
+   * Runtime access controls — host resources exposed to the agent
+   * container that aren't part of the deploy directory.
+   */
+  readonly access?: {
+    /**
+     * Absolute host paths mounted into the container read-only at
+     * `/host/<basename>`. Use for inbound file drops (photos,
+     * downloads, media) the agent should be able to read but never
+     * modify. Example: `["/media", "/home/simon/Downloads"]` → mounts
+     * at `/host/media` and `/host/Downloads` inside the container.
+     */
+    readonly readOnlyHostMounts?: readonly string[];
+  };
   readonly [key: string]: unknown;
 }
 

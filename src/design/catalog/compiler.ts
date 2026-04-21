@@ -61,6 +61,13 @@ export function compile(
   deployDir: string,
   gatewayPort: number = GATEWAY_DEFAULT_PORT,
   existingEnv: Record<string, string> = {},
+  /**
+   * Runtime access controls read from clawhq.yaml's top-level
+   * `access:` block. Kept separate from `config` (CompositionConfig)
+   * because access isn't part of the agent's composition — it's a
+   * deployment-level setting.
+   */
+  accessConfig: { readonly readOnlyHostMounts?: readonly string[] } = {},
 ): CompiledWorkspace {
   const profile = loadProfile(config.profile);
   const personality = loadPersonality(config.personality);
@@ -128,6 +135,7 @@ export function compile(
     enableCredProxy: proxyEnabled,
     enableTailscale: tailscaleEnabled,
     tailscaleHostname,
+    readOnlyHostMounts: accessConfig.readOnlyHostMounts,
   });
   const composeYaml = serializeYaml(composeOutput);
 

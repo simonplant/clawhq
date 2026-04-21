@@ -618,11 +618,26 @@ async function regenerateCompose(deployDir: string): Promise<boolean> {
     const credProxyRoutes = join(engineDir, "cred-proxy-routes.json");
     const enableCredProxy = existsSync(credProxyScript) && existsSync(credProxyRoutes);
 
+    // Read access.readOnlyHostMounts from clawhq.yaml so regen preserves
+    // inbound host-file mounts (e.g. /media) the user has configured.
+    let readOnlyHostMounts: readonly string[] | undefined;
+    try {
+      const { readFileSync } = await import("node:fs");
+      const { parse: yamlParse } = await import("yaml");
+      const raw = yamlParse(readFileSync(join(deployDir, "clawhq.yaml"), "utf-8")) as Record<string, unknown>;
+      const access = raw.access as Record<string, unknown> | undefined;
+      const mounts = access?.readOnlyHostMounts;
+      if (Array.isArray(mounts)) {
+        readOnlyHostMounts = mounts.filter((m): m is string => typeof m === "string");
+      }
+    } catch { /* no config or parse error — no mounts */ }
+
     // Generate and write compose
     const compose = generateCompose(manifest.imageTag, postureConfig, deployDir, "clawhq_net", {
       enableCredProxy,
       credProxyScriptPath: credProxyScript,
       credProxyRoutesPath: credProxyRoutes,
+      readOnlyHostMounts,
     });
 
     const composePath = join(engineDir, "docker-compose.yml");
