@@ -238,6 +238,34 @@ function mergeEnv(absolutePath: string, generated: string): string {
 // ── Batch Write ──────────────────────────────────────────────────────────────
 
 /**
+ * Files preserved verbatim on re-runs (bundleToFiles is only legitimate for
+ * first-time install; on an existing deployment, these files carry runtime
+ * state and/or user input that a fresh bundle would clobber).
+ *
+ * - `clawhq.yaml`     — user's input manifest (composition block).
+ * - `cron/jobs.json`  — owned by the OpenClaw daemon at runtime. The
+ *                       daemon persists its in-memory job state here; a
+ *                       fresh bundle write overwrites the daemon's store
+ *                       with a minimal template (this was the root cause
+ *                       of Clawdius going quiet mid-morning on 2026-04-21).
+ *                       `clawhq apply` regenerates it from the profile
+ *                       when composition changes; init must not.
+ * - `engine/openclaw.json` — OpenClaw runtime config. Like jobs.json, a
+ *                       fresh bundle write loses runtime-tuned values
+ *                       (model config, channel allowlist, plugin state).
+ *                       `clawhq apply` updates it safely; init must not.
+ *
+ * `clawhq init --reset` handles the re-setup case by archiving the existing
+ * deploy to an attic first, so on entry to writeBundle the paths don't
+ * exist and nothing is preserved — fresh write proceeds as intended.
+ */
+const PRESERVE_IF_EXISTS = new Set([
+  "clawhq.yaml",
+  "cron/jobs.json",
+  "engine/openclaw.json",
+]);
+
+/**
  * Write multiple files atomically to a deploy directory.
  *
  * Each file is written individually using the atomic pattern. If any file
@@ -245,12 +273,8 @@ function mergeEnv(absolutePath: string, generated: string): string {
  *
  * Special handling:
  * - `.env` files merge with existing values (see mergeEnv).
- * - `clawhq.yaml` is the user's input manifest — once it exists, it is
- *   preserved verbatim on subsequent writes. Rewriting it from a freshly
- *   built bundle has historically stripped fields the bundle didn't know
- *   about (notably `composition:`, which the wizard doesn't currently
- *   collect but apply requires). Init still creates it on first run when
- *   absent.
+ * - Files in `PRESERVE_IF_EXISTS` are left alone when already on disk — see
+ *   the constant's comment for rationale.
  *
  * @param deployDir — Root deployment directory (e.g. ~/.clawhq)
  * @param files — Files to write, with paths relative to deployDir
@@ -266,8 +290,8 @@ export function writeBundle(
   for (const file of files) {
     const absolutePath = join(resolvedDir, file.relativePath);
 
-    // Preserve user-owned manifest on re-runs.
-    if (file.relativePath === "clawhq.yaml" && existsSync(absolutePath)) {
+    // Preserve user-owned / runtime-owned files on re-runs.
+    if (PRESERVE_IF_EXISTS.has(file.relativePath) && existsSync(absolutePath)) {
       continue;
     }
 
