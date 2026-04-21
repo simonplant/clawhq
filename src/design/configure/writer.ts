@@ -238,32 +238,51 @@ function mergeEnv(absolutePath: string, generated: string): string {
 // ── Batch Write ──────────────────────────────────────────────────────────────
 
 /**
- * Files preserved verbatim on re-runs (bundleToFiles is only legitimate for
- * first-time install; on an existing deployment, these files carry runtime
- * state and/or user input that a fresh bundle would clobber).
+ * Files that first-time install flows (init / quickstart) must NOT clobber
+ * when the deploy already exists. Intentionally small — these are files
+ * where a fresh bundle carries stub / default content that would replace
+ * legitimate user input or runtime state:
  *
  * - `clawhq.yaml`     — user's input manifest (composition block).
- * - `cron/jobs.json`  — owned by the OpenClaw daemon at runtime. The
- *                       daemon persists its in-memory job state here; a
- *                       fresh bundle write overwrites the daemon's store
- *                       with a minimal template (this was the root cause
- *                       of Clawdius going quiet mid-morning on 2026-04-21).
- *                       `clawhq apply` regenerates it from the profile
- *                       when composition changes; init must not.
- * - `engine/openclaw.json` — OpenClaw runtime config. Like jobs.json, a
- *                       fresh bundle write loses runtime-tuned values
- *                       (model config, channel allowlist, plugin state).
- *                       `clawhq apply` updates it safely; init must not.
+ * - `cron/jobs.json`  — OpenClaw daemon's persistent job store.
+ * - `engine/openclaw.json` — OpenClaw runtime config (provider routing,
+ *                      channel allowlist, plugin state).
  *
- * `clawhq init --reset` handles the re-setup case by archiving the existing
- * deploy to an attic first, so on entry to writeBundle the paths don't
- * exist and nothing is preserved — fresh write proceeds as intended.
+ * Used by `filesForFreshInstall()` — init/quickstart wrap their bundle
+ * through that filter. `clawhq apply` does NOT use the filter: apply is
+ * the "regenerate from manifest" path and is supposed to rewrite these
+ * files from current composition.
+ *
+ * `clawhq init --reset` archives the existing deploy to an attic first,
+ * so the preserved paths don't exist by the time the filter runs — fresh
+ * install proceeds as intended.
  */
-const PRESERVE_IF_EXISTS = new Set([
+const PRESERVE_ON_FRESH_INSTALL = new Set([
   "clawhq.yaml",
   "cron/jobs.json",
   "engine/openclaw.json",
 ]);
+
+/**
+ * Filter a bundle for first-time-install callers (init / quickstart).
+ *
+ * Drops entries whose target already exists on disk AND is in the
+ * "preserve on re-init" list — protects the user from an accidental
+ * re-init from replacing their composition / cron / openclaw config with
+ * stubs. Apply does not use this filter — it uses the full bundle and
+ * the caller's merge logic (mergeCronJobs, mergeEnv) to update files
+ * safely.
+ */
+export function filesForFreshInstall(
+  deployDir: string,
+  files: readonly FileEntry[],
+): readonly FileEntry[] {
+  const resolvedDir = resolve(deployDir);
+  return files.filter((f) => {
+    if (!PRESERVE_ON_FRESH_INSTALL.has(f.relativePath)) return true;
+    return !existsSync(join(resolvedDir, f.relativePath));
+  });
+}
 
 /**
  * Write multiple files atomically to a deploy directory.
@@ -271,10 +290,9 @@ const PRESERVE_IF_EXISTS = new Set([
  * Each file is written individually using the atomic pattern. If any file
  * fails, previously written files remain (they were each atomically complete).
  *
- * Special handling:
- * - `.env` files merge with existing values (see mergeEnv).
- * - Files in `PRESERVE_IF_EXISTS` are left alone when already on disk — see
- *   the constant's comment for rationale.
+ * `.env` files merge with existing values (see mergeEnv). All other files
+ * are written verbatim — if a caller needs to preserve existing files, it
+ * must filter the bundle before calling (see `filesForFreshInstall`).
  *
  * @param deployDir — Root deployment directory (e.g. ~/.clawhq)
  * @param files — Files to write, with paths relative to deployDir
@@ -289,12 +307,6 @@ export function writeBundle(
 
   for (const file of files) {
     const absolutePath = join(resolvedDir, file.relativePath);
-
-    // Preserve user-owned / runtime-owned files on re-runs.
-    if (PRESERVE_IF_EXISTS.has(file.relativePath) && existsSync(absolutePath)) {
-      continue;
-    }
-
     const content = file.relativePath.endsWith(".env")
       ? mergeEnv(absolutePath, file.content)
       : file.content;

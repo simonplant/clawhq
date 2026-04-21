@@ -15,6 +15,7 @@ import { validateBundle } from "../../config/validate.js";
 import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import {
   createInquirerPrompter,
+  filesForFreshInstall,
   generateBundle,
   runSmartInference,
   runWizard,
@@ -128,7 +129,10 @@ export function registerQuickstartCommand(program: Command): void {
         }
 
         const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers, Object.keys(answers.integrations));
-        writeBundle(answers.deployDir, files);
+        // Don't clobber live composition / cron / openclaw config on
+        // re-run — only clawhq apply is the "update" path, init is
+        // "first-time install" or "reset" (which archived already).
+        writeBundle(answers.deployDir, filesForFreshInstall(answers.deployDir, files));
 
         spinner.succeed(`${phase("init")} Agent forged — all 14 landmine rules passed`);
       } catch (error) {

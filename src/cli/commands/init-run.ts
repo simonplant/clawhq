@@ -19,6 +19,7 @@ import ora from "ora";
 import { validateBundle } from "../../config/validate.js";
 import {
   ConfigFileError,
+  filesForFreshInstall,
   generateBundle,
   SmartInferenceAbortError,
   WizardAbortError,
@@ -115,7 +116,14 @@ export function forgeFromAnswers(answers: WizardAnswers): void {
     answers.customizationAnswers,
     Object.keys(answers.integrations),
   );
-  const result = writeBundle(answers.deployDir, files);
+  // First-time install: don't clobber user's composition / daemon's
+  // cron store / OpenClaw runtime config if they already exist on disk.
+  // `clawhq init --reset` archives the deploy first, so in that path
+  // the filter is a no-op (paths don't exist → nothing is filtered).
+  const result = writeBundle(
+    answers.deployDir,
+    filesForFreshInstall(answers.deployDir, files),
+  );
   spinner.succeed(`Config written to ${result.deployDir}`);
   for (const warn of report.warnings) {
     console.log(chalk.yellow(`  ⚠ ${warn.rule}: ${warn.message}`));
