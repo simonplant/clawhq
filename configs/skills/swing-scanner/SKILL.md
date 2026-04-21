@@ -114,17 +114,54 @@ Refresh `swing_candidates` in WATCHLISTS.json with current scanner hits:
 - Remove candidates that are no longer valid (broke below stop levels)
 - Keep the list to max 10 symbols
 
-### 6. Write to Daily Brief
+### 6. Write scan state — always
 
-Append scanner findings to `memory/trading-YYYY-MM-DD.md` under a scanner section. Don't overwrite existing content — append or update.
+Every run, overwrite `workspace/markets/scans/swing-setups.json` (create the `scans/` directory if missing). Use exec: `mkdir -p markets/scans && cat > markets/scans/swing-setups.json <<EOF ... EOF`. Schema:
+```json
+{
+  "scanned_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "regime": "TRENDING_UP | CHOP | TRENDING_DOWN | HIGH_VOL",
+  "screen_hits": {
+    "21_day_pullback":    ["TICKER", ...],
+    "200_day_pullback":   ["TICKER", ...],
+    "rs_leaders":         ["TICKER", ...],
+    "rs_laggards":        ["TICKER", ...],
+    "volume_surge":       ["TICKER", ...],
+    "earnings_day_after": ["TICKER", ...]
+  },
+  "active_candidates": ["TICKER", ...],
+  "fresh_high_conviction": ["TICKER", ...],
+  "orders_emitted": 0
+}
+```
 
-### 7. Alert on High-Conviction Setups
+This state file replaces, never accumulates. The premarket-brief and heartbeat read it; they don't re-scan.
 
-If a HIGH conviction setup is found:
-- Alert Simon: "[SCANNER] NVDA pulling back to 21-day MA at $118.50 — DP entry zone"
-- Don't alert for MEDIUM or LOW — they go into the brief for next-day synthesis
+### 7. Write to the daily trading brief — only on material change
 
-For routine scans with no new setups: log silently, don't message.
+Do NOT append a fresh "## Swing Scanner" section every run — that bloats the brief. Read the prior state file first. Write to `memory/trading-YYYY-MM-DD.md` ONLY if one of these is true:
+
+- **First run of the day** — no `## Swing Scanner` section exists in today's brief yet.
+- **New HIGH conviction setup** — a ticker in `fresh_high_conviction` that wasn't in the prior run's list.
+- **Candidate list churn** — `active_candidates` added or removed vs prior run.
+- **ORDER emitted** — `orders_emitted` increased since prior run.
+
+When writing, **replace** the single `## Swing Scanner` section, don't append a new one. Use exec with sed/awk to find the existing `## Swing Scanner` heading, delete through the next top-level `## ` heading (or EOF), and insert the new section in its place. If no existing section, append at the end.
+
+**One-time cleanup:** if the brief contains MULTIPLE `## Swing Scanner` headings (left over from a prior version of this skill that appended every run), collapse them: delete all existing Swing Scanner sections and their bodies, then insert a single fresh section. A simple approach: `awk '/^## Swing Scanner/{flag=1} /^## /{if(!/^## Swing Scanner/)flag=0} !flag' brief.md > brief.new && mv brief.new brief.md`, then append the one fresh section.
+
+Content of the replaced section: one-line scan summary + `fresh_high_conviction` with specifics + `active_candidates` list + a link back to `markets/scans/swing-setups.json` for full detail. Keep it under 25 lines.
+
+For quiet runs (no material change) the brief is untouched; the only side effects are the state file and the watchlist. Optionally append one timestamp+status line to `memory/DATE.md` (general daily memory) via exec echo >>, same pattern as x-scan.
+
+### 8. Alert on High-Conviction Setups
+
+If a HIGH conviction setup is *newly* in `fresh_high_conviction` (not present in prior state):
+- Telegram Simon: "[SCANNER] NVDA pulling back to 21-day MA at $118.50 — DP entry zone"
+- Do not re-alert on setups that were already HIGH last run.
+- Don't alert for MEDIUM or LOW — they appear in the brief's scanner section for next-day synthesis.
+
+For routine scans with no material change: silent. The state file and general-memory line are enough audit trail.
 
 ## Boundaries
 
