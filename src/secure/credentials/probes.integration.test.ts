@@ -105,10 +105,10 @@ describe("probe1Password (live)", () => {
     expect(result.envKey).toBe("OP_SERVICE_ACCOUNT_TOKEN");
   });
 
-  it.skipIf(!token)("returns valid:false for a bad token with correct prefix", async () => {
+  it.skipIf(!token)("returns valid:false for a structurally-broken token", async () => {
     const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_bogus-token-that-should-fail" });
     expect(result.ok).toBe(false);
-    expect(result.message).toMatch(/401|403|Unauthorized|forbidden/i);
+    expect(result.message).toMatch(/envelope unreadable|401|403|Unauthorized|forbidden/i);
   });
 });
 

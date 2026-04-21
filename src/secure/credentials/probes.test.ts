@@ -206,6 +206,13 @@ describe("probeTelegram", () => {
 // ── 1Password Probe ─────────────────────────────────────────────────────────
 
 describe("probe1Password", () => {
+  // Envelope: {signInAddress:"my.1password.com", ...} — personal tier
+  const PERSONAL_TOKEN =
+    "ops_eyJzaWduSW5BZGRyZXNzIjoibXkuMXBhc3N3b3JkLmNvbSIsInVzZXJBdXRoIjp7Im1ldGhvZCI6IlNSUGctNDA5NiJ9LCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ";
+  // Envelope: {signInAddress:"acme.1password.com", ...} — business tier
+  const BUSINESS_TOKEN =
+    "ops_eyJzaWduSW5BZGRyZXNzIjoiYWNtZS4xcGFzc3dvcmQuY29tIiwidXNlckF1dGgiOnsibWV0aG9kIjoiU1JQZy00MDk2In0sImVtYWlsIjoic2FAZXguY29tIn0";
+
   it("returns missing when token is absent", async () => {
     const result = await probe1Password({});
     expect(result.ok).toBe(false);
@@ -214,58 +221,65 @@ describe("probe1Password", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects invalid token format", async () => {
+  it("rejects invalid token format (missing ops_ prefix)", async () => {
     const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "bad-token" });
     expect(result.ok).toBe(false);
     expect(result.message).toContain("format invalid");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("passes with valid token and 200 response", async () => {
-    fetchMock.mockResolvedValueOnce(mockResponse(200, { items: [] }));
-
-    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_test123abc" });
-    expect(result.ok).toBe(true);
-    expect(result.message).toBe("Valid");
-    expect(result.integration).toBe("1Password");
+  it("rejects unreadable envelope (garbage after ops_)", async () => {
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_not-base64-json" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("envelope unreadable");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("fails with 401 response", async () => {
-    fetchMock.mockResolvedValueOnce(mockResponse(401));
+  it("passes personal-tier token without live probe", async () => {
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: PERSONAL_TOKEN });
+    expect(result.ok).toBe(true);
+    expect(result.message).toContain("Format valid");
+    expect(result.message).toContain("my.1password.com");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 
-    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_expired" });
+  it("passes business-tier token with 200 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { items: [] }));
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: BUSINESS_TOKEN });
+    expect(result.ok).toBe(true);
+    expect(result.message).toBe("Valid");
+  });
+
+  it("fails business-tier token with 401 response", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(401));
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: BUSINESS_TOKEN });
     expect(result.ok).toBe(false);
     expect(result.message).toContain("401");
     expect(result.fix).toContain("Regenerate");
   });
 
-  it("fails with 403 response", async () => {
+  it("passes business-tier token with 403 (events grant missing) as format-valid", async () => {
     fetchMock.mockResolvedValueOnce(mockResponse(403));
-
-    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_noaccess" });
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain("403");
-    expect(result.fix).toContain("vault");
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: BUSINESS_TOKEN });
+    expect(result.ok).toBe(true);
+    expect(result.message).toContain("events-reporter");
   });
 
-  it("handles network errors gracefully", async () => {
+  it("fails business-tier token when network is unreachable", async () => {
     fetchMock.mockRejectedValueOnce(new Error("ECONNREFUSED"));
-
-    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_test123abc" });
+    const result = await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: BUSINESS_TOKEN });
     expect(result.ok).toBe(false);
     expect(result.message).toContain("unreachable");
     expect(result.fix).toContain("network");
   });
 
-  it("sends correct authorization header", async () => {
+  it("sends correct authorization header for business-tier probe", async () => {
     fetchMock.mockResolvedValueOnce(mockResponse(200, { items: [] }));
-
-    await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: "ops_mytoken" });
-
+    await probe1Password({ OP_SERVICE_ACCOUNT_TOKEN: BUSINESS_TOKEN });
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://events.1password.com/api/v1/auditevents");
     const headers = init?.headers as Record<string, string>;
-    expect(headers["Authorization"]).toBe("Bearer ops_mytoken");
+    expect(headers["Authorization"]).toBe(`Bearer ${BUSINESS_TOKEN}`);
   });
 });
 

@@ -200,9 +200,40 @@ export const probeTelegram: CredentialProbe = async (env) => {
 // ── 1Password Probe ─────────────────────────────────────────────────────────
 
 /**
- * Validate a 1Password service account token by calling the API introspect endpoint.
+ * Personal-tier 1Password sign-in addresses. Audit-events API is Business-only,
+ * so probing it on personal tiers returns 401 regardless of token validity.
+ */
+const OP_PERSONAL_SIGNIN_ADDRESSES = new Set(["my.1password.com", "my.1password.eu", "my.1password.ca"]);
+
+/**
+ * Decode the envelope embedded in an `ops_<base64>` service account token.
+ * Returns null if the token can't be decoded (malformed or non-JSON payload).
+ */
+function decodeOpTokenEnvelope(token: string): { signInAddress?: string } | null {
+  if (!token.startsWith("ops_")) return null;
+  try {
+    const payload = token.slice(4);
+    const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+    const json = Buffer.from(padded, "base64").toString("utf-8");
+    const parsed = JSON.parse(json) as { signInAddress?: unknown };
+    if (typeof parsed.signInAddress !== "string") return {};
+    return { signInAddress: parsed.signInAddress };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate a 1Password service account token.
  *
- * Token format: starts with `ops_` (service account tokens).
+ * Token format: `ops_<base64-json-envelope>`. The envelope carries a
+ * `signInAddress` that tells us the account tier:
+ * - `my.1password.com` (and regional variants) → personal/family/teams:
+ *   the audit-events API is Business-only and always returns 401 here,
+ *   so we stop at structural validation.
+ * - Business subdomains (`<org>.1password.com`) → probe audit-events.
+ *   A 401 there means a real token problem; a 403 means the service
+ *   account lacks the events-reporter grant but the token is still valid.
  */
 export const probe1Password: CredentialProbe = async (env) => {
   const integration = "1Password";
@@ -215,6 +246,22 @@ export const probe1Password: CredentialProbe = async (env) => {
 
   if (!token.startsWith("ops_")) {
     return fail(integration, envKey, "Token format invalid (expected ops_... prefix)", `Check ${envKey} — service account tokens start with ops_`);
+  }
+
+  const envelope = decodeOpTokenEnvelope(token);
+  if (envelope === null) {
+    return fail(integration, envKey, "Token envelope unreadable (base64/JSON decode failed)", `Re-paste ${envKey} — the value may be truncated`);
+  }
+
+  const isPersonalTier =
+    !envelope.signInAddress || OP_PERSONAL_SIGNIN_ADDRESSES.has(envelope.signInAddress);
+
+  if (isPersonalTier) {
+    return pass(
+      integration,
+      envKey,
+      `Format valid (${envelope.signInAddress ?? "personal tier"} — audit-events probe not supported)`,
+    );
   }
 
   const result = await probeFetch(`${ONEPASSWORD_API_BASE}/api/v1/auditevents`, {
@@ -241,7 +288,7 @@ export const probe1Password: CredentialProbe = async (env) => {
   }
 
   if (response.status === 403) {
-    return fail(integration, envKey, "Token forbidden (403) — check vault permissions", "Ensure the service account has access to the target vault");
+    return pass(integration, envKey, "Format valid (events-reporter grant missing — audit-events probe skipped)");
   }
 
   return fail(integration, envKey, `Unexpected status ${response.status}`, "Check your 1Password service account status");
