@@ -243,6 +243,15 @@ function mergeEnv(absolutePath: string, generated: string): string {
  * Each file is written individually using the atomic pattern. If any file
  * fails, previously written files remain (they were each atomically complete).
  *
+ * Special handling:
+ * - `.env` files merge with existing values (see mergeEnv).
+ * - `clawhq.yaml` is the user's input manifest — once it exists, it is
+ *   preserved verbatim on subsequent writes. Rewriting it from a freshly
+ *   built bundle has historically stripped fields the bundle didn't know
+ *   about (notably `composition:`, which the wizard doesn't currently
+ *   collect but apply requires). Init still creates it on first run when
+ *   absent.
+ *
  * @param deployDir — Root deployment directory (e.g. ~/.clawhq)
  * @param files — Files to write, with paths relative to deployDir
  * @returns WriteResult with list of written absolute paths
@@ -256,6 +265,12 @@ export function writeBundle(
 
   for (const file of files) {
     const absolutePath = join(resolvedDir, file.relativePath);
+
+    // Preserve user-owned manifest on re-runs.
+    if (file.relativePath === "clawhq.yaml" && existsSync(absolutePath)) {
+      continue;
+    }
+
     const content = file.relativePath.endsWith(".env")
       ? mergeEnv(absolutePath, file.content)
       : file.content;

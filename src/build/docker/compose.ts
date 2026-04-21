@@ -50,6 +50,15 @@ export interface ComposeOptions {
   readonly tailscaleHostname?: string;
   /** Host path to persist Tailscale state across restarts. */
   readonly tailscaleStateDir?: string;
+  /**
+   * Host supports the OCI runtime requested by the posture (typically gVisor/runsc).
+   * Defaults to true to preserve existing behavior. Set false when `docker info`
+   * does not list the posture's runtime — the compose generator will omit the
+   * `runtime:` directive so `docker compose up` doesn't fail with
+   * "unknown or invalid runtime name". Other posture hardening (cap_drop,
+   * no-new-privileges, read_only, tmpfs, seccomp) still applies.
+   */
+  readonly runtimeAvailable?: boolean;
 }
 
 /** Generated docker-compose structure. */
@@ -247,8 +256,12 @@ export function generateCompose(
     networks: [networkName, "ollama-bridge"],
     env_file: [".env"],
     restart: "unless-stopped",
-    // OCI runtime override (gVisor kernel isolation for hardened/paranoid postures)
-    ...(posture.runtime ? { runtime: posture.runtime } : {}),
+    // OCI runtime override (gVisor kernel isolation for hardened/paranoid postures).
+    // Emitted only when the host supports it; otherwise the other posture hardening
+    // still applies (cap_drop, no-new-privileges, read_only, tmpfs, seccomp).
+    ...(posture.runtime && options?.runtimeAvailable !== false
+      ? { runtime: posture.runtime }
+      : {}),
     // 1Password service account token via Docker secret (never in env vars)
     ...(enableOp ? { secrets: ["op_service_account_token"] } : {}),
     ...(hasResourceLimits(posture)

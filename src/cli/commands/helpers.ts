@@ -90,10 +90,15 @@ export function bundleToFiles(
       relativePath: "engine/openclaw.json",
       content: JSON.stringify(bundle.openclawConfig, null, 2) + "\n",
     },
-    {
-      relativePath: "engine/docker-compose.yml",
-      content: yamlStringify(bundle.composeConfig),
-    },
+    // engine/docker-compose.yml is intentionally NOT written here.
+    // The buildComposeConfig() in design/configure/generate.ts emits a
+    // minimal stub (no image/command/ports/tmpfs, no cred-proxy or
+    // market-engine services) that's incompatible with `docker compose up`.
+    // The authoritative compose.yml comes from:
+    //   - `clawhq build` (runs generateCompose() from build/docker/compose.ts)
+    //   - `clawhq up` (has a preflight regenerateCompose() for broken files)
+    // Writing a stub here was clobbering correct compose.yml on every
+    // `clawhq init` re-run.
     {
       relativePath: "engine/.env",
       content: Object.entries(bundle.envVars)
