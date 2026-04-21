@@ -13,6 +13,7 @@ import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { CONTAINER_USER, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { InvalidCronStoreError, loadCronStore, saveCronStore } from "../../openclaw/cron-store.js";
 import { InvalidRuntimeConfigError, loadRuntimeConfig, saveRuntimeConfig } from "../../openclaw/runtime-config.js";
+import { clean } from "../clean/index.js";
 import { archiveSession, listSessions } from "../sessions/index.js";
 
 import type { DoctorCheckResult, DoctorCheckName, FixReport, FixResult } from "./types.js";
@@ -65,7 +66,37 @@ const fixers: Partial<Record<DoctorCheckName, Fixer>> = {
   "cron-health": fixCronHealth,
   "session-runaway": fixSessionRunaway,
   "loop-detection-enabled": fixLoopDetection,
+  "housekeeping-debris": fixHousekeepingDebris,
 };
+
+/**
+ * Sweep housekeeping debris via the same entry point as `clawhq clean`.
+ *
+ * Success: all findings removed. Partial failures (e.g. permission
+ * denied on /tmp entries created by another user) are reported per path
+ * but still count as a fix attempt — the rest of the sweep completes.
+ */
+async function fixHousekeepingDebris(deployDir: string): Promise<FixResult> {
+  const name: DoctorCheckName = "housekeeping-debris";
+  try {
+    const report = await clean({ deployDir, dryRun: false });
+    if (report.findings.length === 0) {
+      return { name, success: true, message: "No housekeeping debris to remove" };
+    }
+    if (report.errors.length === 0) {
+      return { name, success: true, message: `Removed ${report.removed} debris path(s)` };
+    }
+    const firstError = report.errors[0];
+    return {
+      name,
+      success: report.removed > 0,
+      message: `Removed ${report.removed}/${report.findings.length}; ${report.errors.length} error(s) — first: ${firstError?.path} — ${firstError?.error}`,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { name, success: false, message: `Housekeeping sweep failed: ${msg}` };
+  }
+}
 
 /**
  * Enable tool-loop detection in openclaw.json with safe thresholds.

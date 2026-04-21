@@ -25,6 +25,7 @@ import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEO
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 import { InvalidCronStoreError, loadCronStore } from "../../openclaw/cron-store.js";
 import { isTimerActive } from "../automation/install.js";
+import { clean } from "../clean/index.js";
 import { listSessions } from "../sessions/index.js";
 import { takeSnapshot, unclassifiedEntries } from "../snapshot/snapshot.js";
 import { compareVersions } from "../updater/calver.js";
@@ -160,6 +161,7 @@ export async function runChecks(
     checkLoopDetectionEnabled(deployDir),
     checkModelAgenticCapable(deployDir),
     checkDeployUnclassified(deployDir),
+    checkHousekeepingDebris(deployDir),
   ]);
 }
 
@@ -2212,5 +2214,40 @@ async function checkDeployUnclassified(deployDir: string): Promise<DoctorCheckRe
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return ok(name, `Classification check skipped (${msg})`, "info");
+  }
+}
+
+/**
+ * Housekeeping — surface anything `clawhq clean` would remove, so `doctor`
+ * becomes a one-stop health read and `doctor --fix` sweeps debris
+ * automatically.
+ *
+ * Delegates to the same scanner used by `clawhq clean --dry-run`; no
+ * duplication of the debris-detection logic.
+ */
+async function checkHousekeepingDebris(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "housekeeping-debris";
+  try {
+    const report = await clean({ deployDir, dryRun: true });
+    if (report.findings.length === 0) {
+      return ok(name, "No housekeeping debris detected");
+    }
+    const counts = new Map<string, number>();
+    for (const f of report.findings) {
+      counts.set(f.category, (counts.get(f.category) ?? 0) + 1);
+    }
+    const summary = [...counts.entries()]
+      .map(([cat, n]) => `${n} × ${cat}`)
+      .join(", ");
+    return fail(
+      name,
+      "warning",
+      `${report.findings.length} path(s) with housekeeping debris: ${summary}`,
+      "Run: clawhq clean (or clawhq doctor --fix)",
+      true,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return ok(name, `Housekeeping scan skipped (${msg})`, "info");
   }
 }

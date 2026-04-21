@@ -48,7 +48,8 @@ export type DoctorCheckName =
   | "session-runaway"
   | "loop-detection-enabled"
   | "model-agentic-capable"
-  | "deploy-unclassified";
+  | "deploy-unclassified"
+  | "housekeeping-debris";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

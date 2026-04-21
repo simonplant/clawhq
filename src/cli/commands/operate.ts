@@ -85,7 +85,7 @@ async function loadNotificationChannels(deployDir: string): Promise<Notification
 export function registerOperateCommands(program: Command, defaultDeployDir: string): void {
   program
     .command("doctor")
-    .description("Preventive diagnostics — 17 checks with auto-fix")
+    .description("Preventive diagnostics — 40 checks with auto-fix (includes housekeeping sweep)")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--fix", "Auto-fix common issues")
     .option("--json", "Output as JSON for scripting")
