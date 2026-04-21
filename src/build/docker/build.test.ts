@@ -153,13 +153,13 @@ describe("generateStage2Dockerfile", () => {
     expect(df).toContain("USER 1000:1000");
   });
 
-  it("installs llm-wiki CLI pinned to a commit SHA", () => {
+  it("installs llm-wiki CLI from a vendored tarball", () => {
     const df = generateStage2Dockerfile("openclaw:local", stage2Config());
-    // Must reference the llm-wiki repo
-    expect(df).toContain("simonplant/llm-wiki");
-    // Must pin to a 40-char SHA (reproducibility — no floating main)
-    expect(df).toMatch(/simonplant\/llm-wiki#[a-f0-9]{40}/);
-    // Must verify the CLI is available post-install so a bad SHA fails the build
+    // Must COPY the vendored tarball from the build context
+    expect(df).toMatch(/COPY vendor\/llm-wiki-[\d.]+\.tgz/);
+    // Must install globally from the local path (not a remote repo — upstream is private)
+    expect(df).toMatch(/npm install -g "\/opt\/vendor\/llm-wiki-[\d.]+\.tgz"/);
+    // Must verify the CLI is available post-install so a broken tarball fails the build
     expect(df).toContain("llm-wiki --version");
   });
 });

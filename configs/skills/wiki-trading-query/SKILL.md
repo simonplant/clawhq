@@ -62,10 +62,10 @@ If yes: run `wiki-trading-ingest` logic to create the analysis page under the ap
 
 ## Using the CLI
 
-For cross-page grep and quick stats:
+For cross-page grep and quick stats (run from `/home/node/.openclaw/workspace`):
 ```
-llm-wiki stats --name trading           # page count, link density, orphans
-llm-wiki context                        # current briefing
+llm-wiki stats --path knowledge/trading      # page count, link density, orphans
+llm-wiki context --path knowledge/trading    # current briefing
 ```
 For actual synthesis: read and reason, don't rely on the CLI.
 

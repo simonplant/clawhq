@@ -329,9 +329,10 @@ cron_prompts:
     journal/wiki-review-YYYY-MM-DD.md and DMs a 3-line summary.
 
   wiki_context_refresh: >
-    Run: llm-wiki context --name trading > workspace/state/wiki-context.md.
+    Run: mkdir -p workspace/state && llm-wiki context --path workspace/knowledge/trading > workspace/state/wiki-context.md.
     Silent — this just keeps the session-start briefing file fresh so the
     agent reads current wiki state at the next heartbeat. No output to Simon.
+    If llm-wiki exits non-zero, leave the prior wiki-context.md in place.
 
 delegation:
   - action: organize_inbox

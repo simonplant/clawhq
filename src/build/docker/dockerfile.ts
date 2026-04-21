@@ -25,6 +25,8 @@ import type { Stage2Config } from "./types.js";
  */
 export const LLM_WIKI_REPO = "simonplant/llm-wiki";
 export const LLM_WIKI_COMMIT = "c90ecf8a9071ead3acabf759da6d0df927e07a43";
+/** Tarball filename under configs/vendor/. Bump when llm-wiki's version changes. */
+export const LLM_WIKI_TARBALL = "llm-wiki-0.1.0.tgz";
 
 // ── Binary Validation ───────────────────────────────────────────────────────
 
@@ -90,12 +92,15 @@ export function generateStage2Dockerfile(
     );
   }
 
-  // Install llm-wiki CLI for the LLM-maintained knowledge base.
-  // Pinned to a specific commit SHA for reproducibility — update when the
-  // upstream publishes a new verified release.
+  // Install llm-wiki CLI from a vendored tarball. The upstream repo is
+  // private, so we can't fetch during `docker build`. The tarball in
+  // configs/vendor/ is staged into the build context as vendor/ by
+  // stageVendorFiles. Pinned SHA enforces reproducibility — see
+  // configs/vendor/README.md for the regeneration procedure.
   lines.push(
     "# Install llm-wiki CLI (LLM-maintained knowledge base — Karpathy pattern)",
-    `RUN npm install -g "github:${LLM_WIKI_REPO}#${LLM_WIKI_COMMIT}" && \\`,
+    `COPY vendor/${LLM_WIKI_TARBALL} /opt/vendor/${LLM_WIKI_TARBALL}`,
+    `RUN npm install -g "/opt/vendor/${LLM_WIKI_TARBALL}" && \\`,
     `    llm-wiki --version`,
     "",
   );

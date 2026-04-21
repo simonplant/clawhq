@@ -97,6 +97,10 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
     }
   }
 
+  // Stage vendored third-party artifacts (e.g. llm-wiki tarball) into the
+  // build context so Dockerfile COPY instructions can reach them.
+  await stageVendorFiles(engineDir);
+
   // Stage workspace files into Docker build context (before Dockerfile generation)
   if (stage2.workspace) {
     await stageWorkspaceFiles(deployDir, engineDir, stage2.workspace);
@@ -272,6 +276,34 @@ async function stageWorkspaceFiles(
     await mkdir(dirname(dst), { recursive: true });
     await copyFile(src, dst);
   }
+}
+
+/**
+ * Stage vendored third-party artifacts (e.g. llm-wiki tarball) into the
+ * Docker build context at engine/vendor/ so COPY instructions in the
+ * generated Dockerfile can reference them. Source is configs/vendor/
+ * relative to the ClawHQ project root — see configs/vendor/README.md.
+ *
+ * Silently no-ops if configs/vendor/ doesn't exist or is empty; not every
+ * build needs vendored artifacts and the Dockerfile generator only emits
+ * COPY instructions when a vendored dependency is actually pinned.
+ */
+async function stageVendorFiles(engineDir: string): Promise<void> {
+  const projectRoot = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
+  const sourceDir = join(projectRoot, "configs", "vendor");
+  if (!existsSync(sourceDir)) return;
+
+  const destDir = join(engineDir, "vendor");
+  await mkdir(destDir, { recursive: true });
+  cpSync(sourceDir, destDir, {
+    recursive: true,
+    filter: (src) => {
+      const name = src.split("/").pop() ?? "";
+      // Docs aren't consumed by the image — skip to keep the build context small.
+      if (name === "README.md") return false;
+      return true;
+    },
+  });
 }
 
 /**

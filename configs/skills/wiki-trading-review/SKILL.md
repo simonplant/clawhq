@@ -17,15 +17,16 @@ description: "Content-level health check on the trading wiki at knowledge/tradin
 ### 1. Structural lint first
 
 ```
-llm-wiki lint --name trading
+llm-wiki lint --path knowledge/trading
 ```
+Run from `/home/node/.openclaw/workspace`.
 
 Surface any structural issues as a one-line summary. This skill is *not* about re-doing that — it's about what `lint` can't see.
 
 ### 2. Stats snapshot
 
 ```
-llm-wiki stats --name trading
+llm-wiki stats --path knowledge/trading
 ```
 
 Capture: page count, source count, link density, orphans, most-connected pages, recent activity. This gives proportion — if the wiki is small, be generous; if large, be selective.

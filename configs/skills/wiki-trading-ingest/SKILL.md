@@ -32,9 +32,9 @@ If the source is a file Simon pasted or a URL he linked:
 
 If `llm-wiki` is available, prefer:
 ```
-llm-wiki ingest <path-to-source>.md --name trading
+llm-wiki ingest <path-to-source>.md --path knowledge/trading
 ```
-It copies the file, slugifies the name, extracts frontmatter title, and stubs the index.
+It copies the file, slugifies the name, extracts frontmatter title, and stubs the index. Run from the workspace root (`/home/node/.openclaw/workspace`).
 
 ### 2. Read and discuss
 
@@ -67,7 +67,7 @@ Prefer **updating existing pages** over creating new ones when the topic overlap
 ### 5. Verify
 
 ```
-llm-wiki lint --fix --name trading
+llm-wiki lint --fix --path knowledge/trading
 ```
 Catches broken `[[links]]`, orphan pages, missing frontmatter, index drift. Auto-fixes what it can.
 

@@ -327,6 +327,39 @@ function renderAgents(profile: MissionProfile): string {
     lines.push("");
   }
 
+  // Knowledge bases — only emit when the profile has wiki-<kb>-ingest skills
+  const kbs = detectProfileKnowledgeBases(profile);
+  if (kbs.length > 0) {
+    lines.push("## Knowledge Bases\n");
+    lines.push("You maintain an LLM-curated wiki that compounds over time. It is not a document dump — it is the reasoning you will rely on next week. Treat maintenance as load-bearing work.\n");
+    for (const kb of kbs) {
+      lines.push(`### \`knowledge/${kb}/\`\n`);
+      lines.push("**Three layers:**");
+      lines.push(`- \`knowledge/${kb}/raw/\` — immutable sources. You never modify files here.`);
+      lines.push(`- \`knowledge/${kb}/wiki/\` — curated markdown pages with \`[[wiki links]]\`. You own this layer.`);
+      lines.push("- This file (AGENTS.md) — the schema. It defines how the wiki works.\n");
+      lines.push("**Three operations** — each has a dedicated skill:");
+      lines.push(`- **Ingest** (\`wiki-${kb}-ingest\`) — when a new source arrives, read it, discuss takeaways, update every affected page, cross-reference, update \`index.md\` and \`log.md\`. A single ingest commonly touches 10–15 pages.`);
+      lines.push(`- **Query** (\`wiki-${kb}-query\`) — answer questions wiki-first: load \`index.md\`, drill into relevant pages, cite with \`[[wiki links]]\`. Offer to file substantive syntheses back as new pages so explorations compound.`);
+      lines.push(`- **Review** (\`wiki-${kb}-review\`) — weekly health check: contradictions, stale claims, orphans, gaps. Complements \`llm-wiki lint\` (structural) with content judgment.\n`);
+      lines.push("**Two navigation files:**");
+      lines.push(`- \`knowledge/${kb}/index.md\` — catalog of every page by category. Read this first on any query.`);
+      lines.push(`- \`knowledge/${kb}/log.md\` — chronological record. Append on every ingest/review. Entry format: \`## [YYYY-MM-DD] operation | Title\`.\n`);
+      lines.push("**CLI** — `llm-wiki` is installed inside the container. Run from the workspace root (`cd /home/node/.openclaw/workspace`) or pass `--path knowledge/" + kb + "`:");
+      lines.push(`- \`llm-wiki context --path knowledge/${kb}\` — briefing (page count, unprocessed sources, issues, recent activity).`);
+      lines.push(`- \`llm-wiki stats --path knowledge/${kb}\` — health dashboard.`);
+      lines.push(`- \`llm-wiki lint --fix --path knowledge/${kb}\` — structural checks with auto-fix.`);
+      lines.push(`- \`llm-wiki ingest <file> --path knowledge/${kb}\` — stage a source into \`raw/\`.\n`);
+      lines.push("**Session start:** read `workspace/state/wiki-context.md` — a cron refreshes it every 30 min with `llm-wiki context`. That tells you the wiki's current state without re-scanning.\n");
+      lines.push("**Conventions:**");
+      lines.push("- Every wiki page has YAML frontmatter: `tags`, `confidence` (verified/reported/estimated/speculative), `last-verified`, `source-count`.");
+      lines.push("- Every claim cites its source: `per [[page-slug]]` or `per raw/<file>.md`.");
+      lines.push("- When two sources disagree, document both positions and the evidence — never silently pick one.");
+      lines.push("- Update existing pages when topics overlap; only create a new page when a concept genuinely stands alone.");
+      lines.push("- File non-trivial query answers back as wiki pages under **Comparisons** or **Analyses**. Don't let valuable syntheses die in chat history.\n");
+    }
+  }
+
   // Safety
   lines.push("## Safety\n");
   lines.push("- Show the plan, get explicit approval, then execute");
@@ -1026,6 +1059,11 @@ function renderCronJobs(
   for (const skill of profile.skills) {
     if (skill === "construct") continue;
     if (existingJobIds.has(skill) || existingJobIds.has(skill.replace(/-/g, "_"))) continue;
+    // wiki-<kb>-ingest and wiki-<kb>-query are event-driven by design (user drops a
+    // source / user asks a question). Auto-scheduling them every 15 minutes wastes
+    // model cycles on guaranteed no-ops. The matching -review skill is scheduled
+    // explicitly via cron_defaults.
+    if (/^wiki-[a-z0-9-]+-(ingest|query)$/.test(skill)) continue;
     const skillId = `skill-${skill}`;
     jobs.push({
       id: skillId,
