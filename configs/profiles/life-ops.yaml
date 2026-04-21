@@ -269,21 +269,37 @@ cron_prompts:
     via Telegram. Keep concise — Simon reads on mobile.
 
   x_scan: >
-    Run X intelligence scan: x scan
+    Run exactly this command: x scan
 
-    Review results by channel:
-    - trading: Flag Mancini/DP levels, setups, or position changes.
-      If actionable, cross-reference with memory/trading-YYYY-MM-DD.md.
-    - tech: Flag OpenClaw releases, breaking changes, security advisories.
-    - personal: Note but don't alert unless urgent.
+    Hard rules (do not violate):
+    - Do NOT run `x` with no args, `x --help`, or probe the tool.
+    - Do NOT set, unset, or override environment variables. CRED_PROXY_URL
+      is set by the container; leave it alone.
+    - Do NOT use the Edit tool on memory/trading-YYYY-MM-DD.md. The trading
+      brief is read-only to this cron. "Cross-reference" means Read only.
+    - Write to memory only by appending via exec:
+        echo "TIMESTAMP - x-scan: MESSAGE" >> memory/DATE.md
+      where DATE is today YYYY-MM-DD and TIMESTAMP is HH:MM in PT. Use the
+      general daily memory (memory/DATE.md), never the trading brief.
 
-    Only message Simon if something is actionable. If quiet, log one-line
-    summary to memory and stay silent.
+    Outcomes:
+    - Exit 0, no new tweets ("0 new tweets" in output): append one line
+      "quiet, 0 new tweets" and respond HEARTBEAT_OK. Stop.
+    - Exit non-zero: report the exact error verbatim and stop. Do not
+      investigate, do not probe, do not retry.
+    - Exit 0, new tweets: review by channel:
+        trading: Mancini/DP levels, setups, position changes. Cross-reference
+          by Reading memory/trading-YYYY-MM-DD.md (never Edit).
+        tech: OpenClaw releases, breaking changes, security advisories.
+        personal: note only; don't alert unless urgent.
+      Message Simon via Telegram ONLY if something is actionable
+      (specific ticker/level, not general sentiment). Append a one-line
+      summary to memory/DATE.md either way.
 
   x_scan_evening: >
-    Run X intelligence scan: x scan --quiet
-
-    Same rules as x_scan but evening hours. Only alert if actionable.
+    Same hard rules and write path as x_scan. Use `x scan --quiet` instead
+    of `x scan`. Append the one-line summary to memory/DATE.md. Alert Simon
+    only if actionable.
 
   news_scan: >
     Run news scan for market-moving events:

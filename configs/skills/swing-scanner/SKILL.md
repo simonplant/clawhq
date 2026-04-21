@@ -74,7 +74,7 @@ Apply these screens in priority order:
 
 ### 3. Score and Rank
 
-For each setup found, score using DP.md conviction framework:
+For each setup found, score using the conviction framework from `knowledge/trading/wiki/dp-extraction-rules.md` §Conviction Scoring:
 - **21-day pullback on quality name:** HIGH conviction
 - **200-day pullback on quality name:** HIGH conviction
 - **RS leader with volume:** MEDIUM conviction
