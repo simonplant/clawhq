@@ -63,7 +63,7 @@ _discover_home() {
   local principal
   principal=$(_curl -X PROPFIND -H "Content-Type: application/xml" -H "Depth: 0" \\
     -d '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>' \\
-    "$CALDAV_BASE/" 2>/dev/null | python3 -c "
+    "$CALDAV_BASE/" | python3 -c "
 import sys, re
 data = sys.stdin.read()
 m = re.search(r'<(?:\\w+:)?href[^>]*>(/[^<]*principal[^<]*)</(?:\\w+:)?href>', data)
@@ -82,7 +82,7 @@ print(m.group(1) if m else '')
   local home
   home=$(_curl -X PROPFIND -H "Content-Type: application/xml" -H "Depth: 0" \\
     -d '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><c:calendar-home-set/></d:prop></d:propfind>' \\
-    "$CALDAV_BASE$principal" 2>/dev/null | python3 -c "
+    "$CALDAV_BASE$principal" | python3 -c "
 import sys, re
 data = sys.stdin.read()
 m = re.search(r'<(?:\\w+:)?href[^>]*>(https?://[^<]+)</(?:\\w+:)?href>', data)
@@ -105,7 +105,7 @@ _discover_calendars() {
   home=$(_discover_home)
   _curl -X PROPFIND -H "Content-Type: application/xml" -H "Depth: 1" \\
     -d '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:displayname/><d:resourcetype/></d:prop></d:propfind>' \\
-    "$home/" 2>/dev/null | python3 -c "
+    "$home/" | python3 -c "
 import sys, re, json
 data = sys.stdin.read()
 cals = []
@@ -162,7 +162,7 @@ for c in json.load(sys.stdin):
   </c:comp-filter></c:filter>
 </c:calendar-query>'
       result=$(_curl -X REPORT -H "Content-Type: application/xml" -H "Depth: 1" \\
-        -d "$body" "$cal_url" 2>/dev/null)
+        -d "$body" "$cal_url")
       all_data+="\${result}"
     done <<< "$cal_paths"
     echo "$all_data" | python3 -c "
@@ -255,7 +255,7 @@ for c in json.load(sys.stdin):
   </c:comp-filter></c:filter>
 </c:calendar-query>'
       result=$(_curl -X REPORT -H "Content-Type: application/xml" -H "Depth: 1" \\
-        -d "$body" "$cal_url" 2>/dev/null)
+        -d "$body" "$cal_url")
       all_data+="\${result}"
     done <<< "$cal_paths"
     echo "$all_data" | python3 -c "
