@@ -646,8 +646,9 @@ describe("substack tool", () => {
     const content = generateSubstackTool();
     expect(content).toContain("list)");
     expect(content).toContain("https://substack.com/api/v1/subscriptions");
-    // Must follow the 301 redirect to /page_v2
-    expect(content).toMatch(/_curl -L/);
+    // _curl itself must use -L so all subcommands follow 301s (both the
+    // subscriptions list's /page_v2 redirect and custom-domain publications).
+    expect(content).toMatch(/curl -sSL --fail-with-body/);
     // Must require the session cookie
     expect(content).toMatch(/SUBSTACK_COOKIE not set/);
   });

@@ -48,10 +48,12 @@ _resolve_pub() {
 }
 
 _curl() {
+  # -L follows redirects: custom-domain publications (e.g. example.com backed by
+  # example.substack.com) 301 from the substack subdomain to the custom domain.
   if [[ -n "$COOKIE" ]]; then
-    curl -sS --fail-with-body -H "Cookie: $COOKIE" "$@"
+    curl -sSL --fail-with-body -H "Cookie: $COOKIE" "$@"
   else
-    curl -sS --fail-with-body "$@"
+    curl -sSL --fail-with-body "$@"
   fi
 }
 
@@ -77,7 +79,7 @@ case "$cmd" in
       echo "substack list: SUBSTACK_COOKIE not set (session cookie required)" >&2
       exit 1
     fi
-    _curl -L "https://substack.com/api/v1/subscriptions" | \\
+    _curl "https://substack.com/api/v1/subscriptions" | \\
       jq '[
         .subscriptions[] as $s
         | (.publications[] | select(.id == $s.publication_id)) as $p
