@@ -1025,7 +1025,6 @@ function renderCronJobs(
   const jobs: Record<string, unknown>[] = [];
   const modelConfig = buildModelConfig(providers, modelOverride);
   const primary = modelConfig.primary as string;
-  const isLocal = primary.startsWith("ollama/");
 
   const announceDelivery = telegramChatId
     ? {
@@ -1039,14 +1038,28 @@ function renderCronJobs(
     const expr = typeof cronDef === "string" ? cronDef : cronDef.expr;
     const shouldAnnounce = typeof cronDef === "object" && cronDef.announce === true;
     const message = profile.cron_prompts[id] ?? `Run ${id}`;
-    const isHeartbeat = id === "heartbeat";
-    const isBrief = id.includes("brief");
     const jobId = id.replace(/_/g, "-");
 
-    // Model selection: local uses primary for all, cloud routes by complexity
-    const model = isLocal
-      ? primary
-      : isHeartbeat ? "haiku" : isBrief ? "sonnet" : "opus";
+    // Model selection: always use the configured primary model.
+    //
+    // Previously the cloud branch emitted bare Anthropic shorthands
+    // ("haiku"/"sonnet"/"opus") for tier-based cost optimisation — but
+    // those strings are unqualified, and when the runtime's primary
+    // provider was Ollama (not Anthropic), the routing layer would try
+    // to look up `model: "haiku"` in Ollama and 404 with
+    // `{"error":"model 'haiku' not found"}`. That is exactly what
+    // broke Clawdius's heartbeat cron when composition was stripped:
+    // primary silently became a cloud model, the cron used bare
+    // "haiku", but the Ollama-routed runtime couldn't find it.
+    //
+    // Using `primary` for every cron ID is simpler, always matches
+    // the runtime's configured provider, and fails loudly if the
+    // primary itself is wrong (rather than silently mis-routing
+    // via an unqualified shorthand). Cost-tiering for cloud users
+    // can be re-introduced via explicit per-job model configuration
+    // in the profile's cron_prompts, which is more legible than
+    // implicit tier inference anyway.
+    const model = primary;
 
     jobs.push({
       id: jobId,
@@ -1080,7 +1093,7 @@ function renderCronJobs(
       payload: {
         kind: "agentTurn",
         message: `Run skill: ${skill}`,
-        model: isLocal ? primary : "opus",
+        model: primary,
       },
       sessionTarget: "isolated",
       state: {},
