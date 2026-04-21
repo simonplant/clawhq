@@ -6,7 +6,8 @@
  * All results piped through ClawWall sanitizer - external content
  * may contain prompt injection payloads.
  *
- * Auth: credential proxy (preferred) or direct API key fallback.
+ * Auth: direct API key preferred (works without proxy daemon); credential
+ * proxy used as fallback when proxy is running (e.g. managed deployments).
  */
 
 export function generateTavilyTool(): string {
@@ -27,8 +28,22 @@ case "\${1:-}" in help|--help|-h|"")
   sed -n '2,8p' "$0" | sed 's/^# \\?//'
   exit 0 ;; esac
 
-# Auth: prefer credential proxy, fall back to direct token
-if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
+# Auth: prefer direct token (always resolvable); fall back to credential proxy.
+# Inverted from proxy-first because an unreachable CRED_PROXY_URL (e.g. container
+# hostname from host shell, proxy daemon down) would otherwise fail with no recovery.
+if [[ -n "\${TAVILY_API_KEY:-}" ]]; then
+  API="https://api.tavily.com"
+  TOKEN="$TAVILY_API_KEY"
+  _search() {
+    local body=$(jq -n --arg q "$1" --arg d "$2" --argjson n "$3" --arg k "$TOKEN" \\
+      '{api_key: $k, query: $q, search_depth: $d, max_results: $n, include_answer: true}')
+    curl -sS --fail-with-body -X POST -H "Content-Type: application/json" -d "$body" "$API/search"
+  }
+  _extract() {
+    curl -sS --fail-with-body -X POST -H "Content-Type: application/json" \\
+      -d "$(jq -n --arg u "$1" --arg k "$TOKEN" '{api_key: $k, urls: [$u]}')" "$API/extract"
+  }
+elif [[ -n "\${CRED_PROXY_URL:-}" ]]; then
   API="\${CRED_PROXY_URL}/tavily"
   _search() {
     local body=$(jq -n --arg q "$1" --arg d "$2" --argjson n "$3" \\
@@ -40,17 +55,8 @@ if [[ -n "\${CRED_PROXY_URL:-}" ]]; then
       -d "$(jq -n --arg u "$1" '{urls: [$u]}')" "$API/extract"
   }
 else
-  API="https://api.tavily.com"
-  TOKEN="\${TAVILY_API_KEY:?Set TAVILY_API_KEY or CRED_PROXY_URL}"
-  _search() {
-    local body=$(jq -n --arg q "$1" --arg d "$2" --argjson n "$3" --arg k "$TOKEN" \\
-      '{api_key: $k, query: $q, search_depth: $d, max_results: $n, include_answer: true}')
-    curl -sS --fail-with-body -X POST -H "Content-Type: application/json" -d "$body" "$API/search"
-  }
-  _extract() {
-    curl -sS --fail-with-body -X POST -H "Content-Type: application/json" \\
-      -d "$(jq -n --arg u "$1" --arg k "$TOKEN" '{api_key: $k, urls: [$u]}')" "$API/extract"
-  }
+  echo "search: set TAVILY_API_KEY or CRED_PROXY_URL" >&2
+  exit 1
 fi
 
 # ClawWall: sanitize external content
@@ -67,13 +73,13 @@ shift 2>/dev/null || true
 
 case "$cmd" in
   search)
-    _search "\${*:?Usage: tavily search <query>}" "basic" 5 | _sanitize
+    _search "\${*:?Usage: search <query>}" "basic" 5 | _sanitize
     ;;
   research)
-    _search "\${*:?Usage: tavily research <query>}" "advanced" 10 | _sanitize
+    _search "\${*:?Usage: search research <query>}" "advanced" 10 | _sanitize
     ;;
   extract)
-    _extract "\${1:?Usage: tavily extract <url>}" | _sanitize
+    _extract "\${1:?Usage: search extract <url>}" | _sanitize
     ;;
   help|--help|-h|"")
     sed -n '2,8p' "$0" | sed 's/^# \\?//'

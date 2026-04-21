@@ -273,12 +273,22 @@ describe("tasks tool (todoist provider)", () => {
 });
 
 describe("search tool (tavily provider)", () => {
-  it("uses credential proxy for Tavily search API", () => {
+  it("prefers direct TAVILY_API_KEY, falls back to credential proxy", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "search");
     expect(wrapper).toBeDefined();
-    expect(wrapper?.content).toContain("CRED_PROXY_URL");
-    expect(wrapper?.content).toContain("/tavily");
+    const content = wrapper!.content;
+    // Both auth paths present
+    expect(content).toContain("TAVILY_API_KEY");
+    expect(content).toContain("CRED_PROXY_URL");
+    expect(content).toContain("https://api.tavily.com");
+    expect(content).toContain("/tavily");
+    // Direct-token branch must be checked first so an unreachable proxy
+    // doesn't hard-fail when a direct key is available.
+    const directIdx = content.indexOf('if [[ -n "${TAVILY_API_KEY:-}"');
+    const proxyIdx = content.indexOf('elif [[ -n "${CRED_PROXY_URL:-}"');
+    expect(directIdx).toBeGreaterThan(-1);
+    expect(proxyIdx).toBeGreaterThan(directIdx);
   });
 });
 
