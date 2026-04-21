@@ -306,23 +306,63 @@ cron_prompts:
       general daily memory (memory/DATE.md), never the trading brief.
 
     Outcomes:
-    - Exit 0, no new tweets ("0 new tweets" in output): append one line
-      "quiet, 0 new tweets" and respond HEARTBEAT_OK. Stop.
+    - Exit 0, no new tweets: append "quiet" to memory/DATE.md and respond
+      HEARTBEAT_OK. Stop.
     - Exit non-zero: report the exact error verbatim and stop. Do not
       investigate, do not probe, do not retry.
-    - Exit 0, new tweets: review by channel:
-        trading: Mancini/DP levels, setups, position changes. Cross-reference
-          by Reading memory/trading-YYYY-MM-DD.md (never Edit).
-        tech: OpenClaw releases, breaking changes, security advisories.
-        personal: note only; don't alert unless urgent.
-      Message Simon via Telegram ONLY if something is actionable
-      (specific ticker/level, not general sentiment). Append a one-line
-      summary to memory/DATE.md either way.
+    - Exit 0, new tweets: read each one. Decide per-tweet whether it
+      contains substantive trading intelligence or is noise.
+
+    NOISE vs SUBSTANCE (this is the whole point of the scan — get it right):
+
+    NOISE — discard silently, do NOT mention anywhere:
+      - general market commentary without specific levels ("traps being
+        put in", "careful here", "looks heavy")
+      - retweets / reactions / emoji-only posts
+      - meta-updates about your own process ("2 new tweets found",
+        "scanning complete")
+      - marketing, self-promo, unrelated opinions
+
+    SUBSTANCE — surface with full attribution:
+      A tweet is substantive if it contains AT LEAST ONE of:
+      - a specific price level or zone ("$SPY 710 support", "ES 5530 bid")
+      - a specific trade thesis with ticker + direction ("long NVDA
+        into earnings", "short META rejected at 583")
+      - a position change ("took off half $TSLA", "went flat NQ")
+      - an expected move / catalyst ("GEV earnings tomorrow, $55 move
+        expected", "FOMC presser at 2pm")
+      - a confirmation/invalidation of a setup in today's brief
+
+    When you surface substance to Simon, ALWAYS include:
+      - The handle (@AdamMancini4, @epictrades1, @Trade_The_News, etc.)
+      - The specific data: ticker, level, direction, timeframe
+      - The exact phrase from the tweet if it captures the thesis
+
+    Good Telegram message:
+      "@AdamMancini4: ES 5528 recovery zone — watching for reclaim.
+      Currently 5524. No trigger yet."
+
+    Bad Telegram message (do not send):
+      "1 new tweet found" / "trading alert for $GEV"
+      (no handle, no level, no thesis = worse than silence)
+
+    If nothing substantive in any of the new tweets: append "quiet"
+    to memory/DATE.md. Do NOT send Simon a "N tweets, nothing
+    actionable" message — silence IS the message.
+
+    Memory line format (also no counts):
+      Substantive items found → one line per item, attributed:
+        11:00 - x-scan: @AdamMancini4 ES 5528 recovery zone, no trigger
+      Nothing substantive → single "quiet" line:
+        11:00 - x-scan: quiet
 
   x_scan_evening: >
-    Same hard rules and write path as x_scan. Use `x scan --quiet` instead
-    of `x scan`. Append the one-line summary to memory/DATE.md. Alert Simon
-    only if actionable.
+    Same hard rules, noise/substance distinction, attribution, and
+    memory-line format as x_scan. Use `x scan --quiet` instead of
+    `x scan`. Telegram-alert Simon only for substantive items, and
+    only when the item would not keep until tomorrow's premarket
+    brief (e.g. an overnight catalyst, a position-change from a
+    source Simon holds with, not general commentary).
 
   news_scan: >
     Run news scan for market-moving events:
