@@ -43,5 +43,5 @@ The user reviews the draft via their messaging channel and approves, edits, or r
 ## Model Requirements
 
 - Provider: Local Ollama preferred
-- Minimum model: gemma4:26b or equivalent
+- Minimum model: any tool-capable local model (runtime uses the deployment default)
 - Cloud escalation: configurable — Founder's Ops blueprint may allow cloud for investor_updates category

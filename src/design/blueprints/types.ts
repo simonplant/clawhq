@@ -173,7 +173,8 @@ export interface AutonomyModel {
 /** Model routing strategy for local vs. cloud. */
 export interface ModelRoutingStrategy {
   readonly default_provider: "local" | "cloud";
-  readonly local_model_preference: string;
+  /** Override the global default Ollama model. Omit to inherit OLLAMA_DEFAULT_MODEL. */
+  readonly local_model_preference?: string;
   readonly cloud_escalation_categories: readonly string[];
   readonly quality_threshold: "low" | "medium" | "high";
 }

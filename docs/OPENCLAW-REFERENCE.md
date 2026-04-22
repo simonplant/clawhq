@@ -1454,7 +1454,7 @@ OpenClaw can interpret images, transcribe audio, and analyze video when configur
 
       image: {
         enabled: true,
-        models: [{ provider: "ollama", model: "gemma4:26b" }],
+        models: [{ provider: "ollama", model: "<local-model-tag>" }],
         timeoutSeconds: 120,  // increase for local models (default 30s)
         maxBytes: 10485760,   // 10MB max per image
       },

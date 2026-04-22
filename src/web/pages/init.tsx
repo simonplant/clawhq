@@ -6,7 +6,7 @@
  * WizardAnswers and calls generateBundle + writeBundle.
  */
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
 import type { Blueprint } from "../../design/blueprints/types.js";
 import { Layout } from "../layout.js";
 
@@ -56,7 +56,7 @@ export function InitPage({ blueprints, csrfToken }: { blueprints: readonly Bluep
           <div class="grid">
             <label>
               Local Model
-              <input type="text" name="localModel" value="gemma4:26b" placeholder="e.g. gemma4:26b" />
+              <input type="text" name="localModel" value={OLLAMA_DEFAULT_MODEL} placeholder={`e.g. ${OLLAMA_DEFAULT_MODEL}`} />
             </label>
             <label>
               Gateway Port

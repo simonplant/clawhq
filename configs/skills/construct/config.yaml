@@ -13,7 +13,6 @@ schedule:
 # Model requirements — local preferred, cloud escalation for skill generation
 model:
   provider: local
-  minimum: "gemma4:26b"
   cloud_escalation: true
 
 # No tool dependencies — construct reads agent state and builds skills

@@ -13,7 +13,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { stringify as yamlStringify } from "yaml";
 
-import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_URL } from "../config/defaults.js";
+import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL, OLLAMA_DEFAULT_URL } from "../config/defaults.js";
 import { loadBlueprint } from "../design/blueprints/index.js";
 import {
   generateBundle,
@@ -113,7 +113,7 @@ export async function runDemo(
     blueprintPath: loaded.sourcePath,
     channel: "web" as const,
     modelProvider: "local" as const,
-    localModel: ollamaAvailable ? "gemma4:26b" : "demo-agent",
+    localModel: ollamaAvailable ? OLLAMA_DEFAULT_MODEL : "demo-agent",
     gatewayPort: GATEWAY_DEFAULT_PORT,
     deployDir: ephemeral.path,
     airGapped: true,

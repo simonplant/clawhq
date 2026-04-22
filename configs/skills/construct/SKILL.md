@@ -41,5 +41,5 @@ This is a declarative skill. The cron scheduler triggers the agent with "Run ski
 ## Model Requirements
 
 - Provider: Local Ollama preferred
-- Minimum model: gemma4:26b or equivalent
+- Minimum model: any tool-capable local model (runtime uses the deployment default)
 - Cloud escalation: enabled (skill generation benefits from higher-quality models)

@@ -17,6 +17,8 @@ import { promisify } from "node:util";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { OLLAMA_DEFAULT_MODEL } from "../../src/config/defaults.js";
+
 const execFileAsync = promisify(execFile);
 
 // ── Paths ───────────────────────────────────────────────────────────────────
@@ -216,7 +218,7 @@ describe("e2e smoke test — full user journey", () => {
         blueprintPath: BLUEPRINT_FIXTURE,
         channel: "telegram",
         modelProvider: "local" as const,
-        localModel: "gemma4:26b",
+        localModel: OLLAMA_DEFAULT_MODEL,
         gatewayPort: 18799, // Non-default port to avoid conflicts
         deployDir,
         airGapped: true, // No internet needed for smoke test

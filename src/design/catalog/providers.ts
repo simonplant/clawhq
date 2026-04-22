@@ -12,6 +12,8 @@
  * - What auth method it expects (for credential health probes)
  */
 
+import { OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface ProviderEnvVar {
@@ -348,7 +350,7 @@ export const PROVIDERS: readonly Provider[] = [
     envVars: [],
     egressDomains: [],
     auth: "none",
-    setupNotes: "Local inference via Ollama. No data leaves your machine. Install: ollama.ai. Pull a model: ollama pull gemma4:26b",
+    setupNotes: `Local inference via Ollama. No data leaves your machine. Install: ollama.ai. Pull a model: ollama pull ${OLLAMA_DEFAULT_MODEL}`,
   },
   {
     id: "anthropic-api",

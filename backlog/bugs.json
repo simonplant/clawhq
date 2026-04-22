@@ -299,7 +299,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-16",
-      "groomingNotes": "Companion to the ownership work landed earlier. Noise reduction — check is correct, table is stub."
+      "groomingNotes": "Validated 2026-04-22: ownership.ts has 250+ line rule set including devices/** (line 235). Fresh doctor run needed to re-count unclassified files post-2026-04-16 updates — may have dropped below 117."
     },
     {
       "id": "BUG-008",

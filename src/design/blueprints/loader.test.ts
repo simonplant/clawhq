@@ -82,7 +82,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - research
   quality_threshold: medium

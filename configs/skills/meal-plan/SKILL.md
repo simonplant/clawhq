@@ -43,5 +43,5 @@ The user reviews the plan via their messaging channel and approves, modifies, or
 ## Model Requirements
 
 - Provider: Local Ollama only (cloud escalation configurable per blueprint)
-- Minimum model: gemma4:26b or equivalent
+- Minimum model: any tool-capable local model (runtime uses the deployment default)
 - Cloud escalation: optional — blueprints may allow cloud for higher quality meal planning

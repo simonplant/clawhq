@@ -33,7 +33,7 @@ export interface SmartOptions {
   /** Ollama base URL. */
   readonly ollamaUrl?: string;
 
-  /** Ollama model to use for inference (default: auto-detect or gemma4:26b). */
+  /** Ollama model to use for inference. Auto-detected from the Ollama server, else OLLAMA_DEFAULT_MODEL. */
   readonly ollamaModel?: string;
 }
 

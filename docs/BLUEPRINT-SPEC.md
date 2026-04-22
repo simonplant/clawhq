@@ -288,14 +288,14 @@ Controls how the agent routes tasks between local and cloud AI models.
 | Field | Type | Required | Allowed Values | Description |
 |-------|------|----------|----------------|-------------|
 | `default_provider` | string | Yes | `"local"`, `"cloud"` | Default model provider. |
-| `local_model_preference` | string | Yes | — | Preferred local model (e.g., `"gemma4:26b"`). |
+| `local_model_preference` | string | No | — | Override the deployment-wide default Ollama model tag. Omit to inherit `OLLAMA_DEFAULT_MODEL` from `src/config/defaults.ts`. Only set when the blueprint genuinely needs a model different from the default. |
 | `cloud_escalation_categories` | string[] | Yes | — | Task categories that escalate to cloud models. |
 | `quality_threshold` | string | Yes | `"low"`, `"medium"`, `"high"` | Minimum quality bar for local model output before escalating. |
 
 ```yaml
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
+  # local_model_preference: omitted — inherits OLLAMA_DEFAULT_MODEL
   cloud_escalation_categories:
     - long_form_writing
     - complex_triage
@@ -616,7 +616,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories: []
   quality_threshold: low
 
@@ -738,7 +737,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - long_form_writing
     - complex_triage
@@ -891,7 +889,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - email_drafting
     - meeting_prep

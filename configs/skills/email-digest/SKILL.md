@@ -45,5 +45,5 @@ The user reviews proposals via their messaging channel and approves or rejects e
 ## Model Requirements
 
 - Provider: Local Ollama only
-- Minimum model: gemma4:26b or equivalent
+- Minimum model: any tool-capable local model (runtime uses the deployment default)
 - No cloud escalation — categorization, summarization, and drafting all run locally

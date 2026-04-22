@@ -16,10 +16,10 @@ This guide walks you through installing ClawHQ and forging your first agent — 
 | **Node.js** | 22+ | `node --version` |
 | **Ollama** (optional) | Latest | `ollama --version` or `docker ps --filter name=^ollama$` |
 
-Ollama provides local AI models so nothing leaves your machine. Without it, you'll need a cloud model API key during setup. Ollama can run either as a host process (`ollama serve`) or as a sibling Docker container — ClawHQ detects both. If Ollama is installed on the host, pull a starter model:
+Ollama provides local AI models so nothing leaves your machine. Without it, you'll need a cloud model API key during setup. Ollama can run either as a host process (`ollama serve`) or as a sibling Docker container — ClawHQ detects both. If Ollama is installed on the host, pull the default model (the tag ClawHQ ships with — see `OLLAMA_DEFAULT_MODEL` in `src/config/defaults.ts` if you want to change it):
 
 ```
-$ ollama pull gemma4:26b
+$ ollama pull <default-model>    # the current tag is in src/config/defaults.ts
 pulling manifest... done
 pulling 6a0746a1ec1a... 100% 4.7 GB
 success
@@ -167,7 +167,7 @@ $ clawhq status
   Blueprint:    Email Manager v1.0.0
   Engine:       OpenClaw v4.2.1
   Container:    Hardened (cap_drop ALL, read-only rootfs)
-  Model:        gemma4:26b (local via Ollama)
+  Model:        <default-local-model> (local via Ollama)
 
   Integrations
   ─────────────

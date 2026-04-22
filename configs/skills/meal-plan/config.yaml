@@ -14,7 +14,6 @@ schedule:
 # Model requirements — local preferred, cloud escalation configurable
 model:
   provider: local
-  minimum: "gemma4:26b"
   cloud_escalation: true
 
 # Tools this skill depends on

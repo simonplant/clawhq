@@ -72,6 +72,18 @@ function checkRequiredString(
   return pass(check, `${section}.${field} is present`);
 }
 
+function checkOptionalString(
+  obj: Record<string, unknown>,
+  field: string,
+  section: string,
+): BlueprintValidationResult {
+  const check = `${section}.${field}`;
+  const val = obj[field];
+  if (val === undefined) return pass(check, `${section}.${field} is absent (optional)`);
+  if (!isNonEmptyStr(val)) return fail(check, `${section}.${field} must be a non-empty string when present`);
+  return pass(check, `${section}.${field} is present`);
+}
+
 function checkEnum(
   obj: Record<string, unknown>,
   field: string,
@@ -394,7 +406,7 @@ function checkModelRoutingStrategy(raw: RawBlueprint): BlueprintValidationResult
   if (!isObj(section)) return [];
   return [
     checkEnum(section, "default_provider", "model_routing_strategy", ["local", "cloud"]),
-    checkRequiredString(section, "local_model_preference", "model_routing_strategy"),
+    checkOptionalString(section, "local_model_preference", "model_routing_strategy"),
     checkStringArray(section, "cloud_escalation_categories", "model_routing_strategy"),
     checkEnum(section, "quality_threshold", "model_routing_strategy", ["low", "medium", "high"]),
   ];

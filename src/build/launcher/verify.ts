@@ -13,7 +13,7 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { CREDENTIALS_PROBE_TIMEOUT_MS, WEBSOCKET_EVENT_CALLER_TIMEOUT_MS } from "../../config/defaults.js";
+import { CREDENTIALS_PROBE_TIMEOUT_MS, OLLAMA_DEFAULT_MODEL, WEBSOCKET_EVENT_CALLER_TIMEOUT_MS } from "../../config/defaults.js";
 import { runProbes } from "../../secure/credentials/health.js";
 
 const execFileAsync = promisify(execFile);
@@ -260,7 +260,7 @@ export async function verifyIntegrations(options: VerifyOptions): Promise<Verify
         // Quick generate test from host to measure actual latency.
         // Body built with JSON.stringify and passed as an argv arg — no shell, no interpolation.
         const body = JSON.stringify({
-          model: env.OLLAMA_MODEL || "gemma4:26b",
+          model: env.OLLAMA_MODEL || OLLAMA_DEFAULT_MODEL,
           prompt: "Reply OK",
           stream: false,
         });

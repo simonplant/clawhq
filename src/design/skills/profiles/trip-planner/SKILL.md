@@ -30,5 +30,5 @@ This is a declarative skill. The user's travel-related request triggers the agen
 ## Model Requirements
 
 - Provider: Local Ollama preferred (cloud escalation configurable per blueprint)
-- Minimum model: gemma4:26b or equivalent
+- Minimum model: any tool-capable local model (runtime uses the deployment default)
 - Cloud escalation: recommended — cloud models produce significantly better travel research and itinerary composition

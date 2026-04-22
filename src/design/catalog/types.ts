@@ -85,7 +85,7 @@ export interface CompositionConfig {
   readonly dimension_overrides?: Partial<PersonalityDimensions>;
   readonly soul_overrides?: string;
   readonly extra_tools?: readonly string[];
-  /** Override the default model (e.g. "ollama/gemma4:26b"). */
+  /** Override the default model (provider-prefixed, e.g. "ollama/<tag>" or "anthropic/<model>"). */
   readonly model?: string;
   /** Override the model's contextWindow in openclaw.json (caps KV cache / VRAM). */
   readonly modelContextWindow?: number;

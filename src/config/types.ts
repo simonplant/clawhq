@@ -41,8 +41,8 @@ export interface ToolAccessGrant {
  * Tool-loop detection settings.
  *
  * OpenClaw ships loop detection but defaults enabled=false. Without it a
- * weak agentic model (e.g. gemma4:26b) can spin forever calling the same
- * tool; ClawHQ always enables it at a conservative threshold.
+ * weak agentic model can spin forever calling the same tool; ClawHQ always
+ * enables it at a conservative threshold.
  */
 export interface LoopDetectionConfig {
   readonly enabled: boolean;

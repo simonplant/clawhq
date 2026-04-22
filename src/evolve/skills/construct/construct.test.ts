@@ -85,7 +85,6 @@ function makeArtifact(overrides: Partial<ConstructArtifact> = {}): ConstructArti
         "    end: 22",
         "model:",
         "  provider: local",
-        '  minimum: "gemma4:26b"',
         "  cloud_escalation: false",
         "dependencies:",
         "  tools: []",
