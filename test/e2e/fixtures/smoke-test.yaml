@@ -58,7 +58,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  cloud_escalation_categories: []
   quality_threshold: low
 
 integration_requirements:

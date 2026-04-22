@@ -131,10 +131,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  cloud_escalation_categories:
-    - earnings_analysis
-    - risk_assessment
-    - market_research
   quality_threshold: high
 
 integration_requirements:

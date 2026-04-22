@@ -129,10 +129,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  cloud_escalation_categories:
-    - investor_updates
-    - long_form_writing
-    - strategic_analysis
   quality_threshold: medium
 
 integration_requirements:

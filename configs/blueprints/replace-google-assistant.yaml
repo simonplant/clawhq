@@ -121,9 +121,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  cloud_escalation_categories:
-    - research
-    - long_form_writing
   quality_threshold: medium
 
 integration_requirements:

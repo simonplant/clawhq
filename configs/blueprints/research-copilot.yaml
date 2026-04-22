@@ -112,9 +112,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  cloud_escalation_categories:
-    - deep_research
-    - literature_review
   quality_threshold: high
 
 integration_requirements:

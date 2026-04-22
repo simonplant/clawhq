@@ -187,9 +187,6 @@ delegation_rules:
 
 model_routing_strategy:
   default_provider: local
-  cloud_escalation_categories:
-    - long_form_writing
-    - complex_triage
   quality_threshold: medium
 
 integration_requirements:

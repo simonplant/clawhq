@@ -407,7 +407,6 @@ function checkModelRoutingStrategy(raw: RawBlueprint): BlueprintValidationResult
   return [
     checkEnum(section, "default_provider", "model_routing_strategy", ["local", "cloud"]),
     checkOptionalString(section, "local_model_preference", "model_routing_strategy"),
-    checkStringArray(section, "cloud_escalation_categories", "model_routing_strategy"),
     checkEnum(section, "quality_threshold", "model_routing_strategy", ["low", "medium", "high"]),
   ];
 }

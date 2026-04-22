@@ -138,8 +138,7 @@ function printBlueprintPreview(bp: Blueprint): void {
   // Model routing
   console.log(bold("\nModel Routing"));
   console.log(`  Default:     ${bp.model_routing_strategy.default_provider}`);
-  console.log(`  Local model: ${bp.model_routing_strategy.local_model_preference}`);
-  console.log(`  Escalate:    ${bp.model_routing_strategy.cloud_escalation_categories.join(", ")}`);
+  console.log(`  Local model: ${bp.model_routing_strategy.local_model_preference ?? "(inherits OLLAMA_DEFAULT_MODEL)"}`);
 
   console.log("");
 }

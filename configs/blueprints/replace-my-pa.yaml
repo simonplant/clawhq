@@ -125,9 +125,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  cloud_escalation_categories:
-    - email_drafting
-    - meeting_prep
   quality_threshold: medium
 
 integration_requirements:

@@ -121,8 +121,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  cloud_escalation_categories:
-    - philosophical_analysis
   quality_threshold: medium
 
 integration_requirements:
