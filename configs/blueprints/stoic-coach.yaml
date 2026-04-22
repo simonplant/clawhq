@@ -1,6 +1,6 @@
 name: Stoic Coach
 version: "1.0.0"
-profile_ref: lifeops
+profile_ref: life-ops
 
 use_case_mapping:
   replaces: Life Coaching Apps
@@ -121,7 +121,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - philosophical_analysis
   quality_threshold: medium

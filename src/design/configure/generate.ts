@@ -734,8 +734,32 @@ export function generateAllowlistContent(
 function buildClawHQConfig(answers: WizardAnswers): ClawHQConfig {
   const bp = answers.blueprint;
 
+  // Composition block: carries the profile + personality + providers that
+  // `clawhq apply` reads to regenerate downstream config. Missing it was the
+  // root cause of the 2026-04-21 stub clobber — after `init --guided --reset`
+  // the preservation filter had nothing to preserve against, and the wizard
+  // wrote a composition-less yaml that broke every subsequent apply.
+  //
+  // `profile_ref` is the canonical mission-profile identifier — every shipped
+  // blueprint declares one and the profile-ref integrity test (see
+  // src/design/blueprints/profile-ref.test.ts) enforces that it resolves to
+  // a real profile. Fallback to blueprint `name` is defensive only; the
+  // test means it should never be needed in practice.
+  //
+  // Personality is hardcoded to the single shipped personality preset —
+  // `configs/personalities/` currently contains only digital-assistant.
+  // When more personalities ship, wire answers.personalityDimensions through
+  // to a personality-ID resolver. The wizard flow does not collect explicit
+  // provider selections; apply uses profile defaults. The composition-config
+  // path (`clawhq design --config`) is where providers are carried.
+  const profileId = bp.profile_ref ?? bp.name;
+
   return {
     version: "0.1.0",
+    composition: {
+      profile: profileId,
+      personality: "digital-assistant",
+    },
     ...(answers.instanceName && answers.instanceName !== "default"
       ? { instanceName: answers.instanceName }
       : {}),

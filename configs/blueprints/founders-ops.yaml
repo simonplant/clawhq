@@ -1,6 +1,6 @@
 name: Founder's Ops
 version: "1.0.0"
-profile_ref: lifeops
+profile_ref: life-ops
 
 use_case_mapping:
   replaces: Executive Assistant / Chief of Staff
@@ -129,7 +129,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - investor_updates
     - long_form_writing

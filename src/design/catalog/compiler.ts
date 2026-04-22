@@ -14,13 +14,12 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { serializeYaml } from "../../build/docker/build.js";
-import { generateCompose } from "../../build/docker/compose.js";
 import { getPostureConfig } from "../../build/docker/posture.js";
 import {
   CRED_PROXY_PORT,
   FILE_MODE_EXEC,
   GATEWAY_DEFAULT_PORT,
+  OLLAMA_DEFAULT_MODEL,
 } from "../../config/defaults.js";
 import { BUILTIN_ROUTES, buildRoutesConfig, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv } from "../../secure/credentials/proxy-routes.js";
 import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
@@ -131,13 +130,13 @@ export function compile(
   // Not a domain — handled by Docker networking, but add for completeness
   // if Ollama is used as a provider
 
-  const composeOutput = generateCompose("openclaw:custom", posture, deployDir, networkName, {
-    enableCredProxy: proxyEnabled,
-    enableTailscale: tailscaleEnabled,
-    tailscaleHostname,
-    readOnlyHostMounts: accessConfig.readOnlyHostMounts,
-  });
-  const composeYaml = serializeYaml(composeOutput);
+  // NOTE: compose is written by `clawhq build`, not by compile/apply.
+  // Historically compile() emitted engine/docker-compose.yml in its bundle
+  // and apply's SKIP_PATHS filtered it out before writeBundle. Design.ts's
+  // direct writeBundle path had no such filter, so a `clawhq design` run
+  // would stub the live compose. With compose removed from the compile
+  // bundle entirely, the stub path is eliminated; `clawhq build` stays the
+  // single authoritative writer.
 
   const openclawJson = renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config);
 
@@ -160,9 +159,6 @@ export function compile(
     { relativePath: "engine/openclaw.json", content: openclawJson, mode: 0o600 },
     { relativePath: "engine/.env", content: envWithProxy, mode: 0o600 },
     { relativePath: "engine/credentials.json", content: "{}\n", mode: 0o600 },
-    // Docker Compose
-    { relativePath: "engine/docker-compose.yml", content: composeYaml },
-
     // Cron
     { relativePath: "cron/jobs.json", content: renderCronJobs(profile, resolvedProviders, config.model, user.telegramChatId) },
 
@@ -181,8 +177,11 @@ export function compile(
     // Ops — egress includes provider-specific domains
     { relativePath: "ops/firewall/allowlist.yaml", content: renderAllowlistFromDomains(profile, [...egressSet]) },
 
-    // ClawHQ metadata
-    { relativePath: "clawhq.yaml", content: renderClawhqYaml(profile, personality, deployDir, config.providers) },
+    // clawhq.yaml is intentionally NOT emitted here. It's seeded-once
+    // (scaffold writes on fresh install, user/integrate edits after). The
+    // writer guard would refuse an overwrite anyway, but emitting at all
+    // was a trap for non-apply callers. scaffold.writeInitialConfig is the
+    // sole writer for the initial template.
 
     // ClawWall security assets (copied into Docker image at build time)
     { relativePath: "engine/clawwall/sanitize", content: renderClawwallSanitize(), mode: FILE_MODE_EXEC },
@@ -1130,38 +1129,6 @@ function renderAllowlistFromDomains(profile: MissionProfile, allDomains: string[
   return lines.join("\n");
 }
 
-// ── clawhq.yaml ─────────────────────────────────────────────────────────────
-
-function renderClawhqYaml(
-  profile: MissionProfile,
-  personality: PersonalityPreset,
-  deployDir: string,
-  providers?: Readonly<Record<string, string>>,
-): string {
-  const config: Record<string, unknown> = {
-    version: "0.2.0",
-    composition: {
-      profile: profile.id,
-      personality: personality.id,
-      ...(providers && Object.keys(providers).length > 0 ? { providers } : {}),
-    },
-    installMethod: "cache",
-    security: {
-      posture: profile.security_posture,
-      egress: "allowlist-only",
-    },
-    paths: {
-      deployDir,
-      engineDir: `${deployDir}/engine`,
-      workspaceDir: `${deployDir}/workspace`,
-      opsDir: `${deployDir}/ops`,
-    },
-  };
-
-  // Simple YAML serialization
-  return serializeSimpleYaml(config);
-}
-
 // ── Tool Scripts ────────────────────────────────────────────────────────────
 
 // ── ClawWall Security Assets ────────────────────────────────────────────────
@@ -1242,8 +1209,7 @@ function buildChannels(config: CompositionConfig, user?: UserConfig): Record<str
 // ── Model Config ────────────────────────────────────────────────────────────
 
 /** Build model configuration based on selected providers. */
-/** Default local model - gemma4:26b (MoE, fits in 32GB VRAM without offloading). */
-const DEFAULT_LOCAL_MODEL = "ollama/gemma4:26b";
+const DEFAULT_LOCAL_MODEL = `ollama/${OLLAMA_DEFAULT_MODEL}`;
 
 function buildModelConfig(
   providers: Provider[],

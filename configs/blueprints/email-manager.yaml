@@ -1,6 +1,6 @@
 name: Email Manager
 version: "1.0.0"
-profile_ref: lifeops
+profile_ref: life-ops
 
 use_case_mapping:
   replaces: Gmail / Outlook / Apple Mail (manual triage)
@@ -187,7 +187,6 @@ delegation_rules:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - long_form_writing
     - complex_triage

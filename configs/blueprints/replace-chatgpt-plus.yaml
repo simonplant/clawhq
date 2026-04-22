@@ -1,6 +1,6 @@
 name: Replace ChatGPT Plus
 version: "1.0.0"
-profile_ref: lifeops
+profile_ref: life-ops
 
 use_case_mapping:
   replaces: ChatGPT Plus
@@ -110,7 +110,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - deep_research
     - long_form_writing

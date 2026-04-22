@@ -1,6 +1,6 @@
 name: Stock Trading Assistant
 version: "1.0.0"
-profile_ref: markets
+profile_ref: trading
 
 use_case_mapping:
   replaces: Bloomberg Terminal / Manual Market Monitoring
@@ -131,7 +131,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - earnings_analysis
     - risk_assessment

@@ -1,6 +1,6 @@
 name: Content Creator
 version: "1.0.0"
-profile_ref: marketing
+profile_ref: business-ops
 
 use_case_mapping:
   replaces: Manual Blog / Newsletter Workflow
@@ -124,7 +124,6 @@ autonomy_model:
 
 model_routing_strategy:
   default_provider: local
-  local_model_preference: "gemma4:26b"
   cloud_escalation_categories:
     - long_form_writing
     - deep_research

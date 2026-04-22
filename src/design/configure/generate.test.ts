@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
 import { loadBlueprint } from "../blueprints/loader.js";
 
@@ -16,7 +16,7 @@ function makeAnswers(overrides: Partial<WizardAnswers> = {}): WizardAnswers {
     blueprintPath: loaded.sourcePath,
     channel: "telegram",
     modelProvider: "local",
-    localModel: "gemma4:26b",
+    localModel: OLLAMA_DEFAULT_MODEL,
     gatewayPort: GATEWAY_DEFAULT_PORT,
     deployDir: "/tmp/clawhq-test",
     airGapped: false,
@@ -125,9 +125,9 @@ describe("generateBundle", () => {
   it("uses local model when modelProvider is local", () => {
     const bundle = generateBundle(makeAnswers({
       modelProvider: "local",
-      localModel: "gemma4:26b",
+      localModel: OLLAMA_DEFAULT_MODEL,
     }));
-    expect(bundle.openclawConfig.agents?.defaults?.model?.primary).toBe("ollama/gemma4:26b");
+    expect(bundle.openclawConfig.agents?.defaults?.model?.primary).toBe(`ollama/${OLLAMA_DEFAULT_MODEL}`);
   });
 
   it("generates cron jobs from blueprint", () => {
@@ -160,6 +160,25 @@ describe("generateBundle", () => {
     const bundle = generateBundle(makeAnswers({ airGapped: true }));
     expect(bundle.clawhqConfig.cloud?.enabled).toBe(false);
     expect(bundle.clawhqConfig.cloud?.trustMode).toBe("paranoid");
+  });
+
+  // Regression guard for the 2026-04-21 stub-clobber incident. buildClawHQConfig
+  // previously omitted the composition block entirely, so `clawhq init --reset`
+  // → wizard → writeBundle shipped a composition-less yaml, and every subsequent
+  // `clawhq apply` failed with "No composition.profile". The fix emits the
+  // profile identifier (profile_ref if the blueprint declares one, blueprint
+  // name otherwise) so apply can round-trip. This test must stay — removing it
+  // re-opens a full-outage failure mode.
+  it("emits composition.profile so clawhq apply can regenerate from the yaml", () => {
+    const bundle = generateBundle(makeAnswers());
+    expect(bundle.clawhqConfig.composition).toBeDefined();
+    expect(bundle.clawhqConfig.composition?.profile).toBeTruthy();
+    expect(typeof bundle.clawhqConfig.composition?.profile).toBe("string");
+  });
+
+  it("emits composition.personality so apply doesn't silently fall back to an unknown default", () => {
+    const bundle = generateBundle(makeAnswers());
+    expect(bundle.clawhqConfig.composition?.personality).toBe("digital-assistant");
   });
 
   it("flattens integration credentials into env vars", () => {

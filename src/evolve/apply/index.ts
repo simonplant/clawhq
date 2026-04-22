@@ -29,12 +29,16 @@ export type { ApplyOptions, ApplyProgress, ApplyReport, ApplyResult } from "./ty
 
 // ── Stateful Paths (never overwritten) ──────────────────────────────────────
 
-/** Files the compiler generates but apply must not overwrite. */
+/** Files the compiler generates but apply must not overwrite.
+ *
+ * Note: clawhq.yaml and engine/docker-compose.yml are no longer emitted by
+ * compile() at all, so explicit skips for them are unnecessary. The writer
+ * layer's ownership guard also refuses overwrites of seeded-once files
+ * independently. This set is kept narrow: just the files compile() emits
+ * as defaults that we want to preserve on every apply. */
 const SKIP_PATHS = new Set([
-  "workspace/MEMORY.md",                        // user's curated memory
-  "clawhq.yaml",                                // we're reading from it — don't overwrite
-  "workspace/config/substack-aliases.json",      // user's publication aliases
-  "engine/docker-compose.yml",                  // owned by clawhq build — apply must not overwrite
+  "workspace/MEMORY.md",                          // user's curated memory
+  "workspace/config/substack-aliases.json",       // user's publication aliases
 ]);
 
 /**

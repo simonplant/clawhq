@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
+
 import type { UserConfig } from "./types.js";
 
 import { compile } from "./index.js";
@@ -27,9 +29,19 @@ describe("compile", () => {
     const paths = result.files.map((f) => f.relativePath);
     expect(paths).toContain("openclaw.json");
     expect(paths).toContain(".env");
-    expect(paths).toContain("engine/docker-compose.yml");
     expect(paths).toContain("cron/jobs.json");
-    expect(paths).toContain("clawhq.yaml");
+  });
+
+  // Regression guard for the 20260421 clobber: compile() must NOT emit the
+  // seeded-once / build-owned files that non-apply writeBundle callers
+  // would otherwise write. `clawhq.yaml` is owned by scaffold/user;
+  // `engine/docker-compose.yml` is owned by `clawhq build`. Both emissions
+  // historically caused stub-clobber bugs.
+  it("does not emit clawhq.yaml or docker-compose.yml (single-writer ownership)", () => {
+    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const paths = result.files.map((f) => f.relativePath);
+    expect(paths).not.toContain("clawhq.yaml");
+    expect(paths).not.toContain("engine/docker-compose.yml");
   });
 
   it("generates tool scripts for all profile tools", () => {
@@ -52,13 +64,9 @@ describe("compile", () => {
     expect(toolNames).toContain("substack");
   });
 
-  it("includes docker-compose.yml with security hardening", () => {
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
-    const compose = result.files.find((f) => f.relativePath === "engine/docker-compose.yml");
-    expect(compose).toBeDefined();
-    expect(compose?.content).toContain("cap_drop");
-    expect(compose?.content).toContain("no-new-privileges");
-  });
+  // Compose security hardening is asserted by the build/docker/compose tests,
+  // which test the single authoritative writer (clawhq build). compile() no
+  // longer emits compose — see the regression test above.
 
   it("generates proxy files when env vars match builtin routes", () => {
     // Provide existing env with a credential that matches a proxy route
@@ -225,7 +233,7 @@ describe("compile", () => {
         profile: "life-ops",
         personality: "digital-assistant",
         model: "ollama/qwen2.5:14b",
-        modelFallbacks: ["ollama/gemma4:26b"],
+        modelFallbacks: [`ollama/${OLLAMA_DEFAULT_MODEL}`],
       },
       TEST_USER,
       "/tmp/test",
@@ -234,6 +242,6 @@ describe("compile", () => {
     const parsed = JSON.parse(openclaw!.content) as {
       agents: { defaults: { model: { primary: string; fallbacks: string[] } } };
     };
-    expect(parsed.agents.defaults.model.fallbacks).toEqual(["ollama/gemma4:26b"]);
+    expect(parsed.agents.defaults.model.fallbacks).toEqual([`ollama/${OLLAMA_DEFAULT_MODEL}`]);
   });
 });

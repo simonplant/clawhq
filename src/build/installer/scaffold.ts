@@ -5,10 +5,10 @@
  * Uses the atomic writer from design/configure for the clawhq.yaml file.
  */
 
-import { chmodSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { parse as yamlParse, stringify as yamlStringify } from "yaml";
+import { stringify as yamlStringify } from "yaml";
 
 import { DIR_MODE_SECRET } from "../../config/defaults.js";
 import { defaultConfig } from "../../config/loader.js";
@@ -94,27 +94,24 @@ export interface WriteConfigOptions {
 /**
  * Write the initial clawhq.yaml with sensible defaults.
  *
- * Uses the project's `defaultConfig()` and overrides paths to match the
- * actual deploy directory. Returns the absolute path to the written file.
+ * Honors the seeded-once ownership contract: if a clawhq.yaml exists at the
+ * target path for any reason — partial, composition-less, or fully populated —
+ * this function preserves it and returns. An existing file is the user's
+ * input manifest; install must never rewrite it. Flows that deliberately
+ * need a fresh yaml (e.g. `clawhq init --reset`) archive the existing file
+ * into the attic before reaching this path, so the preservation is a no-op
+ * in that case.
+ *
+ * Previously the guard only preserved when `composition.profile` was present,
+ * which silently overwrote any partial yaml — that was the root of the
+ * 2026-04-21 stub-clobber incident. Ownership is now the sole contract.
  */
 export function writeInitialConfig(options: WriteConfigOptions): string {
   const root = resolve(options.deployDir);
   const configPath = join(root, "clawhq.yaml");
 
-  // If an existing clawhq.yaml already carries a composition.profile (i.e. the
-  // user ran `clawhq init` first), preserve it — the install step must not
-  // stomp composition produced by the init wizard, otherwise `clawhq apply`
-  // loses the profile/personality needed to regenerate per-tool configs.
   if (existsSync(configPath)) {
-    try {
-      const existing = yamlParse(readFileSync(configPath, "utf-8")) as Record<string, unknown> | null;
-      const comp = existing?.["composition"] as Record<string, unknown> | undefined;
-      if (comp?.["profile"]) {
-        return configPath;
-      }
-    } catch {
-      // Malformed existing config — fall through and overwrite.
-    }
+    return configPath;
   }
 
   const config: ClawHQConfig = {
