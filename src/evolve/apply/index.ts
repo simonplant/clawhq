@@ -7,7 +7,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { parse as yamlParse } from "yaml";
@@ -451,7 +451,13 @@ function computeDiff(
     }
     const existingHash = hashContent(readFileSync(absPath, "utf-8"));
     const newHash = hashContent(file.content);
-    if (existingHash === newHash) {
+    // Mode drift also counts as a change: a 0o755 tool script that's been
+    // chmodded to 0o644 has matching content but a broken execution bit.
+    // Without this check, apply silently skips the file and the agent
+    // keeps hitting "Permission denied" on every invocation.
+    const existingMode = statSync(absPath).mode & 0o777;
+    const expectedMode = file.mode ?? 0o644;
+    if (existingHash === newHash && existingMode === expectedMode) {
       unchanged.push(file.relativePath);
     } else {
       changed.push(file.relativePath);

@@ -239,4 +239,30 @@ composition:
     expect(nonEnvChanged).toHaveLength(0);
     expect(second.report.unchanged.length).toBeGreaterThan(0);
   });
+
+  it("repairs mode drift on tool scripts — chmod 0644 on a tool is detected and rewritten as 0755", async () => {
+    const { statSync, chmodSync } = await import("node:fs");
+    await writeFile(join(testDir, "clawhq.yaml"), `
+version: 0.2.0
+composition:
+  profile: life-ops
+  personality: digital-assistant
+`);
+
+    // First apply: tools land at 0o755
+    const first = await apply({ deployDir: testDir });
+    expect(first.success).toBe(true);
+    const tasksPath = join(testDir, "workspace", "tasks");
+    expect(statSync(tasksPath).mode & 0o777).toBe(0o755);
+
+    // Drift: something strips the executable bit (the bug that broke Clawdius)
+    chmodSync(tasksPath, 0o644);
+    expect(statSync(tasksPath).mode & 0o777).toBe(0o644);
+
+    // Second apply: diff must see mode drift and rewrite
+    const second = await apply({ deployDir: testDir });
+    expect(second.success).toBe(true);
+    expect(second.report.changed).toContain("workspace/tasks");
+    expect(statSync(tasksPath).mode & 0o777).toBe(0o755);
+  });
 });
