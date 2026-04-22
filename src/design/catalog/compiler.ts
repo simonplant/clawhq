@@ -23,6 +23,7 @@ import { BUILTIN_ROUTES, buildRoutesConfig, CRED_PROXY_SERVICE_NAME, filterRoute
 import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
 import { renderDimensionProse, DIMENSION_META, ALWAYS_ON_BOUNDARIES } from "../blueprints/personality-presets.js";
 import type { PersonalityDimensions, DimensionId, DimensionValue } from "../blueprints/types.js";
+import { validateCronExpr } from "../configure/generate.js";
 import { generateApproveActionTool } from "../tools/approve-action.js";
 import { generateHimalayaConfig } from "../tools/himalaya-config.js";
 import { TOOL_GENERATORS } from "../tools/index.js";
@@ -147,6 +148,8 @@ export function compile(
     { relativePath: "engine/.env", content: envWithProxy, mode: 0o600 },
     { relativePath: "engine/credentials.json", content: "{}\n", mode: 0o600 },
     // Cron
+    // TODO: wire config.cron_overrides through renderCronJobs — the type
+    // field exists but the function doesn't accept it yet (WIP from ec85b34).
     { relativePath: "cron/jobs.json", content: renderCronJobs(profile, resolvedProviders, config.model, user.telegramChatId) },
 
     // Substack publication aliases — user-managed, created empty on init
