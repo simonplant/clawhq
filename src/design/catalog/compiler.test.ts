@@ -12,6 +12,12 @@ const TEST_USER: UserConfig = {
   communication: "brief",
 };
 
+function findFile(files: readonly { relativePath: string; content: string }[], path: string): { relativePath: string; content: string } {
+  const f = files.find((x) => x.relativePath === path);
+  if (!f) throw new Error(`compiled bundle missing ${path}`);
+  return f;
+}
+
 // ── Compilation Output ──────────────────────────────────────────────────────
 
 describe("compile", () => {
@@ -146,9 +152,8 @@ describe("compile", () => {
       TEST_USER,
       "/tmp/test",
     );
-    const openclaw = result.files.find((f) => f.relativePath === "openclaw.json");
-    expect(openclaw).toBeDefined();
-    const parsed = JSON.parse(openclaw!.content) as {
+    const openclaw = findFile(result.files, "openclaw.json");
+    const parsed = JSON.parse(openclaw.content) as {
       agents: { defaults: { model: { primary: string } } };
       models: {
         providers: {
@@ -168,8 +173,8 @@ describe("compile", () => {
       TEST_USER,
       "/tmp/test",
     );
-    const openclaw = result.files.find((f) => f.relativePath === "openclaw.json");
-    const parsed = JSON.parse(openclaw!.content) as {
+    const openclaw = findFile(result.files, "openclaw.json");
+    const parsed = JSON.parse(openclaw.content) as {
       models: { providers: { ollama: { models: unknown[] } } };
     };
     expect(parsed.models.providers.ollama.models).toEqual([]);
@@ -180,9 +185,8 @@ describe("compile", () => {
   it("AGENTS.md emits a Knowledge Bases section when wiki-<kb>-ingest skills are present", () => {
     // life-ops declares wiki-trading-ingest/query/review — should produce a trading KB section
     const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
-    const agents = result.files.find((f) => f.relativePath === "workspace/AGENTS.md");
-    expect(agents).toBeDefined();
-    const content = agents!.content;
+    const agents = findFile(result.files, "workspace/AGENTS.md");
+    const content = agents.content;
     expect(content).toContain("## Knowledge Bases");
     expect(content).toContain("knowledge/trading/");
     expect(content).toContain("`wiki-trading-ingest`");
@@ -199,18 +203,16 @@ describe("compile", () => {
     // the `workspace/` prefix doubled the path and the Read tool failed
     // on every session start.
     const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
-    const bootstrap = result.files.find((f) => f.relativePath === "workspace/BOOTSTRAP.md");
-    expect(bootstrap).toBeDefined();
-    expect(bootstrap!.content).toContain("state/wiki-context.md");
-    expect(bootstrap!.content).not.toContain("workspace/state/wiki-context.md");
-    expect(bootstrap!.content).toContain("`trading`");
+    const bootstrap = findFile(result.files, "workspace/BOOTSTRAP.md");
+    expect(bootstrap.content).toContain("state/wiki-context.md");
+    expect(bootstrap.content).not.toContain("workspace/state/wiki-context.md");
+    expect(bootstrap.content).toContain("`trading`");
   });
 
   it("cron/jobs.json does NOT auto-schedule event-driven wiki-*-ingest/query skills", () => {
     const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
-    const cron = result.files.find((f) => f.relativePath === "cron/jobs.json");
-    expect(cron).toBeDefined();
-    const parsed = JSON.parse(cron!.content) as { jobs: Array<{ id: string }> };
+    const cron = findFile(result.files, "cron/jobs.json");
+    const parsed = JSON.parse(cron.content) as { jobs: Array<{ id: string }> };
     const ids = parsed.jobs.map((j) => j.id);
     // Ingest and query are event-driven — should not appear as auto-scheduled skill-* crons
     expect(ids).not.toContain("skill-wiki-trading-ingest");
@@ -226,15 +228,15 @@ describe("compile", () => {
     // so `workspace/…` prefixes create doubled paths (`workspace/workspace/…`)
     // that the fs tool can't find on session start.
     const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
-    const cron = result.files.find((f) => f.relativePath === "cron/jobs.json");
-    const parsed = JSON.parse(cron!.content) as { jobs: Array<{ id: string; payload: { message: string } }> };
+    const cron = findFile(result.files, "cron/jobs.json");
+    const parsed = JSON.parse(cron.content) as { jobs: Array<{ id: string; payload: { message: string } }> };
     const refresh = parsed.jobs.find((j) => j.id === "wiki-context-refresh");
-    expect(refresh).toBeDefined();
-    expect(refresh!.payload.message).toContain("llm-wiki context");
-    expect(refresh!.payload.message).toContain("--path knowledge/trading");
-    expect(refresh!.payload.message).toContain("state/wiki-context.md");
-    expect(refresh!.payload.message).not.toContain("workspace/knowledge/trading");
-    expect(refresh!.payload.message).not.toContain("workspace/state/wiki-context.md");
+    if (!refresh) throw new Error("wiki-context-refresh cron job missing");
+    expect(refresh.payload.message).toContain("llm-wiki context");
+    expect(refresh.payload.message).toContain("--path knowledge/trading");
+    expect(refresh.payload.message).toContain("state/wiki-context.md");
+    expect(refresh.payload.message).not.toContain("workspace/knowledge/trading");
+    expect(refresh.payload.message).not.toContain("workspace/state/wiki-context.md");
   });
 
   it("applies modelFallbacks override", () => {
@@ -248,8 +250,8 @@ describe("compile", () => {
       TEST_USER,
       "/tmp/test",
     );
-    const openclaw = result.files.find((f) => f.relativePath === "openclaw.json");
-    const parsed = JSON.parse(openclaw!.content) as {
+    const openclaw = findFile(result.files, "openclaw.json");
+    const parsed = JSON.parse(openclaw.content) as {
       agents: { defaults: { model: { primary: string; fallbacks: string[] } } };
     };
     expect(parsed.agents.defaults.model.fallbacks).toEqual([`ollama/${OLLAMA_DEFAULT_MODEL}`]);

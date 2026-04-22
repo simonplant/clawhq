@@ -173,6 +173,7 @@ export async function loadPreferences(
     throw new Error(
       `preference report at ${path} is corrupt: ${msg}. ` +
       `Delete the file to reset preferences, or restore from a backup.`,
+      { cause: err },
     );
   }
 }

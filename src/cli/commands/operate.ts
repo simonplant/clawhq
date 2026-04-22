@@ -12,6 +12,7 @@ import {
   restoreBackup,
 } from "../../operate/backup/index.js";
 import type { BackupProgress } from "../../operate/backup/index.js";
+import { clean, formatCleanTable } from "../../operate/clean/index.js";
 import {
   formatDoctorJson,
   formatDoctorTable,
@@ -19,7 +20,6 @@ import {
   runDoctor,
   runDoctorWithFix,
 } from "../../operate/doctor/index.js";
-import { clean, formatCleanTable } from "../../operate/clean/index.js";
 import { streamLogs } from "../../operate/logs/index.js";
 import {
   formatMonitorEvent,

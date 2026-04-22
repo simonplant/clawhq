@@ -39,7 +39,8 @@ describe("takeSnapshot", () => {
     expect(paths).toContain("cron/jobs.json");
     expect(paths).toContain("random/unclassified.txt");
 
-    const soul = snap.entries.find((e) => e.path === "workspace/SOUL.md")!;
+    const soul = snap.entries.find((e) => e.path === "workspace/SOUL.md");
+    if (!soul) throw new Error("workspace/SOUL.md missing from snapshot");
     expect(soul.owner).toBe("clawhq");
     expect(soul.size).toBe("identity content".length);
     expect(soul.hash).toMatch(/^[a-f0-9]{64}$/);

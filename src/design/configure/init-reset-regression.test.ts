@@ -27,9 +27,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse as yamlParse } from "yaml";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { bundleToFiles } from "../../cli/commands/helpers.js";
 import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";

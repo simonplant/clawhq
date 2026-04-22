@@ -82,8 +82,9 @@ export function generateHimalayaConfig(
 function envPrefixForSlot(domainKey: string): string {
   const match = domainKey.match(/^([a-z]+)-(\d+)$/);
   if (!match) return "";
-  const [, domain, n] = match;
-  return `${domain!.toUpperCase()}_${n!}_`;
+  const domain = match[1] ?? "";
+  const n = match[2] ?? "";
+  return `${domain.toUpperCase()}_${n}_`;
 }
 
 /** Look up a default value for a provider env-var key. */

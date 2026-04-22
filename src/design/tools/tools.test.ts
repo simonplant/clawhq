@@ -276,8 +276,8 @@ describe("search tool (tavily provider)", () => {
   it("prefers direct TAVILY_API_KEY, falls back to credential proxy", () => {
     const bp = loadFoundersOps();
     const wrapper = generateToolWrappers(bp).find((w) => w.name === "search");
-    expect(wrapper).toBeDefined();
-    const content = wrapper!.content;
+    if (!wrapper) throw new Error("search wrapper not generated");
+    const content = wrapper.content;
     // Both auth paths present
     expect(content).toContain("TAVILY_API_KEY");
     expect(content).toContain("CRED_PROXY_URL");

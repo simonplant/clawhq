@@ -10,7 +10,7 @@
 
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
@@ -56,6 +56,7 @@ export async function loadQueue(deployDir: string): Promise<ApprovalQueue> {
       `approval queue at ${path} is corrupt: ${msg}. ` +
       `Pending approvals need to be inspected manually (.bak may help) or re-proposed; ` +
       `do not run \`clawhq\` commands that enqueue approvals until this is resolved.`,
+      { cause: err },
     );
   }
   if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as Record<string, unknown>).items)) {

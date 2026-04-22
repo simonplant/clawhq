@@ -151,7 +151,7 @@ export function registerConfigCommands(program: Command, defaultDeployDir: strin
         cur = (cur as Record<string, unknown>)[parts[i]];
       }
       if (cur !== null && typeof cur === "object" && !Array.isArray(cur)) {
-        delete (cur as Record<string, unknown>)[parts[parts.length - 1]];
+        Reflect.deleteProperty(cur as Record<string, unknown>, parts[parts.length - 1]);
       }
       saveRuntimeConfig(goldenPath, cfg);
 

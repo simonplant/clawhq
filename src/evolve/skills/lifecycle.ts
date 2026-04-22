@@ -6,7 +6,7 @@
  */
 
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
-import { chmod, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import { DIR_MODE_SECRET, FILE_MODE_EXEC, FILE_MODE_SECRET } from "../../config/defaults.js";
@@ -52,6 +52,7 @@ export async function loadManifest(deployDir: string): Promise<SkillManifest> {
       `skill manifest at ${path} is corrupt: ${msg}. ` +
       `Existing skills may still be installed in workspace/skills/ — restore the manifest from a backup (.bak) ` +
       `or re-register them with \`clawhq skill install\`.`,
+      { cause: err },
     );
   }
   if (parsed.version !== 1) {

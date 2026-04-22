@@ -127,7 +127,7 @@ async function walk(
     }
     if (!dirent.isFile()) continue;
 
-    let size = 0;
+    let size: number;
     let hash = "";
     try {
       const content = readFileSync(abs);

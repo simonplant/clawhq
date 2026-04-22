@@ -10,9 +10,17 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GATEWAY_DEFAULT_PORT } from "../config/defaults.js";
+
+// Stub streamLogs so /api/logs tests don't fork a real `docker compose logs`
+// subprocess. Under CI — especially Node 24 — 30 sequential invocations blew
+// past the 5s test timeout. The dashboard tests are about routing, rate
+// limiting, and rendering — not docker.
+vi.mock("../operate/logs/index.js", () => ({
+  streamLogs: vi.fn(async () => ({ success: true, output: "", lineCount: 0 })),
+}));
 
 import { createApp } from "./server.js";
 

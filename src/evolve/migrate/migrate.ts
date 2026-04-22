@@ -12,7 +12,7 @@
  * before anything is persisted.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { CronJobDefinition } from "../../config/types.js";

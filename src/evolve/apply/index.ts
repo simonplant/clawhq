@@ -15,14 +15,13 @@ import { parse as yamlParse } from "yaml";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { DeployLockBusyError, withDeployLock } from "../../config/lock.js";
 import { compile } from "../../design/catalog/index.js";
+import type { CompiledFile } from "../../design/catalog/types.js";
+import type { UserConfig } from "../../design/catalog/types.js";
+import { writeBundle } from "../../design/configure/writer.js";
 import { loadCronStore } from "../../openclaw/cron-store.js";
 import { loadRuntimeConfig } from "../../openclaw/runtime-config.js";
 
 import { withTransaction } from "./transaction.js";
-import type { CompiledFile } from "../../design/catalog/types.js";
-import type { UserConfig } from "../../design/catalog/types.js";
-import { writeBundle } from "../../design/configure/writer.js";
-
 import type { ApplyOptions, ApplyProgress, ApplyReport, ApplyResult } from "./types.js";
 
 export type { ApplyOptions, ApplyProgress, ApplyReport, ApplyResult } from "./types.js";
@@ -133,8 +132,9 @@ async function applyCore(
 
     // Extract optional top-level access block (runtime host-file mounts, etc.)
     const accessRaw = raw.access as Record<string, unknown> | undefined;
-    const readOnlyHostMounts = Array.isArray(accessRaw?.readOnlyHostMounts)
-      ? (accessRaw!.readOnlyHostMounts as unknown[]).filter((m): m is string => typeof m === "string")
+    const accessMounts = accessRaw?.readOnlyHostMounts;
+    const readOnlyHostMounts = Array.isArray(accessMounts)
+      ? accessMounts.filter((m): m is string => typeof m === "string")
       : undefined;
 
     // 2. Extract user context from existing USER.md

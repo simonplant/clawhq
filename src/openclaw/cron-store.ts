@@ -29,8 +29,8 @@
 
 import { existsSync, readFileSync } from "node:fs";
 
-import type { CronJobDefinition } from "../config/types.js";
 import { FILE_MODE_SECRET } from "../config/defaults.js";
+import type { CronJobDefinition } from "../config/types.js";
 import { writeFileAtomic } from "../design/configure/writer.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────

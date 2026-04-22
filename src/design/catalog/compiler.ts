@@ -9,12 +9,10 @@
  * for the deployment directory.
  */
 
-import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { getPostureConfig } from "../../build/docker/posture.js";
 import {
   CRED_PROXY_PORT,
   FILE_MODE_EXEC,
@@ -64,9 +62,11 @@ export function compile(
    * Runtime access controls read from clawhq.yaml's top-level
    * `access:` block. Kept separate from `config` (CompositionConfig)
    * because access isn't part of the agent's composition — it's a
-   * deployment-level setting.
+   * deployment-level setting. Currently accepted for forward-compat
+   * but compile() does not consume it — `clawhq build` owns compose
+   * generation and applies host-mount access there.
    */
-  accessConfig: { readonly readOnlyHostMounts?: readonly string[] } = {},
+  _accessConfig: { readonly readOnlyHostMounts?: readonly string[] } = {},
 ): CompiledWorkspace {
   const profile = loadProfile(config.profile);
   const personality = loadPersonality(config.personality);
@@ -101,21 +101,8 @@ export function compile(
     ? envContent.trimEnd() + `\n\n# ── Credential Proxy ──\nCRED_PROXY_URL=http://${CRED_PROXY_SERVICE_NAME}:${CRED_PROXY_PORT}\nCRED_PROXY_PORT=${CRED_PROXY_PORT}\n`
     : envContent;
 
-  // Generate docker-compose.yml with security posture + optional proxy sidecar
-  const networkName = "clawhq_net";
-  let posture = getPostureConfig(profile.security_posture === "under-attack" ? "under-attack" : "hardened");
-
-  // Strip gVisor runtime if not installed — same logic as build.ts
-  if (posture.runtime === "runsc") {
-    try {
-      execFileSync("runsc", ["--version"], { timeout: 5000 });
-    } catch {
-      posture = { ...posture, runtime: undefined };
-    }
-  }
   // Detect Tailscale — enabled when TS_AUTHKEY is in .env
   const tailscaleEnabled = envVarsForProxy["TS_AUTHKEY"] !== undefined;
-  const tailscaleHostname = envVarsForProxy["TS_HOSTNAME"] || "clawhq-agent";
 
   // Add infrastructure egress domains
   if (tailscaleEnabled) {
@@ -1169,12 +1156,13 @@ const CHANNEL_ENV_VARS: Record<string, Record<string, string>> = {
 function buildChannels(config: CompositionConfig, user?: UserConfig): Record<string, unknown> {
   // If the user has a telegramChatId, lock DM access to that single chat.
   // Otherwise fall back to open+wildcard so pairing can still complete.
-  const hasOwner = !!user?.telegramChatId;
+  const ownerId = user?.telegramChatId;
+  const hasOwner = !!ownerId;
   const channels: Record<string, Record<string, unknown>> = {
     telegram: {
       enabled: true,
       dmPolicy: hasOwner ? "allowlist" : "open",
-      allowFrom: hasOwner ? [`tg:${user!.telegramChatId}`] : ["*"],
+      allowFrom: ownerId ? [`tg:${ownerId}`] : ["*"],
       groupPolicy: "disabled",
       linkPreview: false,
     },
@@ -1416,20 +1404,3 @@ function parseEnvForProxy(envContent: string): Record<string, string> {
   return env;
 }
 
-function serializeSimpleYaml(obj: Record<string, unknown>, indent = 0): string {
-  const pad = "  ".repeat(indent);
-  const lines: string[] = [];
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (value === null || value === undefined) continue;
-
-    if (typeof value === "object" && !Array.isArray(value)) {
-      lines.push(`${pad}${key}:`);
-      lines.push(serializeSimpleYaml(value as Record<string, unknown>, indent + 1));
-    } else {
-      lines.push(`${pad}${key}: ${value}`);
-    }
-  }
-
-  return lines.join("\n");
-}

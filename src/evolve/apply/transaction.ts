@@ -21,8 +21,8 @@
  */
 
 import { existsSync, readFileSync, statSync, unlinkSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import { writeFileAtomic } from "../../design/configure/writer.js";
 

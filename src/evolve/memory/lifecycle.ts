@@ -71,6 +71,7 @@ export async function loadManifest(
       `memory manifest at ${path} is corrupt: ${msg}. ` +
       `Memory files in workspace/memory/ are unaffected; restore the manifest from a backup (.bak) ` +
       `or rebuild it with \`clawhq evolve memory scan\`.`,
+      { cause: err },
     );
   }
   if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as Record<string, unknown>).entries)) {

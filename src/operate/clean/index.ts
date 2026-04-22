@@ -26,8 +26,8 @@
  *   - Ownership table fixes for unclassified files → source edits
  */
 
-import { readdir, rm, stat } from "node:fs/promises";
 import { existsSync, lstatSync, readdirSync, readlinkSync, statSync } from "node:fs";
+import { readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
