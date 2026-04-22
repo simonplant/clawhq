@@ -357,7 +357,7 @@ function renderAgents(profile: MissionProfile): string {
       lines.push(`- \`llm-wiki stats --path knowledge/${kb}\` — health dashboard.`);
       lines.push(`- \`llm-wiki lint --fix --path knowledge/${kb}\` — structural checks with auto-fix.`);
       lines.push(`- \`llm-wiki ingest <file> --path knowledge/${kb}\` — stage a source into \`raw/\`.\n`);
-      lines.push("**Session start:** read `workspace/state/wiki-context.md` — a cron refreshes it every 30 min with `llm-wiki context`. That tells you the wiki's current state without re-scanning.\n");
+      lines.push("**Session start:** read `state/wiki-context.md` — a cron refreshes it every 30 min with `llm-wiki context`. That tells you the wiki's current state without re-scanning. Paths here are relative to the workspace root (the fs tool's workspaceOnly baseline); do not prefix with `workspace/`.\n");
       lines.push("**Conventions:**");
       lines.push("- Every wiki page has YAML frontmatter: `tags`, `confidence` (verified/reported/estimated/speculative), `last-verified`, `source-count`.");
       lines.push("- Every claim cites its source: `per [[page-slug]]` or `per raw/<file>.md`.");
@@ -789,7 +789,7 @@ function renderBootstrap(profile: MissionProfile): string {
 
   if (kbs.length > 0) {
     lines.push(
-      `5. Read \`workspace/state/wiki-context.md\` — current state of the LLM-maintained knowledge base${kbs.length > 1 ? "s" : ""} (${kbs.map((k) => `\`${k}\``).join(", ")}). A cron keeps it fresh via \`llm-wiki context\`; if the file is missing, the wiki-context-refresh cron has not run yet — proceed without it.`,
+      `5. Read \`state/wiki-context.md\` — current state of the LLM-maintained knowledge base${kbs.length > 1 ? "s" : ""} (${kbs.map((k) => `\`${k}\``).join(", ")}). A cron keeps it fresh via \`llm-wiki context\`; if the file is missing, the wiki-context-refresh cron has not run yet — proceed without it. Paths here are relative to the workspace root (the fs tool's workspaceOnly baseline); do not prefix with \`workspace/\`.`,
     );
   }
 

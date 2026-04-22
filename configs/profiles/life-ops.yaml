@@ -150,7 +150,7 @@ cron_defaults:
     expr: "0 17 * * 0"     # Sunday 17:00 PT — weekly content health check
     announce: true
   wiki_context_refresh:
-    expr: "*/30 * * * *"   # every 30 min — refreshes workspace/state/wiki-context.md
+    expr: "*/30 * * * *"   # every 30 min — refreshes state/wiki-context.md
     announce: false
   news_scan:
     expr: "30 6,12 * * 1-5"
@@ -383,7 +383,11 @@ cron_prompts:
     journal/wiki-review-YYYY-MM-DD.md and DMs a 3-line summary.
 
   wiki_context_refresh: >
-    Run: mkdir -p workspace/state && llm-wiki context --path workspace/knowledge/trading > workspace/state/wiki-context.md.
+    Run: mkdir -p state && llm-wiki context --path knowledge/trading > state/wiki-context.md.
+    Paths are relative to the workspace root (the fs tool's workspaceOnly
+    baseline and the shell CWD inside the container); do NOT prefix with
+    `workspace/` — that doubles the path and lands in `workspace/workspace/`
+    which the fs tool cannot read on session start.
     Silent — this just keeps the session-start briefing file fresh so the
     agent reads current wiki state at the next heartbeat. No output to Simon.
     If llm-wiki exits non-zero, leave the prior wiki-context.md in place.

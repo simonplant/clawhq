@@ -193,11 +193,16 @@ describe("compile", () => {
     expect(content).not.toContain("llm-wiki context --name");
   });
 
-  it("BOOTSTRAP.md directs the agent to read workspace/state/wiki-context.md when a KB is present", () => {
+  it("BOOTSTRAP.md directs the agent to read state/wiki-context.md when a KB is present", () => {
+    // Regression: previously pointed at `workspace/state/wiki-context.md`,
+    // but the fs tool's workspaceOnly base IS the workspace directory, so
+    // the `workspace/` prefix doubled the path and the Read tool failed
+    // on every session start.
     const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
     const bootstrap = result.files.find((f) => f.relativePath === "workspace/BOOTSTRAP.md");
     expect(bootstrap).toBeDefined();
-    expect(bootstrap!.content).toContain("workspace/state/wiki-context.md");
+    expect(bootstrap!.content).toContain("state/wiki-context.md");
+    expect(bootstrap!.content).not.toContain("workspace/state/wiki-context.md");
     expect(bootstrap!.content).toContain("`trading`");
   });
 
@@ -216,15 +221,20 @@ describe("compile", () => {
     expect(ids).toContain("wiki-context-refresh");
   });
 
-  it("wiki-context-refresh cron invokes llm-wiki with the correct --path flag", () => {
+  it("wiki-context-refresh cron invokes llm-wiki with workspace-relative paths", () => {
+    // Regression: shell commands inside the container run with CWD = workspace,
+    // so `workspace/…` prefixes create doubled paths (`workspace/workspace/…`)
+    // that the fs tool can't find on session start.
     const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
     const cron = result.files.find((f) => f.relativePath === "cron/jobs.json");
     const parsed = JSON.parse(cron!.content) as { jobs: Array<{ id: string; payload: { message: string } }> };
     const refresh = parsed.jobs.find((j) => j.id === "wiki-context-refresh");
     expect(refresh).toBeDefined();
     expect(refresh!.payload.message).toContain("llm-wiki context");
-    expect(refresh!.payload.message).toContain("--path workspace/knowledge/trading");
-    expect(refresh!.payload.message).toContain("workspace/state/wiki-context.md");
+    expect(refresh!.payload.message).toContain("--path knowledge/trading");
+    expect(refresh!.payload.message).toContain("state/wiki-context.md");
+    expect(refresh!.payload.message).not.toContain("workspace/knowledge/trading");
+    expect(refresh!.payload.message).not.toContain("workspace/state/wiki-context.md");
   });
 
   it("applies modelFallbacks override", () => {

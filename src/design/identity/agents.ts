@@ -292,7 +292,7 @@ function formatKnowledgeBases(blueprint: Blueprint): string[] {
       `- \`llm-wiki lint --fix --path knowledge/${kb}\` — structural checks with auto-fix.`,
       `- \`llm-wiki ingest <file> --path knowledge/${kb}\` — stage a source into \`raw/\`.`,
       "",
-      "**Session start:** read `workspace/state/wiki-context.md` — a cron refreshes it every 30 min with `llm-wiki context`. That tells you the wiki's current state without re-scanning.",
+      "**Session start:** read `state/wiki-context.md` — a cron refreshes it every 30 min with `llm-wiki context`. That tells you the wiki's current state without re-scanning. Paths in this file are relative to the workspace root (the fs tool's workspaceOnly baseline); do not prefix with `workspace/`.",
       "",
       "**Conventions:**",
       "- Every wiki page has YAML frontmatter: `tags`, `confidence` (verified/reported/estimated/speculative), `last-verified`, `source-count`.",
