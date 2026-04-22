@@ -1,44 +1,38 @@
 /**
  * End-to-end regression for the 2026-04-21 stub-clobber.
  *
- * Reproduces the exact scenario that destroyed the live clawhq.yaml:
+ * Reproduces the scenario that destroyed the live clawhq.yaml:
  *
- *   1. User has a composition-bearing clawhq.yaml (life-ops profile,
- *      fastmail-jmap provider, specific skills).
+ *   1. User has a composition-bearing clawhq.yaml.
  *   2. User runs `clawhq init --guided --reset`. The deploy is archived;
  *      clawhq.yaml is moved out of the deploy dir.
- *   3. The wizard runs. buildClawHQConfig produces a ClawHQConfig.
- *   4. bundleToFiles → writeBundle writes to disk (writer-layer guard
- *      preserves seeded-once files automatically; no opt-in filter).
- *   5. User then runs `clawhq apply`.
+ *   3. The wizard runs, the forge pipeline writes the new state.
+ *   4. User then runs `clawhq apply`.
  *
- * Pre-fix outcome: step 5 fails with "No composition.profile" because the
- * wizard wrote a composition-less yaml. A hundred real blueprints broke
- * their deployments silently the same way.
+ * Pre-fix outcome: step 4 failed with "No composition.profile" because the
+ * wizard wrote a composition-less yaml.
  *
- * Post-fix outcome: the wizard's yaml carries composition.profile +
- * composition.personality; apply succeeds and emits a runnable deployment.
+ * Post-fix outcome: composition.profile + composition.personality are
+ * emitted; apply succeeds and produces a runnable deployment.
  *
- * This test would fail pre-fix. Keep it — removing it reopens a
- * full-outage failure mode.
+ * Since the 20260421 incident, the forge pipeline was also refactored to
+ * route through `apply()` instead of the parallel bundleToFiles path —
+ * this test now exercises the new pipeline end-to-end, which catches the
+ * original regression AND any drift introduced by the refactor.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse as yamlParse } from "yaml";
 
-
-import { bundleToFiles } from "../../cli/commands/helpers.js";
+import { forgeFromAnswers } from "../../cli/commands/init-run.js";
 import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
-import { apply } from "../../evolve/apply/index.js";
 import { loadBlueprint, listBuiltinBlueprints } from "../blueprints/loader.js";
 
-import { generateBundle } from "./generate.js";
 import type { WizardAnswers } from "./types.js";
-import { writeBundle } from "./writer.js";
 
 let deployDir: string;
 
@@ -63,33 +57,18 @@ function wizardAnswersFor(blueprintName: string): WizardAnswers {
     airGapped: false,
     integrations: {},
     customizationAnswers: {},
+    userContext: {
+      name: "Test User",
+      timezone: "America/Los_Angeles",
+      communicationPreference: "brief",
+    },
   };
-}
-
-function runWizardWriteCycle(blueprintName: string): void {
-  // Simulate --reset: the deploy is fresh, clawhq.yaml doesn't exist yet.
-  const answers = wizardAnswersFor(blueprintName);
-  const bundle = generateBundle(answers);
-  const files = bundleToFiles(
-    bundle,
-    answers.blueprint,
-    answers.customizationAnswers,
-    Object.keys(answers.integrations),
-  );
-  // Seed a minimal USER.md so apply's user-context read succeeds; the wizard
-  // identity files would normally cover this but bundleToFiles doesn't know
-  // about the post-wizard USER.md merge path. This keeps the test focused
-  // on the yaml/composition contract, not identity wiring.
-  const workspace = join(deployDir, "workspace");
-  mkdirSync(workspace, { recursive: true });
-  writeFileSync(join(workspace, "USER.md"), "**Name:** Test User\n**Timezone:** America/Los_Angeles\n");
-  writeBundle(deployDir, files);
 }
 
 describe("init --reset + apply round-trip (20260421 regression)", () => {
   for (const blueprintName of listBuiltinBlueprints()) {
-    it(`[${blueprintName}] wizard-written yaml has composition.profile`, () => {
-      runWizardWriteCycle(blueprintName);
+    it(`[${blueprintName}] forgeFromAnswers produces a composition-bearing yaml`, async () => {
+      await forgeFromAnswers(wizardAnswersFor(blueprintName));
 
       const yamlPath = join(deployDir, "clawhq.yaml");
       expect(existsSync(yamlPath)).toBe(true);
@@ -103,13 +82,15 @@ describe("init --reset + apply round-trip (20260421 regression)", () => {
     });
   }
 
-  it("apply --dry-run succeeds on a wizard-written yaml (life-ops family-hub)", async () => {
-    runWizardWriteCycle("family-hub");
+  it("forge → apply round-trip produces a runnable deployment (family-hub)", async () => {
+    // forgeFromAnswers already calls apply internally; the fact that it
+    // doesn't throw is the full end-to-end proof.
+    await forgeFromAnswers(wizardAnswersFor("family-hub"));
 
-    const result = await apply({ deployDir, dryRun: true });
-    expect(
-      result.success,
-      `apply failed: ${result.success ? "" : result.error}`,
-    ).toBe(true);
+    // Verify the key derived files made it to disk.
+    expect(existsSync(join(deployDir, "engine/openclaw.json"))).toBe(true);
+    expect(existsSync(join(deployDir, "engine/.env"))).toBe(true);
+    expect(existsSync(join(deployDir, "cron/jobs.json"))).toBe(true);
+    expect(existsSync(join(deployDir, "workspace/SOUL.md"))).toBe(true);
   });
 });

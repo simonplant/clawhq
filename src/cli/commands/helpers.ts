@@ -1,14 +1,8 @@
-import { join } from "node:path";
-
 import chalk from "chalk";
 import ora from "ora";
-import { stringify as yamlStringify } from "yaml";
 
 import type { PrereqCheckResult } from "../../build/installer/index.js";
 import type { DeployProgress } from "../../build/launcher/index.js";
-import { FILE_MODE_SECRET } from "../../config/defaults.js";
-import { generateAllowlistContent, generateBundle, generateSkillFiles, generateToolFiles, renderCronJobsFile } from "../../design/configure/index.js";
-import { generateOpsAutomationFiles } from "../../operate/automation/index.js";
 
 export function formatPrereqCheck(check: PrereqCheckResult): void {
   if (check.ok) {
@@ -71,90 +65,10 @@ function stepLabel(step: string): string {
 }
 
 export async function resolveGatewayToken(opts: { token?: string; deployDir: string }): Promise<string> {
+  const { join } = await import("node:path");
   const { readEnvValue } = await import("../../secure/credentials/env-store.js");
   return opts.token
     ?? process.env["CLAWHQ_GATEWAY_TOKEN"]
     ?? readEnvValue(join(opts.deployDir, "engine", ".env"), "OPENCLAW_GATEWAY_TOKEN")
     ?? "";
 }
-
-/** Convert a DeploymentBundle into FileEntry array for the atomic writer. */
-export function bundleToFiles(
-  bundle: ReturnType<typeof generateBundle>,
-  blueprint: import("../../design/blueprints/types.js").Blueprint,
-  _customizationAnswers: Readonly<Record<string, string>> = {},
-  integrationNames: readonly string[] = [],
-) {
-  return [
-    {
-      relativePath: "engine/openclaw.json",
-      content: JSON.stringify(bundle.openclawConfig, null, 2) + "\n",
-    },
-    // engine/docker-compose.yml is intentionally NOT written here.
-    // Compose is owned by `clawhq build` (runs generateCompose() from
-    // build/docker/compose.ts) — the single writer. `clawhq up` no longer
-    // auto-regenerates compose; if preflight detects a stale/invalid
-    // compose, the user is told to run `clawhq build`.
-    {
-      relativePath: "engine/.env",
-      content: Object.entries(bundle.envVars)
-        .map(([k, v]) => `${k}=${v}`)
-        .join("\n") + "\n",
-      mode: FILE_MODE_SECRET,
-    },
-    {
-      relativePath: "engine/credentials.json",
-      content: JSON.stringify({}, null, 2) + "\n",
-      mode: FILE_MODE_SECRET,
-    },
-    {
-      relativePath: "cron/jobs.json",
-      content: renderCronJobsFile(bundle.cronJobs),
-    },
-    {
-      relativePath: "clawhq.yaml",
-      content: yamlStringify(bundle.clawhqConfig),
-    },
-    // Egress firewall allowlist (compiled from blueprint + integration domains)
-    {
-      relativePath: "ops/firewall/allowlist.yaml",
-      content: generateAllowlistContent(blueprint, integrationNames, bundle.envVars),
-    },
-    // Identity files (SOUL.md, AGENTS.md) — content from bundle, not regenerated
-    ...bundle.identityFiles.map((f) => ({
-      relativePath: f.path,
-      content: f.content,
-    })),
-    // Workspace tools (email, calendar, tasks, search, sanitize, etc.)
-    ...generateToolFiles(blueprint).map((f) => ({
-      relativePath: f.relativePath,
-      content: f.content,
-      mode: f.mode,
-    })),
-    // Pre-built skills (platform + blueprint-selected) → workspace/skills/
-    ...generateSkillFiles(blueprint).map((f) => ({
-      relativePath: f.relativePath,
-      content: f.content,
-    })),
-    // Operational automation scripts + systemd units
-    ...generateOpsAutomationFiles(
-      bundle.clawhqConfig.paths?.deployDir ?? "~/.clawhq",
-      bundle.clawhqConfig.ops,
-    ).map((f) => ({
-      relativePath: f.relativePath,
-      content: f.content,
-      mode: f.mode,
-    })),
-    // Credential proxy files (when integrations use proxy routes)
-    ...(bundle.proxyServerScript ? [{
-      relativePath: "engine/cred-proxy.js",
-      content: bundle.proxyServerScript,
-    }] : []),
-    ...(bundle.proxyRoutesConfig ? [{
-      relativePath: "engine/cred-proxy-routes.json",
-      content: bundle.proxyRoutesConfig,
-      mode: FILE_MODE_SECRET,
-    }] : []),
-  ];
-}
-

@@ -11,17 +11,13 @@ import { build, getPostureConfig, getRequiredBinaries } from "../../build/docker
 import { install } from "../../build/installer/index.js";
 import { deploy } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
-import { validateBundle } from "../../config/validate.js";
 import { scanWorkspaceManifest } from "../../design/configure/generate.js";
 import {
   createInquirerPrompter,
-  filesForFreshInstall,
-  generateBundle,
   runSmartInference,
   runWizard,
   SmartInferenceAbortError,
   WizardAbortError,
-  writeBundle,
 } from "../../design/configure/index.js";
 import {
   formatDoctorTable,
@@ -30,7 +26,8 @@ import {
 import { CommandError } from "../errors.js";
 import { createCommandScope, renderError, validatePort } from "../ux.js";
 
-import { bundleToFiles, createConnectProgressHandler, createProgressHandler, formatPrereqCheck } from "./helpers.js";
+import { createConnectProgressHandler, createProgressHandler, formatPrereqCheck } from "./helpers.js";
+import { forgeFromAnswers } from "./init-run.js";
 
 const DEFAULT_DEPLOY_DIR = join(homedir(), ".clawhq");
 
@@ -114,26 +111,9 @@ export function registerQuickstartCommand(program: Command): void {
           });
         }
 
-        spinner.start(`${phase("init")} Generating config…`);
-
-        const bundle = generateBundle(answers);
-
-        const report = validateBundle(bundle);
-        if (!report.valid) {
-          spinner.fail(`${phase("init")} Config validation failed`);
-          for (const err of report.errors) {
-            console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
-          }
-          console.log(chalk.dim("\n  Fix the issues and re-run: clawhq init --guided"));
-          throw new CommandError("", 1);
-        }
-
-        const files = bundleToFiles(bundle, answers.blueprint, answers.customizationAnswers, Object.keys(answers.integrations));
-        // Don't clobber live composition / cron / openclaw config on
-        // re-run — only clawhq apply is the "update" path, init is
-        // "first-time install" or "reset" (which archived already).
-        writeBundle(answers.deployDir, filesForFreshInstall(answers.deployDir, files));
-
+        spinner.start(`${phase("init")} Validating + applying…`);
+        spinner.stop();
+        await forgeFromAnswers(answers);
         spinner.succeed(`${phase("init")} Agent forged — all 14 landmine rules passed`);
       } catch (error) {
         if (error instanceof CommandError) throw error;

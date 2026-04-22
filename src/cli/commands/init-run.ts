@@ -13,24 +13,27 @@
  * doesn't benefit from extraction.
  */
 
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+
 import chalk from "chalk";
 import ora from "ora";
+import { stringify as yamlStringify } from "yaml";
 
+import { FILE_MODE_SECRET } from "../../config/defaults.js";
 import { validateBundle } from "../../config/validate.js";
 import {
   ConfigFileError,
-  filesForFreshInstall,
   generateBundle,
   SmartInferenceAbortError,
   WizardAbortError,
-  writeBundle,
+  writeFileAtomic,
   type WizardAnswers,
 } from "../../design/configure/index.js";
+import { apply } from "../../evolve/apply/index.js";
 import { archiveDeployment, deploymentExists } from "../../evolve/lifecycle/attic.js";
 import { CommandError } from "../errors.js";
 import { renderError } from "../ux.js";
-
-import { bundleToFiles } from "./helpers.js";
 
 // ── Ensure fresh / reset ─────────────────────────────────────────────────────
 
@@ -92,14 +95,56 @@ export function applyEnsureFreshResult(
 // ── Shared forge pipeline (legacy smart/config-file paths) ───────────────────
 
 /**
+ * Write ONLY the files that flow from the wizard to disk — composition
+ * manifest, user context, and integration credentials. `apply()` produces
+ * every other file from these inputs.
+ *
+ * Replaces the old bundleToFiles → writeBundle path: that pipeline emitted
+ * the same 50+ files that `clawhq apply` produces, creating a parallel
+ * compile surface that drifted from the real one. Seeding only the
+ * user-input files and delegating the rest to apply eliminates the drift.
+ */
+function seedFromAnswers(answers: WizardAnswers): void {
+  const bundle = generateBundle(answers);
+
+  // clawhq.yaml — the user's manifest. buildClawHQConfig emits the
+  // composition block (fixed in c80b8de).
+  writeFileAtomic(
+    join(answers.deployDir, "clawhq.yaml"),
+    yamlStringify(bundle.clawhqConfig),
+  );
+
+  // workspace/USER.md — user context drives apply's identity rendering.
+  const userMd = bundle.identityFiles.find((f) => f.path === "workspace/USER.md");
+  if (userMd) {
+    mkdirSync(join(answers.deployDir, "workspace"), { recursive: true });
+    writeFileAtomic(join(answers.deployDir, userMd.path), userMd.content);
+  }
+
+  // engine/.env — integration credentials. Apply's .env merge preserves
+  // these over the compiler's CHANGE_ME placeholders.
+  const envContent = Object.entries(bundle.envVars)
+    .map(([k, v]) => `${k}=${v}`)
+    .join("\n") + "\n";
+  mkdirSync(join(answers.deployDir, "engine"), { recursive: true });
+  writeFileAtomic(
+    join(answers.deployDir, "engine/.env"),
+    envContent,
+    FILE_MODE_SECRET,
+  );
+}
+
+/**
  * The shared "got WizardAnswers, now finish the forge" pipeline. Used by
  * both --smart / --blueprint and the legacy --config branch.
  *
- * Throws CommandError on validation failure; otherwise prints the success
- * block and returns.
+ * Validates via the bundle pipeline (structural landmine check), then
+ * delegates the actual writing to seed + apply — one reconciler, not two.
+ *
+ * Throws CommandError on validation or apply failure.
  */
-export function forgeFromAnswers(answers: WizardAnswers): void {
-  const spinner = ora("Generating config…");
+export async function forgeFromAnswers(answers: WizardAnswers): Promise<void> {
+  const spinner = ora("Validating composition…");
   spinner.start();
   const bundle = generateBundle(answers);
   const report = validateBundle(bundle);
@@ -110,26 +155,26 @@ export function forgeFromAnswers(answers: WizardAnswers): void {
     }
     throw new CommandError("", 1);
   }
-  const files = bundleToFiles(
-    bundle,
-    answers.blueprint,
-    answers.customizationAnswers,
-    Object.keys(answers.integrations),
-  );
-  // First-time install: don't clobber user's composition / daemon's
-  // cron store / OpenClaw runtime config if they already exist on disk.
-  // `clawhq init --reset` archives the deploy first, so in that path
-  // the filter is a no-op (paths don't exist → nothing is filtered).
-  const result = writeBundle(
-    answers.deployDir,
-    filesForFreshInstall(answers.deployDir, files),
-  );
-  spinner.succeed(`Config written to ${result.deployDir}`);
+  spinner.succeed("Composition validated");
+
+  // Seed the user-input files so apply has a manifest to regenerate from.
+  seedFromAnswers(answers);
+
+  // Apply regenerates everything derived from clawhq.yaml. Same code path
+  // users run every subsequent time — no parallel pipeline.
+  const applySpinner = ora("Applying config…").start();
+  const result = await apply({ deployDir: answers.deployDir });
+  if (!result.success) {
+    applySpinner.fail(`Apply failed: ${result.error ?? "unknown error"}`);
+    throw new CommandError("", 1);
+  }
+  const changed = result.report.added.length + result.report.changed.length;
+  applySpinner.succeed(`Config applied (${changed} file(s))`);
+
   for (const warn of report.warnings) {
     console.log(chalk.yellow(`  ⚠ ${warn.rule}: ${warn.message}`));
   }
   console.log(chalk.green(`\n✔ Agent forged successfully`));
-  console.log(chalk.dim(`  ${result.written.length} files written`));
   console.log(chalk.dim(`\n  Next: clawhq up`));
 }
 
