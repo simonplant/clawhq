@@ -19,6 +19,7 @@ import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
+import { withDeployLock } from "../../config/lock.js";
 
 import { checkCache, computeStage1Hash, computeStage2Hash } from "./cache.js";
 import { generateCompose } from "./compose.js";
@@ -46,8 +47,17 @@ const DEFAULT_APT_PACKAGES = "tmux ffmpeg jq ripgrep";
  * Stage 1: Build from the cloned OpenClaw source using its own Dockerfile.
  * Stage 2: Layer custom tools and skills on top.
  * Writes docker-compose.yml and build manifest on success.
+ *
+ * Serialized under the deploy lock so concurrent `clawhq` invocations
+ * (another shell, another session, `clawhq up` auto-build path) don't
+ * race on the image and compose outputs. The lock is reentrant-by-pid,
+ * so auto-build chains (e.g. `up → build`) don't deadlock.
  */
 export async function build(options: BuildOptions): Promise<BuildResult> {
+  return withDeployLock(options.deployDir, () => buildImpl(options));
+}
+
+async function buildImpl(options: BuildOptions): Promise<BuildResult> {
   const { deployDir, stage1, stage2 } = options;
   const posture = options.posture ?? DEFAULT_POSTURE;
   let postureConfig = getPostureConfig(posture);
@@ -126,8 +136,8 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   // Get image info for manifest
   const imageInfo = await getImageInfo(stage2Tag);
 
-  // Stage clawdius-trading sidecar if source exists in the repo
-  await stageClawdiusTrading(engineDir);
+  // Stage market-engine sidecar if source exists in the repo
+  await stageMarketEngine(engineDir);
 
   // Generate docker-compose.yml
   // Auto-detect cred-proxy: if init/apply generated the proxy files, enable the sidecar
@@ -135,10 +145,10 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   const credProxyRoutesPath = join(engineDir, "cred-proxy-routes.json");
   const enableCredProxy = existsSync(credProxyScriptPath) && existsSync(credProxyRoutesPath);
 
-  // Auto-detect clawdius-trading: if the Dockerfile exists, enable the sidecar.
-  const clawdiusTradingDir = join(engineDir, "clawdius-trading");
-  const enableClawdiusTrading = existsSync(
-    join(clawdiusTradingDir, "Dockerfile"),
+  // Auto-detect market-engine: if the Dockerfile exists, enable the sidecar.
+  const marketEngineDir = join(engineDir, "market-engine");
+  const enableMarketEngine = existsSync(
+    join(marketEngineDir, "Dockerfile"),
   );
 
   // Pull access.readOnlyHostMounts from clawhq.yaml so `clawhq build`

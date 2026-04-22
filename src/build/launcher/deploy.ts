@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
+import { withDeployLock } from "../../config/lock.js";
 import {
   DEFAULT_POSTURE,
   getPostureConfig,
@@ -52,8 +53,17 @@ const execFileAsync = promisify(execFile);
  * Deploy the agent: preflight → compose up → firewall → health → smoke test.
  *
  * Returns a running, reachable agent or a clear error. Never silent failure.
+ *
+ * Serialized under the deploy lock so concurrent `clawhq up/restart`
+ * invocations (or one racing against a parallel `clawhq build`) don't
+ * stomp on each other. Reentrant-by-pid — auto-build nested inside a
+ * deploy doesn't re-acquire.
  */
 export async function deploy(options: DeployOptions): Promise<DeployResult> {
+  return withDeployLock(options.deployDir, () => deployImpl(options));
+}
+
+async function deployImpl(options: DeployOptions): Promise<DeployResult> {
   const { deployDir, onProgress, signal } = options;
   const engineDir = join(deployDir, "engine");
   const report = progress(onProgress);
@@ -415,8 +425,15 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
 
 /**
  * Graceful shutdown: unlock identity → compose down → firewall remove.
+ *
+ * Serialized under the deploy lock. Reentrant — `clawhq restart` calls
+ * shutdown + deploy in sequence under the same outer lock.
  */
 export async function shutdown(options: ShutdownOptions): Promise<ShutdownResult> {
+  return withDeployLock(options.deployDir, () => shutdownImpl(options));
+}
+
+async function shutdownImpl(options: ShutdownOptions): Promise<ShutdownResult> {
   const { deployDir, onProgress, signal } = options;
   const engineDir = join(deployDir, "engine");
   const report = progress(onProgress);
@@ -452,8 +469,19 @@ export async function shutdown(options: ShutdownOptions): Promise<ShutdownResult
 
 /**
  * Restart: graceful shutdown → deploy with firewall reapply.
+ *
+ * Held under a single outer deploy lock so shutdown + deploy execute
+ * atomically — another process can't race in between the compose-down
+ * and compose-up.
  */
 export async function restart(
+  deployOptions: DeployOptions,
+  shutdownOptions?: Partial<ShutdownOptions>,
+): Promise<DeployResult> {
+  return withDeployLock(deployOptions.deployDir, () => restartImpl(deployOptions, shutdownOptions));
+}
+
+async function restartImpl(
   deployOptions: DeployOptions,
   shutdownOptions?: Partial<ShutdownOptions>,
 ): Promise<DeployResult> {

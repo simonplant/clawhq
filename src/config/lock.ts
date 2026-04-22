@@ -77,12 +77,25 @@ const DEFAULT_RETRY_INTERVAL_MS = 100;
 /**
  * Acquire the deploy lock, run `fn`, release the lock. The lock is
  * released on any path out of `fn` — resolved value, thrown error, both.
+ *
+ * Reentrant by PID: if the current process already holds the lock (via
+ * an outer `withDeployLock` call), `fn` runs without re-acquiring and
+ * without releasing on exit. Only the outermost caller manages the lock
+ * file. This lets high-level commands (init, update) wrap their whole
+ * workflow while still calling inner primitives (apply) that would
+ * otherwise lock independently.
  */
 export async function withDeployLock<T>(
   deployDir: string,
   fn: () => Promise<T>,
   opts: LockOptions = {},
 ): Promise<T> {
+  const lockPath = join(deployDir, LOCK_FILENAME);
+  const existing = readHolder(lockPath);
+  if (existing && existing.pid === process.pid) {
+    // Already held by this process — reentrant call, just run fn.
+    return fn();
+  }
   const release = await acquireDeployLock(deployDir, opts);
   try {
     return await fn();
