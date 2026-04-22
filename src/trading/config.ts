@@ -82,26 +82,27 @@ export function resolveTradier(): TradierConfig {
   };
 }
 
-// ── Signal ───────────────────────────────────────────────────────────────────
+// ── Telegram ─────────────────────────────────────────────────────────────────
 
-export interface SignalConfig {
-  /** Path to signal-cli binary (defaults to PATH lookup). */
-  binary: string;
-  /** Simon's own Signal number. */
-  selfNumber: string;
-  /** Recipient number (defaults to self — note-to-self pattern). */
-  recipientNumber: string;
-  /** Polling interval for incoming messages (ms). */
-  receivePollMs: number;
+export interface TelegramConfig {
+  /** Bot token (shared with OpenClaw's Telegram channel). */
+  botToken: string;
+  /** Simon's Telegram chat id. */
+  chatId: string;
+  /** Per-request timeout against the Telegram API (ms). */
+  timeoutMs: number;
 }
 
-export function resolveSignal(): SignalConfig {
-  const self = process.env.SIGNAL_SELF_NUMBER ?? "";
+/**
+ * Outbound-only Telegram config. OpenClaw owns inbound polling on the same
+ * bot token; we never call getUpdates. Chat id defaults to Simon's from
+ * workspace/USER.md — override via TELEGRAM_CHAT_ID in .env if needed.
+ */
+export function resolveTelegram(): TelegramConfig {
   return {
-    binary: process.env.SIGNAL_CLI_BINARY ?? "signal-cli",
-    selfNumber: self,
-    recipientNumber: process.env.SIGNAL_RECIPIENT_NUMBER ?? self,
-    receivePollMs: Number(process.env.SIGNAL_RECEIVE_POLL_MS ?? 3000),
+    botToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
+    chatId: process.env.TELEGRAM_CHAT_ID ?? "",
+    timeoutMs: Number(process.env.TELEGRAM_TIMEOUT_MS ?? 5000),
   };
 }
 

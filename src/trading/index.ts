@@ -1,9 +1,17 @@
 /**
  * Clawdius Trading Assistant — single-process entrypoint.
  *
- * Wires together: SQLite event log, Tradier REST client, plan loader,
- * level detector, risk check, Signal bridge, catch-up reconciler, health
- * endpoint. One Node process, one loop, graceful shutdown.
+ * Wires SQLite event log + Tradier REST client + plan loader + level
+ * detector + risk check + Telegram outbound + catch-up reconciler + Hono
+ * HTTP endpoints. One Node process, one loop, graceful shutdown.
+ *
+ * Messaging model (post-Signal refactor):
+ *   - Outbound: direct Telegram Bot API sendMessage (shared bot with
+ *     OpenClaw, Simon's existing chat thread).
+ *   - Inbound: Clawdius talks to this sidecar via HTTP on the bridge
+ *     network (POST /halt, /resume; GET /status, /plan, /positions).
+ *     OpenClaw keeps owning Telegram long-polling — we never call
+ *     getUpdates, so no bot-token conflict.
  */
 
 import { watch } from "node:fs";
@@ -14,7 +22,6 @@ import { Hono } from "hono";
 
 import {
   dispatchCommand,
-  parseCommand,
   type CommandContext,
   type SystemSnapshot,
 } from "./commands.js";
@@ -23,12 +30,11 @@ import {
   HEARTBEAT_MS,
   POLL_FAILURE_ALERT_THRESHOLD,
   POLL_MS,
-  SELF_PING_MS,
   briefPathFor,
   defaultRiskThresholds,
   resolveAccounts,
   resolvePaths,
-  resolveSignal,
+  resolveTelegram,
   resolveTradier,
   resolveWatchlist,
 } from "./config.js";
@@ -46,10 +52,9 @@ import {
   formatHeartbeat,
   generateAlertId,
   makeInMemoryChannel,
-  makeSignalCliChannel,
-  parseReply,
-  type SignalChannel,
-} from "./signal.js";
+  makeTelegramChannel,
+  type MessageChannel,
+} from "./telegram.js";
 import { makeTradierClient, type TradierClient } from "./tradier.js";
 import type {
   Alert,
@@ -58,7 +63,6 @@ import type {
   PriceQuote,
   RiskState,
   TradingEvent,
-  UserReplyType,
 } from "./types.js";
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -66,13 +70,20 @@ import type {
 interface RuntimeState {
   db: TradingDB;
   tradier: TradierClient;
-  signal: SignalChannel;
+  channel: MessageChannel;
+  /**
+   * Which channel backend is wired. `in-memory` means TELEGRAM_BOT_TOKEN
+   * and/or TELEGRAM_CHAT_ID are unset — alerts are being sent into the
+   * void. Surfaced on /health so `clawhq doctor` can raise a loud warning
+   * instead of letting Simon trade blind.
+   */
+  channelKind: "telegram" | "in-memory" | "injected";
   plan: LoadedPlan | null;
   planPath: string;
   watchlist: string[];
   marketClock: MarketClock | null;
   riskState: RiskState;
-  /** Pending alerts by ID — used for reply threading and TTL expiry. */
+  /** Pending alerts by ID — retained for TTL expiry + future reply routing. */
   pendingAlerts: Map<string, Alert>;
   /** Consecutive poll failures (for the >30 alert). */
   pollFailures: number;
@@ -91,8 +102,8 @@ interface RuntimeState {
 }
 
 export interface StartOptions {
-  /** Substitute the Signal channel (for local dev without signal-cli). */
-  signal?: SignalChannel;
+  /** Substitute the outbound message channel (for tests). */
+  channel?: MessageChannel;
   /** Override watchlist at startup. */
   watchlist?: string[];
   /** Override poll cadence (tests). */
@@ -102,7 +113,7 @@ export interface StartOptions {
 export async function start(opts: StartOptions = {}): Promise<() => Promise<void>> {
   const paths = resolvePaths();
   const tradierConfig = resolveTradier();
-  const signalConfig = resolveSignal();
+  const telegramConfig = resolveTelegram();
   const accounts = resolveAccounts();
   const thresholds = defaultRiskThresholds();
 
@@ -112,10 +123,12 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     accountId: tradierConfig.accountId,
   });
 
-  const signal: SignalChannel = opts.signal ??
-    (signalConfig.selfNumber
-      ? makeSignalCliChannel(signalConfig)
-      : makeInMemoryChannel());
+  const hasTelegramConfig =
+    telegramConfig.botToken.length > 0 && telegramConfig.chatId.length > 0;
+  const channel: MessageChannel = opts.channel ??
+    (hasTelegramConfig ? makeTelegramChannel(telegramConfig) : makeInMemoryChannel());
+  const channelKind: "telegram" | "in-memory" | "injected" =
+    opts.channel !== undefined ? "injected" : hasTelegramConfig ? "telegram" : "in-memory";
 
   const planPath = briefPathFor(paths);
   const watchlistBase = opts.watchlist ?? resolveWatchlist();
@@ -123,7 +136,8 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
   const state: RuntimeState = {
     db,
     tradier,
-    signal,
+    channel,
+    channelKind,
     plan: null,
     planPath,
     watchlist: watchlistBase,
@@ -147,35 +161,25 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
 
   const detector = makeLevelDetector();
 
-  // 1. Load plan (non-fatal if missing).
   loadAndCommitPlan(state);
 
-  // 2. Fs-watch the brief file for intraday edits.
-  // Exact basename match avoids false positives on siblings that happen
-  // to end with today's date (e.g. a `news-trading-YYYY-MM-DD.md` sibling).
+  // Fs-watch the brief file for intraday edits. Exact basename match
+  // avoids false positives on siblings whose names end with today's date.
   const planBasename = basename(planPath);
   const watcher = watch(paths.memoryDir, (_evt, filename) => {
     if (filename === planBasename) loadAndCommitPlan(state);
   });
 
-  // 3. Start Hono /health server.
-  const app = new Hono();
-  app.get("/health", (c) => c.json(healthSnapshot(state)));
-  // Bind to 0.0.0.0 inside the container so Docker port-forwarding works.
-  // External exposure is restricted at the Docker layer via `127.0.0.1:8080:8080`
-  // in the compose file — no inbound reachable from the LAN.
-  const server = serve({ fetch: app.fetch, port: 8080, hostname: "0.0.0.0" });
+  const server = startHttpServer(state);
 
-  // 4. Boot reconciliation — catch-up alerts for levels crossed during downtime.
   await runBootReconciler(state);
+  await refreshRiskState(state); // seed Tradier balance/positions before first poll
 
-  // 5. Kick off loops.
   const pollTimer = scheduleInterval(opts.pollMs ?? POLL_MS, () => pollOnce(state, detector, thresholds, accounts));
   const clockTimer = scheduleInterval(CLOCK_CHECK_MS, () => refreshMarketClock(state));
   const heartbeatTimer = scheduleInterval(HEARTBEAT_MS, () => sendHeartbeat(state));
-  const selfPingTimer = scheduleInterval(SELF_PING_MS, () => runSelfPing(state));
+  const riskRefreshTimer = scheduleInterval(60_000, () => refreshRiskState(state));
   const ttlTimer = scheduleInterval(30_000, () => expireAlerts(state));
-  const replyTimer = scheduleInterval(signalConfig.receivePollMs, () => drainSignalInbox(state));
 
   state.db.append({ type: "ServiceReady", tsMs: Date.now() });
 
@@ -185,9 +189,8 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     clearInterval(pollTimer);
     clearInterval(clockTimer);
     clearInterval(heartbeatTimer);
-    clearInterval(selfPingTimer);
+    clearInterval(riskRefreshTimer);
     clearInterval(ttlTimer);
-    clearInterval(replyTimer);
     watcher.close();
     state.db.append({
       type: "ServiceShuttingDown",
@@ -199,6 +202,41 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
   }
 
   return shutdown;
+}
+
+// ── HTTP surface ─────────────────────────────────────────────────────────────
+
+/**
+ * All inbound control comes through Hono endpoints. Clawdius calls these
+ * over the bridge network when Simon asks it to halt / check status / etc.
+ *
+ * Bound to 0.0.0.0 inside the container; external exposure is restricted
+ * at the Docker layer via `127.0.0.1:8080:8080` in compose — no LAN reach.
+ */
+function startHttpServer(state: RuntimeState): ReturnType<typeof serve> {
+  const app = new Hono();
+
+  app.get("/health", (c) => c.json(healthSnapshot(state)));
+  app.get("/status", (c) => c.text(
+    dispatchCommand({ command: "status", args: "" }, makeCommandContext(state)),
+  ));
+  app.get("/plan", (c) => c.text(
+    dispatchCommand({ command: "plan", args: "" }, makeCommandContext(state)),
+  ));
+  app.get("/positions", (c) => c.text(
+    dispatchCommand({ command: "positions", args: "" }, makeCommandContext(state)),
+  ));
+  app.post("/halt", async (c) => {
+    const reason = (c.req.query("reason") ?? "via http").slice(0, 200);
+    const out = dispatchCommand({ command: "halt", args: reason }, makeCommandContext(state));
+    return c.json({ ok: true, message: out });
+  });
+  app.post("/resume", (c) => {
+    const out = dispatchCommand({ command: "resume", args: "" }, makeCommandContext(state));
+    return c.json({ ok: true, message: out });
+  });
+
+  return serve({ fetch: app.fetch, port: 8080, hostname: "0.0.0.0" });
 }
 
 // ── Poll loop ────────────────────────────────────────────────────────────────
@@ -274,7 +312,7 @@ async function handleLevelHit(
     orderId: order.id,
     decision,
   });
-  if (decision.block) return; // suppressed
+  if (decision.block) return;
 
   const alert = buildAlert({
     hit,
@@ -288,6 +326,37 @@ async function handleLevelHit(
   state.lastAlertMs = Date.now();
   appendEvent(state.db, { type: "AlertSent", tsMs: Date.now(), alert });
   await safeSend(state, formatAlertMessage(alert));
+}
+
+// ── Risk state refresh ───────────────────────────────────────────────────────
+
+/**
+ * Pull Tradier balance + positions periodically so the governor evaluates
+ * against live state instead of defaults. Silent on failure — the last
+ * good snapshot is still in state.riskState.
+ */
+async function refreshRiskState(state: RuntimeState): Promise<void> {
+  if (state.shuttingDown) return;
+  try {
+    const [balances, positions] = await Promise.all([
+      state.tradier.balances(),
+      state.tradier.positions(),
+    ]);
+    state.riskState = {
+      ...state.riskState,
+      tradierBalance: balances.totalEquity || state.riskState.tradierBalance,
+      tradierDailyPnl: balances.dayChange,
+      tradierPdtCountLast5Days:
+        balances.pdtCount ?? state.riskState.tradierPdtCountLast5Days,
+      tradierPositions: positions.map((p) => ({
+        symbol: p.symbol,
+        qty: p.qty,
+        avgPrice: p.avgPrice,
+      })),
+    };
+  } catch {
+    // Non-fatal — governor keeps operating against the last good snapshot.
+  }
 }
 
 // ── Market clock ─────────────────────────────────────────────────────────────
@@ -313,11 +382,16 @@ function isMarketActive(clock: MarketClock | null): boolean {
   return clock.state !== "closed";
 }
 
-// ── Heartbeat + self-ping ────────────────────────────────────────────────────
+// ── Heartbeat ────────────────────────────────────────────────────────────────
 
 async function sendHeartbeat(state: RuntimeState): Promise<void> {
   if (state.shuttingDown) return;
-  if (state.marketClock && state.marketClock.state !== "open") return;
+  // Fires during regular hours OR when we don't know (clock unresolved).
+  // The goal is "silent phone = broken system"; we'd rather send an extra
+  // heartbeat off-hours than miss one because the clock call is failing.
+  const clockState = state.marketClock?.state;
+  if (clockState !== undefined && clockState !== "open") return;
+
   const now = Date.now();
   state.nextHeartbeatMs = now + HEARTBEAT_MS;
   const body = formatHeartbeat({
@@ -338,118 +412,7 @@ async function sendHeartbeat(state: RuntimeState): Promise<void> {
   await safeSend(state, body);
 }
 
-async function runSelfPing(state: RuntimeState): Promise<void> {
-  if (state.shuttingDown) return;
-  const pingId = generateAlertId();
-  const marker = `__selfping_${pingId}__`;
-  appendEvent(state.db, { type: "SignalSelfPingSent", tsMs: Date.now(), pingId });
-  await safeSend(state, marker);
-  // Listener picks it up; if never received, a later health query surfaces it.
-}
-
-// ── Reply / command inbox ────────────────────────────────────────────────────
-
-async function drainSignalInbox(state: RuntimeState): Promise<void> {
-  if (state.shuttingDown) return;
-  let messages: string[];
-  try {
-    messages = await state.signal.receive();
-  } catch {
-    return;
-  }
-
-  for (const raw of messages) {
-    await processIncoming(state, raw);
-  }
-}
-
-async function processIncoming(state: RuntimeState, raw: string): Promise<void> {
-  // Self-ping round trip first (cheapest check).
-  const selfMatch = /__selfping_([A-Z0-9]{4})__/.exec(raw);
-  if (selfMatch) {
-    appendEvent(state.db, {
-      type: "SignalSelfPingReceived",
-      tsMs: Date.now(),
-      pingId: selfMatch[1] ?? "",
-      latencyMs: 0,
-    });
-    return;
-  }
-
-  // Alert reply.
-  const reply = parseReply(raw);
-  if (reply.type && reply.alertId) {
-    await handleReply(state, reply.type, reply.alertId, raw);
-    return;
-  }
-
-  // Slash/verb command.
-  const cmd = parseCommand(raw);
-  if (cmd) {
-    appendEvent(state.db, {
-      type: "CommandReceived",
-      tsMs: Date.now(),
-      command: cmd.command,
-      rawArgs: cmd.args,
-    });
-    const out = dispatchCommand(cmd, makeCommandContext(state));
-    await safeSend(state, out);
-    return;
-  }
-
-  // Unrecognized — don't reply, just log.
-  appendEvent(state.db, {
-    type: "UserReplyIgnored",
-    tsMs: Date.now(),
-    alertId: "",
-    reason: "unknown-id",
-    raw,
-  });
-}
-
-async function handleReply(
-  state: RuntimeState,
-  type: UserReplyType,
-  alertId: string,
-  raw: string,
-): Promise<void> {
-  const pending = state.pendingAlerts.get(alertId);
-  if (!pending) {
-    appendEvent(state.db, {
-      type: "UserReplyIgnored",
-      tsMs: Date.now(),
-      alertId,
-      reason: "unknown-id",
-      raw,
-    });
-    await safeSend(
-      state,
-      `(no pending alert for ${alertId} — may have expired)`,
-    );
-    return;
-  }
-  if (pending.expiresAtMs < Date.now()) {
-    appendEvent(state.db, {
-      type: "UserReplyIgnored",
-      tsMs: Date.now(),
-      alertId,
-      reason: "expired",
-      raw,
-    });
-    await safeSend(state, `(alert ${alertId} expired; resubmit if still actionable)`);
-    return;
-  }
-
-  state.pendingAlerts.delete(alertId);
-  appendEvent(state.db, {
-    type: "UserReply",
-    tsMs: Date.now(),
-    alertId,
-    reply: type,
-    raw,
-  });
-  await safeSend(state, `ack ${alertId}: ${type}`);
-}
+// ── Alert TTL ────────────────────────────────────────────────────────────────
 
 function expireAlerts(state: RuntimeState): void {
   const now = Date.now();
@@ -559,9 +522,9 @@ function appendEvent(db: TradingDB, event: TradingEvent): void {
 
 async function safeSend(state: RuntimeState, body: string): Promise<void> {
   try {
-    await state.signal.send(body);
+    await state.channel.send(body);
   } catch {
-    // Silent — Signal failures are observable via self-ping and healthcheck.
+    // Silent — Telegram failures are observable via `clawhq doctor` health.
   }
 }
 
@@ -624,6 +587,7 @@ function buildSnapshot(state: RuntimeState): SystemSnapshot {
 function healthSnapshot(state: RuntimeState): Record<string, unknown> {
   return {
     status: state.shuttingDown ? "shutting_down" : "ready",
+    channel: state.channelKind,
     planLoaded: state.plan !== null,
     planPath: state.planPath,
     orderCount: state.plan?.orders.length ?? 0,
@@ -635,6 +599,9 @@ function healthSnapshot(state: RuntimeState): Record<string, unknown> {
     manualHalt: state.manualHalt,
     pendingAlertCount: state.pendingAlerts.size,
     symbolCount: state.symbolCount,
+    tradierBalance: state.riskState.tradierBalance,
+    tradierPnl: state.riskState.tradierDailyPnl,
+    tradierPositionCount: state.riskState.tradierPositions.length,
   };
 }
 

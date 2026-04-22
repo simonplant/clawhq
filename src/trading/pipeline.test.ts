@@ -21,8 +21,7 @@ import {
   formatAlertMessage,
   generateAlertId,
   makeInMemoryChannel,
-  parseReply,
-} from "./signal.js";
+} from "./telegram.js";
 import type { OrderBlock, PriceQuote, RiskState } from "./types.js";
 
 function quote(symbol: string, last: number, ts = 0): PriceQuote {
@@ -115,7 +114,7 @@ describe("alert pipeline composition", () => {
     expect(alert.horizon).toBe("session"); // Mancini → session horizon
     expect(alert.expiresAtMs).toBe(t1 + 5 * 60 * 1000);
 
-    // 7. Format for Signal and deliver.
+    // 7. Format for Telegram and deliver.
     const channel = makeInMemoryChannel();
     const body = formatAlertMessage(alert);
     await channel.send(body);
@@ -124,13 +123,10 @@ describe("alert pipeline composition", () => {
     expect(channel.outbox[0]).toContain("YES-T3ST");
     expect(channel.outbox[0]).toContain("MANCINI ES"); // source is upper-cased in the header
     expect(channel.outbox[0]).toContain("Governor: OK");
-
-    // 8. Simon replies. Parse it back and confirm the id threads.
-    channel.inbox.push("yes t3st");
-    const [reply] = await channel.receive();
-    const parsed = parseReply(reply ?? "");
-    expect(parsed.type).toBe("approve");
-    expect(parsed.alertId).toBe("T3ST");
+    // Reply routing is Phase B — the alert body still surfaces the id so
+    // Simon (or a future Clawdius-side reply tool) can thread a decision
+    // back to this specific alert via POST /reply later.
+    expect(alert.id).toBe("T3ST");
   });
 
   it("catch-up path: boot-time reconciliation emits a catchup-flagged alert", () => {

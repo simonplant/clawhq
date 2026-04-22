@@ -1754,6 +1754,7 @@ async function checkClawdiusTradingHealthy(
 
     const health = JSON.parse(stdout.trim()) as {
       status?: string;
+      channel?: string;
       planLoaded?: boolean;
       orderCount?: number;
       pollFailures?: number;
@@ -1767,6 +1768,17 @@ async function checkClawdiusTradingHealthy(
         "error",
         `Clawdius-trading status: ${health.status ?? "unknown"}`,
         "Check logs: docker compose logs clawdius-trading",
+      );
+    }
+    // In-memory channel means TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID are
+    // unset — alerts are firing into the void. This is an error, not a
+    // warning: alert-grade trading with no alerts is useless.
+    if (health.channel === "in-memory") {
+      return fail(
+        name,
+        "error",
+        "Clawdius-trading has no outbound channel — alerts are not being delivered",
+        "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in deployDir/engine/.env and restart",
       );
     }
     if (health.pollFailures !== undefined && health.pollFailures > 10) {
@@ -1789,7 +1801,7 @@ async function checkClawdiusTradingHealthy(
       return fail(
         name,
         "info",
-        "Clawdius-trading is MANUAL HALTed — text `resume` to the Signal number to clear",
+        "Clawdius-trading is MANUAL HALTed — POST /resume or call `resume` tool to clear",
       );
     }
     return ok(
