@@ -147,49 +147,22 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
     }
 
     if (!preflight.passed) {
-      // Self-heal: if compose is among the failures, attempt auto-regeneration
+      // Compose is owned by `clawhq build` and `clawhq apply`. If preflight
+      // says it's broken/stale, fail loudly and tell the user which primitive
+      // regenerates it. The previous self-heal silently rewrote compose on
+      // every trip — but its sidecar detection was partial, so it routinely
+      // dropped cred-proxy / market-engine / clawdius-trading services and
+      // caused the "compose stub recurrence" bug class. Loud failure +
+      // explicit remediation is the correct config-management behavior.
+      const errors = preflight.failed
+        .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
+        .join("\n");
       const composeFailure = preflight.failed.some((c) => c.name === "compose");
-
-      if (composeFailure) {
-        report("preflight", "running", "Compose file is invalid — attempting auto-regeneration…");
-        const regenerated = await regenerateCompose(deployDir);
-
-        if (regenerated) {
-          report("preflight", "running", "Compose regenerated — re-running preflight…");
-          const retry = await runPreflight(deployDir, signal, options.gatewayPort, options.runtime);
-
-          if (retry.warnings.length > 0) {
-            const warns = retry.warnings
-              .map((c) => `  ⚠ ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
-              .join("\n");
-            report("preflight", "running", `Warning:\n${warns}`);
-          }
-
-          if (!retry.passed) {
-            const retryErrors = retry.failed
-              .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
-              .join("\n");
-            report("preflight", "failed", `${retry.failed.length} preflight check(s) still failing after compose regeneration`);
-            return { success: false, preflight: retry, healthy: false, error: `Preflight failed:\n${retryErrors}` };
-          }
-
-          report("preflight", "done", "Preflight passed after compose auto-regeneration");
-        } else {
-          // Regeneration failed — report original errors
-          const errors = preflight.failed
-            .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
-            .join("\n");
-          report("preflight", "failed", `Compose auto-regeneration failed (no build manifest?) — ${preflight.failed.length} check(s) failed`);
-          return { success: false, preflight, healthy: false, error: `Preflight failed:\n${errors}` };
-        }
-      } else {
-        // Non-compose failure — original error path
-        const errors = preflight.failed
-          .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
-          .join("\n");
-        report("preflight", "failed", `${preflight.failed.length} preflight check(s) failed`);
-        return { success: false, preflight, healthy: false, error: `Preflight failed:\n${errors}` };
-      }
+      const remediation = composeFailure
+        ? "\n\nCompose is stale or invalid. Run: clawhq build (or clawhq apply if the manifest changed)"
+        : "";
+      report("preflight", "failed", `${preflight.failed.length} preflight check(s) failed`);
+      return { success: false, preflight, healthy: false, error: `Preflight failed:\n${errors}${remediation}` };
     }
 
     if (preflight.warnings.length > 0) {
@@ -580,85 +553,6 @@ async function ensureOllamaReachable(
     }
   } catch {
     // sudo unavailable or rule add failed — non-fatal, doctor surfaces it.
-  }
-}
-
-// ── Compose Self-Healing ──────────────────────────────────────────────────
-
-/**
- * Regenerate docker-compose.yml from the existing build manifest and posture.
- *
- * Called when preflight detects a broken compose file. Uses the same
- * generateCompose + serializeYaml pipeline as `clawhq build`, but skips
- * the Docker image build (image already exists).
- *
- * Returns true if compose was successfully regenerated.
- */
-async function regenerateCompose(deployDir: string): Promise<boolean> {
-  try {
-    const engineDir = join(deployDir, "engine");
-
-    // Need a build manifest to know the image tag
-    const manifest = await readManifest(deployDir);
-    if (!manifest?.imageTag) return false;
-
-    // Read posture (or default), stripping gVisor if not installed
-    const posture = readCurrentPosture(deployDir) ?? DEFAULT_POSTURE;
-    let postureConfig = getPostureConfig(posture);
-    if (postureConfig.runtime === "runsc") {
-      try {
-        await execFileAsync("runsc", ["--version"], { timeout: 5000 });
-      } catch {
-        postureConfig = { ...postureConfig, runtime: undefined };
-      }
-    }
-
-    // Detect cred-proxy availability
-    const credProxyScript = join(engineDir, "cred-proxy.js");
-    const credProxyRoutes = join(engineDir, "cred-proxy-routes.json");
-    const enableCredProxy = existsSync(credProxyScript) && existsSync(credProxyRoutes);
-
-    // Auto-detect staged sidecars so regen matches what `clawhq build` produces.
-    // Without this, compose self-heal silently drops market-engine and
-    // clawdius-trading services, leaving their containers orphaned.
-    const marketEngineDir = join(engineDir, "market-engine");
-    const enableMarketEngine = existsSync(join(marketEngineDir, "Dockerfile"));
-    const clawdiusTradingDir = join(engineDir, "clawdius-trading");
-    const enableClawdiusTrading = existsSync(join(clawdiusTradingDir, "Dockerfile"));
-
-    // Read access.readOnlyHostMounts from clawhq.yaml so regen preserves
-    // inbound host-file mounts (e.g. /media) the user has configured.
-    let readOnlyHostMounts: readonly string[] | undefined;
-    try {
-      const { readFileSync } = await import("node:fs");
-      const { parse: yamlParse } = await import("yaml");
-      const raw = yamlParse(readFileSync(join(deployDir, "clawhq.yaml"), "utf-8")) as Record<string, unknown>;
-      const access = raw.access as Record<string, unknown> | undefined;
-      const mounts = access?.readOnlyHostMounts;
-      if (Array.isArray(mounts)) {
-        readOnlyHostMounts = mounts.filter((m): m is string => typeof m === "string");
-      }
-    } catch { /* no config or parse error — no mounts */ }
-
-    // Generate and write compose
-    const compose = generateCompose(manifest.imageTag, postureConfig, deployDir, "clawhq_net", {
-      enableCredProxy,
-      credProxyScriptPath: credProxyScript,
-      credProxyRoutesPath: credProxyRoutes,
-      enableMarketEngine,
-      marketEngineDir,
-      enableClawdiusTrading,
-      clawdiusTradingDir,
-      readOnlyHostMounts,
-    });
-
-    const composePath = join(engineDir, "docker-compose.yml");
-    await writeFile(composePath, serializeYaml(compose), "utf-8");
-    await chmod(composePath, FILE_MODE_SECRET);
-
-    return true;
-  } catch {
-    return false;
   }
 }
 
