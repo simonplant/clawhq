@@ -21,23 +21,25 @@ import {
 } from "../../config/defaults.js";
 import { BUILTIN_ROUTES, buildRoutesConfig, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv } from "../../secure/credentials/proxy-routes.js";
 import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
-import { renderDimensionProse, DIMENSION_META, ALWAYS_ON_BOUNDARIES } from "../blueprints/personality-presets.js";
-import type { PersonalityDimensions, DimensionId, DimensionValue } from "../blueprints/types.js";
-import { validateCronExpr } from "../configure/generate.js";
+import {
+  ALWAYS_ON_BOUNDARIES,
+  CANONICAL_DIMENSIONS,
+  renderAllDimensionsProse,
+} from "../blueprints/personality-presets.js";
 import { generateApproveActionTool } from "../tools/approve-action.js";
 import { generateHimalayaConfig } from "../tools/himalaya-config.js";
 import { TOOL_GENERATORS } from "../tools/index.js";
 import { generateSanitizeTool } from "../tools/sanitize.js";
 
-import { loadProfile, loadPersonality } from "./loader.js";
+import { loadProfile, loadCanonicalPersonality } from "./loader.js";
 import { getEgressForProviders, getProvider } from "./providers.js";
 import type { Provider } from "./providers.js";
 import type {
+  CanonicalPersonality,
   CompiledFile,
   CompiledWorkspace,
   CompositionConfig,
   MissionProfile,
-  PersonalityPreset,
   ProfileTool,
   UserConfig,
 } from "./types.js";
@@ -70,7 +72,7 @@ export function compile(
   _accessConfig: { readonly readOnlyHostMounts?: readonly string[] } = {},
 ): CompiledWorkspace {
   const profile = loadProfile(config.profile);
-  const personality = loadPersonality(config.personality);
+  const personality = loadCanonicalPersonality();
 
   // Resolve selected providers — carry domain key for multi-account env var prefixing
   const providerEntries = Object.entries(config.providers ?? {});
@@ -85,8 +87,9 @@ export function compile(
   const providerEgress = getEgressForProviders(providerIds);
   const egressSet = new Set([...profile.egress_domains, ...providerEgress]);
 
-  // Apply dimension overrides
-  const dims = applyOverrides(personality.dimensions, config.dimension_overrides);
+  // Personality dimensions are the canonical vector — not configurable.
+  // Users customize SOUL.md tone through `soul_overrides` free text.
+  const dims = CANONICAL_DIMENSIONS;
 
   // Generate .env content (needed for both writing and proxy route detection)
   const envContent = renderEnv(gatewayPort, resolvedProviders, config.channels);
@@ -148,8 +151,6 @@ export function compile(
     { relativePath: "engine/.env", content: envWithProxy, mode: 0o600 },
     { relativePath: "engine/credentials.json", content: "{}\n", mode: 0o600 },
     // Cron
-    // TODO: wire config.cron_overrides through renderCronJobs — the type
-    // field exists but the function doesn't accept it yet (WIP from ec85b34).
     { relativePath: "cron/jobs.json", content: renderCronJobs(profile, resolvedProviders, config.model, user.telegramChatId) },
 
     // Substack publication aliases — user-managed, created empty on init
@@ -196,8 +197,8 @@ export function compile(
 // ── SOUL.md ─────────────────────────────────────────────────────────────────
 
 function renderSoul(
-  personality: PersonalityPreset,
-  dims: PersonalityDimensions,
+  personality: CanonicalPersonality,
+  dims: typeof CANONICAL_DIMENSIONS,
   soulOverrides?: string,
 ): string {
   const lines: string[] = [];
@@ -205,12 +206,16 @@ function renderSoul(
   lines.push(`# ${personality.name}\n`);
   lines.push(`> ${personality.description}\n`);
 
-  // Communication style from dimensions
+  // Dimension prose — grouped into communication / working / cognitive.
+  const prose = renderAllDimensionsProse(dims);
   lines.push("## Communication Style\n");
-  for (const meta of DIMENSION_META) {
-    const value = dims[meta.id as DimensionId] as DimensionValue;
-    lines.push(renderDimensionProse(meta.id as DimensionId, value));
-  }
+  lines.push(prose.communication);
+  lines.push("");
+  lines.push("## Working Style\n");
+  lines.push(prose.working);
+  lines.push("");
+  lines.push("## Cognitive Style\n");
+  lines.push(prose.cognitive);
   lines.push("");
 
   // Values
@@ -692,7 +697,7 @@ function extractToolSummary(notes: string, _toolName: string): string {
 
 // ── IDENTITY.md ─────────────────────────────────────────────────────────────
 
-function renderIdentity(personality: PersonalityPreset, profile: MissionProfile): string {
+function renderIdentity(personality: CanonicalPersonality, profile: MissionProfile): string {
   const lines: string[] = [];
 
   lines.push("# Identity\n");
@@ -806,7 +811,7 @@ function renderOpenclawJson(
   user: UserConfig,
   port: number,
   providers: Provider[] = [],
-  composition: CompositionConfig = { profile: "", personality: "" },
+  composition: CompositionConfig = { profile: "" },
 ): string {
   // Security posture determines tool restrictions
   const isUnderAttack = profile.security_posture === "under-attack";
@@ -1374,22 +1379,6 @@ function findConfigsDir(): string {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-
-function applyOverrides(
-  base: PersonalityDimensions,
-  overrides?: Partial<PersonalityDimensions>,
-): PersonalityDimensions {
-  if (!overrides) return base;
-  return {
-    directness: overrides.directness ?? base.directness,
-    warmth: overrides.warmth ?? base.warmth,
-    verbosity: overrides.verbosity ?? base.verbosity,
-    proactivity: overrides.proactivity ?? base.proactivity,
-    caution: overrides.caution ?? base.caution,
-    formality: overrides.formality ?? base.formality,
-    analyticalDepth: overrides.analyticalDepth ?? base.analyticalDepth,
-  };
-}
 
 /** Parse env content into a Record for proxy route filtering. */
 function parseEnvForProxy(envContent: string): Record<string, string> {

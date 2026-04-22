@@ -1,12 +1,13 @@
 /**
- * Types for mission profiles and personality presets.
+ * Types for mission profiles and the canonical personality.
  *
- * Mission profile = WHAT the agent does (tools, cron, integrations, autonomy)
- * Personality preset = HOW the agent does it (tone, values, voice, anti-patterns)
- * Composition = profile + personality + user overrides → compiled workspace
+ * Mission profile  = WHAT the agent does (tools, cron, integrations, autonomy)
+ * Canonical
+ * personality      = HOW the agent does it — a single shipped tone ("LifeOps,
+ *                    no BS") expressed through voice examples, anti-patterns,
+ *                    values, and boundaries. Not user-configurable.
+ * Composition      = profile + providers + soul_overrides → compiled workspace
  */
-
-import type { PersonalityDimensions } from "../blueprints/types.js";
 
 // ── Mission Profile ─────────────────────────────────────────────────────────
 
@@ -57,13 +58,19 @@ export interface MissionProfile {
   readonly day_in_the_life: string;
 }
 
-// ── Personality Preset ──────────────────────────────────────────────────────
+// ── Canonical Personality ───────────────────────────────────────────────────
 
-export interface PersonalityPreset {
+/**
+ * The single canonical ClawHQ personality.
+ *
+ * Dimensions come from `CANONICAL_DIMENSIONS` in personality-presets.ts —
+ * this type carries the prose content (voice, anti-patterns, values,
+ * boundaries, identity) that shapes SOUL.md alongside the dimension prose.
+ */
+export interface CanonicalPersonality {
   readonly id: string;
   readonly name: string;
   readonly description: string;
-  readonly dimensions: PersonalityDimensions;
   readonly voice_examples: readonly string[];
   readonly anti_patterns: readonly string[];
   readonly identity: {
@@ -76,13 +83,17 @@ export interface PersonalityPreset {
 
 // ── Composition ─────────────────────────────────────────────────────────────
 
-/** User-provided composition config (from YAML config file). */
+/**
+ * User-provided composition config (from YAML config file).
+ *
+ * Personality is NOT a field here — every agent uses the canonical
+ * ClawHQ personality (see CANONICAL_DIMENSIONS). Users customize tone
+ * via `soul_overrides` free text only.
+ */
 export interface CompositionConfig {
   readonly profile: string;
-  readonly personality: string;
   readonly providers?: Readonly<Record<string, string>>;
   readonly channels?: Readonly<Record<string, Readonly<Record<string, string>>>>;
-  readonly dimension_overrides?: Partial<PersonalityDimensions>;
   readonly soul_overrides?: string;
   readonly extra_tools?: readonly string[];
   /** Override the default model (provider-prefixed, e.g. "ollama/<tag>" or "anthropic/<model>"). */
@@ -114,5 +125,5 @@ export interface CompiledFile {
 export interface CompiledWorkspace {
   readonly files: readonly CompiledFile[];
   readonly profile: MissionProfile;
-  readonly personality: PersonalityPreset;
+  readonly personality: CanonicalPersonality;
 }
