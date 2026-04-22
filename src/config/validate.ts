@@ -354,14 +354,27 @@ export function validateLM12(compose: ComposeConfig): ValidationResult {
 /**
  * LM-13: Network egress unfiltered.
  *
- * This rule checks that the compose config uses a network with ICC disabled
- * (driver_opts com.docker.network.bridge.enable_icc=false). Full firewall
- * verification requires runtime `iptables` checks via `clawhq doctor`.
+ * Two architectures pass this rule — both must have egress filtering:
+ *
+ * 1. ICC-off: the agent network declares
+ *    `driver_opts: { com.docker.network.bridge.enable_icc: "false" }`.
+ *    Blocks container-to-container traffic; egress goes through the
+ *    Docker bridge's host-path iptables rules.
+ *
+ * 2. Cred-proxy: the compose declares a `cred-proxy` service. The
+ *    agent needs ICC to reach the proxy on the shared bridge, so ICC
+ *    cannot be disabled; the iptables CLAWHQ_FWD chain is the
+ *    compensating control. Runtime presence of that chain is verified
+ *    by the `firewall-active` doctor check, not here.
+ *
+ * Either satisfies the "egress filtered" invariant. Failing both is
+ * the real misconfiguration this rule catches.
  */
 export function validateLM13(compose: ComposeConfig): ValidationResult {
   const networks = compose.networks ?? {};
-  let hasIccDisabled = false;
+  const services = compose.services ?? {};
 
+  let hasIccDisabled = false;
   for (const net of Object.values(networks)) {
     if (net.driver_opts?.["com.docker.network.bridge.enable_icc"] === "false") {
       hasIccDisabled = true;
@@ -369,15 +382,24 @@ export function validateLM13(compose: ComposeConfig): ValidationResult {
     }
   }
 
-  const passed = hasIccDisabled;
+  const hasCredProxy = "cred-proxy" in services;
+  const passed = hasIccDisabled || hasCredProxy;
+
+  let message: string;
+  if (passed) {
+    message = hasIccDisabled
+      ? "Network has ICC disabled"
+      : "Cred-proxy present — egress filtering via iptables CLAWHQ_FWD (verify runtime with clawhq doctor)";
+  } else {
+    message = "No egress filtering: network has ICC enabled AND no cred-proxy declared. Egress may be unfiltered. Run clawhq doctor to verify iptables rules";
+  }
+
   return {
     rule: "LM-13",
     passed,
     severity: "warning",
-    message: passed
-      ? "Network has ICC disabled"
-      : "No network with ICC disabled found — egress may be unfiltered. Run clawhq doctor to verify iptables rules",
-    fix: 'Add driver_opts: { "com.docker.network.bridge.enable_icc": "false" } to agent network',
+    message,
+    fix: 'Either add driver_opts: { "com.docker.network.bridge.enable_icc": "false" } to the agent network, or declare a cred-proxy service and ensure the CLAWHQ_FWD iptables chain is applied',
   };
 }
 

@@ -101,13 +101,19 @@ describe("generateBundle", () => {
     }
   });
 
-  it("sets LM-13: ICC disabled on agent network", () => {
+  it("LM-13 egress filtering is satisfied — either ICC-off or cred-proxy present", () => {
+    // The old stub unconditionally set ICC off; the new compose reflects
+    // reality: ICC off in standalone mode, ICC on + cred-proxy in proxy
+    // mode (compensated by the iptables CLAWHQ_FWD chain). LM-13 accepts
+    // either as "egress filtered".
     const bundle = generateBundle(makeAnswers());
     const networks = bundle.composeConfig.networks ?? {};
-    const hasIcc = Object.values(networks).some(
+    const services = (bundle.composeConfig.services ?? {}) as Record<string, unknown>;
+    const iccOff = Object.values(networks).some(
       (n) => n.driver_opts?.["com.docker.network.bridge.enable_icc"] === "false",
     );
-    expect(hasIcc).toBe(true);
+    const hasCredProxy = "cred-proxy" in services;
+    expect(iccOff || hasCredProxy).toBe(true);
   });
 
   it("sets LM-14: fs.workspaceOnly explicitly", () => {
@@ -682,11 +688,19 @@ describe("multi-instance support", () => {
     expect(nets2[0]).toBe("clawhq_jane_net");
   });
 
-  it("ICC is disabled on per-instance network", () => {
+  it("per-instance network carries the expected egress control", () => {
+    // ICC off in standalone mode; ICC on + cred-proxy in proxy mode
+    // (where the iptables CLAWHQ_FWD chain is the compensating control).
+    // This test just verifies the per-instance network exists and one of
+    // the two legitimate controls is in place.
     const bundle = generateBundle(makeAnswers({ instanceName: "john" }));
     const networks = bundle.composeConfig.networks ?? {};
     const net = networks["clawhq_john_net"];
-    expect(net?.driver_opts?.["com.docker.network.bridge.enable_icc"]).toBe("false");
+    expect(net).toBeDefined();
+    const iccOff = net?.driver_opts?.["com.docker.network.bridge.enable_icc"] === "false";
+    const services = (bundle.composeConfig.services ?? {}) as Record<string, unknown>;
+    const hasCredProxy = "cred-proxy" in services;
+    expect(iccOff || hasCredProxy).toBe(true);
   });
 
   it("passes full validation with instanceName set", () => {

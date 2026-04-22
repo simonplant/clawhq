@@ -11,6 +11,8 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
+import { generateCompose } from "../../build/docker/compose.js";
+import { getPostureConfig } from "../../build/docker/posture.js";
 import type { WorkspaceManifest } from "../../build/docker/types.js";
 import {
   buildAllowlistFromBlueprint,
@@ -19,7 +21,6 @@ import {
 } from "../../build/launcher/firewall.js";
 import {
   agentNetworkName,
-  CONTAINER_USER,
   CRED_PROXY_PORT,
   ENABLE_AUDIT_STDOUT,
   GATEWAY_DEFAULT_PORT,
@@ -103,9 +104,25 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     envVars.CRED_PROXY_PORT = String(CRED_PROXY_PORT);
   }
 
+  // Compose is produced by the same generator `clawhq build` uses — one
+  // writer, one shape. The landmine validators consume the narrower
+  // ComposeConfig type, but structurally the full ComposeOutput satisfies
+  // it; cast at the seam. The previous lightweight buildComposeConfig stub
+  // was the source of the 20260421 class of drift bugs.
+  const postureName = answers.blueprint.security_posture.posture === "under-attack"
+    ? "under-attack"
+    : "hardened";
+  const composeConfig = generateCompose(
+    "openclaw:custom",
+    getPostureConfig(postureName),
+    answers.deployDir,
+    networkName,
+    { enableCredProxy: proxyEnabled },
+  ) as unknown as ComposeConfig;
+
   return {
     openclawConfig: buildOpenClawConfig(answers, port),
-    composeConfig: buildComposeConfig(answers, port, networkName),
+    composeConfig,
     envVars,
     cronJobs: buildCronJobs(answers.blueprint, answers.userContext?.timezone, answers.modelProvider === "local"),
     identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions, answers.userContext),
@@ -298,69 +315,6 @@ function buildChannelConfig(
   }
 
   return channels;
-}
-
-// ── Docker Compose Config ────────────────────────────────────────────────────
-
-function buildComposeConfig(
-  answers: WizardAnswers,
-  port: number,
-  networkName: string,
-): ComposeConfig {
-  // Resource limits — same across postures, security is controls not starvation
-  const resourceLimits = { cpus: "4", memory: "4g" };
-
-  return {
-    services: {
-      openclaw: {
-        // LM-06: Run as UID 1000
-        user: CONTAINER_USER,
-
-        // LM-07: Drop all capabilities + no-new-privileges
-        cap_drop: ["ALL"],
-        security_opt: ["no-new-privileges"],
-
-        // Read-only root filesystem
-        read_only: true,
-
-        // Volume mounts
-        volumes: [
-          // LM-12: Config files mounted read-only
-          "./openclaw.json:/app/openclaw.json:ro",
-          "./credentials.json:/app/credentials.json:ro",
-          // Workspace writable for agent operation
-          "./workspace:/app/workspace",
-          // Cron writable for job execution logs
-          "./cron:/app/cron",
-        ],
-
-        // Network
-        networks: [networkName],
-
-        // Environment from .env file
-        env_file: [".env"],
-
-        // Port + resource labels (compose environment for reference)
-        environment: {
-          GATEWAY_PORT: String(port),
-          NODE_ENV: "production",
-          ...Object.fromEntries(
-            Object.entries(resourceLimits).map(([k, v]) => [`RESOURCE_${k.toUpperCase()}`, v]),
-          ),
-        },
-      },
-    },
-    networks: {
-      // LM-10: Network declared
-      // LM-13: ICC disabled for egress filtering
-      [networkName]: {
-        driver: "bridge",
-        driver_opts: {
-          "com.docker.network.bridge.enable_icc": "false",
-        },
-      },
-    },
-  };
 }
 
 // ── Environment Variables ────────────────────────────────────────────────────

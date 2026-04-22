@@ -131,16 +131,13 @@ describe("compose parity — generateCompose satisfies every landmine the stub d
       expect(validateLM12(compose).passed).toBe(true);
     });
 
-    // Known drift: when cred-proxy is enabled, clawhq_net intentionally
-    // leaves ICC on so the agent can reach the proxy sidecar on the same
-    // bridge; the egress firewall is the compensating control. LM-13's
-    // "any network has ICC disabled" premise doesn't model that
-    // architecture, so it fails with sidecars. The validator needs a
-    // rewrite that understands cred-proxy mode (separate follow-up) —
-    // deleting `buildComposeConfig` is gated on fixing LM-13, not on
-    // suppressing this failure.
-    it.skip("LM-13 ICC disabled — known drift in cred-proxy mode (follow-up)", () => {
-      expect(validateLM13(compose).passed).toBe(true);
+    // LM-13 now understands the two legitimate architectures:
+    // ICC-disabled-for-standalone OR cred-proxy-present-with-firewall.
+    // Either satisfies the "egress filtered" invariant.
+    it("LM-13 recognizes cred-proxy as the egress-filter control", () => {
+      const result = validateLM13(compose);
+      expect(result.passed).toBe(true);
+      expect(result.message).toContain("Cred-proxy");
     });
   });
 });
