@@ -13,6 +13,7 @@ from typing import Any
 
 import websockets
 from websockets.asyncio.client import connect as ws_connect
+from websockets.protocol import State
 
 from ..config import TRADIER_WS_MARKET, TRADIER_WS_SANDBOX_MARKET
 from .reconnect import ReconnectState, is_market_hours, seconds_until_market_open
@@ -43,7 +44,9 @@ class MarketStream:
 
     @property
     def connected(self) -> bool:
-        return self._ws is not None and self._ws.open
+        # websockets 13+ removed ClientConnection.open; state is the
+        # supported surface.
+        return self._ws is not None and self._ws.state is State.OPEN
 
     @property
     def degraded(self) -> bool:
@@ -57,7 +60,7 @@ class MarketStream:
         """Update the symbol set. Triggers resubscribe on next tick if connected."""
         old = self._symbols
         self._symbols = set(symbols)  # Defensive copy
-        if old != self._symbols and self._ws and self._ws.open:
+        if old != self._symbols and self._ws is not None and self._ws.state is State.OPEN:
             # Schedule resubscribe (fire-and-forget)
             try:
                 loop = asyncio.get_running_loop()
@@ -142,7 +145,7 @@ class MarketStream:
 
     async def _resubscribe(self) -> None:
         """Resend subscribe payload with updated symbols (no reconnect needed)."""
-        if self._ws and self._ws.open:
+        if self._ws is not None and self._ws.state is State.OPEN:
             try:
                 await self._subscribe(self._ws)
                 logger.info("Resubscribed with %d symbols", len(self._symbols))

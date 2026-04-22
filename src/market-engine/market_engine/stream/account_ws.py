@@ -12,6 +12,7 @@ from typing import Any
 
 import websockets
 from websockets.asyncio.client import connect as ws_connect
+from websockets.protocol import State
 
 from ..config import TRADIER_WS_ACCOUNT, TRADIER_WS_SANDBOX_ACCOUNT
 from .reconnect import ReconnectState, is_market_hours, seconds_until_market_open
@@ -35,7 +36,10 @@ class AccountStream:
 
     @property
     def connected(self) -> bool:
-        return self._ws is not None and self._ws.open
+        # websockets 13+ removed ClientConnection.open; state is the
+        # supported surface. Returns True only when the handshake has
+        # completed and the connection hasn't started closing.
+        return self._ws is not None and self._ws.state is State.OPEN
 
     @property
     def degraded(self) -> bool:
