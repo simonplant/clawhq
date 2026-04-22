@@ -149,7 +149,7 @@ export async function deploy(options: DeployOptions): Promise<DeployResult> {
       // says it's broken/stale, fail loudly and tell the user which primitive
       // regenerates it. The previous self-heal silently rewrote compose on
       // every trip — but its sidecar detection was partial, so it routinely
-      // dropped cred-proxy / market-engine / clawdius-trading services and
+      // dropped cred-proxy / clawdius-trading services and
       // caused the "compose stub recurrence" bug class. Loud failure +
       // explicit remediation is the correct config-management behavior.
       const errors = preflight.failed

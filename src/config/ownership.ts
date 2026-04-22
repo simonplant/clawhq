@@ -131,8 +131,6 @@ export const OWNERSHIP_RULES: readonly OwnershipRule[] = [
     reason: "workspace integrity manifest for drift detection" },
   { pattern: "engine/clawwall/**", owner: "build",
     reason: "ClawWall security wrapper (curl-egress-wrapper, etc.)" },
-  { pattern: "engine/market-engine/**", owner: "clawhq",
-    reason: "market-engine sidecar container (real-time streaming)" },
   { pattern: "engine/clawdius-trading/**", owner: "clawhq",
     reason: "clawdius-trading sidecar container (alert-grade trading assistant)" },
   { pattern: "engine/credentials", owner: "openclaw",

@@ -126,9 +126,6 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   // Get image info for manifest
   const imageInfo = await getImageInfo(stage2Tag);
 
-  // Stage market-engine sidecar if source exists in the repo
-  await stageMarketEngine(engineDir);
-
   // Stage clawdius-trading sidecar if source exists in the repo
   await stageClawdiusTrading(engineDir);
 
@@ -138,11 +135,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   const credProxyRoutesPath = join(engineDir, "cred-proxy-routes.json");
   const enableCredProxy = existsSync(credProxyScriptPath) && existsSync(credProxyRoutesPath);
 
-  // Auto-detect market-engine: if the market-engine directory exists with a Dockerfile, enable the sidecar
-  const marketEngineDir = join(engineDir, "market-engine");
-  const enableMarketEngine = existsSync(join(marketEngineDir, "Dockerfile"));
-
-  // Auto-detect clawdius-trading: same pattern.
+  // Auto-detect clawdius-trading: if the Dockerfile exists, enable the sidecar.
   const clawdiusTradingDir = join(engineDir, "clawdius-trading");
   const enableClawdiusTrading = existsSync(
     join(clawdiusTradingDir, "Dockerfile"),
@@ -167,8 +160,6 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
     credProxyScriptPath,
     credProxyRoutesPath,
     workspaceManifest: stage2.workspace,
-    enableMarketEngine,
-    marketEngineDir,
     enableClawdiusTrading,
     clawdiusTradingDir,
     readOnlyHostMounts,
@@ -333,37 +324,6 @@ async function stageVendorFiles(engineDir: string): Promise<void> {
 }
 
 /**
- * Stage the market-engine sidecar into engine/market-engine/ for Docker build.
- *
- * Looks for src/market-engine/ relative to the ClawHQ project root.
- * Copies the entire Python project (excluding __pycache__, .egg-info, .pytest_cache)
- * into the engine directory so docker-compose can build it as a sidecar.
- */
-async function stageMarketEngine(engineDir: string): Promise<void> {
-  // Resolve project root: this file is at src/build/docker/build.ts → 3 levels up
-  const projectRoot = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
-  const sourceDir = join(projectRoot, "src", "market-engine");
-
-  if (!existsSync(join(sourceDir, "Dockerfile"))) return;
-
-  const destDir = join(engineDir, "market-engine");
-  await mkdir(destDir, { recursive: true });
-
-  cpSync(sourceDir, destDir, {
-    recursive: true,
-    filter: (src) => {
-      // Skip build artifacts, caches, and dev-only files
-      const name = src.split("/").pop() ?? "";
-      if (name === "__pycache__" || name === ".pytest_cache") return false;
-      if (name.endsWith(".egg-info")) return false;
-      if (name === ".gitignore") return false;
-      if (name === "tests") return false; // Don't ship tests in the container
-      return true;
-    },
-  });
-}
-
-/**
  * Stage the clawdius-trading sidecar into engine/clawdius-trading/ for Docker build.
  *
  * Copies src/trading/ to engine/clawdius-trading/src/ so the container's
@@ -521,53 +481,6 @@ export function serializeYaml(compose: ReturnType<typeof generateCompose>): stri
     lines.push(`      interval: ${cp.healthcheck.interval}`);
     lines.push(`      timeout: ${cp.healthcheck.timeout}`);
     lines.push(`      retries: ${cp.healthcheck.retries}`);
-  }
-
-  // Market-engine sidecar
-  if (compose.services["market-engine"]) {
-    const me = compose.services["market-engine"];
-    lines.push("", "  market-engine:");
-    lines.push("    build:");
-    lines.push(`      context: ${me.build.context}`);
-    lines.push(`      dockerfile: ${me.build.dockerfile}`);
-    lines.push(`    user: "${me.user}"`);
-    lines.push(`    read_only: ${me.read_only}`);
-    lines.push(`    restart: ${me.restart}`);
-    lines.push("    cap_drop:");
-    for (const cap of me.cap_drop) lines.push(`      - ${cap}`);
-    lines.push("    security_opt:");
-    for (const opt of me.security_opt) lines.push(`      - ${opt}`);
-    lines.push("    volumes:");
-    for (const v of me.volumes) lines.push(`      - "${v}"`);
-    lines.push("    networks:");
-    for (const n of me.networks) lines.push(`      - ${n}`);
-    lines.push("    env_file:");
-    for (const e of me.env_file) lines.push(`      - ${e}`);
-    lines.push("    environment:");
-    for (const [key, val] of Object.entries(me.environment)) {
-      lines.push(`      ${key}: "${val}"`);
-    }
-    lines.push("    tmpfs:");
-    for (const t of me.tmpfs) lines.push(`      - "${t}"`);
-    if (me.depends_on && Object.keys(me.depends_on).length > 0) {
-      lines.push("    depends_on:");
-      for (const [svc, cond] of Object.entries(me.depends_on)) {
-        lines.push(`      ${svc}:`);
-        lines.push(`        condition: ${(cond as { condition: string }).condition}`);
-      }
-    }
-    lines.push("    healthcheck:");
-    lines.push("      test:");
-    for (const t of me.healthcheck.test) {
-      if (t.includes('"')) {
-        lines.push(`        - '${t}'`);
-      } else {
-        lines.push(`        - "${t}"`);
-      }
-    }
-    lines.push(`      interval: ${me.healthcheck.interval}`);
-    lines.push(`      timeout: ${me.healthcheck.timeout}`);
-    lines.push(`      retries: ${me.healthcheck.retries}`);
   }
 
   // Clawdius-trading sidecar
