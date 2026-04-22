@@ -1,0 +1,35 @@
+{
+  "orders": [
+    {
+      "sequence": 1,
+      "source": "mancini",
+      "accounts": ["tos"],
+      "ticker": "ES",
+      "execAs": "/MES",
+      "direction": "LONG",
+      "setup": "Failed Breakdown — \"quality Failed Breakdown\"",
+      "why": "clean reclaim of 7085 support, NAP entry above sig low",
+      "entry": 7090,
+      "entryOrderType": "LMT",
+      "stop": 7078,
+      "stopSource": "flush-4",
+      "t1": 7105,
+      "t1Source": "next R",
+      "t2": 7120,
+      "t2Source": "next major R",
+      "runner": "10% trail BE after T1",
+      "riskPerShare": 12,
+      "quantity": 2,
+      "totalRisk": 120,
+      "confirmation": "CONFIRMED",
+      "conviction": "HIGH",
+      "confluence": "none",
+      "caveat": "none",
+      "kills": ["lose_7078"],
+      "activation": "immediate",
+      "verify": "none",
+      "status": "ACTIVE"
+    }
+  ],
+  "warnings": []
+}

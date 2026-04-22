@@ -1,0 +1,35 @@
+{
+  "orders": [
+    {
+      "sequence": 2,
+      "source": "dp",
+      "accounts": ["tos", "ira", "tradier"],
+      "ticker": "AMZN",
+      "execAs": "AMZN",
+      "direction": "LONG",
+      "setup": "pullback to 21d MA — \"I'm a buyer at X\"",
+      "why": "DP named level on pullback, quality name",
+      "entry": 241.5,
+      "entryOrderType": "LMT",
+      "stop": 236.5,
+      "stopSource": "stated",
+      "t1": 248,
+      "t1Source": "stated",
+      "t2": 254,
+      "t2Source": "next R",
+      "runner": "10% trail BE after T1",
+      "riskPerShare": 5,
+      "quantity": 100,
+      "totalRisk": 500,
+      "confirmation": "PENDING_TA",
+      "conviction": "MEDIUM",
+      "confluence": "none",
+      "caveat": "overbought broader market",
+      "kills": ["dp_flat", "gap_killed"],
+      "activation": "pullback_to_entry",
+      "verify": "earnings_window",
+      "status": "CONDITIONAL"
+    }
+  ],
+  "warnings": []
+}

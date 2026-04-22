@@ -1,0 +1,5 @@
+**/*.test.ts
+**/*.test.js
+extract/golden/**
+node_modules
+dist

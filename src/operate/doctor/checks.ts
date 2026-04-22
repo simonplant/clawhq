@@ -162,6 +162,7 @@ export async function runChecks(
     checkModelAgenticCapable(deployDir),
     checkDeployUnclassified(deployDir),
     checkHousekeepingDebris(deployDir),
+    checkClawdiusTradingHealthy(deployDir, signal),
   ]);
 }
 
@@ -1711,6 +1712,98 @@ async function checkOpsSecurityMonitor(
   }
 
   return ok(name, "Security monitor timer is active");
+}
+
+// ── Clawdius-Trading Healthy ──────────────────────────────────────────────
+
+/**
+ * Check that the clawdius-trading sidecar is reachable, its plan is loaded,
+ * and no Signal-channel failures are unresolved. Skipped entirely when the
+ * sidecar wasn't staged (src/trading/ absent from the engine directory).
+ */
+async function checkClawdiusTradingHealthy(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "clawdius-trading-healthy";
+
+  // Skip silently when the sidecar isn't enabled for this deployment.
+  const dockerfilePath = join(deployDir, "engine", "clawdius-trading", "Dockerfile");
+  try {
+    await access(dockerfilePath, constants.R_OK);
+  } catch {
+    return ok(name, "Clawdius-trading sidecar not enabled (optional)", "info");
+  }
+
+  try {
+    const { stdout } = await execFileAsync(
+      "docker",
+      [
+        "compose",
+        "-f",
+        join(deployDir, "engine", "docker-compose.yml"),
+        "exec",
+        "-T",
+        "clawdius-trading",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:8080/health').then(r=>r.json()).then(j=>console.log(JSON.stringify(j))).catch(e=>{console.error(e.message);process.exit(1)})",
+      ],
+      { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
+    );
+
+    const health = JSON.parse(stdout.trim()) as {
+      status?: string;
+      planLoaded?: boolean;
+      orderCount?: number;
+      pollFailures?: number;
+      pendingAlertCount?: number;
+      manualHalt?: boolean;
+    };
+
+    if (health.status !== "ready") {
+      return fail(
+        name,
+        "error",
+        `Clawdius-trading status: ${health.status ?? "unknown"}`,
+        "Check logs: docker compose logs clawdius-trading",
+      );
+    }
+    if (health.pollFailures !== undefined && health.pollFailures > 10) {
+      return fail(
+        name,
+        "warning",
+        `Clawdius-trading poll failing (${health.pollFailures} consecutive)`,
+        "Check Tradier / cred-proxy connectivity",
+      );
+    }
+    if (health.planLoaded === false) {
+      return fail(
+        name,
+        "warning",
+        "Clawdius-trading running but no plan loaded — edit workspace/memory/trading-YYYY-MM-DD.md",
+        "Publish today's brief (OpenClaw morning synthesis or manual edit)",
+      );
+    }
+    if (health.manualHalt) {
+      return fail(
+        name,
+        "info",
+        "Clawdius-trading is MANUAL HALTed — text `resume` to the Signal number to clear",
+      );
+    }
+    return ok(
+      name,
+      `Clawdius-trading healthy: ${health.orderCount ?? 0} orders loaded, ${health.pendingAlertCount ?? 0} pending`,
+    );
+  } catch {
+    return fail(
+      name,
+      "warning",
+      "Clawdius-trading health check failed (container may not be running)",
+      "Run: clawhq up",
+    );
+  }
 }
 
 // ── 27. Credential Proxy Healthy ──────────────────────────────────────────

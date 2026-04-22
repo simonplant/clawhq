@@ -49,7 +49,8 @@ export type DoctorCheckName =
   | "loop-detection-enabled"
   | "model-agentic-capable"
   | "deploy-unclassified"
-  | "housekeeping-debris";
+  | "housekeeping-debris"
+  | "clawdius-trading-healthy";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 
