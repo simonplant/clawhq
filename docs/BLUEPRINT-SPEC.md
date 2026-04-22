@@ -89,7 +89,7 @@ use_case_mapping:
 
 ### `personality`
 
-> **DEPRECATED.** Personality is not a product axis. One professional default tone ships with all ClawHQ blueprints. New blueprints should omit this section entirely and use `soul_overrides` (free text) for tone customization. This section remains for legacy blueprint compatibility only.
+Personality is not a product axis. Every ClawHQ agent ships the canonical "LifeOps, no BS" tone (see [docs/design/PERSONALITY-MODEL.md](design/PERSONALITY-MODEL.md)). The `personality` section in a blueprint carries **only prose fields** that SOUL.md surfaces alongside the canonical dimension prose.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -97,21 +97,8 @@ use_case_mapping:
 | `style` | string | Yes | Behavioral style description. |
 | `relationship` | string | Yes | How the agent relates to the user (e.g., `"email operations manager"`). |
 | `boundaries` | string | Yes | Behavioral boundaries the agent must respect. |
-| `dimensions` | object | No | 7-axis dimension overrides (power-user feature — most users ignore this). |
 
-#### Dimension Overrides (optional, power-user)
-
-The compiler supports 7 dimension axes for fine-tuning the generated SOUL.md. When present, all 7 must be provided. Most users never touch these — `soul_overrides` free text is simpler and more expressive.
-
-| Dimension | Scale | 1 | 5 |
-|-----------|-------|---|---|
-| `directness` | 1-5 | Diplomatic | Blunt |
-| `warmth` | 1-5 | Clinical | Nurturing |
-| `verbosity` | 1-5 | Minimal | Exhaustive |
-| `proactivity` | 1-5 | Reactive | Autonomous |
-| `caution` | 1-5 | Bold | Conservative |
-| `formality` | 1-5 | Casual | Corporate |
-| `analyticalDepth` | 1-5 | Action-oriented | Scholarly |
+Blueprints MUST NOT carry a `dimensions:` block — the 7-dimension vector is the canonical one baked into the compiler. Users customize tone via top-level `soul_overrides` free text in their `clawhq.yaml`, not the blueprint.
 
 ```yaml
 personality:
@@ -119,14 +106,6 @@ personality:
   style: "efficient, no fluff, protective of attention"
   relationship: email operations manager
   boundaries: "never sends without approval on first contact"
-  dimensions:
-    directness: 5
-    warmth: 2
-    verbosity: 2
-    proactivity: 4
-    caution: 3
-    formality: 3
-    analyticalDepth: 2
 ```
 
 ---
@@ -486,7 +465,7 @@ ClawHQ runs 70+ validation checks against every blueprint. Checks are classified
 | Array fields | Must be arrays of strings where documented. |
 | `security_posture.identity_mount` | Must be `"read-only"`. No other value is accepted. |
 | `channels.default` | Must appear in `channels.supported`. |
-| `personality.dimensions` | If present, all 7 dimensions required; each must be integer 1-5. |
+| `personality.dimensions` | Must NOT be present. Dimensions are canonical, not per-blueprint. |
 | `customization_questions` | Max 3; unique IDs; `options` required for `"select"` type. |
 | `toolbelt.tools[*]` | Each must have `name`, `category`, `description` (strings) and `required` (boolean). |
 | `toolbelt.skills[*]` | Each must have `name`, `description` (strings) and `required` (boolean). |
@@ -575,8 +554,8 @@ use_case_mapping:
   description: "A minimal agent that performs web research on demand."
   day_in_the_life: "You ask a question. The agent researches and responds."
 
-# personality: omitted — uses default professional tone
-# customize via soul_overrides in config if needed
+# personality is required — carries prose fields. Dimensions are canonical (not per-blueprint).
+# Users customize tone via soul_overrides in clawhq.yaml
 
 security_posture:
   posture: paranoid
@@ -685,8 +664,8 @@ customization_questions:
       - "Auto-reply to routine messages only"
       - "Auto-reply freely — I trust the agent's judgment"
 
-# personality: omitted — uses default professional tone
-# customize via soul_overrides in config if needed
+# personality is required — carries prose fields. Dimensions are canonical (not per-blueprint).
+# Users customize tone via soul_overrides in clawhq.yaml
 
 security_posture:
   posture: hardened
@@ -833,8 +812,8 @@ customization_questions:
     type: input
     default: ""
 
-# personality: omitted — uses default professional tone
-# customize via soul_overrides in config if needed
+# personality is required — carries prose fields. Dimensions are canonical (not per-blueprint).
+# Users customize tone via soul_overrides in clawhq.yaml
 
 security_posture:
   posture: hardened

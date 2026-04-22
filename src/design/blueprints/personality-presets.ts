@@ -1,12 +1,37 @@
 /**
- * Personality presets, dimension prose map, and always-on security boundaries.
+ * Canonical personality vector, dimension prose map, and always-on security boundaries.
  *
- * Presets are hardcoded constants — they ship with ClawHQ.
- * The prose map renders dimension values (1-5) into SOUL.md sentences.
- * Always-on boundaries are injected into every generated SOUL.md.
+ * ClawHQ ships ONE personality — "LifeOps, no BS." The 7-dimension engine exists
+ * to render that single vector into SOUL.md prose. It is not a user-facing picker.
+ * User customization flows through `soul_overrides` free text only.
  */
 
 import type { PersonalityDimensions, DimensionId } from "./types.js";
+
+// ── Canonical Personality Vector ─────────────────────────────────────────────
+
+/**
+ * The single personality vector ClawHQ ships with every agent.
+ *
+ * - directness:       5 (Blunt) — no sugarcoating, gets to the point
+ * - warmth:           3 (Friendly) — human, not corporate, but not a companion
+ * - verbosity:        2 (Concise) — terse, no ceremony
+ * - proactivity:      4 (Proactive) — anticipates, proposes; approval gates govern execution
+ * - caution:          2 (Confident) — speaks without hedging (policy governs action)
+ * - formality:        2 (Relaxed) — informal tone with professional substance
+ * - analyticalDepth:  5 (max) — rigorous thinking, cites frameworks, weighs edges
+ *
+ * Not configurable. Users customize via `soul_overrides` free text.
+ */
+export const CANONICAL_DIMENSIONS: PersonalityDimensions = {
+  directness: 5,
+  warmth: 3,
+  verbosity: 2,
+  proactivity: 4,
+  caution: 2,
+  formality: 2,
+  analyticalDepth: 5,
+} as const;
 
 // ── Always-On Security Boundaries ────────────────────────────────────────────
 
@@ -25,63 +50,6 @@ export const ALWAYS_ON_BOUNDARIES: readonly string[] = [
   "Never assist with actions that would harm the user, third parties, or bypass legal obligations",
   "Always maintain audit trail for tool executions and external communications",
   "Always require approval before first contact with any new external party",
-] as const;
-
-// ── Dimension Metadata ───────────────────────────────────────────────────────
-
-export interface DimensionMeta {
-  readonly id: DimensionId;
-  readonly label: string;
-  readonly group: "communication" | "working" | "cognitive";
-  readonly labels: readonly [string, string, string, string, string]; // 1-5
-}
-
-export const DIMENSION_META: readonly DimensionMeta[] = [
-  // Group A: Communication Style
-  {
-    id: "directness",
-    label: "Directness",
-    group: "communication",
-    labels: ["Diplomatic", "Tactful", "Balanced", "Forthright", "Blunt"],
-  },
-  {
-    id: "warmth",
-    label: "Warmth",
-    group: "communication",
-    labels: ["Clinical", "Polite", "Friendly", "Warm", "Nurturing"],
-  },
-  {
-    id: "verbosity",
-    label: "Verbosity",
-    group: "communication",
-    labels: ["Minimal", "Concise", "Moderate", "Detailed", "Exhaustive"],
-  },
-  // Group B: Working Style
-  {
-    id: "proactivity",
-    label: "Proactivity",
-    group: "working",
-    labels: ["Reactive", "Responsive", "Anticipatory", "Proactive", "Autonomous"],
-  },
-  {
-    id: "caution",
-    label: "Caution",
-    group: "working",
-    labels: ["Bold", "Confident", "Measured", "Careful", "Conservative"],
-  },
-  // Group C: Cognitive Style
-  {
-    id: "formality",
-    label: "Formality",
-    group: "cognitive",
-    labels: ["Casual", "Relaxed", "Business", "Professional", "Corporate"],
-  },
-  {
-    id: "analyticalDepth",
-    label: "Analytical Depth",
-    group: "cognitive",
-    labels: ["Action-oriented", "Practical", "Analytical", "Thorough", "Scholarly"],
-  },
 ] as const;
 
 // ── Dimension Prose Map ──────────────────────────────────────────────────────
@@ -142,52 +110,6 @@ export const DIMENSION_PROSE: Record<DimensionId, readonly [string, string, stri
   ],
 };
 
-// ── Presets ───────────────────────────────────────────────────────────────────
-
-export interface PersonalityPreset {
-  readonly id: string;
-  readonly label: string;
-  readonly dimensions: PersonalityDimensions;
-}
-
-export const PERSONALITY_PRESETS: readonly PersonalityPreset[] = [
-  {
-    id: "executive-assistant",
-    label: "Executive Assistant",
-    dimensions: { directness: 5, warmth: 2, verbosity: 2, proactivity: 4, caution: 3, formality: 3, analyticalDepth: 2 },
-  },
-  {
-    id: "family-coordinator",
-    label: "Family Coordinator",
-    dimensions: { directness: 3, warmth: 4, verbosity: 3, proactivity: 4, caution: 3, formality: 1, analyticalDepth: 2 },
-  },
-  {
-    id: "research-partner",
-    label: "Research Partner",
-    dimensions: { directness: 3, warmth: 1, verbosity: 4, proactivity: 1, caution: 4, formality: 4, analyticalDepth: 5 },
-  },
-  {
-    id: "chief-of-staff",
-    label: "Chief of Staff",
-    dimensions: { directness: 4, warmth: 3, verbosity: 2, proactivity: 5, caution: 2, formality: 3, analyticalDepth: 3 },
-  },
-  {
-    id: "professional-aide",
-    label: "Professional Aide",
-    dimensions: { directness: 3, warmth: 3, verbosity: 3, proactivity: 3, caution: 3, formality: 4, analyticalDepth: 3 },
-  },
-  {
-    id: "trusted-steward",
-    label: "Trusted Steward",
-    dimensions: { directness: 4, warmth: 3, verbosity: 2, proactivity: 4, caution: 3, formality: 2, analyticalDepth: 2 },
-  },
-  {
-    id: "thoughtful-writer",
-    label: "Thoughtful Writer",
-    dimensions: { directness: 2, warmth: 2, verbosity: 4, proactivity: 1, caution: 4, formality: 3, analyticalDepth: 4 },
-  },
-] as const;
-
 // ── Rendering Helpers ────────────────────────────────────────────────────────
 
 /**
@@ -220,11 +142,4 @@ export function renderAllDimensionsProse(dims: PersonalityDimensions): {
       renderDimensionProse("analyticalDepth", dims.analyticalDepth),
     ].join(" "),
   };
-}
-
-/**
- * Find a preset by ID.
- */
-export function findPreset(id: string): PersonalityPreset | undefined {
-  return PERSONALITY_PRESETS.find((p) => p.id === id);
 }

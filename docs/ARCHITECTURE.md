@@ -153,14 +153,12 @@ COMPOSITION:
   Blueprint
   ┌──────────────────────────────────────────────┐
   │ name                                         │
-  │ tone ────────────→ default + overrides        │
+  │ tone ─────→ canonical vector (not blueprint) │
   │ capabilities[] ──→ Capability[]     (planned)│
   │ extra_tools[] ───→ Tool[]     (escape hatch) │
-  │ dimension_overrides   (power-user, optional) │
   │ soul_overrides        (free-text append)     │
   │ toolbelt.tools[] ─→ Tool[]          (current)│
   │ skill_bundle[] ───→ Skill[]         (current)│
-  │ personality.dimensions               (current)│
   │ autonomy_model      (single, agent-wide)     │
   │ security_posture                             │
   │ memory_policy                                │
@@ -190,9 +188,9 @@ COMPOSITION:
    └── → Surface conflict to user, force a choice
 
 3. Compose and coherence pass (LLM-assisted)
-   └── Resolve persona → SOUL.md template with {{slots}}
+   └── Render canonical personality vector → SOUL.md prose sections
    └── Inject capability soul_fragments into template slots
-   └── Apply dimension_overrides + soul_overrides
+   └── Append soul_overrides (user free-text)
    └── Read assembled SOUL.md, identify tonal contradictions
    └── Smooth without losing intent
    └── Show diff to user for approval

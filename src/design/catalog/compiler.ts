@@ -1,9 +1,11 @@
 /**
- * Composition compiler — profile + personality → complete workspace.
+ * Composition compiler — profile + canonical personality → complete workspace.
  *
- * Takes a mission profile (WHAT), personality preset (HOW), and user config,
- * then compiles them into the 8 OpenClaw workspace files + openclaw.json +
- * .env + cron/jobs.json.
+ * Takes a mission profile (WHAT) and user config, loads the canonical ClawHQ
+ * personality, and compiles them into the 8 OpenClaw workspace files +
+ * openclaw.json + .env + cron/jobs.json. Personality is not a composition
+ * axis — every agent uses CANONICAL_DIMENSIONS; users customize tone through
+ * `config.soul_overrides` free text only.
  *
  * No intermediate abstractions survive — output is flat files ready
  * for the deployment directory.

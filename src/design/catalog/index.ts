@@ -1,24 +1,25 @@
 /**
- * Catalog module — mission profiles × personality presets.
+ * Catalog module — mission profiles + canonical personality.
  *
  * Profiles define WHAT the agent does (tools, cron, integrations, autonomy).
- * Personalities define HOW the agent does it (tone, values, voice, anti-patterns).
- * The compiler resolves profile + personality into flat workspace files.
+ * The canonical personality defines HOW (tone, voice, anti-patterns) — one
+ * shipped vector, not a picker. The compiler resolves profile + canonical
+ * personality into flat workspace files. Users customize tone via
+ * `soul_overrides` free text.
  */
 
 export type {
+  CanonicalPersonality,
   CompiledFile,
   CompiledWorkspace,
   CompositionConfig,
   MissionProfile,
-  PersonalityPreset,
   UserConfig,
 } from "./types.js";
 
 export {
-  loadAllPersonalities,
   loadAllProfiles,
-  loadPersonality,
+  loadCanonicalPersonality,
   loadProfile,
 } from "./loader.js";
 

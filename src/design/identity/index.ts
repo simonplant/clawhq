@@ -15,7 +15,7 @@
  */
 
 import { BOOTSTRAP_MAX_CHARS } from "../../config/defaults.js";
-import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
+import type { Blueprint } from "../blueprints/types.js";
 import type { UserContext } from "../configure/types.js";
 
 import { generateAgents } from "./agents.js";
@@ -58,14 +58,14 @@ export function generateIdentityFiles(
   blueprint: Blueprint,
   maxChars: number = DEFAULT_MAX_CHARS,
   customizationAnswers: Readonly<Record<string, string>> = {},
-  personalityDimensions?: PersonalityDimensions,
+  soulOverrides?: string,
   userContext?: UserContext,
 ): IdentityFileContent[] {
   const files: IdentityFileContent[] = [
     {
       name: "SOUL.md",
       relativePath: "workspace/identity/SOUL.md",
-      content: generateSoul(blueprint, customizationAnswers, personalityDimensions),
+      content: generateSoul(blueprint, customizationAnswers, soulOverrides),
     },
     {
       name: "AGENTS.md",

@@ -98,7 +98,6 @@ describe("apply", () => {
 version: 0.2.0
 composition:
   profile: life-ops
-  personality: digital-assistant
 `);
     // Write a USER.md so it doesn't use defaults
     await writeFile(join(testDir, "workspace", "USER.md"), `# About You
@@ -112,9 +111,12 @@ composition:
     expect(result.success).toBe(true);
     expect(result.report.added.length + result.report.changed.length).toBeGreaterThan(0);
 
-    // Verify key files were written
+    // SOUL.md carries the canonical ClawHQ personality — the name is derived
+    // from configs/personalities/canonical.yaml and the prose from
+    // CANONICAL_DIMENSIONS rendered through DIMENSION_PROSE.
     const soulMd = await readFile(join(testDir, "workspace", "SOUL.md"), "utf-8");
-    expect(soulMd).toContain("Digital Assistant");
+    expect(soulMd).toContain("ClawHQ Agent");
+    expect(soulMd).toContain("blunt and unvarnished");
 
     const agentsMd = await readFile(join(testDir, "workspace", "AGENTS.md"), "utf-8");
     expect(agentsMd.length).toBeGreaterThan(0);

@@ -1,8 +1,11 @@
 /**
- * Catalog loader — reads mission profiles and personality presets from YAML.
+ * Catalog loader — reads mission profiles and the canonical personality from YAML.
  *
  * Profiles: configs/profiles/*.yaml
- * Personalities: configs/personalities/*.yaml
+ * Canonical personality: configs/personalities/canonical.yaml (fixed filename)
+ *
+ * There is no personality picker — every agent uses the one canonical
+ * personality ClawHQ ships with. Users customize tone via `soul_overrides`.
  */
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -10,7 +13,7 @@ import { join, resolve } from "node:path";
 
 import { parse as yamlParse } from "yaml";
 
-import type { MissionProfile, PersonalityPreset } from "./types.js";
+import type { CanonicalPersonality, MissionProfile } from "./types.js";
 
 // ── Config Directory ────────────────────────────────────────────────────────
 
@@ -22,7 +25,7 @@ function findConfigsDir(): string {
   return join(process.cwd(), "configs");
 }
 
-// ── Generic Loader ──────────────────────────────────────────────────────────
+// ── Profiles ────────────────────────────────────────────────────────────────
 
 function loadYamlDir<T>(subdir: string): T[] {
   const dir = join(findConfigsDir(), subdir);
@@ -41,29 +44,38 @@ function loadYamlDir<T>(subdir: string): T[] {
     .filter((item): item is T => item !== null && typeof item === "object" && "id" in (item as Record<string, unknown>));
 }
 
-function loadById<T extends { id: string }>(items: T[], id: string, kind: string): T {
-  const found = items.find((item) => item.id === id);
-  if (!found) {
-    const available = items.map((item) => item.id).join(", ");
-    throw new Error(`${kind} "${id}" not found. Available: ${available || "none"}`);
-  }
-  return found;
-}
-
-// ── Public API ──────────────────────────────────────────────────────────────
-
 export function loadAllProfiles(): MissionProfile[] {
   return loadYamlDir<MissionProfile>("profiles");
 }
 
 export function loadProfile(id: string): MissionProfile {
-  return loadById(loadAllProfiles(), id, "Profile");
+  const profiles = loadAllProfiles();
+  const found = profiles.find((p) => p.id === id);
+  if (!found) {
+    const available = profiles.map((p) => p.id).join(", ");
+    throw new Error(`Profile "${id}" not found. Available: ${available || "none"}`);
+  }
+  return found;
 }
 
-export function loadAllPersonalities(): PersonalityPreset[] {
-  return loadYamlDir<PersonalityPreset>("personalities");
-}
+// ── Canonical Personality ───────────────────────────────────────────────────
 
-export function loadPersonality(id: string): PersonalityPreset {
-  return loadById(loadAllPersonalities(), id, "Personality");
+const CANONICAL_PERSONALITY_FILE = "canonical.yaml";
+
+/**
+ * Load the canonical ClawHQ personality.
+ *
+ * There is only one — the file lives at `configs/personalities/canonical.yaml`.
+ */
+export function loadCanonicalPersonality(): CanonicalPersonality {
+  const path = join(findConfigsDir(), "personalities", CANONICAL_PERSONALITY_FILE);
+  if (!existsSync(path)) {
+    throw new Error(`Canonical personality file missing: ${path}`);
+  }
+  const content = readFileSync(path, "utf-8");
+  const parsed = yamlParse(content) as CanonicalPersonality | null;
+  if (!parsed || typeof parsed !== "object" || !("id" in parsed)) {
+    throw new Error(`Invalid canonical personality file: ${path}`);
+  }
+  return parsed;
 }

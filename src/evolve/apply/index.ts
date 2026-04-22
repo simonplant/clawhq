@@ -115,7 +115,6 @@ async function applyCore(
     const comp = raw.composition as
       | {
           profile?: string;
-          personality?: string;
           providers?: Record<string, string>;
           model?: string;
           modelContextWindow?: number;
@@ -128,7 +127,9 @@ async function applyCore(
       return { success: false, error: "clawhq.yaml has no composition.profile", report: emptyReport() };
     }
 
-    report("read", "done", `Profile: ${comp.profile}, Personality: ${comp.personality ?? "default"}`);
+    const soulOverrides = typeof raw.soul_overrides === "string" ? raw.soul_overrides : undefined;
+
+    report("read", "done", `Profile: ${comp.profile}`);
 
     // Extract optional top-level access block (runtime host-file mounts, etc.)
     const accessRaw = raw.access as Record<string, unknown> | undefined;
@@ -149,11 +150,11 @@ async function applyCore(
     const compiled = compile(
       {
         profile: comp.profile,
-        personality: comp.personality ?? "digital-assistant",
         providers: comp.providers,
         model: comp.model,
         modelContextWindow: comp.modelContextWindow,
         modelFallbacks: comp.modelFallbacks,
+        soul_overrides: soulOverrides,
       },
       user,
       deployDir,

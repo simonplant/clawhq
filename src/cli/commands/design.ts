@@ -18,7 +18,6 @@ import {
   getDomains,
   getProvider,
   getProvidersForDomain,
-  loadAllPersonalities,
   loadAllProfiles,
 } from "../../design/catalog/index.js";
 import {
@@ -186,33 +185,32 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
                 deployDir: opts.deployDir,
                 airGapped: opts.airGapped,
               });
-          forgeFromAnswers(answers);
+          await forgeFromAnswers(answers);
           return;
         }
 
         if (opts.config) {
-          // Composition configs (profile × personality) compile directly;
-          // legacy blueprint configs go through the shared forge pipeline.
+          // Composition configs compile directly; legacy blueprint configs
+          // go through the shared forge pipeline.
           if (isCompositionConfig(opts.config)) {
             const compiled = loadAndCompileComposition(opts.config);
             console.log(chalk.green(`\n✔ Composition loaded from ${opts.config}`));
-            console.log(chalk.dim(`  Profile:     ${compiled.profile.name}`));
-            console.log(chalk.dim(`  Personality: ${compiled.personality.name}`));
-            console.log(chalk.dim(`  Deploy to:   ${opts.deployDir}`));
+            console.log(chalk.dim(`  Profile:   ${compiled.profile.name}`));
+            console.log(chalk.dim(`  Deploy to: ${opts.deployDir}`));
 
             const spinner = ora("Writing workspace…");
             spinner.start();
             const result = writeBundle(opts.deployDir, compiled.files);
             spinner.succeed(`Workspace written to ${result.deployDir}`);
             console.log(chalk.dim(`  ${result.written.length} files written`));
-            console.log(chalk.green(`\n✔ Agent forged: ${compiled.personality.name} × ${compiled.profile.name}`));
+            console.log(chalk.green(`\n✔ Agent forged: ${compiled.profile.name}`));
             console.log(chalk.dim(`\n  Next: clawhq build -d ${opts.deployDir}`));
             return;
           }
 
           const answers = loadConfigFile(opts.config);
           console.log(chalk.green(`\n✔ Config loaded from ${opts.config}`));
-          forgeFromAnswers(answers);
+          await forgeFromAnswers(answers);
           return;
         }
 
@@ -233,17 +231,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         const profile = profiles.find((p) => p.id === profileId);
         if (!profile) throw new Error(`Profile ${profileId} not found`);
 
-        // Step 2: Pick personality
-        const personalities = loadAllPersonalities();
-        const personalityId = await select({
-          message: "How should your agent communicate? (personality)",
-          choices: personalities.map((p) => ({
-            name: `${p.name} — ${p.description}`,
-            value: p.id,
-          })),
-        });
-
-        // Step 3: Pick providers for each capability domain
+        // Step 2: Pick providers for each capability domain
         const providerSelections: Record<string, string> = {};
         const categoryToDomain: Record<string, string> = {
           communication: "email",
@@ -305,14 +293,14 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         spinner.start();
 
         const compiled = compile(
-          { profile: profileId, personality: personalityId, providers: providerSelections },
+          { profile: profileId, providers: providerSelections },
           { name: userName, timezone, communication: "brief" },
           opts.deployDir,
         );
 
         const result = writeBundle(opts.deployDir, compiled.files);
 
-        spinner.succeed(`Agent forged: ${compiled.personality.name} × ${compiled.profile.name}`);
+        spinner.succeed(`Agent forged: ${compiled.profile.name}`);
         console.log(chalk.dim(`  ${result.written.length} files written to ${result.deployDir}`));
         console.log(chalk.green(`\n✔ Agent ready`));
         console.log(chalk.dim(`\n  Next: clawhq build -d ${opts.deployDir}`));
@@ -430,7 +418,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
 
   // ── Compose Commands (Mission Profile × Personality) ──────────────────────
 
-  const compose = program.command("compose").description("Mission profile × personality — design your agent");
+  const compose = program.command("compose").description("Mission profile composition — design your agent");
 
   compose
     .command("profiles")
@@ -450,29 +438,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         console.log("");
       }
       console.log(chalk.dim(`  ${profiles.length} profiles available`));
-      console.log(chalk.dim("  Preview: clawhq compose preview <profile> <personality>\n"));
-    });
-
-  compose
-    .command("personalities")
-    .description("List available personality presets (HOW your agent does it)")
-    .action(async () => {
-      const personalities = loadAllPersonalities();
-      if (personalities.length === 0) {
-        console.log(chalk.yellow("No personalities found."));
-        return;
-      }
-
-      console.log(chalk.bold("\nPersonality Presets — HOW your agent does it\n"));
-      for (const p of personalities) {
-        console.log(`  ${chalk.bold.cyan(p.id)}  ${chalk.dim("—")}  ${p.description}`);
-        if (p.voice_examples.length > 0) {
-          console.log(chalk.dim(`    "${p.voice_examples[0]}"`));
-        }
-        console.log("");
-      }
-      console.log(chalk.dim(`  ${personalities.length} personalities available`));
-      console.log(chalk.dim("  Preview: clawhq compose preview <profile> <personality>\n"));
+      console.log(chalk.dim("  Preview: clawhq compose preview <profile>\n"));
     });
 
   compose
@@ -524,17 +490,7 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
           })),
         });
 
-        // Step 2: Pick personality
-        const personalities = loadAllPersonalities();
-        const personalityId = await select({
-          message: "Personality (HOW your agent does it):",
-          choices: personalities.map((p) => ({
-            name: `${p.name} — ${p.description}`,
-            value: p.id,
-          })),
-        });
-
-        // Step 3: Pick providers for each domain the profile needs
+        // Step 2: Pick providers for each domain the profile needs
         const profile = profiles.find((p) => p.id === profileId);
         if (!profile) throw new Error(`Profile ${profileId} not found`);
         const domains = [...new Set(profile.tools.map((t) => t.category))];
@@ -608,7 +564,6 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
           `# ${new Date().toISOString().split("T")[0]}`,
           ``,
           `profile: ${profileId}`,
-          `personality: ${personalityId}`,
           `deploy_dir: ${deployDir}`,
           ``,
           `providers:`,
@@ -618,6 +573,10 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
           `  name: ${userName}`,
           `  timezone: ${timezone}`,
           `  communication: brief`,
+          ``,
+          `# Personalize the default tone via soul_overrides (free text). Examples:`,
+          `# soul_overrides: |`,
+          `#   Humor is welcome. Swear when it fits. Be brutally honest.`,
           ``,
           `# Uncomment to configure Telegram:`,
           `# channels:`,
@@ -633,9 +592,8 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         writeFileSync(outPath, yaml, "utf-8");
 
         console.log(chalk.green(`\n✔ Config written to ${outPath}`));
-        console.log(chalk.dim(`  Profile:     ${profileId}`));
-        console.log(chalk.dim(`  Personality: ${personalityId}`));
-        console.log(chalk.dim(`  Providers:   ${Object.values(providerSelections).join(", ")}`));
+        console.log(chalk.dim(`  Profile:   ${profileId}`));
+        console.log(chalk.dim(`  Providers: ${Object.values(providerSelections).join(", ")}`));
         console.log(chalk.bold(`\nNext steps:`));
         console.log(`  1. ${chalk.bold(`clawhq install -d ${deployDir}`)}`);
         console.log(`  2. ${chalk.bold(`clawhq init --config ${outPath} -d ${deployDir}`)}`);
@@ -654,13 +612,12 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
 
   compose
     .command("preview")
-    .description("Preview a profile + personality composition")
+    .description("Preview a profile composition (the canonical ClawHQ personality ships with every agent)")
     .argument("<profile>", "Mission profile ID")
-    .argument("<personality>", "Personality preset ID")
-    .action(async (profileId: string, personalityId: string) => {
+    .action(async (profileId: string) => {
       try {
         const result = compile(
-          { profile: profileId, personality: personalityId },
+          { profile: profileId },
           { name: "User", timezone: "UTC", communication: "brief" },
           "~/.clawhq",
         );
@@ -669,10 +626,10 @@ export function registerDesignCommands(program: Command, defaultDeployDir: strin
         const dim = chalk.dim;
         const bold = chalk.bold;
 
-        console.log(bold(`\n${personality.name} × ${profile.name}`));
+        console.log(bold(`\n${profile.name}`));
         console.log(dim("═".repeat(60)));
 
-        console.log(bold("\nPersonality"));
+        console.log(bold("\nPersonality (canonical ClawHQ vector — not configurable)"));
         console.log(`  ${personality.description}`);
         console.log(`  ${dim(`Emoji: ${personality.identity.emoji}  Vibe: ${personality.identity.vibe}`)}`);
 

@@ -17,7 +17,6 @@ import { parse as yamlParse } from "yaml";
 
 import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
 import { loadBlueprint } from "../blueprints/loader.js";
-import { parseDimensions } from "../blueprints/types.js";
 import { compile } from "../catalog/index.js";
 import type { CompiledWorkspace } from "../catalog/types.js";
 
@@ -30,9 +29,8 @@ interface ConfigFile {
   /** Legacy: direct blueprint reference. */
   blueprint?: string;
 
-  /** New: mission profile + personality composition. */
+  /** New: mission profile composition (personality is implicit — canonical ClawHQ vector). */
   profile?: string;
-  personality?: string;
   channel?: string;
   model_provider?: "local" | "cloud";
   local_model?: string;
@@ -48,7 +46,8 @@ interface ConfigFile {
     constraints?: string;
   };
 
-  dimension_overrides?: Record<string, number>;
+  /** Free-text SOUL.md overrides. Only user-facing personality customization. */
+  soul_overrides?: string;
 
   customization?: Record<string, string>;
 
@@ -90,10 +89,11 @@ export class ConfigFileError extends Error {
 // ── Loader ──────────────────────────────────────────────────────────────────
 
 /**
- * Check if a config file uses the new composition format (profile + personality).
+ * Check if a config file uses the composition format (profile-based).
  *
- * Supports both input format (flat profile/personality keys) and deployed
- * clawhq.yaml format (nested under composition:).
+ * Personality is implicit — every agent uses the canonical ClawHQ vector.
+ * A config qualifies as a composition config when it specifies `profile`
+ * (top-level or under `composition:`).
  */
 export function isCompositionConfig(configPath: string): boolean {
   const resolved = resolve(configPath);
@@ -101,11 +101,11 @@ export function isCompositionConfig(configPath: string): boolean {
   const content = readFileSync(resolved, "utf-8");
   const parsed = yamlParse(content) as Record<string, unknown> | null;
   if (!parsed) return false;
-  // Flat format: profile + personality at top level
-  if (parsed.profile && parsed.personality) return true;
-  // Deployed format: composition.profile + composition.personality
+  // Flat format: profile at top level
+  if (parsed.profile) return true;
+  // Deployed format: composition.profile
   const comp = parsed.composition as Record<string, unknown> | undefined;
-  return !!(comp?.profile && comp?.personality);
+  return !!comp?.profile;
 }
 
 /**
@@ -131,8 +131,8 @@ export function loadAndCompileComposition(configPath: string): CompiledWorkspace
 
   const config = parsed as ConfigFile;
 
-  if (!config.profile || !config.personality) {
-    throw new ConfigFileError("Composition config must specify 'profile' and 'personality'");
+  if (!config.profile) {
+    throw new ConfigFileError("Composition config must specify 'profile'");
   }
 
   const deployDir = expandHome(config.deploy_dir ?? "~/.clawhq");
@@ -141,9 +141,9 @@ export function loadAndCompileComposition(configPath: string): CompiledWorkspace
   return compile(
     {
       profile: config.profile,
-      personality: config.personality,
       providers: config.providers,
       channels: buildChannelConfig(config.channels),
+      soul_overrides: config.soul_overrides,
     },
     {
       name: config.user?.name ?? "User",
@@ -224,9 +224,7 @@ export function loadConfigFile(configPath: string): WizardAnswers {
     airGapped: config.air_gapped ?? false,
     integrations: config.integrations ?? {},
     customizationAnswers: config.customization ?? {},
-    personalityDimensions: config.dimension_overrides
-      ? (() => { try { return parseDimensions(config.dimension_overrides); } catch (err) { throw new ConfigFileError((err as Error).message); } })()
-      : blueprint.personality.dimensions,
+    soulOverrides: config.soul_overrides,
     userContext,
     auth: config.auth ? {
       provider: config.auth.provider,

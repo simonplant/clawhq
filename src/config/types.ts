@@ -403,10 +403,15 @@ export interface UpdateChannelConfig {
  */
 export interface ClawHQConfig {
   readonly version?: string;
-  /** Composition config: profile + personality + providers. Source of truth for `clawhq apply`. */
+  /**
+   * Composition config: profile + providers. Source of truth for `clawhq apply`.
+   *
+   * Personality is implicit — every agent uses the canonical ClawHQ
+   * personality vector. Users customize tone via top-level `soul_overrides`
+   * free text (not in this block), never by swapping personality presets.
+   */
   readonly composition?: {
     readonly profile?: string;
-    readonly personality?: string;
     readonly providers?: Readonly<Record<string, string>>;
     /** Override the default model (e.g. "ollama/qwen2.5:14b"). */
     readonly model?: string;
@@ -415,6 +420,8 @@ export interface ClawHQConfig {
     /** Fallback models (ollama-prefixed). */
     readonly modelFallbacks?: readonly string[];
   };
+  /** Free-text personal tone overrides appended to SOUL.md. */
+  readonly soul_overrides?: string;
   /** Instance name for multi-agent deployments. Defaults to 'default'. */
   readonly instanceName?: string;
   readonly installMethod?: InstallMethod;

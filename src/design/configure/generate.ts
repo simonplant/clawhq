@@ -44,7 +44,7 @@ import { BUILTIN_ROUTES, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv, buildRoute
 import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
 import type { CompiledDelegationRules } from "../blueprints/delegation-types.js";
 import { isValidProfileId, mergeProfileDeny, MISSION_PROFILE_DEFAULTS } from "../blueprints/profiles.js";
-import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
+import type { Blueprint } from "../blueprints/types.js";
 import { generateIdentityFiles as generateIdentityFilesFromBlueprint } from "../identity/index.js";
 import type { IdentityFileContent } from "../identity/index.js";
 import { loadBlueprintSkills, loadPlatformSkills } from "../skills/index.js";
@@ -125,7 +125,7 @@ export function generateBundle(answers: WizardAnswers): DeploymentBundle {
     composeConfig,
     envVars,
     cronJobs: buildCronJobs(answers.blueprint, answers.userContext?.timezone, answers.modelProvider === "local"),
-    identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.personalityDimensions, answers.userContext),
+    identityFiles: buildIdentityFiles(answers.blueprint, answers.customizationAnswers, answers.soulOverrides, answers.userContext),
     toolFiles: buildToolFiles(answers.blueprint),
     skillFiles: buildSkillFiles(answers.blueprint),
     clawhqConfig: buildClawHQConfig(answers),
@@ -514,10 +514,10 @@ export type { IdentityFileContent } from "../identity/index.js";
 export function generateIdentityFiles(
   blueprint: Blueprint,
   customizationAnswers: Readonly<Record<string, string>> = {},
-  personalityDimensions?: PersonalityDimensions,
+  soulOverrides?: string,
   userContext?: UserContext,
 ): IdentityFileContent[] {
-  return generateIdentityFilesFromBlueprint(blueprint, undefined, customizationAnswers, personalityDimensions, userContext);
+  return generateIdentityFilesFromBlueprint(blueprint, undefined, customizationAnswers, soulOverrides, userContext);
 }
 
 /**
@@ -528,10 +528,10 @@ export function generateIdentityFiles(
 function buildIdentityFiles(
   blueprint: Blueprint,
   customizationAnswers: Readonly<Record<string, string>> = {},
-  personalityDimensions?: PersonalityDimensions,
+  soulOverrides?: string,
   userContext?: UserContext,
 ): IdentityFileInfo[] {
-  return generateIdentityFiles(blueprint, customizationAnswers, personalityDimensions, userContext).map((f) => ({
+  return generateIdentityFiles(blueprint, customizationAnswers, soulOverrides, userContext).map((f) => ({
     name: f.name,
     path: f.relativePath,
     sizeBytes: Buffer.byteLength(f.content, "utf-8"),
@@ -688,11 +688,11 @@ export function generateAllowlistContent(
 function buildClawHQConfig(answers: WizardAnswers): ClawHQConfig {
   const bp = answers.blueprint;
 
-  // Composition block: carries the profile + personality + providers that
-  // `clawhq apply` reads to regenerate downstream config. Missing it was the
-  // root cause of the 2026-04-21 stub clobber — after `init --guided --reset`
-  // the preservation filter had nothing to preserve against, and the wizard
-  // wrote a composition-less yaml that broke every subsequent apply.
+  // Composition block: carries profile + providers that `clawhq apply` reads
+  // to regenerate downstream config. Missing it was the root cause of the
+  // 2026-04-21 stub clobber — after `init --guided --reset` the preservation
+  // filter had nothing to preserve against, and the wizard wrote a
+  // composition-less yaml that broke every subsequent apply.
   //
   // `profile_ref` is the canonical mission-profile identifier — every shipped
   // blueprint declares one and the profile-ref integrity test (see
@@ -700,19 +700,17 @@ function buildClawHQConfig(answers: WizardAnswers): ClawHQConfig {
   // a real profile. Fallback to blueprint `name` is defensive only; the
   // test means it should never be needed in practice.
   //
-  // Personality is hardcoded to the single shipped personality preset —
-  // `configs/personalities/` currently contains only digital-assistant.
-  // When more personalities ship, wire answers.personalityDimensions through
-  // to a personality-ID resolver. The wizard flow does not collect explicit
-  // provider selections; apply uses profile defaults. The composition-config
-  // path (`clawhq design --config`) is where providers are carried.
+  // Personality is NOT part of composition — every agent uses the canonical
+  // ClawHQ vector (CANONICAL_DIMENSIONS). The wizard flow does not collect
+  // explicit provider selections; apply uses profile defaults. The
+  // composition-config path (`clawhq design --config`) is where providers
+  // are carried.
   const profileId = bp.profile_ref ?? bp.name;
 
   return {
     version: "0.1.0",
     composition: {
       profile: profileId,
-      personality: "digital-assistant",
     },
     ...(answers.instanceName && answers.instanceName !== "default"
       ? { instanceName: answers.instanceName }

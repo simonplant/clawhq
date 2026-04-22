@@ -10,7 +10,7 @@
 
 ClawHQ has a working CLI, ~85,000 lines of TypeScript across 393 source files, and 86 test files across all major subsystems. Built with AI-assisted development (Claude Code). **Pre-launch: all code works but has zero external users. Community validation begins at publication.**
 
-- **Blueprint engine** — 11 working blueprints (Email Manager, Family Hub, Founder's Ops, Research Co-pilot, Content Creator, Personal Finance Assistant, Stock Trading Assistant, Stoic Coach, Replace ChatGPT Plus, Replace Google Assistant, Replace my PA) with guided and AI-powered setup. The composition model (mission profile × personality × providers) is live: `clawhq init --guided` picks a profile and personality, then compiles both plus the chosen provider per category into a flat OpenClaw runtime config. `clawhq apply` regenerates from the resulting `clawhq.yaml` idempotently.
+- **Blueprint engine** — 11 working blueprints (Email Manager, Family Hub, Founder's Ops, Research Co-pilot, Content Creator, Personal Finance Assistant, Stock Trading Assistant, Stoic Coach, Replace ChatGPT Plus, Replace Google Assistant, Replace my PA) with guided and AI-powered setup. The composition model (mission profile × providers) is live: `clawhq init --guided` picks a profile, applies the canonical ClawHQ personality, then compiles both plus the chosen provider per category into a flat OpenClaw runtime config. `clawhq apply` regenerates from the resulting `clawhq.yaml` idempotently.
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
 - **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
@@ -93,7 +93,7 @@ After launch tracks complete. Contribution and product development continue in p
 
 ### Product
 
-**Extend the composition model.** The composition model (mission profile × personality × per-category providers) is live for 5 profiles — life-ops, trading, research, home-auto, dev-partner — compiled through `src/design/catalog/compiler.ts`. The 11 monolithic blueprints remain as the top-level "pick a use case" surface; refactoring them to compile down to profile+skill compositions continues. Domain-specific behavior lives in skills and operational playbooks (AGENTS.md), not in personality config.
+**Extend the composition model.** The composition model (mission profile × per-category providers, one canonical personality) is live for 5 profiles — life-ops, trading, research, home-auto, dev-partner — compiled through `src/design/catalog/compiler.ts`. The 11 monolithic blueprints remain as the top-level "pick a use case" surface; refactoring them to compile down to profile+skill compositions continues. Domain-specific behavior lives in skills and operational playbooks (AGENTS.md), not in personality config.
 
 **Expand the skill library.** Skills carry the real domain behavior — how the agent drafts outreach, structures reports, triages email, runs morning briefs. Each profile needs 2-5 skills that encode domain-specific workflows. This is where the product differentiation actually lives, not in personality.
 

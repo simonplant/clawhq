@@ -182,9 +182,11 @@ describe("generateBundle", () => {
     expect(typeof bundle.clawhqConfig.composition?.profile).toBe("string");
   });
 
-  it("emits composition.personality so apply doesn't silently fall back to an unknown default", () => {
+  it("does not emit composition.personality — personality is the canonical vector, not a composition axis", () => {
     const bundle = generateBundle(makeAnswers());
-    expect(bundle.clawhqConfig.composition?.personality).toBe("digital-assistant");
+    // Personality is implicit (CANONICAL_DIMENSIONS). Apply must not treat it
+    // as a pickable composition field, or we'd regress into per-agent tone menus.
+    expect((bundle.clawhqConfig.composition as Record<string, unknown> | undefined)?.personality).toBeUndefined();
   });
 
   it("flattens integration credentials into env vars", () => {

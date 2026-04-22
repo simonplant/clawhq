@@ -42,14 +42,6 @@ personality:
   style: "efficient, anticipatory, handles routine, flags exceptions"
   relationship: professional aide
   boundaries: "respects work boundaries, escalates sensitive decisions"
-  dimensions:
-    directness: 3
-    warmth: 3
-    verbosity: 3
-    proactivity: 3
-    caution: 3
-    formality: 4
-    analyticalDepth: 3
 
 security_posture:
   posture: hardened

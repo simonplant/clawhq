@@ -32,7 +32,7 @@ function mockPrompter(answers: unknown[]): Prompter {
 
 describe("runWizard", () => {
   it("completes happy path without errors", async () => {
-    // Script: select blueprint → customization Qs → personality → user context → channel → air-gapped? →
+    // Script: select blueprint → customization Qs → user context → channel → air-gapped? →
     //         model → local model → deploy dir → port → configure tasks? → confirm
     const prompter = mockPrompter([
       "family-hub",       // blueprint selection
@@ -40,7 +40,6 @@ describe("runWizard", () => {
       "3-4 (small family)",      // family_size (select)
       "",                        // meal_preferences (input, use default)
       "Friendly but firm — clear expectations with warmth",  // reminder_style (select)
-      false,              // customize personality? no (use defaults)
       // user context
       "Alice",            // name
       "",                 // timezone (use default)
@@ -81,7 +80,6 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
-      false,              // customize personality? no
       // user context
       "Bob",              // name
       "",                 // timezone
@@ -112,7 +110,6 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
-      false,              // customize personality? no
       // user context
       "Charlie",
       "",
@@ -141,7 +138,6 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
-      false,              // customize personality? no
       // user context
       "Dave",
       "",
@@ -172,7 +168,6 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
-      false,              // customize personality? no
       // user context
       "Eve",
       "",
@@ -205,7 +200,6 @@ describe("runWizard", () => {
       "3-4 (small family)",
       "",
       "Friendly but firm — clear expectations with warmth",
-      false,              // customize personality? no
       // user context
       "Frank",
       "",

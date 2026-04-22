@@ -80,14 +80,19 @@ export function parseDimensions(input: Record<string, number>): PersonalityDimen
   return input as unknown as PersonalityDimensions;
 }
 
-/** Agent personality configuration. */
+/**
+ * Agent personality configuration.
+ *
+ * Prose-only fields. Blueprints do NOT carry a dimension vector —
+ * every agent uses the canonical ClawHQ personality (see
+ * `CANONICAL_DIMENSIONS` in personality-presets.ts). Users customize
+ * via `soul_overrides` free text.
+ */
 export interface Personality {
   readonly tone: string;
   readonly style: string;
   readonly relationship: string;
   readonly boundaries: string;
-  /** Slider-based personality dimensions (optional — legacy blueprints omit). */
-  readonly dimensions?: PersonalityDimensions;
 }
 
 /** Security posture for the agent. */

@@ -2,87 +2,33 @@
  * SOUL.md generator — defines who the agent IS.
  *
  * SOUL.md is the agent's personality, communication style, and boundaries.
- * Without it, the user gets a generic instance, not a purpose-built agent.
- * Identity files are read-only at runtime (LM-12 prevention).
+ * Every agent uses the single canonical ClawHQ personality vector
+ * (CANONICAL_DIMENSIONS). Blueprints supply prose fields (tone, style,
+ * relationship, boundaries) and a use-case narrative; the canonical
+ * dimension vector is rendered into the Communication / Working /
+ * Cognitive sections, and ALWAYS_ON_BOUNDARIES are injected verbatim.
  *
- * Dual-path rendering:
- * - Dimensions present → prose sections from slider values + always-on boundaries
- * - Dimensions absent  → legacy rendering (flat strings, zero behavioral change)
+ * Identity files are read-only at runtime (LM-12 prevention).
  */
 
 import { sanitizeContentSync } from "../../secure/sanitizer/index.js";
-import { ALWAYS_ON_BOUNDARIES, renderAllDimensionsProse } from "../blueprints/personality-presets.js";
-import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
+import {
+  ALWAYS_ON_BOUNDARIES,
+  CANONICAL_DIMENSIONS,
+  renderAllDimensionsProse,
+} from "../blueprints/personality-presets.js";
+import type { Blueprint } from "../blueprints/types.js";
 
 /**
  * Generate SOUL.md content from a blueprint.
- *
- * Produces a complete identity document covering:
- * - Who the agent is (name, role, tagline)
- * - Personality (tone/style or dimension prose)
- * - Boundaries (always-on security + blueprint-specific)
- * - A day in the life (narrative context)
  */
 export function generateSoul(
   blueprint: Blueprint,
   customizationAnswers: Readonly<Record<string, string>> = {},
-  dimensionOverrides?: PersonalityDimensions,
-): string {
-  const { personality } = blueprint;
-
-  // Determine which dimensions to use (override > blueprint > none)
-  const dimensions = dimensionOverrides ?? personality.dimensions;
-
-  if (dimensions) {
-    return generateDimensionSoul(blueprint, dimensions, customizationAnswers);
-  }
-
-  return generateLegacySoul(blueprint, customizationAnswers);
-}
-
-// ── Legacy Rendering (no dimensions) ─────────────────────────────────────────
-
-function generateLegacySoul(
-  blueprint: Blueprint,
-  customizationAnswers: Readonly<Record<string, string>>,
+  soulOverrides?: string,
 ): string {
   const { personality, use_case_mapping: useCase } = blueprint;
-
-  const sections: string[] = [
-    `# ${blueprint.name}`,
-    "",
-    `> ${useCase.tagline}`,
-    "",
-    "## Role",
-    "",
-    useCase.description.trim(),
-    "",
-    "## Personality",
-    "",
-    `- **Tone:** ${personality.tone}`,
-    `- **Style:** ${personality.style}`,
-    `- **Relationship:** ${personality.relationship}`,
-    "",
-    "## Boundaries",
-    "",
-    personality.boundaries,
-  ];
-
-  appendUserPreferences(sections, blueprint, customizationAnswers);
-  appendDayInTheLife(sections, useCase.day_in_the_life);
-
-  return sections.join("\n") + "\n";
-}
-
-// ── Dimension Rendering ──────────────────────────────────────────────────────
-
-function generateDimensionSoul(
-  blueprint: Blueprint,
-  dimensions: PersonalityDimensions,
-  customizationAnswers: Readonly<Record<string, string>>,
-): string {
-  const { personality, use_case_mapping: useCase } = blueprint;
-  const prose = renderAllDimensionsProse(dimensions);
+  const prose = renderAllDimensionsProse(CANONICAL_DIMENSIONS);
 
   const sections: string[] = [
     `# ${blueprint.name}`,
@@ -124,11 +70,12 @@ function generateDimensionSoul(
 
   appendUserPreferences(sections, blueprint, customizationAnswers);
   appendDayInTheLife(sections, useCase.day_in_the_life);
+  appendSoulOverrides(sections, soulOverrides);
 
   return sections.join("\n") + "\n";
 }
 
-// ── Shared Helpers ───────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function appendUserPreferences(
   sections: string[],
@@ -143,7 +90,6 @@ function appendUserPreferences(
   for (const [id, answer] of answerEntries) {
     const question = questions.find((q) => q.id === id);
     const label = question ? question.prompt : id;
-    // Sanitize user-provided customization answers
     const sanitized = sanitizeContentSync(answer, { source: "customization" });
     sections.push(`- **${label}** ${sanitized.text}`);
   }
@@ -156,4 +102,10 @@ function appendDayInTheLife(sections: string[], dayInTheLife: string): void {
     "",
     dayInTheLife.trim(),
   );
+}
+
+function appendSoulOverrides(sections: string[], soulOverrides?: string): void {
+  const trimmed = soulOverrides?.trim();
+  if (!trimmed) return;
+  sections.push("", "## Additional Notes", "", trimmed);
 }

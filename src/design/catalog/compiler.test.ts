@@ -22,7 +22,7 @@ function findFile(files: readonly { relativePath: string; content: string }[], p
 
 describe("compile", () => {
   it("produces workspace identity files", () => {
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     const paths = result.files.map((f) => f.relativePath);
     expect(paths).toContain("workspace/SOUL.md");
     expect(paths).toContain("workspace/AGENTS.md");
@@ -31,7 +31,7 @@ describe("compile", () => {
   });
 
   it("produces runtime config files", () => {
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     const paths = result.files.map((f) => f.relativePath);
     expect(paths).toContain("openclaw.json");
     expect(paths).toContain(".env");
@@ -44,14 +44,14 @@ describe("compile", () => {
   // `engine/docker-compose.yml` is owned by `clawhq build`. Both emissions
   // historically caused stub-clobber bugs.
   it("does not emit clawhq.yaml or docker-compose.yml (single-writer ownership)", () => {
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     const paths = result.files.map((f) => f.relativePath);
     expect(paths).not.toContain("clawhq.yaml");
     expect(paths).not.toContain("engine/docker-compose.yml");
   });
 
   it("generates tool scripts for all profile tools", () => {
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     // Tool scripts live at workspace/<name> (one level deep, no extension)
     const toolFiles = result.files.filter((f) => {
       if (!f.relativePath.startsWith("workspace/")) return false;
@@ -77,7 +77,7 @@ describe("compile", () => {
   it("generates proxy files when env vars match builtin routes", () => {
     // Provide existing env with a credential that matches a proxy route
     const result = compile(
-      { profile: "life-ops", personality: "digital-assistant" },
+      { profile: "life-ops" },
       TEST_USER,
       "/tmp/test",
       18789,
@@ -90,7 +90,7 @@ describe("compile", () => {
 
   it("includes CRED_PROXY_URL in .env when proxy is enabled", () => {
     const result = compile(
-      { profile: "life-ops", personality: "digital-assistant" },
+      { profile: "life-ops" },
       TEST_USER,
       "/tmp/test",
       18789,
@@ -105,7 +105,7 @@ describe("compile", () => {
     // The yahoo route uses type: "none" which always passes filtering,
     // so proxy is always enabled — this is by design for egress control
     const result = compile(
-      { profile: "life-ops", personality: "digital-assistant" },
+      { profile: "life-ops" },
       TEST_USER,
       "/tmp/test",
     );
@@ -115,7 +115,7 @@ describe("compile", () => {
   });
 
   it("tool registry is unified — compiler uses same generators as tools/index", () => {
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     // The quote tool should have the proxy-first pattern from quote.ts
     const quoteTool = result.files.find((f) => f.relativePath === "workspace/quote");
     expect(quoteTool).toBeDefined();
@@ -124,7 +124,7 @@ describe("compile", () => {
   });
 
   it("includes allowlist with profile egress domains", () => {
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     const allowlist = result.files.find((f) => f.relativePath === "ops/firewall/allowlist.yaml");
     expect(allowlist).toBeDefined();
     expect(allowlist?.content).toContain("api.todoist.com");
@@ -133,7 +133,7 @@ describe("compile", () => {
 
   it("adds provider egress domains to allowlist", () => {
     const result = compile(
-      { profile: "life-ops", personality: "digital-assistant", providers: { email: "gmail" } },
+      { profile: "life-ops", providers: { email: "gmail" } },
       TEST_USER,
       "/tmp/test",
     );
@@ -145,7 +145,6 @@ describe("compile", () => {
     const result = compile(
       {
         profile: "life-ops",
-        personality: "digital-assistant",
         model: "ollama/qwen2.5:14b",
         modelContextWindow: 16384,
       },
@@ -169,7 +168,7 @@ describe("compile", () => {
 
   it("omits ollama model entry when modelContextWindow is not set", () => {
     const result = compile(
-      { profile: "life-ops", personality: "digital-assistant" },
+      { profile: "life-ops" },
       TEST_USER,
       "/tmp/test",
     );
@@ -184,7 +183,7 @@ describe("compile", () => {
 
   it("AGENTS.md emits a Knowledge Bases section when wiki-<kb>-ingest skills are present", () => {
     // life-ops declares wiki-trading-ingest/query/review — should produce a trading KB section
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     const agents = findFile(result.files, "workspace/AGENTS.md");
     const content = agents.content;
     expect(content).toContain("## Knowledge Bases");
@@ -202,7 +201,7 @@ describe("compile", () => {
     // but the fs tool's workspaceOnly base IS the workspace directory, so
     // the `workspace/` prefix doubled the path and the Read tool failed
     // on every session start.
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     const bootstrap = findFile(result.files, "workspace/BOOTSTRAP.md");
     expect(bootstrap.content).toContain("state/wiki-context.md");
     expect(bootstrap.content).not.toContain("workspace/state/wiki-context.md");
@@ -210,7 +209,7 @@ describe("compile", () => {
   });
 
   it("cron/jobs.json does NOT auto-schedule event-driven wiki-*-ingest/query skills", () => {
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     const cron = findFile(result.files, "cron/jobs.json");
     const parsed = JSON.parse(cron.content) as { jobs: Array<{ id: string }> };
     const ids = parsed.jobs.map((j) => j.id);
@@ -227,7 +226,7 @@ describe("compile", () => {
     // Regression: shell commands inside the container run with CWD = workspace,
     // so `workspace/…` prefixes create doubled paths (`workspace/workspace/…`)
     // that the fs tool can't find on session start.
-    const result = compile({ profile: "life-ops", personality: "digital-assistant" }, TEST_USER, "/tmp/test");
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     const cron = findFile(result.files, "cron/jobs.json");
     const parsed = JSON.parse(cron.content) as { jobs: Array<{ id: string; payload: { message: string } }> };
     const refresh = parsed.jobs.find((j) => j.id === "wiki-context-refresh");
@@ -243,7 +242,6 @@ describe("compile", () => {
     const result = compile(
       {
         profile: "life-ops",
-        personality: "digital-assistant",
         model: "ollama/qwen2.5:14b",
         modelFallbacks: [`ollama/${OLLAMA_DEFAULT_MODEL}`],
       },

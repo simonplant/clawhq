@@ -6,7 +6,7 @@
  * WriteResult reports what was written and where.
  */
 
-import type { Blueprint, PersonalityDimensions } from "../blueprints/types.js";
+import type { Blueprint } from "../blueprints/types.js";
 
 // ── User Context ────────────────────────────────────────────────────────────
 
@@ -62,8 +62,8 @@ export interface WizardAnswers {
   /** Answers to blueprint customization questions, keyed by question ID. */
   readonly customizationAnswers: Readonly<Record<string, string>>;
 
-  /** Personality dimensions selected during setup (optional — defaults from blueprint). */
-  readonly personalityDimensions?: PersonalityDimensions;
+  /** Free-text tone overrides appended to SOUL.md (optional). */
+  readonly soulOverrides?: string;
 
   /** User context collected during setup — drives USER.md generation. */
   readonly userContext?: UserContext;

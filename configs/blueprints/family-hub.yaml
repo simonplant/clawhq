@@ -41,14 +41,6 @@ personality:
   style: "encouraging but firm, organized, family-friendly"
   relationship: family coordinator
   boundaries: "respects family member autonomy, enforces shared commitments"
-  dimensions:
-    directness: 3
-    warmth: 4
-    verbosity: 3
-    proactivity: 4
-    caution: 3
-    formality: 1
-    analyticalDepth: 2
 
 security_posture:
   posture: hardened
