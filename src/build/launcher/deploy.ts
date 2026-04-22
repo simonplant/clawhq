@@ -11,18 +11,16 @@
 
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { chmod, copyFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { DEPLOY_COMPOSE_TIMEOUT_MS, FILE_MODE_SECRET } from "../../config/defaults.js";
+import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
 import {
   DEFAULT_POSTURE,
-  generateCompose,
   getPostureConfig,
   readCurrentPosture,
   readManifest,
-  serializeYaml,
 } from "../docker/index.js";
 
 import {
