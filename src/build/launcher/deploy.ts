@@ -618,6 +618,14 @@ async function regenerateCompose(deployDir: string): Promise<boolean> {
     const credProxyRoutes = join(engineDir, "cred-proxy-routes.json");
     const enableCredProxy = existsSync(credProxyScript) && existsSync(credProxyRoutes);
 
+    // Auto-detect staged sidecars so regen matches what `clawhq build` produces.
+    // Without this, compose self-heal silently drops market-engine and
+    // clawdius-trading services, leaving their containers orphaned.
+    const marketEngineDir = join(engineDir, "market-engine");
+    const enableMarketEngine = existsSync(join(marketEngineDir, "Dockerfile"));
+    const clawdiusTradingDir = join(engineDir, "clawdius-trading");
+    const enableClawdiusTrading = existsSync(join(clawdiusTradingDir, "Dockerfile"));
+
     // Read access.readOnlyHostMounts from clawhq.yaml so regen preserves
     // inbound host-file mounts (e.g. /media) the user has configured.
     let readOnlyHostMounts: readonly string[] | undefined;
@@ -637,6 +645,10 @@ async function regenerateCompose(deployDir: string): Promise<boolean> {
       enableCredProxy,
       credProxyScriptPath: credProxyScript,
       credProxyRoutesPath: credProxyRoutes,
+      enableMarketEngine,
+      marketEngineDir,
+      enableClawdiusTrading,
+      clawdiusTradingDir,
       readOnlyHostMounts,
     });
 
