@@ -227,6 +227,13 @@ export function writeEnvValue(filePath: string, key: string, value: string): voi
  */
 export function deleteEnvValue(filePath: string, key: string): void {
   const envFile = readEnv(filePath);
+  // Short-circuit when the key is already absent — no-op instead of a full
+  // atomic rewrite of the whole file. Idempotent `unset X` on a clean .env
+  // used to cost an unnecessary temp+fsync+rename cycle on every call.
+  const hasKey = envFile.lines.some(
+    (line) => line.kind === "entry" && line.key === key,
+  );
+  if (!hasKey) return;
   const updated = removeEnvValue(envFile, key);
   writeEnvAtomic(filePath, updated);
 }

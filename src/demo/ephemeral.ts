@@ -34,8 +34,18 @@ export function createEphemeralDir(): EphemeralDir {
     }
   };
 
-  // Register cleanup on process exit signals
-  process.on("exit", cleanup);
+  // Register cleanup on every way the process can die. `exit` alone doesn't
+  // fire on SIGTERM/SIGINT, so a user hitting Ctrl-C on a demo would leave
+  // the tmp dir behind. Handlers are defensively structured so a signal
+  // during cleanup doesn't spiral: cleanup is idempotent (rm force:true)
+  // and we re-emit the signal after cleaning to preserve process.exitCode.
+  process.once("exit", cleanup);
+  const signalCleanup = (signal: NodeJS.Signals): void => {
+    cleanup();
+    process.kill(process.pid, signal);
+  };
+  process.once("SIGINT", () => signalCleanup("SIGINT"));
+  process.once("SIGTERM", () => signalCleanup("SIGTERM"));
 
   return { path: dir, cleanup };
 }

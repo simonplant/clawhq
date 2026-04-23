@@ -179,13 +179,34 @@ export const probeTelegram: CredentialProbe = async (env) => {
   const { response } = result;
 
   if (response.status === 200) {
+    let body: { ok?: boolean; result?: { username?: string } };
     try {
-      const body = (await response.json()) as { ok?: boolean; result?: { username?: string } };
-      if (body.ok && body.result?.username) {
-        return pass(integration, envKey, `Valid (@${body.result.username})`);
-      }
-    } catch {
-      // Response parsing failed — still a valid token
+      body = (await response.json()) as { ok?: boolean; result?: { username?: string } };
+    } catch (err) {
+      // Garbage body from a 200 usually means an intercepting proxy or MITM,
+      // not a valid Telegram response. Fail loud rather than assume good —
+      // previously we fell through to `pass(... "Valid")` which masked this.
+      return fail(
+        integration,
+        envKey,
+        `Telegram returned 200 but body was not valid JSON: ` +
+          (err instanceof Error ? err.message : String(err)),
+        "Check for a proxy between the agent and api.telegram.org",
+      );
+    }
+    // A 200 with ok=false is Telegram's own "this token is rejected" signal
+    // carried in the body (their API uses this for permission errors). The
+    // prior implementation returned pass anyway — a real security miss.
+    if (body.ok === false) {
+      return fail(
+        integration,
+        envKey,
+        "Telegram returned 200 but ok=false",
+        `Regenerate token via @BotFather and update ${envKey}`,
+      );
+    }
+    if (body.result?.username) {
+      return pass(integration, envKey, `Valid (@${body.result.username})`);
     }
     return pass(integration, envKey, "Valid");
   }

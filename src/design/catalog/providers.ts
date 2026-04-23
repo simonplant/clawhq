@@ -52,6 +52,25 @@ export interface Provider {
 
 // ── Registry ────────────────────────────────────────────────────────────────
 
+/**
+ * Assert that every provider in the registry has a unique id. Module-load
+ * time is the right place to catch duplicates — a second provider with the
+ * same id as an earlier one would silently shadow it at lookup time,
+ * because `getProvider` returns the first match. Failing loud at import
+ * prevents that footgun.
+ */
+function assertUniqueProviderIds(providers: readonly Provider[]): void {
+  const seen = new Set<string>();
+  for (const p of providers) {
+    if (seen.has(p.id)) {
+      throw new Error(
+        `duplicate provider id in src/design/catalog/providers.ts: "${p.id}"`,
+      );
+    }
+    seen.add(p.id);
+  }
+}
+
 export const PROVIDERS: readonly Provider[] = [
   // ── Email ────────────────────────────────────────────────────────────────
   {
@@ -426,6 +445,9 @@ export const PROVIDERS: readonly Provider[] = [
     setupNotes: "Create a long-lived access token in HA → Profile → Security. Egress domain is your HA instance URL.",
   },
 ];
+
+// Fail loud at import time if the registry has shadowed ids.
+assertUniqueProviderIds(PROVIDERS);
 
 // ── Lookup Helpers ──────────────────────────────────────────────────────────
 

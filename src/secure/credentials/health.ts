@@ -39,8 +39,12 @@ export async function runProbes(options: RunProbesOptions): Promise<ProbeReport>
     probes.map((probe) => probe(env)),
   );
 
-  // Filter out unconfigured integrations unless requested
-  const includeUnconfigured = options.includeUnconfigured ?? true;
+  // Default: only show integrations that are actually configured. Previously
+  // defaulted to `true`, which made the report noisy and non-idempotent —
+  // adding a new probe to `builtinProbes` would change every future report
+  // even for users who never configured that integration. Callers that want
+  // the full matrix can opt in explicitly.
+  const includeUnconfigured = options.includeUnconfigured ?? false;
   const filtered = includeUnconfigured
     ? results
     : results.filter((r) => r.message !== "Not configured");

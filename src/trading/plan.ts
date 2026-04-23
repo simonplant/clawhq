@@ -140,7 +140,25 @@ export function parseOrderBlocks(text: string): ParseOutput {
     i = j;
   }
 
-  return { orders, warnings };
+  // Duplicate-sequence detection. The sequence number is meant to uniquely
+  // identify an order within a plan; two ORDER N blocks in the same plan
+  // (usually a copy/paste mistake) would silently coexist under the prior
+  // implementation and create a second alert/position for the same
+  // intended order. Surface them as warnings and drop the later occurrences.
+  const seenSeq = new Set<number>();
+  const deduped: OrderBlock[] = [];
+  for (const order of orders) {
+    if (seenSeq.has(order.sequence)) {
+      warnings.push(
+        `ORDER ${order.sequence}: duplicate sequence number — keeping first occurrence, dropping this one`,
+      );
+      continue;
+    }
+    seenSeq.add(order.sequence);
+    deduped.push(order);
+  }
+
+  return { orders: deduped, warnings };
 }
 
 /** Heuristic: `---`, `===`, or a new `##` heading ends a block. */

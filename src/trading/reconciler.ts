@@ -59,7 +59,11 @@ export function findCatchupCandidates(
     const quote = quoteByTicker.get(order.ticker.toUpperCase());
     if (!quote) continue;
     const { dayHigh, dayLow } = quote;
-    if (!(dayHigh > 0 && dayLow > 0) || dayHigh < dayLow) continue;
+    // Require a real intraday range before considering catch-up candidates.
+    // `dayHigh === dayLow` means the session either hasn't traded or only
+    // printed a single price — treating that as "the level was touched" is
+    // a false positive. Use strict `<=` so a flat day is rejected.
+    if (!(dayHigh > 0 && dayLow > 0) || dayHigh <= dayLow) continue;
 
     for (const [name, price] of levelsFor(order)) {
       if (price === 0) continue;

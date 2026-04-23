@@ -125,7 +125,9 @@ describe("runProbes", () => {
     expect(missingResults).toHaveLength(0);
   });
 
-  it("includes unconfigured integrations by default", async () => {
+  it("excludes unconfigured integrations by default (only shows configured)", async () => {
+    // Default flipped from true to false — see health.ts. Callers that want
+    // the full matrix must opt in via `includeUnconfigured: true`.
     const envPath = join(testDir, ".env");
     writeFileSync(envPath, "");
 
@@ -135,7 +137,7 @@ describe("runProbes", () => {
     });
 
     const missingResults = report.results.filter((r) => r.message === "Not configured");
-    expect(missingResults.length).toBeGreaterThan(0);
+    expect(missingResults).toHaveLength(0);
   });
 
   it("includes timestamp in ISO 8601 format", async () => {

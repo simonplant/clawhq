@@ -108,6 +108,30 @@ export function loadCronStore(storePath: string): CronStoreFile {
  * before calling — see `src/evolve/apply/index.ts:mergeCronJobs`.
  */
 export function saveCronStore(storePath: string, store: CronStoreFile): void {
+  // Reject duplicate job ids / names. OpenClaw's scheduler has no dedupe of
+  // its own, so a compile bug that emits the same job twice (or a merge
+  // that forgets to filter) would run the payload twice every tick.
+  // Catching it here gives the caller a loud error instead of a silent
+  // double-scheduled job.
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+  for (const job of store.jobs) {
+    const id = (job as Record<string, unknown>).id;
+    if (typeof id === "string") {
+      if (seenIds.has(id)) {
+        throw new Error(`cron store would write duplicate job id: ${id}`);
+      }
+      seenIds.add(id);
+    }
+    const name = (job as Record<string, unknown>).name;
+    if (typeof name === "string") {
+      if (seenNames.has(name)) {
+        throw new Error(`cron store would write duplicate job name: ${name}`);
+      }
+      seenNames.add(name);
+    }
+  }
+
   const content = JSON.stringify({ version: 1, jobs: store.jobs }, null, 2) + "\n";
   writeFileAtomic(storePath, content, FILE_MODE_SECRET);
 }

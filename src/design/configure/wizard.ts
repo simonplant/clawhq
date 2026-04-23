@@ -110,7 +110,15 @@ export async function runWizard(
     message: "Gateway port:",
     default: String(DEFAULT_GATEWAY_PORT),
   });
-  const gatewayPort = parseInt(portStr, 10) || DEFAULT_GATEWAY_PORT;
+  const parsedPort = parseInt(portStr, 10);
+  // Range-check the port — `parseInt("99999") || default` accepted any
+  // numeric string, letting through both out-of-range values (>65535) and
+  // privileged-port bind attempts that would then fail at docker time
+  // with less actionable errors.
+  const gatewayPort =
+    Number.isFinite(parsedPort) && parsedPort >= 1 && parsedPort <= 65535
+      ? parsedPort
+      : DEFAULT_GATEWAY_PORT;
 
   // Step 7: Integration credentials
   const integrations = await collectIntegrations(prompter, blueprint, airGapped);
