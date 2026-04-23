@@ -94,6 +94,17 @@ export interface DestroyedFile {
 /** Deletion receipt — records what was destroyed and when. */
 export interface DeletionReceipt {
   readonly version: 1;
+  /**
+   * Two-phase status:
+   *   - `in_progress` is written BEFORE `rm()` so a crash between rm and
+   *     the final write is recoverable.
+   *   - `complete` is written after rm + verify succeed.
+   *
+   * Old receipts written before this field existed should be treated as
+   * `complete` by readers (that's the only pre-existing path that could
+   * have produced them — finalization was unconditional).
+   */
+  readonly status?: "in_progress" | "complete";
   /** ISO 8601 timestamp of destruction. */
   readonly destroyedAt: string;
   /** Deployment directory that was destroyed. */

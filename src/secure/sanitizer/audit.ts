@@ -3,11 +3,7 @@
  * Append-only JSONL files for threat events and quarantined content.
  */
 
-import { chmodSync } from "node:fs";
-import { appendFile, mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
-
-import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+import { appendSecretLine } from "../fs-mode.js";
 
 import type { Threat } from "./detect.js";
 import { threatScore } from "./sanitize.js";
@@ -46,19 +42,11 @@ export interface AuditConfig {
 
 // ── Logging ─────────────────────────────────────────────────────────────────
 
-const ensuredDirs = new Set<string>();
-
-async function ensureDir(filePath: string): Promise<void> {
-  const dir = dirname(filePath);
-  if (ensuredDirs.has(dir)) return;
-  await mkdir(dir, { recursive: true, mode: DIR_MODE_SECRET });
-  chmodSync(dir, DIR_MODE_SECRET);
-  ensuredDirs.add(dir);
-}
-
 async function appendJsonl(filePath: string, entry: unknown): Promise<void> {
-  await ensureDir(filePath);
-  await appendFile(filePath, JSON.stringify(entry) + "\n", { encoding: "utf-8", mode: FILE_MODE_SECRET });
+  // `appendSecretLine` enforces 0o600 even for files that already existed
+  // with a different mode — the `mode` option on `appendFile` is silently
+  // ignored in that case.
+  appendSecretLine(filePath, JSON.stringify(entry) + "\n");
 }
 
 /** Append a threat event to the audit log. Never throws. */

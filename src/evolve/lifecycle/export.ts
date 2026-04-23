@@ -189,9 +189,19 @@ export async function exportBundle(options: ExportOptions): Promise<ExportResult
   // ── Step 3: Bundle ────────────────────────────────────────────────────
   progress(onProgress, "bundle", "running", "Creating tar.gz archive...");
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const bundleName = `clawhq-export-${timestamp}.tar.gz`;
-  const bundlePath = options.output ?? join(deployDir, "..", bundleName);
+  // Millisecond-resolution timestamp + collision-safe suffix so two exports
+  // in rapid succession don't clobber each other. Format:
+  //   2026-04-22T16-30-59-123 or 2026-04-22T16-30-59-123-1 on collision.
+  const tsRaw = new Date().toISOString().replace(/[:.]/g, "-");
+  const timestampBase = tsRaw.slice(0, 23); // YYYY-MM-DDTHH-MM-SS-mmm
+  let bundlePath = options.output ?? join(deployDir, "..", `clawhq-export-${timestampBase}.tar.gz`);
+  let bundleName = basename(bundlePath);
+  if (!options.output) {
+    for (let attempt = 1; existsSync(bundlePath) && attempt < 10_000; attempt++) {
+      bundleName = `clawhq-export-${timestampBase}-${attempt}.tar.gz`;
+      bundlePath = join(deployDir, "..", bundleName);
+    }
+  }
 
   // Create export manifest
   const manifest = {

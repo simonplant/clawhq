@@ -10,11 +10,9 @@
  * Design: fire-and-forget — logging never throws, never disrupts the pipeline.
  */
 
-import { chmodSync } from "node:fs";
-import { appendFile, mkdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
-import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+import { appendSecretLine } from "../fs-mode.js";
 
 import type {
   ApprovalResolutionEvent,
@@ -25,21 +23,14 @@ import type {
   ToolExecutionEvent,
 } from "./types.js";
 
-// ── Directory Cache ────────────────────────────────────────────────────────
-
-const ensuredDirs = new Set<string>();
-
-async function ensureDir(filePath: string): Promise<void> {
-  const dir = dirname(filePath);
-  if (ensuredDirs.has(dir)) return;
-  await mkdir(dir, { recursive: true, mode: DIR_MODE_SECRET });
-  chmodSync(dir, DIR_MODE_SECRET);
-  ensuredDirs.add(dir);
-}
-
 async function appendJsonl(filePath: string, entry: unknown): Promise<void> {
-  await ensureDir(filePath);
-  await appendFile(filePath, JSON.stringify(entry) + "\n", { encoding: "utf-8", mode: FILE_MODE_SECRET });
+  // Delegate to the mode-enforcing helper. Node's `mode` option on
+  // `appendFile` is silently ignored for existing files; appendSecretLine
+  // does an explicit chmod on first write so the log lands at 0o600
+  // regardless of umask or prior file state. Synchronous for simplicity —
+  // audit writes are short and the fire-and-forget wrapper below swallows
+  // any I/O errors.
+  appendSecretLine(filePath, JSON.stringify(entry) + "\n");
 }
 
 // ── Tool Execution Logging ─────────────────────────────────────────────────

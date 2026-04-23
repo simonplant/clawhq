@@ -279,4 +279,46 @@ describe("destroyAgent", () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain("not found");
   });
+
+  it("is idempotent: re-running after a complete destroy returns success", async () => {
+    const first = await destroyAgent({ deployDir, confirm: true });
+    expect(first.success).toBe(true);
+    expect(first.receipt?.status).toBe("complete");
+
+    // Second call on the (now-vanished) deployDir should succeed idempotently
+    // by recognizing the prior `complete` receipt, not error with "not found".
+    const second = await destroyAgent({ deployDir, confirm: true });
+    expect(second.success).toBe(true);
+    expect(second.receipt?.status).toBe("complete");
+    expect(second.receiptPath).toBe(first.receiptPath);
+  });
+
+  it("finalizes an incomplete receipt when deployDir is already gone", async () => {
+    // Simulate the crash-after-rm-before-finalize state: deployDir gone,
+    // receipt written with status=in_progress.
+    const receiptPath = join(
+      testDir,
+      `${".clawhq"}.deletion-receipt.json`,
+    );
+    await rm(deployDir, { recursive: true, force: true });
+    await writeFile(
+      receiptPath,
+      JSON.stringify({
+        version: 1,
+        status: "in_progress",
+        destroyedAt: "2026-04-22T00:00:00Z",
+        deployDir,
+        files: [{ path: "engine/openclaw.json", sizeBefore: 100 }],
+        totalBytes: 100,
+      }, null, 2),
+    );
+
+    const result = await destroyAgent({ deployDir, confirm: true });
+    expect(result.success).toBe(true);
+    expect(result.receipt?.status).toBe("complete");
+
+    // Receipt on disk should now reflect complete.
+    const receiptJson = JSON.parse(await readFile(receiptPath, "utf-8"));
+    expect(receiptJson.status).toBe("complete");
+  });
 });

@@ -60,7 +60,9 @@ describe("ensureFreshOrReset", () => {
     if (result.kind !== "archived") throw new Error("unreachable");
     expect(existsSync(deployDir)).toBe(false);
     expect(existsSync(result.archivePath)).toBe(true);
-    expect(result.archivePath).toMatch(/\.attic\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/);
+    // Format: ...attic.YYYY-MM-DDTHH-MM-SS-mmm (with optional `-N` collision
+    // suffix when two runs land in the same millisecond).
+    expect(result.archivePath).toMatch(/\.attic\.\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}(-\d+)?$/);
   });
 });
 
