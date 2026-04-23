@@ -36,11 +36,32 @@ function manifestPath(deployDir: string): string {
 async function loadSnapshots(deployDir: string): Promise<RollbackSnapshot[]> {
   const path = manifestPath(deployDir);
   if (!existsSync(path)) return [];
+  let raw: string;
   try {
-    const raw = await readFile(path, "utf-8");
-    return JSON.parse(raw) as RollbackSnapshot[];
-  } catch {
-    return [];
+    raw = await readFile(path, "utf-8");
+  } catch (err) {
+    throw new Error(
+      `failed to read skill snapshots manifest at ${path}: ` +
+      (err instanceof Error ? err.message : String(err)),
+      { cause: err },
+    );
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      throw new Error(`expected JSON array in ${path}, got ${typeof parsed}`);
+    }
+    return parsed as RollbackSnapshot[];
+  } catch (err) {
+    // Silent empty-fallback used to make snapshots vanish on a single
+    // corrupted write — a rollback attempt would then fail with
+    // "snapshot not found" instead of the real root cause.
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `skill snapshots manifest at ${path} is corrupt: ${msg}. ` +
+      `Inspect the file manually; do not run \`clawhq skill\` commands until this is resolved.`,
+      { cause: err },
+    );
   }
 }
 

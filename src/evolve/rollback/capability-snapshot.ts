@@ -107,11 +107,32 @@ async function loadSnapshots(
 ): Promise<CapabilitySnapshot[]> {
   const path = manifestPath(deployDir, kind);
   if (!existsSync(path)) return [];
+  let raw: string;
   try {
-    const raw = await readFile(path, "utf-8");
-    return JSON.parse(raw) as CapabilitySnapshot[];
-  } catch {
-    return [];
+    raw = await readFile(path, "utf-8");
+  } catch (err) {
+    throw new Error(
+      `failed to read ${kind} rollback manifest at ${path}: ` +
+      (err instanceof Error ? err.message : String(err)),
+      { cause: err },
+    );
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      throw new Error(`expected JSON array in ${path}, got ${typeof parsed}`);
+    }
+    return parsed as CapabilitySnapshot[];
+  } catch (err) {
+    // Silent empty-fallback used to make restoreLatestCapabilitySnapshot()
+    // report "no snapshots available" on manifest corruption instead of
+    // surfacing the real root cause. Throw instead.
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `${kind} rollback manifest at ${path} is corrupt: ${msg}. ` +
+      `Inspect the file manually; do not attempt rollback until this is resolved.`,
+      { cause: err },
+    );
   }
 }
 

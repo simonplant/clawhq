@@ -52,12 +52,19 @@ export function loadRoleManifest(deployDir: string): RoleManifest {
   if (!existsSync(path)) {
     return { version: 1, roles: [...BUILTIN_ROLES], assignments: {} };
   }
+  // Parse errors throw loudly — silent empty-fallback used to wipe user-defined
+  // roles and assignments on a single corrupted write.
   let parsed: Record<string, unknown>;
   try {
     const raw = readFileSync(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return { version: 1, roles: [...BUILTIN_ROLES], assignments: {} };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `role manifest at ${path} is corrupt: ${msg}. ` +
+      `Inspect the file manually; do not run \`clawhq role\` commands until this is resolved.`,
+      { cause: err },
+    );
   }
   if (parsed.version !== 1) {
     throw new Error(

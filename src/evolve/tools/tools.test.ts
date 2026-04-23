@@ -87,14 +87,15 @@ describe("manifest", () => {
     expect(existsSync(join(freshDir, "workspace", "tools", ".tool-manifest.json"))).toBe(true);
   });
 
-  it("returns empty manifest on corrupted JSON", async () => {
+  it("throws on corrupted JSON instead of silently returning empty", async () => {
+    // Prior behavior: return an empty manifest on parse failure, which
+    // silently wiped every installed tool from the user's view. New behavior
+    // surfaces the corruption so the user knows what to inspect.
     writeFileSync(
       join(deployDir, "workspace", "tools", ".tool-manifest.json"),
       "not-json{{{",
     );
-    const manifest = await loadToolManifest(deployDir);
-    expect(manifest.version).toBe(1);
-    expect(manifest.tools).toHaveLength(0);
+    await expect(loadToolManifest(deployDir)).rejects.toThrow(/corrupt/);
   });
 
   it("throws on unsupported manifest version", async () => {

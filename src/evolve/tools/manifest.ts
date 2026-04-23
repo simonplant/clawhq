@@ -21,7 +21,12 @@ export function toolManifestPath(deployDir: string): string {
   return join(deployDir, "workspace", "tools", MANIFEST_FILENAME);
 }
 
-/** Load the tool manifest. Returns empty manifest if none exists. */
+/**
+ * Load the tool manifest. Returns empty manifest if none exists.
+ *
+ * Parse errors throw with the file path — silent empty-fallback used to
+ * drop every installed tool entry on a single corrupted write.
+ */
 export async function loadToolManifest(deployDir: string): Promise<ToolManifest> {
   const path = toolManifestPath(deployDir);
   if (!existsSync(path)) {
@@ -31,14 +36,22 @@ export async function loadToolManifest(deployDir: string): Promise<ToolManifest>
   try {
     const raw = await readFile(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return { version: 1, tools: [] };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `tool manifest at ${path} is corrupt: ${msg}. ` +
+      `Inspect the file manually; do not run \`clawhq\` commands that mutate tools until this is resolved.`,
+      { cause: err },
+    );
   }
   if (parsed.version !== 1) {
     throw new Error(
       `Unsupported tool manifest version ${String(parsed.version)} (expected 1). ` +
       `The manifest at ${path} may have been created by a newer version of ClawHQ.`,
     );
+  }
+  if (!Array.isArray(parsed.tools)) {
+    throw new Error(`tool manifest at ${path} is missing the \`tools\` array`);
   }
   return parsed as unknown as ToolManifest;
 }

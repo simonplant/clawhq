@@ -24,18 +24,28 @@ export function loadProviderManifest(deployDir: string): ProviderManifest {
   if (!existsSync(path)) {
     return { version: 1, providers: [] };
   }
+  // Parse errors throw loudly — silent empty-fallback would drop every
+  // configured provider on a single corrupted write.
   let parsed: Record<string, unknown>;
   try {
     const raw = readFileSync(path, "utf-8");
     parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return { version: 1, providers: [] };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `provider manifest at ${path} is corrupt: ${msg}. ` +
+      `Inspect the file manually; do not run \`clawhq provider\` commands until this is resolved.`,
+      { cause: err },
+    );
   }
   if (parsed.version !== 1) {
     throw new Error(
       `Unsupported provider manifest version ${String(parsed.version)} (expected 1). ` +
       `The manifest at ${path} may have been created by a newer version of ClawHQ.`,
     );
+  }
+  if (!Array.isArray(parsed.providers)) {
+    throw new Error(`provider manifest at ${path} is missing the \`providers\` array`);
   }
   return parsed as unknown as ProviderManifest;
 }
