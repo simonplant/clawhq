@@ -20,21 +20,32 @@
  *     either an upstream lock PR or per-file optimistic concurrency.
  */
 
-import { existsSync, readFileSync, statSync, unlinkSync } from "node:fs";
-import { mkdirSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readlinkSync,
+  symlinkSync,
+  unlinkSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 
-import { writeFileAtomic } from "../../design/configure/writer.js";
+import { writeFileAtomic } from "../../config/fs-atomic.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
+type Kind = "absent" | "regular" | "symlink";
+
 interface PreFileState {
-  /** Whether the file existed before the transaction began. */
-  readonly existed: boolean;
-  /** File content as-of transaction start; null when existed === false. */
+  /** What kind of filesystem entry was there at transaction start. */
+  readonly kind: Kind;
+  /** Regular-file content; null for absent/symlink. */
   readonly content: Buffer | null;
-  /** File mode as-of transaction start; null when existed === false. */
+  /** Regular-file mode (already masked to 0o777); null for absent/symlink. */
   readonly mode: number | null;
+  /** Symlink target; null for absent/regular. */
+  readonly linkTarget: string | null;
 }
 
 export interface Transaction {
@@ -67,23 +78,44 @@ export function beginTransaction(
 
   for (const rel of paths) {
     const abs = join(deployDir, rel);
-    if (!existsSync(abs)) {
-      snapshot.set(rel, { existed: false, content: null, mode: null });
+    // `lstatSync` so we can distinguish symlinks from regular files. The
+    // previous implementation used `statSync`, which follows the link — a
+    // symlink pre-state was recorded as a regular file, and rollback would
+    // then overwrite the symlink with a regular file instead of restoring
+    // the link.
+    let stat;
+    try {
+      stat = lstatSync(abs);
+    } catch {
+      snapshot.set(rel, { kind: "absent", content: null, mode: null, linkTarget: null });
+      continue;
+    }
+    if (stat.isSymbolicLink()) {
+      let target: string;
+      try {
+        target = readlinkSync(abs);
+      } catch {
+        snapshot.set(rel, { kind: "absent", content: null, mode: null, linkTarget: null });
+        continue;
+      }
+      snapshot.set(rel, { kind: "symlink", content: null, mode: null, linkTarget: target });
+      continue;
+    }
+    if (!stat.isFile()) {
+      // Directories and specials aren't written through this transaction
+      // pathway. Skip — they'll remain untouched.
       continue;
     }
     try {
-      const stat = statSync(abs);
-      if (!stat.isFile()) {
-        // Directories and specials aren't written through this transaction
-        // pathway. Skip — they'll remain untouched.
-        continue;
-      }
       const content = readFileSync(abs);
-      snapshot.set(rel, { existed: true, content, mode: stat.mode & 0o777 });
+      snapshot.set(rel, {
+        kind: "regular",
+        content,
+        mode: stat.mode & 0o777,
+        linkTarget: null,
+      });
     } catch {
-      // Unreadable. Record as non-existent so rollback treats a subsequent
-      // write as "did not exist before" (delete on rollback).
-      snapshot.set(rel, { existed: false, content: null, mode: null });
+      snapshot.set(rel, { kind: "absent", content: null, mode: null, linkTarget: null });
     }
   }
 
@@ -93,10 +125,33 @@ export function beginTransaction(
     rollback() {
       for (const [rel, state] of snapshot) {
         const abs = join(deployDir, rel);
-        if (state.existed && state.content !== null) {
+        if (state.kind === "regular" && state.content !== null && state.mode !== null) {
           mkdirSync(dirname(abs), { recursive: true });
-          writeFileAtomic(abs, state.content.toString("utf-8"), state.mode ?? 0o600);
-        } else if (existsSync(abs)) {
+          // Clear anything (regular file or symlink) currently at the path
+          // before re-writing. Otherwise we could overwrite a symlink's
+          // target instead of the link itself.
+          if (existsSync(abs)) {
+            try { unlinkSync(abs); } catch { /* best effort */ }
+          }
+          // Pass the Buffer through; no utf-8 conversion (preserves binary).
+          writeFileAtomic(abs, state.content, state.mode);
+          continue;
+        }
+        if (state.kind === "symlink" && state.linkTarget !== null) {
+          if (existsSync(abs)) {
+            try { unlinkSync(abs); } catch { /* best effort */ }
+          }
+          try {
+            mkdirSync(dirname(abs), { recursive: true });
+            symlinkSync(state.linkTarget, abs);
+          } catch {
+            // Best-effort rollback — can't recreate the symlink on this fs
+            // (Windows without permission) or the target is no longer valid.
+          }
+          continue;
+        }
+        // kind === "absent" — anything written by fn() should be deleted.
+        if (existsSync(abs)) {
           try {
             unlinkSync(abs);
           } catch {

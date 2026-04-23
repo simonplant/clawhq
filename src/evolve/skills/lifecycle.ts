@@ -242,6 +242,11 @@ export async function installSkill(
 
 /**
  * Remove an installed skill and update the manifest.
+ *
+ * Two-phase with a snapshot so a failure between rm and saveManifest can be
+ * rolled back. Without the snapshot, a crashed remove left files gone but
+ * the manifest still listing the skill — subsequent apply then couldn't
+ * reconcile.
  */
 export async function removeSkill(
   deployDir: string,
@@ -254,18 +259,31 @@ export async function removeSkill(
     return { success: false, error: `Skill "${skillName}" not found.` };
   }
 
+  // Snapshot the skills tree before any destructive action so we can roll
+  // back if saveManifest fails after rm. The snapshot captures both the
+  // skill's files and the manifest.
+  const snapshot = await createSnapshot(deployDir, `pre-remove: ${skillName}`);
+
   const skillDir = join(deployDir, "workspace", "skills", skillName);
-  if (existsSync(skillDir)) {
-    await rm(skillDir, { recursive: true, force: true });
+
+  try {
+    if (existsSync(skillDir)) {
+      await rm(skillDir, { recursive: true, force: true });
+    }
+    const updated: SkillManifest = {
+      ...manifest,
+      skills: manifest.skills.filter((s) => s.name !== skillName),
+    };
+    await saveManifest(deployDir, updated);
+    return { success: true };
+  } catch (err) {
+    // Rollback: restore skill files + manifest from the pre-remove snapshot.
+    await restoreSnapshot(deployDir, snapshot.id);
+    return {
+      success: false,
+      error: `Remove failed and rolled back: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
-
-  const updated: SkillManifest = {
-    ...manifest,
-    skills: manifest.skills.filter((s) => s.name !== skillName),
-  };
-  await saveManifest(deployDir, updated);
-
-  return { success: true };
 }
 
 /**

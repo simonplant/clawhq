@@ -1,4 +1,15 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -72,6 +83,44 @@ describe("beginTransaction + rollback", () => {
     write("a.txt", "only-one");
     const tx = beginTransaction(deployDir, ["a.txt", "a.txt", "a.txt"]);
     expect(tx.paths).toEqual(["a.txt"]);
+  });
+
+  it("preserves file mode through rollback (no +x strip)", () => {
+    write("tool.sh", "#!/bin/sh\necho hi");
+    // Make it executable — the prior implementation restored mode 0o600 on
+    // rollback regardless of the original mode. Now we preserve it.
+    const toolPath = join(deployDir, "tool.sh");
+    const { chmodSync } = require("node:fs") as typeof import("node:fs");
+    chmodSync(toolPath, 0o755);
+
+    const tx = beginTransaction(deployDir, ["tool.sh"]);
+    writeFileSync(toolPath, "modified");
+    chmodSync(toolPath, 0o644);
+
+    tx.rollback();
+    const mode = statSync(toolPath).mode & 0o777;
+    expect(mode).toBe(0o755);
+  });
+
+  it("restores a symlink instead of overwriting it with a regular file", () => {
+    // Set up a symlink as the pre-transaction state of a path.
+    const target = join(deployDir, "real-target.txt");
+    writeFileSync(target, "real content");
+    const linkPath = join(deployDir, "link");
+    symlinkSync(target, linkPath);
+    expect(lstatSync(linkPath).isSymbolicLink()).toBe(true);
+
+    const tx = beginTransaction(deployDir, ["link"]);
+
+    // Simulate a transaction that replaces the symlink with a regular file.
+    rmSync(linkPath);
+    writeFileSync(linkPath, "wrote over the symlink");
+
+    tx.rollback();
+
+    // After rollback the symlink should be back, pointing at the same target.
+    expect(lstatSync(linkPath).isSymbolicLink()).toBe(true);
+    expect(readlinkSync(linkPath)).toBe(target);
   });
 });
 
