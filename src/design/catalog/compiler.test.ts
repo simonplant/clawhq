@@ -268,4 +268,65 @@ describe("compile", () => {
     };
     expect(parsed.agents.defaults.model.fallbacks).toEqual([`ollama/${OLLAMA_DEFAULT_MODEL}`]);
   });
+
+  // ── Gateway token persistence ──────────────────────────────────────────
+  //
+  // The prior implementation called randomBytes on every compile, which meant
+  // every `clawhq apply` rotated OPENCLAW_GATEWAY_TOKEN and orphaned every
+  // open session. The token is now reused when the deployment already has
+  // a real value on disk.
+
+  function extractToken(envContent: string): string | undefined {
+    const line = envContent.split("\n").find((l) => l.startsWith("OPENCLAW_GATEWAY_TOKEN="));
+    return line?.slice("OPENCLAW_GATEWAY_TOKEN=".length);
+  }
+
+  it("reuses an existing OPENCLAW_GATEWAY_TOKEN across compiles", () => {
+    // Simulate the existing deployment's .env after a prior init.
+    const existingEnv = { OPENCLAW_GATEWAY_TOKEN: "real-existing-token-0123456789abcdef" };
+
+    const first = compile(
+      { profile: "life-ops" },
+      TEST_USER,
+      "/tmp/test",
+      undefined,
+      existingEnv,
+    );
+    const second = compile(
+      { profile: "life-ops" },
+      TEST_USER,
+      "/tmp/test",
+      undefined,
+      existingEnv,
+    );
+
+    const t1 = extractToken(findFile(first.files, ".env").content);
+    const t2 = extractToken(findFile(second.files, ".env").content);
+
+    expect(t1).toBe("real-existing-token-0123456789abcdef");
+    expect(t2).toBe("real-existing-token-0123456789abcdef");
+  });
+
+  it("generates a fresh token when existingEnv is empty (first init)", () => {
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
+    const token = extractToken(findFile(result.files, ".env").content);
+    expect(token).toBeDefined();
+    expect(token?.length).toBeGreaterThan(16);
+    expect(token).not.toBe("CHANGE_ME");
+  });
+
+  it("generates a fresh token when existing value is the CHANGE_ME placeholder", () => {
+    const existingEnv = { OPENCLAW_GATEWAY_TOKEN: "CHANGE_ME" };
+    const result = compile(
+      { profile: "life-ops" },
+      TEST_USER,
+      "/tmp/test",
+      undefined,
+      existingEnv,
+    );
+    const token = extractToken(findFile(result.files, ".env").content);
+    expect(token).toBeDefined();
+    expect(token).not.toBe("CHANGE_ME");
+    expect(token).not.toBe("");
+  });
 });
