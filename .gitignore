@@ -34,3 +34,4 @@ secrets.json
 .aishore/data/status/backlog-snapshot/
 .aishore/data/code-analysis.md
 .aishore/data/code-audit.md
+.claude/scheduled_tasks.lock
