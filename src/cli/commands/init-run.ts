@@ -22,12 +22,12 @@ import { stringify as yamlStringify } from "yaml";
 
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
 import { withDeployLock } from "../../config/lock.js";
+import { writeFileAtomic } from "../../config/fs-atomic.js";
 import {
   ConfigFileError,
   generateBundle,
   SmartInferenceAbortError,
   WizardAbortError,
-  writeFileAtomic,
   type WizardAnswers,
 } from "../../design/configure/index.js";
 import { apply } from "../../evolve/apply/index.js";

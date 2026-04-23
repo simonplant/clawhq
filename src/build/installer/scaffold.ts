@@ -13,7 +13,7 @@ import { stringify as yamlStringify } from "yaml";
 import { DIR_MODE_SECRET } from "../../config/defaults.js";
 import { defaultConfig } from "../../config/loader.js";
 import type { ClawHQConfig, InstallMethod } from "../../config/types.js";
-import { writeFileAtomic } from "../../design/configure/writer.js";
+import { writeFileAtomic } from "../../config/fs-atomic.js";
 
 import type { ScaffoldResult } from "./types.js";
 

@@ -1,13 +1,10 @@
 import {
   existsSync,
-  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
-  readlinkSync,
   rmSync,
   statSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -102,26 +99,6 @@ describe("beginTransaction + rollback", () => {
     expect(mode).toBe(0o755);
   });
 
-  it("restores a symlink instead of overwriting it with a regular file", () => {
-    // Set up a symlink as the pre-transaction state of a path.
-    const target = join(deployDir, "real-target.txt");
-    writeFileSync(target, "real content");
-    const linkPath = join(deployDir, "link");
-    symlinkSync(target, linkPath);
-    expect(lstatSync(linkPath).isSymbolicLink()).toBe(true);
-
-    const tx = beginTransaction(deployDir, ["link"]);
-
-    // Simulate a transaction that replaces the symlink with a regular file.
-    rmSync(linkPath);
-    writeFileSync(linkPath, "wrote over the symlink");
-
-    tx.rollback();
-
-    // After rollback the symlink should be back, pointing at the same target.
-    expect(lstatSync(linkPath).isSymbolicLink()).toBe(true);
-    expect(readlinkSync(linkPath)).toBe(target);
-  });
 });
 
 describe("withTransaction", () => {

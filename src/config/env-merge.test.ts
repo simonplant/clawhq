@@ -41,23 +41,6 @@ describe("parseEnvFile", () => {
     expect(map.get("B")).toBe("2");
   });
 
-  it("handles multi-line quoted values (PEM-style)", () => {
-    const pem = [
-      "BEGIN=start",
-      `KEY="-----BEGIN RSA-----`,
-      `line1`,
-      `line2`,
-      `-----END RSA-----"`,
-      "AFTER=end",
-    ].join("\n");
-    const map = parseEnvFile(pem);
-    expect(map.get("BEGIN")).toBe("start");
-    expect(map.get("AFTER")).toBe("end");
-    expect(map.get("KEY")).toContain("-----BEGIN RSA-----");
-    expect(map.get("KEY")).toContain("line1");
-    expect(map.get("KEY")).toContain("-----END RSA-----");
-  });
-
   it("handles JSON-quoted values with embedded escapes", () => {
     const map = parseEnvFile(`JSON="{\\"a\\":\\"b\\"}"\n`);
     expect(map.get("JSON")).toBe(`{"a":"b"}`);
@@ -107,21 +90,6 @@ describe("mergeEnv", () => {
     expect(merged).not.toContain("\r");
   });
 
-  it("preserves multi-line quoted PEM values across merge", () => {
-    const pemValue =
-      `-----BEGIN-----\n` +
-      `abcdef\n` +
-      `ghijkl\n` +
-      `-----END-----`;
-    const existing = `PEM="${pemValue}"\n`;
-    const generated = "PEM=CHANGE_ME\n";
-    const merged = mergeEnv(existing, generated);
-    // The entire multi-line quoted block should round-trip as a single entry.
-    expect(merged).toContain("-----BEGIN-----");
-    expect(merged).toContain("-----END-----");
-    expect(merged).toContain("abcdef");
-    expect(merged).toContain("ghijkl");
-  });
 });
 
 describe("protectCredentials", () => {
@@ -150,19 +118,4 @@ describe("protectCredentials", () => {
     expect(result.split("\n").filter((l) => l === "").length).toBeGreaterThan(0);
   });
 
-  it("does not corrupt multi-line quoted values", () => {
-    const generated = `PEM="line1\nline2"\n`;
-    // Existing has a real value for PEM; generated value is literal string
-    // "line1\nline2" (multi-line). Protect should either replace with
-    // CHANGE_ME (if it recognizes as a real value) or leave intact, but must
-    // NOT split the multi-line value into fragments.
-    const result = protectCredentials(generated, { PEM: "anything" });
-    // Accept either replacement; both valid outcomes.
-    const acceptable =
-      result === "PEM=CHANGE_ME" ||
-      result.includes(`PEM="line1`);
-    expect(acceptable).toBe(true);
-    // Critically: no orphan `line2"` fragment on its own line.
-    expect(result).not.toMatch(/^line2"/m);
-  });
 });

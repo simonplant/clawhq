@@ -2,19 +2,13 @@
  * Bundle writer — combines the canonical atomic-write helper with the
  * canonical env-merge logic and the fresh-install protection filter.
  *
- * Individual pieces have moved up to `src/config/` so `clawhq apply` and
- * other callers can reuse them without duplicating logic. This file keeps
- * the bundle-level API (`writeBundle`, `filesForFreshInstall`) that
- * design/configure callers depend on and re-exports `writeFileAtomic` /
- * `parseEnvFile` / `WriteError` so existing import sites keep working.
+ * `writeFileAtomic`, `WriteError`, `parseEnvFile`, `mergeEnv`, and
+ * `protectCredentials` live in `src/config/`. Callers should import from
+ * there directly rather than through this file.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-
-// Re-export the canonical helpers so the existing import surface is stable.
-export { WriteError, writeFileAtomic } from "../../config/fs-atomic.js";
-export { parseEnvFile } from "../../config/env-merge.js";
 
 import { mergeEnv } from "../../config/env-merge.js";
 import { writeFileAtomic } from "../../config/fs-atomic.js";

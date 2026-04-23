@@ -23,34 +23,6 @@ import { stringify as yamlStringify, parse as yamlParse } from "yaml";
 import { DOCTOR_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 
-/**
- * Target state the firewall should converge on. `reconcile(target)` reads
- * the live iptables/ipset state and mutates it until it matches `target`,
- * regardless of what was previously applied. Key contract: if `target.v6`
- * is empty, the v6 chain is reconciled to "empty ACCEPT set + LOG + DROP",
- * not left in whatever stale state a prior apply happened to leave. Same
- * for v4. No conditional "skip this chain" paths.
- */
-export interface FirewallTarget {
-  /** Whether the firewall should be applied at all. `false` removes everything. */
-  readonly enabled: boolean;
-  /** Air-gap mode — ESTABLISHED/RELATED only, no DNS, no allowlist. */
-  readonly airGap: boolean;
-  /** Domain allowlist entries to convert into ipset + iptables rules. */
-  readonly allowlist: readonly FirewallAllowEntry[];
-}
-
-/** Persisted snapshot of the last successfully-reconciled target. */
-interface FirewallState {
-  readonly version: 1;
-  readonly reconciledAt: string;
-  readonly enabled: boolean;
-  readonly airGap: boolean;
-  readonly allowlist: readonly FirewallAllowEntry[];
-  readonly resolvedV4: number;
-  readonly resolvedV6: number;
-}
-
 import type {
   FirewallAllowEntry,
   FirewallOptions,
@@ -73,58 +45,29 @@ export const IPSET_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Converge live iptables/ipset state onto `target`.
+ * Apply egress firewall rules for the CLAWHQ_FWD chain using ipset.
  *
- * Replaces the older `applyFirewall` / `removeFirewall` split. The key
- * invariant is that both v4 AND v6 chains are always touched — previously
- * we only reconciled the v6 chain when the resolved allowlist had v6 IPs,
- * so a deploy that lost its IPv6 addresses between runs could leave stale
- * ip6tables rules that continued filtering (incorrectly) long after apply.
- *
- * Steps:
- *   1. Pre-flight: if target.enabled is false, run full teardown and return.
- *   2. Pre-flight: verify ipset is available when allowlist is non-empty.
- *   3. For each of {iptables, ip6tables}:
- *        - ensure chain exists (create or flush)
- *        - re-populate the matching ipset (flush + add)
- *        - emit ACCEPT rules (ESTABLISHED/RELATED, DNS unless air-gap,
- *          per-port ipset match) + trailing LOG + DROP
- *        - attach to FORWARD with a de-dup pass (remove ALL prior jumps
- *          with `-D` in a loop, then insert exactly one).
- *   4. Persist the final target to `<deployDir>/ops/firewall/state.json`.
+ * Key invariants (the reason this function exists):
+ *   - BOTH v4 and v6 chains are always touched, even when no v6 IPs
+ *     resolved. The prior implementation only touched ip6tables when AAAA
+ *     records came back, so a deploy that lost its IPv6 addresses between
+ *     runs left stale ip6tables rules filtering against the old policy.
+ *   - FORWARD attachment is deduped: any prior `-j CLAWHQ_FWD` jumps are
+ *     removed in a loop first, then exactly one is inserted. The older
+ *     `-C` check + `-I` fallback could stack duplicates on rapid re-runs.
+ *   - On any error we tear down — a partial apply is worse than no
+ *     firewall because it filters some traffic while letting other
+ *     traffic through against the intended policy.
  */
-export async function reconcile(
-  deployDir: string,
-  target: FirewallTarget,
-  signal?: AbortSignal,
-): Promise<FirewallResult> {
-  if (!target.enabled) {
-    const removed = await teardown(signal);
-    if (removed.success) {
-      await writeFirewallState(deployDir, {
-        version: 1,
-        reconciledAt: new Date().toISOString(),
-        enabled: false,
-        airGap: false,
-        allowlist: [],
-        resolvedV4: 0,
-        resolvedV6: 0,
-      });
-    }
-    return removed;
-  }
+export async function applyFirewall(options: FirewallOptions): Promise<FirewallResult> {
+  const airGap = options.airGap ?? false;
+  const allowlist = airGap ? [] : (options.allowlist ?? (await loadAllowlist(options.deployDir)));
 
-  const allowlist = target.airGap ? [] : target.allowlist;
-
-  // ipset availability is a hard prerequisite when we have any allowlist
-  // entries. Without ipset we can't express "accept to these IPs on these
-  // ports" — the chain would end up as DNS + DROP, which blocks all
-  // integration egress. Return a warning so the caller can decide whether
-  // to proceed unprotected.
-  if (!target.airGap && allowlist.length > 0) {
+  // ipset is a hard prerequisite when there's any allowlist to apply.
+  if (!airGap && allowlist.length > 0) {
     let ipsetAvailable = true;
     try {
-      await ipsetCmd(["--version"], signal);
+      await ipsetCmd(["--version"], options.signal);
     } catch {
       ipsetAvailable = false;
     }
@@ -139,10 +82,11 @@ export async function reconcile(
     }
   }
 
-  // Empty non-airgap allowlist is a misconfiguration, not a disable. We
-  // refuse to apply rather than emit a DROP-everything chain that looks
-  // like a working firewall. Caller can pass airGap=true to truly block all.
-  if (!target.airGap && allowlist.length === 0) {
+  // Empty non-airgap allowlist is a misconfiguration, not an intentional
+  // "block everything". Refuse rather than emit a DROP-all chain that
+  // looks like a working firewall. Caller can pass airGap=true to truly
+  // block all egress.
+  if (!airGap && allowlist.length === 0) {
     return {
       success: true,
       rulesApplied: 0,
@@ -153,12 +97,9 @@ export async function reconcile(
   }
 
   try {
-    // Resolve DNS once. Missing v6 records just mean the v6 chain gets no
-    // ACCEPT rules — it still gets flushed and re-emitted with LOG + DROP,
-    // which is the whole point of this refactor.
     const domains = allowlist.map((e) => e.domain);
     const ports = [...new Set(allowlist.map((e) => e.port))].sort((a, b) => a - b);
-    const resolved = target.airGap
+    const resolved = airGap
       ? { v4: [] as string[], v6: [] as string[] }
       : await resolveDomains(domains);
 
@@ -168,8 +109,8 @@ export async function reconcile(
       "inet",
       resolved.v4,
       ports,
-      target.airGap,
-      signal,
+      airGap,
+      options.signal,
     );
     const v6Rules = await reconcileFamily(
       "ip6tables",
@@ -177,11 +118,11 @@ export async function reconcile(
       "inet6",
       resolved.v6,
       ports,
-      target.airGap,
-      signal,
+      airGap,
+      options.signal,
     );
 
-    await writeIpsetMeta(deployDir, {
+    await writeIpsetMeta(options.deployDir, {
       lastRefreshed: new Date().toISOString(),
       refreshIntervalMs: IPSET_REFRESH_INTERVAL_MS,
       domains,
@@ -190,15 +131,6 @@ export async function reconcile(
       setName: IPSET_NAME,
       setNameV6: IPSET_NAME_V6,
     });
-    await writeFirewallState(deployDir, {
-      version: 1,
-      reconciledAt: new Date().toISOString(),
-      enabled: true,
-      airGap: target.airGap,
-      allowlist,
-      resolvedV4: resolved.v4.length,
-      resolvedV6: resolved.v6.length,
-    });
 
     return {
       success: true,
@@ -206,11 +138,8 @@ export async function reconcile(
       resolvedIps: resolved.v4.length + resolved.v6.length,
     };
   } catch (err) {
-    // A partial apply is the worst outcome — it can leave traffic partially
-    // filtered. Tear down on any error so the container either runs with a
-    // consistent firewall or with none, never a half-state.
     try {
-      await teardown(signal);
+      await teardown(options.signal);
     } catch {
       // best effort
     }
@@ -218,25 +147,9 @@ export async function reconcile(
     return {
       success: false,
       rulesApplied: 0,
-      error: `Firewall reconcile failed (state rolled back): ${message}`,
+      error: `Firewall setup failed (rolled back): ${message}`,
     };
   }
-}
-
-/**
- * Apply egress firewall rules for the CLAWHQ_FWD chain using ipset.
- *
- * Thin wrapper around `reconcile()` kept for existing callers. New code
- * should prefer `reconcile(deployDir, target)` directly.
- */
-export async function applyFirewall(options: FirewallOptions): Promise<FirewallResult> {
-  const airGap = options.airGap ?? false;
-  const allowlist = airGap ? [] : (options.allowlist ?? (await loadAllowlist(options.deployDir)));
-  return reconcile(
-    options.deployDir,
-    { enabled: true, airGap, allowlist },
-    options.signal,
-  );
 }
 
 /**
@@ -750,7 +663,9 @@ async function reconcileFamily(
   return rules;
 }
 
-/** Internal teardown shared by reconcile(enabled=false) and removeFirewall. */
+/**
+ * Tear down CLAWHQ_FWD chains and ipsets. Safe to call when nothing exists.
+ */
 async function teardown(signal?: AbortSignal): Promise<FirewallResult> {
   try {
     await removeChain("iptables", signal);
@@ -761,23 +676,6 @@ async function teardown(signal?: AbortSignal): Promise<FirewallResult> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, rulesApplied: 0, error: `Firewall teardown failed: ${message}` };
-  }
-}
-
-/** Write the `state.json` snapshot of the last successful reconcile. */
-async function writeFirewallState(deployDir: string, state: FirewallState): Promise<void> {
-  const dir = join(deployDir, "ops", "firewall");
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, "state.json"), JSON.stringify(state, null, 2) + "\n", "utf-8");
-}
-
-/** Read the last persisted firewall state (or null if none). */
-export async function loadFirewallState(deployDir: string): Promise<FirewallState | null> {
-  try {
-    const raw = await readFile(join(deployDir, "ops", "firewall", "state.json"), "utf-8");
-    return JSON.parse(raw) as FirewallState;
-  } catch {
-    return null;
   }
 }
 

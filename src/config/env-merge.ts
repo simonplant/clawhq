@@ -1,40 +1,20 @@
 /**
  * Canonical .env merge + credential-protection logic.
  *
- * This replaces two parallel implementations that had drifted:
- *   1. `src/design/configure/writer.ts::mergeEnv` (used by the bundle writer).
- *   2. `src/evolve/apply/index.ts::protectCredentials` (used by apply).
+ * Replaces two parallel implementations that had drifted: the one in
+ * `src/design/configure/writer.ts` (bundle writer) and the one in
+ * `src/evolve/apply/index.ts` (apply pipeline). A single source of truth
+ * keeps them from diverging again.
  *
- * A single source of truth avoids the class of bug where a fix is made to one
- * path but not the other, and the writer and apply pipelines diverge on how
- * credentials are preserved. It also fixes:
- *
- *   - Multi-line quoted values (PEM keys, JSON tokens embedded as
- *     `KEY="{"a": \n "b"}"`). The previous line-based parsers corrupted them.
- *   - CRLF line endings. Existing files written on Windows or edited through
- *     tools that normalize to CRLF used to trip the orphan-append branch
- *     because `lastLine.trim()` saw `\r` instead of empty, so the preserved
- *     block got jammed onto the same line as a key.
+ * Scope note: this parser is line-based and deliberately does NOT handle
+ * multi-line quoted values. No code in ClawHQ produces such values — the
+ * compiler, wizard, and integration pipelines all emit single-line
+ * entries. CRLF input is normalized to LF so existing files edited on
+ * Windows don't trip the orphan-append branch.
  */
 
 /** Placeholder value the compiler emits for unfilled credentials. */
 export const ENV_PLACEHOLDER = "CHANGE_ME";
-
-// ── Multi-line aware line grouping ───────────────────────────────────────────
-
-/**
- * Group raw `.env` text into one logical "entry" per line-or-multiline-value.
- *
- * Walks the text character by character, tracking whether we're inside a
- * quoted value; newlines inside a quoted value keep accumulating instead of
- * terminating the line. This is what `.env` format actually means when a
- * PEM block is assigned to a variable.
- */
-function normalizeLineEndings(content: string): string {
-  // Strip CRLF to LF — we operate on LF internally. The writer appends LF on
-  // emit so round-trip format is consistent.
-  return content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-}
 
 export interface EnvLine {
   /** The raw text as it should round-trip back out, minus the trailing LF. */
@@ -46,43 +26,10 @@ export interface EnvLine {
 }
 
 export function parseEnvLines(content: string): EnvLine[] {
-  const text = normalizeLineEndings(content);
+  // Normalize CRLF to LF so Windows-edited files round-trip cleanly.
+  const text = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const out: EnvLine[] = [];
-
-  let i = 0;
-  while (i < text.length) {
-    // Find the end of this logical entry. In a quoted value, newlines are
-    // part of the value and don't terminate.
-    const startIdx = i;
-    let inQuote: '"' | "'" | null = null;
-    while (i < text.length) {
-      const ch = text[i];
-      if (inQuote) {
-        if (ch === "\\" && i + 1 < text.length) {
-          i += 2;
-          continue;
-        }
-        if (ch === inQuote) {
-          inQuote = null;
-          i++;
-          continue;
-        }
-        i++;
-        continue;
-      } else {
-        if (ch === "\n") break;
-        if (ch === '"' || ch === "'") {
-          inQuote = ch;
-          i++;
-          continue;
-        }
-        i++;
-      }
-    }
-    const raw = text.slice(startIdx, i);
-    // Skip the newline itself so the next iteration starts at the next line.
-    if (i < text.length && text[i] === "\n") i++;
-
+  for (const raw of text.split("\n")) {
     const trimmed = raw.trim();
     if (!trimmed || trimmed.startsWith("#")) {
       out.push({ raw });
@@ -97,7 +44,10 @@ export function parseEnvLines(content: string): EnvLine[] {
     const value = parseEnvValue(raw.slice(eq + 1));
     out.push({ raw, key, value });
   }
-
+  // split() on a terminated input produces a trailing empty element that
+  // round-trips as an empty line; callers join with "\n" so this is fine,
+  // but strip the synthetic trailing empty to keep the EnvLine list clean.
+  if (out.length > 0 && out[out.length - 1]!.raw === "") out.pop();
   return out;
 }
 

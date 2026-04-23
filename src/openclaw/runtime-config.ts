@@ -22,7 +22,7 @@
 import { existsSync, readFileSync } from "node:fs";
 
 import { FILE_MODE_SECRET } from "../config/defaults.js";
-import { writeFileAtomic } from "../design/configure/writer.js";
+import { writeFileAtomic } from "../config/fs-atomic.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

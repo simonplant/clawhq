@@ -10,7 +10,7 @@ import { chmod, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import { DIR_MODE_SECRET, FILE_MODE_EXEC, FILE_MODE_SECRET } from "../../config/defaults.js";
-import { writeFileAtomic } from "../../design/configure/writer.js";
+import { writeFileAtomic } from "../../config/fs-atomic.js";
 
 import { createSnapshot, restoreSnapshot } from "./rollback.js";
 import { createStagedEntry, readStagedFiles, stageSkill } from "./stage.js";

@@ -44,4 +44,4 @@ export { isOllamaAvailable, OllamaError } from "./ollama.js";
 export { isCompositionConfig, loadAndCompileComposition, loadConfigFile, ConfigFileError } from "./config-file.js";
 
 // Writer
-export { filesForFreshInstall, writeBundle, writeFileAtomic, WriteError } from "./writer.js";
+export { filesForFreshInstall, writeBundle } from "./writer.js";

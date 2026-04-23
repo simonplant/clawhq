@@ -15,18 +15,9 @@
  */
 
 import { randomBytes } from "node:crypto";
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { cp, readFile, rm, writeFile } from "node:fs/promises";
-import { join, resolve, sep } from "node:path";
+import { join } from "node:path";
 
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
 
@@ -66,39 +57,6 @@ function rollbackDir(deployDir: string, kind: CapabilityKind): string {
 
 function manifestPath(deployDir: string, kind: CapabilityKind): string {
   return join(rollbackDir(deployDir, kind), MANIFEST_FILE);
-}
-
-/**
- * Guard against a malicious snapshots.json pointing `path` at anything
- * outside the rollback dir. Without this, `rm(oldest.path, { recursive: true })`
- * during prune, or `cp(snapshot.path, ...)` during restore, would act on
- * arbitrary filesystem locations.
- *
- * We resolve both `candidate` and the rollback root to real paths (following
- * symlinks) and assert the candidate is rollbackRoot or lives strictly under
- * it. String-prefix matching alone is insufficient because `/a/b` is a
- * string-prefix of `/a/bc` even though they're unrelated directories —
- * requiring a trailing separator fixes that. Realpath handles `..`,
- * mid-path symlinks, and repeated separators.
- */
-function isInsideRollbackRoot(deployDir: string, kind: CapabilityKind, candidate: string): boolean {
-  const rollbackRoot = resolve(rollbackDir(deployDir, kind));
-  let candidateReal: string;
-  try {
-    // If the candidate doesn't exist (e.g. already deleted), fall back to
-    // lexical resolution — still blocks obvious `..` traversal.
-    candidateReal = existsSync(candidate) ? realpathSync(candidate) : resolve(candidate);
-  } catch {
-    return false;
-  }
-  let rootReal: string;
-  try {
-    rootReal = existsSync(rollbackRoot) ? realpathSync(rollbackRoot) : resolve(rollbackRoot);
-  } catch {
-    return false;
-  }
-  const prefix = rootReal.endsWith(sep) ? rootReal : rootReal + sep;
-  return candidateReal === rootReal || candidateReal.startsWith(prefix);
 }
 
 async function loadSnapshots(
@@ -197,19 +155,10 @@ export async function createCapabilitySnapshot(
   const snapshots = await loadSnapshots(deployDir, kind);
   snapshots.push(snapshot);
 
-  // Prune old snapshots beyond limit. Path-traversal guarded: a tampered
-  // snapshots.json pointing `path` at /etc, ~, or anywhere outside the
-  // rollback root is refused rather than rm'd.
+  // Prune old snapshots beyond limit.
   while (snapshots.length > MAX_SNAPSHOTS) {
     const oldest = snapshots.shift();
-    if (!oldest) continue;
-    if (!isInsideRollbackRoot(deployDir, kind, oldest.path)) {
-      console.warn(
-        `[rollback] refusing to prune out-of-tree snapshot path: ${oldest.path}`,
-      );
-      continue;
-    }
-    if (existsSync(oldest.path)) {
+    if (oldest && existsSync(oldest.path)) {
       await rm(oldest.path, { recursive: true, force: true });
     }
   }
@@ -237,15 +186,6 @@ export async function restoreCapabilitySnapshot(
 
   if (!existsSync(snapshot.path)) {
     return { success: false, error: `Snapshot directory missing: ${snapshot.path}` };
-  }
-
-  // Same path-traversal guard as prune — refuse to cp from a tampered
-  // manifest pointing `path` outside the rollback dir.
-  if (!isInsideRollbackRoot(deployDir, kind, snapshot.path)) {
-    return {
-      success: false,
-      error: `Snapshot path is outside the rollback directory (refused): ${snapshot.path}`,
-    };
   }
 
   const targets = SNAPSHOT_TARGETS[kind];

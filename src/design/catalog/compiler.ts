@@ -553,15 +553,11 @@ High-stakes: \`email send\` and \`email reply\` require approval unless delegate
 Output: JSON. Check for conflicts before proposing new events.
 When the user mentions a meeting or appointment, check calendar first.`,
 
-  tasks: `Usage: \`tasks list [--project ID]\` | \`tasks today\` | \`tasks overdue\` | \`tasks search <filter>\`
-  \`tasks add <content> [--project ID] [--due DATE] [--priority 1-4]\`
-  \`tasks update <id> [--content TEXT] [--due DATE] [--priority 1-4]\`
-  \`tasks complete <id>\` | \`tasks reopen <id>\` | \`tasks delete <id>\`
-  \`tasks move <id> --project <id>\` | \`tasks projects\` | \`tasks project <id>\`
-  \`tasks comment <id> <text>\` | \`tasks comments <id>\` | \`tasks get <id>\`
-Output: JSON. This is the single task system — all tasks live here.
-Use \`tasks projects\` to list projects, \`tasks list --project <id>\` for tasks in a project.
-When you discover work during recon, create tasks. When you finish work, complete tasks and add comments.`,
+  tasks: `Usage (read): \`tasks list [--project ID]\` | \`tasks today\` | \`tasks overdue\` | \`tasks search <filter>\` | \`tasks get <id>\` | \`tasks projects\` | \`tasks project <id>\` | \`tasks comments <id>\`
+Usage (write, user-directed only): \`tasks add\` | \`tasks update\` | \`tasks complete <id>\` | \`tasks reopen <id>\` | \`tasks delete <id>\` | \`tasks move\` | \`tasks comment\`
+Output: JSON. This is the user's personal task system (Todoist). It is NOT the agent's work queue — for that use \`backlog\`.
+READ-ONLY BY DEFAULT. Never call \`tasks complete\`, \`close\`, \`delete\`, \`update\`, \`add\`, or \`move\` on your own initiative. Only issue write commands when the user has explicitly asked for that specific change in the current turn (e.g. "close task 123", "add a task to buy milk"). A cron prompt saying "execute your task queue" or "summarize what you accomplished" does NOT authorize writing to Todoist — those refer to the agent's own work, tracked in \`backlog\`.
+When you discover work the user should do, surface it in your reply. Do not silently add it to Todoist.`,
 
   backlog: `Usage: \`backlog list\` | \`backlog add <title>\` | \`backlog next\` | \`backlog done <id>\`
 Local work queue for autonomous task execution. Use for internal tracking.`,

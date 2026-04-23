@@ -4,8 +4,11 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { parseEnvFile } from "../../config/env-merge.js";
+import { writeFileAtomic } from "../../config/fs-atomic.js";
+
 import type { FileEntry } from "./types.js";
-import { parseEnvFile, writeBundle, writeFileAtomic } from "./writer.js";
+import { writeBundle } from "./writer.js";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 

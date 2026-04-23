@@ -205,9 +205,29 @@ cron_prompts:
     Outside market hours or weekends: Skip the TRADING section entirely.
     If nothing urgent from email/calendar/tasks, respond HEARTBEAT_OK.
 
-  work_session: >
-    Run work session: check your task queue, pick the highest priority item,
-    execute it. If blocked, move to the next item. Summarize what you accomplished.
+  work_session: |
+    Run work session: review what YOU (the agent) owe and act on it. This is the agent's
+    own work queue, not Simon's personal task list.
+
+    TODOIST IS READ-ONLY. You must NEVER call `tasks complete`, `tasks close`, or any
+    write operation against Todoist unless Simon explicitly says "close this task" or
+    "mark it done" in the current turn. `tasks list` / `tasks today` / `tasks overdue`
+    are fine for context. Todoist closure is a user action, not an agent action.
+
+    Your queue lives in `backlog`, not `tasks`. Review in priority order:
+    1. Failed cron runs — check `memory/` and recent skill outputs for errors from the
+       last hour. If a skill failed (e.g. mancini-fetch, dp-parse), surface what went
+       wrong in one line to Simon. Do not silently retry destructive operations.
+    2. Incomplete deliverables — if a cron skill produced partial output (journal_incomplete,
+       PENDING_TA, missing section in memory/trading-YYYY-MM-DD.md), note it.
+    3. `backlog next` — the agent's own work queue, if items exist.
+    4. Follow-ups Simon asked for earlier in the conversation — only if still open.
+    5. Wiki/memory hygiene — if you have a pending `wiki-trading-ingest` item, progress it.
+
+    Output format: one short message summarizing what you checked and any findings.
+    If everything is clean, respond `WORK_SESSION_OK`. Do not generate action items,
+    do not modify Todoist, do not create new memory files unless the cron skill owns
+    that output.
 
   mancini_fetch: >
     Run skill mancini-fetch: pull Mancini's latest Futures Daily post from

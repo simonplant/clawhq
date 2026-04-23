@@ -11,7 +11,7 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
-import { writeFileAtomic } from "../../design/configure/writer.js";
+import { writeFileAtomic } from "../../config/fs-atomic.js";
 import { maskPii } from "../lifecycle/mask.js";
 
 import { summarizeMemory } from "./summarize.js";
