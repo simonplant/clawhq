@@ -322,9 +322,20 @@ async function deployImpl(options: DeployOptions): Promise<DeployResult> {
     const fwResult = await applyFirewall(firewallOpts);
 
     if (!fwResult.success) {
-      report("firewall", "failed", "Firewall setup failed");
-      // Firewall failure is non-fatal — agent still runs, just without egress filtering
-      report("firewall", "skipped", `Firewall skipped: ${fwResult.error}`);
+      // Firewall apply failure used to be reported as "skipped" and the
+      // deploy continued. That left the container running with no egress
+      // protection while the user saw a "success" result — a silent
+      // security failure. Propagate as a hard error; the user can pass
+      // `--skip-firewall` if they explicitly want to run unprotected.
+      report("firewall", "failed", `Firewall setup failed: ${fwResult.error}`);
+      return {
+        success: false,
+        preflight: null,
+        healthy: false,
+        error:
+          `Firewall apply failed: ${fwResult.error}. ` +
+          `Re-run with --skip-firewall to start the container without egress filtering.`,
+      };
     } else if (fwResult.warning) {
       report("firewall", "skipped", fwResult.warning);
     } else {
@@ -455,16 +466,24 @@ async function shutdownImpl(options: ShutdownOptions): Promise<ShutdownResult> {
     return { success: false, error: `Docker Compose down failed: ${message}` };
   }
 
-  // Remove firewall rules
+  // Remove firewall rules. Failures here used to be reported as "skipped"
+  // while shutdown returned success, which let a broken removal leave
+  // stale iptables rules that the next `up` inherited — a firewall
+  // state-drift bug across lifecycle transitions. Propagate instead.
   report("firewall", "running", "Removing firewall rules…");
   const fwResult = await removeFirewall(signal);
   if (fwResult.success) {
     report("firewall", "done", "Firewall rules removed");
-  } else {
-    report("firewall", "skipped", `Firewall removal skipped: ${fwResult.error}`);
+    return { success: true };
   }
-
-  return { success: true };
+  report("firewall", "failed", `Firewall removal failed: ${fwResult.error}`);
+  return {
+    success: false,
+    error:
+      `Shutdown completed but firewall removal failed: ${fwResult.error}. ` +
+      `The container is stopped but host iptables may still contain stale rules; ` +
+      `run \`sudo iptables -F CLAWHQ_FWD && sudo iptables -X CLAWHQ_FWD\` to clean up.`,
+  };
 }
 
 /**

@@ -23,6 +23,34 @@ import { stringify as yamlStringify, parse as yamlParse } from "yaml";
 import { DOCTOR_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 
+/**
+ * Target state the firewall should converge on. `reconcile(target)` reads
+ * the live iptables/ipset state and mutates it until it matches `target`,
+ * regardless of what was previously applied. Key contract: if `target.v6`
+ * is empty, the v6 chain is reconciled to "empty ACCEPT set + LOG + DROP",
+ * not left in whatever stale state a prior apply happened to leave. Same
+ * for v4. No conditional "skip this chain" paths.
+ */
+export interface FirewallTarget {
+  /** Whether the firewall should be applied at all. `false` removes everything. */
+  readonly enabled: boolean;
+  /** Air-gap mode — ESTABLISHED/RELATED only, no DNS, no allowlist. */
+  readonly airGap: boolean;
+  /** Domain allowlist entries to convert into ipset + iptables rules. */
+  readonly allowlist: readonly FirewallAllowEntry[];
+}
+
+/** Persisted snapshot of the last successfully-reconciled target. */
+interface FirewallState {
+  readonly version: 1;
+  readonly reconciledAt: string;
+  readonly enabled: boolean;
+  readonly airGap: boolean;
+  readonly allowlist: readonly FirewallAllowEntry[];
+  readonly resolvedV4: number;
+  readonly resolvedV6: number;
+}
+
 import type {
   FirewallAllowEntry,
   FirewallOptions,
@@ -45,202 +73,184 @@ export const IPSET_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
+ * Converge live iptables/ipset state onto `target`.
+ *
+ * Replaces the older `applyFirewall` / `removeFirewall` split. The key
+ * invariant is that both v4 AND v6 chains are always touched — previously
+ * we only reconciled the v6 chain when the resolved allowlist had v6 IPs,
+ * so a deploy that lost its IPv6 addresses between runs could leave stale
+ * ip6tables rules that continued filtering (incorrectly) long after apply.
+ *
+ * Steps:
+ *   1. Pre-flight: if target.enabled is false, run full teardown and return.
+ *   2. Pre-flight: verify ipset is available when allowlist is non-empty.
+ *   3. For each of {iptables, ip6tables}:
+ *        - ensure chain exists (create or flush)
+ *        - re-populate the matching ipset (flush + add)
+ *        - emit ACCEPT rules (ESTABLISHED/RELATED, DNS unless air-gap,
+ *          per-port ipset match) + trailing LOG + DROP
+ *        - attach to FORWARD with a de-dup pass (remove ALL prior jumps
+ *          with `-D` in a loop, then insert exactly one).
+ *   4. Persist the final target to `<deployDir>/ops/firewall/state.json`.
+ */
+export async function reconcile(
+  deployDir: string,
+  target: FirewallTarget,
+  signal?: AbortSignal,
+): Promise<FirewallResult> {
+  if (!target.enabled) {
+    const removed = await teardown(signal);
+    if (removed.success) {
+      await writeFirewallState(deployDir, {
+        version: 1,
+        reconciledAt: new Date().toISOString(),
+        enabled: false,
+        airGap: false,
+        allowlist: [],
+        resolvedV4: 0,
+        resolvedV6: 0,
+      });
+    }
+    return removed;
+  }
+
+  const allowlist = target.airGap ? [] : target.allowlist;
+
+  // ipset availability is a hard prerequisite when we have any allowlist
+  // entries. Without ipset we can't express "accept to these IPs on these
+  // ports" — the chain would end up as DNS + DROP, which blocks all
+  // integration egress. Return a warning so the caller can decide whether
+  // to proceed unprotected.
+  if (!target.airGap && allowlist.length > 0) {
+    let ipsetAvailable = true;
+    try {
+      await ipsetCmd(["--version"], signal);
+    } catch {
+      ipsetAvailable = false;
+    }
+    if (!ipsetAvailable) {
+      return {
+        success: true,
+        rulesApplied: 0,
+        resolvedIps: 0,
+        warning:
+          "ipset not available — egress firewall skipped (install ipset for domain-based filtering)",
+      };
+    }
+  }
+
+  // Empty non-airgap allowlist is a misconfiguration, not a disable. We
+  // refuse to apply rather than emit a DROP-everything chain that looks
+  // like a working firewall. Caller can pass airGap=true to truly block all.
+  if (!target.airGap && allowlist.length === 0) {
+    return {
+      success: true,
+      rulesApplied: 0,
+      resolvedIps: 0,
+      warning:
+        "egress firewall skipped — allowlist is empty (run clawhq init to generate)",
+    };
+  }
+
+  try {
+    // Resolve DNS once. Missing v6 records just mean the v6 chain gets no
+    // ACCEPT rules — it still gets flushed and re-emitted with LOG + DROP,
+    // which is the whole point of this refactor.
+    const domains = allowlist.map((e) => e.domain);
+    const ports = [...new Set(allowlist.map((e) => e.port))].sort((a, b) => a - b);
+    const resolved = target.airGap
+      ? { v4: [] as string[], v6: [] as string[] }
+      : await resolveDomains(domains);
+
+    const v4Rules = await reconcileFamily(
+      "iptables",
+      IPSET_NAME,
+      "inet",
+      resolved.v4,
+      ports,
+      target.airGap,
+      signal,
+    );
+    const v6Rules = await reconcileFamily(
+      "ip6tables",
+      IPSET_NAME_V6,
+      "inet6",
+      resolved.v6,
+      ports,
+      target.airGap,
+      signal,
+    );
+
+    await writeIpsetMeta(deployDir, {
+      lastRefreshed: new Date().toISOString(),
+      refreshIntervalMs: IPSET_REFRESH_INTERVAL_MS,
+      domains,
+      resolvedV4: resolved.v4.length,
+      resolvedV6: resolved.v6.length,
+      setName: IPSET_NAME,
+      setNameV6: IPSET_NAME_V6,
+    });
+    await writeFirewallState(deployDir, {
+      version: 1,
+      reconciledAt: new Date().toISOString(),
+      enabled: true,
+      airGap: target.airGap,
+      allowlist,
+      resolvedV4: resolved.v4.length,
+      resolvedV6: resolved.v6.length,
+    });
+
+    return {
+      success: true,
+      rulesApplied: v4Rules + v6Rules,
+      resolvedIps: resolved.v4.length + resolved.v6.length,
+    };
+  } catch (err) {
+    // A partial apply is the worst outcome — it can leave traffic partially
+    // filtered. Tear down on any error so the container either runs with a
+    // consistent firewall or with none, never a half-state.
+    try {
+      await teardown(signal);
+    } catch {
+      // best effort
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      rulesApplied: 0,
+      error: `Firewall reconcile failed (state rolled back): ${message}`,
+    };
+  }
+}
+
+/**
  * Apply egress firewall rules for the CLAWHQ_FWD chain using ipset.
  *
- * Creates (or flushes) the chain, resolves domain allowlist via DNS
- * into ipsets, adds iptables rules referencing the ipset, then
- * attaches to the FORWARD chain of the Docker bridge.
- *
- * In air-gap mode, only ESTABLISHED/RELATED is allowed — no DNS, no HTTPS.
+ * Thin wrapper around `reconcile()` kept for existing callers. New code
+ * should prefer `reconcile(deployDir, target)` directly.
  */
 export async function applyFirewall(options: FirewallOptions): Promise<FirewallResult> {
   const airGap = options.airGap ?? false;
   const allowlist = airGap ? [] : (options.allowlist ?? (await loadAllowlist(options.deployDir)));
-
-  try {
-    // Pre-check: verify ipset is available. Without ipset, we can't create
-    // domain-based ACCEPT rules. Creating a chain with only DNS + DROP would
-    // block ALL HTTPS egress (fail-closed, unusable). Skip entirely and warn.
-    if (!airGap) {
-      let ipsetAvailable = true;
-      try {
-        await ipsetCmd(["--version"], options.signal);
-      } catch {
-        ipsetAvailable = false;
-      }
-
-      if (!ipsetAvailable) {
-        return {
-          success: true,
-          rulesApplied: 0,
-          resolvedIps: 0,
-          warning: "ipset not available — egress firewall skipped (install ipset for domain-based filtering)",
-        };
-      }
-
-      // Also skip if allowlist is empty — a chain with DNS + DROP and no HTTPS
-      // ACCEPT rules would block all integration traffic.
-      if (allowlist.length === 0) {
-        return {
-          success: true,
-          rulesApplied: 0,
-          resolvedIps: 0,
-          warning: "egress firewall skipped — allowlist is empty (run clawhq init to generate)",
-        };
-      }
-    }
-
-    // Ensure chain exists (create if not, flush if exists) — idempotent
-    await ensureChain("iptables", options.signal);
-
-    let rulesApplied = 0;
-    let resolvedIps = 0;
-
-    // 1. Allow ESTABLISHED/RELATED connections
-    await iptables(
-      ["-A", CHAIN_NAME, "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
-      options.signal,
-    );
-    rulesApplied++;
-
-    if (!airGap) {
-      // 2. Allow DNS (UDP + TCP port 53)
-      await iptables(["-A", CHAIN_NAME, "-p", "udp", "--dport", "53", "-j", "ACCEPT"], options.signal);
-      await iptables(["-A", CHAIN_NAME, "-p", "tcp", "--dport", "53", "-j", "ACCEPT"], options.signal);
-      rulesApplied += 2;
-
-      // 3. Resolve domains → IPs and populate ipsets
-      if (allowlist.length > 0) {
-        const domains = allowlist.map((e) => e.domain);
-        const resolved = await resolveDomains(domains);
-        resolvedIps = resolved.v4.length + resolved.v6.length;
-
-        // Collect unique ports from allowlist
-        const ports = [...new Set(allowlist.map((e) => e.port))];
-
-        // Create and populate IPv4 ipset
-        await ensureIpset(IPSET_NAME, "inet", options.signal);
-        await flushIpset(IPSET_NAME, options.signal);
-        for (const ip of resolved.v4) {
-          await ipsetAdd(IPSET_NAME, ip, options.signal);
-        }
-
-        // Add iptables rules referencing IPv4 ipset — one per port
-        for (const port of ports) {
-          if (resolved.v4.length > 0) {
-            await iptables(
-              [
-                "-A", CHAIN_NAME,
-                "-p", "tcp",
-                "-m", "set", "--match-set", IPSET_NAME, "dst",
-                "--dport", String(port),
-                "-j", "ACCEPT",
-              ],
-              options.signal,
-            );
-            rulesApplied++;
-          }
-        }
-
-        // Create and populate IPv6 ipset + ip6tables chain if we have AAAA records
-        if (resolved.v6.length > 0) {
-          await ensureIpset(IPSET_NAME_V6, "inet6", options.signal);
-          await flushIpset(IPSET_NAME_V6, options.signal);
-          for (const ip of resolved.v6) {
-            await ipsetAdd(IPSET_NAME_V6, ip, options.signal);
-          }
-
-          // Create and populate ip6tables chain
-          await ensureChain("ip6tables", options.signal);
-
-          await ip6tables(
-            ["-A", CHAIN_NAME, "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
-            options.signal,
-          );
-          await ip6tables(["-A", CHAIN_NAME, "-p", "udp", "--dport", "53", "-j", "ACCEPT"], options.signal);
-          await ip6tables(["-A", CHAIN_NAME, "-p", "tcp", "--dport", "53", "-j", "ACCEPT"], options.signal);
-
-          for (const port of ports) {
-            await ip6tables(
-              [
-                "-A", CHAIN_NAME,
-                "-p", "tcp",
-                "-m", "set", "--match-set", IPSET_NAME_V6, "dst",
-                "--dport", String(port),
-                "-j", "ACCEPT",
-              ],
-              options.signal,
-            );
-            rulesApplied++;
-          }
-
-          await ip6tables(
-            ["-A", CHAIN_NAME, "-j", "LOG", "--log-prefix", "CLAWHQ_DROP: ", "--log-level", "4"],
-            options.signal,
-          );
-          await ip6tables(["-A", CHAIN_NAME, "-j", "DROP"], options.signal);
-
-          await attachToForward("ip6tables", options.signal);
-        }
-
-        // Write ipset metadata for staleness detection
-        await writeIpsetMeta(options.deployDir, {
-          lastRefreshed: new Date().toISOString(),
-          refreshIntervalMs: IPSET_REFRESH_INTERVAL_MS,
-          domains,
-          resolvedV4: resolved.v4.length,
-          resolvedV6: resolved.v6.length,
-          setName: IPSET_NAME,
-          setNameV6: IPSET_NAME_V6,
-        });
-      }
-    }
-
-    // 4. LOG + DROP everything else
-    await iptables(
-      ["-A", CHAIN_NAME, "-j", "LOG", "--log-prefix", "CLAWHQ_DROP: ", "--log-level", "4"],
-      options.signal,
-    );
-    await iptables(["-A", CHAIN_NAME, "-j", "DROP"], options.signal);
-    rulesApplied += 2;
-
-    // 5. Attach to FORWARD chain if not already attached — idempotent
-    await attachToForward("iptables", options.signal);
-
-    return { success: true, rulesApplied, resolvedIps };
-  } catch (err) {
-    // Roll back partial rules
-    try {
-      await removeFirewall(options.signal);
-    } catch {
-      // Cleanup is best-effort
-    }
-    const message = err instanceof Error ? err.message : String(err);
-    return { success: false, rulesApplied: 0, error: `Firewall setup failed (rolled back): ${message}` };
-  }
+  return reconcile(
+    options.deployDir,
+    { enabled: true, airGap, allowlist },
+    options.signal,
+  );
 }
 
 /**
  * Remove the CLAWHQ_FWD chain, all its rules, and associated ipsets.
  * Safe to call even if the chain/ipsets don't exist — fully idempotent.
+ *
+ * Thin wrapper around `teardown()`. Callers that already hold a deployDir
+ * should prefer `reconcile(deployDir, { enabled: false, ... })` so the
+ * state.json file stays consistent; this signal-only overload is kept for
+ * the `shutdown` code path where we don't want to bring deployDir into
+ * the function signature for backwards-compat.
  */
 export async function removeFirewall(signal?: AbortSignal): Promise<FirewallResult> {
-  try {
-    // Detach from FORWARD and remove chain (iptables)
-    await removeChain("iptables", signal);
-
-    // Detach from FORWARD and remove chain (ip6tables — may not exist)
-    await removeChain("ip6tables", signal);
-
-    // Destroy ipsets
-    await destroyIpset(IPSET_NAME, signal);
-    await destroyIpset(IPSET_NAME_V6, signal);
-
-    return { success: true, rulesApplied: 0 };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { success: false, rulesApplied: 0, error: `Firewall removal failed: ${message}` };
-  }
+  return teardown(signal);
 }
 
 /**
@@ -628,13 +638,146 @@ async function ensureChain(cmd: IptablesCmd, signal?: AbortSignal): Promise<void
   }
 }
 
+/**
+ * Attach the chain to FORWARD exactly once.
+ *
+ * The prior implementation used `-C` (check) then `-I` (insert) when the
+ * check failed. That pattern is not idempotent: if the check itself fails
+ * for any reason other than "not present" (sudo timeout, iptables locked),
+ * we insert anyway, and rapid re-runs could accumulate duplicate jumps.
+ *
+ * This version removes ALL existing jumps first (`-D` in a loop until it
+ * errors, which means no more matches), then inserts exactly one. Net
+ * effect: the rule count is always 1 after this call, no matter how many
+ * duplicates existed before.
+ */
 async function attachToForward(cmd: IptablesCmd, signal?: AbortSignal): Promise<void> {
+  // Bounded loop — iptables can't hold more than a handful of duplicates
+  // without prior bugs, and an unbounded loop here would be a DoS if a
+  // caller somehow caused -D to keep succeeding. 32 is far more than
+  // realistic duplicate counts and far less than pathological.
+  for (let i = 0; i < 32; i++) {
+    try {
+      await runIptablesCmd(cmd, ["-D", "FORWARD", "-j", CHAIN_NAME], signal);
+    } catch {
+      break;
+    }
+  }
+  await runIptablesCmd(cmd, ["-I", "FORWARD", "-j", CHAIN_NAME], signal);
+}
+
+/**
+ * Converge a single address family (v4 or v6) onto the target state.
+ *
+ * Called from `reconcile` for both families unconditionally. Even when
+ * `ips` is empty, we still flush + re-emit the chain: that is what
+ * guarantees stale ACCEPT rules from a prior apply don't survive.
+ *
+ * Returns the number of rules emitted — used by the caller to report
+ * totals to the progress UI.
+ */
+async function reconcileFamily(
+  cmd: IptablesCmd,
+  ipsetName: string,
+  family: "inet" | "inet6",
+  ips: readonly string[],
+  ports: readonly number[],
+  airGap: boolean,
+  signal?: AbortSignal,
+): Promise<number> {
+  let rules = 0;
+
+  // Ipset: always ensure existence (create-if-missing) and flush — even
+  // when ips is empty. An empty ipset + ACCEPT rule matches nothing, which
+  // is what we want; leaving the prior ipset populated would let traffic
+  // through against the current policy.
+  await ensureIpset(ipsetName, family, signal);
+  await flushIpset(ipsetName, signal);
+  for (const ip of ips) {
+    await ipsetAdd(ipsetName, ip, signal);
+  }
+
+  await ensureChain(cmd, signal);
+
+  // 1. ESTABLISHED/RELATED — always.
+  await runIptablesCmd(
+    cmd,
+    ["-A", CHAIN_NAME, "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+    signal,
+  );
+  rules++;
+
+  if (!airGap) {
+    // 2. DNS on UDP + TCP.
+    await runIptablesCmd(cmd, ["-A", CHAIN_NAME, "-p", "udp", "--dport", "53", "-j", "ACCEPT"], signal);
+    await runIptablesCmd(cmd, ["-A", CHAIN_NAME, "-p", "tcp", "--dport", "53", "-j", "ACCEPT"], signal);
+    rules += 2;
+
+    // 3. Per-port ipset match — only if we have IPs for this family, since
+    //    iptables won't match against an empty ipset and we'd be emitting
+    //    dead rules. The ipset stays present (flushed above) so a later
+    //    refreshIpset() can repopulate without recreating it.
+    if (ips.length > 0) {
+      for (const port of ports) {
+        await runIptablesCmd(
+          cmd,
+          [
+            "-A", CHAIN_NAME,
+            "-p", "tcp",
+            "-m", "set", "--match-set", ipsetName, "dst",
+            "--dport", String(port),
+            "-j", "ACCEPT",
+          ],
+          signal,
+        );
+        rules++;
+      }
+    }
+  }
+
+  // 4. LOG + DROP — always.
+  await runIptablesCmd(
+    cmd,
+    ["-A", CHAIN_NAME, "-j", "LOG", "--log-prefix", "CLAWHQ_DROP: ", "--log-level", "4"],
+    signal,
+  );
+  await runIptablesCmd(cmd, ["-A", CHAIN_NAME, "-j", "DROP"], signal);
+  rules += 2;
+
+  // 5. Attach to FORWARD — de-dupes any prior jumps.
+  await attachToForward(cmd, signal);
+
+  return rules;
+}
+
+/** Internal teardown shared by reconcile(enabled=false) and removeFirewall. */
+async function teardown(signal?: AbortSignal): Promise<FirewallResult> {
   try {
-    // Check if already attached
-    await runIptablesCmd(cmd, ["-C", "FORWARD", "-j", CHAIN_NAME], signal);
+    await removeChain("iptables", signal);
+    await removeChain("ip6tables", signal);
+    await destroyIpset(IPSET_NAME, signal);
+    await destroyIpset(IPSET_NAME_V6, signal);
+    return { success: true, rulesApplied: 0 };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, rulesApplied: 0, error: `Firewall teardown failed: ${message}` };
+  }
+}
+
+/** Write the `state.json` snapshot of the last successful reconcile. */
+async function writeFirewallState(deployDir: string, state: FirewallState): Promise<void> {
+  const dir = join(deployDir, "ops", "firewall");
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, "state.json"), JSON.stringify(state, null, 2) + "\n", "utf-8");
+}
+
+/** Read the last persisted firewall state (or null if none). */
+export async function loadFirewallState(deployDir: string): Promise<FirewallState | null> {
+  try {
+    const raw = await readFile(join(deployDir, "ops", "firewall", "state.json"), "utf-8");
+    return JSON.parse(raw) as FirewallState;
   } catch {
-    // Not attached — add it
-    await runIptablesCmd(cmd, ["-I", "FORWARD", "-j", CHAIN_NAME], signal);
+    return null;
   }
 }
 
