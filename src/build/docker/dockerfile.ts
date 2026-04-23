@@ -105,8 +105,12 @@ export function generateStage2Dockerfile(
     "",
   );
 
-  // Install binary tools from URLs with SHA256 verification
-  for (const binary of config.binaries) {
+  // Install binary tools from URLs with SHA256 verification. Sorted by name
+  // so the Dockerfile RUN order is deterministic across builds — unsorted
+  // iteration meant the same set of binaries in a different order produced
+  // different Dockerfile text and hence different image SHAs.
+  const sortedBinaries = [...config.binaries].sort((a, b) => a.name.localeCompare(b.name));
+  for (const binary of sortedBinaries) {
     validateBinaryUrl(binary.url);
     validateBinaryDestPath(binary.destPath);
     validateBinarySha256(binary.sha256);
@@ -146,13 +150,19 @@ export function generateStage2Dockerfile(
   if (config.workspace && config.workspace.immutable.length > 0) {
     lines.push("# Immutable workspace files (baked into image — agent cannot modify)");
 
-    // Group by top-level directory for cleaner COPY instructions
-    const dirs = new Set(
-      config.workspace.immutable
-        .filter(f => f.includes("/"))
-        .map(f => f.split("/")[0])
-        .filter((d): d is string => d !== undefined),
-    );
+    // Group by top-level directory for cleaner COPY instructions. Both the
+    // directory set and the root-file list are emitted in sorted order so
+    // the Dockerfile is byte-stable across builds regardless of the
+    // immutable-list insertion order. A byte-stable Dockerfile is a
+    // prerequisite for reproducible image SHAs.
+    const dirs = Array.from(
+      new Set(
+        config.workspace.immutable
+          .filter(f => f.includes("/"))
+          .map(f => f.split("/")[0])
+          .filter((d): d is string => d !== undefined),
+      ),
+    ).sort();
     for (const dir of dirs) {
       const dirFiles = config.workspace.immutable.filter(f => f.startsWith(dir + "/"));
       if (dirFiles.length > 0) {
@@ -163,7 +173,9 @@ export function generateStage2Dockerfile(
     }
 
     // Copy individual files at workspace root (TOOLS.md, SOUL.md, etc.)
-    const rootFiles = config.workspace.immutable.filter(f => !f.includes("/"));
+    const rootFiles = config.workspace.immutable
+      .filter(f => !f.includes("/"))
+      .sort();
     for (const file of rootFiles) {
       lines.push(
         `COPY --chown=${CONTAINER_USER} workspace/${file} ${OPENCLAW_CONTAINER_WORKSPACE}/${file}`,

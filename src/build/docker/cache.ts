@@ -26,17 +26,39 @@ export function computeStage1Hash(config: Stage1Config): string {
   return createHash("sha256").update(data).digest("hex").slice(0, 16);
 }
 
-/** Compute a deterministic hash of Stage 2 inputs. */
+/**
+ * Compute a deterministic hash of Stage 2 inputs.
+ *
+ * Inputs:
+ *   - binaries[] sorted by name, reduced to the fields that actually change
+ *     what goes into the image (name + url + sha256).
+ *   - workspaceTools, skills — legacy lists, sorted.
+ *   - enableOnePassword — affects the binary set emitted into the Dockerfile.
+ *   - workspace manifest — all four lists (immutable, persistent, config,
+ *     ephemeral) contribute. Previously only immutable+persistent were
+ *     hashed, so adding a workspace/config/ file never invalidated the
+ *     cache and the container ran with stale read-only mounts. Same story
+ *     for the ephemeral tmpfs mount list.
+ *   - posture — compose volumes, tmpfs sizes, healthcheck intervals, and
+ *     gVisor runtime selection all derive from posture. A posture change
+ *     that doesn't also change another hashed input has to invalidate the
+ *     cache on its own.
+ */
 export function computeStage2Hash(config: Stage2Config): string {
   const data = JSON.stringify({
-    binaries: config.binaries.map((b) => ({ name: b.name, url: b.url, sha256: b.sha256 })),
+    binaries: [...config.binaries]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((b) => ({ name: b.name, url: b.url, sha256: b.sha256 })),
     workspaceTools: [...config.workspaceTools].sort(),
     skills: [...config.skills].sort(),
     enableOnePassword: config.enableOnePassword ?? false,
     workspace: config.workspace ? {
       immutable: [...config.workspace.immutable].sort(),
       persistent: [...config.workspace.persistent].sort(),
+      config: [...config.workspace.config].sort(),
+      ephemeral: [...config.workspace.ephemeral].sort(),
     } : null,
+    posture: config.posture ?? null,
   });
   return createHash("sha256").update(data).digest("hex").slice(0, 16);
 }

@@ -34,10 +34,12 @@ export function posturePath(deployDir: string): string {
  * Hand-built YAML (no dependency) — simple enough to be reliable.
  */
 export function generatePostureYaml(config: PostureConfig): string {
+  // No timestamp in the header — every regeneration would otherwise appear
+  // as a file change to watchers and diff tools. The file's identity comes
+  // from its content (posture settings), not when it was last written.
   const lines: string[] = [
     "# ClawHQ Security Posture",
     "# Generated automatically — do not edit manually.",
-    `# Last updated: ${new Date().toISOString()}`,
     "",
     `posture: ${config.posture}`,
     "",

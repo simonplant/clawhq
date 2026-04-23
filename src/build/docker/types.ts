@@ -85,6 +85,14 @@ export interface Stage2Config {
   readonly enableOnePassword?: boolean;
   /** Workspace mutability manifest — when present, immutable files are baked into the image layer. */
   readonly workspace?: WorkspaceManifest;
+  /**
+   * Security posture at compile time. Included in the stage 2 hash so a
+   * posture change (hardened → under-attack) invalidates the cache even if
+   * no other input changed. Without this, the compose file is regenerated
+   * with new posture settings but the image keeps its prior tmpfs/gvisor/
+   * healthcheck shape because stage 2 cache-hits.
+   */
+  readonly posture?: BuildSecurityPosture;
 }
 
 /** Binary to install from a GitHub release or URL. */

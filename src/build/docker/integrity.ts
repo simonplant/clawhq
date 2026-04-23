@@ -21,7 +21,6 @@ export interface IntegrityEntry {
 
 export interface IntegrityManifest {
   readonly files: readonly IntegrityEntry[];
-  readonly generatedAt: string;
   readonly totalFiles: number;
 }
 
@@ -40,7 +39,10 @@ export async function generateIntegrityManifest(
 ): Promise<IntegrityManifest> {
   const files: IntegrityEntry[] = [];
 
-  for (const relPath of immutablePaths) {
+  // Sort paths so the manifest's files[] order is deterministic regardless
+  // of how the caller accumulated the immutable list.
+  const sorted = [...immutablePaths].sort();
+  for (const relPath of sorted) {
     const absPath = join(engineDir, "workspace", relPath);
     if (!existsSync(absPath)) continue;
     const content = await readFile(absPath);
@@ -48,9 +50,13 @@ export async function generateIntegrityManifest(
     files.push({ path: relPath, sha256, sizeBytes: content.length });
   }
 
+  // No timestamp — the integrity manifest is baked into the image layer
+  // (COPY /opt/workspace-integrity.json). A timestamp would rotate the
+  // image SHA on every build even when every input was byte-identical,
+  // breaking reproducible-builds assertions and making the build cache
+  // hash useless as a real identity.
   return {
     files,
-    generatedAt: new Date().toISOString(),
     totalFiles: files.length,
   };
 }

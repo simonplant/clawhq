@@ -20,6 +20,7 @@ import {
   OPENCLAW_CONTAINER_ROOT,
   OPENCLAW_CONTAINER_WORKSPACE,
 } from "../../config/paths.js";
+import { sortedEntries } from "../../config/stable-serialize.js";
 
 import type { PostureConfig, WorkspaceManifest } from "./types.js";
 
@@ -555,7 +556,7 @@ export function serializeYaml(compose: ComposeOutput): string {
   for (const h of svc.extra_hosts) lines.push(`      - "${h}"`);
 
   lines.push("    environment:");
-  for (const [key, val] of Object.entries(svc.environment)) {
+  for (const [key, val] of sortedEntries(svc.environment)) {
     lines.push(`      ${key}: "${val}"`);
   }
 
@@ -661,14 +662,14 @@ export function serializeYaml(compose: ComposeOutput): string {
     lines.push("    env_file:");
     for (const e of ct.env_file) lines.push(`      - ${e}`);
     lines.push("    environment:");
-    for (const [key, val] of Object.entries(ct.environment)) {
+    for (const [key, val] of sortedEntries(ct.environment)) {
       lines.push(`      ${key}: "${val}"`);
     }
     lines.push("    tmpfs:");
     for (const t of ct.tmpfs) lines.push(`      - "${t}"`);
     if (ct.depends_on && Object.keys(ct.depends_on).length > 0) {
       lines.push("    depends_on:");
-      for (const [svc, cond] of Object.entries(ct.depends_on)) {
+      for (const [svc, cond] of sortedEntries(ct.depends_on)) {
         lines.push(`      ${svc}:`);
         lines.push(`        condition: ${(cond as { condition: string }).condition}`);
       }
@@ -701,7 +702,7 @@ export function serializeYaml(compose: ComposeOutput): string {
     lines.push("    networks:");
     for (const n of ts.networks) lines.push(`      - ${n}`);
     lines.push("    environment:");
-    for (const [key, val] of Object.entries(ts.environment)) {
+    for (const [key, val] of sortedEntries(ts.environment)) {
       lines.push(`      ${key}: "${val}"`);
     }
     lines.push("    healthcheck:");
@@ -713,7 +714,7 @@ export function serializeYaml(compose: ComposeOutput): string {
   }
 
   lines.push("", "networks:");
-  for (const [name, net] of Object.entries(compose.networks)) {
+  for (const [name, net] of sortedEntries(compose.networks)) {
     lines.push(`  ${name}:`);
     if ("external" in net && (net as Record<string, unknown>).external) {
       lines.push("    external: true");
@@ -721,7 +722,7 @@ export function serializeYaml(compose: ComposeOutput): string {
       lines.push(`    driver: ${net.driver}`);
       if (net.driver_opts) {
         lines.push("    driver_opts:");
-        for (const [key, val] of Object.entries(net.driver_opts)) {
+        for (const [key, val] of sortedEntries(net.driver_opts)) {
           lines.push(`      ${key}: "${val}"`);
         }
       }
@@ -731,7 +732,7 @@ export function serializeYaml(compose: ComposeOutput): string {
   // Top-level secrets section
   if (compose.secrets) {
     lines.push("", "secrets:");
-    for (const [name, secret] of Object.entries(compose.secrets)) {
+    for (const [name, secret] of sortedEntries(compose.secrets)) {
       lines.push(`  ${name}:`);
       lines.push(`    file: ${secret.file}`);
     }

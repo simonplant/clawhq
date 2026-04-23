@@ -229,12 +229,17 @@ async function getImageInfo(tag: string): Promise<ImageInfo> {
         },
       ],
     };
-  } catch {
-    return {
-      id: "unknown",
-      hash: "unknown",
-      layers: [],
-    };
+  } catch (err) {
+    // Do NOT swallow into an "unknown" manifest. A prior version of this
+    // function returned `{ id: "unknown", hash: "unknown", layers: [] }` on
+    // any `docker inspect` failure, which poisoned the cache: subsequent
+    // runs saw a "successful" manifest with bogus identity and could skip
+    // rebuilds or trust stale layer hashes. Throw instead so the caller
+    // surfaces the real failure and the user knows something is wrong.
+    throw new Error(
+      `docker inspect failed for image ${tag}: ` +
+      (err instanceof Error ? err.message : String(err)),
+    );
   }
 }
 
