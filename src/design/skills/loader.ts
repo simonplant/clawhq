@@ -11,8 +11,8 @@
  * relativePaths targeting workspace/skills/<skillName>/.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -64,9 +64,26 @@ function configSkillsDir(): string {
  *
  * Returns SkillFileEntry[] with relativePaths under workspace/skills/<skillName>/.
  * Skips files with disallowed extensions or that exceed the size limit.
+ *
+ * Security: symbolic links are refused. A malicious skill directory could
+ * contain a symlink pointing at /etc/passwd or another workspace file; without
+ * this guard the loader would happily read and emit that content under the
+ * skill's identity. We detect symlinks via `Dirent.isSymbolicLink()` and skip
+ * them. As a second line of defense, every file we actually read has its
+ * `realpath` asserted to live under the skill root before it's loaded —
+ * catches symlinks-to-dirs, racy substitution, and inode re-parenting.
  */
-function readSkillDirectory(skillDir: string, skillName: string): SkillFileEntry[] {
+export function readSkillDirectory(skillDir: string, skillName: string): SkillFileEntry[] {
   if (!existsSync(skillDir)) return [];
+
+  // Canonical skill-root path for the boundary check below.
+  let skillRootReal: string;
+  try {
+    skillRootReal = realpathSync(skillDir);
+  } catch {
+    return [];
+  }
+  const skillRootPrefix = skillRootReal.endsWith(sep) ? skillRootReal : skillRootReal + sep;
 
   const entries: SkillFileEntry[] = [];
 
@@ -75,11 +92,35 @@ function readSkillDirectory(skillDir: string, skillName: string): SkillFileEntry
       const fullPath = join(dir, entry.name);
       const relativeSuffix = relativeBase ? `${relativeBase}/${entry.name}` : entry.name;
 
+      if (entry.isSymbolicLink()) {
+        // Symlinks in skill trees are suspicious by design — refuse.
+        console.warn(
+          `[skills] refusing symlink in skill "${skillName}": ${fullPath}`,
+        );
+        continue;
+      }
+
       if (entry.isDirectory()) {
         walkDir(fullPath, relativeSuffix);
       } else if (entry.isFile()) {
         const ext = entry.name.includes(".") ? `.${entry.name.split(".").pop()}` : "";
         if (!ALLOWED_EXTENSIONS.has(ext)) continue;
+
+        // Real-path boundary check: even if isSymbolicLink missed something
+        // (e.g. a parent directory is a symlink), realpath will still resolve
+        // the whole chain, and we refuse anything that escapes the root.
+        let entryReal: string;
+        try {
+          entryReal = realpathSync(fullPath);
+        } catch {
+          continue;
+        }
+        if (entryReal !== skillRootReal && !entryReal.startsWith(skillRootPrefix)) {
+          console.warn(
+            `[skills] refusing out-of-tree file in skill "${skillName}": ${fullPath} -> ${entryReal}`,
+          );
+          continue;
+        }
 
         const stat = statSync(fullPath);
         if (stat.size > MAX_FILE_SIZE) continue;

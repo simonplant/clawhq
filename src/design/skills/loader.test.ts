@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   listConfigSkillNames,
@@ -6,6 +10,7 @@ import {
   listProfileSkillNames,
   loadBlueprintSkills,
   loadPlatformSkills,
+  readSkillDirectory,
 } from "./loader.js";
 
 // ── Platform Skills ─────────────────────────────────────────────────────────
@@ -167,5 +172,99 @@ describe("listConfigSkillNames", () => {
     expect(names).toContain("schedule-guard");
     expect(names).toContain("email-digest");
     expect(names).toContain("construct");
+  });
+});
+
+// ── Symlink escape guard (security) ────────────────────────────────────────
+
+describe("readSkillDirectory — symlink escape guard", () => {
+  let sandbox: string;
+
+  beforeEach(() => {
+    sandbox = join(
+      tmpdir(),
+      `clawhq-skill-sym-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    );
+    mkdirSync(sandbox, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(sandbox, { recursive: true, force: true });
+  });
+
+  it("loads regular files inside the skill root", () => {
+    const skillDir = join(sandbox, "good");
+    mkdirSync(skillDir);
+    writeFileSync(join(skillDir, "SKILL.md"), "# Good skill\n");
+    const entries = readSkillDirectory(skillDir, "good");
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.content).toContain("Good skill");
+  });
+
+  it("refuses a symlink pointing outside the skill root", () => {
+    // Create a target outside the skill tree — simulates a malicious skill
+    // trying to read /etc/passwd (or any sibling file).
+    const outside = join(sandbox, "secret.md");
+    writeFileSync(outside, "SECRET\n");
+
+    const skillDir = join(sandbox, "evil");
+    mkdirSync(skillDir);
+    writeFileSync(join(skillDir, "SKILL.md"), "# Evil skill\n");
+    symlinkSync(outside, join(skillDir, "stolen.md"));
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const entries = readSkillDirectory(skillDir, "evil");
+
+    // Only the legitimate SKILL.md is loaded; the symlink is refused.
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.relativePath).toBe("workspace/skills/evil/SKILL.md");
+    expect(warnSpy).toHaveBeenCalled();
+    expect(warnSpy.mock.calls.some((c) => String(c[0]).includes("refusing symlink"))).toBe(true);
+
+    warnSpy.mockRestore();
+  });
+
+  it("refuses symlinks pointing to absolute paths (e.g. /etc/passwd)", () => {
+    const skillDir = join(sandbox, "evil2");
+    mkdirSync(skillDir);
+    writeFileSync(join(skillDir, "SKILL.md"), "# Evil skill\n");
+    symlinkSync("/etc/passwd", join(skillDir, "passwd.md"));
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const entries = readSkillDirectory(skillDir, "evil2");
+    const paths = entries.map((e) => e.relativePath);
+
+    expect(paths).not.toContain("workspace/skills/evil2/passwd.md");
+    // Make absolutely sure nothing contains /etc/passwd content.
+    for (const entry of entries) {
+      expect(entry.content).not.toMatch(/^root:/m);
+    }
+
+    warnSpy.mockRestore();
+  });
+
+  it("refuses files whose realpath escapes via a parent-directory symlink", () => {
+    // Skill dir itself contains a symlink-DIRECTORY whose target is outside.
+    const outsideDir = join(sandbox, "outside");
+    mkdirSync(outsideDir);
+    writeFileSync(join(outsideDir, "leaked.md"), "LEAKED\n");
+
+    const skillDir = join(sandbox, "evil3");
+    mkdirSync(skillDir);
+    writeFileSync(join(skillDir, "SKILL.md"), "# OK\n");
+    symlinkSync(outsideDir, join(skillDir, "subdir"));
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const entries = readSkillDirectory(skillDir, "evil3");
+    const paths = entries.map((e) => e.relativePath);
+
+    // The symlinked directory is skipped (caught at the dirent-level guard),
+    // so nothing from outsideDir is loaded.
+    expect(paths).toEqual(["workspace/skills/evil3/SKILL.md"]);
+
+    warnSpy.mockRestore();
   });
 });
