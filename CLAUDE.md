@@ -261,3 +261,133 @@ This project uses aishore for autonomous sprint execution. Backlog lives in `bac
 .aishore/aishore status             # Backlog overview
 ```
 
+
+
+---
+
+# Wiki: Product Knowledge
+
+## What this is
+
+This is an LLM-maintained wiki. You build and maintain a structured, interlinked collection of markdown files based on raw source documents provided by the user. The user curates sources, directs analysis, and asks questions. You do the summarizing, cross-referencing, filing, and bookkeeping.
+
+## Directory structure
+
+```
+knowledge/raw/            # Immutable source documents. Never modify these.
+knowledge/  assets/       # Images and media referenced by sources.
+knowledge/wiki/           # LLM-generated markdown pages. You own this entirely.
+knowledge/index.md        # Catalog of all wiki pages — links, one-line summaries, organized by category.
+knowledge/log.md          # Append-only chronological record of operations.
+```
+
+## Operations
+
+### Ingest
+
+When the user provides a new source:
+
+1. Read the source fully.
+2. Discuss key takeaways with the user.
+3. Create or update a summary page in `knowledge/wiki/`.
+4. Update all relevant entity/concept pages across the wiki with new information.
+5. Update `knowledge/index.md` with any new or changed pages.
+6. Append a log entry to `knowledge/log.md`.
+
+A single source may touch 10-15 wiki pages. Update cross-references (`[[Page Name]]`) wherever connections exist.
+
+### Query
+
+When the user asks a question:
+
+1. Read `knowledge/index.md` to find relevant pages.
+2. Read those pages and synthesize an answer with citations.
+3. If the answer is substantial (comparisons, analyses, discoveries), offer to file it as a new wiki page so it compounds in the knowledge base.
+
+### Lint
+
+When asked to health-check the wiki:
+
+- Flag contradictions between pages.
+- Identify stale claims superseded by newer sources.
+- Find orphan pages (no inbound links).
+- Note concepts mentioned but lacking their own page.
+- Suggest missing cross-references.
+- Suggest new questions or sources to investigate.
+
+## Wiki page conventions
+
+- One feature, persona, decision, competitor, or metric per page.
+- Use [[Wiki Links]] for cross-references between pages.
+- Feature pages should link to the personas they serve and the metrics that measure them.
+- Decisions should record context, options considered, and rationale — not just the outcome.
+- Competitor pages should cite sources for every claim — e.g. (see [[Source Title]]).
+- Mark status on features: proposed, planned, building, shipped, sunset.
+- Prefer updating existing pages over creating new ones when the topic overlaps.
+
+Pages can include YAML frontmatter with these fields: `tags`, `date`, `status`, `owner`.
+
+## index.md format
+
+Each entry: `- [[Page Name]] — one-line summary`. Organized under category headings (Features, Personas, Decisions, Competitors, Metrics, Sources).
+
+## log.md format
+
+Each entry starts with a parseable heading:
+
+```
+## [YYYY-MM-DD] operation | Title
+```
+
+Operations: `ingest`, `query`, `lint`. This format supports `grep "^## \[" knowledge/log.md | tail -5` for quick review.
+
+## When to use the wiki
+
+**Before answering a question**: check whether the wiki already has relevant pages. Read `knowledge/index.md` first. If pages exist on the topic, read them and ground your answer in wiki content rather than general knowledge. Cite pages: "According to [[Page Name]], ...".
+
+**After a valuable conversation**: if the discussion produced a synthesis, comparison, analysis, or new connection — offer to file it as a wiki page. Good conversations shouldn't disappear into chat history. Ask: "This analysis could be useful later. Want me to add it to the wiki?"
+
+**When the user shares new information**: if the user mentions a fact, decision, insight, or reference that relates to the wiki's domain, suggest adding it. "That's relevant to [[Existing Page]] — want me to update it?" Don't wait for a formal ingest — lightweight updates from conversation are valuable.
+
+**When you notice gaps**: if a question reveals something the wiki should cover but doesn't, say so. "The wiki doesn't have a page on X yet. Want me to create one based on what we've discussed?"
+
+**When you notice contradictions**: if the user says something that contradicts the wiki, surface it. "The wiki says X (see [[Page]]), but you're saying Y. Want me to update the wiki, or should we investigate?"
+
+## When NOT to use the wiki
+
+- Don't add trivial or transient information (one-off questions, debugging sessions, temporary context).
+- Don't update the wiki silently — always tell the user what you're changing and why.
+- Don't read the entire wiki upfront. Navigate via the index. Load pages on demand.
+- Don't create a new page when an existing page should be updated instead.
+
+## Key principles
+
+- Raw sources are immutable. Never modify files in `knowledge/raw/`.
+- The wiki is yours to write and maintain. Create, update, and reorganize freely.
+- Always update cross-references when adding new information.
+- File valuable query answers back into the wiki so explorations compound.
+- The wiki should get richer with every session. If you finish a conversation and the wiki is unchanged, consider whether anything was worth capturing.
+
+## CLI tools
+
+If `llm-wiki` is installed, these commands are available:
+
+- `llm-wiki lint` — structural checks (broken links, orphans, index drift). Run after making changes.
+- `llm-wiki lint --fix` — auto-fix fixable issues (missing frontmatter, stale index entries, empty pages).
+- `llm-wiki ingest <files...>` — stage source files into `raw/` with standardized naming. Accepts multiple files.
+- `llm-wiki stats` — wiki health dashboard (page count, link density, recent activity).
+- `llm-wiki context` — generate a compact wiki briefing (size, unprocessed sources, issues, recent changes, index summary). This runs automatically at session start via the SessionStart hook.
+- `llm-wiki doctor` — validate entire wiki setup (structure, schema, skills, hooks, git, lint).
+- `llm-wiki diff` — show what changed since last operation (git-aware, grouped by layer).
+
+## Context loading
+
+This schema is always loaded at session start — it contains the rules you need in every conversation. The wiki pages in `knowledge/wiki/` are loaded on demand — read `knowledge/index.md` first, then drill into specific pages as needed. Don't read every page upfront; navigate via the index.
+
+## Skills
+
+If Claude Code skills are configured (`.claude/commands/`), these guided workflows are available:
+
+- `/wiki-ingest` — full ingest workflow: read source, discuss, create wiki pages, update cross-references.
+- `/wiki-query` — query the wiki: find pages, synthesize answer, optionally file it.
+- `/wiki-review` — content-level health check: contradictions, stale claims, gaps.

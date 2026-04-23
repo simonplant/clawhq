@@ -9,6 +9,15 @@
             "command": "llm-wiki context --path ~/.clawhq/workspace/knowledge/trading 2>/dev/null || true"
           }
         ]
+      },
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "llm-wiki context --path knowledge 2>/dev/null || true"
+          }
+        ]
       }
     ]
   }
