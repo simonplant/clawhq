@@ -173,7 +173,7 @@ async function checkCompose(deployDir: string): Promise<PreflightCheckResult> {
         name,
         passed: false,
         message: "docker-compose.yml is empty or invalid YAML",
-        fix: "Run: clawhq build",
+        fix: "Run: clawhq apply",
       };
     }
 
@@ -185,7 +185,7 @@ async function checkCompose(deployDir: string): Promise<PreflightCheckResult> {
         name,
         passed: false,
         message: "docker-compose.yml missing 'openclaw' service definition",
-        fix: "Run: clawhq build",
+        fix: "Run: clawhq apply",
       };
     }
 
@@ -194,7 +194,7 @@ async function checkCompose(deployDir: string): Promise<PreflightCheckResult> {
         name,
         passed: false,
         message: "docker-compose.yml has no image field — container cannot start",
-        fix: "Run: clawhq build (regenerates compose from current config)",
+        fix: "Run: clawhq apply (regenerates compose from current config)",
       };
     }
 
@@ -204,7 +204,7 @@ async function checkCompose(deployDir: string): Promise<PreflightCheckResult> {
         name,
         passed: false,
         message: "docker-compose.yml missing extra_hosts — Ollama will be unreachable from container",
-        fix: "Run: clawhq build (regenerates compose with host mappings)",
+        fix: "Run: clawhq apply (regenerates compose with host mappings)",
       };
     }
 
@@ -216,14 +216,14 @@ async function checkCompose(deployDir: string): Promise<PreflightCheckResult> {
         name,
         passed: false,
         message: "docker-compose.yml not found",
-        fix: "Run: clawhq build",
+        fix: "Run: clawhq apply",
       };
     }
     return {
       name,
       passed: false,
       message: `Cannot parse docker-compose.yml: ${msg}`,
-      fix: "Run: clawhq build",
+      fix: "Run: clawhq apply",
     };
   }
 }

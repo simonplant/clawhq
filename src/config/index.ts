@@ -39,9 +39,9 @@ export type {
   VolumeMount,
 } from "./types.js";
 
-// Validation
+// Validation — per-landmine validators. Aggregate validation against a
+// CompiledWorkspace lives in src/design/catalog/validate-compiled.ts.
 export {
-  validateBundle,
   validateLM01,
   validateLM02,
   validateLM03,

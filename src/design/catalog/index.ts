@@ -24,6 +24,7 @@ export {
 } from "./loader.js";
 
 export { compile } from "./compiler.js";
+export { validateCompiled } from "./validate-compiled.js";
 
 export type { Provider, ProviderEnvVar } from "./providers.js";
 export {

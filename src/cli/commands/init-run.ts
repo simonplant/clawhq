@@ -22,7 +22,6 @@ import { stringify as yamlStringify } from "yaml";
 
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
 import { withDeployLock } from "../../config/lock.js";
-import { validateBundle } from "../../config/validate.js";
 import {
   ConfigFileError,
   generateBundle,
@@ -139,10 +138,11 @@ function seedFromAnswers(answers: WizardAnswers): void {
  * The shared "got WizardAnswers, now finish the forge" pipeline. Used by
  * both --smart / --blueprint and the legacy --config branch.
  *
- * Validates via the bundle pipeline (structural landmine check), then
- * delegates the actual writing to seed + apply — one reconciler, not two.
+ * Seeds the wizard-input files and delegates to apply(), which runs
+ * landmine validation against the real compile output and refuses to
+ * write on failure. One reconciler, not two.
  *
- * Throws CommandError on validation or apply failure.
+ * Throws CommandError on apply failure.
  */
 export async function forgeFromAnswers(answers: WizardAnswers): Promise<void> {
   // Hold the deploy lock for the whole forge so seed + apply run
@@ -150,24 +150,12 @@ export async function forgeFromAnswers(answers: WizardAnswers): Promise<void> {
   // the yaml/USER.md seed and apply's regen. Reentrant-by-pid: the inner
   // apply() call sees our lock and doesn't re-acquire.
   await withDeployLock(answers.deployDir, async () => {
-    const spinner = ora("Validating composition…");
-    spinner.start();
-    const bundle = generateBundle(answers);
-    const report = validateBundle(bundle);
-    if (!report.valid) {
-      spinner.fail("Config validation failed");
-      for (const err of report.errors) {
-        console.error(chalk.red(`  ✘ ${err.rule}: ${err.message}`));
-      }
-      throw new CommandError("", 1);
-    }
-    spinner.succeed("Composition validated");
-
     // Seed the user-input files so apply has a manifest to regenerate from.
     seedFromAnswers(answers);
 
-    // Apply regenerates everything derived from clawhq.yaml. Same code path
-    // users run every subsequent time — no parallel pipeline.
+    // Apply compiles, validates landmines against the compile output, and
+    // writes. Same code path users run every subsequent time — no parallel
+    // validation pipeline off a separate shim type.
     const applySpinner = ora("Applying config…").start();
     const result = await apply({ deployDir: answers.deployDir });
     if (!result.success) {
@@ -177,9 +165,6 @@ export async function forgeFromAnswers(answers: WizardAnswers): Promise<void> {
     const changed = result.report.added.length + result.report.changed.length;
     applySpinner.succeed(`Config applied (${changed} file(s))`);
 
-    for (const warn of report.warnings) {
-      console.log(chalk.yellow(`  ⚠ ${warn.rule}: ${warn.message}`));
-    }
     console.log(chalk.green(`\n✔ Agent forged successfully`));
     console.log(chalk.dim(`\n  Next: clawhq up`));
   });

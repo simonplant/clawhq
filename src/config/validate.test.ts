@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import type { CompiledFile, CompiledWorkspace } from "../design/catalog/types.js";
+import { validateCompiled } from "../design/catalog/validate-compiled.js";
+
 import { GATEWAY_DEFAULT_PORT } from "./defaults.js";
 import {
   OPENCLAW_CONTAINER_CONFIG,
@@ -9,12 +12,10 @@ import {
 import type {
   ComposeConfig,
   CronJobDefinition,
-  DeploymentBundle,
   IdentityFileInfo,
   OpenClawConfig,
 } from "./types.js";
 import {
-  validateBundle,
   validateLM01,
   validateLM02,
   validateLM03,
@@ -96,16 +97,47 @@ function validIdentityFiles(): IdentityFileInfo[] {
   ];
 }
 
-function validBundle(): DeploymentBundle {
+/**
+ * Build a minimal CompiledWorkspace with serialized fixture files.
+ *
+ * validateCompiled parses each file back into its typed shape before
+ * running the per-landmine validators. Using JSON for openclaw.json and
+ * cron/jobs.json keeps the fixture hand-writable; the compose fixture
+ * goes through yaml.stringify so the YAML → ComposeConfig round-trip
+ * exercises the real parser path rather than a JSON shortcut.
+ */
+async function validCompiledWorkspace(
+  overrides: {
+    readonly openclaw?: OpenClawConfig;
+    readonly compose?: ComposeConfig;
+    readonly cronJobs?: readonly CronJobDefinition[];
+    readonly identity?: readonly IdentityFileInfo[];
+  } = {},
+): Promise<CompiledWorkspace> {
+  const openclaw = overrides.openclaw ?? validOpenClawConfig();
+  const compose = overrides.compose ?? validComposeConfig();
+  const cronJobs = overrides.cronJobs ?? validCronJobs();
+  const identity = overrides.identity ?? validIdentityFiles();
+
+  const { stringify: yamlStringify } = await import("yaml");
+
+  const files: CompiledFile[] = [
+    { relativePath: "engine/openclaw.json", content: JSON.stringify(openclaw), mode: 0o600 },
+    { relativePath: "engine/docker-compose.yml", content: yamlStringify(compose), mode: 0o600 },
+    { relativePath: "cron/jobs.json", content: JSON.stringify({ version: 1, jobs: cronJobs }) },
+    ...identity.map((f) => ({
+      relativePath: f.path,
+      content: f.content ?? "x".repeat(f.sizeBytes),
+    })),
+  ];
+
   return {
-    openclawConfig: validOpenClawConfig(),
-    composeConfig: validComposeConfig(),
-    envVars: {},
-    cronJobs: validCronJobs(),
-    identityFiles: validIdentityFiles(),
-    toolFiles: [],
-    skillFiles: [],
-    clawhqConfig: { version: "1" },
+    files,
+    // The profile / personality fields aren't read by validateCompiled.
+    // Cast through unknown to avoid rebuilding the full fixtures for
+    // structures that are irrelevant to landmine checks.
+    profile: {} as CompiledWorkspace["profile"],
+    personality: {} as CompiledWorkspace["personality"],
   };
 }
 
@@ -445,35 +477,33 @@ describe("LM-14: fs.workspaceOnly", () => {
   });
 });
 
-// ── Full Bundle Validation ──────────────────────────────────────────────────
+// ── Full Compiled-Workspace Validation ─────────────────────────────────────
 
-describe("validateBundle", () => {
-  it("passes a valid bundle", () => {
-    const report = validateBundle(validBundle());
+describe("validateCompiled", () => {
+  it("passes a valid compiled workspace", async () => {
+    const report = validateCompiled(await validCompiledWorkspace(), {});
     expect(report.valid).toBe(true);
     expect(report.errors).toHaveLength(0);
     expect(report.results).toHaveLength(14);
   });
 
-  it("reports errors for invalid configs", () => {
-    const bundle = validBundle();
-    const broken: DeploymentBundle = {
-      ...bundle,
-      openclawConfig: {
-        ...bundle.openclawConfig,
+  it("reports errors for invalid openclaw.json", async () => {
+    const broken = await validCompiledWorkspace({
+      openclaw: {
+        ...validOpenClawConfig(),
         dangerouslyDisableDeviceAuth: false,
         allowedOrigins: [],
       },
-    };
-    const report = validateBundle(broken);
+    });
+    const report = validateCompiled(broken, {});
     expect(report.valid).toBe(false);
     expect(report.errors.length).toBeGreaterThanOrEqual(2);
     expect(report.errors.map((e) => e.rule)).toContain("LM-01");
     expect(report.errors.map((e) => e.rule)).toContain("LM-02");
   });
 
-  it("includes actionable fix messages", () => {
-    const report = validateBundle(validBundle());
+  it("includes actionable fix messages", async () => {
+    const report = validateCompiled(await validCompiledWorkspace(), {});
     for (const result of report.results) {
       expect(result.fix).toBeDefined();
       expect(result.fix?.length).toBeGreaterThan(0);

@@ -39,15 +39,29 @@ describe("compile", () => {
   });
 
   // Regression guard for the 20260421 clobber: compile() must NOT emit the
-  // seeded-once / build-owned files that non-apply writeBundle callers
+  // seeded-once / user-owned files that non-apply writeBundle callers
   // would otherwise write. `clawhq.yaml` is owned by scaffold/user;
-  // `engine/docker-compose.yml` is owned by `clawhq build`. Both emissions
-  // historically caused stub-clobber bugs.
-  it("does not emit clawhq.yaml or docker-compose.yml (single-writer ownership)", () => {
+  // historical emission caused stub-clobber bugs. docker-compose.yml is
+  // emitted here — apply writes it, `clawhq build` is image-only.
+  it("does not emit clawhq.yaml (seeded-once ownership)", () => {
     const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
     const paths = result.files.map((f) => f.relativePath);
     expect(paths).not.toContain("clawhq.yaml");
-    expect(paths).not.toContain("engine/docker-compose.yml");
+  });
+
+  it("emits engine/docker-compose.yml with the required landmine shape", () => {
+    const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
+    const compose = result.files.find((f) => f.relativePath === "engine/docker-compose.yml");
+    expect(compose).toBeDefined();
+    // Sanity check: file should carry the security-critical hardening
+    // we rely on preflight + landmine validators to enforce.
+    expect(compose?.content).toContain("cap_drop:");
+    expect(compose?.content).toContain("- ALL");
+    expect(compose?.content).toContain("no-new-privileges");
+    expect(compose?.content).toContain('user: "1000:1000"');
+    // Mode 0o600 — compose carries container image tags + host paths,
+    // treated as sensitive config.
+    expect(compose?.mode).toBe(0o600);
   });
 
   it("generates tool scripts for all profile tools", () => {

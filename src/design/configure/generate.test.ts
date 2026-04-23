@@ -1,11 +1,58 @@
 import { describe, expect, it } from "vitest";
 
 import { GATEWAY_DEFAULT_PORT, OLLAMA_DEFAULT_MODEL } from "../../config/defaults.js";
-import { validateBundle } from "../../config/validate.js";
+import type { DeploymentBundle, ValidationReport } from "../../config/types.js";
+import {
+  validateLM01,
+  validateLM02,
+  validateLM03,
+  validateLM04,
+  validateLM05,
+  validateLM06,
+  validateLM07,
+  validateLM08,
+  validateLM09,
+  validateLM10,
+  validateLM11,
+  validateLM12,
+  validateLM13,
+  validateLM14,
+} from "../../config/validate.js";
 import { loadBlueprint } from "../blueprints/loader.js";
 
 import { generateAllowlistContent, generateBundle, generateDelegatedRulesContent, generateSkillFiles, renderCronJobsFile, validateCronExpr } from "./generate.js";
 import type { WizardAnswers } from "./types.js";
+
+/**
+ * Aggregate landmine check against a generateBundle output. Replaces the
+ * old production validateBundle which used DeploymentBundle as a
+ * validation shim — production validation now runs off compile() output
+ * via validateCompiled, and generateBundle is a wizard-input helper
+ * only. Kept here as a local test helper so the wizard pipeline can
+ * still be smoke-tested for all 14 landmine rules without reaching into
+ * production code that no longer exists.
+ */
+function validateBundleForTest(bundle: DeploymentBundle): ValidationReport {
+  const results = [
+    validateLM01(bundle.openclawConfig),
+    validateLM02(bundle.openclawConfig),
+    validateLM03(bundle.openclawConfig),
+    validateLM04(bundle.openclawConfig),
+    validateLM05(bundle.openclawConfig),
+    validateLM06(bundle.composeConfig),
+    validateLM07(bundle.composeConfig),
+    validateLM08(bundle.openclawConfig, bundle.identityFiles),
+    validateLM09(bundle.cronJobs),
+    validateLM10(bundle.composeConfig),
+    validateLM11(bundle.composeConfig, bundle.envVars),
+    validateLM12(bundle.composeConfig),
+    validateLM13(bundle.composeConfig),
+    validateLM14(bundle.openclawConfig),
+  ];
+  const errors = results.filter((r) => !r.passed && r.severity === "error");
+  const warnings = results.filter((r) => !r.passed && r.severity === "warning");
+  return { valid: errors.length === 0, results, errors, warnings };
+}
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -32,7 +79,7 @@ describe("generateBundle", () => {
   it("produces a bundle that passes all 14 landmine rules", () => {
     const answers = makeAnswers();
     const bundle = generateBundle(answers);
-    const report = validateBundle(bundle);
+    const report = validateBundleForTest(bundle);
 
     expect(report.valid).toBe(true);
     expect(report.errors).toHaveLength(0);
@@ -469,7 +516,7 @@ describe("generateBundle", () => {
         blueprintPath: loaded.sourcePath,
       });
       const bundle = generateBundle(answers);
-      const report = validateBundle(bundle);
+      const report = validateBundleForTest(bundle);
 
       expect(report.valid, `Blueprint "${name}" should pass validation`).toBe(true);
     }
@@ -568,7 +615,7 @@ describe("profile-driven tools.deny", () => {
         blueprintPath: loaded.sourcePath,
       });
       const bundle = generateBundle(answers);
-      const report = validateBundle(bundle);
+      const report = validateBundleForTest(bundle);
       expect(report.valid, `Blueprint "${name}" should pass validation with profile_ref`).toBe(true);
     }
   });
@@ -707,7 +754,7 @@ describe("multi-instance support", () => {
 
   it("passes full validation with instanceName set", () => {
     const bundle = generateBundle(makeAnswers({ instanceName: "john" }));
-    const report = validateBundle(bundle);
+    const report = validateBundleForTest(bundle);
     expect(report.valid).toBe(true);
     expect(report.errors).toHaveLength(0);
   });

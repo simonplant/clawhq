@@ -12,10 +12,8 @@ import type {
   ComposeConfig,
   ComposeServiceConfig,
   CronJobDefinition,
-  DeploymentBundle,
   IdentityFileInfo,
   OpenClawConfig,
-  ValidationReport,
   ValidationResult,
   VolumeMount,
 } from "./types.js";
@@ -420,45 +418,6 @@ export function validateLM14(config: OpenClawConfig): ValidationResult {
       ? `fs.workspaceOnly is ${workspaceOnly}`
       : "fs.workspaceOnly is not set — filesystem access may be too permissive (reads host) or too restrictive (blocks media)",
     fix: "Set fs.workspaceOnly to true (recommended) or false (if agent needs media access outside workspace)",
-  };
-}
-
-// ── Full Validation ─────────────────────────────────────────────────────────
-
-/**
- * Run all 14 landmine validation rules against a deployment bundle.
- *
- * Returns a report with individual results, aggregated errors and warnings.
- */
-export function validateBundle(bundle: DeploymentBundle): ValidationReport {
-  const results: ValidationResult[] = [
-    // openclaw.json rules
-    validateLM01(bundle.openclawConfig),
-    validateLM02(bundle.openclawConfig),
-    validateLM03(bundle.openclawConfig),
-    validateLM04(bundle.openclawConfig),
-    validateLM05(bundle.openclawConfig),
-    // compose rules
-    validateLM06(bundle.composeConfig),
-    validateLM07(bundle.composeConfig),
-    // cross-surface rules
-    validateLM08(bundle.openclawConfig, bundle.identityFiles),
-    validateLM09(bundle.cronJobs),
-    validateLM10(bundle.composeConfig),
-    validateLM11(bundle.composeConfig, bundle.envVars),
-    validateLM12(bundle.composeConfig),
-    validateLM13(bundle.composeConfig),
-    validateLM14(bundle.openclawConfig),
-  ];
-
-  const errors = results.filter((r) => !r.passed && r.severity === "error");
-  const warnings = results.filter((r) => !r.passed && r.severity === "warning");
-
-  return {
-    valid: errors.length === 0,
-    results,
-    errors,
-    warnings,
   };
 }
 
