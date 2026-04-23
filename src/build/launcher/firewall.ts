@@ -542,14 +542,6 @@ export async function resolveDomains(
 
 // ── Internal Helpers ────────────────────────────────────────────────────────
 
-async function iptables(args: string[], signal?: AbortSignal): Promise<void> {
-  await runIptablesCmd("iptables", args, signal);
-}
-
-async function ip6tables(args: string[], signal?: AbortSignal): Promise<void> {
-  await runIptablesCmd("ip6tables", args, signal);
-}
-
 type IptablesCmd = "iptables" | "ip6tables";
 
 async function runIptablesCmd(cmd: IptablesCmd, args: string[], signal?: AbortSignal): Promise<void> {

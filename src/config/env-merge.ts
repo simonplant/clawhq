@@ -47,7 +47,8 @@ export function parseEnvLines(content: string): EnvLine[] {
   // split() on a terminated input produces a trailing empty element that
   // round-trips as an empty line; callers join with "\n" so this is fine,
   // but strip the synthetic trailing empty to keep the EnvLine list clean.
-  if (out.length > 0 && out[out.length - 1]!.raw === "") out.pop();
+  const last = out[out.length - 1];
+  if (last !== undefined && last.raw === "") out.pop();
   return out;
 }
 

@@ -15,6 +15,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import type { ComposeConfig, ComposeServiceConfig } from "../../config/types.js";
 import {
   validateLM06,
   validateLM07,
@@ -23,7 +24,6 @@ import {
   validateLM12,
   validateLM13,
 } from "../../config/validate.js";
-import type { ComposeConfig, ComposeServiceConfig } from "../../config/types.js";
 import { listBuiltinBlueprints, loadBlueprint } from "../../design/blueprints/loader.js";
 
 import { generateCompose } from "./compose.js";

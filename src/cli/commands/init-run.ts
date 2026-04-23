@@ -21,8 +21,8 @@ import ora from "ora";
 import { stringify as yamlStringify } from "yaml";
 
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
-import { withDeployLock } from "../../config/lock.js";
 import { writeFileAtomic } from "../../config/fs-atomic.js";
+import { withDeployLock } from "../../config/lock.js";
 import {
   ConfigFileError,
   generateBundle,

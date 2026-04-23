@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -87,7 +88,6 @@ describe("beginTransaction + rollback", () => {
     // Make it executable — the prior implementation restored mode 0o600 on
     // rollback regardless of the original mode. Now we preserve it.
     const toolPath = join(deployDir, "tool.sh");
-    const { chmodSync } = require("node:fs") as typeof import("node:fs");
     chmodSync(toolPath, 0o755);
 
     const tx = beginTransaction(deployDir, ["tool.sh"]);

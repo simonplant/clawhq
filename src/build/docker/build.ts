@@ -239,6 +239,7 @@ async function getImageInfo(tag: string): Promise<ImageInfo> {
     throw new Error(
       `docker inspect failed for image ${tag}: ` +
       (err instanceof Error ? err.message : String(err)),
+      { cause: err },
     );
   }
 }
