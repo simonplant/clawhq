@@ -27,6 +27,7 @@ import {
   GATEWAY_DEFAULT_PORT,
   OLLAMA_DEFAULT_MODEL,
 } from "../../config/defaults.js";
+import { sortedEntries } from "../../config/stable-serialize.js";
 import { BUILTIN_ROUTES, buildRoutesConfig, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv } from "../../secure/credentials/proxy-routes.js";
 import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
 import {
@@ -89,8 +90,10 @@ export function compile(
   const profile = loadProfile(config.profile);
   const personality = loadCanonicalPersonality();
 
-  // Resolve selected providers — carry domain key for multi-account env var prefixing
-  const providerEntries = Object.entries(config.providers ?? {});
+  // Resolve selected providers — carry domain key for multi-account env var
+  // prefixing. Sorted so the emitted .env section, allowlist, and Himalaya
+  // config land in a stable order across runs.
+  const providerEntries = sortedEntries(config.providers);
   const providerIds = providerEntries.map(([, id]) => id);
   const resolvedProviders: Array<Provider & { domainKey: string }> = [];
   for (const [domainKey, id] of providerEntries) {
@@ -296,6 +299,11 @@ function deriveWorkspaceManifest(files: readonly CompiledFile[]): WorkspaceManif
     if (path.startsWith("config/")) continue;
     immutable.push(path);
   }
+
+  // Sort the immutable list so the docker-compose volume section and the
+  // build cache hash land at identical byte sequences regardless of the
+  // source files array order.
+  immutable.sort();
 
   return {
     immutable,
@@ -1168,7 +1176,11 @@ function renderCronJobs(
       }
     : { mode: "announce" as const };
 
-  for (const [id, cronDef] of Object.entries(profile.cron_defaults)) {
+  // Sorted iteration so jobs.json lands at a deterministic byte sequence
+  // regardless of the profile YAML's key order. OpenClaw's scheduler is
+  // order-independent — sorting is a cosmetic-but-load-bearing change for
+  // `clawhq apply` idempotency.
+  for (const [id, cronDef] of sortedEntries(profile.cron_defaults)) {
     const expr = typeof cronDef === "string" ? cronDef : cronDef.expr;
     const shouldAnnounce = typeof cronDef === "object" && cronDef.announce === true;
     const message = profile.cron_prompts[id] ?? `Run ${id}`;
@@ -1249,7 +1261,11 @@ function renderAllowlistFromDomains(profile: MissionProfile, allDomains: string[
     "",
     "domains:",
   ];
-  for (const domain of allDomains) {
+  // Sorted so allowlist.yaml is byte-stable across compiles regardless of
+  // the order profile defaults and provider-specific egress merged in the
+  // caller's Set.
+  const sortedDomains = [...allDomains].sort();
+  for (const domain of sortedDomains) {
     lines.push(`  - ${domain}`);
   }
   lines.push("");
@@ -1309,15 +1325,17 @@ function buildChannels(config: CompositionConfig, user?: UserConfig): Record<str
   };
 
   // Merge user-provided channel config, replacing secrets with env var references
-  // and converting legacy fields to new format
+  // and converting legacy fields to new format. Sorted iteration so
+  // openclaw.json's channels block and the nested field order inside each
+  // channel are deterministic across compiles.
   if (config.channels) {
-    for (const [name, values] of Object.entries(config.channels)) {
+    for (const [name, values] of sortedEntries(config.channels)) {
       if (!channels[name]) {
         channels[name] = { enabled: true };
       }
       const channel = channels[name];
       if (!channel) continue;
-      for (const [key, value] of Object.entries(values)) {
+      for (const [key, value] of sortedEntries(values)) {
         if (CHANNEL_SECRET_KEYS.has(key)) {
           // Replace literal secret with env var reference
           channel[key] = CHANNEL_ENV_VARS[name]?.[key] ?? `\${${name.toUpperCase()}_${key.toUpperCase()}}`;

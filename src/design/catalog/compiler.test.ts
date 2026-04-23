@@ -315,6 +315,33 @@ describe("compile", () => {
     expect(token).not.toBe("CHANGE_ME");
   });
 
+  // ── Determinism (byte-equal output on identical inputs) ───────────────
+
+  it("produces byte-identical artifacts on two compiles of the same input", () => {
+    const config = {
+      profile: "life-ops",
+      providers: { email: "gmail", calendar: "google-cal" },
+      channels: { telegram: { enabled: true } },
+    } as const;
+    const existingEnv = { OPENCLAW_GATEWAY_TOKEN: "stable-test-token" };
+
+    const first = compile(config, TEST_USER, "/tmp/test", undefined, existingEnv);
+    const second = compile(config, TEST_USER, "/tmp/test", undefined, existingEnv);
+
+    // Same set of files in the same order.
+    expect(first.files.map((f) => f.relativePath))
+      .toEqual(second.files.map((f) => f.relativePath));
+
+    // Every file's content is byte-equal. The compiler itself is what we're
+    // verifying; the shell of the test does the fan-out per file so failures
+    // point at the specific artifact that diverged.
+    for (let i = 0; i < first.files.length; i++) {
+      const a = first.files[i];
+      const b = second.files[i];
+      expect(b.content, `divergence in ${a.relativePath}`).toBe(a.content);
+    }
+  });
+
   it("generates a fresh token when existing value is the CHANGE_ME placeholder", () => {
     const existingEnv = { OPENCLAW_GATEWAY_TOKEN: "CHANGE_ME" };
     const result = compile(
