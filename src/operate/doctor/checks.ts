@@ -136,6 +136,7 @@ export async function runChecks(
     checkCronSchema(deployDir),
     checkCronSyntax(deployDir),
     checkCronHealth(deployDir),
+    checkCronErrorRate(deployDir),
     checkEnvVars(deployDir),
     checkFirewallActive(deployDir, signal),
     checkWorkspaceExists(deployDir),
@@ -789,6 +790,97 @@ async function checkCronHealth(deployDir: string): Promise<DoctorCheckResult> {
     }
     return fail(name, "warning", `Cannot read cron jobs: ${msg}`);
   }
+}
+
+/**
+ * 12b. Cron error rate over recent runs.
+ *
+ * `cron-health` catches structural problems; this catches jobs that are
+ * *running* but failing repeatedly. `consecutiveErrors` in jobs-state.json
+ * resets to 0 on every OK run, so a job flapping at 20% (one OK between
+ * each pair of failures) shows zero consecutive errors and looks healthy
+ * from the state file alone. Tails each job's cron/runs/*.jsonl and
+ * computes a rolling error rate.
+ */
+async function checkCronErrorRate(deployDir: string): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "cron-error-rate";
+  const runsDir = join(deployDir, "cron", "runs");
+  const WINDOW = 20;
+  const WARN_THRESHOLD = 0.15;
+  const FAIL_THRESHOLD = 0.30;
+
+  let entries: string[];
+  try {
+    entries = await readdir(runsDir);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("ENOENT")) {
+      return ok(name, "No cron run history yet", "info");
+    }
+    return fail(name, "warning", `Cannot read ${runsDir}: ${msg}`);
+  }
+
+  const jsonlFiles = entries.filter((e) => e.endsWith(".jsonl"));
+  if (jsonlFiles.length === 0) {
+    return ok(name, "No cron run history yet", "info");
+  }
+
+  const warnings: string[] = [];
+  const failures: string[] = [];
+
+  for (const file of jsonlFiles) {
+    const jobId = file.replace(/\.jsonl$/, "");
+    let content: string;
+    try {
+      content = await readFile(join(runsDir, file), "utf8");
+    } catch {
+      continue;
+    }
+    const lines = content.split("\n").filter((l) => l.length > 0);
+    if (lines.length < 5) continue; // need enough samples to be meaningful
+
+    const window = lines.slice(-WINDOW);
+    let errors = 0;
+    let total = 0;
+    for (const line of window) {
+      try {
+        const rec = JSON.parse(line) as { action?: string; status?: string };
+        if (rec.action !== "finished") continue;
+        total += 1;
+        if (rec.status === "error") errors += 1;
+      } catch {
+        // ignore malformed lines
+      }
+    }
+    if (total === 0) continue;
+    const rate = errors / total;
+    if (rate >= FAIL_THRESHOLD) {
+      failures.push(`${jobId}: ${errors}/${total} errors in last ${total} runs (${Math.round(rate * 100)}%)`);
+    } else if (rate >= WARN_THRESHOLD) {
+      warnings.push(`${jobId}: ${errors}/${total} errors in last ${total} runs (${Math.round(rate * 100)}%)`);
+    }
+  }
+
+  if (failures.length > 0) {
+    const parts = [...failures, ...warnings];
+    return fail(
+      name,
+      "error",
+      `Cron jobs with high error rate: ${parts.join("; ")}`,
+      "Inspect cron/runs/<jobId>.jsonl for error messages and fix root cause",
+      false,
+    );
+  }
+  if (warnings.length > 0) {
+    return fail(
+      name,
+      "warning",
+      `Cron jobs with elevated error rate: ${warnings.join("; ")}`,
+      "Inspect cron/runs/<jobId>.jsonl for error messages",
+      false,
+    );
+  }
+  return ok(name, `All ${jsonlFiles.length} cron job(s) below ${Math.round(WARN_THRESHOLD * 100)}% error rate`);
 }
 
 /** 13. Required env vars referenced in compose are present in .env. */

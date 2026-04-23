@@ -348,7 +348,7 @@ describe("checks", { timeout: 30_000 }, () => {
 
   it("runs all checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(41);
+    expect(checks.length).toBe(42);
   });
 });
 
@@ -364,7 +364,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(41);
+    expect(report.checks.length).toBe(42);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -841,9 +841,9 @@ services:
     expect(check.message).toContain("underscore-prefixed methods");
   });
 
-  it("runs all 41 checks", async () => {
+  it("runs all 42 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(41);
+    expect(checks.length).toBe(42);
   });
 });
 

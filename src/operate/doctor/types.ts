@@ -24,6 +24,7 @@ export type DoctorCheckName =
   | "cron-schema"
   | "cron-syntax"
   | "cron-health"
+  | "cron-error-rate"
   | "env-vars"
   | "firewall-active"
   | "workspace-exists"
