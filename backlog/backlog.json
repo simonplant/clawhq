@@ -29,7 +29,8 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "email.ts confirmed: generates himalaya bash wrapper only. Integration AC: generateEmailTool() must accept backend param (not a separate function) — consistent API. Doctor check integration is a secondary deliverable but needed for completeness. Generated Python must use only json, urllib, sys, os from stdlib — no requests/httpx. Account routing via --account flag maps to different script (himalaya vs email-jmap.py), not a single polyglot script."
+      "groomingNotes": "email.ts confirmed: generates himalaya bash wrapper only. Integration AC: generateEmailTool() must accept backend param (not a separate function) — consistent API. Doctor check integration is a secondary deliverable but needed for completeness. Generated Python must use only json, urllib, sys, os from stdlib — no requests/httpx. Account routing via --account flag maps to different script (himalaya vs email-jmap.py), not a single polyglot script.",
+      "dependsOn": null
     },
     {
       "id": "FEAT-119",
@@ -58,7 +59,8 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
-      "groomingNotes": "News tool wraps tavily and x tool generators as backends. Dedup via URL hash set in news-state.json. Budget via max_calls_per_scan config field per backend. FEAT-131 (interest graph) must be done first — news tool filters by interests.json topics. Integration AC: both index.ts export and blueprint YAML references required — just having news.ts is not enough."
+      "groomingNotes": "News tool wraps tavily and x tool generators as backends. Dedup via URL hash set in news-state.json. Budget via max_calls_per_scan config field per backend. FEAT-131 (interest graph) must be done first — news tool filters by interests.json topics. Integration AC: both index.ts export and blueprint YAML references required — just having news.ts is not enough.",
+      "dependsOn": null
     },
     {
       "id": "FEAT-131",
@@ -150,40 +152,6 @@
       "readyForSprint": true,
       "groomedAt": "2026-03-31",
       "groomingNotes": "Confirmed gap: generateDimensionSoul() has no execution_philosophy section. proactivity dimension (1-5) already computed in renderAllDimensionsProse(). Implementation: add generateExecutionPhilosophy(blueprint, dimensions) helper in soul.ts, call it from generateDimensionSoul() after prose sections, append output to sections array. Guardian model block guarded on autonomy_model.default==='high'. Token budget identity.test.ts must still pass. Integration AC: grep for generateExecutionPhilosophy call in soul.ts proves wiring."
-    },
-    {
-      "id": "FEAT-136",
-      "title": "Telegram egress proxy — MITM secret scanning for outbound messages",
-      "intent": "An agent sending Telegram messages must never be able to exfiltrate secrets via message text or captions. The current firewall allows api.telegram.org but does not inspect message content. A prompt-injected agent could encode secrets in replies.",
-      "description": "Clawdius battle-tested pattern: redirect api.telegram.org to a host-side HTTPS reverse proxy via extra_hosts in docker-compose.yml. The proxy terminates TLS (self-signed CA trusted via NODE_EXTRA_CA_CERTS), inspects sendMessage/editMessageText/sendPhoto payloads for secret patterns (env var values, base64 variants, token regexes), and either forwards clean messages or replaces dirty ones with '[EGRESS BLOCKED]' + alerts the user. Implementation: (1) generate telegram-egress-proxy.py (stdlib Python, ~600 lines), (2) generate self-signed CA + server cert, (3) add extra_hosts and NODE_EXTRA_CA_CERTS to compose generation, (4) add systemd service for the proxy. Reference: clawdius/scripts/cred-proxy/telegram-egress-proxy.py.",
-      "priority": "should",
-      "category": "security",
-      "steps": [
-        "Add telegram-egress-proxy.py generator to src/secure/ (port from Clawdius reference)",
-        "Add cert generation script (gen-telegram-certs.sh) to ops tooling",
-        "Update compose generator: add extra_hosts redirecting api.telegram.org to bridge IP",
-        "Update compose generator: add NODE_EXTRA_CA_CERTS env var pointing to proxy CA",
-        "Add systemd service generator for the proxy",
-        "Add doctor check: proxy running, cert valid, scan test passes",
-        "Add to all blueprints that enable Telegram channel"
-      ],
-      "acceptanceCriteria": [
-        "Telegram messages are routed through the egress proxy when Telegram channel is configured",
-        "Proxy scans text/caption fields for env var values, base64 variants, and token patterns",
-        "Messages containing secrets are replaced with [EGRESS BLOCKED] and audit-logged",
-        "clawhq doctor verifies proxy health and cert validity"
-      ],
-      "scope": [
-        "src/secure/",
-        "src/build/docker/compose.ts",
-        "src/operate/doctor/"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-03-31",
-      "groomingNotes": "Validated 2026-04-22: not started. curl-egress-wrapper (FEAT-138) now DONE covers generic HTTP egress scanning. Consider whether Telegram-specific MITM proxy is still needed given FEAT-138 already scans api.telegram.org POSTs. May be redundant."
     },
     {
       "id": "FEAT-137",
@@ -371,37 +339,6 @@
       "groomingNotes": "Three defenses in proxy-server.ts: (1) path canonicalization — new URL(path, base).pathname to resolve ../ sequences before route matching, (2) host validation — final URL host must equal configured upstream host, (3) private IP block — resolve final URL hostname with dns.lookup(), reject if in 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16 ranges. Private IP check is async (DNS lookup). Tests: path traversal attempts (../../etc/passwd), direct private IP targeting (http://192.168.1.1), DNS rebinding (hostname resolving to 127.0.0.1). All rejections call existing audit logger. Tests go in proxy.test.ts."
     },
     {
-      "id": "FEAT-145",
-      "title": "HTTP request smuggling hardening for Telegram egress proxy",
-      "intent": "The Telegram egress proxy terminates TLS and parses HTTP. Malformed requests must not bypass secret scanning via Content-Length/Transfer-Encoding confusion, duplicate headers, or keep-alive abuse.",
-      "description": "Harden the generated Telegram proxy: (1) reject dual CL+TE headers, (2) reject multiple Content-Length values, (3) limit header count (50) and size (8KB), (4) force Connection: close (disable keep-alive). Reference: Clawdius FEAT-073.",
-      "priority": "should",
-      "category": "security",
-      "steps": [
-        "Add header validation to Telegram proxy generator",
-        "Reject requests with conflicting Content-Length and Transfer-Encoding",
-        "Add header count and size limits",
-        "Force Connection: close in all responses",
-        "Add tests for malformed request rejection"
-      ],
-      "acceptanceCriteria": [
-        "Generated proxy rejects dual CL+TE headers",
-        "Header count limited to 50, size limited to 8KB",
-        "Connection: close forced on all responses"
-      ],
-      "scope": [
-        "src/secure/"
-      ],
-      "dependsOn": [
-        "FEAT-136"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false,
-      "groomedAt": "2026-03-31",
-      "groomingNotes": "From Clawdius 10/10 code review. Depends on FEAT-136 (Telegram proxy exists first). Size XS once the proxy exists."
-    },
-    {
       "id": "FEAT-147",
       "title": "Egress firewall test suite — prove the firewall works after every apply",
       "intent": "Firewall rules must be tested, not trusted. A test suite that runs from inside the container must verify: allowed domains connect, blocked domains reject, blocked ports reject. Without this, regressions are silent.",
@@ -571,48 +508,11 @@
         "src/build/docker/compose.ts",
         "src/operate/doctor/checks.ts"
       ],
-      "dependsOn": [
-        "FEAT-136"
-      ],
+      "dependsOn": [],
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-06",
       "groomingNotes": "FEAT-136 defines the proxy itself. This item is about compose generation and cert infrastructure. The proxy script is a static Python3 asset (~600 lines from the manual prototype, generalized). Secret patterns to scan: look for env var values from .env file, common token patterns (sk-ant-*, ghp_*, Bearer tokens). The extra_hosts trick works because Docker resolves it before DNS — the container thinks it's talking to api.telegram.org but traffic goes to the local proxy. The proxy terminates TLS, scans the HTTP payload, then forwards to the real api.telegram.org. Cert generation runs once during clawhq init, not on every build. Certs stored in ops/security/telegram-proxy-certs/. Only generated for Telegram — other channels don't have this attack surface (WhatsApp uses a different protocol, Discord uses webhooks)."
-    },
-    {
-      "id": "FEAT-164",
-      "title": "One default tone ('LifeOps, no BS') — back out personality as product axis",
-      "intent": "Ship one opinionated SOUL.md with every blueprint — the fourth option OpenClaw doesn't have (beyond empty, C-3PO, Architect/CEO). Supportive without flattery. The product is the operational stack — tools, skills, cron, security. Personality is a quality-of-life detail, not a feature.",
-      "description": "Remove personality archetypes, persona presets, and personality-per-profile pairings as product concepts. The SOUL.md compiler produces one professional default tone for all profiles. Users customize via soul_overrides (free text) and a warmth slider. Domain-specific behavior (how the agent drafts outreach, structures reports, triages email) lives in skills and AGENTS.md playbooks, not personality config. Clean up legacy personality YAMLs in configs/personalities/ — keep digital-assistant as the default, archive the rest. Remove personality as a required field in CompositionConfig. The compiler should work without a personality field.",
-      "priority": "must",
-      "category": "core",
-      "steps": [
-        "Make personality optional in CompositionConfig (src/design/catalog/types.ts) — default to built-in professional tone when omitted",
-        "Update compiler (src/design/catalog/compiler.ts) to generate a standard professional SOUL.md when no personality specified",
-        "Archive configs/personalities/ files except digital-assistant.yaml (rename to professional-default.yaml)",
-        "Remove personality as a required config-file field in src/design/configure/config-file.ts",
-        "Update wizard to skip personality selection — use default, offer soul_overrides free text",
-        "Expose warmth as the single user-facing slider (optional, defaults to 3)",
-        "Update FEAT-154 and FEAT-158 to not reference personality archetypes"
-      ],
-      "acceptanceCriteria": [
-        "clawhq init --config with no personality field produces a valid workspace with professional default SOUL.md",
-        "soul_overrides in config are appended to the generated SOUL.md",
-        "Warmth slider adjusts SOUL.md tone (1=clinical, 5=warm)",
-        "No personality archetype selection in wizard flow",
-        "TypeScript compiles cleanly, existing tests pass"
-      ],
-      "scope": [
-        "src/design/catalog/types.ts",
-        "src/design/catalog/compiler.ts",
-        "src/design/configure/config-file.ts",
-        "src/design/configure/wizard.ts",
-        "configs/personalities/"
-      ],
-      "status": "todo",
-      "readyForSprint": true,
-      "groomedAt": "2026-04-09",
-      "groomingNotes": "Validated 2026-04-22: Decision is locked (user memory: personality not product axis, one default tone LifeOps no BS) but code still requires personality field in CompositionConfig (types.ts:82) and compiler.ts calls loadPersonality(config.personality) without optional handling. Upgrading to must — decision/code mismatch."
     },
     {
       "id": "FEAT-165",
@@ -645,7 +545,8 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-09",
-      "groomingNotes": "Standard JSON output schema for all 7 tool generators. Schema types in output-schema.ts are used by generators to structure the bash/Python script output templates — TypeScript types describe what the generated scripts print to stdout. No runtime validation required. Key constraint: existing tool functionality unchanged — only add the JSON wrapper around existing output. Pre-sprint checklist: confirm all 7 generator files (email.ts, ical.ts, todoist.ts, tasks.ts, tavily.ts, quote.ts) exist in src/design/tools/ before starting. Test pattern: each generator test verifies that generated script output contains required JSON fields. Setting readyForSprint:true as of 2026-04-16."
+      "groomingNotes": "Standard JSON output schema for all 7 tool generators. Schema types in output-schema.ts are used by generators to structure the bash/Python script output templates — TypeScript types describe what the generated scripts print to stdout. No runtime validation required. Key constraint: existing tool functionality unchanged — only add the JSON wrapper around existing output. Pre-sprint checklist: confirm all 7 generator files (email.ts, ical.ts, todoist.ts, tasks.ts, tavily.ts, quote.ts) exist in src/design/tools/ before starting. Test pattern: each generator test verifies that generated script output contains required JSON fields. Setting readyForSprint:true as of 2026-04-16.",
+      "dependsOn": null
     },
     {
       "id": "FEAT-166",
@@ -679,7 +580,8 @@
       "status": "todo",
       "readyForSprint": false,
       "groomedAt": "2026-04-09",
-      "groomingNotes": "Build-once-for-many-users principle. Current ical tool does raw CalDAV over curl through cred-proxy — works for iCloud but brittle, hand-rolled, single-provider. khal/vdirsyncer is the industry standard for CLI calendar management. vdirsyncer handles the provider complexity; khal provides the uniform interface. Same pattern as himalaya for email — one universal tool, provider configured separately."
+      "groomingNotes": "Build-once-for-many-users principle. Current ical tool does raw CalDAV over curl through cred-proxy — works for iCloud but brittle, hand-rolled, single-provider. khal/vdirsyncer is the industry standard for CLI calendar management. vdirsyncer handles the provider complexity; khal provides the uniform interface. Same pattern as himalaya for email — one universal tool, provider configured separately.",
+      "dependsOn": null
     },
     {
       "id": "FEAT-167",
@@ -708,7 +610,8 @@
       "readyForSprint": true,
       "track": "E",
       "groomedAt": "2026-04-16",
-      "groomingNotes": "Stateful exclusion list must exactly match ownership.ts classification — verify memory/, state/, skills/, references/, config/ are all excluded. The compiled file set is whatever renderOpenclawJson/compiler emits — enumerate it explicitly rather than inferring. Key edge case: if apply has never run before, there is no diff baseline; orphan detection only fires on subsequent applies. --clean must be a separate flag (not default) because first-time apply on a dirty workspace could delete intentional files. Test pattern: write a temp workspace with an 'old-tool.sh', run apply with a config that only emits 'new-tool.sh', confirm old-tool.sh is reported as orphaned."
+      "groomingNotes": "Stateful exclusion list must exactly match ownership.ts classification — verify memory/, state/, skills/, references/, config/ are all excluded. The compiled file set is whatever renderOpenclawJson/compiler emits — enumerate it explicitly rather than inferring. Key edge case: if apply has never run before, there is no diff baseline; orphan detection only fires on subsequent applies. --clean must be a separate flag (not default) because first-time apply on a dirty workspace could delete intentional files. Test pattern: write a temp workspace with an 'old-tool.sh', run apply with a config that only emits 'new-tool.sh', confirm old-tool.sh is reported as orphaned.",
+      "dependsOn": null
     },
     {
       "id": "FEAT-168",
@@ -739,7 +642,8 @@
       "status": "todo",
       "readyForSprint": false,
       "groomedAt": "2026-04-16",
-      "groomingNotes": "Keeping readyForSprint:false — needs namespace strategy decision before sprint. Two options: (A) suffix by index (IMAP_HOST_0, IMAP_HOST_1) — simple but fragile when accounts are reordered; (B) suffix by label (IMAP_HOST_AGENT, IMAP_HOST_PERSONAL) — readable but wizard must enforce unique labels. Himalaya TOML is naturally multi-account (separate stanzas). JMAP uses env vars. Option B preferred: labels are stable across re-ordering and human-readable. Config-file.ts: integrations.email becomes integrations.emails[] with each item having a label field. Backwards compat: if integrations.email exists as an object (old format), treat it as integrations.emails[0] with label 'primary'. Pre-sprint: read wizard.ts collectIntegrations() and config-file.ts schema fully before estimating."
+      "groomingNotes": "Keeping readyForSprint:false — needs namespace strategy decision before sprint. Two options: (A) suffix by index (IMAP_HOST_0, IMAP_HOST_1) — simple but fragile when accounts are reordered; (B) suffix by label (IMAP_HOST_AGENT, IMAP_HOST_PERSONAL) — readable but wizard must enforce unique labels. Himalaya TOML is naturally multi-account (separate stanzas). JMAP uses env vars. Option B preferred: labels are stable across re-ordering and human-readable. Config-file.ts: integrations.email becomes integrations.emails[] with each item having a label field. Backwards compat: if integrations.email exists as an object (old format), treat it as integrations.emails[0] with label 'primary'. Pre-sprint: read wizard.ts collectIntegrations() and config-file.ts schema fully before estimating.",
+      "dependsOn": null
     },
     {
       "id": "FEAT-169",
@@ -765,7 +669,8 @@
       "status": "todo",
       "readyForSprint": true,
       "groomedAt": "2026-04-16",
-      "groomingNotes": "Validated 2026-04-22: PARTIAL. renderBootstrap() in compiler.ts line 765+ filters profile.tools.filter(t=>t.required) — only required tools health-checked. Optional tools identified in data model (line 647 marks optional with asterisk) but not in bootstrap. Implementation: add separate optional-tools section with non-fatal checks."
+      "groomingNotes": "Validated 2026-04-22: PARTIAL. renderBootstrap() in compiler.ts line 765+ filters profile.tools.filter(t=>t.required) — only required tools health-checked. Optional tools identified in data model (line 647 marks optional with asterisk) but not in bootstrap. Implementation: add separate optional-tools section with non-fatal checks.",
+      "dependsOn": null
     },
     {
       "id": "REFACTOR-171",
@@ -794,7 +699,8 @@
       "readyForSprint": true,
       "track": "E",
       "groomedAt": "2026-04-16",
-      "groomingNotes": "Highest-risk refactor in E track. Both pipelines are active today: catalog/compiler.ts drives clawhq build/apply; configure/generate.ts drives the wizard (clawhq init). Before deleting generate.ts, map ALL callers. Key behavioral divergences to resolve: (1) workspaceOnly flag — generate.ts had a confirmed bug; (2) soul rendering uses different dimension grouping; (3) token generation paths may differ. Strategy: extract shared rendering functions first as pure utilities, migrate wizard to call compiler.ts, run all tests, delete generate.ts only when wizard tests pass end-to-end. DO NOT delete generate.ts in the same commit as migration — keep it one step at a time. AC verify must include wizard path tests, not just compiler tests."
+      "groomingNotes": "Highest-risk refactor in E track. Both pipelines are active today: catalog/compiler.ts drives clawhq build/apply; configure/generate.ts drives the wizard (clawhq init). Before deleting generate.ts, map ALL callers. Key behavioral divergences to resolve: (1) workspaceOnly flag — generate.ts had a confirmed bug; (2) soul rendering uses different dimension grouping; (3) token generation paths may differ. Strategy: extract shared rendering functions first as pure utilities, migrate wizard to call compiler.ts, run all tests, delete generate.ts only when wizard tests pass end-to-end. DO NOT delete generate.ts in the same commit as migration — keep it one step at a time. AC verify must include wizard path tests, not just compiler tests.",
+      "dependsOn": null
     },
     {
       "id": "REFACTOR-172",
@@ -823,7 +729,8 @@
       "readyForSprint": true,
       "track": "E",
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "dependsOn": null
     },
     {
       "id": "REFACTOR-173",
@@ -851,7 +758,8 @@
       "readyForSprint": true,
       "track": "E",
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "dependsOn": null
     },
     {
       "id": "REFACTOR-174",
@@ -879,7 +787,8 @@
       "readyForSprint": true,
       "track": "D",
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "dependsOn": null
     },
     {
       "id": "REFACTOR-175",
@@ -906,7 +815,8 @@
       "readyForSprint": true,
       "track": "D",
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "dependsOn": null
     },
     {
       "id": "REFACTOR-176",
@@ -932,7 +842,8 @@
       "readyForSprint": true,
       "track": "F",
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "dependsOn": null
     },
     {
       "id": "AUDIT-182",
@@ -961,7 +872,8 @@
       "readyForSprint": false,
       "track": "audit",
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "dependsOn": null
     },
     {
       "id": "AUDIT-183",
@@ -989,7 +901,8 @@
       "readyForSprint": false,
       "track": "audit",
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "dependsOn": null
     },
     {
       "id": "AUDIT-184",
@@ -1016,7 +929,8 @@
       "readyForSprint": false,
       "track": "audit",
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "dependsOn": null
     },
     {
       "id": "FEAT-171",
@@ -1105,7 +1019,8 @@
       "readyForSprint": false,
       "track": "core",
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "dependsOn": null
     }
   ]
 }
