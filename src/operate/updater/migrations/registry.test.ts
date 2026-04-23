@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   buildMigrationPlan,
@@ -8,6 +12,18 @@ import {
   rollbackMigrations,
 } from "./registry.js";
 import type { Migration, MigrationContext, MigrationStepResult } from "./types.js";
+
+// Per-test tmp deployDir so the ledger writes from one test don't leak into
+// the next (executeMigrationPlan now writes ops/migrations/applied.json).
+let testDeployDir: string;
+
+beforeEach(() => {
+  testDeployDir = mkdtempSync(join(tmpdir(), "clawhq-migration-test-"));
+});
+
+afterEach(() => {
+  rmSync(testDeployDir, { recursive: true, force: true });
+});
 
 // ── Test Migrations ───────────────────────────────────────────────────────
 
@@ -52,7 +68,7 @@ const ALL = [m1, m2, m3] as const;
 
 function mockContext(overrides?: Partial<MigrationContext>): MigrationContext {
   return {
-    deployDir: "/tmp/test-deploy",
+    deployDir: testDeployDir,
     config: {},
     compose: "",
     env: "",
@@ -224,6 +240,73 @@ describe("executeMigrationPlan", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("aborted");
+  });
+
+  it("skips migrations already recorded as complete in the ledger", async () => {
+    const executed: string[] = [];
+    const migrations = ALL.map((m) => ({
+      ...m,
+      async up() {
+        executed.push(m.id);
+        return { success: true, migrationId: m.id } as MigrationStepResult;
+      },
+    }));
+
+    const plan = buildMigrationPlanFrom("v2026.4.9", "v2026.4.12", migrations);
+
+    // First pass — all three run.
+    const ctx = mockContext();
+    const first = await executeMigrationPlan(plan, ctx);
+    expect(first.success).toBe(true);
+    expect(executed).toEqual([
+      "2026.4.10-rename-exec",
+      "2026.4.11-add-memory",
+      "2026.4.12-compose-update",
+    ]);
+
+    // Second pass — all three already complete, none should re-execute.
+    executed.length = 0;
+    const second = await executeMigrationPlan(plan, ctx);
+    expect(second.success).toBe(true);
+    expect(executed).toEqual([]);
+    expect(second.applied).toHaveLength(3);
+  });
+
+  it("re-runs a migration that was left in_progress by a prior crash", async () => {
+    // First run fails at m2. Ledger records m1 complete, m2 in_progress.
+    let executedCount = 0;
+    const migrationsCrashing = ALL.map((m) => ({
+      ...m,
+      async up(): Promise<MigrationStepResult> {
+        executedCount++;
+        if (m.id === "2026.4.11-add-memory" && executedCount === 2) {
+          throw new Error("simulated crash");
+        }
+        return { success: true, migrationId: m.id };
+      },
+    }));
+
+    const plan = buildMigrationPlanFrom("v2026.4.9", "v2026.4.12", migrationsCrashing);
+    const ctx = mockContext();
+    const first = await executeMigrationPlan(plan, ctx);
+    expect(first.success).toBe(false);
+
+    // Second run: m1 should skip (complete), m2 should retry (in_progress),
+    // m3 should run (never attempted before). Re-run with non-crashing plans.
+    const retriedIds: string[] = [];
+    const migrationsRetry = ALL.map((m) => ({
+      ...m,
+      async up(): Promise<MigrationStepResult> {
+        retriedIds.push(m.id);
+        return { success: true, migrationId: m.id };
+      },
+    }));
+    const retryPlan = buildMigrationPlanFrom("v2026.4.9", "v2026.4.12", migrationsRetry);
+    const second = await executeMigrationPlan(retryPlan, ctx);
+
+    expect(second.success).toBe(true);
+    expect(retriedIds).toEqual(["2026.4.11-add-memory", "2026.4.12-compose-update"]);
+    expect(retriedIds).not.toContain("2026.4.10-rename-exec");
   });
 });
 

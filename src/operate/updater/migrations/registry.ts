@@ -10,6 +10,7 @@
  */
 
 import { compareVersions } from "../calver.js";
+import { isComplete, loadLedger, markComplete, markFailed, markInProgress } from "../ledger.js";
 
 import type {
   Migration,
@@ -79,14 +80,23 @@ export function buildMigrationPlan(
 /**
  * Execute a migration plan forward (up).
  *
- * Runs each migration's `up()` in order. Stops on first failure.
- * Returns results for all attempted migrations.
+ * Runs each migration's `up()` in order. Consults the applied-migrations
+ * ledger and skips migrations that have already completed — re-running
+ * a plan after a mid-execution crash only re-executes the migrations
+ * that were not yet complete. Stops on first failure, and leaves the
+ * failing migration's ledger entry in `in_progress` state so the next
+ * run picks up where we left off.
  */
 export async function executeMigrationPlan(
   plan: MigrationPlan,
   context: MigrationContext,
 ): Promise<MigrationResult> {
   const applied: MigrationStepResult[] = [];
+
+  // Load the ledger once at the start — entries mutate across iterations
+  // but each mark* call re-reads from disk to stay consistent with any
+  // concurrent writer (e.g. a parallel doctor pass).
+  let ledger = await loadLedger(context.deployDir);
 
   for (const migration of plan.migrations) {
     if (context.signal?.aborted) {
@@ -97,17 +107,41 @@ export async function executeMigrationPlan(
       };
     }
 
+    if (isComplete(ledger, migration.id)) {
+      // Previously completed — skip. Record a synthetic "success" entry
+      // so caller-side reporting still shows the full plan span.
+      applied.push({
+        success: true,
+        migrationId: migration.id,
+        filesModified: [],
+      });
+      continue;
+    }
+
+    ledger = await markInProgress(
+      context.deployDir,
+      migration.id,
+      migration.fromVersion,
+      migration.toVersion,
+    );
+
     try {
       const result = await migration.up(context);
       applied.push(result);
 
       if (!result.success) {
+        await markFailed(
+          context.deployDir,
+          migration.id,
+          result.error ?? "migration returned success: false",
+        );
         return {
           success: false,
           applied,
           error: `Migration ${migration.id} failed: ${result.error}`,
         };
       }
+      ledger = await markComplete(context.deployDir, migration.id);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       applied.push({
@@ -115,6 +149,7 @@ export async function executeMigrationPlan(
         migrationId: migration.id,
         error: message,
       });
+      await markFailed(context.deployDir, migration.id, message);
       return {
         success: false,
         applied,
