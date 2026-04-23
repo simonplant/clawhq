@@ -12,9 +12,11 @@ import { join } from "node:path";
 
 import { parse as yamlParse } from "yaml";
 
+import type { BuildSecurityPosture } from "../../build/docker/index.js";
+import { formatPostureDegradations, resolvePosture } from "../../build/docker/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { DeployLockBusyError, withDeployLock } from "../../config/lock.js";
-import { compile } from "../../design/catalog/index.js";
+import { compile, validateCompiled } from "../../design/catalog/index.js";
 import type { CompiledFile } from "../../design/catalog/types.js";
 import type { UserConfig } from "../../design/catalog/types.js";
 import { writeBundle } from "../../design/configure/writer.js";
@@ -30,11 +32,11 @@ export type { ApplyOptions, ApplyProgress, ApplyReport, ApplyResult } from "./ty
 
 /** Files the compiler generates but apply must not overwrite.
  *
- * Note: clawhq.yaml and engine/docker-compose.yml are no longer emitted by
- * compile() at all, so explicit skips for them are unnecessary. The writer
- * layer's ownership guard also refuses overwrites of seeded-once files
- * independently. This set is kept narrow: just the files compile() emits
- * as defaults that we want to preserve on every apply. */
+ * compile() emits engine/docker-compose.yml and writes it through the
+ * normal bundle path (replacing the previous build-time writer). The
+ * skip set is narrow: just the compiler defaults we want to preserve on
+ * every apply. clawhq.yaml is not emitted by compile() — scaffold owns
+ * the initial seed. */
 const SKIP_PATHS = new Set([
   "workspace/MEMORY.md",                          // user's curated memory
   "workspace/config/substack-aliases.json",       // user's publication aliases
@@ -138,13 +140,32 @@ async function applyCore(
       ? accessMounts.filter((m): m is string => typeof m === "string")
       : undefined;
 
+    // Deployment-scoped settings used by compose emission. instanceName
+    // lives at the top level of clawhq.yaml; posture comes from the
+    // security.posture block and drives container hardening.
+    const instanceName = typeof raw.instanceName === "string" ? raw.instanceName : undefined;
+    const securityRaw = raw.security as Record<string, unknown> | undefined;
+    const postureVal = typeof securityRaw?.posture === "string" ? securityRaw.posture : undefined;
+    const posture: BuildSecurityPosture | undefined =
+      postureVal === "minimal" || postureVal === "hardened" || postureVal === "under-attack"
+        ? postureVal
+        : undefined;
+
     // 2. Extract user context from existing USER.md
     const user = readUserContext(deployDir);
 
     // 3. Read existing env (needed for proxy/Tailscale detection and credential preservation)
     const existingEnv = readExistingEnv(deployDir);
 
-    // 4. Compile — pass existing env so compiler detects integrations from `integrate add`
+    // 4. Resolve posture against the host before compile, so compose-gen
+    //    reflects reality (e.g. omits `runtime: runsc` when gVisor isn't
+    //    installed). Degradations are surfaced as warnings — the user's
+    //    security intent is preserved in the posture record, but the
+    //    compose file must describe what will actually run.
+    const resolved = await resolvePosture(posture ?? "hardened");
+    const warnings = formatPostureDegradations(resolved.degradations);
+
+    // 5. Compile — pass existing env so compiler detects integrations from `integrate add`
     report("compile", "running", "Compiling workspace…");
     const gatewayPort = options.gatewayPort ?? GATEWAY_DEFAULT_PORT;
     const compiled = compile(
@@ -161,8 +182,33 @@ async function applyCore(
       gatewayPort,
       existingEnv,
       readOnlyHostMounts ? { readOnlyHostMounts } : {},
+      {
+        ...(posture ? { posture } : {}),
+        ...(instanceName ? { instanceName } : {}),
+        runtimeAvailable: resolved.runtimeAvailable,
+      },
     );
     report("compile", "done", `${compiled.files.length} files compiled`);
+
+    // 4b. Landmine validation — runs against the compiled output before
+    //     any file is written. Fails fast with the specific rule(s) that
+    //     would ship a broken deployment (device auth loop, missing CORS,
+    //     container escape surface, etc.). This replaces the legacy
+    //     DeploymentBundle-based validateBundle; the validator now
+    //     consumes compile() output directly, no intermediate shim.
+    const effectiveEnv = buildEffectiveEnv(compiled.files, existingEnv);
+    const validation = validateCompiled(compiled, effectiveEnv);
+    if (!validation.valid) {
+      const errs = validation.errors
+        .map((e) => `  • ${e.rule}: ${e.message}`)
+        .join("\n");
+      report("compile", "failed", `Landmine validation failed:\n${errs}`);
+      return {
+        success: false,
+        error: `Landmine validation failed:\n${errs}`,
+        report: emptyReport(),
+      };
+    }
 
     // 5. Filter stateful files + merge where needed
     //    - SKIP_PATHS: always excluded (user-owned or separately managed)
@@ -248,6 +294,7 @@ async function applyCore(
         ...diffReport,
         skipped: [...SKIP_PATHS, ...seedOnceSkipped],
       },
+      ...(warnings.length > 0 ? { warnings } : {}),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -373,6 +420,36 @@ function readUserContext(deployDir: string): UserConfig {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     communication: "brief",
   };
+}
+
+// ── Effective Env Key Set ──────────────────────────────────────────────────
+
+/**
+ * Build the env-var key set that the deployed .env will carry.
+ *
+ * LM-11 only checks presence of compose `${VAR}` references, so we just
+ * need every key that will live in the final merged .env — union of
+ * the compiler's freshly emitted keys and whatever real credentials the
+ * existing deployment already holds (which the writer's mergeEnv
+ * preserves). Values are placeholder; the check is key-only.
+ */
+function buildEffectiveEnv(
+  files: readonly CompiledFile[],
+  existingEnv: Record<string, string>,
+): Record<string, string> {
+  const env: Record<string, string> = { ...existingEnv };
+  for (const f of files) {
+    if (!f.relativePath.endsWith(".env")) continue;
+    for (const line of f.content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq < 1) continue;
+      const key = trimmed.slice(0, eq);
+      if (!(key in env)) env[key] = trimmed.slice(eq + 1);
+    }
+  }
+  return env;
 }
 
 // ── .env Credential Protection ──────────────────────────────────────────────

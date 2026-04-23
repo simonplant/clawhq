@@ -12,7 +12,7 @@ describe("TradingDB", () => {
   let db: TradingDB;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "clawdius-trading-test-"));
+    tempDir = mkdtempSync(join(tmpdir(), "market-engine-test-"));
     db = openTradingDB(join(tempDir, "trading.db"));
   });
 

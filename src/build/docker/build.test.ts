@@ -3,16 +3,21 @@ import { describe, expect, it } from "vitest";
 import { agentImageTag, agentNetworkName } from "../../config/defaults.js";
 
 import { formatHashMismatch, validateBinarySha256 } from "./binary-manifest.js";
-import { serializeYaml } from "./build.js";
 import { computeStage1Hash, computeStage2Hash } from "./cache.js";
-import { generateCompose } from "./compose.js";
+import { generateCompose, serializeYaml } from "./compose.js";
 import {
   generateStage2Dockerfile,
   validateBinaryDestPath,
   validateBinaryUrl,
 } from "./dockerfile.js";
 import { createManifest } from "./manifest.js";
-import { DEFAULT_POSTURE, getPostureConfig, POSTURE_LEVELS } from "./posture.js";
+import {
+  DEFAULT_POSTURE,
+  formatPostureDegradations,
+  getPostureConfig,
+  POSTURE_LEVELS,
+  resolvePosture,
+} from "./posture.js";
 import type { Stage1Config, Stage2Config } from "./types.js";
 
 // ── Test SHA256 Hashes ─────────────────────────────────────────────────────
@@ -116,6 +121,82 @@ describe("posture", () => {
     expect(getPostureConfig("minimal").iccDisabled).toBe(false);
     expect(getPostureConfig("hardened").iccDisabled).toBe(true);
     expect(getPostureConfig("under-attack").iccDisabled).toBe(true);
+  });
+});
+
+// ── Posture Resolution Tests ────────────────────────────────────────────────
+
+describe("resolvePosture", () => {
+  const probesWithRunsc = { runscAvailable: async () => true };
+  const probesWithoutRunsc = { runscAvailable: async () => false };
+
+  it("hardened with runsc available reports runtimeAvailable=true and no degradations", async () => {
+    const result = await resolvePosture("hardened", undefined, probesWithRunsc);
+    expect(result.runtimeAvailable).toBe(true);
+    expect(result.degradations).toHaveLength(0);
+    expect(result.config.runtime).toBe("runsc"); // intent preserved
+  });
+
+  it("hardened without runsc reports runtimeAvailable=false plus a degradation", async () => {
+    const result = await resolvePosture("hardened", undefined, probesWithoutRunsc);
+    expect(result.runtimeAvailable).toBe(false);
+    expect(result.degradations).toHaveLength(1);
+    expect(result.degradations[0]?.kind).toBe("runtime-unavailable");
+    expect(result.degradations[0]?.requested).toBe("runsc");
+    // Intent is still preserved in the config — only reality differs
+    expect(result.config.runtime).toBe("runsc");
+  });
+
+  it("under-attack without runsc degrades the same way as hardened", async () => {
+    const result = await resolvePosture("under-attack", undefined, probesWithoutRunsc);
+    expect(result.runtimeAvailable).toBe(false);
+    expect(result.degradations).toHaveLength(1);
+  });
+
+  it("minimal posture skips runtime probing entirely", async () => {
+    let probed = false;
+    const spyProbes = {
+      runscAvailable: async () => { probed = true; return false; },
+    };
+    const result = await resolvePosture("minimal", undefined, spyProbes);
+    expect(probed).toBe(false); // no runtime requested → no probe
+    expect(result.runtimeAvailable).toBe(true); // trivially — nothing to check
+    expect(result.degradations).toHaveLength(0);
+  });
+
+  it("formatPostureDegradations yields one line per degradation with remediation", () => {
+    const lines = formatPostureDegradations([
+      {
+        kind: "runtime-unavailable",
+        requested: "runsc",
+        reason: "gVisor (runsc) is not installed on this host",
+        remediation: "Install gVisor or switch posture to `minimal`",
+      },
+    ]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("⚠");
+    expect(lines[0]).toContain("gVisor");
+    expect(lines[0]).toContain("Install gVisor");
+  });
+
+  it("formatPostureDegradations returns empty array when there are none", () => {
+    expect(formatPostureDegradations([])).toEqual([]);
+  });
+
+  it("generateCompose omits `runtime:` when runtimeAvailable is false", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/tmp", "net", {
+      runtimeAvailable: false,
+    });
+    expect(compose.services.openclaw.runtime).toBeUndefined();
+  });
+
+  it("generateCompose emits `runtime: runsc` when runtimeAvailable is true", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/tmp", "net", {
+      runtimeAvailable: true,
+    });
+    expect(compose.services.openclaw.runtime).toBe("runsc");
   });
 });
 
@@ -829,27 +910,27 @@ describe("1Password Docker integration", () => {
   });
 });
 
-describe("generateCompose with clawdius-trading", () => {
-  it("does not include clawdius-trading service by default", () => {
+describe("generateCompose with market-engine", () => {
+  it("does not include market-engine service by default", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
-    expect(compose.services["clawdius-trading"]).toBeUndefined();
+    expect(compose.services["market-engine"]).toBeUndefined();
   });
 
-  it("includes clawdius-trading service when enableClawdiusTrading is true", () => {
+  it("includes market-engine service when enableMarketEngine is true", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
     });
-    expect(compose.services["clawdius-trading"]).toBeDefined();
+    expect(compose.services["market-engine"]).toBeDefined();
   });
 
-  it("clawdius-trading enforces non-root, read-only, cap_drop ALL, no-new-privileges", () => {
+  it("market-engine enforces non-root, read-only, cap_drop ALL, no-new-privileges", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
     });
-    const ct = compose.services["clawdius-trading"];
+    const ct = compose.services["market-engine"];
     expect(ct).toBeDefined();
     expect(ct?.user).toBe("1000:1000");
     expect(ct?.read_only).toBe(true);
@@ -857,12 +938,12 @@ describe("generateCompose with clawdius-trading", () => {
     expect(ct?.security_opt).toContain("no-new-privileges");
   });
 
-  it("clawdius-trading mounts shared RW and workspace/memory RO", () => {
+  it("market-engine mounts shared RW and workspace/memory RO", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
     });
-    const ct = compose.services["clawdius-trading"];
+    const ct = compose.services["market-engine"];
     expect(ct).toBeDefined();
     const sharedVol = ct?.volumes.find((v) => v.includes("/deploy/shared"));
     const memoryVol = ct?.volumes.find((v) => v.includes("/deploy/workspace/memory"));
@@ -871,94 +952,94 @@ describe("generateCompose with clawdius-trading", () => {
     expect(memoryVol).toContain(":ro"); // brief read-only
   });
 
-  it("clawdius-trading shares the same network as openclaw", () => {
+  it("market-engine shares the same network as openclaw", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
     });
-    const ct = compose.services["clawdius-trading"];
+    const ct = compose.services["market-engine"];
     expect(ct?.networks).toContain("clawhq_net");
   });
 
-  it("clawdius-trading depends on cred-proxy when cred-proxy is enabled", () => {
+  it("market-engine depends on cred-proxy when cred-proxy is enabled", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
       enableCredProxy: true,
     });
-    const ct = compose.services["clawdius-trading"];
+    const ct = compose.services["market-engine"];
     expect(ct?.depends_on).toHaveProperty("cred-proxy");
     expect(ct?.depends_on?.["cred-proxy"].condition).toBe("service_healthy");
   });
 
-  it("clawdius-trading has no depends_on when cred-proxy is disabled", () => {
+  it("market-engine has no depends_on when cred-proxy is disabled", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
       enableCredProxy: false,
     });
-    const ct = compose.services["clawdius-trading"];
+    const ct = compose.services["market-engine"];
     expect(ct?.depends_on).toBeUndefined();
   });
 
-  it("clawdius-trading uses a Node-based healthcheck against :8080", () => {
+  it("market-engine uses a Node-based healthcheck against :8080", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
     });
-    const ct = compose.services["clawdius-trading"];
+    const ct = compose.services["market-engine"];
     expect(ct?.healthcheck.test[0]).toBe("CMD");
     expect(ct?.healthcheck.test[1]).toBe("node");
     const script = ct?.healthcheck.test.join(" ") ?? "";
     expect(script).toContain("127.0.0.1:8080/health");
   });
 
-  it("clawdius-trading has TRADIER_BASE_URL pointing at cred-proxy", () => {
+  it("market-engine has TRADIER_BASE_URL pointing at cred-proxy", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
     });
-    const ct = compose.services["clawdius-trading"];
+    const ct = compose.services["market-engine"];
     expect(ct?.environment.TRADIER_BASE_URL).toContain("cred-proxy");
     expect(ct?.environment.TRADIER_BASE_URL).toContain("/tradier");
     expect(ct?.environment.TRADING_DEPLOY_DIR).toBe("/deploy");
   });
 
-  it("clawdius-trading uses build context with Dockerfile", () => {
+  it("market-engine uses build context with Dockerfile", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
-      clawdiusTradingDir: "/home/user/.clawhq/engine/clawdius-trading",
+      enableMarketEngine: true,
+      marketEngineDir: "/home/user/.clawhq/engine/market-engine",
     });
-    const ct = compose.services["clawdius-trading"];
-    expect(ct?.build.context).toBe("/home/user/.clawhq/engine/clawdius-trading");
+    const ct = compose.services["market-engine"];
+    expect(ct?.build.context).toBe("/home/user/.clawhq/engine/market-engine");
     expect(ct?.build.dockerfile).toBe("Dockerfile");
   });
 
-  it("clawdius-trading has hardened tmpfs with noexec", () => {
+  it("market-engine has hardened tmpfs with noexec", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
     });
-    const ct = compose.services["clawdius-trading"];
+    const ct = compose.services["market-engine"];
     const tmp = ct?.tmpfs.find((t) => t.startsWith("/tmp"));
     expect(tmp).toContain("noexec");
     expect(tmp).toContain("nosuid");
   });
 
-  it("serializeYaml emits a clawdius-trading service block when enabled", () => {
+  it("serializeYaml emits a market-engine service block when enabled", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
-      enableClawdiusTrading: true,
+      enableMarketEngine: true,
       enableCredProxy: true,
-      clawdiusTradingDir: "/home/user/.clawhq/engine/clawdius-trading",
+      marketEngineDir: "/home/user/.clawhq/engine/market-engine",
     });
     const yaml = serializeYaml(compose);
 
     // Service block present with correct shape — key-level assertions
     // rather than a golden string to avoid whitespace churn.
-    expect(yaml).toContain("clawdius-trading:");
-    expect(yaml).toContain("context: /home/user/.clawhq/engine/clawdius-trading");
+    expect(yaml).toContain("market-engine:");
+    expect(yaml).toContain("context: /home/user/.clawhq/engine/market-engine");
     expect(yaml).toContain("dockerfile: Dockerfile");
     expect(yaml).toContain('user: "1000:1000"');
     expect(yaml).toContain("read_only: true");
@@ -975,7 +1056,7 @@ describe("generateCompose with clawdius-trading", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
     const yaml = serializeYaml(compose);
-    expect(yaml).not.toContain("clawdius-trading:");
+    expect(yaml).not.toContain("market-engine:");
   });
 });
 

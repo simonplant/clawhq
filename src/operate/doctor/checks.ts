@@ -162,7 +162,7 @@ export async function runChecks(
     checkModelAgenticCapable(deployDir),
     checkDeployUnclassified(deployDir),
     checkHousekeepingDebris(deployDir),
-    checkClawdiusTradingHealthy(deployDir, signal),
+    checkMarketEngineHealthy(deployDir, signal),
   ]);
 }
 
@@ -1714,25 +1714,25 @@ async function checkOpsSecurityMonitor(
   return ok(name, "Security monitor timer is active");
 }
 
-// ── Clawdius-Trading Healthy ──────────────────────────────────────────────
+// ── Market-Engine Healthy ──────────────────────────────────────────────────
 
 /**
- * Check that the clawdius-trading sidecar is reachable, its plan is loaded,
+ * Check that the market-engine sidecar is reachable, its plan is loaded,
  * and no Signal-channel failures are unresolved. Skipped entirely when the
  * sidecar wasn't staged (src/trading/ absent from the engine directory).
  */
-async function checkClawdiusTradingHealthy(
+async function checkMarketEngineHealthy(
   deployDir: string,
   signal?: AbortSignal,
 ): Promise<DoctorCheckResult> {
-  const name: DoctorCheckName = "clawdius-trading-healthy";
+  const name: DoctorCheckName = "market-engine-healthy";
 
   // Skip silently when the sidecar isn't enabled for this deployment.
-  const dockerfilePath = join(deployDir, "engine", "clawdius-trading", "Dockerfile");
+  const dockerfilePath = join(deployDir, "engine", "market-engine", "Dockerfile");
   try {
     await access(dockerfilePath, constants.R_OK);
   } catch {
-    return ok(name, "Clawdius-trading sidecar not enabled (optional)", "info");
+    return ok(name, "Market-engine sidecar not enabled (optional)", "info");
   }
 
   try {
@@ -1744,7 +1744,7 @@ async function checkClawdiusTradingHealthy(
         join(deployDir, "engine", "docker-compose.yml"),
         "exec",
         "-T",
-        "clawdius-trading",
+        "market-engine",
         "node",
         "-e",
         "fetch('http://127.0.0.1:8080/health').then(r=>r.json()).then(j=>console.log(JSON.stringify(j))).catch(e=>{console.error(e.message);process.exit(1)})",
@@ -1766,8 +1766,8 @@ async function checkClawdiusTradingHealthy(
       return fail(
         name,
         "error",
-        `Clawdius-trading status: ${health.status ?? "unknown"}`,
-        "Check logs: docker compose logs clawdius-trading",
+        `Market-engine status: ${health.status ?? "unknown"}`,
+        "Check logs: docker compose logs market-engine",
       );
     }
     // In-memory channel means TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID are
@@ -1777,7 +1777,7 @@ async function checkClawdiusTradingHealthy(
       return fail(
         name,
         "error",
-        "Clawdius-trading has no outbound channel — alerts are not being delivered",
+        "Market-engine has no outbound channel — alerts are not being delivered",
         "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in deployDir/engine/.env and restart",
       );
     }
@@ -1785,7 +1785,7 @@ async function checkClawdiusTradingHealthy(
       return fail(
         name,
         "warning",
-        `Clawdius-trading poll failing (${health.pollFailures} consecutive)`,
+        `Market-engine poll failing (${health.pollFailures} consecutive)`,
         "Check Tradier / cred-proxy connectivity",
       );
     }
@@ -1793,7 +1793,7 @@ async function checkClawdiusTradingHealthy(
       return fail(
         name,
         "warning",
-        "Clawdius-trading running but no plan loaded — edit workspace/memory/trading-YYYY-MM-DD.md",
+        "Market-engine running but no plan loaded — edit workspace/memory/trading-YYYY-MM-DD.md",
         "Publish today's brief (OpenClaw morning synthesis or manual edit)",
       );
     }
@@ -1801,18 +1801,18 @@ async function checkClawdiusTradingHealthy(
       return fail(
         name,
         "info",
-        "Clawdius-trading is MANUAL HALTed — POST /resume or call `resume` tool to clear",
+        "Market-engine is MANUAL HALTed — POST /resume or call `resume` tool to clear",
       );
     }
     return ok(
       name,
-      `Clawdius-trading healthy: ${health.orderCount ?? 0} orders loaded, ${health.pendingAlertCount ?? 0} pending`,
+      `Market-engine healthy: ${health.orderCount ?? 0} orders loaded, ${health.pendingAlertCount ?? 0} pending`,
     );
   } catch {
     return fail(
       name,
       "warning",
-      "Clawdius-trading health check failed (container may not be running)",
+      "Market-engine health check failed (container may not be running)",
       "Run: clawhq up",
     );
   }

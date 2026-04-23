@@ -114,11 +114,11 @@ describe("compose parity — generateCompose satisfies every landmine the stub d
 
   // Sidecar-enabled scenario: the fullest compose the platform emits.
   // Deletion of buildComposeConfig mustn't regress these either.
-  describe("cred-proxy + clawdius-trading enabled", () => {
+  describe("cred-proxy + market-engine enabled", () => {
     const compose = asComposeConfig(
       generateCompose(IMAGE_TAG, posture, DEPLOY_DIR, NETWORK, {
         enableCredProxy: true,
-        enableClawdiusTrading: true,
+        enableMarketEngine: true,
       }),
     );
 

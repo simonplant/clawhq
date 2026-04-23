@@ -9,7 +9,7 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import ora from "ora";
 
-import { readCurrentPosture, getPostureConfig, DEFAULT_POSTURE } from "../../build/docker/index.js";
+import { readCurrentPosture, resolvePosture, DEFAULT_POSTURE } from "../../build/docker/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { apply } from "../../evolve/apply/index.js";
 import type { ApplyProgress } from "../../evolve/apply/index.js";
@@ -91,6 +91,13 @@ export function registerApplyCommand(program: Command, defaultDeployDir: string)
           console.log(chalk.dim(`  ${report.skipped.length} file(s) skipped (stateful)`));
         }
 
+        if (result.warnings && result.warnings.length > 0) {
+          console.log("");
+          for (const w of result.warnings) {
+            console.log(chalk.yellow(`  ${w}`));
+          }
+        }
+
         if (opts.dryRun) {
           console.log(chalk.dim("\n  Dry run complete — no files were written"));
         } else if (report.added.length + report.changed.length === 0) {
@@ -110,27 +117,16 @@ export function registerApplyCommand(program: Command, defaultDeployDir: string)
             const { restart } = await import("../../build/launcher/index.js");
 
             const currentPosture = readCurrentPosture(opts.deployDir) ?? DEFAULT_POSTURE;
-            const postureConfig = getPostureConfig(currentPosture);
-
-            // Only pass runtime if runsc is actually available on this host
-            let runtime = postureConfig.runtime;
-            if (runtime === "runsc") {
-              try {
-                const { execFile: ef } = await import("node:child_process");
-                const { promisify: p } = await import("node:util");
-                await p(ef)("runsc", ["--version"], { timeout: 5000 });
-              } catch {
-                runtime = undefined;
-              }
-            }
+            const resolved = await resolvePosture(currentPosture);
+            const runtime = resolved.runtimeAvailable ? resolved.config.runtime : undefined;
 
             const restartResult = await restart({
               deployDir: opts.deployDir,
               gatewayToken,
               gatewayPort: GATEWAY_DEFAULT_PORT,
               runtime,
-              autoFirewall: postureConfig.autoFirewall,
-              immutableIdentity: postureConfig.immutableIdentity,
+              autoFirewall: resolved.config.autoFirewall,
+              immutableIdentity: resolved.config.immutableIdentity,
             });
             if (restartResult.success) {
               restartSpinner.succeed("Agent restarted");

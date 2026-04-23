@@ -2,7 +2,7 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import ora from "ora";
 
-import { build, DEFAULT_POSTURE, formatHashMismatch, getPostureConfig, getRequiredBinaries, readCurrentPosture, verifyBinaryHashes } from "../../build/docker/index.js";
+import { build, DEFAULT_POSTURE, formatHashMismatch, formatPostureDegradations, getRequiredBinaries, readCurrentPosture, resolvePosture, verifyBinaryHashes } from "../../build/docker/index.js";
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
 import { checkDocker } from "../../build/installer/index.js";
 import { deploy, restart, shutdown } from "../../build/launcher/index.js";
@@ -175,21 +175,15 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
       const onProgress = createProgressHandler(spinner);
 
       try {
-        // Read posture to bridge posture-level controls into deploy options
+        // Read posture and reconcile with the host in one shot so runtime,
+        // preflight, and the generated compose file all agree on what will
+        // actually run. Degradations surface to the user before deploy.
         const currentPosture = readCurrentPosture(opts.deployDir) ?? DEFAULT_POSTURE;
-        const postureConfig = getPostureConfig(currentPosture);
-
-        // Only pass runtime if runsc is actually available on this host
-        let runtime = postureConfig.runtime;
-        if (runtime === "runsc") {
-          try {
-            const { execFile: ef } = await import("node:child_process");
-            const { promisify: p } = await import("node:util");
-            await p(ef)("runsc", ["--version"], { timeout: 5000 });
-          } catch {
-            runtime = undefined;
-          }
+        const resolved = await resolvePosture(currentPosture);
+        for (const line of formatPostureDegradations(resolved.degradations)) {
+          console.log(chalk.yellow(line));
         }
+        const runtime = resolved.runtimeAvailable ? resolved.config.runtime : undefined;
 
         const result = await deploy({
           deployDir: opts.deployDir,
@@ -198,10 +192,10 @@ export function registerBuildCommands(program: Command, defaultDeployDir: string
           skipPreflight: opts.skipPreflight,
           skipFirewall: opts.skipFirewall,
           skipVerify: opts.skipVerify,
-          airGap: opts.airGap || postureConfig.airGap,
+          airGap: opts.airGap || resolved.config.airGap,
           runtime,
-          autoFirewall: postureConfig.autoFirewall,
-          immutableIdentity: postureConfig.immutableIdentity,
+          autoFirewall: resolved.config.autoFirewall,
+          immutableIdentity: resolved.config.immutableIdentity,
           onProgress,
           signal,
         });

@@ -19,7 +19,6 @@ import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
 import { withDeployLock } from "../../config/lock.js";
 import {
   DEFAULT_POSTURE,
-  getPostureConfig,
   readCurrentPosture,
   readManifest,
 } from "../docker/index.js";
@@ -155,19 +154,20 @@ async function deployImpl(options: DeployOptions): Promise<DeployResult> {
     }
 
     if (!preflight.passed) {
-      // Compose is owned by `clawhq build` and `clawhq apply`. If preflight
-      // says it's broken/stale, fail loudly and tell the user which primitive
-      // regenerates it. The previous self-heal silently rewrote compose on
-      // every trip — but its sidecar detection was partial, so it routinely
-      // dropped cred-proxy / clawdius-trading services and
-      // caused the "compose stub recurrence" bug class. Loud failure +
-      // explicit remediation is the correct config-management behavior.
+      // Compose is owned by `clawhq apply` (emitted from the catalog
+      // compiler). If preflight says it's broken/stale, fail loudly and
+      // tell the user which primitive regenerates it. The previous
+      // self-heal silently rewrote compose on every trip — but its
+      // sidecar detection was partial, so it routinely dropped
+      // cred-proxy / market-engine services and caused the "compose stub
+      // recurrence" bug class. Loud failure + explicit remediation is
+      // the correct config-management behavior.
       const errors = preflight.failed
         .map((c) => `  • ${c.name}: ${c.message}${c.fix ? ` → ${c.fix}` : ""}`)
         .join("\n");
       const composeFailure = preflight.failed.some((c) => c.name === "compose");
       const remediation = composeFailure
-        ? "\n\nCompose is stale or invalid. Run: clawhq build (or clawhq apply if the manifest changed)"
+        ? "\n\nCompose is stale or invalid. Run: clawhq apply"
         : "";
       report("preflight", "failed", `${preflight.failed.length} preflight check(s) failed`);
       return { success: false, preflight, healthy: false, error: `Preflight failed:\n${errors}${remediation}` };

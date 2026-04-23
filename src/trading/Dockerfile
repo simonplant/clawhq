@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1.7
 
-# Multi-stage build for the Clawdius Trading Assistant.
+# Multi-stage build for the Market Engine sidecar.
 #
 # Stage 1 (builder) — install dev deps, compile TS to JS.
 # Stage 2 (runtime) — production-only deps, non-root user, read-only rootfs.
 #
-# Build context is staged at `engine/clawdius-trading/` and contains:
+# Build context is staged at `engine/market-engine/` and contains:
 #   package.json, tsconfig.json, src/ (trading sources), Dockerfile (this file).
 
 # ── Stage 1: Builder ────────────────────────────────────────────────────────

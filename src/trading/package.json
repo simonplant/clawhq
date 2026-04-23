@@ -1,5 +1,5 @@
 {
-  "name": "clawdius-trading",
+  "name": "market-engine",
   "version": "0.1.0",
   "description": "Alert-grade trading assistant for Clawdius",
   "type": "module",

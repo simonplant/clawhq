@@ -50,7 +50,7 @@ export type DoctorCheckName =
   | "model-agentic-capable"
   | "deploy-unclassified"
   | "housekeeping-debris"
-  | "clawdius-trading-healthy";
+  | "market-engine-healthy";
 
 // ── Check Result ────────────────────────────────────────────────────────────
 

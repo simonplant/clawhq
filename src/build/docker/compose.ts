@@ -37,10 +37,10 @@ export interface ComposeOptions {
   readonly credProxyRoutesPath?: string;
   /** Workspace manifest for granular volume mounts. When set, replaces single workspace mount. */
   readonly workspaceManifest?: WorkspaceManifest;
-  /** Enable clawdius-trading sidecar — alert-grade trading assistant. */
-  readonly enableClawdiusTrading?: boolean;
-  /** Host path to the staged clawdius-trading source (contains Dockerfile + src/). */
-  readonly clawdiusTradingDir?: string;
+  /** Enable market-engine sidecar — alert-grade trading assistant. */
+  readonly enableMarketEngine?: boolean;
+  /** Host path to the staged market-engine source (contains Dockerfile + src/). */
+  readonly marketEngineDir?: string;
   /** Enable Tailscale sidecar for secure remote access. */
   readonly enableTailscale?: boolean;
   /** Tailscale auth key for automatic node registration. */
@@ -80,7 +80,7 @@ export interface ComposeOutput {
   readonly services: {
     readonly openclaw: ComposeServiceOutput;
     readonly "cred-proxy"?: ComposeCredProxyServiceOutput;
-    readonly "clawdius-trading"?: ComposeClawdiusTradingServiceOutput;
+    readonly "market-engine"?: ComposeMarketEngineServiceOutput;
     readonly tailscale?: ComposeTailscaleServiceOutput;
   };
   readonly networks: Record<string, ComposeNetworkOutput>;
@@ -172,8 +172,8 @@ interface ComposeTailscaleServiceOutput {
   };
 }
 
-/** Clawdius-trading sidecar — Node/TypeScript alert-grade trading assistant. */
-interface ComposeClawdiusTradingServiceOutput {
+/** Market-engine sidecar — Node/TypeScript alert-grade trading assistant. */
+interface ComposeMarketEngineServiceOutput {
   readonly build: { readonly context: string; readonly dockerfile: string };
   readonly user: string;
   readonly read_only: boolean;
@@ -366,16 +366,16 @@ export function generateCompose(
       }
     : undefined;
 
-  // Build clawdius-trading sidecar if enabled — alert-grade trading assistant.
-  const enableClawdiusTrading = options?.enableClawdiusTrading ?? false;
-  const clawdiusTradingDir =
-    options?.clawdiusTradingDir ?? `${deployDir}/engine/clawdius-trading`;
+  // Build market-engine sidecar if enabled — alert-grade trading assistant.
+  const enableMarketEngine = options?.enableMarketEngine ?? false;
+  const marketEngineDir =
+    options?.marketEngineDir ?? `${deployDir}/engine/market-engine`;
 
-  const clawdiusTradingService: ComposeClawdiusTradingServiceOutput | undefined =
-    enableClawdiusTrading
+  const marketEngineService: ComposeMarketEngineServiceOutput | undefined =
+    enableMarketEngine
       ? {
           build: {
-            context: clawdiusTradingDir,
+            context: marketEngineDir,
             dockerfile: "Dockerfile",
           },
           user: "1000:1000",
@@ -419,8 +419,8 @@ export function generateCompose(
     services: {
       openclaw: service,
       ...(credProxyService ? { "cred-proxy": credProxyService } : {}),
-      ...(clawdiusTradingService
-        ? { "clawdius-trading": clawdiusTradingService }
+      ...(marketEngineService
+        ? { "market-engine": marketEngineService }
         : {}),
       ...(tailscaleService ? { tailscale: tailscaleService } : {}),
     },
@@ -520,4 +520,223 @@ function hasResourceLimits(posture: PostureConfig): boolean {
     posture.resources.memoryMb > 0 ||
     posture.resources.pidsLimit > 0
   );
+}
+
+// ── YAML Serialization ──────────────────────────────────────────────────────
+
+/**
+ * Serialize a ComposeOutput to YAML text suitable for `docker compose up`.
+ *
+ * Hand-built rather than using a YAML library: the structure is fixed and
+ * adding a dep for one emitter would be churn. Kept co-located with
+ * generateCompose so the shape of the object and its serialization evolve
+ * together; any structural change surfaces here as a compile error, not a
+ * silent mis-serialization.
+ */
+export function serializeYaml(compose: ComposeOutput): string {
+  const lines: string[] = [];
+  const svc = compose.services.openclaw;
+
+  // Note: 'version' is obsolete in Docker Compose v2+ and produces a warning
+  lines.push("services:", "  openclaw:");
+  lines.push(`    image: ${svc.image}`);
+  lines.push(`    user: "${svc.user}"`);
+  lines.push(`    read_only: ${svc.read_only}`);
+  lines.push(`    restart: ${svc.restart}`);
+  lines.push(`    init: ${svc.init}`);
+
+  lines.push("    command:");
+  for (const c of svc.command) lines.push(`      - "${c}"`);
+
+  lines.push("    ports:");
+  for (const p of svc.ports) lines.push(`      - "${p}"`);
+
+  lines.push("    extra_hosts:");
+  for (const h of svc.extra_hosts) lines.push(`      - "${h}"`);
+
+  lines.push("    environment:");
+  for (const [key, val] of Object.entries(svc.environment)) {
+    lines.push(`      ${key}: "${val}"`);
+  }
+
+  lines.push("    healthcheck:");
+  lines.push("      test:");
+  for (const t of svc.healthcheck.test) lines.push(`        - "${t}"`);
+  lines.push(`      interval: ${svc.healthcheck.interval}`);
+  lines.push(`      timeout: ${svc.healthcheck.timeout}`);
+  lines.push(`      retries: ${svc.healthcheck.retries}`);
+  lines.push(`      start_period: ${svc.healthcheck.start_period}`);
+
+  lines.push("    cap_drop:");
+  for (const cap of svc.cap_drop) lines.push(`      - ${cap}`);
+
+  lines.push("    security_opt:");
+  for (const opt of svc.security_opt) lines.push(`      - ${opt}`);
+
+  lines.push("    tmpfs:");
+  for (const t of svc.tmpfs) lines.push(`      - "${t}"`);
+
+  lines.push("    volumes:");
+  for (const v of svc.volumes) lines.push(`      - "${v}"`);
+
+  lines.push("    networks:");
+  for (const n of svc.networks) lines.push(`      - ${n}`);
+
+  lines.push("    env_file:");
+  for (const e of svc.env_file) lines.push(`      - ${e}`);
+
+  if (svc.secrets && svc.secrets.length > 0) {
+    lines.push("    secrets:");
+    for (const s of svc.secrets) lines.push(`      - ${s}`);
+  }
+
+  if (svc.runtime) {
+    lines.push(`    runtime: ${svc.runtime}`);
+  }
+
+  if (svc.deploy) {
+    lines.push("    deploy:");
+    lines.push("      resources:");
+    lines.push("        limits:");
+    lines.push(`          cpus: "${svc.deploy.resources.limits.cpus}"`);
+    lines.push(`          memory: ${svc.deploy.resources.limits.memory}`);
+    lines.push(`          pids: ${svc.deploy.resources.limits.pids}`);
+  }
+
+  // Credential proxy sidecar
+  if (compose.services["cred-proxy"]) {
+    const cp = compose.services["cred-proxy"];
+    lines.push("", "  cred-proxy:");
+    lines.push(`    image: ${cp.image}`);
+    lines.push(`    user: "${cp.user}"`);
+    lines.push(`    read_only: ${cp.read_only}`);
+    lines.push(`    restart: ${cp.restart}`);
+    lines.push("    cap_drop:");
+    for (const cap of cp.cap_drop) lines.push(`      - ${cap}`);
+    lines.push("    security_opt:");
+    for (const opt of cp.security_opt) lines.push(`      - ${opt}`);
+    lines.push("    command:");
+    for (const c of cp.command) lines.push(`      - "${c}"`);
+    lines.push("    volumes:");
+    for (const v of cp.volumes) lines.push(`      - "${v}"`);
+    lines.push("    networks:");
+    for (const n of cp.networks) lines.push(`      - ${n}`);
+    lines.push("    env_file:");
+    for (const e of cp.env_file) lines.push(`      - ${e}`);
+    lines.push("    tmpfs:");
+    for (const t of cp.tmpfs) lines.push(`      - "${t}"`);
+    lines.push("    healthcheck:");
+    lines.push("      test:");
+    for (const t of cp.healthcheck.test) {
+      // Use single-quoted YAML scalar when value contains double quotes
+      if (t.includes('"')) {
+        lines.push(`        - '${t}'`);
+      } else {
+        lines.push(`        - "${t}"`);
+      }
+    }
+    lines.push(`      interval: ${cp.healthcheck.interval}`);
+    lines.push(`      timeout: ${cp.healthcheck.timeout}`);
+    lines.push(`      retries: ${cp.healthcheck.retries}`);
+  }
+
+  // Market-engine sidecar
+  if (compose.services["market-engine"]) {
+    const ct = compose.services["market-engine"];
+    lines.push("", "  market-engine:");
+    lines.push("    build:");
+    lines.push(`      context: ${ct.build.context}`);
+    lines.push(`      dockerfile: ${ct.build.dockerfile}`);
+    lines.push(`    user: "${ct.user}"`);
+    lines.push(`    read_only: ${ct.read_only}`);
+    lines.push(`    restart: ${ct.restart}`);
+    lines.push("    cap_drop:");
+    for (const cap of ct.cap_drop) lines.push(`      - ${cap}`);
+    lines.push("    security_opt:");
+    for (const opt of ct.security_opt) lines.push(`      - ${opt}`);
+    lines.push("    volumes:");
+    for (const v of ct.volumes) lines.push(`      - "${v}"`);
+    lines.push("    networks:");
+    for (const n of ct.networks) lines.push(`      - ${n}`);
+    lines.push("    env_file:");
+    for (const e of ct.env_file) lines.push(`      - ${e}`);
+    lines.push("    environment:");
+    for (const [key, val] of Object.entries(ct.environment)) {
+      lines.push(`      ${key}: "${val}"`);
+    }
+    lines.push("    tmpfs:");
+    for (const t of ct.tmpfs) lines.push(`      - "${t}"`);
+    if (ct.depends_on && Object.keys(ct.depends_on).length > 0) {
+      lines.push("    depends_on:");
+      for (const [svc, cond] of Object.entries(ct.depends_on)) {
+        lines.push(`      ${svc}:`);
+        lines.push(`        condition: ${(cond as { condition: string }).condition}`);
+      }
+    }
+    lines.push("    healthcheck:");
+    lines.push("      test:");
+    for (const t of ct.healthcheck.test) {
+      if (t.includes('"')) {
+        lines.push(`        - '${t}'`);
+      } else {
+        lines.push(`        - "${t}"`);
+      }
+    }
+    lines.push(`      interval: ${ct.healthcheck.interval}`);
+    lines.push(`      timeout: ${ct.healthcheck.timeout}`);
+    lines.push(`      retries: ${ct.healthcheck.retries}`);
+  }
+
+  // Tailscale sidecar
+  if (compose.services.tailscale) {
+    const ts = compose.services.tailscale;
+    lines.push("", "  tailscale:");
+    lines.push(`    image: ${ts.image}`);
+    lines.push(`    hostname: ${ts.hostname}`);
+    lines.push(`    restart: ${ts.restart}`);
+    lines.push("    cap_drop:");
+    for (const cap of ts.cap_drop) lines.push(`      - ${cap}`);
+    lines.push("    volumes:");
+    for (const v of ts.volumes) lines.push(`      - "${v}"`);
+    lines.push("    networks:");
+    for (const n of ts.networks) lines.push(`      - ${n}`);
+    lines.push("    environment:");
+    for (const [key, val] of Object.entries(ts.environment)) {
+      lines.push(`      ${key}: "${val}"`);
+    }
+    lines.push("    healthcheck:");
+    lines.push("      test:");
+    for (const t of ts.healthcheck.test) lines.push(`        - "${t}"`);
+    lines.push(`      interval: ${ts.healthcheck.interval}`);
+    lines.push(`      timeout: ${ts.healthcheck.timeout}`);
+    lines.push(`      retries: ${ts.healthcheck.retries}`);
+  }
+
+  lines.push("", "networks:");
+  for (const [name, net] of Object.entries(compose.networks)) {
+    lines.push(`  ${name}:`);
+    if ("external" in net && (net as Record<string, unknown>).external) {
+      lines.push("    external: true");
+    } else {
+      lines.push(`    driver: ${net.driver}`);
+      if (net.driver_opts) {
+        lines.push("    driver_opts:");
+        for (const [key, val] of Object.entries(net.driver_opts)) {
+          lines.push(`      ${key}: "${val}"`);
+        }
+      }
+    }
+  }
+
+  // Top-level secrets section
+  if (compose.secrets) {
+    lines.push("", "secrets:");
+    for (const [name, secret] of Object.entries(compose.secrets)) {
+      lines.push(`  ${name}:`);
+      lines.push(`    file: ${secret.file}`);
+    }
+  }
+
+  lines.push("");
+  return lines.join("\n");
 }

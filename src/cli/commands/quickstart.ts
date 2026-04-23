@@ -7,7 +7,7 @@ import type { Command } from "commander";
 import ora from "ora";
 
 import type { BuildSecurityPosture, Stage1Config, Stage2Config } from "../../build/docker/index.js";
-import { build, getPostureConfig, getRequiredBinaries } from "../../build/docker/index.js";
+import { build, formatPostureDegradations, getRequiredBinaries, resolvePosture } from "../../build/docker/index.js";
 import { install } from "../../build/installer/index.js";
 import { deploy } from "../../build/launcher/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
@@ -195,15 +195,18 @@ export function registerQuickstartCommand(program: Command): void {
       const deploySpinner = ora();
       const onDeployProgress = createProgressHandler(deploySpinner);
 
-      const postureConfig = getPostureConfig(posture);
+      const resolved = await resolvePosture(posture);
+      for (const line of formatPostureDegradations(resolved.degradations)) {
+        console.log(chalk.yellow(line));
+      }
       const deployResult = await deploy({
         deployDir,
         gatewayToken,
         gatewayPort,
-        runtime: postureConfig.runtime,
-        autoFirewall: postureConfig.autoFirewall,
-        immutableIdentity: postureConfig.immutableIdentity,
-        airGap: postureConfig.airGap,
+        runtime: resolved.runtimeAvailable ? resolved.config.runtime : undefined,
+        autoFirewall: resolved.config.autoFirewall,
+        immutableIdentity: resolved.config.immutableIdentity,
+        airGap: resolved.config.airGap,
         onProgress: onDeployProgress,
         signal: signal,
       });

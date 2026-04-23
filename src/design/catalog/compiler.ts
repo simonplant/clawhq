@@ -15,9 +15,15 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+import { generateCompose, serializeYaml } from "../../build/docker/compose.js";
+import { getPostureConfig } from "../../build/docker/posture.js";
+import type { BuildSecurityPosture, WorkspaceManifest } from "../../build/docker/types.js";
 import {
+  agentImageTag,
+  agentNetworkName,
   CRED_PROXY_PORT,
   FILE_MODE_EXEC,
+  FILE_MODE_SECRET,
   GATEWAY_DEFAULT_PORT,
   OLLAMA_DEFAULT_MODEL,
 } from "../../config/defaults.js";
@@ -56,6 +62,16 @@ import type {
  *
  * @param existingEnv — Existing env vars from the deployment (for detecting
  *   integrations added via `clawhq integrate add` that aren't in the template).
+ * @param accessConfig — Runtime access controls read from clawhq.yaml's
+ *   top-level `access:` block. Applied to the generated compose as
+ *   `/host/<basename>` read-only mounts.
+ * @param deployment — Deployment-scoped settings (posture, instanceName)
+ *   that aren't part of the composition config but are needed to emit a
+ *   correct docker-compose.yml. Sensible defaults apply when omitted.
+ *   `runtimeAvailable` is the apply path's verdict from `resolvePosture` on
+ *   whether the OCI runtime requested by the posture (e.g. gVisor) is
+ *   actually usable here. Default true preserves intent for non-apply
+ *   callers (tests, one-off compiles) where host probing isn't possible.
  */
 export function compile(
   config: CompositionConfig,
@@ -63,15 +79,12 @@ export function compile(
   deployDir: string,
   gatewayPort: number = GATEWAY_DEFAULT_PORT,
   existingEnv: Record<string, string> = {},
-  /**
-   * Runtime access controls read from clawhq.yaml's top-level
-   * `access:` block. Kept separate from `config` (CompositionConfig)
-   * because access isn't part of the agent's composition — it's a
-   * deployment-level setting. Currently accepted for forward-compat
-   * but compile() does not consume it — `clawhq build` owns compose
-   * generation and applies host-mount access there.
-   */
-  _accessConfig: { readonly readOnlyHostMounts?: readonly string[] } = {},
+  accessConfig: { readonly readOnlyHostMounts?: readonly string[] } = {},
+  deployment: {
+    readonly posture?: BuildSecurityPosture;
+    readonly instanceName?: string;
+    readonly runtimeAvailable?: boolean;
+  } = {},
 ): CompiledWorkspace {
   const profile = loadProfile(config.profile);
   const personality = loadCanonicalPersonality();
@@ -122,14 +135,6 @@ export function compile(
   // Ollama needs egress when running on host (container → host gateway)
   // Not a domain — handled by Docker networking, but add for completeness
   // if Ollama is used as a provider
-
-  // NOTE: compose is written by `clawhq build`, not by compile/apply.
-  // Historically compile() emitted engine/docker-compose.yml in its bundle
-  // and apply's SKIP_PATHS filtered it out before writeBundle. Design.ts's
-  // direct writeBundle path had no such filter, so a `clawhq design` run
-  // would stub the live compose. With compose removed from the compile
-  // bundle entirely, the stub path is eliminated; `clawhq build` stays the
-  // single authoritative writer.
 
   const openclawJson = renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config);
 
@@ -193,7 +198,115 @@ export function compile(
     ...loadBundledSkills(profile),
   ];
 
+  // ── docker-compose.yml ──────────────────────────────────────────────────
+  // Emit compose here so it lives on the same apply pipeline as every
+  // other derived file. Posture / sidecar changes flow through `clawhq
+  // apply` instead of requiring a rebuild. `clawhq build` is image-only.
+  files.push(buildComposeFile(files, {
+    deployDir,
+    posture: deployment.posture ?? "hardened",
+    instanceName: deployment.instanceName,
+    proxyEnabled,
+    tailscaleEnabled,
+    readOnlyHostMounts: accessConfig.readOnlyHostMounts,
+    runtimeAvailable: deployment.runtimeAvailable,
+  }));
+
   return { files, profile, personality };
+}
+
+// ── docker-compose emission ────────────────────────────────────────────────
+
+/**
+ * Build the engine/docker-compose.yml CompiledFile for a compiled workspace.
+ *
+ * Wires the compose generator to the compile pipeline:
+ *   - Posture decides runtime, resource limits, read-only rootfs, tmpfs.
+ *   - Sidecars are enabled by the same signals apply already computes
+ *     (proxyEnabled from routes, tailscaleEnabled from TS_AUTHKEY,
+ *     marketEngineEnabled from the ClawHQ source dir — the same check
+ *     `clawhq build` uses when staging market-engine into the build
+ *     context).
+ *   - The workspace manifest is derived from the compiled file list so
+ *     volumes reflect exactly what will be written, without touching disk.
+ *   - readOnlyHostMounts passes through from clawhq.yaml's access block.
+ *   - runtimeAvailable comes from `resolvePosture` in the apply path; when
+ *     false, the compose generator omits the `runtime:` directive so
+ *     `docker compose up` doesn't fail with "unknown or invalid runtime
+ *     name". Other posture hardening (cap_drop, no-new-privileges,
+ *     read_only, tmpfs, seccomp) still applies.
+ */
+function buildComposeFile(
+  emittedFiles: readonly CompiledFile[],
+  opts: {
+    deployDir: string;
+    posture: BuildSecurityPosture;
+    instanceName?: string;
+    proxyEnabled: boolean;
+    tailscaleEnabled: boolean;
+    readOnlyHostMounts?: readonly string[];
+    runtimeAvailable?: boolean;
+  },
+): CompiledFile {
+  const postureConfig = getPostureConfig(opts.posture);
+  const imageTag = agentImageTag(opts.instanceName);
+  const networkName = agentNetworkName(opts.instanceName);
+  const manifest = deriveWorkspaceManifest(emittedFiles);
+  const marketEngineEnabled = marketEngineSourceExists();
+
+  const compose = generateCompose(imageTag, postureConfig, opts.deployDir, networkName, {
+    enableCredProxy: opts.proxyEnabled,
+    workspaceManifest: manifest,
+    enableMarketEngine: marketEngineEnabled,
+    enableTailscale: opts.tailscaleEnabled,
+    ...(opts.runtimeAvailable !== undefined ? { runtimeAvailable: opts.runtimeAvailable } : {}),
+    ...(opts.readOnlyHostMounts ? { readOnlyHostMounts: opts.readOnlyHostMounts } : {}),
+  });
+
+  return {
+    relativePath: "engine/docker-compose.yml",
+    content: serializeYaml(compose),
+    mode: FILE_MODE_SECRET,
+  };
+}
+
+/**
+ * Classify every emitted workspace file into the four WorkspaceManifest
+ * categories. Mirrors the runtime layout convention used by compose
+ * volumes — immutable paths are baked into the image, persistent/config
+ * paths are bind-mounted.
+ */
+function deriveWorkspaceManifest(files: readonly CompiledFile[]): WorkspaceManifest {
+  const immutable: string[] = [];
+  for (const f of files) {
+    const rel = f.relativePath;
+    if (!rel.startsWith("workspace/")) continue;
+    const path = rel.slice("workspace/".length);
+    // Skip MEMORY.md (persistent), and the user-editable config dir
+    if (path === "MEMORY.md") continue;
+    if (path.startsWith("config/")) continue;
+    immutable.push(path);
+  }
+
+  return {
+    immutable,
+    persistent: ["memory", "state", "backlog", "journal"],
+    config: ["config"],
+    ephemeral: [".cache"],
+  };
+}
+
+/**
+ * Check whether the ClawHQ source ships market-engine (src/trading/Dockerfile).
+ *
+ * This is the same signal `clawhq build` uses to decide whether to stage
+ * the market-engine sidecar into the image build context. Keeping both
+ * sides on the same check means compose and build agree about whether
+ * the service should run.
+ */
+function marketEngineSourceExists(): boolean {
+  const projectRoot = resolve(import.meta.dirname ?? __dirname, "..", "..", "..");
+  return existsSync(join(projectRoot, "src", "trading", "Dockerfile"));
 }
 
 // ── SOUL.md ─────────────────────────────────────────────────────────────────

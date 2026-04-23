@@ -1,5 +1,5 @@
 /**
- * Clawdius Trading Assistant — single-process entrypoint.
+ * Market Engine — single-process entrypoint.
  *
  * Wires SQLite event log + Tradier REST client + plan loader + level
  * detector + risk check + Telegram outbound + catch-up reconciler + Hono
@@ -625,7 +625,7 @@ if (import.meta.url === `file://${process.argv[1] ?? ""}`) {
     })
     .catch((err) => {
        
-      console.error("clawdius-trading failed to start:", err);
+      console.error("market-engine failed to start:", err);
       process.exit(1);
     });
 }

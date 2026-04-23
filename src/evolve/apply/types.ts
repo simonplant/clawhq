@@ -24,6 +24,9 @@ export interface ApplyResult {
   readonly success: boolean;
   readonly error?: string;
   readonly report: ApplyReport;
+  /** Non-fatal advisory lines — e.g. posture degradations the user should
+   *  see but which don't prevent a successful apply. */
+  readonly warnings?: readonly string[];
 }
 
 /** What changed during apply. */

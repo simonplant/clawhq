@@ -10,7 +10,7 @@
  */
 
 // Build orchestrator
-export { build, serializeYaml } from "./build.js";
+export { build } from "./build.js";
 
 // Dockerfile generation
 export {
@@ -19,12 +19,19 @@ export {
   validateBinaryUrl,
 } from "./dockerfile.js";
 
-// Compose generation
-export { generateCompose } from "./compose.js";
+// Compose generation + serialization (written by compile/apply, not build)
+export { generateCompose, serializeYaml } from "./compose.js";
 export type { ComposeOptions, ComposeOutput } from "./compose.js";
 
 // Security postures
-export { DEFAULT_POSTURE, getPostureConfig, POSTURE_LEVELS } from "./posture.js";
+export {
+  DEFAULT_POSTURE,
+  formatPostureDegradations,
+  getPostureConfig,
+  POSTURE_LEVELS,
+  resolvePosture,
+} from "./posture.js";
+export type { PostureDegradation, ResolvedPosture } from "./posture.js";
 
 // Posture YAML writer
 export { generatePostureYaml, posturePath, readCurrentPosture, writePostureYaml } from "./posture-writer.js";
