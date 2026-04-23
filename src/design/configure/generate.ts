@@ -950,7 +950,7 @@ export function generateWorkspaceManifest(bundle: DeploymentBundle): WorkspaceMa
   }
 
   for (const identity of bundle.identityFiles) {
-    // identity.path is e.g. "workspace/identity/SOUL.md"
+    // identity.path is e.g. "workspace/SOUL.md"
     const rel = identity.path.replace(/^workspace\//, "");
     immutable.push(rel);
   }

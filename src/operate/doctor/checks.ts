@@ -534,17 +534,38 @@ async function checkUserUid(
 /** 11. Identity files within bootstrapMaxChars. */
 async function checkIdentitySize(deployDir: string): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "identity-size";
-  const identityDir = join(deployDir, "workspace", "identity");
+  const workspaceDir = join(deployDir, "workspace");
+  const IDENTITY_BASENAMES = [
+    "SOUL.md",
+    "AGENTS.md",
+    "USER.md",
+    "TOOLS.md",
+    "IDENTITY.md",
+    "HEARTBEAT.md",
+    "BOOTSTRAP.md",
+  ];
   const DEFAULT_MAX_CHARS = BOOTSTRAP_MAX_CHARS;
 
   try {
-    const entries = await readdir(identityDir);
-    const mdFiles = entries.filter((f) => f.endsWith(".md"));
-
     let totalSize = 0;
-    for (const file of mdFiles) {
-      const content = await readFile(join(identityDir, file), "utf-8");
-      totalSize += content.length;
+    let found = 0;
+    for (const basename of IDENTITY_BASENAMES) {
+      try {
+        const content = await readFile(join(workspaceDir, basename), "utf-8");
+        totalSize += content.length;
+        found++;
+      } catch {
+        // File missing — skipped (not every deployment has all 7)
+      }
+    }
+
+    if (found === 0) {
+      return fail(
+        name,
+        "warning",
+        "No identity files found at workspace/ root",
+        "Run: clawhq init --guided",
+      );
     }
 
     // Try to read bootstrapMaxChars from config
@@ -567,12 +588,9 @@ async function checkIdentitySize(deployDir: string): Promise<DoctorCheckResult> 
         `Reduce identity file sizes or increase bootstrapMaxChars in openclaw.json`,
       );
     }
-    return ok(name, `Identity files total ${totalSize} chars (limit: ${maxChars})`);
+    return ok(name, `Identity files total ${totalSize} chars across ${found} files (limit: ${maxChars})`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("ENOENT")) {
-      return fail(name, "warning", "Identity directory not found at workspace/identity/", "Run: clawhq init --guided");
-    }
     return fail(name, "warning", `Cannot read identity files: ${msg}`);
   }
 }
@@ -1014,7 +1032,7 @@ async function checkFirewallActive(deployDir: string, signal?: AbortSignal): Pro
 /** 15. Workspace directory structure is intact. */
 async function checkWorkspaceExists(deployDir: string): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "workspace-exists";
-  const requiredDirs = ["identity", "tools", "skills", "memory"];
+  const requiredDirs = ["tools", "skills", "memory"];
   const workspaceDir = join(deployDir, "workspace");
 
   try {

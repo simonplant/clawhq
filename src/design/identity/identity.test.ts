@@ -475,32 +475,41 @@ describe("generateIdentityFiles", () => {
     expect(names).not.toContain("USER.md");
   });
 
-  it("includes blueprint-defined runbooks", () => {
+  it("inlines blueprint-defined runbooks into AGENTS.md (not separate files)", () => {
     const bp = loadStockTrading();
     expect(bp.runbooks).toBeDefined();
     const files = generateIdentityFiles(bp);
     const names = files.map((f) => f.name);
-    expect(names).toContain("RISK-GUARDRAILS.md");
+    // Runbooks must NOT emit as separate files — their basenames aren't on
+    // OpenClaw's 8-file auto-load allowlist, so they would silently fail to load.
+    expect(names).not.toContain("RISK-GUARDRAILS.md");
+    // Content must appear inside AGENTS.md so the agent actually reads it.
+    const agents = files.find((f) => f.name === "AGENTS.md");
+    expect(agents).toBeDefined();
+    expect(agents?.content).toContain("Runbooks");
+    expect(agents?.content).toContain("RISK GUARDRAILS");
   });
 
-  it("runbook content is included in identity files", () => {
+  it("inlined runbook content reaches AGENTS.md", () => {
     const bp = loadEmailManager();
     expect(bp.runbooks).toBeDefined();
     const files = generateIdentityFiles(bp);
-    const runbook = files.find((f) => f.name === "TRIAGE-RULES.md");
-    expect(runbook).toBeDefined();
-    expect(runbook?.content).toContain("Priority Classification");
+    const agents = files.find((f) => f.name === "AGENTS.md");
+    expect(agents).toBeDefined();
+    expect(agents?.content).toContain("Priority Classification");
   });
 
-  it("uses correct relative paths for all file types", () => {
+  it("uses correct relative paths for all file types (workspace/ root, not identity/ subdir)", () => {
     const bp = loadEmailManager();
     const files = generateIdentityFiles(bp, undefined, {}, undefined, TEST_USER_CONTEXT);
     const paths = files.map((f) => f.relativePath);
-    expect(paths).toContain("workspace/identity/SOUL.md");
-    expect(paths).toContain("workspace/identity/AGENTS.md");
-    expect(paths).toContain("workspace/identity/TOOLS.md");
-    expect(paths).toContain("workspace/identity/USER.md");
-    expect(paths).toContain("workspace/identity/TRIAGE-RULES.md");
+    expect(paths).toContain("workspace/SOUL.md");
+    expect(paths).toContain("workspace/AGENTS.md");
+    expect(paths).toContain("workspace/TOOLS.md");
+    expect(paths).toContain("workspace/USER.md");
+    // Runbook content inlines into AGENTS.md — no separate file path.
+    expect(paths).not.toContain("workspace/TRIAGE-RULES.md");
+    expect(paths).not.toContain("workspace/identity/TRIAGE-RULES.md");
   });
 
   it("fits within default token budget (LM-08)", () => {
@@ -562,17 +571,21 @@ describe("generateIdentityFiles", () => {
     }
   });
 
-  it("token budget accounts for all identity files including runbooks and USER.md", () => {
+  it("token budget accounts for all identity files including inlined runbooks", () => {
     const bp = loadStockTrading();
     const files = generateIdentityFiles(bp, undefined, {}, undefined, TEST_USER_CONTEXT);
-    // Should have SOUL.md, AGENTS.md, TOOLS.md, USER.md, RISK-GUARDRAILS.md
-    expect(files.length).toBeGreaterThanOrEqual(5);
+    // Runbooks inline into AGENTS.md, so exactly 4 files: SOUL, AGENTS, TOOLS, USER.
+    expect(files.length).toBe(4);
 
     const totalSize = files.reduce(
       (sum, f) => sum + Buffer.byteLength(f.content, "utf-8"),
       0,
     );
     expect(totalSize).toBeLessThanOrEqual(20_000);
+
+    // Runbook content must still be present — inside AGENTS.md.
+    const agents = files.find((f) => f.name === "AGENTS.md");
+    expect(agents?.content).toContain("Runbooks");
   });
 
   it("SOUL.md contains personality from blueprint", () => {

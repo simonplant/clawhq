@@ -45,7 +45,6 @@ describe("scaffoldDirs", () => {
     const expected = [
       "engine",
       "workspace",
-      "workspace/identity",
       "workspace/tools",
       "workspace/skills",
       "workspace/state",
@@ -68,8 +67,8 @@ describe("scaffoldDirs", () => {
     }
 
     expect(result.deployDir).toBe(deployDir);
-    // Root + 18 subdirectories
-    expect(result.created).toHaveLength(19);
+    // Root + 17 subdirectories (workspace/identity removed — identity files live at workspace/ root)
+    expect(result.created).toHaveLength(18);
   });
 
   it("creates security/ and cloud/ with DIR_MODE_SECRET (0o700)", () => {

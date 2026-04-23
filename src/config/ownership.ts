@@ -157,9 +157,6 @@ export const OWNERSHIP_RULES: readonly OwnershipRule[] = [
     reason: "tool wrappers compiled from blueprint" },
   { pattern: "workspace/delegated-rules.json", owner: "clawhq",
     reason: "compiled delegation rule set" },
-  { pattern: "workspace/identity/**", owner: "clawhq",
-    reason: "identity subdir artifacts (per ARCHITECTURE.md §717)" },
-
   // ── User-curated workspace content ───────────────────────────────────────
   { pattern: "workspace/knowledge/**", owner: "user",
     reason: "user knowledge base (wiki, references)" },

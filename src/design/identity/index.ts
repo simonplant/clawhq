@@ -15,7 +15,7 @@
  */
 
 import { BOOTSTRAP_MAX_CHARS } from "../../config/defaults.js";
-import type { Blueprint } from "../blueprints/types.js";
+import type { Blueprint, RunbookEntry } from "../blueprints/types.js";
 import type { UserContext } from "../configure/types.js";
 
 import { generateAgents } from "./agents.js";
@@ -61,20 +61,25 @@ export function generateIdentityFiles(
   soulOverrides?: string,
   userContext?: UserContext,
 ): IdentityFileContent[] {
+  // Identity files write to workspace/ root — this is the only path OpenClaw
+  // auto-loads (see OPENCLAW-REFERENCE.md §"The 8 Auto-Loaded Files Constraint").
+  // Any subdir (including legacy workspace/identity/) is silently ignored.
+  const agentsContent = appendRunbooks(generateAgents(blueprint), blueprint.runbooks);
+
   const files: IdentityFileContent[] = [
     {
       name: "SOUL.md",
-      relativePath: "workspace/identity/SOUL.md",
+      relativePath: "workspace/SOUL.md",
       content: generateSoul(blueprint, customizationAnswers, soulOverrides),
     },
     {
       name: "AGENTS.md",
-      relativePath: "workspace/identity/AGENTS.md",
-      content: generateAgents(blueprint),
+      relativePath: "workspace/AGENTS.md",
+      content: agentsContent,
     },
     {
       name: "TOOLS.md",
-      relativePath: "workspace/identity/TOOLS.md",
+      relativePath: "workspace/TOOLS.md",
       content: generateTools(blueprint),
     },
   ];
@@ -83,21 +88,14 @@ export function generateIdentityFiles(
   if (userContext) {
     files.push({
       name: "USER.md",
-      relativePath: "workspace/identity/USER.md",
+      relativePath: "workspace/USER.md",
       content: generateUser(userContext),
     });
   }
 
-  // Include blueprint-defined runbooks
-  if (blueprint.runbooks) {
-    for (const runbook of blueprint.runbooks) {
-      files.push({
-        name: runbook.name,
-        relativePath: `workspace/identity/${runbook.name}`,
-        content: runbook.content,
-      });
-    }
-  }
+  // Runbooks are inlined into AGENTS.md above — emitting them as separate
+  // files at workspace/<name>.md would silently fail to load (basename not on
+  // the 8-file allowlist). Inlining guarantees the content reaches the agent.
 
   // LM-08: Enforce token budget — truncate if content exceeds limit
   const totalSize = files.reduce(
@@ -156,6 +154,29 @@ function truncateToFit(
   }
 
   return result;
+}
+
+/**
+ * Append blueprint runbooks to AGENTS.md as a final `## Runbooks` section.
+ *
+ * Blueprints declare runbooks for domain-specific rules (e.g. RISK-GUARDRAILS
+ * for trading). Emitting them as separate `.md` files in the workspace root
+ * would silently fail to load — OpenClaw only auto-injects 8 standard
+ * basenames. Inlining into AGENTS.md is the only way to guarantee the agent
+ * actually sees the content.
+ */
+function appendRunbooks(
+  agentsContent: string,
+  runbooks: readonly RunbookEntry[] | undefined,
+): string {
+  if (!runbooks || runbooks.length === 0) return agentsContent;
+
+  const sections: string[] = [agentsContent.trimEnd(), "", "## Runbooks", ""];
+  for (const runbook of runbooks) {
+    const title = runbook.name.replace(/\.md$/i, "").replace(/[-_]/g, " ");
+    sections.push(`### ${title}`, "", runbook.content.trim(), "");
+  }
+  return sections.join("\n") + "\n";
 }
 
 /** Truncate a UTF-8 string to at most `maxBytes` bytes without splitting characters. */

@@ -26,7 +26,6 @@ import type { ScaffoldResult } from "./types.js";
 const SCAFFOLD_DIRS = [
   "engine",
   "workspace",
-  "workspace/identity",
   "workspace/tools",
   "workspace/skills",
   "workspace/state",

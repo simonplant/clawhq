@@ -29,7 +29,7 @@ let testDir: string;
 beforeEach(async () => {
   testDir = join(tmpdir(), `clawhq-doctor-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   await mkdir(join(testDir, "engine"), { recursive: true });
-  await mkdir(join(testDir, "workspace", "identity"), { recursive: true });
+  await mkdir(join(testDir, "workspace"), { recursive: true });
   await mkdir(join(testDir, "workspace", "tools"), { recursive: true });
   await mkdir(join(testDir, "workspace", "skills"), { recursive: true });
   await mkdir(join(testDir, "workspace", "memory"), { recursive: true });
@@ -106,10 +106,10 @@ async function writeValidCron(): Promise<void> {
   await writeFile(join(testDir, "cron", "jobs.json"), JSON.stringify(store, null, 2));
 }
 
-/** Write identity files. */
+/** Write identity files at workspace/ root (the only path OpenClaw auto-loads). */
 async function writeIdentityFiles(): Promise<void> {
-  await writeFile(join(testDir, "workspace", "identity", "SOUL.md"), "# Soul\nTest agent.");
-  await writeFile(join(testDir, "workspace", "identity", "AGENTS.md"), "# Agents\nInstructions.");
+  await writeFile(join(testDir, "workspace", "SOUL.md"), "# Soul\nTest agent.");
+  await writeFile(join(testDir, "workspace", "AGENTS.md"), "# Agents\nInstructions.");
 }
 
 /** Find a check by name and assert it exists. */
