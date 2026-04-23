@@ -112,15 +112,30 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
       airGap,
       options.signal,
     );
-    const v6Rules = await reconcileFamily(
-      "ip6tables",
-      IPSET_NAME_V6,
-      "inet6",
-      resolved.v6,
-      ports,
-      airGap,
-      options.signal,
-    );
+
+    // IPv6 failure modes are different from IPv4: hosts with a stripped
+    // kernel (minimal Alpine / some VPS images) can have ipset without
+    // inet6 support, or ip6tables entirely absent. On those hosts the
+    // prior "teardown on any error" behavior bricked deploys that had
+    // worked before. Treat ip6tables reconcile failure as degraded
+    // filtering (v4-only) rather than a hard failure.
+    let v6Rules = 0;
+    let v6Warning: string | undefined;
+    try {
+      v6Rules = await reconcileFamily(
+        "ip6tables",
+        IPSET_NAME_V6,
+        "inet6",
+        resolved.v6,
+        ports,
+        airGap,
+        options.signal,
+      );
+    } catch (err) {
+      v6Warning =
+        "ip6tables/ipset inet6 not available — v6 egress unfiltered " +
+        `(${err instanceof Error ? err.message : String(err)})`;
+    }
 
     await writeIpsetMeta(options.deployDir, {
       lastRefreshed: new Date().toISOString(),
@@ -136,6 +151,7 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
       success: true,
       rulesApplied: v4Rules + v6Rules,
       resolvedIps: resolved.v4.length + resolved.v6.length,
+      ...(v6Warning ? { warning: v6Warning } : {}),
     };
   } catch (err) {
     try {
