@@ -8,11 +8,12 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
 import { Hono } from "hono";
+import { getCookie, setCookie } from "hono/cookie";
 import { stringify as yamlStringify } from "yaml";
 
 import { deploy, restart, shutdown } from "../build/launcher/index.js";
@@ -60,6 +61,13 @@ export interface DashboardOptions {
   readonly deployDir: string;
   readonly port?: number;
   readonly hostname?: string;
+  /**
+   * Session bearer token. Required for any mutating POST. Set as an HttpOnly
+   * cookie by the initial `GET /?token=<x>` handshake; the CLI launcher prints
+   * that URL on startup. If omitted here, a fresh token is generated — tests
+   * should pass a fixed value so they can construct the Cookie header.
+   */
+  readonly sessionToken?: string;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -67,6 +75,7 @@ export interface DashboardOptions {
 const MAX_LOG_LINES = 10_000;
 const LOG_RATE_LIMIT = 30;
 const LOG_RATE_WINDOW_MS = 60_000;
+const SESSION_COOKIE = "clawhq_session";
 
 // ── App Factory ─────────────────────────────────────────────────────────────
 
@@ -77,19 +86,68 @@ export function createApp(options: DashboardOptions): Hono {
   // CSRF token — generated per app instance
   const csrfToken = randomBytes(32).toString("hex");
 
+  // Session bearer token — supplied by the caller (CLI) or generated.
+  // Fresh token per createApp invocation; tests pass a fixed value.
+  const sessionToken = options.sessionToken ?? randomBytes(32).toString("hex");
+
   // Rate limiter state for /api/logs
   const logRequestTimes: number[] = [];
 
-  // ── CSRF Middleware ──────────────────────────────────────────────────────
+  // ── Session handshake ────────────────────────────────────────────────────
+  // First visit: `GET /?token=<x>` — if x matches, set the cookie and redirect
+  // to `/` so the token doesn't linger in browser history or referer headers.
+  app.use("*", async (c, next) => {
+    if (c.req.method === "GET") {
+      const urlObj = new URL(c.req.url);
+      const tokenQuery = urlObj.searchParams.get("token");
+      if (tokenQuery && tokenQuery === sessionToken) {
+        setCookie(c, SESSION_COOKIE, sessionToken, {
+          httpOnly: true,
+          sameSite: "Lax",
+          path: "/",
+        });
+        urlObj.searchParams.delete("token");
+        return c.redirect(urlObj.pathname + (urlObj.search ? urlObj.search : ""));
+      }
+    }
+    await next();
+  });
+
+  // ── Auth + CSRF middleware (POST only) ───────────────────────────────────
+  //
+  // Session auth protects every POST except the sentinel public signup (which
+  // is intentionally un-authenticated — it's a public pricing page). CSRF is
+  // enforced everywhere including sentinel so drive-by POSTs from other origins
+  // can't spam signups. CSRF accepts either the `X-CSRF-Token` header (htmx
+  // paths) or a `csrf_token` form field (plain-HTML form paths like sentinel).
   app.use("*", async (c, next) => {
     if (c.req.method === "POST") {
-      // Sentinel signup is public-facing — exempt from CSRF
       const path = new URL(c.req.url).pathname;
-      if (!path.startsWith("/sentinel/")) {
-        const headerToken = c.req.header("X-CSRF-Token");
-        if (headerToken !== csrfToken) {
-          return c.html("<p>CSRF token validation failed</p>", 403);
+      const isPublicSentinel = path.startsWith("/sentinel/");
+
+      if (!isPublicSentinel) {
+        const sessionCookie = getCookie(c, SESSION_COOKIE);
+        if (sessionCookie !== sessionToken) {
+          return c.html("<p>Unauthorized: missing or invalid session</p>", 401);
         }
+      }
+
+      const headerToken = c.req.header("X-CSRF-Token");
+      let provided = headerToken;
+      if (provided !== csrfToken && path.startsWith("/sentinel/")) {
+        // Plain-HTML form fallback: CSRF may arrive as a form field. Clone the
+        // body so downstream handlers can still parse it.
+        const cloned = c.req.raw.clone();
+        try {
+          const formBody = await cloned.formData();
+          const fieldToken = formBody.get("csrf_token");
+          if (typeof fieldToken === "string") provided = fieldToken;
+        } catch {
+          // Not a form body — ignore.
+        }
+      }
+      if (provided !== csrfToken) {
+        return c.html("<p>CSRF token validation failed</p>", 403);
       }
     }
     await next();
@@ -317,6 +375,24 @@ export function createApp(options: DashboardOptions): Hono {
       if (rel.startsWith("..") || isAbsolute(rel)) {
         return c.html(`<div class="error">Deploy directory must be within your home directory</div>`, 400);
       }
+
+      // Refuse to clobber an existing deployment unless `reset` was explicitly
+      // confirmed. Matches the CLI's `ensureFreshOrReset` refused branch.
+      const resetFlag = body["reset"] === "true";
+      if (!resetFlag && existsSync(join(resolvedDeployDir, "clawhq.yaml"))) {
+        return c.html(
+          <InitResult
+            success={false}
+            message={
+              "clawhq.yaml already exists at this deploy directory. " +
+              "Pass reset=true to archive the existing deployment and re-forge, " +
+              "or run `clawhq apply` to reconfigure in place."
+            }
+          />,
+          409,
+        );
+      }
+
       const airGapped = body["airGapped"] === "true";
 
       const answers = {
@@ -393,7 +469,7 @@ export function createApp(options: DashboardOptions): Hono {
   // ── Sentinel Pricing (public-facing) ──────────────────────────────────
 
   app.get("/sentinel", (c) => {
-    return c.html(<SentinelPricingPage />);
+    return c.html(<SentinelPricingPage csrfToken={csrfToken} />);
   });
 
   app.post("/sentinel/signup", async (c) => {

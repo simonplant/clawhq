@@ -418,8 +418,12 @@ export function registerProvisionCommands(program: Command, defaultDeployDir: st
         hostname: opts.host,
       });
 
+      const loginUrl = `http://${server.hostname}:${server.port}/?token=${server.sessionToken}`;
       console.log(chalk.green(`Dashboard running at http://${server.hostname}:${server.port}`));
-      console.log(chalk.dim("Press Ctrl+C to stop.\n"));
+      console.log(chalk.bold("\n  Open this URL once to authenticate:"));
+      console.log("    " + chalk.cyan(loginUrl));
+      console.log(chalk.dim(`  (token cached at ${opts.deployDir}/ops/web/session.token)`));
+      console.log(chalk.dim("\n  Press Ctrl+C to stop.\n"));
 
       // Signal handler for cleanup — legitimately calls process.exit()
       const shutdownServer = () => {

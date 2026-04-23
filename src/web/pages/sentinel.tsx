@@ -6,7 +6,7 @@
  * waiting list / subscription.
  */
 
-export function SentinelPricingPage() {
+export function SentinelPricingPage({ csrfToken }: { csrfToken: string }) {
   return (
     <html lang="en" data-theme="light">
       <head>
@@ -137,6 +137,7 @@ export function SentinelPricingPage() {
                       placeholder="you@example.com"
                       required
                     />
+                    <input type="hidden" name="csrf_token" value={csrfToken} />
                     <button type="submit">Join waitlist</button>
                   </form>
                 </footer>
