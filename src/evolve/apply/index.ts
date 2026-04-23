@@ -15,6 +15,10 @@ import { parse as yamlParse } from "yaml";
 import type { BuildSecurityPosture } from "../../build/docker/index.js";
 import { formatPostureDegradations, resolvePosture } from "../../build/docker/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import {
+  ENV_PLACEHOLDER,
+  protectCredentials as protectCredentialsText,
+} from "../../config/env-merge.js";
 import { DeployLockBusyError, withDeployLock } from "../../config/lock.js";
 import { compile, validateCompiled } from "../../design/catalog/index.js";
 import type { CompiledFile } from "../../design/catalog/types.js";
@@ -59,8 +63,6 @@ const MERGE_PATHS = new Set([
   "cron/jobs.json",                              // compiler owns job definitions, preserve runtime state
 ]);
 
-/** .env placeholder value — the writer preserves real values over this. */
-const ENV_PLACEHOLDER = "CHANGE_ME";
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -483,32 +485,16 @@ function readExistingEnv(deployDir: string): Record<string, string> {
 }
 
 /**
- * Replace generated non-placeholder values with CHANGE_ME so the writer's
- * merge logic preserves existing real credentials.
- *
- * The compiler generates fresh random tokens (e.g. OPENCLAW_GATEWAY_TOKEN).
- * During apply, we want to keep the existing token, not replace it.
+ * Wrap the canonical `protectCredentials` helper to return a CompiledFile
+ * instead of a plain string. Delegates the string-level logic — including
+ * multi-line quoted value handling — to the single source of truth in
+ * `src/config/env-merge.ts`.
  */
 function protectCredentials(
   file: CompiledFile,
   existingEnv: Record<string, string>,
 ): CompiledFile {
-  const lines = file.content.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const rawLine = lines[i];
-    if (!rawLine.trim() || rawLine.trim().startsWith("#")) continue;
-    const eq = rawLine.indexOf("=");
-    if (eq < 1) continue;
-    const key = rawLine.slice(0, eq).trim();
-    const newVal = rawLine.slice(eq + 1);
-    // If existing .env has a real value for this key, and the generated
-    // value is also real (not a placeholder), replace with placeholder
-    // so the merge preserves the existing value.
-    if (existingEnv[key] && newVal !== ENV_PLACEHOLDER) {
-      lines[i] = `${key}=${ENV_PLACEHOLDER}`;
-    }
-  }
-  return { ...file, content: lines.join("\n") };
+  return { ...file, content: protectCredentialsText(file.content, existingEnv) };
 }
 
 // ── Diff Computation ────────────────────────────────────────────────────────
