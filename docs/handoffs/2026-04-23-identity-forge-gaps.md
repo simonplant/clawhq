@@ -2,7 +2,8 @@
 
 **Date:** 2026-04-23
 **Author:** Claude (main session, Simon's recon pass)
-**Scope:** Gaps found when comparing three OpenClaw instances (clawdius-manual prototype, clawdius current, sterling future) against `docs/OPENCLAW-REFERENCE.md` and the clawhq identity generators.
+**Revised:** 2026-04-23 — scope cut from 7 bugs to 3 after final critique; schema additions deferred until baseline is verified.
+**Scope:** Three bugs that must be fixed before any further platform work lands. All three affect baseline correctness — schemas, blueprints, and the scoring model all rest on these being resolved first.
 
 **What is NOT in scope (settled, do not touch):**
 
@@ -11,114 +12,102 @@
 
 ---
 
-## Bug 1 — `workspace/identity/` vs `workspace/` path drift
+## Critical prerequisite — verify what the agent actually reads
 
-**Symptom.** `src/design/identity/index.ts:66-98` writes identity files to `workspace/identity/SOUL.md`, `workspace/identity/AGENTS.md`, `workspace/identity/TOOLS.md`, `workspace/identity/USER.md`. But per `docs/OPENCLAW-REFERENCE.md` §"The 8 Auto-Loaded Files Constraint," OpenClaw only auto-injects the 8 basenames from **workspace root** (`resolveAgentWorkspaceFilePath`). Anything under `workspace/identity/` is never loaded unless the agent opens it with a tool call.
+Before declaring any fix done, run this verification in a live clawdius session:
+
+```
+/context list
+```
+
+Confirm which `SOUL.md`, `AGENTS.md`, `TOOLS.md`, and `USER.md` paths appear in the loaded context. If they are at `workspace/` root, the scoring model validated that content. If they are at `workspace/identity/`, the scoring result may apply to an unknown input (see Bug 2). Report the observed paths in your findings before applying any fix.
+
+This is not paranoia. Every downstream decision — persona verdict, blueprint schemas, MEMORY/USER additions — rests on knowing which file the agent actually loads.
+
+---
+
+## Bug 1 (P0 — safety) — Runbooks are silently invisible to the agent
+
+**Symptom.** Blueprints declare `runbooks:` entries (e.g. `stock-trading-assistant.yaml:154` ships `RISK-GUARDRAILS.md` with "never recommends specific trades, never predicts prices"). These get written to the workspace. But per `docs/OPENCLAW-REFERENCE.md` §"The 8 Auto-Loaded Files Constraint," OpenClaw only auto-injects 8 basenames. `RISK-GUARDRAILS.md` is not one of them. **The trading blueprint's hard-rule safety file is never loaded into the agent's context.**
+
+**Severity.** P0. A trading agent whose "don't recommend trades" rules are invisible is a safety gap, not a cosmetic issue.
+
+**Evidence.** `src/design/identity/index.ts:91-100` writes runbooks with arbitrary basenames. `docs/OPENCLAW-REFERENCE.md` §"The 8 Auto-Loaded Files Constraint" is explicit that only the 8 standard basenames get injected.
+
+**Investigate.**
+
+- Read `src/agents/prompt-builder.ts` (or equivalent) in the OpenClaw source at `~/dev/clawdius/engine/source` to confirm the basename allowlist is hardcoded.
+- Check which existing blueprints declare runbooks and what basenames they use.
+
+**Fix.** Two acceptable options — pick per runbook size:
+
+- **(A) Inline small runbooks into AGENTS.md.** Add a `## Runbooks` section rendered by `agents.ts`. Loses discoverability as separate files; guarantees the content is actually loaded. Preferred for rule-sets like `RISK-GUARDRAILS.md` where omission is unsafe.
+- **(B) Move reference-material runbooks to `workspace/docs/`.** Explicit "the agent must read these on demand" semantics. Update generator to write there, update blueprint documentation to explain the read-on-demand contract.
+
+For `stock-trading-assistant.yaml` specifically: use (A). The hard rules must load on every session.
+
+**Validate.** After fix, run `/context list` in a trading-agent session. Confirm `RISK-GUARDRAILS` content appears in the loaded AGENTS.md (option A) or is documented as read-on-demand (option B). No runbook should sit at workspace root with a non-allowlisted basename.
+
+---
+
+## Bug 2 — `workspace/identity/` vs `workspace/` path drift
+
+**Symptom.** `src/design/identity/index.ts:66-98` writes identity files to `workspace/identity/SOUL.md`, `workspace/identity/AGENTS.md`, `workspace/identity/TOOLS.md`, `workspace/identity/USER.md`. OpenClaw only auto-loads the 8 basenames from **workspace root**. Anything under `workspace/identity/` is never loaded unless the agent opens it with a tool call.
+
+**Why this is critical, not cosmetic.** If the running clawdius is reading `workspace/SOUL.md` (root) but clawhq is writing to `workspace/identity/SOUL.md` (subdir), then the content clawhq generates is not the content the agent loads. Which means the scoring model result — "plain persona wins" — validated *whatever is at workspace root*, which may not be what clawhq generated. Every downstream verdict about persona depends on this being resolved.
 
 **Evidence.** In the current clawdius deployment both sets exist with *different content*:
 
 - `/home/simon/dev/clawdius/workspace/SOUL.md` (root, 54 lines)
 - `/home/simon/dev/clawdius/workspace/identity/SOUL.md` (subdir, 54 lines, differs per `diff -q`)
 
-Something is copying between them and drifting. The agent reads whichever one is at root — the subdir copy is dead weight.
+**Investigate (before touching any code).**
 
-**Investigate.**
+- What wrote `/home/simon/dev/clawdius/workspace/SOUL.md`? (Check mtime vs. the subdir copy. Check git blame if the file is tracked. Check whether it is a regular file, symlink, or hardlink.)
+- Search for any code in clawhq that mirrors `workspace/identity/*` → `workspace/*` (grep for "workspace/SOUL" write paths across clawhq source).
+- Determine whether there is an apply/deploy step that copies from subdir to root, or whether the root files predate clawhq and were never overwritten.
 
-- Search for any code that mirrors `workspace/identity/*` → `workspace/*` (deploy, apply, bootstrap paths).
-- Decide: write directly to `workspace/` root and stop using the `identity/` subdir, OR formalize a mirror step with checksum-based drift detection in `clawhq doctor`.
+**Do not apply the fix until Investigate is complete.** Report findings first.
 
-**Fix.** Preferred: change `IdentityFileContent.relativePath` in `src/design/identity/index.ts` to `workspace/SOUL.md` etc. Delete any `identity/` subdir writes. Add a `doctor` check that fails if `workspace/identity/*.md` exists.
+**Fix (after investigation confirms the write path).** Preferred: change `IdentityFileContent.relativePath` in `src/design/identity/index.ts` to `workspace/SOUL.md` etc. Delete any `identity/` subdir writes. Add a `doctor` check that fails if `workspace/identity/*.md` exists.
 
-**Validate.** After `clawhq apply`, `workspace/identity/` should not contain SOUL/AGENTS/TOOLS/USER. `clawhq doctor` should pass. Running agent should see the generated content in its bootstrap (verify via `/context list` in-session).
-
----
-
-## Bug 2 — Non-standard workspace `.md` basenames silently ignored
-
-**Symptom.** Reference §"The 8 Auto-Loaded Files Constraint" is explicit: OpenClaw auto-loads exactly 8 basenames (`SOUL.md`, `AGENTS.md`, `USER.md`, `TOOLS.md`, `IDENTITY.md`, `HEARTBEAT.md`, `BOOTSTRAP.md`, `MEMORY.md`). Any other `.md` in workspace root is invisible to the agent unless opened by tool call. The `bootstrap-extra-files` hook also only accepts these basenames.
-
-**Evidence.** clawdius current has `TRADING_PIPELINE.md`, `TRADING_SOP.md`, `CRON_TRADING_PROMPTS.md` at workspace root. clawdius-manual had 11 such files (HYGIENE.md, INBOX_MANAGER.md, MANCINI.md, RECIPE_DB_SPEC.md, etc.). A user writing `KNOWLEDGE.md` today silently loses all of it.
-
-**Investigate.** Confirm the 8-basename rule is still current in upstream OpenClaw (check `src/agents/prompt-builder.ts` or equivalent).
-
-**Fix.** Add a check to `clawhq doctor` that walks `workspace/*.md` and warns on any basename not in the allowlist, with guidance ("inline into AGENTS.md, or reference by name from AGENTS.md and document that the agent must read it on demand"). Also add a blueprint-compile-time warning in `src/design/catalog/validate-compiled.ts` if a blueprint declares a workspace file with a non-allowlisted name.
-
-**Validate.** Place a `FOO.md` in a test workspace, run `clawhq doctor`, expect warning.
+**Validate.** After `clawhq apply` in a test deployment, `workspace/identity/` should not contain SOUL/AGENTS/TOOLS/USER. Run `/context list` in the live session — the loaded files should match what clawhq just wrote (verify by byte-level comparison of the generated content against what the agent reports reading).
 
 ---
 
-## Bug 3 — `BOOTSTRAP.md` semantically collides with `BOOT.md`
-
-**Symptom.** Per reference, `BOOTSTRAP.md` is a **first-run interview** (delete after use), `BOOT.md` is a **gateway-restart hook** (runs on every cold start via the `boot-md` bundled hook). They serve different purposes.
-
-**Evidence.** `/home/simon/dev/clawdius/workspace/BOOTSTRAP.md` contents are semantically a BOOT.md (startup sequence: load identity, check tools, sync memory, check heartbeat). The `boot-md` hook is enabled in the config but has no file to run because BOOT.md doesn't exist; meanwhile BOOTSTRAP.md will be re-triggered every time the "first-run" detector fires, which is wrong for an already-bootstrapped deployment.
-
-**Investigate.** 
-
-- Where does `clawhq init` write the startup checklist? Is it BOOTSTRAP.md (wrong) or BOOT.md (right)?
-- Does clawhq have a `boot-md` generator at all?
-
-**Fix.** Add a BOOT.md generator to `src/design/identity/`. Stop writing startup-checklist content to BOOTSTRAP.md. Use BOOTSTRAP.md only for the one-time first-run interview, and delete it after init succeeds (per reference best practice).
-
----
-
-## Bug 4 — `gateway.bind: "loopback"` default breaks Docker
+## Bug 3 — `gateway.bind: "loopback"` default breaks Docker
 
 **Symptom.** `/home/simon/dev/sterling/config/openclaw.json` has `gateway.bind: "loopback"`. clawdius-manual's `CLAUDE.md` documents this as a hard-won lesson: *"gateway must bind `0.0.0.0` inside the container for Docker bridge port forwarding to work; `loopback` (the default) binds `127.0.0.1` inside the container, making the gateway unreachable from the host."*
 
-**Investigate.** Check `clawhq install` / `clawhq init` / config generation in `src/design/configure/` — what determines the `bind` value written to `openclaw.json`?
+**Severity.** Sterling cannot deploy to Docker today. One-line config fix.
 
-**Fix.** When the agent is being deployed to Docker (which is the default install path per README), default `gateway.bind` to `"lan"`. This is one of the 14 landmines and should auto-handle per `docs/OPENCLAW-REFERENCE.md` §"The 14 Configuration Landmines."
+**Investigate.** Check `clawhq install` / `clawhq init` / config generation in `src/design/configure/` — what determines the `bind` value written to `openclaw.json`? Confirm sterling's deploy target is Docker (if it's host-process only, `loopback` is correct and this bug is void).
 
-**Validate.** `clawhq init` in a fresh dir, inspect emitted `openclaw.json`, expect `"bind": "lan"` if Docker is the deploy target.
+**Fix.** When the agent is being deployed to Docker (the default install path per README), default `gateway.bind` to `"lan"`. This is one of the 14 landmines per `docs/OPENCLAW-REFERENCE.md` §"The 14 Configuration Landmines" and should auto-handle.
 
----
-
-## Bug 5 — `HEARTBEAT.md` populated instead of empty + cron-inlined
-
-**Symptom.** Reference §"HEARTBEAT.md" warns: *"Native heartbeat can become a major token sink. Heartbeat turns frequently run with the full main-session context (170k–210k input tokens per run has been observed). Best practice is to disable native heartbeat and use isolated cron-driven heartbeats instead."* clawdius-manual's pattern (per its `CLAUDE.md`): empty `HEARTBEAT.md`, heartbeat behavior inlined in `cron/jobs.json`.
-
-**Evidence.** Current clawdius has a 7-line HEARTBEAT.md with a checklist. Sterling has an empty HEARTBEAT.md template but no cron-inlined prompts either.
-
-**Investigate.** Does any blueprint declare cron-inlined heartbeat prompts? What does `clawhq init` generate for HEARTBEAT.md today?
-
-**Fix.** Default HEARTBEAT.md to empty. In blueprints that want periodic checks, compile them into `cron/jobs.json` entries with inline prompts + `lightContext: true` + `isolatedSession: true` (per reference recommended defaults). Add a `doctor` check that warns if HEARTBEAT.md is populated AND native heartbeat is enabled.
+**Validate.** `clawhq init` in a fresh dir with Docker as deploy target, inspect emitted `openclaw.json`, expect `"bind": "lan"`.
 
 ---
 
-## Bug 6 — Model tier may be silently defaulting to local Ollama
+## Deferred — explicitly out of scope for this pass
 
-**Symptom.** Both clawdius current and sterling have `ollama/gemma4:26b` as primary, subagent, and heartbeat model. clawdius-manual ran `anthropic/claude-opus-4-6` primary, `claude-sonnet-4-6` subagents, `claude-haiku-4-5` heartbeat, with `qwen3.5:27b` as emergency fallback.
+The following were considered and intentionally cut. Do not address unless instructed in a future handoff:
 
-**Investigate.** What drives the `agents.defaults.model.primary` value in generated `openclaw.json`? Is it blueprint-declared, user-prompted during init, or a hardcoded default? If hardcoded, what does it default to when `ANTHROPIC_API_KEY` / `CLAUDE_AI_SESSION_KEY` is present in `.env`?
-
-**Fix.** If an Anthropic key is detected, default to the Claude tier. If not, default to Ollama. Make the choice visible during `clawhq init`. Add a `clawhq doctor` warning when primary=ollama but an Anthropic key is present in the environment — likely a misconfig.
-
----
-
-## Bug 7 — No generator for MEMORY.md
-
-**Symptom.** Reference §"MEMORY.md" describes it as *"curated long-term memory"* — the file the agent reads on main sessions for persistent wisdom. No clawhq generator exists. In current clawdius it is empty (0 lines).
-
-**Investigate.** Should blueprints declare seed MEMORY entries? Is curation expected to be user-maintained post-init?
-
-**Fix.** At minimum, `clawhq init` should write a stub `MEMORY.md` with the expected structure (## Lessons Learned, ## Patterns to Watch, ## Operational Notes, ## Blocking Items) so the agent has a place to accumulate. Optionally support blueprint-declared seed lessons.
-
----
-
-## Out of scope / defer pending Simon's input
-
-These are gaps vs. clawdius-manual that may be intentional stripdowns (pending Simon confirmation), so do **not** act on them yet:
-
-- USER.md expanded schema (family, finances, health, timeline)
-- Delegated-email rules (`--delegated <category>` with audit logging)
-- Cron→role mapping table in AGENTS.md
-- `simonplant/*` repo boundary rule
-
-Wait for blueprint-level direction before adding generator support.
+- **Non-allowlisted `.md` basename doctor warning.** Dependent on Bug 1's resolution — if runbooks get relocated to `workspace/docs/`, the doctor warning logic changes accordingly.
+- **BOOT.md vs BOOTSTRAP.md separation + BOOT.md generator.** Real issue, but not blocking. Revisit after Bugs 1–3.
+- **HEARTBEAT.md empty + cron-inlined prompts.** Cost optimization, not correctness. Defer.
+- **Model tier default (Ollama vs Anthropic).** Possibly user-intentional on Simon's current deployment. Do not change defaults without confirming user intent.
+- **MEMORY.md stub generator.** Deferred until the baseline is verified per Bug 2.
+- **Five Zone C blueprint schema additions** (`user_profile_schema`, `role_routing`, `operational_boundaries`, delegated-send rules, enriched USER.md). These are personalization-layer primitives; baseline must be rock-solid first per project direction. Revisit after Bugs 1–3 land and scoring is re-verified against the known input.
 
 ---
 
 ## Reporting format
 
-When done, produce a short report (file paths changed, before/after for each bug, doctor output diff). Do not widen scope beyond these 7 bugs without asking.
+When done, produce a short report:
+
+1. Findings from Bug 2 `Investigate` — which process writes `workspace/SOUL.md`, and what the `/context list` check shows in the live clawdius session. Include this even if no fix is applied.
+2. Per bug: file paths changed, before/after, doctor output diff.
+3. Test-deployment verification: `/context list` output confirming the generated content is what the agent loads.
+
+Do not widen scope beyond these 3 bugs without asking.
