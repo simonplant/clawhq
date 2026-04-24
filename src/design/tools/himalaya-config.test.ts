@@ -76,4 +76,27 @@ describe("generateHimalayaConfig", () => {
     expect(out).toContain('backend.host = "imap.mail.me.com"');
     expect(out).toContain('message.send.backend.host = "smtp.mail.me.com"');
   });
+
+  it("throws on missing IMAP_USER rather than emitting an empty login", () => {
+    // The silent-emission bug that hit Clawdius: env had hosts but not users,
+    // so the generator produced a valid-looking TOML with `email = ""` and
+    // `backend.login = ""` that failed at runtime with "backend configuration
+    // not set". Compile-time fail-loud catches it earlier.
+    expect(() =>
+      generateHimalayaConfig([get("icloud", "email-2")], {
+        EMAIL_2_IMAP_HOST: "imap.mail.me.com",
+        EMAIL_2_SMTP_HOST: "smtp.mail.me.com",
+        // EMAIL_2_IMAP_USER and EMAIL_2_SMTP_USER deliberately missing
+      }),
+    ).toThrow(/EMAIL_2_IMAP_USER/);
+  });
+
+  it("throws on blank IMAP_USER (empty string is not a valid login)", () => {
+    expect(() =>
+      generateHimalayaConfig([get("gmail", "email")], {
+        IMAP_USER: "",
+        SMTP_USER: "me@gmail.com",
+      }),
+    ).toThrow(/IMAP_USER/);
+  });
 });

@@ -41,12 +41,35 @@ export function generateHimalayaConfig(
     const account = provider.id.replace(/[^a-zA-Z0-9_-]/g, "-");
     const prefix = envPrefixForSlot(provider.domainKey);
     const envKey = (key: string): string => `${prefix}${key}`;
-    const resolved = (key: string): string => env[envKey(key)] ?? defaultFor(provider, key) ?? "";
+    // Hosts: fall back to the provider catalog's default — every shipped
+    // IMAP/SMTP provider declares one, so a missing env var is recoverable.
+    const withHostFallback = (key: string): string => env[envKey(key)] ?? defaultFor(provider, key) ?? "";
+    // Credentials (user/pass): no sensible default exists. If the env var is
+    // missing we previously emitted a TOML with `email = ""` and
+    // `backend.login = ""` — a valid file that silently fails at runtime with
+    // "backend configuration not set". Fail loud at compile time instead so
+    // the operator sees exactly which env var is missing.
+    const requireCredential = (key: string): string => {
+      const value = env[envKey(key)];
+      if (!value || value.trim() === "") {
+        throw new Error(
+          `himalaya config for "${provider.domainKey}" (${provider.name}) is missing ${envKey(key)}. ` +
+          `Run \`clawhq integrate add email${provider.domainKey !== "email" ? ` --slot ${provider.domainKey.replace(/^email-/, "")}` : ""}\` ` +
+          `to set credentials, or remove the slot from clawhq.yaml.`,
+        );
+      }
+      return value;
+    };
 
-    const imapHost = resolved("IMAP_HOST");
-    const imapUser = resolved("IMAP_USER");
-    const smtpHost = resolved("SMTP_HOST");
-    const smtpUser = resolved("SMTP_USER");
+    const imapHost = withHostFallback("IMAP_HOST");
+    const imapUser = requireCredential("IMAP_USER");
+    const smtpHost = withHostFallback("SMTP_HOST");
+    const smtpUser = requireCredential("SMTP_USER");
+    // Passwords are NOT checked here — they're fetched at runtime via
+    // `backend.auth.cmd = "printenv ..."` and may legitimately come from a
+    // credential proxy or secrets backend rather than being statically set
+    // in .env at compile time. Missing user/host is a silent-config bug;
+    // missing password at runtime yields a clear himalaya error.
 
     sections.push(`[accounts.${account}]`);
     if (!defaultAssigned) {

@@ -111,3 +111,4 @@ toolbelt (tools with categories), skill inventory, and autonomy model
 - [[system-prompt-assembly]]
 - [[memory-system]]
 - [[identity-files-exceed-bootstrap-max-chars]]
+- [[tools-md]] — sibling file: environment-specific tool notes (guidance, not policy)

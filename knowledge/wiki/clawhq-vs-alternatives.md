@@ -93,3 +93,4 @@ Honest limits:
 
 - [[lifecycle-management-gap]]
 - [[cpanel-analogy]]
+- [[managed-mode]] — the deployment mode that makes the sovereignty-preserving boundary verifiable

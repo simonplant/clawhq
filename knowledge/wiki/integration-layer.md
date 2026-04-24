@@ -102,5 +102,6 @@ the 7-day-advance warning behavior.
 ## See also
 
 - [[credential-health-probes]]
+- [[email-integration]] — full defaults for the email category (tool, permissions, egress, probe)
 - [[env-missing-required-variables]]
 - [[two-stage-docker-build]]

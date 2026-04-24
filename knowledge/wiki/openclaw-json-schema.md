@@ -137,3 +137,4 @@ lost on restart: `allowedOrigins`, `trustedProxies`,
 - [[golden-config-pattern]]
 - [[allowed-origins-stripped]]
 - [[trusted-proxies-stripped]]
+- [[cron-stepping-syntax-invalid]] — `cron.jobs[].schedule.expr` landmine; schema-level validation needed

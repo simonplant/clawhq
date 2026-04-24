@@ -461,6 +461,64 @@ export const probeHomeAssistant: CredentialProbe = async (env) => {
  * The registry is an array rather than a map — probes run in order,
  * and an integration could have multiple probes if needed.
  */
+// ── Email Probe ──────────────────────────────────────────────────────────────
+
+/**
+ * Validate email credentials by shape only — a real IMAP LOGIN probe would
+ * need a TLS socket and the agent's container up, which are both unreliable
+ * from the host at probe time. Shape validation catches the common failure
+ * modes: missing vars, blank values, malformed user fields. Live reachability
+ * is checked by `clawhq verify` from inside the container at deploy time.
+ *
+ * Multi-slot aware: checks the primary `EMAIL_` slot plus any numbered slots
+ * (`EMAIL_2_`, `EMAIL_3_`) present in env. Returns the first failure or a
+ * single pass covering every slot that validated.
+ */
+export const probeEmail: CredentialProbe = async (env) => {
+  const integration = "Email";
+
+  // Discover slots from env keys. Primary slot = EMAIL_IMAP_HOST; numbered
+  // slots match EMAIL_<N>_IMAP_HOST.
+  const slots: string[] = [];
+  if (env["EMAIL_IMAP_HOST"] !== undefined || env["EMAIL_IMAP_USER"] !== undefined) slots.push("");
+  for (const key of Object.keys(env)) {
+    const m = key.match(/^EMAIL_(\d+)_IMAP_HOST$/);
+    if (m) slots.push(`${m[1]}_`);
+  }
+
+  if (slots.length === 0) {
+    return missing(integration, "EMAIL_IMAP_HOST", "No email slots configured. Run `clawhq integrate add email` to connect a mailbox.");
+  }
+
+  const required = ["IMAP_HOST", "IMAP_USER", "IMAP_PASS", "SMTP_HOST", "SMTP_USER", "SMTP_PASS"];
+  for (const slot of slots) {
+    for (const field of required) {
+      const key = `EMAIL_${slot}${field}`;
+      const value = env[key];
+      if (value === undefined || value.trim() === "") {
+        return fail(
+          integration,
+          key,
+          `${key} is missing or empty`,
+          `Run \`clawhq integrate add email${slot ? ` --slot ${slot.replace("_", "")}` : ""}\` to set credentials.`,
+        );
+      }
+    }
+    const user = env[`EMAIL_${slot}IMAP_USER`] ?? "";
+    if (!user.includes("@")) {
+      return fail(
+        integration,
+        `EMAIL_${slot}IMAP_USER`,
+        `IMAP user "${user}" does not look like an email address`,
+        "Most providers (Gmail, iCloud, Outlook, Fastmail) expect the full email address as username.",
+      );
+    }
+  }
+
+  const suffix = slots.length === 1 ? "slot" : "slots";
+  return pass(integration, "EMAIL_IMAP_HOST", `${slots.length} ${suffix} validated (shape only; live check via \`clawhq verify\`)`);
+};
+
 export const builtinProbes: readonly CredentialProbe[] = [
   probeAnthropic,
   probeOpenAI,
@@ -469,4 +527,5 @@ export const builtinProbes: readonly CredentialProbe[] = [
   probeGitHub,
   probeX,
   probeHomeAssistant,
+  probeEmail,
 ];

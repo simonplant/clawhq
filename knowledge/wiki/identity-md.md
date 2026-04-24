@@ -58,3 +58,5 @@ Check with `/context list` to confirm.
 
 - [[soul-md]]
 - [[system-prompt-assembly]]
+- [[bootstrap-md]] — sibling identity file; populates IDENTITY.md during first-run ritual
+- [[tools-md]] — sibling identity file; environment-specific notes agents consult

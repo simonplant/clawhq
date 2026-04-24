@@ -123,3 +123,4 @@ check.
 - [[container-user-not-uid-1000]]
 - [[icc-enabled-on-agent-network]]
 - [[config-credentials-not-read-only]]
+- [[doctor-diagnostics]] — continuous enforcement; flags posture drift as a failed check
