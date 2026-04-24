@@ -2,6 +2,7 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import ora from "ora";
 
+import { getProvidersForDomain } from "../../design/catalog/providers.js";
 import {
   addIntegration,
   availableIntegrationNames,
@@ -85,7 +86,9 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
     .argument("<name>", `Integration name (${availableIntegrationNames().join(", ")})`)
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--skip-validation", "Skip live credential validation")
-    .action(async (name: string, opts: { deployDir: string; skipValidation?: boolean }) => {
+    .option("--provider <id>", "Provider id from the catalog (required for multi-provider domains like email/calendar). Use `clawhq integrate providers <name>` to list.")
+    .option("--slot <n>", "Multi-account slot (2, 3, ...). Default 1 (primary).", (v) => parseInt(v, 10))
+    .action(async (name: string, opts: { deployDir: string; skipValidation?: boolean; provider?: string; slot?: number }) => {
       ensureInstalled(opts.deployDir);
 
       const def = getIntegrationDef(name);
@@ -96,12 +99,49 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
       }
 
       try {
-        const { input, password } = await import("@inquirer/prompts");
+        const { input, password, select } = await import("@inquirer/prompts");
         console.log(chalk.bold(`\nclawhq integrate add ${name}\n`));
         console.log(chalk.dim(`${def.description}\n`));
 
+        // Multi-provider domains (email, calendar) need an explicit provider
+        // pick so the catalog lookup at compile time works. If --provider
+        // isn't given, offer the list interactively — each provider carries
+        // prefilled IMAP/SMTP hosts and setup notes the wizard should surface.
+        const domainProviders = getProvidersForDomain(name);
+        let providerId = opts.provider;
+        if (!providerId && domainProviders.length > 1) {
+          providerId = await select<string>({
+            message: `Choose ${name} provider:`,
+            choices: domainProviders.map((p) => ({
+              name: p.name,
+              value: p.id,
+              description: p.setupNotes ?? `${p.protocol} via ${p.cli}`,
+            })),
+          });
+        }
+        if (providerId) {
+          const picked = domainProviders.find((p) => p.id === providerId);
+          if (picked?.setupNotes) {
+            console.log(chalk.dim(`  ${picked.setupNotes}\n`));
+          }
+        }
+
+        // Prompt schema: prefer the picked provider's envVars (they have
+        // provider-specific host defaults), else fall back to the registry's
+        // generic envKeys for single-provider integrations.
+        const picked = providerId ? domainProviders.find((p) => p.id === providerId) : undefined;
+        const envKeySchema: Array<{ key: string; label: string; secret?: boolean; defaultValue?: string }> =
+          picked
+            ? picked.envVars.map((ev) => ({
+                key: ev.key,
+                label: ev.label,
+                secret: ev.secret ?? false,
+                ...(ev.default !== undefined ? { defaultValue: ev.default } : {}),
+              }))
+            : def.envKeys.map((k) => ({ ...k }));
+
         const credentials: Record<string, string> = {};
-        for (const envKey of def.envKeys) {
+        for (const envKey of envKeySchema) {
           const prompt = envKey.secret ? password : input;
           const value = await prompt({
             message: `${envKey.label}:`,
@@ -119,6 +159,8 @@ export function registerIntegrateCommands(program: Command, defaultDeployDir: st
           name,
           credentials,
           skipValidation: opts.skipValidation,
+          providerId,
+          slot: opts.slot,
           onProgress,
         });
 

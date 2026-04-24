@@ -81,6 +81,17 @@ export interface IntegrationAddOptions {
   /** Skip live validation after storing credentials. */
   readonly skipValidation?: boolean;
   readonly onProgress?: IntegrationProgressCallback;
+  /** For multi-provider domains (email, calendar): which provider from the
+   *  catalog in src/design/catalog/providers.ts (e.g. "gmail", "icloud",
+   *  "fastmail"). Determines which id is written to composition.providers
+   *  and which env-var defaults get prefilled. Required for the integration
+   *  to compile — without it, getProvider(integrationName) returns undefined
+   *  and the himalaya config ends up empty. */
+  readonly providerId?: string;
+  /** Multi-account slot. Defaults to primary slot (1). Slot N writes env vars
+   *  with the prefix `<INTEGRATION>_<N>_` (e.g. EMAIL_2_IMAP_HOST) and
+   *  records the binding as `<integration>-<N>` under composition.providers. */
+  readonly slot?: number;
 }
 
 /** Result of adding an integration. */

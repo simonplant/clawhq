@@ -11,6 +11,7 @@ import { join } from "node:path";
 
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
+import { getProvider, getProvidersForDomain } from "../../design/catalog/providers.js";
 import {
   deleteIntegrationCredentials,
   storeIntegrationCredentials,
@@ -30,6 +31,7 @@ import {
   upsertIntegration,
 } from "./manifest.js";
 import { getIntegrationDef } from "./registry.js";
+import type { IntegrationEnvKey } from "./types.js";
 import type {
   IntegrationAddOptions,
   IntegrationAddResult,
@@ -67,50 +69,103 @@ function progress(
 export async function addIntegration(
   options: IntegrationAddOptions,
 ): Promise<IntegrationAddResult> {
-  const { deployDir, name, credentials, skipValidation, onProgress } = options;
+  const { deployDir, name, credentials, skipValidation, onProgress, providerId, slot } = options;
 
   const def = getIntegrationDef(name);
   if (!def) {
     return { success: false, integrationName: name, validated: false, error: `Unknown integration "${name}"` };
   }
 
-  // Check if already installed
-  const manifest = loadIntegrationManifest(deployDir);
-  const existing = manifest.integrations.find((i) => i.name === name);
-  if (existing) {
+  // Multi-provider domains (email, calendar) must specify a provider id from
+  // the catalog. Without it, composition.providers gets `providers.email =
+  // "email"` which isn't a valid provider id, `getProvider` returns undefined,
+  // and the downstream compile emits an empty himalaya config. Accepting a
+  // generic add for single-provider integrations (telegram, tavily, etc.)
+  // stays unchanged.
+  if (isMultiProviderDomain(name) && !providerId) {
     return {
       success: false,
       integrationName: name,
       validated: false,
-      error: `Integration "${name}" is already configured. Remove it first to reconfigure.`,
+      error:
+        `Integration "${name}" has multiple providers in the catalog — specify one ` +
+        `with --provider. Available: ${getProvidersForDomain(name).map((p) => p.id).join(", ")}.`,
+    };
+  }
+  if (providerId) {
+    const p = getProvider(providerId);
+    if (!p) {
+      return {
+        success: false,
+        integrationName: name,
+        validated: false,
+        error: `Unknown provider "${providerId}". Available for ${name}: ${getProvidersForDomain(name).map((p) => p.id).join(", ")}.`,
+      };
+    }
+    if (p.domain !== name) {
+      return {
+        success: false,
+        integrationName: name,
+        validated: false,
+        error: `Provider "${providerId}" serves domain "${p.domain}", not "${name}".`,
+      };
+    }
+  }
+
+  const slotNum = slot ?? 1;
+  if (slotNum < 1) {
+    return { success: false, integrationName: name, validated: false, error: `Slot must be >= 1 (got ${slotNum}).` };
+  }
+  const domainKey = slotNum === 1 ? name : `${name}-${slotNum}`;
+  const envPrefix = slotNum === 1 ? "" : `${name.toUpperCase()}_${slotNum}_`;
+  const manifestName = slotNum === 1 ? name : `${name}-${slotNum}`;
+
+  // Check if already installed — slot-scoped so `email` and `email-2` coexist.
+  const manifest = loadIntegrationManifest(deployDir);
+  const existing = manifest.integrations.find((i) => i.name === manifestName);
+  if (existing) {
+    return {
+      success: false,
+      integrationName: manifestName,
+      validated: false,
+      error: `Integration "${manifestName}" is already configured. Remove it first to reconfigure.`,
     };
   }
 
   // Create rollback snapshot before making changes
-  await createCapabilitySnapshot(deployDir, "integrations", `pre-add: ${name}`);
+  await createCapabilitySnapshot(deployDir, "integrations", `pre-add: ${manifestName}`);
+
+  // Pick the envKey schema. When a provider is specified, prefer the catalog
+  // (it carries provider-specific host defaults — imap.gmail.com vs
+  // imap.mail.me.com — that the generic registry doesn't). Otherwise fall
+  // back to the registry's schema for single-provider integrations.
+  const envKeysSchema = providerId
+    ? providerEnvKeysFromCatalog(providerId) ?? def.envKeys
+    : def.envKeys;
 
   // Store credentials in both .env files (root + engine) and credentials.json
-  progress(onProgress, "credentials", "running", `Storing credentials for ${def.label}`);
+  progress(onProgress, "credentials", "running", `Storing credentials for ${def.label}${slotNum > 1 ? ` (slot ${slotNum})` : ""}`);
   const engineEnvPath = join(deployDir, "engine", ".env");
   const rootEnvPath = join(deployDir, ".env");
   const storedKeys: string[] = [];
   const credValues: Record<string, string> = {};
 
-  for (const envKey of def.envKeys) {
+  for (const envKey of envKeysSchema) {
     const value = credentials?.[envKey.key] ?? envKey.defaultValue;
     if (value) {
-      writeEnvValue(engineEnvPath, envKey.key, value);
-      writeEnvValue(rootEnvPath, envKey.key, value);
-      storedKeys.push(envKey.key);
+      const storedKey = `${envPrefix}${envKey.key}`;
+      writeEnvValue(engineEnvPath, storedKey, value);
+      writeEnvValue(rootEnvPath, storedKey, value);
+      storedKeys.push(storedKey);
       if (envKey.secret) {
-        credValues[envKey.key] = value;
+        credValues[storedKey] = value;
       }
     }
   }
 
   // Store secret credentials in credentials.json (mode 0600)
   if (Object.keys(credValues).length > 0) {
-    storeIntegrationCredentials(deployDir, name, credValues);
+    storeIntegrationCredentials(deployDir, manifestName, credValues);
   }
   progress(onProgress, "credentials", "done", `${storedKeys.length} credential(s) stored`);
 
@@ -135,7 +190,7 @@ export async function addIntegration(
   // Update manifest
   progress(onProgress, "manifest", "running", "Updating integration manifest");
   const entry = {
-    name,
+    name: manifestName,
     envKeys: storedKeys,
     validated,
     addedAt: new Date().toISOString(),
@@ -144,12 +199,38 @@ export async function addIntegration(
   const updated = upsertIntegration(manifest, entry);
   saveIntegrationManifest(deployDir, updated);
 
-  // Update clawhq.yaml — record channel integrations so apply can enable them
-  updateClawhqYaml(deployDir, name, def.category);
+  // Update clawhq.yaml — record the provider binding so apply can compile it.
+  updateClawhqYaml(deployDir, name, def.category, { providerId, domainKey });
 
   progress(onProgress, "manifest", "done", "Manifest updated");
 
-  return { success: true, integrationName: name, validated, needsApply: true };
+  return { success: true, integrationName: manifestName, validated, needsApply: true };
+}
+
+// ── Provider Resolution Helpers ────────────────────────────────────────────
+
+/** Whether an integration name maps to a multi-provider domain in the catalog.
+ *  Today: email (Gmail/iCloud/Fastmail/Outlook/generic-imap) and calendar
+ *  (iCloud/Google/Fastmail/generic-caldav). Single-provider integrations
+ *  like telegram/tavily/github fall through to the registry's single schema. */
+function isMultiProviderDomain(name: string): boolean {
+  return getProvidersForDomain(name).length > 1;
+}
+
+/** Pull the envKey schema for a catalog provider in the shape the
+ *  integrate-add loop expects. The catalog's envVars and the registry's
+ *  envKeys differ in one small way — `default` vs `defaultValue` — so this
+ *  normalises. Returns undefined for unknown provider ids; caller falls back
+ *  to the registry schema. */
+function providerEnvKeysFromCatalog(providerId: string): readonly IntegrationEnvKey[] | undefined {
+  const p = getProvider(providerId);
+  if (!p) return undefined;
+  return p.envVars.map((ev) => ({
+    key: ev.key,
+    label: ev.label,
+    secret: ev.secret ?? false,
+    ...(ev.default !== undefined ? { defaultValue: ev.default } : {}),
+  }));
 }
 
 // ── Remove Integration ─────────────────────────────────────────────────────
@@ -269,13 +350,18 @@ const CHANNEL_INTEGRATIONS = new Set(["telegram", "whatsapp", "discord", "signal
  * composition.channels so that `clawhq apply` enables the channel
  * in openclaw.json.
  *
- * For provider integrations, records them under composition.providers
- * so that proxy routes and allowlists include them.
+ * For provider integrations, records them under composition.providers.
+ * When `opts.providerId` is given, the value written is the catalog provider
+ * id (gmail, icloud, etc.) so the downstream compile can resolve it.
+ * Without providerId, the integration name is written as a placeholder — a
+ * fallback that only works for single-provider integrations whose name
+ * happens to also be a valid catalog provider id (e.g. `tavily`).
  */
 function updateClawhqYaml(
   deployDir: string,
   integrationName: string,
   category: string,
+  opts: { readonly providerId?: string; readonly domainKey?: string } = {},
 ): void {
   const configPath = join(deployDir, "clawhq.yaml");
   if (!existsSync(configPath)) return;
@@ -295,10 +381,15 @@ function updateClawhqYaml(
         comp.channels = channels;
       }
     } else if (category === "productivity" || category === "data" || category === "communication") {
-      // Record as a provider in composition.providers
+      // Record as a provider in composition.providers. domainKey carries the
+      // slot: primary `email` vs secondary `email-2`. providerId is the
+      // catalog id (gmail/icloud/etc.), falling back to the integration name
+      // for single-provider integrations that double as provider ids.
+      const domainKey = opts.domainKey ?? integrationName;
+      const providerValue = opts.providerId ?? integrationName;
       const providers = (comp.providers ?? {}) as Record<string, string>;
-      if (!providers[integrationName]) {
-        providers[integrationName] = integrationName;
+      if (!providers[domainKey]) {
+        providers[domainKey] = providerValue;
         comp.providers = providers;
       }
     }
