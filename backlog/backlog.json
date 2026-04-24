@@ -1019,21 +1019,59 @@
       "readyForSprint": false,
       "track": "core",
       "groomedAt": "2026-04-23",
-      "groomingNotes": "Umbrella item. Audit 2026-04-23 confirmed FleetRegistry exists in src/cloud/fleet/ but no lifecycle command consumes it (phantom multi-tenancy). Split into children FEAT-187..FEAT-191: (187) --agent <name> on every lifecycle command; (188) --fleet flag iterating fleet registry; (189) instance-scoped Docker container_name to kill engine-openclaw-1 fallback at src/build/docker/container.ts:14; (190) move ${deployDir}/ops/{doctor,monitor,backup,audit,firewall,updater} to ~/.clawhq/instances/<id>/ops/; (191) separate identity templates (Layer 2) from compiled workspace/*.md (Layer 4). See knowledge/wiki/phantom-multi-tenancy.md and knowledge/wiki/ownership-layers.md. This item stays as the tracking epic; children are the sprintable slices.",
+      "groomingNotes": "Umbrella item. Audit 2026-04-23 confirmed FleetRegistry exists in src/cloud/fleet/ but no lifecycle command consumes it (phantom multi-tenancy). Split into children FEAT-186.5, FEAT-187..FEAT-191: (186.5) unified instance registry at ~/.clawhq/instances.json — foundation all later work depends on; (187) --agent <name> on every lifecycle command; (188) --fleet flag iterating fleet registry; (189) instance-scoped Docker container_name to kill engine-openclaw-1 fallback at src/build/docker/container.ts:14; (190) move ${deployDir}/ops/{doctor,monitor,backup,audit,firewall,updater} to ~/.clawhq/instances/<id>/ops/; (191) separate identity templates (Layer 2) from compiled workspace/*.md (Layer 4). See knowledge/wiki/phantom-multi-tenancy.md, knowledge/wiki/ownership-layers.md, knowledge/wiki/instance-registry.md. This item stays as the tracking epic; children are the sprintable slices.",
+      "dependsOn": null
+    },
+    {
+      "id": "FEAT-186.5",
+      "title": "Unified instance registry at ~/.clawhq/instances.json (foundation for FEAT-187..FEAT-191)",
+      "intent": "Consolidate the two existing registries (cloud/fleet.json and cloud/instances.json) into a single machine-global registry keyed by stable uuid. Every later lifecycle item resolves 'which agent' through this one path.",
+      "description": "Today ClawHQ splits knowledge-of-managed-instances across two files with different shapes: FleetAgent (src/cloud/fleet/types.ts:15-22, local-only, keyed by user-chosen name, no id) and ProvisionedInstance (src/cloud/provisioning/types.ts:287-312, cloud-only, keyed by uuid with status + provider details). No lifecycle command reads either. Prior-art survey (kubectl, docker, aws cli, gcloud, podman-machine) shows the canonical shape: one flat registry, id-keyed, name as alias, location tagged-union. Build the new module src/cloud/instances/ alongside the legacy registries. Migration to fold the legacy files in is deferred to FEAT-187's scope so this slice stays surgical.",
+      "priority": "must",
+      "category": "core",
+      "steps": [
+        "src/cloud/instances/types.ts: Instance, InstanceLocation ({kind:'local', deployDir} | {kind:'cloud', provider, providerInstanceId, ipAddress, region, size, sshKeyPath?, sshHostKey?}), InstanceStatus ('initialized'|'built'|'running'|'stopped'|'unhealthy'|'destroyed'), InstancesRegistry {version:1, instances:Instance[]}",
+        "src/cloud/instances/registry.ts: atomic read/write at ~/.clawhq/instances.json, addInstance, updateInstance, removeInstance, findById, findByName, findByIdPrefix, listInstances",
+        "Unit tests covering: empty registry read, round-trip write, duplicate name rejection, id-prefix match (unambiguous vs ambiguous), local vs cloud location variants, atomic write (tmp + rename)",
+        "Barrel src/cloud/instances/index.ts exporting types + public registry functions",
+        "No migration in this slice; no CLI wiring in this slice; no clawhq.yaml schema change in this slice"
+      ],
+      "acceptanceCriteria": [
+        "src/cloud/instances/ module compiles clean with no new eslint violations",
+        "All tests pass (vitest)",
+        "Registry file writes atomically with mode 0600 to ~/.clawhq/instances.json",
+        "Unknown fields in a legacy registry file are ignored (forward-compat)",
+        "findByIdPrefix returns undefined on ambiguous match (>1 prefix hit)",
+        "No legacy caller is modified — new module coexists with cloud/fleet/ and cloud/provisioning/"
+      ],
+      "scope": [
+        "src/cloud/instances/types.ts",
+        "src/cloud/instances/registry.ts",
+        "src/cloud/instances/registry.test.ts",
+        "src/cloud/instances/index.ts"
+      ],
+      "status": "in-progress",
+      "readyForSprint": true,
+      "track": "core",
+      "groomedAt": "2026-04-23",
+      "groomingNotes": "Precursor to FEAT-187. Touches Layer 2 only — new registry file + types + tests. Does not touch Layer 1 CLI, Layer 4 agent content, or Layer 5 fleet wiring. Foundation is deliberately coexistent with legacy registries so the later chain can migrate in one step when FEAT-187 lands. See knowledge/wiki/instance-registry.md for full design rationale, prior-art comparison, and resolution order. Landing this unblocks FEAT-187..FEAT-191.",
       "dependsOn": null
     },
     {
       "id": "FEAT-187",
       "title": "--agent <name> on every lifecycle command — ambiguity is an error, not a default",
       "intent": "Every lifecycle command must name its target agent explicitly. Two local deployments must never silently shadow each other.",
-      "description": "Today src/cli/index.ts:54-88 (resolveDefaultDeployDir) walks up from cwd looking for a single clawhq.yaml and returns the first match. Commands doctor, logs, backup, update, monitor, session all default to this. When multiple agents are registered in the fleet registry, this is ambiguous. Change: add --agent <name> (resolves via fleet registry) to every lifecycle command; when multiple agents are registered and no --agent is given, error with the list of registered names. Single-agent default stays for backwards compatibility with one registered instance.",
+      "description": "Today src/cli/index.ts:54-88 (resolveDefaultDeployDir) walks up from cwd looking for a single clawhq.yaml and returns the first match. Commands doctor, logs, backup, update, monitor, session all default to this. When multiple agents are registered, this is ambiguous. Change: add --agent <name|id-prefix> (resolves via the unified registry from FEAT-186.5) to every lifecycle command; when multiple agents are registered and no --agent is given, error with the list of registered names. Single-agent default stays for backwards compatibility with one registered instance. Includes migration: fold legacy cloud/fleet.json + cloud/instances.json into the new instances.json on first run, mint uuid for pre-existing deployDirs, write instanceId into each clawhq.yaml.",
       "priority": "should",
       "category": "core",
       "steps": [
-        "Change resolveDefaultDeployDir to take an optional agent selector and consult the fleet registry at ~/.clawhq/cloud/fleet.json",
-        "Return an error (not a default) when selector is absent AND fleet registry has >1 entries",
-        "Add --agent <name> option to doctor, logs, backup, update, monitor, session commands in src/cli/commands/operate.ts",
-        "Add --agent <name> option to build and design commands where applicable",
+        "Add resolver in src/cloud/instances/resolver.ts: order is --agent flag > CLAWHQ_AGENT env > ~/.clawhq/current pointer > cwd-walk reverse-lookup > single-registry-default > error",
+        "Add resolveDefaultDeployDir replacement that consults the resolver and returns a resolved Instance (not just deployDir)",
+        "Return an error (not a default) when no selector AND registry has >1 entries; error message lists registered names",
+        "Add --agent <name|id-prefix> option to doctor, logs, backup, update, monitor, session commands in src/cli/commands/operate.ts",
+        "Add --agent option to build and design commands where applicable",
+        "Migration: on first CLI invocation, fold cloud/fleet.json + cloud/instances.json into instances.json; mint uuid per entry; write instanceId into each clawhq.yaml; keep legacy files as .bak for one version",
+        "Add instanceId field (optional) to clawhq.yaml schema and loader; backfill on clawhq apply if missing",
         "Update CLI help text with examples"
       ],
       "acceptanceCriteria": [
@@ -1053,8 +1091,8 @@
       "readyForSprint": false,
       "track": "core",
       "groomedAt": "2026-04-23",
-      "groomingNotes": "Child of FEAT-186. Priority 1 of the phantom-multi-tenancy fix chain. Touches Layer 1 (ClawHQ CLI code) and Layer 5 (fleet resolution). Does not touch Layer 4 (agent content unchanged). Ownership rule: before this item, the CLI has a singleton assumption; after, no lifecycle command assumes a singleton. See knowledge/wiki/phantom-multi-tenancy.md for the file:line evidence and the breaking scenario.",
-      "dependsOn": null
+      "groomingNotes": "Child of FEAT-186. Priority 1 of the phantom-multi-tenancy fix chain. Depends on FEAT-186.5 (unified instance registry foundation). Touches Layer 1 (ClawHQ CLI code), Layer 2 (registry migration + clawhq.yaml instanceId backfill), and Layer 5 (fleet resolution). Does not touch Layer 4 (agent content unchanged). Ownership rule: before this item, the CLI has a singleton assumption; after, no lifecycle command assumes a singleton. See knowledge/wiki/phantom-multi-tenancy.md for the file:line evidence and the breaking scenario; knowledge/wiki/instance-registry.md for the resolution-order and migration design.",
+      "dependsOn": ["FEAT-186.5"]
     },
     {
       "id": "FEAT-188",

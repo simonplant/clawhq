@@ -40,6 +40,7 @@
 - [[fs-workspace-only-misconfigured]] — fs.workspaceOnly misconfigured either blocks media or leaks host FS (openclaw/landmine)
 - [[icc-enabled-on-agent-network]] — ICC enabled on agent network breaches container isolation (openclaw/landmine)
 - [[identity-files-exceed-bootstrap-max-chars]] — Identity files exceed bootstrapMaxChars and silently truncate (openclaw/landmine)
+- [[instance-registry]] — Unified local registry of managed instances (clawhq/architecture)
 - [[cron-stepping-syntax-invalid]] — Invalid cron stepping syntax causes jobs to silently never run (openclaw/landmine)
 - [[lifecycle-management-gap]] — Lifecycle management gap (clawhq/concept)
 - [[memory-system]] — Memory system (openclaw/concept)

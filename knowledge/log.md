@@ -118,6 +118,34 @@ FEAT-189 (container naming) → FEAT-190 (ops relocation) → FEAT-191
 **Memory:** filed `project_phantom_multi_tenancy` pointing at both wiki
 pages and the backlog chain.
 
+## [2026-04-23] query | Instance registry design → filed [[instance-registry]] + FEAT-186.5
+
+**Question:** "Do we need a walking skeleton for the multi-tenancy
+restructuring?" and "How does other software handle multi-tenancy
+configuration management?"
+
+**Outcome:** Skeleton rejected — the architecture is clear enough. The
+real missing piece is a stable instance-id and a unified registry that
+every lifecycle command can resolve through. Prior art (kubectl, docker,
+aws cli, gcloud, podman-machine) all converge on the same shape: one flat
+registry keyed by id, name as alias, current-pointer + per-command
+override, ambiguity errors.
+
+**Filed [[instance-registry]]** (Decisions) — unified `~/.clawhq/instances.json`
+design. Tagged-union `location` field carries either local `deployDir` or
+cloud `providerInstanceId` + IP + region. Resolution order: `--agent` >
+`CLAWHQ_AGENT` > `current` > cwd-walk > single-default > error. Replaces
+today's split between `fleet.json` (local) and `cloud/instances.json`
+(cloud).
+
+**Backlog:** added FEAT-186.5 as precursor to FEAT-187 (foundation — types,
+read/write, paths). Repointed FEAT-187 `dependsOn` at FEAT-186.5 so the
+chain is 186.5 → 187 → (188, 189, 190) → 191.
+
+**Code:** scaffolded `src/cloud/instances/` with `types.ts`, `registry.ts`,
+and tests. Legacy `fleet.json` + `cloud/instances.json` still the active
+readers — new module coexists; migration lands with FEAT-187.
+
 ## [2026-04-23] query | Email default behaviour + permissions → filed as [[email-integration]]
 
 Synthesized answer from [[integration-layer]], the Email Manager blueprint in

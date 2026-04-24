@@ -88,8 +88,11 @@ fleet registry, no error on ambiguity, no selector argument.
 
 ## Fix sequence
 
-See backlog items FEAT-187 through FEAT-191 for the prioritized work:
+See backlog items FEAT-186.5 through FEAT-191 for the prioritized work:
 
+0. **FEAT-186.5** — Unified instance registry at `~/.clawhq/instances.json`
+   (see [[instance-registry]]). Precursor — every later step looks up by
+   stable instance-id.
 1. **FEAT-187** — `--agent <name>` on every lifecycle command; ambiguity
    becomes an error, not a silent default.
 2. **FEAT-188** — Wire the fleet registry into lifecycle commands
@@ -104,6 +107,7 @@ See backlog items FEAT-187 through FEAT-191 for the prioritized work:
 ## Related
 
 - [[ownership-layers]] — the five-layer model this page measures against
+- [[instance-registry]] — unified Layer 2 registry that unblocks the fix chain
 - [[lifecycle-management-gap]] — broader market gap; this page is the
   specific shape of the internal gap
 - [[blueprint-system]] — compilation is clean; this gap is not there

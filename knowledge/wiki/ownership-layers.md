@@ -23,7 +23,7 @@ other instances. Before editing code or filing a backlog item, name the layer.
 | # | Layer | What it is | Lives at | Owned by |
 |---|-------|------------|----------|----------|
 | 1 | **ClawHQ code** | The `clawhq` CLI itself — source, tests, build artifacts, published npm package | `src/`, `dist/`, repo root | ClawHQ maintainers; shipped as one binary |
-| 2 | **ClawHQ runtime state** | Metadata *about* the instances ClawHQ manages — registries, logs, audit trails, operational snapshots | `~/.clawhq/cloud/*.json` today; target `~/.clawhq/instances/<id>/ops/` | ClawHQ; never part of the agent |
+| 2 | **ClawHQ runtime state** | Metadata *about* the instances ClawHQ manages — the unified registry (see [[instance-registry]]), logs, audit trails, operational snapshots | `~/.clawhq/instances.json` (target) + `~/.clawhq/instances/<id>/ops/` (target); `~/.clawhq/cloud/{fleet,instances}.json` (today, split) | ClawHQ; never part of the agent |
 | 3 | **OpenClaw upstream engine** | The agent runtime software ClawHQ deploys and configures | Docker image (`openclaw/*`); not in this repo | Upstream project; unmodified per AD-03 |
 | 4 | **A managed agent (one instance)** | A specific running agent — its blueprint, identity, credentials, content, container(s) | `${deployDir}/engine/`, `${deployDir}/workspace/`, `${deployDir}/security/`, `${deployDir}/cron/` | That specific agent; belongs to the user, read-only to ClawHQ code |
 | 5 | **Fleet (N agents on a host)** | ClawHQ managing multiple Layer-4 instances | `~/.clawhq/cloud/fleet.json` (registry); iteration in CLI commands | ClawHQ; target: every lifecycle command is fleet-aware |
@@ -85,6 +85,7 @@ under `${deployDir}/`, singleton CLI resolution, unwired fleet registry.
 ## Related
 
 - [[phantom-multi-tenancy]] — the current gap between this model and the code
+- [[instance-registry]] — the canonical Layer 2 registry design
 - [[blueprint-system]] — blueprints are the Layer 2 → Layer 4 compilation step
 - [[workspace-as-agent]] — why Layer 4 is the agent
 - [[files-are-the-agent]] — files are the interface, not a detail
