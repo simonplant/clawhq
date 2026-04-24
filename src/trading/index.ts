@@ -14,7 +14,7 @@
  *     getUpdates, so no bot-token conflict.
  */
 
-import { watch } from "node:fs";
+import { readFileSync, watch } from "node:fs";
 import { basename, join } from "node:path";
 
 import { serve } from "@hono/node-server";
@@ -51,7 +51,13 @@ import {
   toSnapshot,
   type ConfluenceMap,
 } from "./confluence.js";
+import { buildDailyReport, renderDailyReport } from "./daily-report.js";
 import { loadPlan, type LoadedPlan } from "./plan.js";
+import {
+  aggregate as aggregateTrackRecord,
+  parseJsonl as parseTrackRecordJsonl,
+  renderMarkdownTable as renderTrackRecordTable,
+} from "./track-record.js";
 import { findCatchupCandidates } from "./reconciler.js";
 import { checkRisk } from "./risk.js";
 import {
@@ -74,7 +80,7 @@ import type {
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
-interface RuntimeState {
+export interface RuntimeState {
   db: TradingDB;
   tradier: TradierClient;
   channel: MessageChannel;
@@ -233,7 +239,11 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
  * Bound to 0.0.0.0 inside the container; external exposure is restricted
  * at the Docker layer via `127.0.0.1:8080:8080` in compose — no LAN reach.
  */
-function startHttpServer(state: RuntimeState): ReturnType<typeof serve> {
+/**
+ * Hono app for all inbound HTTP. Pure construction — no port binding.
+ * Extracted so tests can call `makeHttpApp(state).fetch(req)` directly.
+ */
+export function makeHttpApp(state: RuntimeState): Hono {
   const app = new Hono();
 
   app.get("/health", (c) => c.json(healthSnapshot(state)));
@@ -256,6 +266,62 @@ function startHttpServer(state: RuntimeState): ReturnType<typeof serve> {
     return c.json({ ok: true, message: out });
   });
 
+  // Analytics endpoints — read-only, safe for skills and the EOD review.
+  app.get("/report/daily", (c) => {
+    const startMs = Number(c.req.query("sinceMs") ?? startOfTodayMs());
+    const endMs = Number(c.req.query("untilMs") ?? Date.now());
+    const rows = state.db.query({ sinceMs: startMs, limit: 10_000 });
+    const report = buildDailyReport(
+      rows.filter((r) => r.tsMs <= endMs),
+      { startMs, endMs },
+    );
+    return c.text(renderDailyReport(report));
+  });
+
+  app.get("/report/track-record", (c) => {
+    const path = c.req.query("path");
+    if (!path) {
+      return c.json(
+        { ok: false, error: "missing ?path=<jsonl-path>" },
+        400,
+      );
+    }
+    let text: string;
+    try {
+      text = readFileSync(path, "utf-8");
+    } catch (err) {
+      return c.json(
+        {
+          ok: false,
+          error: `read ${path}: ${err instanceof Error ? err.message : String(err)}`,
+        },
+        404,
+      );
+    }
+    const { records, warnings } = parseTrackRecordJsonl(text);
+    const sinceMs = c.req.query("sinceMs")
+      ? Number(c.req.query("sinceMs"))
+      : undefined;
+    const untilMs = c.req.query("untilMs")
+      ? Number(c.req.query("untilMs"))
+      : undefined;
+    const aggregateOpts: { sinceMs?: number; untilMs?: number } = {};
+    if (sinceMs !== undefined) aggregateOpts.sinceMs = sinceMs;
+    if (untilMs !== undefined) aggregateOpts.untilMs = untilMs;
+    const aggs = aggregateTrackRecord(records, aggregateOpts);
+    const body = renderTrackRecordTable(aggs);
+    return c.text(
+      warnings.length > 0
+        ? `${body}\n\n<!-- warnings: ${warnings.join("; ")} -->`
+        : body,
+    );
+  });
+
+  return app;
+}
+
+function startHttpServer(state: RuntimeState): ReturnType<typeof serve> {
+  const app = makeHttpApp(state);
   return serve({ fetch: app.fetch, port: 8080, hostname: "0.0.0.0" });
 }
 
