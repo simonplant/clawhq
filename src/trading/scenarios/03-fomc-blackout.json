@@ -1,0 +1,17 @@
+{
+  "name": "fomc-blackout",
+  "doc": "Global event blackout — Tradier-routed order during FOMC window blocks with the event name.",
+  "brief": "## Orders\n\nORDER 1 | HIGH | ACTIVE\n  source:       mancini\n  accounts:     tradier\n  ticker:       ES\n  exec_as:      /MES\n  direction:    LONG\n  setup:        Failed Breakdown\n  why:          reclaim\n  entry:        7090 LMT\n  stop:         7078 — flush-4\n  t1:           7105 — next R\n  t2:           7120 — next R\n  runner:       10% trail BE after T1\n  risk:         $5 | 1 /MES | $10\n  confirmation: CONFIRMED\n  confluence:   none\n  caveat:       none\n  kills:        none\n  activation:   immediate\n  verify:       none\n",
+  "state": {
+    "activeBlackouts": [
+      { "scope": "all", "name": "FOMC", "reason": "2pm ET rate decision" }
+    ]
+  },
+  "seedPrices": { "ES": 7085 },
+  "ticks": [
+    { "symbol": "ES", "last": 7092, "tsMs": 1700000000000 }
+  ],
+  "expected": [
+    { "kind": "blocked", "sequence": 1, "levelName": "entry", "crossingDirection": "UP", "blockMatches": "FOMC" }
+  ]
+}

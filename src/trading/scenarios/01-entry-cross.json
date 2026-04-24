@@ -1,0 +1,12 @@
+{
+  "name": "entry-cross",
+  "doc": "Baseline happy path — quote crosses entry on TOS-routed order, advisory scope, loud alert expected for HIGH conviction.",
+  "brief": "## Orders\n\nORDER 1 | HIGH | ACTIVE\n  source:       mancini\n  accounts:     tos\n  ticker:       ES\n  exec_as:      /MES\n  direction:    LONG\n  setup:        Failed Breakdown A+\n  why:          reclaim\n  entry:        7090 LMT\n  stop:         7078 — flush-4\n  t1:           7105 — next R\n  t2:           7120 — next R\n  runner:       10% trail BE after T1\n  risk:         $12 | 2 /MES | $24\n  confirmation: CONFIRMED\n  confluence:   none\n  caveat:       none\n  kills:        none\n  activation:   immediate\n  verify:       none\n",
+  "seedPrices": { "ES": 7085 },
+  "ticks": [
+    { "symbol": "ES", "last": 7092, "tsMs": 1700000000000 }
+  ],
+  "expected": [
+    { "kind": "alert", "sequence": 1, "levelName": "entry", "crossingDirection": "UP", "quiet": false }
+  ]
+}

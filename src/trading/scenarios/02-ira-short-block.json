@@ -1,0 +1,12 @@
+{
+  "name": "ira-short-block",
+  "doc": "Structural account rule — IRA cannot hold shorts; governor must hard-block regardless of scope.",
+  "brief": "## Orders\n\nORDER 1 | MEDIUM | ACTIVE\n  source:       dp\n  accounts:     ira\n  ticker:       TSLA\n  exec_as:      TSLA\n  direction:    SHORT\n  setup:        rejection at range high\n  why:          short from R\n  entry:        260 LMT\n  stop:         265 — stated\n  t1:           250 — stated\n  t2:           245 — stated\n  runner:       none\n  risk:         $5 | 10 TSLA | $50\n  confirmation: CONFIRMED\n  confluence:   none\n  caveat:       none\n  kills:        none\n  activation:   immediate\n  verify:       none\n",
+  "seedPrices": { "TSLA": 262 },
+  "ticks": [
+    { "symbol": "TSLA", "last": 259, "tsMs": 1700000000000 }
+  ],
+  "expected": [
+    { "kind": "blocked", "sequence": 1, "levelName": "entry", "crossingDirection": "DOWN", "blockMatches": "ira is long-only" }
+  ]
+}

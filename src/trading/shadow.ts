@@ -222,6 +222,10 @@ export interface ExpectedEvent {
   blockMatches?: RegExp;
   /** If set, demand `decision.warn` matches. */
   warnMatches?: RegExp;
+  /** Expected notification tier. */
+  quiet?: boolean;
+  /** Expected confluence tier on the alert. */
+  confluenceTier?: "none" | "aligned" | "strong-aligned" | "divergent";
 }
 
 export interface TraceDiff {
@@ -285,6 +289,22 @@ export function diffTrace(
         );
       }
     }
+    if (want.quiet !== undefined && got.kind === "alert") {
+      const actualQuiet = got.quiet === true;
+      if (actualQuiet !== want.quiet) {
+        problems.push(
+          `#${i}: quiet — expected ${want.quiet}, got ${actualQuiet}`,
+        );
+      }
+    }
+    if (want.confluenceTier !== undefined && got.kind === "alert") {
+      const tier = got.alert?.confluence?.tier ?? "none";
+      if (tier !== want.confluenceTier) {
+        problems.push(
+          `#${i}: confluenceTier — expected ${want.confluenceTier}, got ${tier}`,
+        );
+      }
+    }
   }
   for (let i = len; i < result.events.length; i++) {
     const e = result.events[i]!;
@@ -295,6 +315,48 @@ export function diffTrace(
     problems.push(`missing #${i}: ${e.kind}${e.sequence ? ` seq=${e.sequence}` : ""}`);
   }
   return { ok: problems.length === 0, problems };
+}
+
+// ── JSON scenario file loader ──────────────────────────────────────────────
+
+/**
+ * On-disk scenario format. Extends ShadowScenario with an `expected` array
+ * and a `doc` string so the files are self-describing regression fixtures.
+ */
+export interface ScenarioFile {
+  name: string;
+  doc?: string;
+  brief?: string;
+  ticks: ShadowTick[];
+  state?: Partial<import("./types.js").RiskState>;
+  seedPrices?: Record<string, number>;
+  startMonoMs?: number;
+  dedupTtlMs?: number;
+  expected: ExpectedEventFile[];
+}
+
+/** On-disk expected-event shape; `blockMatches` travels as a string. */
+export interface ExpectedEventFile
+  extends Omit<ExpectedEvent, "blockMatches" | "warnMatches"> {
+  blockMatches?: string;
+  warnMatches?: string;
+}
+
+/**
+ * Lower a ScenarioFile into runtime shapes: a ShadowScenario (no `expected`)
+ * plus an ExpectedEvent[] with real RegExp instances.
+ */
+export function materializeScenario(file: ScenarioFile): {
+  scenario: ShadowScenario;
+  expected: ExpectedEvent[];
+} {
+  const { expected: expectedFile, doc: _doc, ...rest } = file;
+  const expected: ExpectedEvent[] = expectedFile.map((e) => ({
+    ...e,
+    blockMatches: e.blockMatches ? new RegExp(e.blockMatches, "i") : undefined,
+    warnMatches: e.warnMatches ? new RegExp(e.warnMatches, "i") : undefined,
+  }));
+  return { scenario: rest, expected };
 }
 
 /** One-liner summary of a trace — useful for debug dumps. */

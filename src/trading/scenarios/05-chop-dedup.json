@@ -1,0 +1,16 @@
+{
+  "name": "chop-dedup",
+  "doc": "Price whipsaws through the entry level three times within the dedup TTL — only the first UP and first DOWN should alert.",
+  "brief": "## Orders\n\nORDER 1 | MEDIUM | ACTIVE\n  source:       scanner\n  accounts:     tos\n  ticker:       SPY\n  exec_as:      SPY\n  direction:    LONG\n  setup:        range retest\n  why:          base break\n  entry:        570 LMT\n  stop:         567 — stated\n  t1:           574 — stated\n  t2:           578 — stated\n  runner:       10% trail BE after T1\n  risk:         $3 | 10 SPY | $30\n  confirmation: CONFIRMED\n  confluence:   none\n  caveat:       none\n  kills:        none\n  activation:   immediate\n  verify:       none\n",
+  "seedPrices": { "SPY": 569 },
+  "ticks": [
+    { "symbol": "SPY", "last": 570.5, "tsMs": 1700000000000 },
+    { "symbol": "SPY", "last": 569.5, "tsMs": 1700000001000 },
+    { "symbol": "SPY", "last": 570.6, "tsMs": 1700000002000 },
+    { "symbol": "SPY", "last": 569.4, "tsMs": 1700000003000 }
+  ],
+  "expected": [
+    { "kind": "alert", "sequence": 1, "levelName": "entry", "crossingDirection": "UP" },
+    { "kind": "alert", "sequence": 1, "levelName": "entry", "crossingDirection": "DOWN" }
+  ]
+}

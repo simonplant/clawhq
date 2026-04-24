@@ -1,0 +1,13 @@
+{
+  "name": "confluence-strong-aligned",
+  "doc": "DP and Mancini both HIGH on NVDA at nearby entries — strong-aligned, loud alert.",
+  "brief": "## Orders\n\nORDER 1 | HIGH | ACTIVE\n  source:       dp\n  accounts:     tos\n  ticker:       NVDA\n  exec_as:      NVDA\n  direction:    LONG\n  setup:        pullback to 21d MA\n  why:          quality reclaim\n  entry:        120 LMT\n  stop:         117 — stated\n  t1:           125 — stated\n  t2:           130 — stated\n  runner:       10% trail BE after T1\n  risk:         $3 | 10 NVDA | $30\n  confirmation: CONFIRMED\n  confluence:   DP+MANCINI\n  caveat:       none\n  kills:        none\n  activation:   immediate\n  verify:       none\n\nORDER 2 | HIGH | ACTIVE\n  source:       mancini\n  accounts:     tos\n  ticker:       NVDA\n  exec_as:      NVDA\n  direction:    LONG\n  setup:        failed breakdown reclaim\n  why:          level hold\n  entry:        120.5 LMT\n  stop:         117.5 — flush-4\n  t1:           125 — next R\n  t2:           130 — next R\n  runner:       10% trail BE after T1\n  risk:         $3 | 10 NVDA | $30\n  confirmation: CONFIRMED\n  confluence:   DP+MANCINI\n  caveat:       none\n  kills:        none\n  activation:   immediate\n  verify:       none\n",
+  "seedPrices": { "NVDA": 119 },
+  "ticks": [
+    { "symbol": "NVDA", "last": 121, "tsMs": 1700000000000 }
+  ],
+  "expected": [
+    { "kind": "alert", "sequence": 1, "levelName": "entry", "crossingDirection": "UP", "quiet": false, "confluenceTier": "strong-aligned" },
+    { "kind": "alert", "sequence": 2, "levelName": "entry", "crossingDirection": "UP", "quiet": false, "confluenceTier": "strong-aligned" }
+  ]
+}
