@@ -41,6 +41,13 @@ import {
   resolveWatchlist,
 } from "./config.js";
 import { openTradingDB, startOfTodayMs, type TradingDB } from "./db.js";
+import {
+  formatVtfMessage,
+  makeVtfDedup,
+  parseVtfInput,
+  vtfShouldQuiet,
+  type VtfDedup,
+} from "./vtf.js";
 import { makeLevelDetector } from "./detector.js";
 import {
   buildAlert,
@@ -101,6 +108,8 @@ export interface RuntimeState {
   manualHalt: boolean;
   /** Shutting down? Skip new work. */
   shuttingDown: boolean;
+  /** Dedup window for inbound VTF alerts. */
+  vtfDedup: VtfDedup;
 }
 
 export interface StartOptions {
@@ -159,6 +168,7 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     symbolCount: 0,
     manualHalt: false,
     shuttingDown: false,
+    vtfDedup: makeVtfDedup(),
   };
 
   // Stale-quote gate is on in production — Tradier timestamps older than
@@ -302,7 +312,58 @@ export function makeHttpApp(state: RuntimeState): Hono {
     });
   });
 
+  // VTF (Inner Circle) alert relay. A browser-side userscript scrapes the
+  // VTF DOM and POSTs each new alert here. We parse, dedup, annotate any
+  // active blackouts, and relay to Telegram. Not an OrderBlock — VTF
+  // alerts are signals, not plans; the full pipeline doesn't run.
+  app.post("/vtf/alert", async (c) => {
+    const raw = await c.req.json().catch(() => null);
+    const nowMs = Date.now();
+    const parsed = parseVtfInput(raw, nowMs);
+    if (!parsed.ok) {
+      appendEvent(state.db, {
+        type: "VtfAlertRejected",
+        tsMs: nowMs,
+        reason: parsed.reason,
+        raw: safeStringify(raw).slice(0, 400),
+      });
+      return c.json({ ok: false, error: parsed.reason }, 400);
+    }
+    const dup = state.vtfDedup.check(parsed.alert.dedupKey, nowMs);
+    if (dup === "duplicate") {
+      appendEvent(state.db, {
+        type: "VtfAlertDuplicate",
+        tsMs: nowMs,
+        dedupKey: parsed.alert.dedupKey,
+      });
+      return c.json({ ok: true, status: "duplicate" });
+    }
+    appendEvent(state.db, {
+      type: "VtfAlertReceived",
+      tsMs: nowMs,
+      alert: parsed.alert,
+    });
+    const body = formatVtfMessage(parsed.alert, {
+      activeBlackouts: state.riskState.activeBlackouts,
+    });
+    await safeSend(state, body, { quiet: vtfShouldQuiet(parsed.alert.actionClass) });
+    return c.json({
+      ok: true,
+      status: "relayed",
+      ticker: parsed.alert.ticker,
+      actionClass: parsed.alert.actionClass,
+    });
+  });
+
   return app;
+}
+
+function safeStringify(x: unknown): string {
+  try {
+    return JSON.stringify(x);
+  } catch {
+    return "<unstringifiable>";
+  }
 }
 
 function startHttpServer(state: RuntimeState): ReturnType<typeof serve> {

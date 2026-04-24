@@ -224,6 +224,48 @@ export interface Alert {
 
 export type NotifyTier = "loud" | "quiet";
 
+// ── VTF (Inner Circle / Virtual Trading Floor) alerts ───────────────────────
+
+/**
+ * Classified verb from a VTF moderator's message. VTF doesn't structure
+ * their alerts — moderators type freely — so we classify with a small
+ * regex table and carry the original `action` text through verbatim for
+ * the humans.
+ */
+export type VtfActionClass =
+  | "long"
+  | "short"
+  | "flat"
+  | "trimmed"
+  | "added"
+  | "stopped"
+  | "other";
+
+/**
+ * Received VTF alert after parsing + classification. Not an OrderBlock —
+ * these are *signals* with no stop/T1/T2. Cross-referencing against
+ * today's brief is a future iteration.
+ */
+export interface VtfAlert {
+  /** Moderator handle as rendered in VTF (Kira, Rickman, DP, …). */
+  user: string;
+  /** Timestamp text as rendered in VTF ("9:47am"). Kept for display. */
+  time: string;
+  /** Ticker with or without $ prefix normalized to upper. */
+  ticker: string;
+  /** Verbatim action text ("long 5/1 90 calls"). */
+  action: string;
+  actionClass: VtfActionClass;
+  /** ISO string from the browser producer. */
+  capturedAt: string;
+  /** Monotonic seq the producer assigned (optional). */
+  seq: number | undefined;
+  /** Derived key for dedup over (user, time, ticker, action). */
+  dedupKey: string;
+  /** Sidecar's wall-clock ms at receipt. */
+  receivedMs: number;
+}
+
 export type UserReplyType =
   | "approve"
   | "reduce-half"
@@ -264,6 +306,22 @@ export type TradingEvent =
       tsMs: number;
       alertId: string;
       reason: "duplicate" | "ambiguous" | "expired" | "unknown-id";
+      raw: string;
+    }
+  | {
+      type: "VtfAlertReceived";
+      tsMs: number;
+      alert: VtfAlert;
+    }
+  | {
+      type: "VtfAlertDuplicate";
+      tsMs: number;
+      dedupKey: string;
+    }
+  | {
+      type: "VtfAlertRejected";
+      tsMs: number;
+      reason: string;
       raw: string;
     }
   | {
