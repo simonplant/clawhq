@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { addInstance, listInstances } from "../../cloud/instances/index.js";
 import {
   SmartInferenceAbortError,
   WizardAbortError,
@@ -14,6 +15,7 @@ import { CommandError } from "../errors.js";
 import {
   applyEnsureFreshResult,
   ensureFreshOrReset,
+  registerInstanceForInit,
   translateInitError,
 } from "./init-run.js";
 
@@ -144,5 +146,75 @@ describe("translateInitError", () => {
     const result = translateInitError(new Error("something weird"));
     expect(result.exitCode).toBe(1);
     expect(err).toHaveBeenCalled();
+  });
+});
+
+// ── registerInstanceForInit ─────────────────────────────────────────────────
+
+describe("registerInstanceForInit", () => {
+  it("mints a uuid and registers the deployment", () => {
+    const answers = { deployDir } as Parameters<typeof registerInstanceForInit>[0];
+    const id = registerInstanceForInit(
+      answers,
+      { instanceName: "clawdius", composition: { profile: "email-manager" } },
+      sandbox,
+    );
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+
+    const instances = listInstances(sandbox);
+    expect(instances).toHaveLength(1);
+    const [only] = instances;
+    expect(only?.name).toBe("clawdius");
+    expect(only?.blueprint).toBe("email-manager");
+    expect(only?.status).toBe("initialized");
+    expect(only?.location.kind).toBe("local");
+    if (only?.location.kind === "local") {
+      expect(only.location.deployDir).toBe(deployDir);
+    }
+  });
+
+  it("falls back to deployDir basename when instanceName is absent", () => {
+    const answers = { deployDir } as Parameters<typeof registerInstanceForInit>[0];
+    registerInstanceForInit(answers, {}, sandbox);
+    const [only] = listInstances(sandbox);
+    expect(only?.name).toBe(".clawhq"); // basename of the test deployDir
+  });
+
+  it("suffixes the name on collision", () => {
+    // Seed one entry with the name we expect the registration to want.
+    addInstance(
+      {
+        name: "clawdius",
+        status: "initialized",
+        location: { kind: "local", deployDir: "/some/other/dir" },
+      },
+      sandbox,
+    );
+
+    const answers = { deployDir } as Parameters<typeof registerInstanceForInit>[0];
+    registerInstanceForInit(answers, { instanceName: "clawdius" }, sandbox);
+
+    const names = listInstances(sandbox).map((i) => i.name).sort();
+    expect(names).toEqual(["clawdius", "clawdius-2"]);
+  });
+
+  it("replaces a stale entry for the same deployDir (simulates --reset)", () => {
+    // Pretend the user ran init before; there's already an entry pointing here.
+    addInstance(
+      {
+        name: "old-name",
+        status: "initialized",
+        location: { kind: "local", deployDir },
+      },
+      sandbox,
+    );
+
+    const answers = { deployDir } as Parameters<typeof registerInstanceForInit>[0];
+    const newId = registerInstanceForInit(answers, { instanceName: "new-name" }, sandbox);
+
+    const instances = listInstances(sandbox);
+    expect(instances).toHaveLength(1);
+    expect(instances[0]?.id).toBe(newId);
+    expect(instances[0]?.name).toBe("new-name");
   });
 });

@@ -404,6 +404,14 @@ export interface UpdateChannelConfig {
 export interface ClawHQConfig {
   readonly version?: string;
   /**
+   * Stable uuid for this deployment, minted at `clawhq init`. Used by the
+   * unified instance registry (`~/.clawhq/instances.json`) to look up this
+   * deployment from any subdirectory without walking the registry by
+   * deployDir. Optional for backwards compat — legacy deployments get an
+   * id assigned during migration.
+   */
+  readonly instanceId?: string;
+  /**
    * Composition config: profile + providers. Source of truth for `clawhq apply`.
    *
    * Personality is implicit — every agent uses the canonical ClawHQ

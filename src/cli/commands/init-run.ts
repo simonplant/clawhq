@@ -13,13 +13,21 @@
  * doesn't benefit from extraction.
  */
 
+import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join, resolve } from "node:path";
 
 import chalk from "chalk";
 import ora from "ora";
 import { stringify as yamlStringify } from "yaml";
 
+import {
+  addInstance,
+  findByName,
+  listInstances,
+  migrateLegacyRegistries,
+  removeInstance,
+} from "../../cloud/instances/index.js";
 import { FILE_MODE_SECRET } from "../../config/defaults.js";
 import { writeFileAtomic } from "../../config/fs-atomic.js";
 import { withDeployLock } from "../../config/lock.js";
@@ -92,6 +100,61 @@ export function applyEnsureFreshResult(
   }
 }
 
+// ── Instance registry wiring ─────────────────────────────────────────────────
+
+/**
+ * Mint this deployment's uuid and record it in the unified instance registry.
+ *
+ * - Runs legacy-registry migration first (idempotent).
+ * - Drops any stale local entry pointing at the same deployDir (handles the
+ *   `--reset` case where init archives the old deployment).
+ * - Resolves a unique name: prefers `clawhqConfig.instanceName`, else the
+ *   deployDir basename. On name collision, suffixes `-2`, `-3`, …
+ *
+ * Returns the minted uuid for the caller to embed in `clawhq.yaml`.
+ */
+export function registerInstanceForInit(
+  answers: WizardAnswers,
+  clawhqConfig: { readonly instanceName?: string; readonly composition?: { readonly profile?: string } },
+  registryRoot?: string,
+): string {
+  // Fold legacy fleet.json + cloud/instances.json into the new registry if
+  // they haven't been migrated yet. No-op on fresh installs.
+  migrateLegacyRegistries(registryRoot);
+
+  // Reset path: archiveDeployment has already moved the old files aside, but
+  // the old registry entry for this deployDir is still present. Drop it.
+  const targetDir = resolve(answers.deployDir);
+  for (const existing of listInstances(registryRoot)) {
+    if (existing.location.kind === "local" && resolve(existing.location.deployDir) === targetDir) {
+      removeInstance(existing.id, registryRoot);
+    }
+  }
+
+  const preferred = clawhqConfig.instanceName ?? basename(targetDir);
+  let name = preferred;
+  let suffix = 2;
+  while (findByName(name, registryRoot)) {
+    name = `${preferred}-${suffix}`;
+    suffix += 1;
+  }
+
+  const id = randomUUID();
+  addInstance(
+    {
+      id,
+      name,
+      status: "initialized",
+      ...(clawhqConfig.composition?.profile
+        ? { blueprint: clawhqConfig.composition.profile }
+        : {}),
+      location: { kind: "local", deployDir: answers.deployDir },
+    },
+    registryRoot,
+  );
+  return id;
+}
+
 // ── Shared forge pipeline (legacy smart/config-file paths) ───────────────────
 
 /**
@@ -104,14 +167,16 @@ export function applyEnsureFreshResult(
  * compile surface that drifted from the real one. Seeding only the
  * user-input files and delegating the rest to apply eliminates the drift.
  */
-function seedFromAnswers(answers: WizardAnswers): void {
+function seedFromAnswers(answers: WizardAnswers, registryRoot?: string): void {
   const bundle = generateBundle(answers);
+  const instanceId = registerInstanceForInit(answers, bundle.clawhqConfig, registryRoot);
 
   // clawhq.yaml — the user's manifest. buildClawHQConfig emits the
-  // composition block (fixed in c80b8de).
+  // composition block (fixed in c80b8de). instanceId anchors this
+  // deployment in the unified instance registry.
   writeFileAtomic(
     join(answers.deployDir, "clawhq.yaml"),
-    yamlStringify(bundle.clawhqConfig),
+    yamlStringify({ instanceId, ...bundle.clawhqConfig }),
   );
 
   // workspace/USER.md — user context drives apply's identity rendering.
