@@ -15,7 +15,7 @@
  */
 
 import { watch } from "node:fs";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
@@ -46,7 +46,6 @@ import {
   buildAlert,
   scopeForAccounts as scopeFor,
 } from "./pipeline.js";
-import { loadActiveBlackouts } from "./blackouts.js";
 import {
   computeConfluence,
   toSnapshot,
@@ -75,7 +74,7 @@ import type {
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
-interface RuntimeState {
+export interface RuntimeState {
   db: TradingDB;
   tradier: TradierClient;
   channel: MessageChannel;
@@ -109,8 +108,6 @@ interface RuntimeState {
   manualHalt: boolean;
   /** Shutting down? Skip new work. */
   shuttingDown: boolean;
-  /** Path to the shared scheduled-events file. */
-  blackoutsPath: string;
 }
 
 export interface StartOptions {
@@ -143,7 +140,6 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     opts.channel !== undefined ? "injected" : hasTelegramConfig ? "telegram" : "in-memory";
 
   const planPath = briefPathFor(paths);
-  const blackoutsPath = join(paths.sharedDir, "blackouts.json");
   const watchlistBase = opts.watchlist ?? resolveWatchlist();
 
   const state: RuntimeState = {
@@ -169,7 +165,6 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     lastAlertMs: null,
     nextHeartbeatMs: null,
     symbolCount: 0,
-    blackoutsPath,
     manualHalt: false,
     shuttingDown: false,
   };
@@ -191,15 +186,12 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
 
   await runBootReconciler(state);
   await refreshRiskState(state); // seed Tradier balance/positions before first poll
-  refreshBlackouts(state); // seed active blackouts before first poll
 
   const pollTimer = scheduleInterval(opts.pollMs ?? POLL_MS, () => pollOnce(state, detector, thresholds, accounts));
   const clockTimer = scheduleInterval(CLOCK_CHECK_MS, () => refreshMarketClock(state, detector));
   const heartbeatTimer = scheduleInterval(HEARTBEAT_MS, () => sendHeartbeat(state));
   const riskRefreshTimer = scheduleInterval(60_000, () => refreshRiskState(state));
   const ttlTimer = scheduleInterval(30_000, () => expireAlerts(state));
-  // Blackouts refresh more often than market clock — event windows are minute-grained.
-  const blackoutTimer = scheduleInterval(30_000, () => refreshBlackouts(state));
 
   state.db.append({ type: "ServiceReady", tsMs: Date.now() });
 
@@ -211,7 +203,6 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     clearInterval(heartbeatTimer);
     clearInterval(riskRefreshTimer);
     clearInterval(ttlTimer);
-    clearInterval(blackoutTimer);
     watcher.close();
     state.db.append({
       type: "ServiceShuttingDown",
@@ -234,7 +225,11 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
  * Bound to 0.0.0.0 inside the container; external exposure is restricted
  * at the Docker layer via `127.0.0.1:8080:8080` in compose — no LAN reach.
  */
-function startHttpServer(state: RuntimeState): ReturnType<typeof serve> {
+/**
+ * Hono app for all inbound HTTP. Pure construction — no port binding.
+ * Exported so tests can call `makeHttpApp(state).fetch(req)` directly.
+ */
+export function makeHttpApp(state: RuntimeState): Hono {
   const app = new Hono();
 
   app.get("/health", (c) => c.json(healthSnapshot(state)));
@@ -257,7 +252,6 @@ function startHttpServer(state: RuntimeState): ReturnType<typeof serve> {
     return c.json({ ok: true, message: out });
   });
 
-<<<<<<< HEAD
   // Reply routing: Clawdius receives Simon's "YES-T3ST" / "HALF-T3ST" /
   // "NO-T3ST" from Telegram and forwards the raw text here. We parse, look
   // up pendingAlerts, and log either UserReply or UserReplyIgnored. The
@@ -446,20 +440,6 @@ async function refreshRiskState(state: RuntimeState): Promise<void> {
   } catch {
     // Non-fatal — governor keeps operating against the last good snapshot.
   }
-}
-
-// ── Blackout feed ────────────────────────────────────────────────────────────
-
-/**
- * Re-read `${sharedDir}/blackouts.json` and derive the active-now list.
- * Called on a 30s timer — event windows are minute-grained, 30s latency
- * is well within safety. Soft failure: missing or malformed file leaves
- * activeBlackouts empty, the governor treats as "no blackout active".
- */
-function refreshBlackouts(state: RuntimeState): void {
-  if (state.shuttingDown) return;
-  const { active } = loadActiveBlackouts(state.blackoutsPath, Date.now());
-  state.riskState = { ...state.riskState, activeBlackouts: active };
 }
 
 // ── Market clock ─────────────────────────────────────────────────────────────
