@@ -130,10 +130,25 @@ export function checkRisk(inputs: RiskCheckInputs): RiskDecision {
       };
     }
 
-    // 4. PDT counter. Tradier PDT rule: ≥ N day trades in 5 days on a cash
-    // account < $25K. We can't know whether this specific trade will close
-    // same-day, so we WARN rather than block when at the limit.
+    // 4. PDT counter. Tradier PDT rule: a 4th day trade in 5 rolling days on
+    // a cash account < $25K triggers a 90-day restriction. We can't know
+    // for certain that *this* order will close same-day, but we can use the
+    // order's horizon as a good proxy:
+    //
+    //   - session horizon (mancini, intraday): almost always closes same day;
+    //     treat as a day trade → BLOCK when at the limit
+    //   - swing/portfolio horizon: may hold overnight; WARN only
+    //
+    // Being willing to block a genuine intraday order at the limit is the
+    // right posture — a 90-day freeze costs more than one missed trade.
     if (state.tradierPdtCountLast5Days >= thresholds.pdtLimit) {
+      const likelyDayTrade = order.source === "mancini";
+      if (likelyDayTrade) {
+        return {
+          block: `Tradier PDT at ${state.tradierPdtCountLast5Days}/${thresholds.pdtLimit} — intraday order would trigger 90-day PDT freeze`,
+          scope,
+        };
+      }
       warnings.push(
         `Tradier PDT at ${state.tradierPdtCountLast5Days}/${thresholds.pdtLimit} — next same-day close is the 4th trade`,
       );

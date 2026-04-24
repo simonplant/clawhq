@@ -186,15 +186,37 @@ describe("checkRisk", () => {
     expect(decision.block).toMatch(/daily loss/);
   });
 
-  it("warns (not blocks) when at PDT limit", () => {
+  it("warns (not blocks) at PDT limit for swing-horizon orders", () => {
     const decision = checkRisk({
-      order: mkOrder(),
+      order: mkOrder({ source: "dp" }), // dp → swing horizon, may hold overnight
       state: mkState({ tradierPdtCountLast5Days: 3 }),
       thresholds: THRESHOLDS,
       accounts: ACCOUNTS,
     });
     expect(decision.block).toBeUndefined();
     expect(decision.warn).toMatch(/PDT/);
+  });
+
+  it("blocks at PDT limit for session-horizon (mancini intraday) orders", () => {
+    const decision = checkRisk({
+      order: mkOrder({ source: "mancini" }),
+      state: mkState({ tradierPdtCountLast5Days: 3 }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/PDT/);
+    expect(decision.block).toMatch(/90-day/i);
+  });
+
+  it("does not block session orders below the PDT limit", () => {
+    const decision = checkRisk({
+      order: mkOrder({ source: "mancini" }),
+      state: mkState({ tradierPdtCountLast5Days: 2 }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toBeUndefined();
+    expect(decision.warn).toBeUndefined();
   });
 
   it("classifies scope=advisory-only for TOS/IRA-only orders", () => {
