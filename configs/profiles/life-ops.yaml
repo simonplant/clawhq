@@ -413,24 +413,62 @@ cron_prompts:
     If llm-wiki exits non-zero, leave the prior wiki-context.md in place.
 
 delegation:
-  - action: organize_inbox
+  # Execute — agent acts autonomously
+  - action: triage_email
     tier: execute
-    example: "Sort and label emails by priority, archive routine notifications"
-  - action: prepare_meeting_brief
+    example: "Sort, label, and archive routine notifications across email and email-fastmail"
+  - action: refresh_watchlist
     tier: execute
-    example: "Compile agenda and background notes before scheduled meetings"
+    example: "Reparse today's brief into markets/today-orders.json and report proximity flags"
+  - action: log_market_event
+    tier: execute
+    example: "Append signals, risk checks, fills, and governor blocks to the journal (read-only history)"
+  - action: run_risk_check
+    tier: execute
+    example: "Call risk-governor before any proposed order — read-only verification"
+  - action: write_eod_review
+    tier: execute
+    example: "Generate end-of-day review and portfolio summary, write to memory and markets/reports/"
+  - action: score_track_record
+    tier: execute
+    example: "Score closed ORDER outcomes (WIN/LOSS/SCRATCH) for the daily record"
+  - action: refresh_wiki_context
+    tier: execute
+    example: "Run llm-wiki context to refresh state/wiki-context.md (silent cron)"
+
+  # Propose — agent drafts, user approves
   - action: draft_email
     tier: propose
-    example: "Draft professional email for review — never send without approval"
+    example: "Draft replies on email or email-fastmail — never send without approval"
+  - action: propose_trade
+    tier: propose
+    example: "Surface a trade idea with entry, stop, targets, and risk; wait for explicit go-ahead"
+  - action: propose_kill_order
+    tier: propose
+    example: "Suggest killing an ORDER block when its kill condition is met (DP went flat, level broken)"
   - action: propose_calendar_change
     tier: propose
     example: "Suggest rescheduling when conflicts detected — wait for confirmation"
-  - action: send_on_behalf
+
+  # Approve — user must explicitly request
+  - action: send_email
     tier: approve
-    example: "Send email to client or external party — requires explicit approval"
-  - action: commit_to_event
+    example: "Send from email or email-fastmail — requires explicit approval unless covered by a delegated category"
+  - action: place_order
     tier: approve
-    example: "Accept meeting invite that creates obligations — user must confirm"
+    example: "Submit any order via alpaca or tradier — alert-only mode, Simon executes manually until risk governor + shadow mode prove out"
+  - action: cancel_order
+    tier: approve
+    example: "Cancel a working order — never autonomous, even if a kill condition seems met"
+  - action: modify_position
+    tier: approve
+    example: "Adjust stop, target, or size on an open position — Simon owns position management"
+  - action: write_todoist
+    tier: approve
+    example: "tasks add/update/complete/delete/move — only when Simon explicitly asks in the current turn"
+  - action: delete_calendar_event
+    tier: approve
+    example: "Remove a calendar event — destructive, never autonomous"
 
 # Egress domains for tools built into this profile.
 # Provider-specific domains (gmail, icloud, fastmail, etc.) are added
@@ -460,9 +498,15 @@ monitoring:
   alert_on: [credential_expiry, memory_bloat, cron_failure]
 
 day_in_the_life: >
-  Your agent auto-schedules focus blocks around your meetings, notices a
-  conflict mentioned in email and proposes a reschedule, triages 40 emails
-  down to 6 that need you, and adds prep time before your client call.
-  Meeting notes are summarized and action items tracked automatically. At the
-  end of each day you get a brief: tasks completed, emails handled, tomorrow's
-  prep list.
+  Pre-market: pulls Mancini's overnight Futures Daily, parses David Prince's
+  AM call, and fetches the Focus 25 EOD email — synthesizing them into a
+  single ranked, order-ready trading brief delivered before the bell. During
+  the session: refreshes the live watchlist, polls prices every 30s, and
+  surfaces proximity alerts (AT_ENTRY, NEAR_STOP, AT_T1) with full setup
+  context — alert-only, Simon places the trades. Outside trading: triages
+  email across two accounts, watches the calendar for conflicts, and
+  monitors X for substantive market intelligence (specific levels, position
+  changes, catalysts — not commentary). EOD: writes the level-accuracy
+  review, marks the paper portfolios, scores closed ORDER outcomes for the
+  rolling track record, and curates the trading wiki so next week's
+  decisions compound on this week's lessons.
