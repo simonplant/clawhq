@@ -80,7 +80,7 @@ Fetches the daily Focus 25 email from FastMail and parses it into a structured s
    ```
 
 6. **Cross-reference with watchlists.** Check if any Focus 25 names overlap with:
-   - DP watchlist (from WATCHLISTS.json `dp_watchlist`)
+   - DP watchlist (from `markets/WATCHLISTS.json` `dp_watchlist`)
    - Existing ORDER blocks in today's brief (for any account)
    - Flag overlaps: "NVDA appears in Focus 25 RS leaders AND DP watchlist"
 

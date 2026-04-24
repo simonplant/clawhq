@@ -30,7 +30,7 @@ export async function runProbe(
 ): Promise<SmokeResult> {
   const start = Date.now();
   try {
-    const { stdout: _stdout } = await exec(
+    await exec(
       "docker",
       ["exec", container, spec.tool, ...spec.args],
       { timeout: spec.timeoutSec * 1000, maxBuffer: 1024 * 1024 },

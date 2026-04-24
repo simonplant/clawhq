@@ -19,7 +19,7 @@ Consult the trading wiki: `knowledge/trading/wiki/dp-methodology.md` for the tra
 
 ## Scan Targets
 
-Scan these watchlists (from `WATCHLISTS.json`):
+Scan these watchlists (from `markets/WATCHLISTS.json`):
 1. `dp_watchlist` — DP/Inner Circle frequent names (primary scan)
 2. `portfolio` — Current holdings and key indices
 3. `swing_candidates` — Previously identified candidates (refresh this list)
@@ -109,7 +109,7 @@ ORDER N | [conviction] | CONDITIONAL
 
 ### 5. Update Watchlists
 
-Refresh `swing_candidates` in WATCHLISTS.json with current scanner hits:
+Refresh `swing_candidates` in `markets/WATCHLISTS.json` with current scanner hits:
 - Add new candidates that passed screens
 - Remove candidates that are no longer valid (broke below stop levels)
 - Keep the list to max 10 symbols
@@ -181,4 +181,4 @@ For routine scans with no material change: silent. The state file and general-me
 - `ta` workspace tool (for technical analysis)
 - `quote` workspace tool (for current prices)
 - `earnings` workspace tool (for day-after trade detection)
-- `WATCHLISTS.json` (for scan targets)
+- `markets/WATCHLISTS.json` (for scan targets)

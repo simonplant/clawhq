@@ -22,7 +22,6 @@ import { parse as parseYaml } from "yaml";
 
 import { requireOpenclawContainer } from "../../build/docker/container.js";
 import { loadProfile } from "../../design/catalog/loader.js";
-import { readEnvValue } from "../../secure/credentials/env-store.js";
 import {
   detectTransitions,
   formatTransitionsForTelegram,
@@ -33,6 +32,7 @@ import {
   specsForProfile,
 } from "../../operate/smoke/index.js";
 import type { SmokeReport, SmokeState } from "../../operate/smoke/index.js";
+import { readEnvValue } from "../../secure/credentials/env-store.js";
 import { CommandError } from "../errors.js";
 
 export function registerSmokeCommand(program: Command, defaultDeployDir: string): void {
