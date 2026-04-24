@@ -170,6 +170,14 @@ export interface RiskDecision {
    *   mixed          — multi-account order; strict for Tradier, advisory elsewhere
    */
   scope: "tradier-strict" | "advisory-only" | "mixed";
+  /**
+   * When a Tradier block was triggered by sizing (per-trade-risk or
+   * exposure), the largest quantity that would have fit. Never set for
+   * advisory scope (sizing is Simon's discretion) or for non-sizing
+   * blocks (daily loss, blackouts, long-only). Integer, floored; 0 means
+   * even 1 share doesn't fit.
+   */
+  suggestedQuantity?: number;
 }
 
 // ── Confluence (derived in confluence.ts; carried on Alert for logging) ──────

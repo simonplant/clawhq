@@ -94,6 +94,7 @@ export function checkRisk(inputs: RiskCheckInputs): RiskDecision {
       return {
         block: `per-trade risk $${order.totalRisk.toFixed(0)} exceeds ${Math.round(thresholds.maxRiskPerTradeFraction * 100)}% cap ($${maxTradeRisk.toFixed(0)})`,
         scope,
+        suggestedQuantity: suggestedQtyForRiskCap(order, maxTradeRisk),
       };
     }
 
@@ -108,18 +109,24 @@ export function checkRisk(inputs: RiskCheckInputs): RiskDecision {
     // 3. Gross exposure cap — sum of position notional vs balance.
     //    Multiplier accounts for futures ($5/pt for /MES, $50 for /ES, etc.)
     //    and options ($100/contract); equities default to 1.
+    const mult = contractMultiplier(order.execAs);
     const currentExposure = state.tradierPositions.reduce(
       (sum, p) => sum + Math.abs(p.qty * p.avgPrice * contractMultiplier(p.symbol)),
       0,
     );
-    const newPositionNotional =
-      order.entry * order.quantity * contractMultiplier(order.execAs);
+    const newPositionNotional = order.entry * order.quantity * mult;
     const projectedExposure = currentExposure + newPositionNotional;
     const maxExposure = tradier.balance * thresholds.maxExposureFraction;
     if (projectedExposure > maxExposure) {
       return {
         block: `projected exposure $${projectedExposure.toFixed(0)} exceeds ${Math.round(thresholds.maxExposureFraction * 100)}% cap ($${maxExposure.toFixed(0)})`,
         scope,
+        suggestedQuantity: suggestedQtyForExposureCap(
+          order,
+          mult,
+          currentExposure,
+          maxExposure,
+        ),
       };
     }
 
@@ -140,6 +147,36 @@ export function checkRisk(inputs: RiskCheckInputs): RiskDecision {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Largest integer quantity whose total risk fits under `maxTradeRisk`.
+ * Derived from the per-share risk Simon already encoded — respects his
+ * stop choice rather than suggesting a tighter one behind his back.
+ */
+function suggestedQtyForRiskCap(
+  order: OrderBlock,
+  maxTradeRisk: number,
+): number {
+  if (order.riskPerShare <= 0) return 0;
+  return Math.max(0, Math.floor(maxTradeRisk / order.riskPerShare));
+}
+
+/**
+ * Largest integer quantity whose notional fits under the remaining
+ * exposure budget. Uses the contract multiplier so /MES suggestions
+ * are correct.
+ */
+function suggestedQtyForExposureCap(
+  order: OrderBlock,
+  multiplier: number,
+  currentExposure: number,
+  maxExposure: number,
+): number {
+  const budget = maxExposure - currentExposure;
+  const perContract = order.entry * multiplier;
+  if (perContract <= 0 || budget <= 0) return 0;
+  return Math.max(0, Math.floor(budget / perContract));
+}
 
 function blackoutMatchesOrder(
   blackout: NonNullable<RiskState["activeBlackouts"]>[number],

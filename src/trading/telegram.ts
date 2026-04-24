@@ -162,7 +162,16 @@ function headIcon(alert: Alert): string {
 }
 
 function formatGovernorLine(alert: Alert): string {
-  if (alert.risk.block) return `Governor: BLOCKED — ${alert.risk.block}`;
+  if (alert.risk.block) {
+    const suggest = alert.risk.suggestedQuantity;
+    const tail =
+      suggest !== undefined && suggest > 0
+        ? ` → try qty ${suggest}`
+        : suggest === 0
+          ? ""
+          : "";
+    return `Governor: BLOCKED — ${alert.risk.block}${tail}`;
+  }
   if (alert.risk.warn) return `Governor: warn — ${alert.risk.warn} (${alert.risk.scope})`;
   return `Governor: OK (${alert.risk.scope})`;
 }

@@ -105,6 +105,77 @@ describe("checkRisk", () => {
     expect(decision.block).toMatch(/projected exposure/);
   });
 
+  it("suggests a smaller quantity when per-trade risk is over cap", () => {
+    // $60 risk on $3K balance = 2%; cap is 1% = $30. riskPerShare = $6,
+    // so suggested qty = floor(30/6) = 5.
+    const decision = checkRisk({
+      order: mkOrder({ riskPerShare: 6, quantity: 10, totalRisk: 60 }),
+      state: mkState(),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/per-trade risk/);
+    expect(decision.suggestedQuantity).toBe(5);
+  });
+
+  it("suggests a smaller quantity when exposure cap is hit", () => {
+    // $3000 × 60% = $1800 budget; entry $100, multiplier 1 → 18 shares fit.
+    const decision = checkRisk({
+      order: mkOrder({
+        entry: 100,
+        quantity: 20, // $2000 notional — over cap
+        totalRisk: 10, // below per-trade cap so we reach exposure check
+        riskPerShare: 0.5,
+      }),
+      state: mkState(),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/projected exposure/);
+    expect(decision.suggestedQuantity).toBe(18);
+  });
+
+  it("does not suggest a quantity for non-sizing blocks (long-only, blackout)", () => {
+    const d1 = checkRisk({
+      order: mkOrder({ accounts: ["ira"], direction: "SHORT" }),
+      state: mkState(),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(d1.suggestedQuantity).toBeUndefined();
+
+    const d2 = checkRisk({
+      order: mkOrder({ accounts: ["tradier"] }),
+      state: mkState({
+        activeBlackouts: [{ scope: "all", name: "FOMC", reason: "2pm" }],
+      }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(d2.suggestedQuantity).toBeUndefined();
+  });
+
+  it("suggests 0 when even one share doesn't fit exposure budget", () => {
+    // Exposure already at $1800 from existing position; new /ES @ 7000 × $50 = $350K.
+    const decision = checkRisk({
+      order: mkOrder({
+        ticker: "ES",
+        execAs: "/ES",
+        entry: 7000,
+        quantity: 1,
+        totalRisk: 25,
+        riskPerShare: 25,
+      }),
+      state: mkState({
+        tradierPositions: [{ symbol: "SPY", qty: 4, avgPrice: 450 }], // $1800 notional
+      }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/projected exposure/);
+    expect(decision.suggestedQuantity).toBe(0);
+  });
+
   it("blocks when daily loss limit is breached", () => {
     const decision = checkRisk({
       order: mkOrder(),
