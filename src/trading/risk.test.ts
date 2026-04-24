@@ -214,4 +214,47 @@ describe("checkRisk", () => {
     });
     expect(decision.block).toBeUndefined();
   });
+
+  it("applies /MES multiplier ($5/pt) to exposure calc", () => {
+    // Without multiplier, 1 /MES @ 7090 = $7090 notional (fits 60% of $3K, falsely).
+    // With multiplier, 1 × 7090 × $5 = $35,450 — way over 60% of $3K ($1800).
+    const decision = checkRisk({
+      order: mkOrder({
+        ticker: "ES",
+        execAs: "/MES",
+        entry: 7090,
+        quantity: 1,
+        totalRisk: 25, // below per-trade cap so we reach exposure check
+      }),
+      state: mkState(),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/projected exposure/);
+    expect(decision.block).toMatch(/\$35,?450/);
+  });
+
+  it("sums existing /MES positions with multiplier into current exposure", () => {
+    // Already short 1 /MES @ 7080 — that's $35,400 of held notional.
+    const decision = checkRisk({
+      order: mkOrder({ ticker: "AAPL", execAs: "AAPL", entry: 170, quantity: 1, totalRisk: 3 }),
+      state: mkState({
+        tradierPositions: [{ symbol: "/MES", qty: 1, avgPrice: 7080 }],
+      }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/projected exposure/);
+  });
+
+  it("treats unknown tickers as 1x (equity default)", () => {
+    const decision = checkRisk({
+      order: mkOrder({ entry: 100, quantity: 10, totalRisk: 5 }), // $1000 notional
+      state: mkState(),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    // $1000 is under $1800 cap; should pass.
+    expect(decision.block).toBeUndefined();
+  });
 });

@@ -200,3 +200,49 @@ export const PROXIMITY_AT = 0.0015;
 export const PROXIMITY_NEAR = 0.005;
 export const PROXIMITY_APPROACHING = 0.015;
 export const PROXIMITY_STOP_TARGET = 0.003;
+
+// ── Contract multipliers ─────────────────────────────────────────────────────
+
+/**
+ * Dollar value of one contract price-point by execution symbol.
+ *
+ * Stocks trade as 1 share × price. Futures trade as `multiplier × price` —
+ * /MES at 7090 is $5×7090 = $35,450 of notional per contract, not $7,090.
+ * Ignoring the multiplier under-counts notional and makes the exposure cap
+ * useless for futures orders. Equity options are $100/contract.
+ *
+ * Add new symbols as they start appearing in the extractor outputs.
+ * Unknown symbols default to 1 (treated as shares) — this mirrors the
+ * pre-existing behavior so legacy fixtures stay green.
+ */
+const CONTRACT_MULTIPLIERS: Record<string, number> = {
+  // CME equity-index futures.
+  "/ES": 50,
+  "/MES": 5,
+  "/NQ": 20,
+  "/MNQ": 2,
+  "/RTY": 50,
+  "/M2K": 5,
+  "/YM": 5,
+  "/MYM": 0.5,
+  // CME crude + metals.
+  "/CL": 1000,
+  "/MCL": 100,
+  "/GC": 100,
+  "/MGC": 10,
+  "/SI": 5000,
+  "/SIL": 1000,
+};
+
+export function contractMultiplier(execAs: string): number {
+  const sym = execAs.trim().toUpperCase();
+  if (sym in CONTRACT_MULTIPLIERS) return CONTRACT_MULTIPLIERS[sym]!;
+  if (sym.startsWith("/")) {
+    // Unknown future — conservative fallback. Log path is the caller's job.
+    return 1;
+  }
+  // Equity option chains come through as e.g. "AAPL  240621C00200000".
+  // Two consecutive spaces is the OSI-ish marker. 100 shares per contract.
+  if (/\s{2,}/.test(execAs)) return 100;
+  return 1;
+}

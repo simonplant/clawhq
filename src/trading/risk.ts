@@ -12,7 +12,7 @@
  * blocks the alert entirely; TOS / IRA never trigger a block.
  */
 
-import type { RiskThresholds, AccountConfig } from "./config.js";
+import { contractMultiplier, type RiskThresholds, type AccountConfig } from "./config.js";
 import type {
   Account,
   OrderBlock,
@@ -85,11 +85,14 @@ export function checkRisk(inputs: RiskCheckInputs): RiskDecision {
     }
 
     // 3. Gross exposure cap — sum of position notional vs balance.
+    //    Multiplier accounts for futures ($5/pt for /MES, $50 for /ES, etc.)
+    //    and options ($100/contract); equities default to 1.
     const currentExposure = state.tradierPositions.reduce(
-      (sum, p) => sum + Math.abs(p.qty * p.avgPrice),
+      (sum, p) => sum + Math.abs(p.qty * p.avgPrice * contractMultiplier(p.symbol)),
       0,
     );
-    const newPositionNotional = order.entry * order.quantity;
+    const newPositionNotional =
+      order.entry * order.quantity * contractMultiplier(order.execAs);
     const projectedExposure = currentExposure + newPositionNotional;
     const maxExposure = tradier.balance * thresholds.maxExposureFraction;
     if (projectedExposure > maxExposure) {
