@@ -203,6 +203,43 @@ describe("compile", () => {
     expect(parsed.models.providers.ollama.models).toEqual([]);
   });
 
+  // ── Core / Operating Mandate ──────────────────────────────────────────────
+  //
+  // The "processor-not-filter" mandate lives in two places: canonical
+  // personality (foundation) and mission profile (concrete elaboration).
+  // Both must land in the identity files so the agent reads them on every
+  // session boot. Regression test 2026-04-23: Clawdius started "just
+  // filtering" email; the fix was to make the mandate explicit in
+  // SOUL.md + AGENTS.md rather than hoping tone would imply it.
+  describe("core mandate in SOUL.md + AGENTS.md", () => {
+    it("SOUL.md includes the canonical core_mandate before the values section", () => {
+      const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
+      const soul = findFile(result.files, "workspace/SOUL.md");
+      expect(soul.content).toContain("## Core Mandate");
+      expect(soul.content).toMatch(/processor, not a filter/i);
+      expect(soul.content).toMatch(/interpret intent/i);
+      // Ordering: Core Mandate must appear BEFORE Values so the agent
+      // reads "what your job is" before "how to be while doing it".
+      const mandateIdx = soul.content.indexOf("## Core Mandate");
+      const valuesIdx = soul.content.indexOf("## Values");
+      expect(mandateIdx).toBeGreaterThan(0);
+      expect(mandateIdx).toBeLessThan(valuesIdx);
+    });
+
+    it("AGENTS.md includes the profile operating_mandate before Session Startup", () => {
+      const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
+      const agents = findFile(result.files, "workspace/AGENTS.md");
+      expect(agents.content).toContain("## Operating Mandate");
+      // life-ops mandate names concrete channels it processes
+      expect(agents.content).toMatch(/Email.*Calendar.*Tasks/s);
+      expect(agents.content).toMatch(/Deletion.*failure|processor, not a filter/i);
+      const mandateIdx = agents.content.indexOf("## Operating Mandate");
+      const startupIdx = agents.content.indexOf("## Session Startup");
+      expect(mandateIdx).toBeGreaterThan(0);
+      expect(mandateIdx).toBeLessThan(startupIdx);
+    });
+  });
+
   // ── LLM-maintained knowledge base (wiki pattern) ───────────────────────────
 
   it("AGENTS.md emits a Knowledge Bases section when wiki-<kb>-ingest skills are present", () => {

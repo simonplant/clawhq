@@ -35,6 +35,15 @@ export interface MissionProfile {
   readonly name: string;
   readonly description: string;
   readonly replaces: string;
+  /** Profile-specific elaboration of the canonical core_mandate — how the
+   *  "interpret signals, produce actions and process" stance applies
+   *  concretely to this profile's inputs. For life-ops that's email /
+   *  calendar / tasks / messages → drafts / reschedules / extractions /
+   *  journal entries. Rendered near the top of AGENTS.md so the agent
+   *  reads the operating stance before the tool inventory. Optional —
+   *  canonical.core_mandate is the foundation; profile elaboration is
+   *  useful but not mandatory. */
+  readonly operating_mandate?: string;
   readonly tools: readonly ProfileTool[];
   readonly skills: readonly string[];
   readonly integrations: {
@@ -83,6 +92,12 @@ export interface CanonicalPersonality {
     readonly emoji: string;
     readonly vibe: string;
   };
+  /** Foundation operating stance — applies to every ClawHQ agent,
+   *  independent of profile. Answers "what's your job?" at the level
+   *  above tools and workflows: interpret signals, produce actions and
+   *  process. Rendered prominently in SOUL.md so the agent reads it
+   *  on every session boot. */
+  readonly core_mandate: string;
   readonly values: string;
   readonly boundaries: string;
 }

@@ -89,6 +89,7 @@ export function compile(
   deployment: {
     readonly posture?: BuildSecurityPosture;
     readonly instanceName?: string;
+    readonly instanceId?: string;
     readonly runtimeAvailable?: boolean;
   } = {},
 ): CompiledWorkspace {
@@ -232,6 +233,7 @@ export function compile(
     deployDir,
     posture: deployment.posture ?? "hardened",
     instanceName: deployment.instanceName,
+    ...(deployment.instanceId ? { instanceId: deployment.instanceId } : {}),
     proxyEnabled,
     tailscaleEnabled,
     readOnlyHostMounts: accessConfig.readOnlyHostMounts,
@@ -268,6 +270,7 @@ function buildComposeFile(
     deployDir: string;
     posture: BuildSecurityPosture;
     instanceName?: string;
+    instanceId?: string;
     proxyEnabled: boolean;
     tailscaleEnabled: boolean;
     readOnlyHostMounts?: readonly string[];
@@ -285,6 +288,7 @@ function buildComposeFile(
     workspaceManifest: manifest,
     enableMarketEngine: marketEngineEnabled,
     enableTailscale: opts.tailscaleEnabled,
+    ...(opts.instanceId ? { instanceId: opts.instanceId } : {}),
     ...(opts.runtimeAvailable !== undefined ? { runtimeAvailable: opts.runtimeAvailable } : {}),
     ...(opts.readOnlyHostMounts ? { readOnlyHostMounts: opts.readOnlyHostMounts } : {}),
   });
@@ -352,6 +356,14 @@ function renderSoul(
   lines.push(`# ${personality.name}\n`);
   lines.push(`> ${personality.description}\n`);
 
+  // Core mandate — the foundation operating stance. Rendered before
+  // dimension prose because "what you do" must frame "how you do it":
+  // blunt tone is meaningless if the agent doesn't know the job is to
+  // process signals into actions, not filter them out.
+  lines.push("## Core Mandate\n");
+  lines.push(personality.core_mandate.trim());
+  lines.push("");
+
   // Dimension prose — grouped into communication / working / cognitive.
   const prose = renderAllDimensionsProse(dims);
   lines.push("## Communication Style\n");
@@ -412,6 +424,16 @@ function renderAgents(profile: MissionProfile): string {
 
   lines.push(`# ${profile.name} — Standard Operating Procedures\n`);
   lines.push("How you operate. Identity is in SOUL.md. Tools are in TOOLS.md. This is the playbook.\n");
+
+  // Operating mandate — profile-specific elaboration of SOUL.md's core
+  // mandate. Placed before Session Startup so the agent reads *what
+  // its job actually is* before *what files to load*. Optional field;
+  // only emits the section when the profile declares one.
+  if (profile.operating_mandate && profile.operating_mandate.trim().length > 0) {
+    lines.push("## Operating Mandate\n");
+    lines.push(profile.operating_mandate.trim());
+    lines.push("");
+  }
 
   // Session startup
   lines.push("## Session Startup\n");
