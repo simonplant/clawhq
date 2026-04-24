@@ -275,7 +275,60 @@ export async function removeIntegrationCmd(
   const updated = removeIntegration(manifest, name);
   saveIntegrationManifest(deployDir, updated);
 
+  // Clean the clawhq.yaml binding so the next apply doesn't re-add firewall
+  // rules or regenerate provider-specific config for a removed integration.
+  // Without this, `integrate remove email` cleaned .env and the manifest
+  // but left `composition.providers.email: icloud` in clawhq.yaml — and a
+  // subsequent apply would re-emit the himalaya config (now with empty
+  // credentials) and block again on the fail-loud generator.
+  removeFromClawhqYaml(deployDir, name);
+
   return { success: true, integrationName: name, envKeysRemoved };
+}
+
+/**
+ * Clean an integration's entry from clawhq.yaml. Mirrors the writes done in
+ * updateClawhqYaml: channel integrations come out of composition.channels;
+ * provider integrations come out of composition.providers. Best-effort — if
+ * clawhq.yaml is malformed or missing the key, silently proceed.
+ */
+function removeFromClawhqYaml(deployDir: string, integrationName: string): void {
+  const configPath = join(deployDir, "clawhq.yaml");
+  if (!existsSync(configPath)) return;
+
+  try {
+    const raw = readFileSync(configPath, "utf-8");
+    const config = yamlParse(raw) as Record<string, unknown>;
+    if (!config.composition || typeof config.composition !== "object") return;
+    const comp = config.composition as Record<string, unknown>;
+
+    let changed = false;
+
+    if (CHANNEL_INTEGRATIONS.has(integrationName)) {
+      const channels = comp.channels as Record<string, unknown> | undefined;
+      if (channels && integrationName in channels) {
+        delete channels[integrationName];
+        if (Object.keys(channels).length === 0) delete comp.channels;
+        changed = true;
+      }
+    } else {
+      // For provider integrations the manifest name may be slot-suffixed
+      // (`email-2`) — that IS the domain key in composition.providers.
+      const providers = comp.providers as Record<string, unknown> | undefined;
+      if (providers && integrationName in providers) {
+        delete providers[integrationName];
+        if (Object.keys(providers).length === 0) delete comp.providers;
+        changed = true;
+      }
+    }
+
+    if (!changed) return;
+
+    config.composition = comp;
+    writeFileSync(configPath, yamlStringify(config), "utf-8");
+  } catch {
+    // Best effort — don't fail the integration remove because of yaml update
+  }
 }
 
 // ── Test Integration ───────────────────────────────────────────────────────

@@ -17,7 +17,7 @@ import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { addIntegration } from "./lifecycle.js";
+import { addIntegration, removeIntegrationCmd } from "./lifecycle.js";
 
 let testDir: string;
 
@@ -160,5 +160,62 @@ describe("addIntegration — multi-provider domains", () => {
       composition?: { providers?: Record<string, string> };
     };
     expect(yaml.composition?.providers).toEqual({ email: "icloud", "email-2": "gmail" });
+  });
+});
+
+describe("removeIntegrationCmd — composition cleanup", () => {
+  it("removes the provider binding from clawhq.yaml alongside the manifest entry", async () => {
+    // Pre-fix behaviour: remove cleaned .env + manifest but left
+    // composition.providers alone. Next apply would re-emit configuration
+    // for the removed provider — on the fail-loud path that's an error,
+    // on older paths it was a silent zombie binding.
+    await addIntegration({
+      deployDir: testDir,
+      name: "email",
+      providerId: "icloud",
+      credentials: {
+        IMAP_HOST: "imap.mail.me.com",
+        IMAP_USER: "me@icloud.com",
+        IMAP_PASS: "secret",
+        SMTP_HOST: "smtp.mail.me.com",
+        SMTP_USER: "me@icloud.com",
+        SMTP_PASS: "secret",
+      },
+      skipValidation: true,
+    });
+    const result = await removeIntegrationCmd({ deployDir: testDir, name: "email" });
+    expect(result.success).toBe(true);
+
+    const yaml = yamlParse(readFileSync(join(testDir, "clawhq.yaml"), "utf-8")) as {
+      composition?: { providers?: Record<string, string> };
+    };
+    // composition.providers key dropped entirely once last binding goes.
+    expect(yaml.composition?.providers).toBeUndefined();
+  });
+
+  it("removes only the targeted slot when multiple are configured", async () => {
+    await addIntegration({
+      deployDir: testDir,
+      name: "email",
+      providerId: "icloud",
+      credentials: { IMAP_HOST: "imap.mail.me.com", IMAP_USER: "a@icloud.com", IMAP_PASS: "x", SMTP_HOST: "smtp.mail.me.com", SMTP_USER: "a@icloud.com", SMTP_PASS: "x" },
+      skipValidation: true,
+    });
+    await addIntegration({
+      deployDir: testDir,
+      name: "email",
+      providerId: "gmail",
+      slot: 2,
+      credentials: { IMAP_HOST: "imap.gmail.com", IMAP_USER: "b@gmail.com", IMAP_PASS: "y", SMTP_HOST: "smtp.gmail.com", SMTP_USER: "b@gmail.com", SMTP_PASS: "y" },
+      skipValidation: true,
+    });
+
+    const result = await removeIntegrationCmd({ deployDir: testDir, name: "email-2" });
+    expect(result.success).toBe(true);
+
+    const yaml = yamlParse(readFileSync(join(testDir, "clawhq.yaml"), "utf-8")) as {
+      composition?: { providers?: Record<string, string> };
+    };
+    expect(yaml.composition?.providers).toEqual({ email: "icloud" });
   });
 });

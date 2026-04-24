@@ -203,6 +203,29 @@ describe("buildAllowlistFromBlueprint", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].domain).toBe("api.anthropic.com");
   });
+
+  it("suppresses blueprint 443 entries when integration supplies a more-specific port for the same host", () => {
+    // The real-world case: iCloud's catalog egressDomains include
+    // imap.mail.me.com (emitted at port 443 via egressDomains) and IMAP_HOST
+    // env detection emits imap.mail.me.com:993. Without the dedup we'd ship
+    // both — the 443 entry is dead weight and bloats ipset membership.
+    const entries = buildAllowlistFromBlueprint(
+      ["imap.mail.me.com", "smtp.mail.me.com", "api.todoist.com"],
+      [
+        { domain: "imap.mail.me.com", port: 993 },
+        { domain: "smtp.mail.me.com", port: 587 },
+      ],
+    );
+    const byDomain = new Map<string, number[]>();
+    for (const e of entries) {
+      const ports = byDomain.get(e.domain) ?? [];
+      ports.push(e.port);
+      byDomain.set(e.domain, ports);
+    }
+    expect(byDomain.get("imap.mail.me.com")).toEqual([993]);
+    expect(byDomain.get("smtp.mail.me.com")).toEqual([587]);
+    expect(byDomain.get("api.todoist.com")).toEqual([443]);
+  });
 });
 
 // ── collectIntegrationDomains Tests ────────────────────────────────────────

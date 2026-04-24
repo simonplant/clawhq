@@ -297,8 +297,22 @@ export function buildAllowlistFromBlueprint(
   const seen = new Set<string>();
   const entries: FirewallAllowEntry[] = [];
 
-  // Blueprint domains default to port 443
+  // When an integration entry covers a host on a non-443 port (IMAP 993,
+  // SMTP 587), that entry is authoritative — skip the blueprint's 443
+  // entry for the same host. Without this, every email provider emits
+  // both `imap.mail.me.com:443` (from the catalog's egressDomains) AND
+  // `imap.mail.me.com:993` (from env-var-inferred integration detection),
+  // bloating the ipset with a 443 rule that never matches real IMAP
+  // traffic.
+  const hostsWithSpecificPort = new Set<string>();
+  for (const entry of integrationEntries) {
+    if (entry.port !== 443) hostsWithSpecificPort.add(entry.domain);
+  }
+
+  // Blueprint domains default to port 443 — unless a more-specific port
+  // for the same host already appears in integrationEntries.
   for (const domain of egressDomains) {
+    if (hostsWithSpecificPort.has(domain)) continue;
     const key = `${domain}:443`;
     if (!seen.has(key)) {
       seen.add(key);
