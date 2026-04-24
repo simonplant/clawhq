@@ -33,3 +33,18 @@ export {
   removeInstance,
   updateInstance,
 } from "./registry.js";
+
+export {
+  clearCurrentPointer,
+  currentPointerPath,
+  readCurrentPointer,
+  writeCurrentPointer,
+} from "./pointer.js";
+
+export type { ResolveOptions, Resolution, ResolutionSource } from "./resolver.js";
+export {
+  InstanceNotFoundError,
+  InstanceSelectorRequiredError,
+  NoInstancesRegisteredError,
+  resolveInstance,
+} from "./resolver.js";
