@@ -24,8 +24,14 @@ export {
 } from "./wizard.js";
 export type { Prompter } from "./wizard.js";
 
-// Generator
-export { generateAllowlistContent, generateBundle, generateDelegatedRulesContent, generateIdentityFiles, generateSkillFiles, generateToolFiles, generateWorkspaceManifest, renderCronJobsFile, scanWorkspaceManifest } from "./generate.js";
+// Generator — public surface. generateBundle is kept for web/server.tsx's
+// /init flow; generateIdentityFiles is kept for web + demo. The old
+// per-section generators (generateToolFiles, generateSkillFiles,
+// generateAllowlistContent, generateDelegatedRulesContent, and the former
+// generateWorkspaceManifest) lived here from the pre-apply() compile path
+// and have no production consumer — not re-exported to keep the public
+// surface in line with actual callers.
+export { generateBundle, generateIdentityFiles, renderCronJobsFile, scanWorkspaceManifest } from "./generate.js";
 export type { IdentityFileContent } from "../identity/index.js";
 export type { SkillFileEntry } from "../skills/index.js";
 export type { ToolFileContent } from "../tools/index.js";

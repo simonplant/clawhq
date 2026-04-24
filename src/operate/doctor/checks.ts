@@ -823,9 +823,17 @@ async function checkCronHealth(deployDir: string): Promise<DoctorCheckResult> {
 async function checkCronErrorRate(deployDir: string): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "cron-error-rate";
   const runsDir = join(deployDir, "cron", "runs");
-  const WINDOW = 20;
+  // Time-bounded window: "is this job flapping *now*?" is the question, and
+  // counting the last N runs blindly punishes jobs for errors days or weeks
+  // in the past after a config fix. Use a rolling 72h window — errors age
+  // out naturally as the window slides forward. MAX_RECORDS caps per-file
+  // memory for jobs that fire every minute.
+  const WINDOW_MS = 72 * 60 * 60 * 1000;
+  const MAX_RECORDS = 200;
+  const MIN_SAMPLES = 5;
   const WARN_THRESHOLD = 0.15;
   const FAIL_THRESHOLD = 0.30;
+  const cutoff = Date.now() - WINDOW_MS;
 
   let entries: string[];
   try {
@@ -854,28 +862,31 @@ async function checkCronErrorRate(deployDir: string): Promise<DoctorCheckResult>
     } catch {
       continue;
     }
-    const lines = content.split("\n").filter((l) => l.length > 0);
-    if (lines.length < 5) continue; // need enough samples to be meaningful
+    // Scan the file's last MAX_RECORDS lines to avoid unbounded memory for
+    // high-frequency jobs, then filter by timestamp. The jsonl format is
+    // append-only so the tail contains the most recent records.
+    const allLines = content.split("\n").filter((l) => l.length > 0);
+    const tail = allLines.slice(-MAX_RECORDS);
 
-    const window = lines.slice(-WINDOW);
     let errors = 0;
     let total = 0;
-    for (const line of window) {
+    for (const line of tail) {
       try {
-        const rec = JSON.parse(line) as { action?: string; status?: string };
+        const rec = JSON.parse(line) as { ts?: number; action?: string; status?: string };
         if (rec.action !== "finished") continue;
+        if (typeof rec.ts !== "number" || rec.ts < cutoff) continue;
         total += 1;
         if (rec.status === "error") errors += 1;
       } catch {
         // ignore malformed lines
       }
     }
-    if (total === 0) continue;
+    if (total < MIN_SAMPLES) continue; // not enough recent samples to judge
     const rate = errors / total;
     if (rate >= FAIL_THRESHOLD) {
-      failures.push(`${jobId}: ${errors}/${total} errors in last ${total} runs (${Math.round(rate * 100)}%)`);
+      failures.push(`${jobId}: ${errors}/${total} errors in last 72h (${Math.round(rate * 100)}%)`);
     } else if (rate >= WARN_THRESHOLD) {
-      warnings.push(`${jobId}: ${errors}/${total} errors in last ${total} runs (${Math.round(rate * 100)}%)`);
+      warnings.push(`${jobId}: ${errors}/${total} errors in last 72h (${Math.round(rate * 100)}%)`);
     }
   }
 

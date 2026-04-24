@@ -350,6 +350,80 @@ describe("checks", { timeout: 30_000 }, () => {
     const checks = await runChecks(testDir);
     expect(checks.length).toBe(42);
   });
+
+  // ── cron-error-rate (time-bounded window) ─────────────────────────────
+  //
+  // Regression tests for the last-N-runs → rolling-72h window switch.
+  // Old errors that have since been fixed must age out naturally; fresh
+  // flapping still trips the FAIL threshold.
+  describe("cron-error-rate time window", () => {
+    const runAt = (offsetMs: number, status: "ok" | "error"): string =>
+      JSON.stringify({ ts: Date.now() + offsetMs, action: "finished", status });
+
+    it("ignores errors older than the 72h window", async () => {
+      // Ten runs, all ERROR, all from 5 days ago.
+      const oldErrors = Array.from({ length: 10 }, (_, i) =>
+        runAt(-5 * 24 * 3600 * 1000 - i * 1000, "error")).join("\n") + "\n";
+      await mkdir(join(testDir, "cron", "runs"), { recursive: true });
+      await writeFile(join(testDir, "cron", "runs", "stale-job.jsonl"), oldErrors);
+
+      const checks = await runChecks(testDir);
+      const check = findCheck(checks, "cron-error-rate");
+      // Stale errors must not contribute — no recent samples means skipped,
+      // which rolls up to a PASS for the whole check.
+      expect(check.passed).toBe(true);
+      expect(check.message).not.toMatch(/stale-job/);
+    });
+
+    it("fails when a job is flapping within the last 72h", async () => {
+      // 10 runs in last 24h, 6 errors = 60% error rate → FAIL threshold.
+      const lines: string[] = [];
+      for (let i = 0; i < 10; i++) {
+        const offset = -i * 3600 * 1000; // one per hour, last 10h
+        lines.push(runAt(offset, i < 6 ? "error" : "ok"));
+      }
+      await mkdir(join(testDir, "cron", "runs"), { recursive: true });
+      await writeFile(join(testDir, "cron", "runs", "flappy-job.jsonl"), lines.join("\n") + "\n");
+
+      const checks = await runChecks(testDir);
+      const check = findCheck(checks, "cron-error-rate");
+      expect(check.passed).toBe(false);
+      expect(check.message).toMatch(/flappy-job/);
+      expect(check.message).toMatch(/60%/);
+    });
+
+    it("passes when recent errors are a mix that stays below warn threshold", async () => {
+      // 10 recent runs, 1 error = 10% → below WARN_THRESHOLD (15%)
+      const lines: string[] = [];
+      for (let i = 0; i < 10; i++) {
+        const offset = -i * 3600 * 1000;
+        lines.push(runAt(offset, i === 3 ? "error" : "ok"));
+      }
+      await mkdir(join(testDir, "cron", "runs"), { recursive: true });
+      await writeFile(join(testDir, "cron", "runs", "healthy-job.jsonl"), lines.join("\n") + "\n");
+
+      const checks = await runChecks(testDir);
+      const check = findCheck(checks, "cron-error-rate");
+      expect(check.passed).toBe(true);
+    });
+
+    it("skips jobs without enough recent samples", async () => {
+      // Only 3 runs in window — below MIN_SAMPLES (5). Should skip this
+      // job rather than punish it for insufficient data.
+      const lines = [
+        runAt(-1 * 3600 * 1000, "error"),
+        runAt(-2 * 3600 * 1000, "error"),
+        runAt(-3 * 3600 * 1000, "error"),
+      ];
+      await mkdir(join(testDir, "cron", "runs"), { recursive: true });
+      await writeFile(join(testDir, "cron", "runs", "rare-job.jsonl"), lines.join("\n") + "\n");
+
+      const checks = await runChecks(testDir);
+      const check = findCheck(checks, "cron-error-rate");
+      expect(check.passed).toBe(true);
+      expect(check.message).not.toMatch(/rare-job/);
+    });
+  });
 });
 
 // ── Doctor Orchestrator Tests ───────────────────────────────────────────────
