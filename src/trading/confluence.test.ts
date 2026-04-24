@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   alertBadge,
   computeConfluence,
-  qualityFromAggregates,
   rankByConfluence,
 } from "./confluence.js";
 import type { OrderBlock } from "./types.js";
@@ -149,115 +148,6 @@ describe("rankByConfluence", () => {
     const findings = computeConfluence(orders);
     const ranked = rankByConfluence(orders, findings);
     expect(ranked.map((o) => o.id)).toEqual(["b", "c", "a", "d"]);
-  });
-});
-
-describe("quality-adjusted computeConfluence", () => {
-  it("scales aligned score down when sources have poor quality", () => {
-    const orders = [
-      mkOrder({ id: "a", source: "dp", ticker: "SPY", entry: 570 }),
-      mkOrder({ id: "b", source: "mancini", ticker: "SPY", entry: 571, sequence: 2 }),
-    ];
-    const base = computeConfluence(orders);
-    const adjusted = computeConfluence(orders, {
-      sourceQuality: { dp: 0.9, mancini: 0.9 },
-    });
-    expect(base.get("a")?.score).toBe(65);
-    // 65 × 0.9 × 0.9 = 52.65 → 53
-    expect(adjusted.get("a")?.score).toBe(53);
-  });
-
-  it("scales aligned score up when sources have strong quality", () => {
-    const orders = [
-      mkOrder({ id: "a", source: "dp", ticker: "SPY", entry: 570 }),
-      mkOrder({ id: "b", source: "mancini", ticker: "SPY", entry: 571, sequence: 2 }),
-    ];
-    const adjusted = computeConfluence(orders, {
-      sourceQuality: { dp: 1.1, mancini: 1.1 },
-    });
-    // 65 × 1.1 × 1.1 = 78.65 → 79
-    expect(adjusted.get("a")?.score).toBe(79);
-  });
-
-  it("clamps quality multiplier to [0.85, 1.15]", () => {
-    const orders = [
-      mkOrder({ id: "a", source: "dp", ticker: "SPY", entry: 570 }),
-      mkOrder({ id: "b", source: "mancini", ticker: "SPY", entry: 571, sequence: 2 }),
-    ];
-    const adjusted = computeConfluence(orders, {
-      sourceQuality: { dp: 3.0, mancini: 0.1 }, // outside band
-    });
-    // Clamped to 1.15 × 0.85 = 0.9775; 65 × 0.9775 = 63.54 → 64
-    expect(adjusted.get("a")?.score).toBe(64);
-  });
-
-  it("does not adjust strong-aligned (HIGH conviction stays sovereign)", () => {
-    const orders = [
-      mkOrder({ id: "a", source: "dp", ticker: "NVDA", entry: 120, conviction: "HIGH" }),
-      mkOrder({
-        id: "b",
-        source: "mancini",
-        ticker: "NVDA",
-        entry: 120.5,
-        conviction: "HIGH",
-        sequence: 2,
-      }),
-    ];
-    const adjusted = computeConfluence(orders, {
-      sourceQuality: { dp: 0.85, mancini: 0.85 },
-    });
-    expect(adjusted.get("a")?.tier).toBe("strong-aligned");
-    expect(adjusted.get("a")?.score).toBe(75); // unchanged
-  });
-
-  it("does not adjust divergent findings", () => {
-    const orders = [
-      mkOrder({ id: "a", source: "dp", ticker: "META", entry: 500, direction: "LONG" }),
-      mkOrder({
-        id: "b",
-        source: "scanner",
-        ticker: "META",
-        entry: 498,
-        direction: "SHORT",
-        sequence: 2,
-      }),
-    ];
-    const adjusted = computeConfluence(orders, {
-      sourceQuality: { dp: 1.15, scanner: 1.15 },
-    });
-    expect(adjusted.get("a")?.score).toBe(25); // unchanged
-  });
-});
-
-describe("qualityFromAggregates", () => {
-  it("returns empty when sample sizes are below threshold", () => {
-    const q = qualityFromAggregates([
-      { key: { source: "dp" }, wins: 2, losses: 1, winRate: 2 / 3 },
-    ]);
-    expect(q).toEqual({});
-  });
-
-  it("promotes sources with high win-rate + enough samples", () => {
-    const q = qualityFromAggregates([
-      { key: { source: "dp" }, wins: 7, losses: 3, winRate: 0.7 },
-    ]);
-    expect(q).toEqual({ dp: 1.1 });
-  });
-
-  it("demotes sources with low win-rate + enough samples", () => {
-    const q = qualityFromAggregates([
-      { key: { source: "mancini" }, wins: 3, losses: 10, winRate: 0.23 },
-    ]);
-    expect(q).toEqual({ mancini: 0.9 });
-  });
-
-  it("aggregates per-source across convictions", () => {
-    const q = qualityFromAggregates([
-      { key: { source: "dp" }, wins: 4, losses: 2, winRate: 0.67 },
-      { key: { source: "dp" }, wins: 4, losses: 2, winRate: 0.67 },
-    ]);
-    // 8 wins, 4 losses → 0.67 → promote
-    expect(q).toEqual({ dp: 1.1 });
   });
 });
 

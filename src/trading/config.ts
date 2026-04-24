@@ -98,16 +98,6 @@ export interface TelegramConfig {
  * bot token; we never call getUpdates. Chat id defaults to Simon's from
  * workspace/USER.md — override via TELEGRAM_CHAT_ID in .env if needed.
  */
-/**
- * Path to the rolling track-record JSONL. When set, the orchestrator reads
- * it on plan reload and derives per-source quality multipliers that feed
- * confluence scoring. Absent = feature off (neutral 1.0 for every source).
- */
-export function resolveTrackRecordPath(): string | undefined {
-  const raw = process.env.TRACK_RECORD_JSONL_PATH;
-  return raw && raw.trim() ? raw.trim() : undefined;
-}
-
 export function resolveTelegram(): TelegramConfig {
   return {
     botToken: process.env.TELEGRAM_BOT_TOKEN ?? "",

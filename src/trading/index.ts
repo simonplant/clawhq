@@ -14,7 +14,7 @@
  *     getUpdates, so no bot-token conflict.
  */
 
-import { readFileSync, watch } from "node:fs";
+import { watch } from "node:fs";
 import { basename, join } from "node:path";
 
 import { serve } from "@hono/node-server";
@@ -37,7 +37,6 @@ import {
   resolveAccounts,
   resolvePaths,
   resolveTelegram,
-  resolveTrackRecordPath,
   resolveTradier,
   resolveWatchlist,
 } from "./config.js";
@@ -50,18 +49,10 @@ import {
 import { loadActiveBlackouts } from "./blackouts.js";
 import {
   computeConfluence,
-  qualityFromAggregates,
   toSnapshot,
   type ConfluenceMap,
-  type SourceQuality,
 } from "./confluence.js";
-import { buildDailyReport, renderDailyReport } from "./daily-report.js";
 import { loadPlan, type LoadedPlan } from "./plan.js";
-import {
-  aggregate as aggregateTrackRecord,
-  parseJsonl as parseTrackRecordJsonl,
-  renderMarkdownTable as renderTrackRecordTable,
-} from "./track-record.js";
 import { findCatchupCandidates } from "./reconciler.js";
 import { checkRisk } from "./risk.js";
 import {
@@ -84,7 +75,7 @@ import type {
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
-export interface RuntimeState {
+interface RuntimeState {
   db: TradingDB;
   tradier: TradierClient;
   channel: MessageChannel;
@@ -120,10 +111,6 @@ export interface RuntimeState {
   shuttingDown: boolean;
   /** Path to the shared scheduled-events file. */
   blackoutsPath: string;
-  /** Path to the rolling track-record JSONL, or undefined to disable. */
-  trackRecordPath: string | undefined;
-  /** Latest source-quality map; {} = all neutral. Recomputed on plan reload. */
-  sourceQuality: SourceQuality;
 }
 
 export interface StartOptions {
@@ -183,8 +170,6 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     nextHeartbeatMs: null,
     symbolCount: 0,
     blackoutsPath,
-    trackRecordPath: resolveTrackRecordPath(),
-    sourceQuality: {},
     manualHalt: false,
     shuttingDown: false,
   };
@@ -249,11 +234,7 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
  * Bound to 0.0.0.0 inside the container; external exposure is restricted
  * at the Docker layer via `127.0.0.1:8080:8080` in compose — no LAN reach.
  */
-/**
- * Hono app for all inbound HTTP. Pure construction — no port binding.
- * Extracted so tests can call `makeHttpApp(state).fetch(req)` directly.
- */
-export function makeHttpApp(state: RuntimeState): Hono {
+function startHttpServer(state: RuntimeState): ReturnType<typeof serve> {
   const app = new Hono();
 
   app.get("/health", (c) => c.json(healthSnapshot(state)));
@@ -276,6 +257,7 @@ export function makeHttpApp(state: RuntimeState): Hono {
     return c.json({ ok: true, message: out });
   });
 
+<<<<<<< HEAD
   // Reply routing: Clawdius receives Simon's "YES-T3ST" / "HALF-T3ST" /
   // "NO-T3ST" from Telegram and forwards the raw text here. We parse, look
   // up pendingAlerts, and log either UserReply or UserReplyIgnored. The
@@ -332,57 +314,6 @@ export function makeHttpApp(state: RuntimeState): Hono {
       ticker: pending.ticker,
       sequence: pending.sequence,
     });
-  });
-
-  // Analytics endpoints — read-only, safe for skills and the EOD review.
-  app.get("/report/daily", (c) => {
-    const startMs = Number(c.req.query("sinceMs") ?? startOfTodayMs());
-    const endMs = Number(c.req.query("untilMs") ?? Date.now());
-    const rows = state.db.query({ sinceMs: startMs, limit: 10_000 });
-    const report = buildDailyReport(
-      rows.filter((r) => r.tsMs <= endMs),
-      { startMs, endMs },
-    );
-    return c.text(renderDailyReport(report));
-  });
-
-  app.get("/report/track-record", (c) => {
-    const path = c.req.query("path");
-    if (!path) {
-      return c.json(
-        { ok: false, error: "missing ?path=<jsonl-path>" },
-        400,
-      );
-    }
-    let text: string;
-    try {
-      text = readFileSync(path, "utf-8");
-    } catch (err) {
-      return c.json(
-        {
-          ok: false,
-          error: `read ${path}: ${err instanceof Error ? err.message : String(err)}`,
-        },
-        404,
-      );
-    }
-    const { records, warnings } = parseTrackRecordJsonl(text);
-    const sinceMs = c.req.query("sinceMs")
-      ? Number(c.req.query("sinceMs"))
-      : undefined;
-    const untilMs = c.req.query("untilMs")
-      ? Number(c.req.query("untilMs"))
-      : undefined;
-    const aggregateOpts: { sinceMs?: number; untilMs?: number } = {};
-    if (sinceMs !== undefined) aggregateOpts.sinceMs = sinceMs;
-    if (untilMs !== undefined) aggregateOpts.untilMs = untilMs;
-    const aggs = aggregateTrackRecord(records, aggregateOpts);
-    const body = renderTrackRecordTable(aggs);
-    return c.text(
-      warnings.length > 0
-        ? `${body}\n\n<!-- warnings: ${warnings.join("; ")} -->`
-        : body,
-    );
   });
 
   return app;
@@ -517,26 +448,6 @@ async function refreshRiskState(state: RuntimeState): Promise<void> {
   }
 }
 
-// ── Source-quality feed ──────────────────────────────────────────────────────
-
-/**
- * Re-read the track-record JSONL and derive per-source quality. Opt-in
- * via TRACK_RECORD_JSONL_PATH. Soft failure: missing/unreadable file
- * leaves state.sourceQuality unchanged (starts {} = all neutral).
- */
-function refreshSourceQuality(state: RuntimeState): void {
-  if (!state.trackRecordPath) return;
-  let text: string;
-  try {
-    text = readFileSync(state.trackRecordPath, "utf-8");
-  } catch {
-    return; // keep prior quality map
-  }
-  const { records } = parseTrackRecordJsonl(text);
-  const aggs = aggregateTrackRecord(records);
-  state.sourceQuality = qualityFromAggregates(aggs);
-}
-
 // ── Blackout feed ────────────────────────────────────────────────────────────
 
 /**
@@ -656,13 +567,7 @@ function loadAndCommitPlan(state: RuntimeState): void {
     return;
   }
   state.plan = result.plan;
-  // Opportunity-cost check: refresh source-quality from track-record JSONL
-  // on every plan reload. Bounded by file size; under normal loads this is
-  // a few hundred lines × ~200 bytes.
-  refreshSourceQuality(state);
-  state.confluence = computeConfluence(result.plan.orders, {
-    sourceQuality: state.sourceQuality,
-  });
+  state.confluence = computeConfluence(result.plan.orders);
   appendEvent(state.db, {
     type: "PlanLoaded",
     tsMs: Date.now(),
