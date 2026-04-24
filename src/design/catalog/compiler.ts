@@ -40,6 +40,7 @@ import {
   CANONICAL_DIMENSIONS,
   renderAllDimensionsProse,
 } from "../blueprints/personality-presets.js";
+import { withIdentityOverride } from "../identity/overrides.js";
 import { generateApproveActionTool } from "../tools/approve-action.js";
 import { generateHimalayaConfig } from "../tools/himalaya-config.js";
 import { TOOL_GENERATORS } from "../tools/index.js";
@@ -160,15 +161,25 @@ export function compile(
 
   const openclawJson = renderOpenclawJson(profile, user, gatewayPort, resolvedProviders, config);
 
+  // Identity files honor override files dropped under
+  // ~/.clawhq/templates/identity/ (machine-global) or
+  // ~/.clawhq/instances/<id>/templates/identity/ (per-instance). When an
+  // override exists, its content is used verbatim and the renderer output is
+  // discarded. See src/design/identity/overrides.ts for precedence +
+  // rationale. Layer 2 (templates) is cleanly separated from Layer 4
+  // (compiled workspace files).
+  const ident = (name: string, rendered: string): string =>
+    withIdentityOverride(name, rendered, deployment.instanceId);
+
   const files: CompiledFile[] = [
     // 8 workspace files
-    { relativePath: "workspace/SOUL.md", content: renderSoul(personality, dims, config.soul_overrides) },
-    { relativePath: "workspace/AGENTS.md", content: renderAgents(profile) },
-    { relativePath: "workspace/USER.md", content: renderUser(user, resolvedProviders, existingEnv) },
-    { relativePath: "workspace/TOOLS.md", content: renderTools(profile) },
-    { relativePath: "workspace/IDENTITY.md", content: renderIdentity(personality, profile) },
-    { relativePath: "workspace/HEARTBEAT.md", content: renderHeartbeat(profile) },
-    { relativePath: "workspace/BOOTSTRAP.md", content: renderBootstrap(profile) },
+    { relativePath: "workspace/SOUL.md", content: ident("SOUL.md", renderSoul(personality, dims, config.soul_overrides)) },
+    { relativePath: "workspace/AGENTS.md", content: ident("AGENTS.md", renderAgents(profile)) },
+    { relativePath: "workspace/USER.md", content: ident("USER.md", renderUser(user, resolvedProviders, existingEnv)) },
+    { relativePath: "workspace/TOOLS.md", content: ident("TOOLS.md", renderTools(profile)) },
+    { relativePath: "workspace/IDENTITY.md", content: ident("IDENTITY.md", renderIdentity(personality, profile)) },
+    { relativePath: "workspace/HEARTBEAT.md", content: ident("HEARTBEAT.md", renderHeartbeat(profile)) },
+    { relativePath: "workspace/BOOTSTRAP.md", content: ident("BOOTSTRAP.md", renderBootstrap(profile)) },
     { relativePath: "workspace/MEMORY.md", content: "" },
 
     // Runtime config
@@ -618,11 +629,15 @@ function buildAccountsUnderManagement(
 ): AccountRow[] {
   const rows: AccountRow[] = [];
   for (const provider of providers) {
+    // Skip providers the agent doesn't call directly — model providers
+    // (anthropic-api, openai-api, ollama-local) are consumed by the LLM
+    // routing layer, not by a CLI tool the agent invokes. Accounts-
+    // under-management is strictly about tool→account mappings.
+    if (!provider.workspace_tool) continue;
     const envPrefix = envPrefixForDomainKey(provider.domainKey);
-    const tool = provider.cli;
     const identity = deriveAccountIdentity(provider, env, envPrefix);
     rows.push({
-      tool,
+      tool: provider.workspace_tool,
       provider: provider.name,
       domainKey: provider.domainKey,
       identity,
@@ -656,6 +671,14 @@ function deriveAccountIdentity(
   if (provider.domain === "email" && provider.protocol === "IMAP/SMTP") {
     const user = env[`${prefix}IMAP_USER`];
     if (user && user.trim() !== "") return user;
+  }
+  // JMAP (Fastmail) — FASTMAIL_EMAIL is a user-supplied identity label
+  // because JMAP auth is pure token; the token doesn't carry a
+  // human-readable address. When populated, the agent sees the real
+  // mailbox (e.g. simonplant@fastmail.com) in USER.md.
+  if (provider.domain === "email" && provider.protocol === "JMAP") {
+    const label = env[`${prefix}FASTMAIL_EMAIL`];
+    if (label && label.trim() !== "") return label;
   }
   // CalDAV providers — CALDAV_USER is usually the email.
   if (provider.domain === "calendar" && provider.protocol === "CalDAV") {
