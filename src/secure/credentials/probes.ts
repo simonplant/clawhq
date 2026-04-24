@@ -477,46 +477,52 @@ export const probeHomeAssistant: CredentialProbe = async (env) => {
 export const probeEmail: CredentialProbe = async (env) => {
   const integration = "Email";
 
-  // Discover slots from env keys. Primary slot = EMAIL_IMAP_HOST; numbered
-  // slots match EMAIL_<N>_IMAP_HOST.
-  const slots: string[] = [];
-  if (env["EMAIL_IMAP_HOST"] !== undefined || env["EMAIL_IMAP_USER"] !== undefined) slots.push("");
+  // Env-var convention (set by compiler.renderEnv and integrate-add):
+  //   primary slot  → raw keys (IMAP_HOST, IMAP_USER, IMAP_PASS, ...)
+  //   slot N (N>=2) → EMAIL_<N>_ prefix (EMAIL_2_IMAP_HOST, ...)
+  // Detect each slot by the presence of its IMAP_HOST.
+  type Slot = { label: string; prefix: string };
+  const slots: Slot[] = [];
+  if (env["IMAP_HOST"] !== undefined) {
+    slots.push({ label: "primary", prefix: "" });
+  }
   for (const key of Object.keys(env)) {
     const m = key.match(/^EMAIL_(\d+)_IMAP_HOST$/);
-    if (m) slots.push(`${m[1]}_`);
+    if (m) slots.push({ label: `slot ${m[1]}`, prefix: `EMAIL_${m[1]}_` });
   }
 
   if (slots.length === 0) {
-    return missing(integration, "EMAIL_IMAP_HOST", "No email slots configured. Run `clawhq integrate add email` to connect a mailbox.");
+    return missing(integration, "IMAP_HOST", "No email slots configured. Run `clawhq integrate add email --provider <id>` to connect a mailbox.");
   }
 
   const required = ["IMAP_HOST", "IMAP_USER", "IMAP_PASS", "SMTP_HOST", "SMTP_USER", "SMTP_PASS"];
   for (const slot of slots) {
     for (const field of required) {
-      const key = `EMAIL_${slot}${field}`;
+      const key = `${slot.prefix}${field}`;
       const value = env[key];
       if (value === undefined || value.trim() === "") {
+        const slotFlag = slot.prefix ? ` --slot ${slot.prefix.match(/\d+/)?.[0]}` : "";
         return fail(
           integration,
           key,
-          `${key} is missing or empty`,
-          `Run \`clawhq integrate add email${slot ? ` --slot ${slot.replace("_", "")}` : ""}\` to set credentials.`,
+          `${key} (${slot.label}) is missing or empty`,
+          `Run \`clawhq integrate add email --provider <id>${slotFlag}\` to set credentials.`,
         );
       }
     }
-    const user = env[`EMAIL_${slot}IMAP_USER`] ?? "";
+    const user = env[`${slot.prefix}IMAP_USER`] ?? "";
     if (!user.includes("@")) {
       return fail(
         integration,
-        `EMAIL_${slot}IMAP_USER`,
-        `IMAP user "${user}" does not look like an email address`,
+        `${slot.prefix}IMAP_USER`,
+        `IMAP user "${user}" (${slot.label}) does not look like an email address`,
         "Most providers (Gmail, iCloud, Outlook, Fastmail) expect the full email address as username.",
       );
     }
   }
 
   const suffix = slots.length === 1 ? "slot" : "slots";
-  return pass(integration, "EMAIL_IMAP_HOST", `${slots.length} ${suffix} validated (shape only; live check via \`clawhq verify\`)`);
+  return pass(integration, "IMAP_HOST", `${slots.length} ${suffix} validated (shape only; live check via \`clawhq verify\`)`);
 };
 
 export const builtinProbes: readonly CredentialProbe[] = [

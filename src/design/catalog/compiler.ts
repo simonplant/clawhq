@@ -19,6 +19,11 @@ import { generateCompose, serializeYaml } from "../../build/docker/compose.js";
 import { getPostureConfig } from "../../build/docker/posture.js";
 import type { BuildSecurityPosture, WorkspaceManifest } from "../../build/docker/types.js";
 import {
+  buildAllowlistFromBlueprint,
+  collectIntegrationDomains,
+  serializeAllowlist,
+} from "../../build/launcher/firewall.js";
+import {
   agentImageTag,
   agentNetworkName,
   CRED_PROXY_PORT,
@@ -188,8 +193,13 @@ export function compile(
         : [];
     })(),
 
-    // Ops — egress includes provider-specific domains
-    { relativePath: "ops/firewall/allowlist.yaml", content: renderAllowlistFromDomains(profile, [...egressSet]) },
+    // Ops — port-aware egress allowlist. The firewall module's port
+    // inference turns IMAP_HOST / SMTP_HOST / CALDAV_URL env vars into
+    // entries with the right ports (993, 587, 443). Without this the
+    // legacy `{ domains: [...] }` format defaulted everything to 443 so
+    // IMAP/SMTP traffic was silently blocked even when the allowlist
+    // listed the right hosts.
+    { relativePath: "ops/firewall/allowlist.yaml", content: renderAllowlist(profile, [...egressSet], existingEnv) },
 
     // clawhq.yaml is intentionally NOT emitted here. It's seeded-once
     // (scaffold writes on fresh install, user/integrate edits after). The
@@ -1262,23 +1272,30 @@ function renderCronJobs(
 
 // ── allowlist.yaml ──────────────────────────────────────────────────────────
 
-function renderAllowlistFromDomains(profile: MissionProfile, allDomains: string[]): string {
-  const lines = [
+function renderAllowlist(
+  profile: MissionProfile,
+  allDomains: string[],
+  envVars: Record<string, string>,
+): string {
+  // Blueprint/provider domains default to port 443. Then integration domain
+  // detection adds port-aware entries for IMAP (993), SMTP (587), CalDAV
+  // (443), etc. Dedup by domain+port keeps both layers coexisting when a
+  // single host would otherwise be added twice at different ports.
+  const integrationEntries = collectIntegrationDomains([], envVars);
+  const entries = buildAllowlistFromBlueprint(
+    [...allDomains].sort(),
+    integrationEntries,
+  );
+
+  const header = [
     "# Egress firewall allowlist",
     `# Generated for profile: ${profile.id}`,
-    "# Domains computed from profile defaults + selected providers",
+    "# Domains + ports computed from profile defaults, selected providers,",
+    "# and env-var-inferred integration ports (IMAP=993, SMTP=587, etc.).",
     "",
-    "domains:",
-  ];
-  // Sorted so allowlist.yaml is byte-stable across compiles regardless of
-  // the order profile defaults and provider-specific egress merged in the
-  // caller's Set.
-  const sortedDomains = [...allDomains].sort();
-  for (const domain of sortedDomains) {
-    lines.push(`  - ${domain}`);
-  }
-  lines.push("");
-  return lines.join("\n");
+  ].join("\n");
+
+  return header + serializeAllowlist(entries);
 }
 
 // ── Tool Scripts ────────────────────────────────────────────────────────────
