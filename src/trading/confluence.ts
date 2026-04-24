@@ -44,12 +44,31 @@ export interface ConfluenceFinding {
 
 export type ConfluenceMap = Map<string, ConfluenceFinding>;
 
+/** Per-source quality multiplier, clamped to [0.85, 1.15] before use. */
+export type SourceQuality = Partial<Record<Source, number>>;
+
+export interface ComputeConfluenceOptions {
+  /**
+   * Per-source quality multiplier derived from track-record (see
+   * qualityFromAggregates). Applied ONLY to the "aligned" tier — strong-
+   * aligned and divergent are grounded in declared-HIGH conviction and
+   * shouldn't drift on recent outcomes alone.
+   */
+  sourceQuality?: SourceQuality;
+}
+
+const QUALITY_MIN = 0.85;
+const QUALITY_MAX = 1.15;
+
 /**
  * Produce confluence findings for every order in the plan.
  * Missing orders in the returned map is not possible — even single-source
  * orders get a `none`-tier entry so callers can unconditionally look up.
  */
-export function computeConfluence(orders: OrderBlock[]): ConfluenceMap {
+export function computeConfluence(
+  orders: OrderBlock[],
+  opts: ComputeConfluenceOptions = {},
+): ConfluenceMap {
   const byTicker = new Map<string, OrderBlock[]>();
   for (const o of orders) {
     const key = o.ticker.toUpperCase();
@@ -61,9 +80,35 @@ export function computeConfluence(orders: OrderBlock[]): ConfluenceMap {
   const out: ConfluenceMap = new Map();
   for (const o of orders) {
     const group = byTicker.get(o.ticker.toUpperCase()) ?? [];
-    out.set(o.id, classify(o, group));
+    out.set(o.id, adjustForQuality(classify(o, group), opts.sourceQuality));
   }
   return out;
+}
+
+/**
+ * Apply the per-source quality multiplier to aligned findings only.
+ * Strong-aligned and divergent tiers reflect structural facts
+ * (declared-HIGH alignment or declared-direction conflict) that recent
+ * track-record shouldn't override. Score is clamped to [0, 100].
+ */
+function adjustForQuality(
+  finding: ConfluenceFinding,
+  quality: SourceQuality | undefined,
+): ConfluenceFinding {
+  if (!quality || finding.tier !== "aligned") return finding;
+  let factor = 1;
+  for (const s of finding.sources) {
+    const q = quality[s];
+    if (q === undefined) continue;
+    const clamped = Math.max(QUALITY_MIN, Math.min(QUALITY_MAX, q));
+    factor *= clamped;
+  }
+  // Mean instead of product would be less volatile; keeping product so that
+  // two aligned weak sources compound their penalty (intended).
+  const scaled = Math.round(finding.score * factor);
+  const score = Math.max(0, Math.min(100, scaled));
+  if (score === finding.score) return finding;
+  return { ...finding, score };
 }
 
 function classify(self: OrderBlock, group: OrderBlock[]): ConfluenceFinding {
@@ -196,4 +241,44 @@ export function alertBadge(tier: ConfluenceTier): string {
 /** Lower a finding to the compact snapshot carried on Alert events. */
 export function toSnapshot(finding: ConfluenceFinding): ConfluenceSnapshot {
   return { tier: finding.tier, score: finding.score, label: finding.label };
+}
+
+/**
+ * Derive per-source quality multipliers from track-record aggregates.
+ *
+ * Intentionally conservative:
+ *   winRate ≥ 0.60 AND closed ≥ MIN_SAMPLE → 1.10 (promote)
+ *   winRate ≤ 0.35 AND closed ≥ MIN_SAMPLE → 0.90 (demote)
+ *   else 1.0 (neutral)
+ *
+ * Sources without enough samples stay neutral — we don't amplify noise
+ * from five trades worth of history. Returns only non-neutral entries so
+ * callers can treat missing as 1.0.
+ */
+export function qualityFromAggregates(
+  aggregates: Array<{
+    key: { source: Source };
+    wins: number;
+    losses: number;
+    winRate: number;
+  }>,
+): SourceQuality {
+  const MIN_SAMPLE = 10;
+  const bySource = new Map<Source, { wins: number; losses: number }>();
+  for (const a of aggregates) {
+    const cur = bySource.get(a.key.source) ?? { wins: 0, losses: 0 };
+    cur.wins += a.wins;
+    cur.losses += a.losses;
+    bySource.set(a.key.source, cur);
+  }
+
+  const out: SourceQuality = {};
+  for (const [source, totals] of bySource) {
+    const closed = totals.wins + totals.losses;
+    if (closed < MIN_SAMPLE) continue;
+    const winRate = totals.wins / closed;
+    if (winRate >= 0.6) out[source] = 1.1;
+    else if (winRate <= 0.35) out[source] = 0.9;
+  }
+  return out;
 }
