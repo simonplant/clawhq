@@ -36,8 +36,24 @@ export interface Provider {
   readonly domain: string;
   /** Protocol used (IMAP, JMAP, CalDAV, REST, etc.). */
   readonly protocol: string;
-  /** Primary CLI tool used. */
+  /** Underlying binary the provider is driven by (himalaya for IMAP email,
+   *  curl for CalDAV, etc.). This is what goes into the Dockerfile's apt
+   *  install layer — NOT the name the agent calls. See `workspace_tool`. */
   readonly cli: string;
+  /** The workspace CLI the agent actually invokes to reach this provider.
+   *  Every IMAP email provider (Gmail, iCloud, Fastmail, Outlook) is
+   *  wrapped by the `email` tool; every CalDAV provider is wrapped by the
+   *  `calendar` tool; fastmail-jmap is wrapped by `email-fastmail`; and
+   *  so on. Without this, identity files reported the binary name and
+   *  the agent tried to call `himalaya` (the binary) instead of `email`
+   *  (the wrapper).
+   *
+   *  Optional — model providers (Anthropic API, OpenAI API, Ollama) have
+   *  no workspace tool; they're consumed by OpenClaw's LLM routing layer,
+   *  not by a CLI script the agent spawns. Providers without a workspace
+   *  tool are skipped from the "Accounts Under Management" block in
+   *  USER.md, which is the right behaviour — models aren't accounts. */
+  readonly workspace_tool?: string;
   /** Required binary dependencies (for Docker build). */
   readonly binaries: readonly string[];
   /** Env vars needed for configuration. */
@@ -79,6 +95,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "email",
     protocol: "IMAP/SMTP",
     cli: "himalaya",
+    workspace_tool: "email",
     binaries: ["himalaya"],
     envVars: [
       { key: "IMAP_HOST", label: "IMAP server", default: "imap.gmail.com" },
@@ -98,6 +115,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "email",
     protocol: "IMAP/SMTP",
     cli: "himalaya",
+    workspace_tool: "email",
     binaries: ["himalaya"],
     envVars: [
       { key: "IMAP_HOST", label: "IMAP server", default: "imap.mail.me.com" },
@@ -117,6 +135,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "email",
     protocol: "IMAP/SMTP",
     cli: "himalaya",
+    workspace_tool: "email",
     binaries: ["himalaya"],
     envVars: [
       { key: "IMAP_HOST", label: "IMAP server", default: "imap.fastmail.com" },
@@ -136,9 +155,16 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "email",
     protocol: "JMAP",
     cli: "email-fastmail",
+    workspace_tool: "email-fastmail",
     binaries: [],
     envVars: [
       { key: "FASTMAIL_API_TOKEN", label: "API token", secret: true },
+      // Optional identity label. JMAP auth is purely token-based, so the
+      // token alone doesn't carry the human-readable email. Supplying
+      // FASTMAIL_EMAIL lets USER.md's "Accounts Under Management" block
+      // show the concrete address (e.g. simonplant@fastmail.com) so the
+      // agent never has to guess which mailbox it's speaking from.
+      { key: "FASTMAIL_EMAIL", label: "Email address (for identity display)" },
     ],
     egressDomains: ["api.fastmail.com", "www.fastmailusercontent.com"],
     auth: "api-key",
@@ -150,6 +176,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "email",
     protocol: "IMAP/SMTP",
     cli: "himalaya",
+    workspace_tool: "email",
     binaries: ["himalaya"],
     envVars: [
       { key: "IMAP_HOST", label: "IMAP server", default: "outlook.office365.com" },
@@ -168,6 +195,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "email",
     protocol: "IMAP/SMTP",
     cli: "himalaya",
+    workspace_tool: "email",
     binaries: ["himalaya"],
     envVars: [
       { key: "IMAP_HOST", label: "IMAP server" },
@@ -189,6 +217,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "calendar",
     protocol: "CalDAV",
     cli: "curl",
+    workspace_tool: "calendar",
     binaries: [],
     envVars: [
       { key: "CALDAV_URL", label: "CalDAV URL", default: "https://caldav.icloud.com" },
@@ -204,6 +233,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "calendar",
     protocol: "CalDAV",
     cli: "curl",
+    workspace_tool: "calendar",
     binaries: [],
     envVars: [
       { key: "CALDAV_URL", label: "CalDAV URL", default: "https://apidata.googleusercontent.com/caldav/v2" },
@@ -219,6 +249,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "calendar",
     protocol: "CalDAV",
     cli: "curl",
+    workspace_tool: "calendar",
     binaries: [],
     envVars: [
       { key: "CALDAV_URL", label: "CalDAV URL", default: "https://caldav.fastmail.com" },
@@ -234,6 +265,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "calendar",
     protocol: "CalDAV",
     cli: "curl",
+    workspace_tool: "calendar",
     binaries: [],
     envVars: [
       { key: "CALDAV_URL", label: "CalDAV server URL" },
@@ -251,6 +283,7 @@ export const PROVIDERS: readonly Provider[] = [
     domain: "tasks",
     protocol: "REST",
     cli: "curl",
+    workspace_tool: "tasks",
     binaries: [],
     envVars: [
       { key: "TODOIST_API_KEY", label: "API token", secret: true },

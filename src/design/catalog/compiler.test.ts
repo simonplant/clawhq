@@ -203,6 +203,113 @@ describe("compile", () => {
     expect(parsed.models.providers.ollama.models).toEqual([]);
   });
 
+  // ── USER.md accounts-under-management block ───────────────────────────────
+  //
+  // Zero-ambiguity mapping from tool to concrete account. Without this
+  // the agent sees "email — primary inbox" and "email-fastmail —
+  // user's primary inbox" in TOOLS.md and has to guess which address
+  // each actually reaches. Here the real address comes through.
+  describe("USER.md accounts-under-management", () => {
+    it("lists every provider in composition with its tool, address, and slot", () => {
+      const result = compile(
+        {
+          profile: "life-ops",
+          providers: { email: "icloud" },
+        },
+        TEST_USER,
+        "/tmp/test",
+        undefined,
+        {
+          IMAP_USER: "clawdius@icloud.com",
+          SMTP_USER: "clawdius@icloud.com",
+        },
+      );
+      const user = findFile(result.files, "workspace/USER.md");
+      expect(user.content).toContain("## Accounts Under Management");
+      // The agent-facing tool name (workspace wrapper), NOT the binary.
+      // iCloud is himalaya-backed but the agent calls `email`.
+      expect(user.content).toContain("**email**");
+      expect(user.content).not.toContain("**himalaya**"); // binary must not leak
+      expect(user.content).toContain("clawdius@icloud.com");
+      expect(user.content).toContain("`providers.email`");
+    });
+
+    it("routes fastmail-jmap to email-fastmail, not email", () => {
+      // Regression: the agent kept confusing which tool reaches
+      // simonplant@fastmail.com. JMAP-Fastmail is wrapped by
+      // email-fastmail (native JMAP client); it is NOT reached via
+      // the himalaya-wrapped `email` tool.
+      const result = compile(
+        {
+          profile: "life-ops",
+          providers: { email: "fastmail-jmap" },
+        },
+        TEST_USER,
+        "/tmp/test",
+        undefined,
+        { FASTMAIL_API_TOKEN: "fmu1-test" },
+      );
+      const user = findFile(result.files, "workspace/USER.md");
+      expect(user.content).toContain("**email-fastmail**");
+      // The bare `email` tool word must not appear on the fastmail row —
+      // test by looking for the row contents specifically.
+      const fastmailLine = user.content
+        .split("\n")
+        .find((l) => l.includes("Fastmail (JMAP)"));
+      expect(fastmailLine).toBeDefined();
+      expect(fastmailLine).toContain("**email-fastmail**");
+    });
+
+    it("handles multi-slot email — primary + secondary both listed with correct prefix", () => {
+      const result = compile(
+        {
+          profile: "life-ops",
+          providers: { email: "icloud", "email-2": "gmail" },
+        },
+        TEST_USER,
+        "/tmp/test",
+        undefined,
+        {
+          IMAP_USER: "a@icloud.com",
+          SMTP_USER: "a@icloud.com",
+          EMAIL_2_IMAP_USER: "b@gmail.com",
+          EMAIL_2_SMTP_USER: "b@gmail.com",
+        },
+      );
+      const user = findFile(result.files, "workspace/USER.md");
+      expect(user.content).toContain("a@icloud.com");
+      expect(user.content).toContain("b@gmail.com");
+      expect(user.content).toContain("`providers.email`");
+      expect(user.content).toContain("`providers.email-2`");
+    });
+
+    it("falls back to '(credentials configured)' for token-auth providers where the env has no identity", () => {
+      // fastmail-jmap uses FASTMAIL_API_TOKEN — no email address in env.
+      // The agent learns the actual address by calling the tool; USER.md
+      // should say the binding is live without inventing an address.
+      const result = compile(
+        {
+          profile: "life-ops",
+          providers: { email: "fastmail-jmap" },
+        },
+        TEST_USER,
+        "/tmp/test",
+        undefined,
+        { FASTMAIL_API_TOKEN: "fmu1-test" },
+      );
+      const user = findFile(result.files, "workspace/USER.md");
+      expect(user.content).toContain("## Accounts Under Management");
+      expect(user.content).toContain("(credentials configured)");
+      expect(user.content).not.toContain("@"); // no fabricated email
+    });
+
+    it("omits the section entirely when no providers are bound", () => {
+      const result = compile({ profile: "life-ops" }, TEST_USER, "/tmp/test");
+      const user = findFile(result.files, "workspace/USER.md");
+      expect(user.content).not.toContain("## Accounts Under Management");
+    });
+  });
+
   // ── Core / Operating Mandate ──────────────────────────────────────────────
   //
   // The "processor-not-filter" mandate lives in two places: canonical
