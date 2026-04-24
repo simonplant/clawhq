@@ -6,11 +6,13 @@ import {
   formatVtfMessage,
   makeDedupKey,
   makeVtfDedup,
+  matchPlanOrders,
   normalizeTicker,
   parseVtfInput,
   vtfIcon,
   vtfShouldQuiet,
 } from "./vtf.js";
+import type { OrderBlock } from "./types.js";
 
 const T0 = 1_700_000_000_000;
 
@@ -246,6 +248,119 @@ describe("formatVtfMessage", () => {
       ],
     });
     expect(msg).not.toMatch(/blackout/);
+  });
+});
+
+function mkOrder(overrides: Partial<OrderBlock> = {}): OrderBlock {
+  return {
+    id: "dp-AMZN-abcd1234",
+    sequence: 2,
+    source: "dp",
+    accounts: ["tos"],
+    ticker: "AMZN",
+    execAs: "AMZN",
+    direction: "LONG",
+    setup: "",
+    why: "",
+    entry: 241.5,
+    entryOrderType: "LMT",
+    stop: 236.5,
+    stopSource: "",
+    t1: 248,
+    t1Source: "",
+    t2: 254,
+    t2Source: "",
+    runner: "",
+    riskPerShare: 5,
+    quantity: 100,
+    totalRisk: 500,
+    confirmation: "PENDING_TA",
+    conviction: "MEDIUM",
+    confluence: "none",
+    caveat: "none",
+    kills: [],
+    activation: "immediate",
+    verify: "none",
+    status: "ACTIVE",
+    ...overrides,
+  };
+}
+
+describe("matchPlanOrders", () => {
+  it("matches by uppercased ticker", () => {
+    const orders = [mkOrder({ ticker: "amzn" })];
+    expect(matchPlanOrders("AMZN", orders)).toHaveLength(1);
+    expect(matchPlanOrders("AmZn", orders)).toHaveLength(1);
+  });
+  it("skips closed and killed orders", () => {
+    const orders = [
+      mkOrder({ ticker: "AMZN", status: "CLOSED" }),
+      mkOrder({ ticker: "AMZN", status: "KILLED" }),
+      mkOrder({ ticker: "AMZN", status: "FILLED" }),
+      mkOrder({ ticker: "AMZN", status: "BLOCKED" }),
+    ];
+    expect(matchPlanOrders("AMZN", orders)).toEqual([]);
+  });
+  it("returns empty when orders is undefined", () => {
+    expect(matchPlanOrders("AMZN", undefined)).toEqual([]);
+  });
+});
+
+describe("formatVtfMessage + planOrders cross-reference", () => {
+  function alertOf(overrides: Record<string, unknown> = {}) {
+    const res = parseVtfInput(validInput(overrides), T0);
+    if (!res.ok) throw new Error("bad fixture");
+    return res.alert;
+  }
+
+  it("annotates with matching ORDER when direction agrees", () => {
+    const msg = formatVtfMessage(alertOf({ ticker: "AMZN", action: "long AMZN" }), {
+      planOrders: [mkOrder({ ticker: "AMZN", direction: "LONG", sequence: 2 })],
+    });
+    expect(msg).toMatch(/matches DP ORDER 2 LONG @ 241\.5/);
+    expect(msg).not.toMatch(/conflicts/);
+  });
+
+  it("flags a conflict when the direction opposes the brief", () => {
+    const msg = formatVtfMessage(alertOf({ ticker: "AMZN", action: "short AMZN" }), {
+      planOrders: [mkOrder({ ticker: "AMZN", direction: "LONG", sequence: 2 })],
+    });
+    expect(msg).toMatch(/⚠ conflicts with DP ORDER 2 LONG @ 241\.5/);
+  });
+
+  it("prefers the agreeing match when both agreeing and conflicting exist", () => {
+    const msg = formatVtfMessage(alertOf({ ticker: "AMZN", action: "long AMZN" }), {
+      planOrders: [
+        mkOrder({ ticker: "AMZN", direction: "SHORT", sequence: 3 }),
+        mkOrder({ ticker: "AMZN", direction: "LONG", sequence: 2 }),
+      ],
+    });
+    expect(msg).toMatch(/matches/);
+    expect(msg).not.toMatch(/conflicts/);
+    expect(msg).toMatch(/ORDER 2/);
+  });
+
+  it("emits no plan annotation for flat/trimmed/added (no new direction)", () => {
+    const msg = formatVtfMessage(alertOf({ ticker: "AMZN", action: "trimmed 1/2 AMZN" }), {
+      planOrders: [mkOrder({ ticker: "AMZN", direction: "LONG", sequence: 2 })],
+    });
+    expect(msg).not.toMatch(/matches|conflicts/);
+  });
+
+  it("emits no plan annotation when ticker is not in the brief", () => {
+    const msg = formatVtfMessage(alertOf({ ticker: "NVDA", action: "long NVDA" }), {
+      planOrders: [mkOrder({ ticker: "AMZN" })],
+    });
+    expect(msg).not.toMatch(/matches|conflicts/);
+  });
+
+  it("skips already-closed orders when cross-referencing", () => {
+    const msg = formatVtfMessage(alertOf({ ticker: "AMZN", action: "long AMZN" }), {
+      planOrders: [
+        mkOrder({ ticker: "AMZN", direction: "LONG", status: "CLOSED" }),
+      ],
+    });
+    expect(msg).not.toMatch(/matches/);
   });
 });
 

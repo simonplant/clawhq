@@ -345,6 +345,7 @@ export function makeHttpApp(state: RuntimeState): Hono {
     });
     const body = formatVtfMessage(parsed.alert, {
       activeBlackouts: state.riskState.activeBlackouts,
+      planOrders: state.plan?.orders,
     });
     await safeSend(state, body, { quiet: vtfShouldQuiet(parsed.alert.actionClass) });
     return c.json({

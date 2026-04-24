@@ -23,7 +23,7 @@
  *   }
  */
 
-import type { VtfActionClass, VtfAlert } from "./types.js";
+import type { OrderBlock, VtfActionClass, VtfAlert } from "./types.js";
 
 export const VTF_PAYLOAD_VERSION = 1;
 
@@ -217,6 +217,77 @@ export interface VtfRelayContext {
     name: string;
     reason: string;
   }>;
+  /**
+   * Today's plan orders. When a VTF long/short matches the brief's
+   * ticker, the relay annotates with the matching ORDER — turns the
+   * moderator message into "Kira is executing the thing you already
+   * planned" vs. "Kira is trading something not in your brief".
+   */
+  planOrders?: OrderBlock[];
+}
+
+/**
+ * Case-insensitive ticker match against the plan's orders. Returns only
+ * orders whose status is still open (ACTIVE / CONDITIONAL / TRIGGERED).
+ */
+export function matchPlanOrders(
+  ticker: string,
+  orders: OrderBlock[] | undefined,
+): OrderBlock[] {
+  if (!orders) return [];
+  const t = ticker.toUpperCase();
+  return orders.filter(
+    (o) =>
+      o.ticker.toUpperCase() === t &&
+      (o.status === "ACTIVE" ||
+        o.status === "CONDITIONAL" ||
+        o.status === "TRIGGERED"),
+  );
+}
+
+/**
+ * Map a VTF action class to a brief direction, or undefined if the
+ * signal doesn't correspond to a new directional position.
+ */
+function directionFromActionClass(cls: VtfActionClass): "LONG" | "SHORT" | undefined {
+  if (cls === "long") return "LONG";
+  if (cls === "short") return "SHORT";
+  return undefined;
+}
+
+interface PlanMatchAnnotation {
+  /** Human-readable line for the relay. Empty when no meaningful match. */
+  line: string;
+  /** True if VTF direction conflicts with the matched order's direction. */
+  conflict: boolean;
+}
+
+function annotatePlanMatch(
+  alert: VtfAlert,
+  matches: OrderBlock[],
+): PlanMatchAnnotation | undefined {
+  if (matches.length === 0) return undefined;
+  const vtfDir = directionFromActionClass(alert.actionClass);
+  if (!vtfDir) return undefined;
+
+  // Prefer a match whose direction agrees; if none agrees, surface the
+  // first conflicting match so Simon sees the divergence.
+  const agreeing = matches.find((m) => m.direction === vtfDir);
+  if (agreeing) {
+    return {
+      line: `matches ${agreeing.source.toUpperCase()} ORDER ${agreeing.sequence} ${agreeing.direction} @ ${formatOrderPrice(agreeing.entry)}`,
+      conflict: false,
+    };
+  }
+  const conflicting = matches[0]!;
+  return {
+    line: `⚠ conflicts with ${conflicting.source.toUpperCase()} ORDER ${conflicting.sequence} ${conflicting.direction} @ ${formatOrderPrice(conflicting.entry)}`,
+    conflict: true,
+  };
+}
+
+function formatOrderPrice(n: number): string {
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 /**
@@ -231,7 +302,12 @@ export function formatVtfMessage(
   const icon = vtfIcon(alert.actionClass);
   const head = `${icon} VTF ${alert.user} — ${alert.ticker} ${alert.action}`;
   const blackout = matchingBlackout(alert.ticker, ctx.activeBlackouts);
+  const planAnnotation = annotatePlanMatch(
+    alert,
+    matchPlanOrders(alert.ticker, ctx.planOrders),
+  );
   const bits = [head, `time ${alert.time}`];
+  if (planAnnotation) bits.push(planAnnotation.line);
   if (blackout) bits.push(`⚠ blackout: ${blackout.name} — ${blackout.reason}`);
   return bits.join(" · ");
 }
