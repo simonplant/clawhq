@@ -48,6 +48,27 @@ export function checkRisk(inputs: RiskCheckInputs): RiskDecision {
     }
   }
 
+  // ── Event blackouts ────────────────────────────────────────────────────
+  // An active FOMC / CPI / earnings window blocks Tradier (volatility risk
+  // on a $3K account is amplified) and warns on advisory (Simon can still
+  // decide to hold through in a $100K portfolio).
+  const matchingBlackouts = (state.activeBlackouts ?? []).filter((b) =>
+    blackoutMatchesOrder(b, order),
+  );
+  if (matchingBlackouts.length > 0) {
+    const label = matchingBlackouts
+      .map((b) => `${b.name} (${b.reason})`)
+      .join("; ");
+    if (scope === "tradier-strict" || scope === "mixed") {
+      // For mixed scope we still hard-block — even the Tradier leg of the
+      // order is at risk during the event window.
+      return { block: `event blackout: ${label}`, scope };
+    }
+    // Advisory-only orders never block; surface a loud warning so Simon
+    // sees it in the alert body.
+    return { warn: `event blackout: ${label}`, scope };
+  }
+
   // ── Advisory (TOS / IRA) — never blocks, may warn ──────────────────────
   const warnings: string[] = [];
   if (scope !== "tradier-strict") {
@@ -119,6 +140,14 @@ export function checkRisk(inputs: RiskCheckInputs): RiskDecision {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+function blackoutMatchesOrder(
+  blackout: NonNullable<RiskState["activeBlackouts"]>[number],
+  order: OrderBlock,
+): boolean {
+  if (blackout.scope === "all") return true;
+  return blackout.scope.ticker.toUpperCase() === order.ticker.toUpperCase();
+}
 
 function classifyScope(accounts: Account[]): RiskDecision["scope"] {
   const hasTradier = accounts.includes("tradier");

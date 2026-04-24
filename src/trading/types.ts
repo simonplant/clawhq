@@ -140,6 +140,22 @@ export interface RiskState {
   tradierPdtCountLast5Days: number;
   /** Advisory holdings parsed from today.md — no API visibility for TOS/IRA. */
   advisoryHoldings: Array<{ ticker: string; accounts: Account[]; notes?: string }>;
+  /**
+   * Currently-active event blackouts. Populated by the orchestrator from
+   * the earnings / market-calendar tools. The governor consumes but does
+   * not compute — keeps risk.ts a pure function of explicit state.
+   *
+   * scope "all"   : applies to every order (FOMC, CPI, NFP, market halt).
+   * scope {ticker}: applies only to orders whose ticker matches (earnings,
+   *                  company-specific halts, SEC filings).
+   */
+  activeBlackouts?: Array<{
+    scope: "all" | { ticker: string };
+    /** Short label — e.g. "FOMC", "CPI", "NVDA earnings". */
+    name: string;
+    /** One-line human reason suitable for alert annotation. */
+    reason: string;
+  }>;
 }
 
 export interface RiskDecision {

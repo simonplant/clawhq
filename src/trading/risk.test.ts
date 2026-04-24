@@ -247,6 +247,76 @@ describe("checkRisk", () => {
     expect(decision.block).toMatch(/projected exposure/);
   });
 
+  it("blocks Tradier orders during a global blackout (FOMC)", () => {
+    const decision = checkRisk({
+      order: mkOrder({ accounts: ["tradier"] }),
+      state: mkState({
+        activeBlackouts: [
+          { scope: "all", name: "FOMC", reason: "rate decision 2:00pm ET" },
+        ],
+      }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/event blackout: FOMC/);
+  });
+
+  it("blocks Tradier orders for ticker-scoped earnings blackout", () => {
+    const decision = checkRisk({
+      order: mkOrder({ accounts: ["tradier"], ticker: "NVDA" }),
+      state: mkState({
+        activeBlackouts: [
+          { scope: { ticker: "NVDA" }, name: "NVDA earnings", reason: "AMC report" },
+        ],
+      }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/NVDA earnings/);
+  });
+
+  it("does not block unrelated tickers during a per-ticker blackout", () => {
+    const decision = checkRisk({
+      order: mkOrder({ accounts: ["tradier"], ticker: "AMZN" }),
+      state: mkState({
+        activeBlackouts: [
+          { scope: { ticker: "NVDA" }, name: "NVDA earnings", reason: "AMC" },
+        ],
+      }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toBeUndefined();
+  });
+
+  it("warns (not blocks) advisory-only orders during a blackout", () => {
+    const decision = checkRisk({
+      order: mkOrder({ accounts: ["tos", "ira"] }),
+      state: mkState({
+        activeBlackouts: [
+          { scope: "all", name: "CPI", reason: "08:30 ET release" },
+        ],
+      }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toBeUndefined();
+    expect(decision.warn).toMatch(/event blackout: CPI/);
+  });
+
+  it("blocks mixed-account orders during a blackout", () => {
+    // Even the Tradier leg is at risk — don't let a mixed order slip through.
+    const decision = checkRisk({
+      order: mkOrder({ accounts: ["tos", "tradier"] }),
+      state: mkState({
+        activeBlackouts: [{ scope: "all", name: "FOMC", reason: "2:00pm" }],
+      }),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/FOMC/);
+  });
+
   it("treats unknown tickers as 1x (equity default)", () => {
     const decision = checkRisk({
       order: mkOrder({ entry: 100, quantity: 10, totalRisk: 5 }), // $1000 notional

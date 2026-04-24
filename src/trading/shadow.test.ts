@@ -154,6 +154,26 @@ describe("shadow mode replay", () => {
     expect(kinds).toEqual(["alert/UP", "alert/DOWN"]);
   });
 
+  it("global FOMC blackout blocks every Tradier order in the plan", () => {
+    const scenario: ShadowScenario = {
+      name: "fomc-blackout",
+      brief: TRADIER_STRICT_BRIEF.replace(
+        "risk:         $12 | 2 /MES | $24",
+        "risk:         $5 | 1 /MES | $10", // sized to fit exposure post-multiplier? still blocked for event
+      ),
+      state: {
+        activeBlackouts: [
+          { scope: "all", name: "FOMC", reason: "2pm ET rate decision" },
+        ],
+      },
+      seedPrices: { ES: 7085 },
+      ticks: [{ symbol: "ES", last: 7092, tsMs: T0 }],
+    };
+    const result = replayScenario(scenario);
+    expect(result.events[0]?.kind).toBe("blocked");
+    expect(result.events[0]?.blockReason).toMatch(/FOMC/);
+  });
+
   it("daily loss limit blocks future entries", () => {
     const scenario: ShadowScenario = {
       name: "daily-loss-halt",
