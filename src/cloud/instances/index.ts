@@ -48,3 +48,6 @@ export {
   NoInstancesRegisteredError,
   resolveInstance,
 } from "./resolver.js";
+
+export type { MigrationResult } from "./migration.js";
+export { migrateLegacyRegistries } from "./migration.js";
