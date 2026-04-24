@@ -48,6 +48,13 @@ export interface LevelDetector {
   /** For testing: advance dedup state. */
   clearDedup(): void;
   /**
+   * Clear per-session state at day boundary — t1-fired tracking, dedup,
+   * and stale counter. Prior prices persist so the first tick of the new
+   * session still crosses from yesterday's last. The orchestrator calls
+   * this on the transition from closed → premarket (or equivalent).
+   */
+  resetSession(): void;
+  /**
    * Count of quotes dropped because `nowMs - quote.tsMs > staleMs`.
    * Useful to surface as a health signal — if this grows between heartbeats,
    * Tradier data is stalling and alerts may be missing real moves.
@@ -172,6 +179,12 @@ export function makeLevelDetector(opts: DetectorOptions = {}): LevelDetector {
 
     clearDedup(): void {
       lastHitAt.clear();
+    },
+
+    resetSession(): void {
+      lastHitAt.clear();
+      t1Fired.clear();
+      staleSkippedCount = 0;
     },
 
     staleSkipped(): number {

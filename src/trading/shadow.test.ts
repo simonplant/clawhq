@@ -16,6 +16,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import { parseOrderBlocks } from "./plan.js";
 import { diffTrace, replayScenario, summarizeTrace } from "./shadow.js";
 import type { ShadowScenario } from "./shadow.js";
 
@@ -263,6 +264,75 @@ ORDER 2 | HIGH | ACTIVE
       expect(e.alert?.confluence?.tier).toBe("strong-aligned");
       expect(e.alert?.confluence?.score).toBe(75);
     }
+  });
+
+  it("boot reconciler: emits catch-up alert when level crossed while sidecar was down", () => {
+    const result = replayScenario({
+      name: "catch-up",
+      brief: SIMPLE_BRIEF,
+      boot: {
+        bootQuotes: [
+          { symbol: "ES", last: 7095, tsMs: T0, dayHigh: 7100, dayLow: 7080 },
+        ],
+      },
+      ticks: [],
+    });
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0]?.kind).toBe("alert");
+    expect(result.events[0]?.alert?.catchup).toBe(true);
+    expect(result.events[0]?.alert?.levelName).toBe("entry");
+  });
+
+  it("boot reconciler: suppresses catch-up when prior alert exists in the log", () => {
+    const { orders } = parseOrderBlocks(SIMPLE_BRIEF);
+    const orderId = orders[0]?.id ?? "";
+    const result = replayScenario({
+      name: "catch-up-suppressed",
+      brief: SIMPLE_BRIEF,
+      boot: {
+        // Tight range around entry so only the entry level is in [low, high].
+        bootQuotes: [
+          { symbol: "ES", last: 7095, tsMs: T0, dayHigh: 7095, dayLow: 7086 },
+        ],
+        priorAlerts: [{ orderId, levelName: "entry" }],
+      },
+      ticks: [],
+    });
+    // Already alerted — reconciler must not re-fire.
+    expect(result.events).toEqual([]);
+  });
+
+  it("boot reconciler: no catch-up when no level is inside day range", () => {
+    const result = replayScenario({
+      name: "catch-up-out-of-range",
+      brief: SIMPLE_BRIEF,
+      boot: {
+        // Range [7040, 7060]: entry 7090, stop 7078, t1 7105, t2 7120 all outside.
+        bootQuotes: [
+          { symbol: "ES", last: 7045, tsMs: T0, dayHigh: 7060, dayLow: 7040 },
+        ],
+      },
+      ticks: [],
+    });
+    expect(result.events).toEqual([]);
+  });
+
+  it("boot seed: live ticks after boot use boot last-price as prev", () => {
+    const result = replayScenario({
+      name: "boot-seed",
+      brief: SIMPLE_BRIEF,
+      boot: {
+        bootQuotes: [
+          { symbol: "ES", last: 7100, tsMs: T0, dayHigh: 7101, dayLow: 7099 },
+        ],
+      },
+      ticks: [{ symbol: "ES", last: 7106, tsMs: T0 + 1000 }],
+    });
+    // No catch-up (7090 not inside [7099, 7101]). But the seed at 7100 means
+    // the 7106 tick should cross T1 cleanly — exactly one hit.
+    const liveAlerts = result.events.filter((e) => e.alert?.catchup !== true);
+    expect(liveAlerts).toHaveLength(1);
+    expect(liveAlerts[0]?.levelName).toBe("t1");
   });
 
   it("summarizeTrace produces a readable debug string", () => {

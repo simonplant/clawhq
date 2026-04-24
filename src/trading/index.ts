@@ -199,7 +199,7 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
   refreshBlackouts(state); // seed active blackouts before first poll
 
   const pollTimer = scheduleInterval(opts.pollMs ?? POLL_MS, () => pollOnce(state, detector, thresholds, accounts));
-  const clockTimer = scheduleInterval(CLOCK_CHECK_MS, () => refreshMarketClock(state));
+  const clockTimer = scheduleInterval(CLOCK_CHECK_MS, () => refreshMarketClock(state, detector));
   const heartbeatTimer = scheduleInterval(HEARTBEAT_MS, () => sendHeartbeat(state));
   const riskRefreshTimer = scheduleInterval(60_000, () => refreshRiskState(state));
   const ttlTimer = scheduleInterval(30_000, () => expireAlerts(state));
@@ -465,11 +465,24 @@ function refreshBlackouts(state: RuntimeState): void {
 
 // ── Market clock ─────────────────────────────────────────────────────────────
 
-async function refreshMarketClock(state: RuntimeState): Promise<void> {
+async function refreshMarketClock(
+  state: RuntimeState,
+  detector: Detector,
+): Promise<void> {
   if (state.shuttingDown) return;
   try {
     const clock = await state.tradier.clock();
+    const prior = state.marketClock?.state;
     state.marketClock = clock;
+    // Day-boundary detector reset: transition into premarket or open from
+    // "closed" means a new session. Clears t1-fired tracking and dedup so
+    // yesterday's state doesn't bleed into today's alerts.
+    if (
+      prior === "closed" &&
+      (clock.state === "premarket" || clock.state === "open")
+    ) {
+      detector.resetSession();
+    }
     appendEvent(state.db, {
       type: "MarketClockChecked",
       tsMs: Date.now(),

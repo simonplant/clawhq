@@ -234,6 +234,17 @@ describe("makeLevelDetector", () => {
     expect(d.staleSkipped()).toBe(0);
   });
 
+  it("resetSession clears t1Fired so next session's stop is not tagged postT1Runner", () => {
+    const d = makeLevelDetector({ monotonicNowMs: () => 0, dedupTtlMs: 1 });
+    const order = mkOrder();
+    d.ingest([mkQuote("ES", 7085)], [order]);
+    d.ingest([mkQuote("ES", 7106)], [order]); // entry+t1 hit — sets t1Fired
+    d.resetSession();
+    const down = d.ingest([mkQuote("ES", 7075)], [order]);
+    const stopHit = down.find((h) => h.levelName === "stop");
+    expect(stopHit?.postT1Runner).toBeUndefined();
+  });
+
   it("tags a stop cross as postT1Runner when T1 already fired", () => {
     const d = makeLevelDetector({ monotonicNowMs: () => 0, dedupTtlMs: 1 });
     const order = mkOrder();

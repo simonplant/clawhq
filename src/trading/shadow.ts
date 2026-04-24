@@ -22,9 +22,11 @@ import { computeConfluence, toSnapshot } from "./confluence.js";
 import { makeLevelDetector } from "./detector.js";
 import { buildAlert } from "./pipeline.js";
 import { parseOrderBlocks } from "./plan.js";
+import { findCatchupCandidates } from "./reconciler.js";
 import { checkRisk } from "./risk.js";
 import type {
   Alert,
+  LevelHit,
   OrderBlock,
   PriceQuote,
   RiskDecision,
@@ -54,6 +56,27 @@ export interface ShadowScenario {
   startMonoMs?: number;
   /** Override detector dedup TTL. */
   dedupTtlMs?: number;
+  /**
+   * Optional boot-reconciler phase. Runs before ticks. Simulates a crash
+   * where the sidecar restarts mid-session and has to catch up on levels
+   * that moved through while it was down.
+   *
+   *   bootQuotes   — quotes with today's H/L/last; derives catch-up candidates
+   *   todaysAlerts — alert ids already logged today (suppresses duplicates)
+   */
+  boot?: {
+    bootQuotes: Array<{
+      symbol: string;
+      last: number;
+      tsMs: number;
+      dayHigh: number;
+      dayLow: number;
+    }>;
+    /** Order ids × levelName tuples already alerted today (dedup bootstrap). */
+    priorAlerts?: Array<{ orderId: string; levelName: "entry" | "stop" | "t1" | "t2" }>;
+    /** Wall-clock ms assigned to the catch-up events. Default: startMonoMs. */
+    nowMs?: number;
+  };
 }
 
 export interface ShadowEvent {
@@ -128,6 +151,117 @@ export function replayScenario(
   const confluenceFindings = computeConfluence(orders);
   const events: ShadowEvent[] = [];
   let prevTs = scenario.startMonoMs ?? 0;
+
+  // ── Optional boot-reconciler phase ───────────────────────────────────────
+  if (scenario.boot) {
+    const bootNowMs = scenario.boot.nowMs ?? scenario.startMonoMs ?? 0;
+    // Synthesize the AlertSent event log from priorAlerts so the reconciler
+    // can suppress duplicates the same way it would against a real SQLite
+    // events table.
+    const syntheticLog = (scenario.boot.priorAlerts ?? []).map(
+      (entry, idx) => ({
+        id: idx + 1,
+        tsMs: bootNowMs - 60_000,
+        type: "AlertSent" as const,
+        payload: {
+          type: "AlertSent" as const,
+          tsMs: bootNowMs - 60_000,
+          alert: {
+            id: `PRI${idx}`,
+            orderId: entry.orderId,
+            sequence: 0,
+            source: "mancini" as const,
+            horizon: "session" as const,
+            ticker: "",
+            execAs: "",
+            accounts: [] as never[],
+            direction: "LONG" as const,
+            conviction: "HIGH" as const,
+            confirmation: "CONFIRMED" as const,
+            entry: 0,
+            stop: 0,
+            t1: 0,
+            t2: 0,
+            totalRisk: 0,
+            levelName: entry.levelName,
+            levelPrice: 0,
+            risk: { scope: "advisory-only" as const },
+            expiresAtMs: bootNowMs,
+          },
+        },
+      }),
+    );
+    const candidates = findCatchupCandidates({
+      orders,
+      quotes: scenario.boot.bootQuotes.map((q) => ({
+        ...q,
+        bid: q.last,
+        ask: q.last,
+        receivedMs: q.tsMs,
+      })),
+      todaysAlerts: syntheticLog,
+    });
+
+    // Seed detector prices from boot quotes so the first live tick crosses
+    // cleanly from the most recent price — mirrors runBootReconciler behavior.
+    for (const q of scenario.boot.bootQuotes) {
+      detector.seedPrice(q.symbol, q.last);
+    }
+
+    for (const cand of candidates) {
+      const syntheticHit: LevelHit = {
+        orderId: cand.order.id,
+        sequence: cand.order.sequence,
+        ticker: cand.order.ticker,
+        source: cand.order.source,
+        levelName: cand.levelName,
+        levelPrice: cand.levelPrice,
+        crossingDirection: "UP",
+        proximity: "AT",
+        conviction: cand.order.conviction,
+        confirmation: cand.order.confirmation,
+        prevPrice: cand.dayLow,
+        currentPrice: cand.currentPrice,
+        hitMs: bootNowMs,
+        catchup: true,
+      };
+      const decision = checkRisk({ order: cand.order, state, thresholds, accounts });
+      if (decision.block) {
+        events.push({
+          kind: "blocked",
+          tsMs: bootNowMs,
+          orderId: cand.order.id,
+          sequence: cand.order.sequence,
+          levelName: cand.levelName,
+          crossingDirection: "UP",
+          decision,
+          blockReason: decision.block,
+        });
+        continue;
+      }
+      const finding = confluenceFindings.get(cand.order.id);
+      const alert = buildAlert({
+        hit: syntheticHit,
+        order: cand.order,
+        decision,
+        nowMs: bootNowMs,
+        alertId: nextAlertId(),
+        catchup: true,
+        ...(finding ? { confluence: toSnapshot(finding) } : {}),
+      });
+      events.push({
+        kind: "alert",
+        tsMs: bootNowMs,
+        orderId: cand.order.id,
+        sequence: cand.order.sequence,
+        levelName: cand.levelName,
+        crossingDirection: "UP",
+        decision,
+        alert,
+        quiet: alert.notify === "quiet",
+      });
+    }
+  }
 
   for (const tick of scenario.ticks) {
     // Monotonic clock tracks wall-clock deltas so dedup TTL is deterministic.
@@ -332,6 +466,7 @@ export interface ScenarioFile {
   seedPrices?: Record<string, number>;
   startMonoMs?: number;
   dedupTtlMs?: number;
+  boot?: ShadowScenario["boot"];
   expected: ExpectedEventFile[];
 }
 

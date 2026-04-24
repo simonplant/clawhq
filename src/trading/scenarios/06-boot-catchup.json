@@ -1,0 +1,14 @@
+{
+  "name": "boot-catchup",
+  "doc": "Sidecar restarts mid-session and sees today's range already spans the 7090 entry. Reconciler emits a catch-up alert (shorter TTL, 🔁 prefix) even though no tick crossed the level after boot.",
+  "brief": "## Orders\n\nORDER 1 | HIGH | ACTIVE\n  source:       mancini\n  accounts:     tos\n  ticker:       ES\n  exec_as:      /MES\n  direction:    LONG\n  setup:        Failed Breakdown\n  why:          reclaim\n  entry:        7090 LMT\n  stop:         7078 — flush-4\n  t1:           7105 — next R\n  t2:           7120 — next R\n  runner:       10% trail BE after T1\n  risk:         $12 | 2 /MES | $24\n  confirmation: CONFIRMED\n  confluence:   none\n  caveat:       none\n  kills:        none\n  activation:   immediate\n  verify:       none\n",
+  "boot": {
+    "bootQuotes": [
+      { "symbol": "ES", "last": 7095, "tsMs": 1700000000000, "dayHigh": 7095, "dayLow": 7086 }
+    ]
+  },
+  "ticks": [],
+  "expected": [
+    { "kind": "alert", "sequence": 1, "levelName": "entry", "crossingDirection": "UP" }
+  ]
+}
