@@ -35,6 +35,19 @@ export function checkRisk(inputs: RiskCheckInputs): RiskDecision {
   const { order, state, thresholds, accounts } = inputs;
   const scope = classifyScope(order.accounts);
 
+  // ── Structural account rules (block regardless of scope) ───────────────
+  // Long-only accounts (IRAs) cannot short. This isn't the governor
+  // overstepping its authority — it's a broker/regulatory impossibility.
+  if (order.direction === "SHORT") {
+    const longOnlyHits = order.accounts.filter((a) => accounts[a]?.longOnly);
+    if (longOnlyHits.length > 0) {
+      return {
+        block: `${longOnlyHits.join(", ")} is long-only — cannot route SHORT orders to retirement accounts`,
+        scope,
+      };
+    }
+  }
+
   // ── Advisory (TOS / IRA) — never blocks, may warn ──────────────────────
   const warnings: string[] = [];
   if (scope !== "tradier-strict") {

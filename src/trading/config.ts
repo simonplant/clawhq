@@ -125,6 +125,13 @@ export interface AccountConfig {
   balance: number;
   /** Whether positions are programmatically queryable. Only tradier=true. */
   apiVisible: boolean;
+  /**
+   * True when the broker prohibits short sales in this account (IRAs).
+   * Unlike other advisory rules, this is a structural impossibility, not a
+   * governor overreach — a SHORT order routed to a long-only account is
+   * intrinsically invalid and the governor blocks it.
+   */
+  longOnly: boolean;
 }
 
 export function resolveAccounts(): Record<Account, AccountConfig> {
@@ -132,14 +139,17 @@ export function resolveAccounts(): Record<Account, AccountConfig> {
     tos: {
       balance: Number(process.env.ACCOUNT_TOS_BALANCE ?? 100_000),
       apiVisible: false,
+      longOnly: false,
     },
     ira: {
       balance: Number(process.env.ACCOUNT_IRA_BALANCE ?? 100_000),
       apiVisible: false,
+      longOnly: true,
     },
     tradier: {
       balance: Number(process.env.ACCOUNT_TRADIER_BALANCE ?? 3_000),
       apiVisible: true,
+      longOnly: false,
     },
   };
 }

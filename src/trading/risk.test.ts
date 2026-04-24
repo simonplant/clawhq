@@ -171,4 +171,47 @@ describe("checkRisk", () => {
     expect(decision.block).toBeUndefined();
     expect(decision.scope).toBe("advisory-only");
   });
+
+  it("blocks SHORT orders routed to IRA (long-only)", () => {
+    const decision = checkRisk({
+      order: mkOrder({ accounts: ["ira"], direction: "SHORT" }),
+      state: mkState(),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/ira is long-only/i);
+  });
+
+  it("blocks SHORT orders routed to Tradier+IRA mixed", () => {
+    // Even when Tradier could take the short, mixed routing to IRA is
+    // invalid at broker level — the order must be restructured.
+    const decision = checkRisk({
+      order: mkOrder({ accounts: ["tradier", "ira"], direction: "SHORT" }),
+      state: mkState(),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toMatch(/ira is long-only/i);
+  });
+
+  it("allows LONG orders to IRA", () => {
+    const decision = checkRisk({
+      order: mkOrder({ accounts: ["ira"], direction: "LONG" }),
+      state: mkState(),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toBeUndefined();
+    expect(decision.scope).toBe("advisory-only");
+  });
+
+  it("allows SHORT orders to TOS (margin account)", () => {
+    const decision = checkRisk({
+      order: mkOrder({ accounts: ["tos"], direction: "SHORT" }),
+      state: mkState(),
+      thresholds: THRESHOLDS,
+      accounts: ACCOUNTS,
+    });
+    expect(decision.block).toBeUndefined();
+  });
 });
