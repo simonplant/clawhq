@@ -219,6 +219,14 @@ export const INTEGRATION_REGISTRY: Record<string, IntegrationDefinition> = {
       { key: "FASTMAIL_API_TOKEN", label: "FastMail API token (Settings → Privacy & Security → API tokens)", secret: true },
     ],
     egressDomains: ["api.fastmail.com", "www.fastmailusercontent.com"],
+    // Catalog has TWO fastmail entries: `fastmail` (IMAP/himalaya) and
+    // `fastmail-jmap` (JMAP). This registry entry is the JMAP shape —
+    // pin the binding to `fastmail-jmap` so compile resolves the right
+    // catalog provider. Without this, composition.providers.fastmail
+    // silently picks the IMAP entry and the himalaya generator fails
+    // loud on missing IMAP_USER at every apply.
+    catalogProviderId: "fastmail-jmap",
+    compositionDomain: "email",
     quirks: [
       "JMAP session endpoint must be called first to discover mailbox IDs",
       "Attachment downloads go through fastmailusercontent.com, not api.fastmail.com",

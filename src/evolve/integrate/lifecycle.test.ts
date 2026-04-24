@@ -163,6 +163,67 @@ describe("addIntegration — multi-provider domains", () => {
   });
 });
 
+describe("addIntegration — registry↔catalog binding (fastmail)", () => {
+  it("resolves fastmail to the JMAP catalog entry, not the IMAP one", async () => {
+    // Registry `fastmail` collects FASTMAIL_API_TOKEN (JMAP shape). Catalog
+    // has two fastmail entries: `fastmail` (IMAP/himalaya) and
+    // `fastmail-jmap` (JMAP). Without the registry→catalog mapping, a bare
+    // `integrate add fastmail` would write providers.fastmail = "fastmail"
+    // (IMAP), getProvider would resolve the IMAP entry, and the himalaya
+    // generator would fail loud at next apply with missing IMAP_USER.
+    const result = await addIntegration({
+      deployDir: testDir,
+      name: "fastmail",
+      credentials: { FASTMAIL_API_TOKEN: "fmu1-test-token" },
+      skipValidation: true,
+    });
+    expect(result.success).toBe(true);
+
+    const yaml = yamlParse(readFileSync(join(testDir, "clawhq.yaml"), "utf-8")) as {
+      composition?: { providers?: Record<string, string> };
+    };
+    // Bound under the email domain (compositionDomain: "email"), pinned to
+    // the JMAP catalog entry (catalogProviderId: "fastmail-jmap").
+    expect(yaml.composition?.providers).toEqual({ email: "fastmail-jmap" });
+
+    const env = readFileSync(join(testDir, "engine", ".env"), "utf-8");
+    expect(env).toMatch(/^FASTMAIL_API_TOKEN=fmu1-test-token$/m);
+  });
+
+  it("rejects a collision on the same composition domain slot", async () => {
+    // Pre-seed an iCloud email binding.
+    await addIntegration({
+      deployDir: testDir,
+      name: "email",
+      providerId: "icloud",
+      credentials: {
+        IMAP_HOST: "imap.mail.me.com",
+        IMAP_USER: "me@icloud.com",
+        IMAP_PASS: "secret",
+        SMTP_HOST: "smtp.mail.me.com",
+        SMTP_USER: "me@icloud.com",
+        SMTP_PASS: "secret",
+      },
+      skipValidation: true,
+    });
+
+    // `integrate add fastmail` wants the same primary `email` slot.
+    const collision = await addIntegration({
+      deployDir: testDir,
+      name: "fastmail",
+      credentials: { FASTMAIL_API_TOKEN: "fmu1-test-token" },
+      skipValidation: true,
+    });
+    expect(collision.success).toBe(false);
+    expect(collision.error).toMatch(/composition\.providers\.email is already bound to "icloud"/);
+    // Composition untouched.
+    const yaml = yamlParse(readFileSync(join(testDir, "clawhq.yaml"), "utf-8")) as {
+      composition?: { providers?: Record<string, string> };
+    };
+    expect(yaml.composition?.providers).toEqual({ email: "icloud" });
+  });
+});
+
 describe("removeIntegrationCmd — composition cleanup", () => {
   it("removes the provider binding from clawhq.yaml alongside the manifest entry", async () => {
     // Pre-fix behaviour: remove cleaned .env + manifest but left

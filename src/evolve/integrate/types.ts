@@ -29,6 +29,19 @@ export interface IntegrationDefinition {
   readonly dynamicEgressEnvKeys?: readonly string[];
   /** Operational quirks — gotchas and tips for using this integration. */
   readonly quirks?: readonly string[];
+  /** Catalog provider id this integration maps to in
+   *  src/design/catalog/providers.ts. Set when the registry name and the
+   *  catalog id don't match (e.g. registry `fastmail` is the JMAP shape but
+   *  the catalog has `fastmail` = IMAP and `fastmail-jmap` = JMAP; this field
+   *  forces composition.providers to bind the correct catalog entry so the
+   *  compile chain resolves the shape the registry collected credentials
+   *  for). Used by updateClawhqYaml when no --provider is given. */
+  readonly catalogProviderId?: string;
+  /** Composition domain key this integration binds under. Defaults to the
+   *  registry name. Set when the integration name isn't the natural domain —
+   *  e.g. registry `fastmail` is an email provider and should bind under
+   *  `composition.providers.email`, not `composition.providers.fastmail`. */
+  readonly compositionDomain?: string;
 }
 
 /** Category of an integration. */

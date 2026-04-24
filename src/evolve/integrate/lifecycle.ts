@@ -82,14 +82,22 @@ export async function addIntegration(
   // and the downstream compile emits an empty himalaya config. Accepting a
   // generic add for single-provider integrations (telegram, tavily, etc.)
   // stays unchanged.
-  if (isMultiProviderDomain(name) && !providerId) {
+  //
+  // compositionDomain — registry entries like `fastmail` bind to the `email`
+  // composition domain via `def.compositionDomain = "email"`. That means
+  // "fastmail" isn't a multi-provider domain name (no catalog entry has
+  // domain=fastmail) but its *composition* lands in the `email` slot family.
+  // Use the effective domain for both the ambiguity check and the catalog
+  // domain-match assertion.
+  const effectiveDomain = def.compositionDomain ?? name;
+  if (!providerId && !def.catalogProviderId && isMultiProviderDomain(effectiveDomain)) {
     return {
       success: false,
       integrationName: name,
       validated: false,
       error:
         `Integration "${name}" has multiple providers in the catalog — specify one ` +
-        `with --provider. Available: ${getProvidersForDomain(name).map((p) => p.id).join(", ")}.`,
+        `with --provider. Available: ${getProvidersForDomain(effectiveDomain).map((p) => p.id).join(", ")}.`,
     };
   }
   if (providerId) {
@@ -99,15 +107,15 @@ export async function addIntegration(
         success: false,
         integrationName: name,
         validated: false,
-        error: `Unknown provider "${providerId}". Available for ${name}: ${getProvidersForDomain(name).map((p) => p.id).join(", ")}.`,
+        error: `Unknown provider "${providerId}". Available for ${effectiveDomain}: ${getProvidersForDomain(effectiveDomain).map((p) => p.id).join(", ")}.`,
       };
     }
-    if (p.domain !== name) {
+    if (p.domain !== effectiveDomain) {
       return {
         success: false,
         integrationName: name,
         validated: false,
-        error: `Provider "${providerId}" serves domain "${p.domain}", not "${name}".`,
+        error: `Provider "${providerId}" serves domain "${p.domain}", not "${effectiveDomain}".`,
       };
     }
   }
@@ -116,9 +124,22 @@ export async function addIntegration(
   if (slotNum < 1) {
     return { success: false, integrationName: name, validated: false, error: `Slot must be >= 1 (got ${slotNum}).` };
   }
-  const domainKey = slotNum === 1 ? name : `${name}-${slotNum}`;
-  const envPrefix = slotNum === 1 ? "" : `${name.toUpperCase()}_${slotNum}_`;
+  // Composition domain defaults to the integration name, but registry
+  // entries can redirect (registry `fastmail` binds under composition
+  // `email`, since JMAP-FastMail is an email provider, not its own
+  // domain). Slot suffix appends to the composition domain, not the
+  // integration name.
+  const compositionDomain = def.compositionDomain ?? name;
+  const envPrefixBase = (def.compositionDomain ?? name).toUpperCase();
+  const domainKey = slotNum === 1 ? compositionDomain : `${compositionDomain}-${slotNum}`;
+  const envPrefix = slotNum === 1 ? "" : `${envPrefixBase}_${slotNum}_`;
   const manifestName = slotNum === 1 ? name : `${name}-${slotNum}`;
+  // Effective provider id written into composition.providers. Explicit
+  // --provider wins; registry entries with a catalogProviderId (e.g.
+  // fastmail → fastmail-jmap) supply the fallback; otherwise default to
+  // the integration name so single-provider integrations (tavily, github,
+  // todoist) still land the same value they always did.
+  const effectiveProviderId = providerId ?? def.catalogProviderId ?? name;
 
   // Check if already installed — slot-scoped so `email` and `email-2` coexist.
   const manifest = loadIntegrationManifest(deployDir);
@@ -129,6 +150,26 @@ export async function addIntegration(
       integrationName: manifestName,
       validated: false,
       error: `Integration "${manifestName}" is already configured. Remove it first to reconfigure.`,
+    };
+  }
+
+  // Domain-key collision check: registry entries with a compositionDomain
+  // (e.g. fastmail → email) share slot keys with the natural domain
+  // integration. Without this, `integrate add fastmail` while
+  // `providers.email: icloud` already exists would silently no-op at the
+  // yaml layer (updateClawhqYaml guards against overwrite) but still
+  // write credentials and manifest — leaving the config desynced. Force
+  // the user to pick a non-colliding slot or remove the existing binding.
+  const existingDomainKey = readCompositionDomainKey(deployDir, domainKey);
+  if (existingDomainKey) {
+    return {
+      success: false,
+      integrationName: manifestName,
+      validated: false,
+      error:
+        `composition.providers.${domainKey} is already bound to "${existingDomainKey}". ` +
+        `Remove it first (clawhq integrate remove ${existingDomainKey === effectiveProviderId ? manifestName : domainKey}) ` +
+        `or add this as a secondary slot (--slot 2).`,
     };
   }
 
@@ -200,7 +241,12 @@ export async function addIntegration(
   saveIntegrationManifest(deployDir, updated);
 
   // Update clawhq.yaml — record the provider binding so apply can compile it.
-  updateClawhqYaml(deployDir, name, def.category, { providerId, domainKey });
+  // effectiveProviderId resolves --provider → registry.catalogProviderId →
+  // integration name; domainKey carries the compositionDomain + slot.
+  updateClawhqYaml(deployDir, name, def.category, {
+    providerId: effectiveProviderId,
+    domainKey,
+  });
 
   progress(onProgress, "manifest", "done", "Manifest updated");
 
@@ -215,6 +261,25 @@ export async function addIntegration(
  *  like telegram/tavily/github fall through to the registry's single schema. */
 function isMultiProviderDomain(name: string): boolean {
   return getProvidersForDomain(name).length > 1;
+}
+
+/** Read the current binding for a domain key in clawhq.yaml's
+ *  composition.providers (e.g. "email" → "icloud", "email-2" → "gmail").
+ *  Returns undefined when the file is missing, malformed, or the key isn't
+ *  bound. Used to detect collisions before writing a fresh binding. */
+function readCompositionDomainKey(
+  deployDir: string,
+  domainKey: string,
+): string | undefined {
+  const configPath = join(deployDir, "clawhq.yaml");
+  if (!existsSync(configPath)) return undefined;
+  try {
+    const raw = readFileSync(configPath, "utf-8");
+    const config = yamlParse(raw) as { composition?: { providers?: Record<string, string> } };
+    return config.composition?.providers?.[domainKey];
+  } catch {
+    return undefined;
+  }
 }
 
 /** Pull the envKey schema for a catalog provider in the shape the

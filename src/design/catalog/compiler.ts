@@ -1111,7 +1111,7 @@ function renderOpenclawJson(
 function renderEnv(
   port: number,
   providers: Provider[],
-  channels?: Readonly<Record<string, Readonly<Record<string, string>>>>,
+  channels?: Readonly<Record<string, Readonly<Record<string, unknown>>>>,
   existingToken?: string,
 ): string {
   // Reuse the prior token when it's set to a real value. Treat empty string,

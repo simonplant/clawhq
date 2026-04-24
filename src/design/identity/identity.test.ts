@@ -77,6 +77,29 @@ describe("generateSoul", () => {
     expect(content).toContain("## Role");
     expect(content).toContain(bp.use_case_mapping.description.trim());
   });
+
+  it("renders customization answers into a User Preferences section", () => {
+    // customization_questions → SOUL.md is the documented flow for blueprint
+    // author-defined questions (communication_style, triage_priority, etc).
+    // Each answer shows up under "User Preferences" using the question's
+    // prompt as the label. This is the agent-visible surface that turns
+    // wizard answers into runtime behaviour — the agent reads SOUL.md and
+    // honours the preferences.
+    const bp = loadEmailManager();
+    const content = generateSoul(bp, {
+      communication_style: "Brief and direct — bullet points, no fluff",
+      triage_priority: "Emails from my manager or containing 'urgent'",
+    });
+    expect(content).toContain("## User Preferences");
+    expect(content).toContain("**How should your agent communicate?** Brief and direct — bullet points, no fluff");
+    expect(content).toContain("**What type of emails should always be flagged as high priority?** Emails from my manager or containing 'urgent'");
+  });
+
+  it("skips User Preferences section entirely when no customization answers given", () => {
+    const bp = loadEmailManager();
+    const content = generateSoul(bp, {});
+    expect(content).not.toContain("## User Preferences");
+  });
 });
 
 // ── AGENTS.md Tests ─────────────────────────────────────────────────────────

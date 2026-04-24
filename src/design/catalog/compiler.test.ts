@@ -146,10 +146,20 @@ describe("compile", () => {
   });
 
   it("adds provider egress domains to allowlist", () => {
+    // The himalaya generator fails loud when a provider slot is declared
+    // without the credentials needed to emit a working config. Supply
+    // placeholder creds — the test only needs to verify the allowlist
+    // carries the provider's egress domains.
+    const existingEnv = {
+      IMAP_USER: "test@gmail.com",
+      SMTP_USER: "test@gmail.com",
+    };
     const result = compile(
       { profile: "life-ops", providers: { email: "gmail" } },
       TEST_USER,
       "/tmp/test",
+      undefined,
+      existingEnv,
     );
     const allowlist = result.files.find((f) => f.relativePath === "ops/firewall/allowlist.yaml");
     expect(allowlist?.content).toContain("imap.gmail.com");
@@ -323,7 +333,13 @@ describe("compile", () => {
       providers: { email: "gmail", calendar: "google-cal" },
       channels: { telegram: { enabled: true } },
     } as const;
-    const existingEnv = { OPENCLAW_GATEWAY_TOKEN: "stable-test-token" };
+    // Include credentials so the fail-loud himalaya generator has what it
+    // needs; determinism is the property under test, not email integration.
+    const existingEnv = {
+      OPENCLAW_GATEWAY_TOKEN: "stable-test-token",
+      IMAP_USER: "test@gmail.com",
+      SMTP_USER: "test@gmail.com",
+    };
 
     const first = compile(config, TEST_USER, "/tmp/test", undefined, existingEnv);
     const second = compile(config, TEST_USER, "/tmp/test", undefined, existingEnv);

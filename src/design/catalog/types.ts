@@ -93,7 +93,12 @@ export interface CanonicalPersonality {
 export interface CompositionConfig {
   readonly profile: string;
   readonly providers?: Readonly<Record<string, string>>;
-  readonly channels?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  /** Per-channel composition values. Widened to `unknown` (from the original
+   *  string-only type) because channel YAML legitimately carries booleans
+   *  (`enabled: true`), numbers (ports), and nested objects (streaming
+   *  modes). The compiler at openclawJson.channels branches on value type
+   *  and copies whatever it receives straight into openclaw.json. */
+  readonly channels?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
   readonly soul_overrides?: string;
   readonly extra_tools?: readonly string[];
   /** Override the default model (provider-prefixed, e.g. "ollama/<tag>" or "anthropic/<model>"). */
