@@ -24,6 +24,16 @@ Scan these watchlists (from `markets/WATCHLISTS.json`):
 2. `portfolio` — Current holdings and key indices
 3. `swing_candidates` — Previously identified candidates (refresh this list)
 
+## Today's Priority (read first, every run)
+
+Before scanning, read `memory/trading-YYYY-MM-DD.md` (today's trading brief). From the `## Trade Ideas & Conviction` section, extract every ticker symbol mentioned (typically shown as `**TICKER:**` or `**TICKER (Company):**` in bold). This is today's **priority list** — the names Simon's premarket synthesis flagged as active or watch.
+
+- If the file is missing, the section is empty, or no tickers parse cleanly: proceed with an **empty priority list**. The scanner degrades to its prior universe-wide behavior. This is a ranking hint, never a filter — a missing brief must not block scanning.
+- The priority list does **not** narrow Step 2 (scanning). All watchlist names still get screened.
+- The priority list **only** influences Step 3 (scoring). See the priority boost rule there.
+
+Rationale: the brief reflects today's intentional focus (DP's AM calls, Mancini's levels, Simon's overnight thinking). Scanning the full universe but ranking with today's lens gives Simon louder signal on names he already cares about, while still catching unexpected setups on quality names outside the day's focus.
+
 ## Procedure
 
 ### 1. Fetch Technical Data
@@ -82,6 +92,15 @@ For each setup found, score using the conviction framework from `knowledge/tradi
 - **RS laggard short:** LOW conviction (reference only)
 - **Day-after trade:** MEDIUM conviction (conditional on range establishment)
 
+**Priority boost from today's brief.** If a ticker appears in today's priority list (see "Today's Priority" section above), bump its conviction one level:
+- MEDIUM → HIGH
+- LOW → MEDIUM
+- HIGH stays HIGH (already at max)
+
+Mark any boosted setup with `priority_source: brief` in the state file so downstream consumers can see which HIGH convictions are intrinsic vs. brief-promoted. Do not boost LOW short candidates (Screen D) above MEDIUM — the conviction framework treats shorts as reference-only regardless of brief priority.
+
+Never demote. Absence from the priority list is not a signal; many quality setups won't have been on Simon's radar at 6 AM.
+
 ### 4. Produce ORDER Blocks
 
 For HIGH and MEDIUM setups, produce standard ORDER blocks per `references/STANDARD_ORDER_FORMAT.md`.
@@ -121,6 +140,8 @@ Every run, overwrite `workspace/markets/scans/swing-setups.json` (create the `sc
 {
   "scanned_at": "YYYY-MM-DDTHH:MM:SSZ",
   "regime": "TRENDING_UP | CHOP | TRENDING_DOWN | HIGH_VOL",
+  "priority_list": ["TICKER", ...],
+  "priority_source": "memory/trading-YYYY-MM-DD.md | none",
   "screen_hits": {
     "21_day_pullback":    ["TICKER", ...],
     "200_day_pullback":   ["TICKER", ...],
@@ -131,9 +152,12 @@ Every run, overwrite `workspace/markets/scans/swing-setups.json` (create the `sc
   },
   "active_candidates": ["TICKER", ...],
   "fresh_high_conviction": ["TICKER", ...],
+  "brief_promoted": ["TICKER", ...],
   "orders_emitted": 0
 }
 ```
+
+`priority_list` records the tickers extracted from today's brief (empty array if none parsed). `priority_source` records where they came from (path of the brief file, or `none`). `brief_promoted` is the subset of `fresh_high_conviction` that got there via priority boost rather than intrinsic HIGH conviction. These fields let heartbeat and premarket synthesis distinguish signal types without re-parsing the brief.
 
 This state file replaces, never accumulates. The premarket-brief and heartbeat read it; they don't re-scan.
 
@@ -158,6 +182,7 @@ For quiet runs (no material change) the brief is untouched; the only side effect
 
 If a HIGH conviction setup is *newly* in `fresh_high_conviction` (not present in prior state):
 - Telegram Simon: "[SCANNER] NVDA pulling back to 21-day MA at $118.50 — DP entry zone"
+- If the name was boosted from the priority list (appears in `brief_promoted`), append `— from today's brief`: "[SCANNER] META near 200-day SMA at $681 — from today's brief"
 - Do not re-alert on setups that were already HIGH last run.
 - Don't alert for MEDIUM or LOW — they appear in the brief's scanner section for next-day synthesis.
 
