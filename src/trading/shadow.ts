@@ -18,7 +18,6 @@
  */
 
 import { defaultRiskThresholds, resolveAccounts } from "./config.js";
-import { computeConfluence, toSnapshot } from "./confluence.js";
 import { makeLevelDetector } from "./detector.js";
 import { buildAlert } from "./pipeline.js";
 import { parseOrderBlocks } from "./plan.js";
@@ -148,7 +147,6 @@ export function replayScenario(
     opts.alertId ?? (() => `S${String(++idCounter).padStart(3, "0")}`);
 
   const ordersById = new Map(orders.map((o) => [o.id, o]));
-  const confluenceFindings = computeConfluence(orders);
   const events: ShadowEvent[] = [];
   let prevTs = scenario.startMonoMs ?? 0;
 
@@ -239,7 +237,6 @@ export function replayScenario(
         });
         continue;
       }
-      const finding = confluenceFindings.get(cand.order.id);
       const alert = buildAlert({
         hit: syntheticHit,
         order: cand.order,
@@ -247,7 +244,6 @@ export function replayScenario(
         nowMs: bootNowMs,
         alertId: nextAlertId(),
         catchup: true,
-        ...(finding ? { confluence: toSnapshot(finding) } : {}),
       });
       events.push({
         kind: "alert",
@@ -300,14 +296,12 @@ export function replayScenario(
         continue;
       }
 
-      const finding = confluenceFindings.get(order.id);
       const alert = buildAlert({
         hit,
         order,
         decision,
         nowMs: tick.tsMs,
         alertId: nextAlertId(),
-        ...(finding ? { confluence: toSnapshot(finding) } : {}),
       });
       events.push({
         kind: "alert",
@@ -358,8 +352,6 @@ export interface ExpectedEvent {
   warnMatches?: RegExp;
   /** Expected notification tier. */
   quiet?: boolean;
-  /** Expected confluence tier on the alert. */
-  confluenceTier?: "none" | "aligned" | "strong-aligned" | "divergent";
 }
 
 export interface TraceDiff {
@@ -428,14 +420,6 @@ export function diffTrace(
       if (actualQuiet !== want.quiet) {
         problems.push(
           `#${i}: quiet — expected ${want.quiet}, got ${actualQuiet}`,
-        );
-      }
-    }
-    if (want.confluenceTier !== undefined && got.kind === "alert") {
-      const tier = got.alert?.confluence?.tier ?? "none";
-      if (tier !== want.confluenceTier) {
-        problems.push(
-          `#${i}: confluenceTier — expected ${want.confluenceTier}, got ${tier}`,
         );
       }
     }

@@ -87,29 +87,6 @@ describe("formatAlertMessage", () => {
     expect(body).toContain("MANCINI ES");
   });
 
-  it("renders the confluence badge above the governor line when aligned", () => {
-    const body = formatAlertMessage(
-      mkAlert({
-        confluence: { tier: "strong-aligned", score: 75, label: "dp+mancini all HIGH" },
-      }),
-    );
-    expect(body).toMatch(/STRONG-ALIGNED/);
-    expect(body).toMatch(/dp\+mancini all HIGH/);
-    // The badge precedes the governor line.
-    const lines = body.split("\n");
-    const badgeIdx = lines.findIndex((l) => l.includes("STRONG-ALIGNED"));
-    const govIdx = lines.findIndex((l) => l.startsWith("Governor:"));
-    expect(badgeIdx).toBeGreaterThanOrEqual(0);
-    expect(badgeIdx).toBeLessThan(govIdx);
-  });
-
-  it("omits the confluence line when tier is none", () => {
-    const body = formatAlertMessage(
-      mkAlert({ confluence: { tier: "none", score: 50, label: "single-source" } }),
-    );
-    expect(body).not.toMatch(/ALIGNED|DIVERGENT/);
-  });
-
   it("passes the quiet option through to the in-memory channel", async () => {
     const channel = makeInMemoryChannel();
     await channel.send("loud one");
@@ -117,19 +94,6 @@ describe("formatAlertMessage", () => {
     expect(channel.sent[0]?.opts.quiet).toBeUndefined();
     expect(channel.sent[1]?.opts.quiet).toBe(true);
     expect(channel.outbox).toEqual(["loud one", "quiet one"]);
-  });
-
-  it("renders a divergent warning prominently", () => {
-    const body = formatAlertMessage(
-      mkAlert({
-        confluence: {
-          tier: "divergent",
-          score: 25,
-          label: "divergence vs mancini (SHORT @ 7018)",
-        },
-      }),
-    );
-    expect(body).toMatch(/⚠ DIVERGENT/);
   });
 });
 

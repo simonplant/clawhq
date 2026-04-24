@@ -205,67 +205,6 @@ describe("shadow mode replay", () => {
     expect(result.events).toEqual([]);
   });
 
-  it("confluence snapshot flows end-to-end to the emitted alert", () => {
-    const CONFLUENT_BRIEF = `
-## Orders
-
-ORDER 1 | HIGH | ACTIVE
-  source:       dp
-  accounts:     tos
-  ticker:       NVDA
-  exec_as:      NVDA
-  direction:    LONG
-  setup:        pullback to 21d MA
-  why:          quality reclaim
-  entry:        120 LMT
-  stop:         117 — stated
-  t1:           125 — stated
-  t2:           130 — stated
-  runner:       10% trail BE after T1
-  risk:         $3 | 10 NVDA | $30
-  confirmation: CONFIRMED
-  confluence:   none
-  caveat:       none
-  kills:        none
-  activation:   immediate
-  verify:       none
-
-ORDER 2 | HIGH | ACTIVE
-  source:       mancini
-  accounts:     tos
-  ticker:       NVDA
-  exec_as:      NVDA
-  direction:    LONG
-  setup:        failed breakdown reclaim
-  why:          level hold
-  entry:        120.4 LMT
-  stop:         117.5 — flush-4
-  t1:           125 — next R
-  t2:           130 — next R
-  runner:       10% trail BE after T1
-  risk:         $3 | 10 NVDA | $30
-  confirmation: CONFIRMED
-  confluence:   none
-  caveat:       none
-  kills:        none
-  activation:   immediate
-  verify:       none
-`;
-    const result = replayScenario({
-      name: "confluence-flow",
-      brief: CONFLUENT_BRIEF,
-      seedPrices: { NVDA: 119 },
-      ticks: [{ symbol: "NVDA", last: 121, tsMs: T0 }],
-    });
-    // Both orders cross 120 on this tick.
-    expect(result.events).toHaveLength(2);
-    for (const e of result.events) {
-      expect(e.kind).toBe("alert");
-      expect(e.alert?.confluence?.tier).toBe("strong-aligned");
-      expect(e.alert?.confluence?.score).toBe(75);
-    }
-  });
-
   it("boot reconciler: emits catch-up alert when level crossed while sidecar was down", () => {
     const result = replayScenario({
       name: "catch-up",

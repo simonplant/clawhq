@@ -46,11 +46,6 @@ import {
   buildAlert,
   scopeForAccounts as scopeFor,
 } from "./pipeline.js";
-import {
-  computeConfluence,
-  toSnapshot,
-  type ConfluenceMap,
-} from "./confluence.js";
 import { loadPlan, type LoadedPlan } from "./plan.js";
 import { findCatchupCandidates } from "./reconciler.js";
 import { checkRisk } from "./risk.js";
@@ -86,8 +81,6 @@ export interface RuntimeState {
    */
   channelKind: "telegram" | "in-memory" | "injected";
   plan: LoadedPlan | null;
-  /** Cross-source confluence for the current plan — recomputed on each load. */
-  confluence: ConfluenceMap;
   planPath: string;
   watchlist: string[];
   marketClock: MarketClock | null;
@@ -148,7 +141,6 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     channel,
     channelKind,
     plan: null,
-    confluence: new Map(),
     planPath,
     watchlist: watchlistBase,
     marketClock: null,
@@ -393,14 +385,12 @@ async function handleLevelHit(
   });
   if (decision.block) return;
 
-  const finding = state.confluence.get(order.id);
   const alert = buildAlert({
     hit,
     order,
     decision,
     nowMs: Date.now(),
     alertId: generateAlertId(),
-    ...(finding ? { confluence: toSnapshot(finding) } : {}),
   });
 
   state.pendingAlerts.set(alert.id, alert);
@@ -547,7 +537,6 @@ function loadAndCommitPlan(state: RuntimeState): void {
     return;
   }
   state.plan = result.plan;
-  state.confluence = computeConfluence(result.plan.orders);
   appendEvent(state.db, {
     type: "PlanLoaded",
     tsMs: Date.now(),
@@ -596,7 +585,6 @@ async function runBootReconciler(state: RuntimeState): Promise<void> {
       hitMs: Date.now(),
       catchup: true,
     };
-    const finding = state.confluence.get(cand.order.id);
     const alert = buildAlert({
       hit: syntheticHit,
       order: cand.order,
@@ -604,7 +592,6 @@ async function runBootReconciler(state: RuntimeState): Promise<void> {
       nowMs: Date.now(),
       alertId: generateAlertId(),
       catchup: true,
-      ...(finding ? { confluence: toSnapshot(finding) } : {}),
     });
     state.pendingAlerts.set(alert.id, alert);
     state.lastAlertMs = Date.now();

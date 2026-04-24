@@ -11,7 +11,6 @@ import { ALERT_TTL_MS, CATCHUP_TTL_MS } from "./config.js";
 import type {
   Account,
   Alert,
-  ConfluenceSnapshot,
   Horizon,
   LevelHit,
   NotifyTier,
@@ -27,8 +26,6 @@ export interface BuildAlertInputs {
   alertId: string;
   /** Mark this alert as a boot-time catch-up; uses a shorter TTL. */
   catchup?: boolean;
-  /** Optional cross-source alignment snapshot for this order. */
-  confluence?: ConfluenceSnapshot;
 }
 
 /**
@@ -65,10 +62,8 @@ export function buildAlert(inputs: BuildAlertInputs): Alert {
       levelName: hit.levelName,
       conviction: order.conviction,
       decision,
-      confluence: inputs.confluence,
     }),
     ...(inputs.catchup ? { catchup: true } : {}),
-    ...(inputs.confluence ? { confluence: inputs.confluence } : {}),
     ...(hit.postT1Runner ? { postT1Runner: true } : {}),
   };
 }
@@ -91,15 +86,11 @@ export function classifyNotify(inputs: {
   levelName: LevelHit["levelName"];
   conviction: OrderBlock["conviction"];
   decision: RiskDecision;
-  confluence?: ConfluenceSnapshot;
 }): NotifyTier {
-  const { levelName, conviction, decision, confluence } = inputs;
+  const { levelName, conviction, decision } = inputs;
   if (levelName !== "entry") return "loud";
   if (conviction === "HIGH") return "loud";
   if (decision.block || decision.warn) return "loud";
-  if (confluence?.tier === "divergent" || confluence?.tier === "strong-aligned") {
-    return "loud";
-  }
   return "quiet";
 }
 
