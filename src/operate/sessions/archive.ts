@@ -17,7 +17,7 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { resolveOpenclawContainer } from "../../build/docker/container.js";
+import { requireOpenclawContainer } from "../../build/docker/container.js";
 
 import type { ArchiveResult } from "./types.js";
 
@@ -56,7 +56,7 @@ export async function archiveSession(
   const archived: string[] = [];
   let indexUpdated = false;
   let containerRestarted = false;
-  const containerName = await resolveOpenclawContainer(signal);
+  const containerName = await requireOpenclawContainer(signal);
 
   // 1. Make sure .archived/ exists, then move all files that match the session id.
   //    Files can include: <id>.jsonl, <id>.jsonl.lock, <id>.*.checkpoint, etc.

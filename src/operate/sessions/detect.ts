@@ -8,7 +8,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import { resolveOpenclawContainer } from "../../build/docker/container.js";
+import { requireOpenclawContainer } from "../../build/docker/container.js";
 
 import type { RunawayFlag, RunawayThresholds, SessionInfo } from "./types.js";
 
@@ -55,7 +55,7 @@ export async function listSessions(
     done
   `;
 
-  const containerName = await resolveOpenclawContainer(signal);
+  const containerName = await requireOpenclawContainer(signal);
   let stdout: string;
   try {
     const res = await execFileAsync(
@@ -125,7 +125,7 @@ export async function listSessions(
  */
 async function readSessionsIndex(signal?: AbortSignal): Promise<Map<string, string>> {
   const map = new Map<string, string>();
-  const containerName = await resolveOpenclawContainer(signal);
+  const containerName = await requireOpenclawContainer(signal);
   try {
     const { stdout } = await execFileAsync(
       "docker",

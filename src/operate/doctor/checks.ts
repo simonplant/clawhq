@@ -19,7 +19,7 @@ import { access, constants, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { resolveOpenclawContainer } from "../../build/docker/container.js";
+import { requireOpenclawContainer } from "../../build/docker/container.js";
 import { collectIntegrationDomains, IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadAllowlist, loadIpsetMeta } from "../../build/launcher/firewall.js";
 import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
@@ -1132,7 +1132,7 @@ async function checkOllamaReachable(
     // Docker probe failed — fall through to host check
   }
 
-  const openclawContainer = await resolveOpenclawContainer(signal);
+  const openclawContainer = await requireOpenclawContainer(signal);
 
   if (!ollamaContainerized) {
     // Host-mode Ollama: must be reachable on localhost first
@@ -2123,7 +2123,7 @@ async function checkOllamaModelAvailable(
     const providers = models?.["providers"] as Record<string, unknown> | undefined;
     const ollamaCfg = providers?.["ollama"] as Record<string, unknown> | undefined;
     const baseUrl = (ollamaCfg?.["baseUrl"] ?? "http://ollama:11434") as string;
-    const openclawContainer = await resolveOpenclawContainer(signal);
+    const openclawContainer = await requireOpenclawContainer(signal);
     const { stdout } = await execFileAsync(
       "docker",
       [
@@ -2273,7 +2273,7 @@ async function checkOllamaUrl(deployDir: string): Promise<DoctorCheckResult> {
     // stale hostnames (e.g. host.docker.internal after Ollama moved into a
     // compose service) that would otherwise pass the string checks above.
     try {
-      const openclawContainer = await resolveOpenclawContainer();
+      const openclawContainer = await requireOpenclawContainer();
       const probe = `fetch(${JSON.stringify(baseUrl)}+'/api/tags',{signal:AbortSignal.timeout(3000)}).then(r=>r.ok?'OK':'FAIL').then(console.log).catch(()=>console.log('FAIL'))`;
       const { stdout } = await execFileAsync(
         "docker",

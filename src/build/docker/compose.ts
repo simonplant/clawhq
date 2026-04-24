@@ -22,10 +22,20 @@ import {
 } from "../../config/paths.js";
 import { sortedEntries } from "../../config/stable-serialize.js";
 
+import { openclawContainerName } from "./container-naming.js";
 import type { PostureConfig, WorkspaceManifest } from "./types.js";
 
 /** Options for generating a Docker Compose configuration. */
 export interface ComposeOptions {
+  /**
+   * Unified-registry uuid for this deployment. When set, the openclaw service
+   * gets `container_name: openclaw-<shortId(instanceId)>`, making the
+   * container name stable, predictable, and distinct across multiple
+   * deployments on one host. Required for reliable multi-instance operation;
+   * when absent, falls back to Compose's `<project>-<service>-<index>`
+   * naming (brittle when two deployments share the same project name).
+   */
+  readonly instanceId?: string;
   /** Enable 1Password Docker secret injection for OP_SERVICE_ACCOUNT_TOKEN. */
   readonly enableOnePasswordSecret?: boolean;
   /** Path to the 1Password token file on host (relative to compose dir). */
@@ -90,6 +100,8 @@ export interface ComposeOutput {
 
 interface ComposeServiceOutput {
   readonly image: string;
+  /** Instance-scoped container name: `openclaw-<shortId>` when instanceId is known. */
+  readonly container_name?: string;
   readonly user: string;
   readonly cap_drop: readonly string[];
   readonly security_opt: readonly string[];
@@ -218,6 +230,9 @@ export function generateCompose(
 
   const service: ComposeServiceOutput = {
     image: imageTag,
+    ...(options?.instanceId
+      ? { container_name: openclawContainerName(options.instanceId) }
+      : {}),
     user: posture.user,
     cap_drop: [...posture.capDrop],
     security_opt: [...posture.securityOpt],
@@ -541,6 +556,7 @@ export function serializeYaml(compose: ComposeOutput): string {
   // Note: 'version' is obsolete in Docker Compose v2+ and produces a warning
   lines.push("services:", "  openclaw:");
   lines.push(`    image: ${svc.image}`);
+  if (svc.container_name) lines.push(`    container_name: ${svc.container_name}`);
   lines.push(`    user: "${svc.user}"`);
   lines.push(`    read_only: ${svc.read_only}`);
   lines.push(`    restart: ${svc.restart}`);

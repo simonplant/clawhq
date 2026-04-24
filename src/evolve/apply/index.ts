@@ -145,8 +145,10 @@ async function applyCore(
 
     // Deployment-scoped settings used by compose emission. instanceName
     // lives at the top level of clawhq.yaml; posture comes from the
-    // security.posture block and drives container hardening.
+    // security.posture block and drives container hardening. instanceId
+    // drives the generated container_name for multi-deployment safety.
     const instanceName = typeof raw.instanceName === "string" ? raw.instanceName : undefined;
+    const instanceId = typeof raw.instanceId === "string" ? raw.instanceId : undefined;
     const securityRaw = raw.security as Record<string, unknown> | undefined;
     const postureVal = typeof securityRaw?.posture === "string" ? securityRaw.posture : undefined;
     const posture: BuildSecurityPosture | undefined =
@@ -189,6 +191,7 @@ async function applyCore(
       {
         ...(posture ? { posture } : {}),
         ...(instanceName ? { instanceName } : {}),
+        ...(instanceId ? { instanceId } : {}),
         runtimeAvailable: resolved.runtimeAvailable,
       },
     );
