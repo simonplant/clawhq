@@ -56,7 +56,7 @@ Each entry below is a gap ClawHQ's tooling closes:
 |---|---|
 | Configuration management | Generator + validator that enforce all 14 landmines by construction |
 | Security hardening | Hardened-by-default containers; three posture levels |
-| Operations & maintenance | `clawhq doctor` continuous checks; auto-fix where safe |
+| Operations & maintenance | [[doctor-diagnostics]] continuous checks; auto-fix where safe |
 | Agent lifecycle | Blueprint system, update/rollback pipeline, snapshot-on-install |
 | Monitoring | Single-pane status, health probes, integration verification |
 | Governance | Tool execution + egress audit trails (append-only JSONL) |

@@ -60,20 +60,20 @@ The relevant checks:
 
 | Landmine | Check |
 |---|---|
-| 1: dangerouslyDisableDeviceAuth missing | config-valid |
-| 2: allowedOrigins stripped | config-valid |
-| 3: trustedProxies stripped | config-valid |
-| 4: tools.exec.host wrong | config-valid |
-| 5: tools.exec.security not full | config-valid |
-| 6: Container user not UID 1000 | user-uid |
-| 7: ICC enabled | firewall-active (bridge inspect) |
-| 8: Identity files exceed `bootstrapMaxChars` | identity-size |
-| 9: Cron stepping syntax invalid | cron-syntax |
-| 10: External networks not created | container-running (fails on missing net) |
-| 11: .env missing required vars | env-vars |
-| 12: Config/credentials not read-only | compose-exists + validation |
-| 13: Firewall not reapplied | firewall-active |
-| 14: fs.workspaceOnly misconfigured | config-valid |
+| 1: [[dangerously-disable-device-auth-missing]] | config-valid |
+| 2: [[allowed-origins-stripped]] | config-valid |
+| 3: [[trusted-proxies-stripped]] | config-valid |
+| 4: [[tools-exec-host-wrong-value]] | config-valid |
+| 5: [[tools-exec-security-not-full]] | config-valid |
+| 6: [[container-user-not-uid-1000]] | user-uid |
+| 7: [[icc-enabled-on-agent-network]] | firewall-active (bridge inspect) |
+| 8: [[identity-files-exceed-bootstrap-max-chars]] | identity-size |
+| 9: [[cron-stepping-syntax-invalid]] | cron-syntax |
+| 10: [[external-networks-not-created]] | container-running (fails on missing net) |
+| 11: [[env-missing-required-variables]] | env-vars |
+| 12: [[config-credentials-not-read-only]] | compose-exists + validation |
+| 13: [[firewall-not-reapplied-after-network-recreate]] | firewall-active |
+| 14: [[fs-workspace-only-misconfigured]] | config-valid |
 
 Every landmine has a probe. A landmine without a probe is a regression
 in the tooling, not an excusable oversight.

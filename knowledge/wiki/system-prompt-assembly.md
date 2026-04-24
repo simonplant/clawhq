@@ -105,4 +105,9 @@ that memory and recent conversation have room to breathe.
 - [[memory-system]]
 - [[soul-md]]
 - [[agents-md]]
+- [[bootstrap-md]] — first-run-only fragment loaded when the workspace has no state
+- [[identity-md]]
+- [[tools-md]]
+- [[heartbeat-md]]
+- [[user-md]]
 - [[identity-files-exceed-bootstrap-max-chars]]

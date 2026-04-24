@@ -126,6 +126,8 @@ clawhq verify
 # End-to-end integration test from inside the container
 ```
 
+See [[doctor-diagnostics]] for the full check inventory.
+
 ## Related
 
 - [[container-hardening]] — the full hardened compose.

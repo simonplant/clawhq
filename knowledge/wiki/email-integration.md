@@ -145,6 +145,7 @@ independent, smaller fix.
 ## See also
 
 - [[integration-layer]]
+- [[auto-reply-router]] — first-contact gating for inbound mail
 - [[credential-health-probes]]
 - [[egress-firewall]]
 - [[env-missing-required-variables]]

@@ -167,4 +167,5 @@ Both patched. Run `openclaw update` to ensure you have the fixes.
 - [[container-hardening]]
 - [[egress-firewall]]
 - [[prompt-injection-defense]]
+- [[managed-mode]] — trust mode that architecturally blocks content access via the cloud command surface
 - [[key-principles]]

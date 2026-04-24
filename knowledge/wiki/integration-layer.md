@@ -104,4 +104,5 @@ the 7-day-advance warning behavior.
 - [[credential-health-probes]]
 - [[email-integration]] — full defaults for the email category (tool, permissions, egress, probe)
 - [[env-missing-required-variables]]
+- [[provider-profile-layer]] — deferred decision on whether provider catalogs should be a first-class architectural layer
 - [[two-stage-docker-build]]
