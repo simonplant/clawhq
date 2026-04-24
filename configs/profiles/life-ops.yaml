@@ -126,10 +126,6 @@ tools:
     category: trading
     description: "Hard constraint enforcement — every trade must pass before execution"
     required: false
-  - name: markets
-    category: trading
-    description: "Shared trading library (Python modules used by journal/market-calendar/risk-governor) — not directly invoked"
-    required: false
   - name: ta
     category: trading
     description: "Technical analysis — MAs, RSI, MACD, Bollinger Bands, ATR, RVOL, DP-style level analysis"

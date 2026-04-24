@@ -822,13 +822,15 @@ If REDUCED: use the reduced quantity from stdout, not the original.
 If BLOCKED: the trade DOES NOT HAPPEN. Log the block in journal and move on.
 MANDATORY: run this before EVERY order. No exceptions. No overrides.`,
 
-  markets: `Shared trading module — deployed to workspace/markets/.
-Contains CONFIG.json (risk limits, pot allocations, signal sources),
-WATCHLISTS.json (portfolio, DP, Mancini symbols), and Python modules
-for journal, market_calendar, and risk_governor backends.
-Not invoked directly — used by journal, market-calendar, and risk-governor tools.`,
+  // `markets` is a shared DATA DIRECTORY (workspace/markets/) containing
+  // CONFIG.json, WATCHLISTS.json, and Python modules used by journal /
+  // market-calendar / risk-governor / alpaca / earnings / trade-journal /
+  // watchlist. It is NOT an executable — no entry in TOOL_USAGE_NOTES
+  // because TOOLS.md should never list it as something the agent calls.
+  // Dropped from life-ops.yaml's tool list; this comment is the
+  // gravestone so nobody re-adds a usage note for it.
 
-  ta: `Technical analysis — compute indicators from price data via tradier.
+  ta:`Technical analysis — compute indicators from price data via tradier.
 Usage: \`ta ma <symbol> [--periods 8,21,200]\` — moving averages (SMA + EMA)
   \`ta rsi <symbol> [--period 14]\` — RSI
   \`ta macd <symbol>\` — MACD (12/26/9)
