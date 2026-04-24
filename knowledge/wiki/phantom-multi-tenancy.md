@@ -90,11 +90,13 @@ fleet registry, no error on ambiguity, no selector argument.
 
 See backlog items FEAT-186.5 through FEAT-191 for the prioritized work:
 
-0. **FEAT-186.5** — Unified instance registry at `~/.clawhq/instances.json`
-   (see [[instance-registry]]). Precursor — every later step looks up by
-   stable instance-id.
-1. **FEAT-187** — `--agent <name>` on every lifecycle command; ambiguity
-   becomes an error, not a silent default.
+0. **FEAT-186.5 ✅ done** — Unified instance registry at
+   `~/.clawhq/instances.json` (see [[instance-registry]]). Every later
+   step looks up by stable instance-id.
+1. **FEAT-187 ✅ done** — `--agent <name>` on every lifecycle command;
+   ambiguity is an error, not a silent default. CLI bootstrap runs
+   idempotent legacy-registry migration. `clawhq init` mints uuid +
+   writes `instanceId` into `clawhq.yaml`.
 2. **FEAT-188** — Wire the fleet registry into lifecycle commands
    (`--fleet` flag iterates; cross-wire `clawhq doctor --fleet`).
 3. **FEAT-189** — Instance-scoped Docker container naming; kill the

@@ -1,7 +1,7 @@
 ---
 title: Instance registry
 category: Decisions
-status: planned
+status: shipped
 date: 2026-04-23
 tags: [clawhq, architecture, multi-tenancy, registry, layer-2]
 ---

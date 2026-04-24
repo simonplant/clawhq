@@ -146,6 +146,39 @@ chain is 186.5 → 187 → (188, 189, 190) → 191.
 and tests. Legacy `fleet.json` + `cloud/instances.json` still the active
 readers — new module coexists; migration lands with FEAT-187.
 
+## [2026-04-23] query | Shipped FEAT-186.5 + FEAT-187 (unified registry + --agent flag)
+
+Four commits landed (4a4230a → b67b573 → 83d0240 → ef2d0e3 → 851ec4c):
+
+- **Slice A (b67b573)** — resolver module: `src/cloud/instances/resolver.ts`
+  with precedence `--agent > CLAWHQ_AGENT > ~/.clawhq/current > cwd-walk >
+  single-default > error`. Env/cwd/root all injectable.
+- **Slice B (83d0240)** — migration: one-shot idempotent fold of legacy
+  `cloud/fleet.json` + `cloud/instances.json` into the unified
+  `instances.json`. Cloud entries preserve uuid; fleet entries mint fresh.
+  Collisions resolved with `-local-<6hex>` suffix on the fleet entry;
+  legacy files moved to `.migrated.bak`.
+- **Slice C (ef2d0e3)** — mint-on-init: `clawhq init` mints a uuid,
+  embeds it in `clawhq.yaml` as `instanceId`, and registers the
+  deployment. Handles `--reset` by dropping stale entries for the same
+  deployDir. Name falls back to `clawhqConfig.instanceName ||
+  basename(deployDir)` with `-2` suffixing on collision.
+- **Slice D (851ec4c)** — CLI wiring: `src/cli/resolve-deploy-dir.ts`
+  resolves argv/env/cwd/registry → deployDir. Registered `--agent` as
+  a global option on the program. CLI bootstrap runs migration
+  idempotently. Ambiguous invocations (multi-registered, no selector)
+  print a helpful error listing registered names and exit 1.
+
+**Tests:** 2128 total (up 55 from the start of this sprint); all green.
+
+**Smoke-verified:**
+- Two registered agents, no --agent → error with list of names, exit 1
+- `--agent clawdius` → resolves to that instance's deployDir
+
+**Backlog:** FEAT-186.5 and FEAT-187 marked done. FEAT-188 / 189 / 190
+are now unblocked (all depend on FEAT-187); FEAT-191 chains after
+FEAT-190.
+
 ## [2026-04-23] query | Email default behaviour + permissions → filed as [[email-integration]]
 
 Synthesized answer from [[integration-layer]], the Email Manager blueprint in

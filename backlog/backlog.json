@@ -1050,11 +1050,11 @@
         "src/cloud/instances/registry.test.ts",
         "src/cloud/instances/index.ts"
       ],
-      "status": "in-progress",
+      "status": "done",
       "readyForSprint": true,
       "track": "core",
       "groomedAt": "2026-04-23",
-      "groomingNotes": "Precursor to FEAT-187. Touches Layer 2 only — new registry file + types + tests. Does not touch Layer 1 CLI, Layer 4 agent content, or Layer 5 fleet wiring. Foundation is deliberately coexistent with legacy registries so the later chain can migrate in one step when FEAT-187 lands. See knowledge/wiki/instance-registry.md for full design rationale, prior-art comparison, and resolution order. Landing this unblocks FEAT-187..FEAT-191.",
+      "groomingNotes": "Precursor to FEAT-187. Touches Layer 2 only — new registry file + types + tests. Does not touch Layer 1 CLI, Layer 4 agent content, or Layer 5 fleet wiring. Foundation is deliberately coexistent with legacy registries so the later chain can migrate in one step when FEAT-187 lands. See knowledge/wiki/instance-registry.md for full design rationale, prior-art comparison, and resolution order. Landing this unblocks FEAT-187..FEAT-191. Shipped 2026-04-23 in 4a4230a.",
       "dependsOn": null
     },
     {
@@ -1087,11 +1087,11 @@
         "src/cli/commands/design.ts",
         "src/cloud/fleet/"
       ],
-      "status": "todo",
+      "status": "done",
       "readyForSprint": false,
       "track": "core",
       "groomedAt": "2026-04-23",
-      "groomingNotes": "Child of FEAT-186. Priority 1 of the phantom-multi-tenancy fix chain. Depends on FEAT-186.5 (unified instance registry foundation). Touches Layer 1 (ClawHQ CLI code), Layer 2 (registry migration + clawhq.yaml instanceId backfill), and Layer 5 (fleet resolution). Does not touch Layer 4 (agent content unchanged). Ownership rule: before this item, the CLI has a singleton assumption; after, no lifecycle command assumes a singleton. See knowledge/wiki/phantom-multi-tenancy.md for the file:line evidence and the breaking scenario; knowledge/wiki/instance-registry.md for the resolution-order and migration design.",
+      "groomingNotes": "Child of FEAT-186. Priority 1 of the phantom-multi-tenancy fix chain. Depends on FEAT-186.5 (unified instance registry foundation). Touches Layer 1 (ClawHQ CLI code), Layer 2 (registry migration + clawhq.yaml instanceId backfill), and Layer 5 (fleet resolution). Does not touch Layer 4 (agent content unchanged). Ownership rule: before this item, the CLI has a singleton assumption; after, no lifecycle command assumes a singleton. See knowledge/wiki/phantom-multi-tenancy.md for the file:line evidence and the breaking scenario; knowledge/wiki/instance-registry.md for the resolution-order and migration design. Shipped 2026-04-23 across slices A (b67b573 resolver), B (83d0240 migration), C (ef2d0e3 mint-on-init), D (851ec4c CLI --agent wiring).",
       "dependsOn": ["FEAT-186.5"]
     },
     {
