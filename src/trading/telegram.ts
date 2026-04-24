@@ -52,16 +52,19 @@ export function formatAlertMessage(alert: Alert): string {
     `Entry ${fmt(alert.entry)}  Stop ${fmt(alert.stop)}  ` +
     `T1 ${fmt(alert.t1)}  T2 ${fmt(alert.t2)}`;
   const risk = `Risk $${alert.totalRisk.toFixed(0)}`;
+  const confluenceLine = formatConfluenceLine(alert);
 
-  return [
+  const lines = [
     `${head} ${alert.source.toUpperCase()} ${alert.ticker} — ${alert.conviction} [${accounts}]`,
     context,
     levels,
     risk,
-    govLine,
-    `Reply: YES-${alert.id} | HALF-${alert.id} | NO-${alert.id}`,
-    `(expires ${expires})`,
-  ].join("\n");
+  ];
+  if (confluenceLine) lines.push(confluenceLine);
+  lines.push(govLine);
+  lines.push(`Reply: YES-${alert.id} | HALF-${alert.id} | NO-${alert.id}`);
+  lines.push(`(expires ${expires})`);
+  return lines.join("\n");
 }
 
 export function formatHeartbeat(input: {
@@ -146,6 +149,18 @@ function formatGovernorLine(alert: Alert): string {
   if (alert.risk.block) return `Governor: BLOCKED — ${alert.risk.block}`;
   if (alert.risk.warn) return `Governor: warn — ${alert.risk.warn} (${alert.risk.scope})`;
   return `Governor: OK (${alert.risk.scope})`;
+}
+
+function formatConfluenceLine(alert: Alert): string | null {
+  const c = alert.confluence;
+  if (!c || c.tier === "none") return null;
+  const badge =
+    c.tier === "divergent"
+      ? "⚠ DIVERGENT"
+      : c.tier === "strong-aligned"
+        ? "✦ STRONG-ALIGNED"
+        : "✓ ALIGNED";
+  return `${badge} — ${c.label}`;
 }
 
 function fmt(n: number): string {

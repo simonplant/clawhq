@@ -11,6 +11,7 @@ import { ALERT_TTL_MS, CATCHUP_TTL_MS } from "./config.js";
 import type {
   Account,
   Alert,
+  ConfluenceSnapshot,
   Horizon,
   LevelHit,
   OrderBlock,
@@ -25,6 +26,8 @@ export interface BuildAlertInputs {
   alertId: string;
   /** Mark this alert as a boot-time catch-up; uses a shorter TTL. */
   catchup?: boolean;
+  /** Optional cross-source alignment snapshot for this order. */
+  confluence?: ConfluenceSnapshot;
 }
 
 /**
@@ -58,6 +61,7 @@ export function buildAlert(inputs: BuildAlertInputs): Alert {
     risk: decision,
     expiresAtMs: nowMs + ttl,
     ...(inputs.catchup ? { catchup: true } : {}),
+    ...(inputs.confluence ? { confluence: inputs.confluence } : {}),
   };
 }
 

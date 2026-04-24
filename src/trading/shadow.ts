@@ -18,6 +18,7 @@
  */
 
 import { defaultRiskThresholds, resolveAccounts } from "./config.js";
+import { computeConfluence, toSnapshot } from "./confluence.js";
 import { makeLevelDetector } from "./detector.js";
 import { buildAlert } from "./pipeline.js";
 import { parseOrderBlocks } from "./plan.js";
@@ -122,6 +123,7 @@ export function replayScenario(
     opts.alertId ?? (() => `S${String(++idCounter).padStart(3, "0")}`);
 
   const ordersById = new Map(orders.map((o) => [o.id, o]));
+  const confluenceFindings = computeConfluence(orders);
   const events: ShadowEvent[] = [];
   let prevTs = scenario.startMonoMs ?? 0;
 
@@ -162,12 +164,14 @@ export function replayScenario(
         continue;
       }
 
+      const finding = confluenceFindings.get(order.id);
       const alert = buildAlert({
         hit,
         order,
         decision,
         nowMs: tick.tsMs,
         alertId: nextAlertId(),
+        ...(finding ? { confluence: toSnapshot(finding) } : {}),
       });
       events.push({
         kind: "alert",

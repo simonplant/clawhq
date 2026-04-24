@@ -156,6 +156,18 @@ export interface RiskDecision {
   scope: "tradier-strict" | "advisory-only" | "mixed";
 }
 
+// ── Confluence (derived in confluence.ts; carried on Alert for logging) ──────
+
+export type ConfluenceTier = "none" | "aligned" | "strong-aligned" | "divergent";
+
+export interface ConfluenceSnapshot {
+  tier: ConfluenceTier;
+  /** 0–100. 50 is single-source baseline. */
+  score: number;
+  /** Human-readable one-liner suitable for alert annotation. */
+  label: string;
+}
+
 // ── Alert protocol ───────────────────────────────────────────────────────────
 
 export interface Alert {
@@ -183,6 +195,8 @@ export interface Alert {
   expiresAtMs: number;
   /** True when reconciler emitted this as a catch-up. */
   catchup?: boolean;
+  /** Optional — present when caller computed confluence for the plan. */
+  confluence?: ConfluenceSnapshot;
 }
 
 export type UserReplyType =
