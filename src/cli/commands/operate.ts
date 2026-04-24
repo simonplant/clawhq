@@ -4,6 +4,11 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import ora from "ora";
 
+import {
+  formatFleetDoctor,
+  formatFleetDoctorJson,
+  runFleetDoctor,
+} from "../../cloud/fleet/index.js";
 import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { installOpsAutomation } from "../../operate/automation/index.js";
 import {
@@ -89,14 +94,37 @@ export function registerOperateCommands(program: Command, defaultDeployDir: stri
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--fix", "Auto-fix common issues")
     .option("--json", "Output as JSON for scripting")
+    .option("--fleet", "Run against every registered agent and aggregate results (mutually exclusive with --agent)")
     .action(async (opts: {
       deployDir: string;
       fix?: boolean;
       json?: boolean;
+      fleet?: boolean;
     }) => {
-      ensureInstalled(opts.deployDir);
-
       const { signal } = createCommandScope();
+
+      // --fleet: iterate the unified instance registry and aggregate.
+      // Skips `ensureInstalled` on the caller's deployDir since the whole
+      // point is to reach across installs.
+      if (opts.fleet) {
+        if (opts.fix) {
+          console.error(chalk.red("--fleet cannot be combined with --fix; run doctor per-agent to auto-fix"));
+          throw new CommandError("", 1);
+        }
+        const spinner = ora("Running fleet-wide doctor checks…");
+        if (!opts.json) spinner.start();
+        try {
+          const report = await runFleetDoctor(opts.deployDir, signal);
+          if (!opts.json) spinner.stop();
+          console.log(opts.json ? formatFleetDoctorJson(report) : formatFleetDoctor(report));
+          if (!report.allHealthy) throw new CommandError("", 1);
+        } finally {
+          spinner.stop();
+        }
+        return;
+      }
+
+      ensureInstalled(opts.deployDir);
 
       const format = opts.json ? "json" : "table";
 

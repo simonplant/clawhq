@@ -1,18 +1,28 @@
 /**
  * Fleet agent discovery — find and inspect all registered agents.
  *
- * Agents are tracked in a fleet registry file. Discovery checks each
- * registered directory for a valid deployment, collects health metadata
- * without reading content.
+ * This module is now an adapter over the unified instance registry
+ * (`src/cloud/instances/`). The `FleetAgent` / `FleetRegistry` shapes stay
+ * for backwards compatibility with the CLI and formatters, but the source
+ * of truth is `~/.clawhq/instances.json`. The `deployDir` parameter on
+ * these functions is preserved for API compatibility and is ignored —
+ * the unified registry is machine-global, not per-deployment.
  */
 
-import { randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
-import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
-import { DEPLOY_CLOUD_SUBDIR, DEPLOY_ENGINE_OPENCLAW_JSON, DEPLOY_ENGINE_SUBDIR } from "../../config/paths.js";
+import { DEPLOY_ENGINE_OPENCLAW_JSON, DEPLOY_ENGINE_SUBDIR } from "../../config/paths.js";
 import { collectHealthReport } from "../heartbeat/reporter.js";
+import {
+  addInstance,
+  findByName,
+  listInstances,
+  readRegistry,
+  registryPath,
+  removeInstance,
+} from "../instances/index.js";
+import type { Instance } from "../instances/index.js";
 import { readTrustModeState } from "../trust-modes/index.js";
 
 import type {
@@ -22,100 +32,85 @@ import type {
   FleetRegistry,
 } from "./types.js";
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const FLEET_FILE = "fleet.json";
-
 // ── Path helpers ─────────────────────────────────────────────────────────────
 
-/** Resolve fleet.json path for a deployment directory. */
-export function fleetRegistryPath(deployDir: string): string {
-  return join(deployDir, DEPLOY_CLOUD_SUBDIR, FLEET_FILE);
+/** Path to the persisted registry — now resolves to `~/.clawhq/instances.json`. */
+export function fleetRegistryPath(_deployDir: string): string {
+  return registryPath();
 }
 
-// ── Registry management ──────────────────────────────────────────────────────
+// ── Projection helpers ───────────────────────────────────────────────────────
 
-/** Read fleet registry from disk. Returns empty registry if file doesn't exist. */
-export function readFleetRegistry(deployDir: string): FleetRegistry {
-  const path = fleetRegistryPath(deployDir);
-  if (!existsSync(path)) {
-    return { version: 1, agents: [] };
-  }
-  try {
-    const raw = readFileSync(path, "utf-8");
-    return JSON.parse(raw) as FleetRegistry;
-  } catch {
-    return { version: 1, agents: [] };
-  }
+/** Project a unified `Instance` into the legacy `FleetAgent` shape. */
+function toFleetAgent(instance: Instance): FleetAgent | undefined {
+  if (instance.location.kind !== "local") return undefined;
+  return {
+    name: instance.name,
+    deployDir: instance.location.deployDir,
+    addedAt: instance.createdAt,
+  };
 }
 
-/** Write fleet registry atomically. */
-function writeFleetRegistry(deployDir: string, registry: FleetRegistry): void {
-  const path = fleetRegistryPath(deployDir);
-  const dir = dirname(path);
-
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true, mode: DIR_MODE_SECRET });
+/** Project the unified registry into the legacy `FleetRegistry` shape. */
+function projectFleet(): FleetRegistry {
+  const instances = readRegistry().instances;
+  const agents: FleetAgent[] = [];
+  for (const inst of instances) {
+    const agent = toFleetAgent(inst);
+    if (agent) agents.push(agent);
   }
-
-  const content = JSON.stringify(registry, null, 2) + "\n";
-  const tmpName = `.fleet.tmp.${randomBytes(6).toString("hex")}`;
-  const tmpPath = join(dir, tmpName);
-
-  try {
-    writeFileSync(tmpPath, content, { mode: FILE_MODE_SECRET });
-    chmodSync(tmpPath, FILE_MODE_SECRET);
-    renameSync(tmpPath, path);
-  } catch (err) {
-    // Write failed — fleet registry is best-effort
-    console.warn("[fleet] registry write failed:", err instanceof Error ? err.message : String(err));
-  }
+  return { version: 1, agents };
 }
 
-/** Register an agent in the fleet. No-op if already registered at same path. */
+// ── Registry management (back-compat adapter) ────────────────────────────────
+
+/** Read fleet registry — returns local instances from the unified registry. */
+export function readFleetRegistry(_deployDir: string): FleetRegistry {
+  return projectFleet();
+}
+
+/**
+ * Register a local agent in the fleet. Idempotent: if an entry already
+ * exists for `agentDeployDir`, returns that entry unchanged. Otherwise
+ * mints a new instance in the unified registry.
+ */
 export function registerAgent(
-  deployDir: string,
+  _deployDir: string,
   name: string,
   agentDeployDir: string,
 ): FleetAgent {
-  const registry = readFleetRegistry(deployDir);
-
-  // Check for duplicate path
-  const existing = registry.agents.find((a) => a.deployDir === agentDeployDir);
-  if (existing) {
-    return existing;
+  // Idempotent by deployDir.
+  for (const inst of listInstances()) {
+    if (inst.location.kind === "local" && inst.location.deployDir === agentDeployDir) {
+      return { name: inst.name, deployDir: agentDeployDir, addedAt: inst.createdAt };
+    }
   }
 
-  const agent: FleetAgent = {
-    name,
-    deployDir: agentDeployDir,
-    addedAt: new Date().toISOString(),
-  };
+  // Resolve a unique name — suffix on collision.
+  let finalName = name;
+  let suffix = 2;
+  while (findByName(finalName)) {
+    finalName = `${name}-${suffix}`;
+    suffix += 1;
+  }
 
-  writeFleetRegistry(deployDir, {
-    ...registry,
-    agents: [...registry.agents, agent],
+  const inst = addInstance({
+    name: finalName,
+    status: "initialized",
+    location: { kind: "local", deployDir: agentDeployDir },
   });
-
-  return agent;
+  return { name: inst.name, deployDir: agentDeployDir, addedAt: inst.createdAt };
 }
 
-/** Remove an agent from the fleet by name or path. */
-export function unregisterAgent(
-  deployDir: string,
-  nameOrPath: string,
-): boolean {
-  const registry = readFleetRegistry(deployDir);
-  const filtered = registry.agents.filter(
-    (a) => a.name !== nameOrPath && a.deployDir !== nameOrPath,
-  );
-
-  if (filtered.length === registry.agents.length) {
-    return false; // Nothing removed
+/** Remove a local agent from the fleet by name or by deployDir. */
+export function unregisterAgent(_deployDir: string, nameOrPath: string): boolean {
+  for (const inst of listInstances()) {
+    if (inst.location.kind !== "local") continue;
+    if (inst.name === nameOrPath || inst.location.deployDir === nameOrPath) {
+      return removeInstance(inst.id);
+    }
   }
-
-  writeFleetRegistry(deployDir, { ...registry, agents: filtered });
-  return true;
+  return false;
 }
 
 // ── Discovery ────────────────────────────────────────────────────────────────
@@ -156,8 +151,8 @@ async function discoverAgent(agent: FleetAgent): Promise<DiscoveredAgent> {
  * Checks each registered directory for existence, valid config, and
  * collects health metadata. Never reads content.
  */
-export async function discoverFleet(deployDir: string): Promise<FleetDiscoveryResult> {
-  const registry = readFleetRegistry(deployDir);
+export async function discoverFleet(_deployDir: string): Promise<FleetDiscoveryResult> {
+  const registry = projectFleet();
   const agents = await Promise.all(registry.agents.map(discoverAgent));
 
   const activeCount = agents.filter((a) => a.exists && a.configured).length;

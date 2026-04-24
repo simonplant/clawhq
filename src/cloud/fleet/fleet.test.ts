@@ -1,10 +1,10 @@
-import { mkdirSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { DIR_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 
 import {
   discoverFleet,
@@ -25,9 +25,28 @@ import { getFleetHealth } from "./health.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+// The fleet API is now an adapter over the unified instance registry at
+// `~/.clawhq/instances.json`. Tests sandbox it by overriding HOME so
+// `os.homedir()` resolves into a tmp tree and each test sees a fresh
+// empty registry.
+
+let homeSandbox: string;
+let originalHome: string | undefined;
+
+beforeEach(() => {
+  homeSandbox = mkdtempSync(join(tmpdir(), "clawhq-fleet-home-"));
+  originalHome = process.env["HOME"];
+  process.env["HOME"] = homeSandbox;
+});
+
+afterEach(() => {
+  if (originalHome === undefined) delete process.env["HOME"];
+  else process.env["HOME"] = originalHome;
+  rmSync(homeSandbox, { recursive: true, force: true });
+});
+
 function tmpDeployDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "clawhq-fleet-test-"));
-  mkdirSync(join(dir, "cloud"), { recursive: true });
   return dir;
 }
 
@@ -78,18 +97,6 @@ describe("fleet registry", () => {
       const registry = readFleetRegistry(deployDir);
       expect(registry.agents).toHaveLength(1);
       expect(registry.agents[0].name).toBe("test-agent");
-    });
-
-    it("creates cloud/ directory with mode 0700", () => {
-      const deployDir = mkdtempSync(join(tmpdir(), "clawhq-fleet-test-"));
-      // Do NOT pre-create cloud/ — let registerAgent create it
-      const agentDir = tmpAgentDir();
-
-      registerAgent(deployDir, "test-agent", agentDir);
-
-      const cloudDir = join(deployDir, "cloud");
-      const stat = statSync(cloudDir);
-      expect(stat.mode & 0o777).toBe(DIR_MODE_SECRET);
     });
 
     it("returns existing agent when registering duplicate path", () => {
