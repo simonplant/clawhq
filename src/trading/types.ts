@@ -213,7 +213,14 @@ export interface Alert {
   catchup?: boolean;
   /** Optional — present when caller computed confluence for the plan. */
   confluence?: ConfluenceSnapshot;
+  /**
+   * Notification tier. Delivery adapters can use this to suppress the
+   * Telegram notification sound for low-value crossings. Default "loud".
+   */
+  notify?: NotifyTier;
 }
+
+export type NotifyTier = "loud" | "quiet";
 
 export type UserReplyType =
   | "approve"

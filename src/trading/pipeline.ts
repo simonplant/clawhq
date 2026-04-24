@@ -14,6 +14,7 @@ import type {
   ConfluenceSnapshot,
   Horizon,
   LevelHit,
+  NotifyTier,
   OrderBlock,
   RiskDecision,
 } from "./types.js";
@@ -60,9 +61,45 @@ export function buildAlert(inputs: BuildAlertInputs): Alert {
     levelPrice: hit.levelPrice,
     risk: decision,
     expiresAtMs: nowMs + ttl,
+    notify: classifyNotify({
+      levelName: hit.levelName,
+      conviction: order.conviction,
+      decision,
+      confluence: inputs.confluence,
+    }),
     ...(inputs.catchup ? { catchup: true } : {}),
     ...(inputs.confluence ? { confluence: inputs.confluence } : {}),
   };
+}
+
+/**
+ * Choose the notification tier for an alert.
+ *
+ * LOUD when at least one of:
+ *   - stop or target hit (price action, not pending entry)
+ *   - HIGH conviction entry
+ *   - governor warn or block (Simon needs to see it)
+ *   - confluence divergent (cross-source disagreement)
+ *   - confluence strong-aligned (best setups of the day)
+ *
+ * QUIET otherwise — single-source MEDIUM/LOW entry ticks through chop.
+ * These still fire, still log, still appear in Telegram; just without
+ * the notification ping. Trims fatigue without losing information.
+ */
+export function classifyNotify(inputs: {
+  levelName: LevelHit["levelName"];
+  conviction: OrderBlock["conviction"];
+  decision: RiskDecision;
+  confluence?: ConfluenceSnapshot;
+}): NotifyTier {
+  const { levelName, conviction, decision, confluence } = inputs;
+  if (levelName !== "entry") return "loud";
+  if (conviction === "HIGH") return "loud";
+  if (decision.block || decision.warn) return "loud";
+  if (confluence?.tier === "divergent" || confluence?.tier === "strong-aligned") {
+    return "loud";
+  }
+  return "quiet";
 }
 
 /**

@@ -102,6 +102,15 @@ describe("formatAlertMessage", () => {
     expect(body).not.toMatch(/ALIGNED|DIVERGENT/);
   });
 
+  it("passes the quiet option through to the in-memory channel", async () => {
+    const channel = makeInMemoryChannel();
+    await channel.send("loud one");
+    await channel.send("quiet one", { quiet: true });
+    expect(channel.sent[0]?.opts.quiet).toBeUndefined();
+    expect(channel.sent[1]?.opts.quiet).toBe(true);
+    expect(channel.outbox).toEqual(["loud one", "quiet one"]);
+  });
+
   it("renders a divergent warning prominently", () => {
     const body = formatAlertMessage(
       mkAlert({

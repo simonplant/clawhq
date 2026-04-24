@@ -338,7 +338,9 @@ async function handleLevelHit(
   state.pendingAlerts.set(alert.id, alert);
   state.lastAlertMs = Date.now();
   appendEvent(state.db, { type: "AlertSent", tsMs: Date.now(), alert });
-  await safeSend(state, formatAlertMessage(alert));
+  await safeSend(state, formatAlertMessage(alert), {
+    quiet: alert.notify === "quiet",
+  });
 }
 
 // ── Risk state refresh ───────────────────────────────────────────────────────
@@ -526,7 +528,9 @@ async function runBootReconciler(state: RuntimeState): Promise<void> {
     state.pendingAlerts.set(alert.id, alert);
     state.lastAlertMs = Date.now();
     appendEvent(state.db, { type: "AlertSent", tsMs: Date.now(), alert });
-    await safeSend(state, formatAlertMessage(alert));
+    await safeSend(state, formatAlertMessage(alert), {
+      quiet: alert.notify === "quiet",
+    });
   }
 }
 
@@ -536,9 +540,13 @@ function appendEvent(db: TradingDB, event: TradingEvent): void {
   db.append(event);
 }
 
-async function safeSend(state: RuntimeState, body: string): Promise<void> {
+async function safeSend(
+  state: RuntimeState,
+  body: string,
+  opts: { quiet?: boolean } = {},
+): Promise<void> {
   try {
-    await state.channel.send(body);
+    await state.channel.send(body, opts);
   } catch {
     // Silent — Telegram failures are observable via `clawhq doctor` health.
   }

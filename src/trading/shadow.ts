@@ -68,6 +68,8 @@ export interface ShadowEvent {
   alert?: Alert;
   /** Present when kind=blocked. */
   blockReason?: string;
+  /** True when the alert would have been sent silently. */
+  quiet?: boolean;
 }
 
 export interface ShadowResult {
@@ -182,6 +184,7 @@ export function replayScenario(
         crossingDirection: hit.crossingDirection,
         decision,
         alert,
+        quiet: alert.notify === "quiet",
       });
     }
   }

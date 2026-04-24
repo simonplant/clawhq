@@ -83,17 +83,32 @@ export function formatHeartbeat(input: {
 
 // ── Channel transport (outbound only) ───────────────────────────────────────
 
-export interface MessageChannel {
-  send(body: string): Promise<void>;
+export interface SendOptions {
+  /** Render as a silent notification if supported by the channel. */
+  quiet?: boolean;
 }
 
-/** In-memory channel for tests. Exposes `outbox` for assertions. */
-export function makeInMemoryChannel(): MessageChannel & { outbox: string[] } {
+export interface MessageChannel {
+  send(body: string, opts?: SendOptions): Promise<void>;
+}
+
+/**
+ * In-memory channel for tests. Exposes `outbox` (messages as plain strings,
+ * for backward-compatible assertions) and `sent` (full {body, opts} records
+ * for quiet-vs-loud assertions).
+ */
+export function makeInMemoryChannel(): MessageChannel & {
+  outbox: string[];
+  sent: Array<{ body: string; opts: SendOptions }>;
+} {
   const outbox: string[] = [];
+  const sent: Array<{ body: string; opts: SendOptions }> = [];
   return {
     outbox,
-    async send(body): Promise<void> {
+    sent,
+    async send(body, opts = {}): Promise<void> {
       outbox.push(body);
+      sent.push({ body, opts });
     },
   };
 }
@@ -112,7 +127,7 @@ export function makeTelegramChannel(config: TelegramConfig): MessageChannel {
   const timeoutMs = config.timeoutMs ?? 5000;
 
   return {
-    async send(body): Promise<void> {
+    async send(body, opts = {}): Promise<void> {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), timeoutMs);
       try {
@@ -123,6 +138,7 @@ export function makeTelegramChannel(config: TelegramConfig): MessageChannel {
             chat_id: config.chatId,
             text: body,
             disable_web_page_preview: true,
+            ...(opts.quiet ? { disable_notification: true } : {}),
           }),
           signal: ctrl.signal,
         });
