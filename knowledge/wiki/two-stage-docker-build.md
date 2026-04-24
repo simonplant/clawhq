@@ -120,7 +120,7 @@ rule by construction. The validator re-checks continuously.
 
 ```bash
 clawhq doctor
-# 18 checks; expect all green for a healthy deployment
+# 40 checks; expect all green for a healthy deployment
 
 clawhq verify
 # End-to-end integration test from inside the container

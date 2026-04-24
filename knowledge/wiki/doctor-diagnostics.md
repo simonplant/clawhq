@@ -12,23 +12,31 @@ sources:
 
 ## Purpose
 
-18 preventive checks covering all known failure modes. Every check
+40 preventive checks covering all known failure modes. Every check
 runs in parallel — the operator gets a complete health picture in one
 pass, not a serial "first failure stops the run" report.
 
 Most checks map to a specific landmine or hardening control. `clawhq
 doctor` is the tool layer's continuous enforcement of the rules the
-generator applied at build time.
+generator applied at build time. Aggregated fleet-wide health is
+available via `clawhq doctor --fleet` (iterates every registered
+instance in `~/.clawhq/instances.json`).
 
 ## Check categories
 
-| Category | Checks |
+| Category | Representative checks |
 |---|---|
-| **Config validation** | config-exists, config-valid, compose-exists |
+| **Config validation** | config-exists, config-valid, compose-exists, config-sync |
 | **Secrets & permissions** | secrets-perms (.env mode 0600), creds-perms (credentials.json mode 0600) |
 | **Docker runtime** | docker-running, container-running, cap-drop, no-new-privileges, user-uid |
-| **Agent health** | identity-size (vs. `bootstrapMaxChars`), cron-syntax, env-vars, workspace-exists, gateway-reachable |
-| **Infrastructure** | firewall-active, disk-space, air-gap-active |
+| **Agent health** | identity-size (vs. `bootstrapMaxChars`), cron-syntax, cron-health, cron-error-rate, env-vars, workspace-exists, gateway-reachable, session-runaway, loop-detection-enabled |
+| **Infrastructure** | firewall-active, disk-space, air-gap-active, ipset-egress-current, egress-domains-coverage |
+| **Integrations** | cred-proxy-healthy, ollama-reachable, ollama-url, ollama-model-available, model-agentic-capable, market-engine-healthy, onepassword-setup |
+| **Ops state** | ops-autoupdate-active, ops-backup-recent, ops-security-monitor |
+| **Housekeeping** | housekeeping-debris, deploy-unclassified, migration-state, tool-access-grants, underscore-tool-methods, sanitize-available |
+
+See `src/operate/doctor/types.ts` for the full `DoctorCheckName`
+enumeration — the list here names the categories, not every check.
 
 ## Auto-fix
 
@@ -47,7 +55,8 @@ infrastructure-level drift.
 
 ## Landmine coverage
 
-The 18 checks collectively cover the 14 landmines:
+Every landmine has a probe — a landmine without one is a regression.
+The relevant checks:
 
 | Landmine | Check |
 |---|---|
@@ -91,7 +100,8 @@ Adjacent operational commands for a complete health picture:
 
 | Command | Purpose |
 |---|---|
-| `clawhq doctor` | 18-check diagnostics with auto-fix |
+| `clawhq doctor` | 40-check diagnostics with auto-fix |
+| `clawhq doctor --fleet` | Aggregated doctor across every registered instance |
 | `clawhq status` | Single-pane dashboard |
 | `clawhq creds` | Credential health probes. See [[credential-health-probes]] |
 | `clawhq scan` | Secret scanning via gitleaks |
@@ -120,3 +130,5 @@ infrastructure-level checks.
 - [[container-hardening]]
 - [[credential-health-probes]]
 - [[two-stage-docker-build]]
+- [[instance-registry]] — target of `doctor --fleet` iteration
+- [[phantom-multi-tenancy]] — why fleet-aware doctor matters

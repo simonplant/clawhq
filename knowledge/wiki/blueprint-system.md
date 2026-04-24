@@ -160,3 +160,5 @@ encapsulate.
 - [[lifecycle-management-gap]]
 - [[two-stage-docker-build]]
 - [[integration-layer]]
+- [[instance-registry]] — every compiled deployment has a stable instanceId; clawhq apply backfills it into clawhq.yaml
+- [[ownership-layers]] — compilation writes Layer 4 outputs; Layer-2 identity overrides at `~/.clawhq/templates/identity/` take precedence
