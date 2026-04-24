@@ -201,4 +201,61 @@ describe("makeLevelDetector", () => {
     const names = hits.map((h) => h.levelName).sort();
     expect(names).toEqual(["entry", "t1", "t2"]);
   });
+
+  it("drops stale quotes when staleMs is configured", () => {
+    const d = makeLevelDetector({ monotonicNowMs: () => 0, staleMs: 10_000 });
+    const order = mkOrder();
+    // Seed a prior (stale will apply to every ingest with this nowMs math)
+    d.ingest([{ symbol: "ES", last: 7085, bid: 7085, ask: 7085, tsMs: 1_000_000, receivedMs: 1_000_000 }], [order], 1_000_000);
+    // Emit at nowMs=1_020_000 with tsMs=1_000_000 → 20s stale → drop.
+    const hits = d.ingest(
+      [{ symbol: "ES", last: 7092, bid: 7092, ask: 7092, tsMs: 1_000_000, receivedMs: 1_000_000 }],
+      [order],
+      1_020_000,
+    );
+    expect(hits).toEqual([]);
+    expect(d.staleSkipped()).toBe(1);
+  });
+
+  it("does not drop fresh quotes", () => {
+    const d = makeLevelDetector({ monotonicNowMs: () => 0, staleMs: 10_000 });
+    const order = mkOrder();
+    d.ingest(
+      [{ symbol: "ES", last: 7085, bid: 7085, ask: 7085, tsMs: 1_000_000, receivedMs: 1_000_000 }],
+      [order],
+      1_000_000,
+    );
+    const hits = d.ingest(
+      [{ symbol: "ES", last: 7092, bid: 7092, ask: 7092, tsMs: 1_005_000, receivedMs: 1_005_000 }],
+      [order],
+      1_005_000,
+    );
+    expect(hits).toHaveLength(1);
+    expect(d.staleSkipped()).toBe(0);
+  });
+
+  it("preserves the prior price when a stale quote is skipped", () => {
+    const d = makeLevelDetector({ monotonicNowMs: () => 0, staleMs: 10_000 });
+    const order = mkOrder();
+    d.ingest(
+      [{ symbol: "ES", last: 7085, bid: 7085, ask: 7085, tsMs: 1_000_000, receivedMs: 1_000_000 }],
+      [order],
+      1_000_000,
+    );
+    // Stale quote skipped — does NOT overwrite prev.
+    d.ingest(
+      [{ symbol: "ES", last: 7080, bid: 7080, ask: 7080, tsMs: 1_000_000, receivedMs: 1_000_000 }],
+      [order],
+      1_020_000,
+    );
+    // Fresh quote at 7092 should cross UP from the original 7085, not from 7080.
+    const hits = d.ingest(
+      [{ symbol: "ES", last: 7092, bid: 7092, ask: 7092, tsMs: 1_025_000, receivedMs: 1_025_000 }],
+      [order],
+      1_025_000,
+    );
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.prevPrice).toBe(7085);
+    expect(hits[0]?.crossingDirection).toBe("UP");
+  });
 });

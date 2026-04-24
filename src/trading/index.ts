@@ -30,6 +30,7 @@ import {
   HEARTBEAT_MS,
   POLL_FAILURE_ALERT_THRESHOLD,
   POLL_MS,
+  QUOTE_STALE_MS,
   briefPathFor,
   defaultRiskThresholds,
   resolveAccounts,
@@ -167,7 +168,9 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     shuttingDown: false,
   };
 
-  const detector = makeLevelDetector();
+  // Stale-quote gate is on in production — Tradier timestamps older than
+  // QUOTE_STALE_MS stop emitting alerts until fresh data resumes.
+  const detector = makeLevelDetector({ staleMs: QUOTE_STALE_MS });
 
   loadAndCommitPlan(state);
 

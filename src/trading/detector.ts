@@ -47,22 +47,37 @@ export interface LevelDetector {
   seedPrice(symbol: string, price: number): void;
   /** For testing: advance dedup state. */
   clearDedup(): void;
+  /**
+   * Count of quotes dropped because `nowMs - quote.tsMs > staleMs`.
+   * Useful to surface as a health signal — if this grows between heartbeats,
+   * Tradier data is stalling and alerts may be missing real moves.
+   */
+  staleSkipped(): number;
 }
 
 export interface DetectorOptions {
   dedupTtlMs?: number;
   /** Injection point for tests. Must return a monotonic ms-scale number. */
   monotonicNowMs?: () => number;
+  /**
+   * Drop quotes where `nowMs - quote.tsMs` exceeds this threshold.
+   * Default: disabled (Infinity). The orchestrator passes QUOTE_STALE_MS
+   * from config (10s) in production; tests without a tsMs-aware quote
+   * source leave it off so their synthetic `tsMs: 0` quotes aren't dropped.
+   */
+  staleMs?: number;
 }
 
 export function makeLevelDetector(opts: DetectorOptions = {}): LevelDetector {
   const ttl = opts.dedupTtlMs ?? DEFAULT_DEDUP_TTL_MS;
   const now = opts.monotonicNowMs ?? (() => performance.now());
+  const staleMs = opts.staleMs ?? Infinity;
 
   /** Last price per uppercased symbol. */
   const lastPriceBySymbol = new Map<string, number>();
   /** Dedup: key = `${orderId}|${levelName}|${direction}`, value = monotonic ms. */
   const lastHitAt = new Map<string, number>();
+  let staleSkippedCount = 0;
 
   function dedupKey(orderId: string, levelName: LevelName, direction: "UP" | "DOWN"): string {
     return `${orderId}|${levelName}|${direction}`;
@@ -85,6 +100,15 @@ export function makeLevelDetector(opts: DetectorOptions = {}): LevelDetector {
       const ordersByTicker = groupBy(orders, (o) => o.ticker.toUpperCase());
 
       for (const q of quotes) {
+        // Staleness gate: a quote whose Tradier timestamp is older than the
+        // threshold is a data problem, not a market move. Skipping preserves
+        // the prior price so the next fresh tick still produces a correct
+        // crossing — the detector stays quiet rather than emitting false
+        // hits or false "no-change" from a re-asserted stale value.
+        if (nowMs - q.tsMs > staleMs) {
+          staleSkippedCount++;
+          continue;
+        }
         const symbol = q.symbol.toUpperCase();
         const prev = lastPriceBySymbol.get(symbol);
         lastPriceBySymbol.set(symbol, q.last);
@@ -137,6 +161,10 @@ export function makeLevelDetector(opts: DetectorOptions = {}): LevelDetector {
 
     clearDedup(): void {
       lastHitAt.clear();
+    },
+
+    staleSkipped(): number {
+      return staleSkippedCount;
     },
   };
 }
