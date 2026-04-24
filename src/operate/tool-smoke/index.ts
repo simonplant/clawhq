@@ -1,12 +1,12 @@
 /**
- * Smoke test public API.
+ * Tool-smoke public API.
  *
  * Lightweight tool-liveness harness. Designed for a 5-min system-cron
  * cadence — probes every workspace tool with a safe read-only verb,
  * detects state transitions against the last run, and (optionally)
  * pings Telegram when something flips from ok → fail or back.
  *
- * Zero LLM tokens; ~30s per run (sequential docker exec with 5s
+ * Zero LLM tokens; ~5s per run (sequential docker exec with 5s
  * per-tool timeouts). Transition-based alerting means one ping per
  * break, not one per tick.
  */
@@ -17,21 +17,24 @@ export type { NotifyOutcome } from "./notify.js";
 export { SANITIZE_PROBE, specsForProfile } from "./probes.js";
 
 export {
-  loadSmokeState,
-  runProbe,
-  runSmoke,
-  saveSmokeState,
-  smokeStateDir,
-  smokeStatePath,
+  loadToolSmokeState,
+  runToolProbe,
+  runToolSmoke,
+  saveToolSmokeState,
+  toolSmokeStateDir,
+  toolSmokeStatePath,
 } from "./runner.js";
 
-export { detectTransitions, formatTransitionsForTelegram } from "./transition.js";
-export type { TransitionOutput } from "./transition.js";
+export {
+  detectToolSmokeTransitions,
+  formatToolSmokeTransitionsForTelegram,
+} from "./transition.js";
+export type { ToolSmokeTransitionOutput } from "./transition.js";
 
 export type {
-  SmokeProbeSpec,
-  SmokeReport,
-  SmokeResult,
-  SmokeState,
-  SmokeTransition,
+  ToolSmokeProbeSpec,
+  ToolSmokeReport,
+  ToolSmokeResult,
+  ToolSmokeState,
+  ToolSmokeTransition,
 } from "./types.js";

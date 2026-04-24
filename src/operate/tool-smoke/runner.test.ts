@@ -10,8 +10,8 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { loadSmokeState, runProbe, runSmoke, saveSmokeState } from "./runner.js";
-import type { SmokeProbeSpec, SmokeState } from "./types.js";
+import { loadToolSmokeState, runToolProbe, runToolSmoke, saveToolSmokeState } from "./runner.js";
+import type { ToolSmokeProbeSpec, ToolSmokeState } from "./types.js";
 
 let testDir: string;
 
@@ -42,11 +42,11 @@ function mockExec(outcome: "ok" | "fail" | "timeout" | "docker-missing") {
   };
 }
 
-describe("runProbe", () => {
-  const spec: SmokeProbeSpec = { tool: "email", args: ["folders"], timeoutSec: 5 };
+describe("runToolProbe", () => {
+  const spec: ToolSmokeProbeSpec = { tool: "email", args: ["folders"], timeoutSec: 5 };
 
   it("returns ok + exit 0 on success", async () => {
-    const result = await runProbe("openclaw-abc", spec, mockExec("ok") as never);
+    const result = await runToolProbe("openclaw-abc", spec, mockExec("ok") as never);
     expect(result.ok).toBe(true);
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
@@ -55,20 +55,20 @@ describe("runProbe", () => {
   });
 
   it("returns fail with captured exit code and stderr tail", async () => {
-    const result = await runProbe("openclaw-abc", spec, mockExec("fail") as never);
+    const result = await runToolProbe("openclaw-abc", spec, mockExec("fail") as never);
     expect(result.ok).toBe(false);
     expect(result.exitCode).toBe(42);
     expect(result.stderr).toBe("boom: bad flag");
   });
 
   it("marks timeout as exitCode=-1", async () => {
-    const result = await runProbe("openclaw-abc", spec, mockExec("timeout") as never);
+    const result = await runToolProbe("openclaw-abc", spec, mockExec("timeout") as never);
     expect(result.ok).toBe(false);
     expect(result.exitCode).toBe(-1);
   });
 
   it("marks docker/system error as exitCode=-2", async () => {
-    const result = await runProbe("openclaw-abc", spec, mockExec("docker-missing") as never);
+    const result = await runToolProbe("openclaw-abc", spec, mockExec("docker-missing") as never);
     expect(result.ok).toBe(false);
     expect(result.exitCode).toBe(-2);
   });
@@ -77,14 +77,14 @@ describe("runProbe", () => {
     const exec = async () => {
       throw makeExecError({ message: "long", code: 1, stderr: "x".repeat(500) });
     };
-    const result = await runProbe("openclaw-abc", spec, exec as never);
+    const result = await runToolProbe("openclaw-abc", spec, exec as never);
     expect(result.stderr.length).toBe(200);
   });
 });
 
-describe("runSmoke", () => {
+describe("runToolSmoke", () => {
   it("aggregates per-tool results and computes failCount", async () => {
-    const specs: SmokeProbeSpec[] = [
+    const specs: ToolSmokeProbeSpec[] = [
       { tool: "email", args: ["--help"], timeoutSec: 5 },
       { tool: "tasks", args: ["--help"], timeoutSec: 5 },
     ];
@@ -95,7 +95,7 @@ describe("runSmoke", () => {
       throw makeExecError({ message: "fail", code: 3, stderr: "nope" });
     }) as never;
 
-    const report = await runSmoke("openclaw-abc", specs, exec);
+    const report = await runToolSmoke("openclaw-abc", specs, exec);
     expect(report.results).toHaveLength(2);
     expect(report.results[0]?.ok).toBe(true);
     expect(report.results[1]?.ok).toBe(false);
@@ -105,9 +105,9 @@ describe("runSmoke", () => {
   });
 });
 
-describe("saveSmokeState / loadSmokeState", () => {
+describe("saveToolSmokeState / loadToolSmokeState", () => {
   it("round-trips a state through the ops/smoke/state.json path", () => {
-    const state: SmokeState = {
+    const state: ToolSmokeState = {
       lastReport: {
         timestamp: "2026-04-24T01:23:45.000Z",
         container: "openclaw-abc",
@@ -116,23 +116,23 @@ describe("saveSmokeState / loadSmokeState", () => {
       },
       streaks: { email: 0 },
     };
-    saveSmokeState(testDir, state);
-    const loaded = loadSmokeState(testDir);
+    saveToolSmokeState(testDir, state);
+    const loaded = loadToolSmokeState(testDir);
     expect(loaded).toEqual(state);
   });
 
   it("returns undefined when no state file exists", () => {
-    expect(loadSmokeState(testDir)).toBeUndefined();
+    expect(loadToolSmokeState(testDir)).toBeUndefined();
   });
 
   it("returns undefined on a corrupt state file (graceful recovery)", () => {
-    mkdirSync(join(testDir, "ops", "smoke"), { recursive: true });
-    writeFileSync(join(testDir, "ops", "smoke", "state.json"), "not-json", "utf-8");
-    expect(loadSmokeState(testDir)).toBeUndefined();
+    mkdirSync(join(testDir, "ops", "tool-smoke"), { recursive: true });
+    writeFileSync(join(testDir, "ops", "tool-smoke", "state.json"), "not-json", "utf-8");
+    expect(loadToolSmokeState(testDir)).toBeUndefined();
   });
 
   it("persists atomically via a tmp+rename (no partial writes visible)", () => {
-    const state: SmokeState = {
+    const state: ToolSmokeState = {
       lastReport: {
         timestamp: "2026-04-24T02:00:00.000Z",
         container: "openclaw-abc",
@@ -141,13 +141,13 @@ describe("saveSmokeState / loadSmokeState", () => {
       },
       streaks: {},
     };
-    saveSmokeState(testDir, state);
+    saveToolSmokeState(testDir, state);
     // After save, no .tmp file should remain.
-    const entries = readdirSync(join(testDir, "ops", "smoke"));
+    const entries = readdirSync(join(testDir, "ops", "tool-smoke"));
     expect(entries).toContain("state.json");
     expect(entries.some((e) => e.endsWith(".tmp"))).toBe(false);
     // File is valid JSON.
-    const raw = readFileSync(join(testDir, "ops", "smoke", "state.json"), "utf-8");
+    const raw = readFileSync(join(testDir, "ops", "tool-smoke", "state.json"), "utf-8");
     expect(() => JSON.parse(raw)).not.toThrow();
   });
 });

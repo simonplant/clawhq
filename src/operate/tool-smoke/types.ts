@@ -6,12 +6,12 @@
  *
  * State-transition-based alerting: user is pinged only when a tool
  * flips from ok → fail or fail → ok. Still-failing tools don't re-ping
- * every tick; consecutive-failure counters power exponential backoff
- * on persistent outages.
+ * every tick; consecutive-failure counters throttle notifications on
+ * persistent outages via streak milestones.
  */
 
 /** Per-tool smoke probe result. */
-export interface SmokeResult {
+export interface ToolSmokeResult {
   /** Tool name as it appears on PATH and in TOOLS.md. */
   readonly tool: string;
   /** True when the command returned exit 0 within the timeout. */
@@ -24,29 +24,29 @@ export interface SmokeResult {
   readonly durationMs: number;
 }
 
-/** A full smoke run — one result per tool, plus the run timestamp. */
-export interface SmokeReport {
+/** A full tool-smoke run — one result per tool, plus the run timestamp. */
+export interface ToolSmokeReport {
   /** ISO 8601 timestamp the run STARTED at. */
   readonly timestamp: string;
   /** Container the probe shelled into. */
   readonly container: string;
   /** Per-tool results in deterministic order. */
-  readonly results: readonly SmokeResult[];
+  readonly results: readonly ToolSmokeResult[];
   /** Count of failing tools in this run. */
   readonly failCount: number;
 }
 
 /** Persisted state — last run + per-tool consecutive failure streaks. */
-export interface SmokeState {
-  /** The most recent SmokeReport. */
-  readonly lastReport: SmokeReport;
+export interface ToolSmokeState {
+  /** The most recent report. */
+  readonly lastReport: ToolSmokeReport;
   /** Tool name → consecutive-failures streak. Reset to 0 on success.
    *  Used to throttle notifications on prolonged outages. */
   readonly streaks: Readonly<Record<string, number>>;
 }
 
 /** One state transition worth notifying the user about. */
-export interface SmokeTransition {
+export interface ToolSmokeTransition {
   readonly tool: string;
   readonly kind: "new-failure" | "recovered" | "still-failing-notify";
   /** For `new-failure` + `still-failing-notify`: the failure reason. */
@@ -56,7 +56,7 @@ export interface SmokeTransition {
 }
 
 /** Config for a single tool's smoke probe. */
-export interface SmokeProbeSpec {
+export interface ToolSmokeProbeSpec {
   /** Tool name. Must match the PATH name inside the container. */
   readonly tool: string;
   /** Argv to pass to the tool. Defaults to `["--help"]` — every tool

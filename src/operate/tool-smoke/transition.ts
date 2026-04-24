@@ -15,29 +15,29 @@
  * alongside the transitions — caller persists it into the next state.
  */
 
-import type { SmokeReport, SmokeState, SmokeTransition } from "./types.js";
+import type { ToolSmokeReport, ToolSmokeState, ToolSmokeTransition } from "./types.js";
 
 /** Streak milestones at which we renotify a still-failing tool. */
 const RENOTIFY_STREAKS = new Set<number>([10, 100, 1000]);
 
-export interface TransitionOutput {
-  readonly transitions: readonly SmokeTransition[];
+export interface ToolSmokeTransitionOutput {
+  readonly transitions: readonly ToolSmokeTransition[];
   /** Updated streak map to persist with the new state. */
   readonly streaks: Readonly<Record<string, number>>;
 }
 
 /**
- * Compare a fresh SmokeReport against the previous SmokeState and
+ * Compare a fresh ToolSmokeReport against the previous ToolSmokeState and
  * compute transitions + updated streak counts.
  *
  * When `previousState` is undefined (first-ever run), every failure is
  * reported as a `new-failure` — you want to see the initial state.
  */
-export function detectTransitions(
-  current: SmokeReport,
-  previousState: SmokeState | undefined,
-): TransitionOutput {
-  const transitions: SmokeTransition[] = [];
+export function detectToolSmokeTransitions(
+  current: ToolSmokeReport,
+  previousState: ToolSmokeState | undefined,
+): ToolSmokeTransitionOutput {
+  const transitions: ToolSmokeTransition[] = [];
   const streaks: Record<string, number> = {};
 
   const previousResults = new Map(
@@ -79,8 +79,8 @@ export function detectTransitions(
  * Format a transition list as a Telegram-friendly message. Kept pure
  * and small so it's easy to unit-test the exact wording.
  */
-export function formatTransitionsForTelegram(
-  transitions: readonly SmokeTransition[],
+export function formatToolSmokeTransitionsForTelegram(
+  transitions: readonly ToolSmokeTransition[],
   container: string,
 ): string {
   if (transitions.length === 0) return "";

@@ -6,10 +6,6 @@
  * status table, emits JSON on `--json`, and (with `--notify`) pings
  * Telegram when tool state transitions against the last run.
  *
- * Name is deliberately `tool-smoke` (not `smoke`) so callers know at a
- * glance what's being checked. Leaves namespace open for other smoke
- * surfaces later (`net-smoke`, `cred-smoke`, etc.).
- *
  * Designed for a 5-min system-cron cadence:
  *   *\/5 * * * * clawhq --agent clawdius tool-smoke --notify >/dev/null 2>&1
  *
@@ -27,19 +23,19 @@ import { parse as parseYaml } from "yaml";
 import { requireOpenclawContainer } from "../../build/docker/container.js";
 import { loadProfile } from "../../design/catalog/loader.js";
 import {
-  detectTransitions,
-  formatTransitionsForTelegram,
-  loadSmokeState,
+  detectToolSmokeTransitions,
+  formatToolSmokeTransitionsForTelegram,
+  loadToolSmokeState,
   notifyTelegram,
-  runSmoke,
-  saveSmokeState,
+  runToolSmoke,
+  saveToolSmokeState,
   specsForProfile,
-} from "../../operate/smoke/index.js";
-import type { SmokeReport, SmokeState } from "../../operate/smoke/index.js";
+} from "../../operate/tool-smoke/index.js";
+import type { ToolSmokeReport, ToolSmokeState } from "../../operate/tool-smoke/index.js";
 import { readEnvValue } from "../../secure/credentials/env-store.js";
 import { CommandError } from "../errors.js";
 
-export function registerSmokeCommand(program: Command, defaultDeployDir: string): void {
+export function registerToolSmokeCommand(program: Command, defaultDeployDir: string): void {
   program
     .command("tool-smoke")
     .description("Run a lightweight liveness probe against every workspace tool")
@@ -52,15 +48,15 @@ export function registerSmokeCommand(program: Command, defaultDeployDir: string)
       const specs = specsForProfile(profile);
 
       const container = await requireOpenclawContainer({ deployDir: opts.deployDir });
-      const report = await runSmoke(container, specs);
+      const report = await runToolSmoke(container, specs);
 
       // Transition detection — always runs; notification is opt-in.
-      const previous = loadSmokeState(opts.deployDir);
-      const { transitions, streaks } = detectTransitions(report, previous);
+      const previous = loadToolSmokeState(opts.deployDir);
+      const { transitions, streaks } = detectToolSmokeTransitions(report, previous);
 
       // Persist state for next run.
-      const nextState: SmokeState = { lastReport: report, streaks };
-      saveSmokeState(opts.deployDir, nextState);
+      const nextState: ToolSmokeState = { lastReport: report, streaks };
+      saveToolSmokeState(opts.deployDir, nextState);
 
       // Render.
       if (opts.json) {
@@ -84,7 +80,7 @@ export function registerSmokeCommand(program: Command, defaultDeployDir: string)
 
       // Notify.
       if (opts.notify && transitions.length > 0) {
-        const message = formatTransitionsForTelegram(transitions, container);
+        const message = formatToolSmokeTransitionsForTelegram(transitions, container);
         const botToken = readEnvValue(join(opts.deployDir, "engine", ".env"), "TELEGRAM_BOT_TOKEN");
         const chatId = readEnvValue(join(opts.deployDir, "engine", ".env"), "TELEGRAM_CHAT_ID");
         if (!botToken || !chatId) {
@@ -121,7 +117,7 @@ function readProfileIdFromClawhqYaml(deployDir: string): string {
 
 // ── Table rendering ─────────────────────────────────────────────────────────
 
-function renderTable(report: SmokeReport): void {
+function renderTable(report: ToolSmokeReport): void {
   console.log(chalk.bold(`\nTool smoke — ${report.container} @ ${report.timestamp}\n`));
   const width = Math.max(...report.results.map((r) => r.tool.length), 4);
   for (const r of report.results) {

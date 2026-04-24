@@ -1,8 +1,8 @@
 /**
- * Smoke runner — shells into the agent container and probes each tool
- * with its safe read verb. Captures exit code, stderr tail, duration.
- * Never throws — every probe result becomes a SmokeResult, even on
- * docker-exec failure.
+ * Tool-smoke runner — shells into the agent container and probes each
+ * tool with its safe read verb. Captures exit code, stderr tail, and
+ * duration. Never throws — every probe becomes a ToolSmokeResult, even
+ * on docker-exec failure.
  */
 
 import { execFile } from "node:child_process";
@@ -11,23 +11,23 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import type {
-  SmokeProbeSpec,
-  SmokeReport,
-  SmokeResult,
-  SmokeState,
+  ToolSmokeProbeSpec,
+  ToolSmokeReport,
+  ToolSmokeResult,
+  ToolSmokeState,
 } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
 /**
- * Run a single probe against a container. Returns a SmokeResult; never
- * throws. Timeout is enforced; on exceed we mark exitCode=-1.
+ * Run a single probe against a container. Returns a ToolSmokeResult;
+ * never throws. Timeout is enforced; on exceed we mark exitCode=-1.
  */
-export async function runProbe(
+export async function runToolProbe(
   container: string,
-  spec: SmokeProbeSpec,
+  spec: ToolSmokeProbeSpec,
   exec: typeof execFileAsync = execFileAsync,
-): Promise<SmokeResult> {
+): Promise<ToolSmokeResult> {
   const start = Date.now();
   try {
     await exec(
@@ -60,15 +60,15 @@ export async function runProbe(
 
 /** Run every probe in order. Sequential by default to avoid overloading
  *  the container. Caller supplies timeout per probe. */
-export async function runSmoke(
+export async function runToolSmoke(
   container: string,
-  specs: readonly SmokeProbeSpec[],
+  specs: readonly ToolSmokeProbeSpec[],
   exec: typeof execFileAsync = execFileAsync,
-): Promise<SmokeReport> {
+): Promise<ToolSmokeReport> {
   const timestamp = new Date().toISOString();
-  const results: SmokeResult[] = [];
+  const results: ToolSmokeResult[] = [];
   for (const spec of specs) {
-    results.push(await runProbe(container, spec, exec));
+    results.push(await runToolProbe(container, spec, exec));
   }
   const failCount = results.filter((r) => !r.ok).length;
   return { timestamp, container, results, failCount };
@@ -76,25 +76,25 @@ export async function runSmoke(
 
 // ── State persistence ───────────────────────────────────────────────────────
 
-const STATE_DIRNAME = "smoke";
+const STATE_DIRNAME = "tool-smoke";
 const STATE_FILENAME = "state.json";
 
-/** Resolve the directory where smoke state lives for a deployment. */
-export function smokeStateDir(deployDir: string): string {
+/** Resolve the directory where tool-smoke state lives for a deployment. */
+export function toolSmokeStateDir(deployDir: string): string {
   return join(deployDir, "ops", STATE_DIRNAME);
 }
 
 /** Resolve the state file path. */
-export function smokeStatePath(deployDir: string): string {
-  return join(smokeStateDir(deployDir), STATE_FILENAME);
+export function toolSmokeStatePath(deployDir: string): string {
+  return join(toolSmokeStateDir(deployDir), STATE_FILENAME);
 }
 
-/** Load the last smoke state, or undefined if none has been written yet. */
-export function loadSmokeState(deployDir: string): SmokeState | undefined {
-  const path = smokeStatePath(deployDir);
+/** Load the last tool-smoke state, or undefined if none has been written yet. */
+export function loadToolSmokeState(deployDir: string): ToolSmokeState | undefined {
+  const path = toolSmokeStatePath(deployDir);
   if (!existsSync(path)) return undefined;
   try {
-    return JSON.parse(readFileSync(path, "utf-8")) as SmokeState;
+    return JSON.parse(readFileSync(path, "utf-8")) as ToolSmokeState;
   } catch {
     // Corrupt state file — treat as no prior state. Next run will
     // reset by producing a fresh report.
@@ -102,10 +102,10 @@ export function loadSmokeState(deployDir: string): SmokeState | undefined {
   }
 }
 
-/** Persist a SmokeState atomically (write + rename). */
-export function saveSmokeState(deployDir: string, state: SmokeState): void {
-  mkdirSync(smokeStateDir(deployDir), { recursive: true });
-  const final = smokeStatePath(deployDir);
+/** Persist a ToolSmokeState atomically (write + rename). */
+export function saveToolSmokeState(deployDir: string, state: ToolSmokeState): void {
+  mkdirSync(toolSmokeStateDir(deployDir), { recursive: true });
+  const final = toolSmokeStatePath(deployDir);
   const tmp = `${final}.tmp`;
   writeFileSync(tmp, JSON.stringify(state, null, 2) + "\n", "utf-8");
   // rename is atomic on POSIX, so a concurrent reader sees either the

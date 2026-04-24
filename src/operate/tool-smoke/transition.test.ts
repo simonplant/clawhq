@@ -10,16 +10,16 @@
 
 import { describe, expect, it } from "vitest";
 
-import { detectTransitions, formatTransitionsForTelegram } from "./transition.js";
-import type { SmokeReport, SmokeResult, SmokeState } from "./types.js";
+import { detectToolSmokeTransitions, formatToolSmokeTransitionsForTelegram } from "./transition.js";
+import type { ToolSmokeReport, ToolSmokeResult, ToolSmokeState } from "./types.js";
 
-function ok(tool: string): SmokeResult {
+function ok(tool: string): ToolSmokeResult {
   return { tool, ok: true, exitCode: 0, stderr: "", durationMs: 120 };
 }
-function fail(tool: string, stderr = "boom"): SmokeResult {
+function fail(tool: string, stderr = "boom"): ToolSmokeResult {
   return { tool, ok: false, exitCode: 1, stderr, durationMs: 400 };
 }
-function report(results: SmokeResult[]): SmokeReport {
+function report(results: ToolSmokeResult[]): ToolSmokeReport {
   return {
     timestamp: "2026-04-24T00:00:00.000Z",
     container: "openclaw-test",
@@ -28,9 +28,9 @@ function report(results: SmokeResult[]): SmokeReport {
   };
 }
 
-describe("detectTransitions", () => {
+describe("detectToolSmokeTransitions", () => {
   it("first-ever run: every failure is reported as new-failure", () => {
-    const { transitions, streaks } = detectTransitions(
+    const { transitions, streaks } = detectToolSmokeTransitions(
       report([ok("email"), fail("tasks", "401")]),
       undefined,
     );
@@ -44,15 +44,15 @@ describe("detectTransitions", () => {
   });
 
   it("ok → ok: no transition, no streak", () => {
-    const prev: SmokeState = { lastReport: report([ok("email")]), streaks: { email: 0 } };
-    const { transitions, streaks } = detectTransitions(report([ok("email")]), prev);
+    const prev: ToolSmokeState = { lastReport: report([ok("email")]), streaks: { email: 0 } };
+    const { transitions, streaks } = detectToolSmokeTransitions(report([ok("email")]), prev);
     expect(transitions).toHaveLength(0);
     expect(streaks["email"]).toBe(0);
   });
 
   it("ok → fail: emits new-failure with streak=1", () => {
-    const prev: SmokeState = { lastReport: report([ok("email")]), streaks: { email: 0 } };
-    const { transitions, streaks } = detectTransitions(report([fail("email", "imap down")]), prev);
+    const prev: ToolSmokeState = { lastReport: report([ok("email")]), streaks: { email: 0 } };
+    const { transitions, streaks } = detectToolSmokeTransitions(report([fail("email", "imap down")]), prev);
     expect(transitions).toHaveLength(1);
     expect(transitions[0]?.kind).toBe("new-failure");
     expect(transitions[0]?.reason).toBe("imap down");
@@ -60,8 +60,8 @@ describe("detectTransitions", () => {
   });
 
   it("fail → ok: emits recovered and resets streak", () => {
-    const prev: SmokeState = { lastReport: report([fail("email")]), streaks: { email: 7 } };
-    const { transitions, streaks } = detectTransitions(report([ok("email")]), prev);
+    const prev: ToolSmokeState = { lastReport: report([fail("email")]), streaks: { email: 7 } };
+    const { transitions, streaks } = detectToolSmokeTransitions(report([ok("email")]), prev);
     expect(transitions).toHaveLength(1);
     expect(transitions[0]?.kind).toBe("recovered");
     expect(transitions[0]?.tool).toBe("email");
@@ -69,15 +69,15 @@ describe("detectTransitions", () => {
   });
 
   it("fail → fail below milestone: silent (no transition), streak increments", () => {
-    const prev: SmokeState = { lastReport: report([fail("email")]), streaks: { email: 3 } };
-    const { transitions, streaks } = detectTransitions(report([fail("email")]), prev);
+    const prev: ToolSmokeState = { lastReport: report([fail("email")]), streaks: { email: 3 } };
+    const { transitions, streaks } = detectToolSmokeTransitions(report([fail("email")]), prev);
     expect(transitions).toHaveLength(0);
     expect(streaks["email"]).toBe(4);
   });
 
   it("fail → fail at streak=10: emits still-failing-notify", () => {
-    const prev: SmokeState = { lastReport: report([fail("email")]), streaks: { email: 9 } };
-    const { transitions, streaks } = detectTransitions(report([fail("email", "still broken")]), prev);
+    const prev: ToolSmokeState = { lastReport: report([fail("email")]), streaks: { email: 9 } };
+    const { transitions, streaks } = detectToolSmokeTransitions(report([fail("email", "still broken")]), prev);
     expect(transitions).toHaveLength(1);
     expect(transitions[0]?.kind).toBe("still-failing-notify");
     expect(transitions[0]?.streakCount).toBe(10);
@@ -85,24 +85,24 @@ describe("detectTransitions", () => {
   });
 
   it("fail → fail between milestones: silent", () => {
-    const prev: SmokeState = { lastReport: report([fail("email")]), streaks: { email: 10 } };
-    const { transitions } = detectTransitions(report([fail("email")]), prev);
+    const prev: ToolSmokeState = { lastReport: report([fail("email")]), streaks: { email: 10 } };
+    const { transitions } = detectToolSmokeTransitions(report([fail("email")]), prev);
     expect(transitions).toHaveLength(0);
   });
 
   it("fail → fail at streak=100: emits still-failing-notify again", () => {
-    const prev: SmokeState = { lastReport: report([fail("email")]), streaks: { email: 99 } };
-    const { transitions } = detectTransitions(report([fail("email")]), prev);
+    const prev: ToolSmokeState = { lastReport: report([fail("email")]), streaks: { email: 99 } };
+    const { transitions } = detectToolSmokeTransitions(report([fail("email")]), prev);
     expect(transitions).toHaveLength(1);
     expect(transitions[0]?.streakCount).toBe(100);
   });
 
   it("multiple tools with mixed transitions in one run", () => {
-    const prev: SmokeState = {
+    const prev: ToolSmokeState = {
       lastReport: report([ok("email"), fail("tasks"), fail("x")]),
       streaks: { email: 0, tasks: 5, x: 1 },
     };
-    const { transitions, streaks } = detectTransitions(
+    const { transitions, streaks } = detectToolSmokeTransitions(
       report([fail("email", "new"), ok("tasks"), fail("x", "still")]),
       prev,
     );
@@ -117,21 +117,21 @@ describe("detectTransitions", () => {
   it("tool missing from previous report is treated as previously-ok", () => {
     // New tool appears in the current run, never seen before. Should
     // be reported as new-failure if it fails, silent if it passes.
-    const prev: SmokeState = { lastReport: report([ok("email")]), streaks: { email: 0 } };
-    const { transitions } = detectTransitions(report([ok("email"), fail("new-tool")]), prev);
+    const prev: ToolSmokeState = { lastReport: report([ok("email")]), streaks: { email: 0 } };
+    const { transitions } = detectToolSmokeTransitions(report([ok("email"), fail("new-tool")]), prev);
     expect(transitions).toHaveLength(1);
     expect(transitions[0]?.tool).toBe("new-tool");
     expect(transitions[0]?.kind).toBe("new-failure");
   });
 });
 
-describe("formatTransitionsForTelegram", () => {
+describe("formatToolSmokeTransitionsForTelegram", () => {
   it("returns empty string on no transitions", () => {
-    expect(formatTransitionsForTelegram([], "openclaw-abc")).toBe("");
+    expect(formatToolSmokeTransitionsForTelegram([], "openclaw-abc")).toBe("");
   });
 
   it("groups failures and recoveries, shows streaks when > 1", () => {
-    const msg = formatTransitionsForTelegram(
+    const msg = formatToolSmokeTransitionsForTelegram(
       [
         { tool: "email", kind: "new-failure", reason: "auth 401" },
         { tool: "tasks", kind: "still-failing-notify", reason: "API 500", streakCount: 10 },
@@ -150,7 +150,7 @@ describe("formatTransitionsForTelegram", () => {
 
   it("truncates long stderr to keep telegram messages compact", () => {
     const longReason = "x".repeat(500);
-    const msg = formatTransitionsForTelegram(
+    const msg = formatToolSmokeTransitionsForTelegram(
       [{ tool: "email", kind: "new-failure", reason: longReason }],
       "c",
     );

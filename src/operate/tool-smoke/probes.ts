@@ -11,7 +11,7 @@
 
 import type { MissionProfile } from "../../design/catalog/types.js";
 
-import type { SmokeProbeSpec } from "./types.js";
+import type { ToolSmokeProbeSpec } from "./types.js";
 
 /** Tools whose `--help` is not useful (or is slow). Override the verb. */
 const PROBE_OVERRIDES: Record<string, readonly string[]> = {
@@ -43,7 +43,7 @@ const PROBE_OVERRIDES: Record<string, readonly string[]> = {
  * sanitize is a security-always-available tool (not in profile tool
  * list) but worth probing; callers can append it explicitly.
  */
-export function specsForProfile(profile: MissionProfile): SmokeProbeSpec[] {
+export function specsForProfile(profile: MissionProfile): ToolSmokeProbeSpec[] {
   return profile.tools.map((t) => ({
     tool: t.name,
     args: PROBE_OVERRIDES[t.name] ?? ["--help"],
@@ -53,7 +53,7 @@ export function specsForProfile(profile: MissionProfile): SmokeProbeSpec[] {
 
 /** Spec for the always-available sanitize tool (not in any profile's
  *  toolbelt — it's a security mandate). */
-export const SANITIZE_PROBE: SmokeProbeSpec = {
+export const SANITIZE_PROBE: ToolSmokeProbeSpec = {
   tool: "sanitize",
   args: ["--help"],
   timeoutSec: 5,
