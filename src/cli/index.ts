@@ -31,6 +31,7 @@ import { registerPairingCommands } from "./commands/pairing.js";
 import { registerProvisionCommands } from "./commands/provision.js";
 import { registerQuickstartCommand } from "./commands/quickstart.js";
 import { registerSecureCommands } from "./commands/secure.js";
+import { registerSmokeCommand } from "./commands/smoke.js";
 import { CommandError } from "./errors.js";
 import {
   DeployDirAmbiguousError,
@@ -116,6 +117,7 @@ registerEvolveCommands(program, DEFAULT_DEPLOY_DIR);
 registerIntegrateCommands(program, DEFAULT_DEPLOY_DIR);
 registerCloudCommands(program, DEFAULT_DEPLOY_DIR);
 registerProvisionCommands(program, DEFAULT_DEPLOY_DIR);
+registerSmokeCommand(program, DEFAULT_DEPLOY_DIR);
 
 // ── Parse ────────────────────────────────────────────────────────────────────
 
