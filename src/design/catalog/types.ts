@@ -102,6 +102,9 @@ export interface CompositionConfig {
   readonly modelContextWindow?: number;
   /** Override fallback models (ollama-prefixed strings). */
   readonly modelFallbacks?: readonly string[];
+  /** Extra egress domains merged into the allowlist for per-deploy needs
+   *  (e.g. a specific Substack subdomain the profile doesn't know about). */
+  readonly extra_egress_domains?: readonly string[];
 }
 
 /** User context from config file. */

@@ -123,6 +123,7 @@ async function applyCore(
           model?: string;
           modelContextWindow?: number;
           modelFallbacks?: string[];
+          extra_egress_domains?: string[];
         }
       | undefined;
 
@@ -177,6 +178,7 @@ async function applyCore(
         model: comp.model,
         modelContextWindow: comp.modelContextWindow,
         modelFallbacks: comp.modelFallbacks,
+        extra_egress_domains: comp.extra_egress_domains,
         soul_overrides: soulOverrides,
       },
       user,

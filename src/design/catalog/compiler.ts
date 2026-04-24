@@ -106,7 +106,7 @@ export function compile(
   const egressSet = new Set([
     ...profile.egress_domains,
     ...providerEgress,
-    ...(composition.extra_egress_domains ?? []),
+    ...(config.extra_egress_domains ?? []),
   ]);
 
   // Personality dimensions are the canonical vector — not configurable.
