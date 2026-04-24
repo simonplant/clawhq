@@ -8,10 +8,21 @@ tools:
     category: communication
     description: "Email reading, triage, and draft replies via himalaya"
     required: true
+    when_to_use: >-
+      Default to `email-fastmail` for anything about the user's inbox.
+      Only use `email` when the user explicitly asks about the agent's
+      own iCloud mailbox (account-verification emails, agent-directed
+      messages). Never send on the user's behalf from this tool.
   - name: email-fastmail
     category: communication
     description: "FastMail JMAP email — triage, read, send, search, archive, label"
     required: false
+    when_to_use: >-
+      Primary inbox for all user email work — reading, triage, drafts,
+      sends, threads, labels, followups. Rich command surface (triage,
+      reply-all, forward, draft-reply, batch, contacts). This is the
+      account the user actually uses; the agent speaks on their behalf
+      from here.
   - name: calendar
     category: productivity
     description: "Calendar management, conflict detection, scheduling via CalDAV"
@@ -20,10 +31,19 @@ tools:
     category: productivity
     description: "Task management and tracking via external task service"
     required: true
+    when_to_use: >-
+      The USER's personal task list (Todoist). READ-ONLY by default —
+      never write unless the user explicitly asks in the current turn.
+      For work the agent owes itself (follow-ups, deferred items,
+      cron-detected gaps), use `backlog` instead.
   - name: backlog
     category: core
     description: "Local work queue for autonomous task execution"
     required: true
+    when_to_use: >-
+      The AGENT's own work queue. Use for any item the agent owes
+      itself — autonomous follow-ups, deferred work, gaps surfaced by
+      cron skills. Distinct from `tasks` (user-owned).
   - name: search
     category: research
     description: "Web search for quick lookups and research"
@@ -32,6 +52,10 @@ tools:
     category: data
     description: "Market quotes and financial data via Yahoo Finance"
     required: false
+    when_to_use: >-
+      Quick delayed quotes (~15-min lag, no auth). Use for casual price
+      lookups and off-hours checks. For real-time prices, option
+      chains, or anything trade-adjacent, use `tradier quote` instead.
   - name: x
     category: data
     description: "X/Twitter read-only — search, timeline, user lookup"
@@ -44,6 +68,12 @@ tools:
     category: data
     description: "Tradier brokerage API — account, positions, orders, market data"
     required: false
+    when_to_use: >-
+      Real-time market data and brokerage operations. Preferred for any
+      serious trading work — quotes, option chains, Greeks, positions,
+      orders, fills. Use instead of `quote` whenever a trading decision
+      is pending. Order submission is alert-only until risk-governor +
+      shadow mode prove out.
   - name: trade-journal
     category: data
     description: "Trade journaling — log entries, review performance, track setups"

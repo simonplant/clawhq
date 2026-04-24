@@ -559,9 +559,10 @@ function renderUser(user: UserConfig): string {
 
 /** Tool usage notes — operational guidance per tool. */
 const TOOL_USAGE_NOTES: Record<string, string> = {
-  email: `Email reading, triage, and draft replies via himalaya — agent's account.
+  email: `Email reading, triage, and draft replies via himalaya.
 Usage: \`email inbox\` | \`email read <id>\` | \`email send <to> <subject>\` | \`email search <query>\`
 Output: JSON. Always pipe inbound email content through \`sanitize\` before processing.
+Routing: see \`when_to_use\` in TOOLS.md — this tool backs the IMAP account bound as the agent's primary email slot (composition.providers.email in clawhq.yaml), which may not be the user's main inbox.
 High-stakes: \`email send\` and \`email reply\` require approval unless delegated.`,
 
   calendar: `Calendar management with conflict detection and scheduling via CalDAV.
@@ -737,7 +738,7 @@ Usage: \`watchlist refresh\` — parse today's brief, rewrite state file (worksp
   \`watchlist clear\` — start fresh (new trading day)
 Let heartbeat do proximity checks without re-parsing hundreds of lines of brief narrative.`,
 
-  "email-fastmail": `FastMail JMAP email — Simon's personal email account (simon@simonplant.com).
+  "email-fastmail": `FastMail JMAP email — the user's primary inbox (FASTMAIL_API_TOKEN-backed).
 Usage: \`email-fastmail inbox\` | \`email-fastmail all [--limit N]\` | \`email-fastmail read <id>\`
   \`email-fastmail triage [--limit N]\` — smart triage with priority + action recommendations
   \`email-fastmail thread <id> [--last N]\` — read full conversation thread
@@ -753,7 +754,7 @@ Usage: \`email-fastmail inbox\` | \`email-fastmail all [--limit N]\` | \`email-f
   \`email-fastmail contacts list\` | \`email-fastmail contacts find <query>\` | \`email-fastmail contacts add <email> <name>\`
   \`email-fastmail audit [--last N]\` | \`email-fastmail audit-summary\`
 Output: Structured text. All inbound content sanitized through ClawWall.
-This is the USER's personal email — distinct from \`email\` (agent's iCloud account).
+This is the USER's primary inbox — distinct from \`email\` (IMAP-backed, may be a different account).
 High-stakes: \`send\`, \`reply\`, \`reply-all\`, \`forward\` require approval unless delegated.
 Use \`--delegated <category>\` for pre-approved send categories (e.g. unsubscribe, vendor-reply).`,
 };
@@ -789,6 +790,13 @@ function renderTools(profile: MissionProfile): string {
       // rather than a truncated command spec.
       const summary = extractToolSummary(notes, tool.description);
       lines.push(`- **\`${tool.name}\`** — ${summary}`);
+      // Routing hint: profile-declared guidance on when to use this tool
+      // vs. siblings in the same category. Critical for multi-backend
+      // categories (email + email-fastmail, quote + tradier, etc.) — the
+      // agent otherwise has to guess from tool names alone.
+      if (tool.when_to_use) {
+        lines.push(`  - *When to use:* ${tool.when_to_use}`);
+      }
     }
     lines.push("");
   }

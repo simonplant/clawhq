@@ -16,6 +16,12 @@ export interface ProfileTool {
   readonly category: string;
   readonly description: string;
   readonly required: boolean;
+  /** Routing hint: tells the agent WHEN to use this tool vs siblings in the
+   *  same category. Critical when multiple tools do overlapping things
+   *  (email vs email-fastmail, quote vs tradier, tasks vs backlog). Rendered
+   *  directly into TOOLS.md under the tool's entry. Optional — omit for
+   *  tools whose purpose is obvious from the name alone. */
+  readonly when_to_use?: string;
 }
 
 export interface ProfileDelegation {
