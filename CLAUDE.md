@@ -53,6 +53,29 @@ See `docs/ARCHITECTURE.md` for the full solution architecture.
 
 **Remote admin:** Three trust modes — Paranoid (no cloud), Zero-Trust (agent-initiated, signed commands, user-approved), Managed (auto-approved ops, content architecturally blocked). See ARCHITECTURE.md.
 
+## Ownership Layers (which layer are you touching?)
+
+Every path, process, and piece of state in a ClawHQ installation belongs to exactly one of five ownership layers. This is orthogonal to the three-layer feature stack above — that describes what ClawHQ does; this describes what lives where. Before editing code or filing a backlog item, **name the layer explicitly.** If a change crosses layers, call out the boundary.
+
+| # | Layer | Lives at | Owned by |
+|---|-------|----------|----------|
+| 1 | **ClawHQ code** | `src/`, `dist/`, published npm package | ClawHQ maintainers; the CLI itself |
+| 2 | **ClawHQ runtime state** | `~/.clawhq/cloud/*.json` today; target `~/.clawhq/instances/<id>/ops/` | ClawHQ — metadata *about* managed agents, never part of the agent |
+| 3 | **OpenClaw upstream engine** | Docker image, not in this repo | Upstream project; unmodified per AD-03 |
+| 4 | **A managed agent (one instance)** | `${deployDir}/engine/`, `workspace/`, `security/`, `cron/` | That specific agent — its config, identity, credentials, content |
+| 5 | **Fleet (N agents)** | `~/.clawhq/cloud/fleet.json` (registry); lifecycle commands target: fleet-aware | ClawHQ — multi-instance management |
+
+**Rules:**
+1. Layer 1 code never writes to Layer 4 files at runtime. The compiler writes at `apply` time; lifecycle commands read state and invoke Docker.
+2. Layer 4 never holds Layer 2 metadata. Ops logs, audit trails, backup snapshots belong under `~/.clawhq/instances/<id>/ops/`, not `${deployDir}/ops/`. Today this is blurred — see [[phantom-multi-tenancy]] in the wiki.
+3. There is no singleton "the agent". Every lifecycle command must resolve an instance id. New code takes `--agent <name>` or iterates the fleet registry; ambiguity is an error, not a default.
+4. "Clawdius" is a Layer 4 choice, not a Layer 1 concept. The word names a specific agent Simon happens to run. It must never appear in ClawHQ source code as a structural dependency.
+5. Identity templates are Layer 2; compiled identity files are Layer 4. Today both live at `workspace/*.md` — target: templates at `~/.clawhq/templates/identity/`, compiled outputs at `workspace/*.md`.
+
+**Concrete current violations** (see `knowledge/wiki/phantom-multi-tenancy.md` for full detail with file:line refs): singleton CLI resolution in `src/cli/index.ts:54-88`, hardcoded container name fallback `engine-openclaw-1` in `src/build/docker/container.ts:14`, ops state under `${deployDir}/ops/`, fleet registry exists but no lifecycle command consumes it, identity templates colocated with compiled outputs.
+
+**Fix sequence:** FEAT-186 (epic) → FEAT-187 (--agent arg) → FEAT-188 (fleet wiring) → FEAT-189 (container naming) → FEAT-190 (ops relocation) → FEAT-191 (identity template split).
+
 ## Architectural Decisions (locked — see ARCHITECTURE.md for full rationale)
 
 - **AD-01: One binary, flat CLI** — `clawhq` is a single install with flat commands (`clawhq doctor`, not `clawhq operate doctor`). Modules are internal source organization, never user-facing.

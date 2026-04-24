@@ -43,6 +43,8 @@
 - [[cron-stepping-syntax-invalid]] — Invalid cron stepping syntax causes jobs to silently never run (openclaw/landmine)
 - [[lifecycle-management-gap]] — Lifecycle management gap (clawhq/concept)
 - [[memory-system]] — Memory system (openclaw/concept)
+- [[ownership-layers]] — Five-layer ownership model: ClawHQ code / runtime state / OpenClaw engine / managed agent / fleet (clawhq/architecture)
+- [[phantom-multi-tenancy]] — Fleet registry exists but no lifecycle command consumes it — singleton-per-host assumptions (clawhq/gap)
 - [[dangerously-disable-device-auth-missing]] — Missing dangerouslyDisableDeviceAuth causes device signature invalid loop (openclaw/landmine)
 - [[prompt-injection-defense]] — Prompt injection defense (openclaw/security)
 - [[provider-profile-layer]] — Provider profile layer proposal: deferred pending 5th non-IMAP provider (clawhq/architecture)

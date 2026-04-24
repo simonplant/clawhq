@@ -68,6 +68,56 @@ next reader sees why the obvious layering response isn't the right call.
 himalaya-config-generator gap resolved and record the slot-iteration bug
 and missing probe as the current state.
 
+## [2026-04-23] query | Architectural boundary audit → filed [[ownership-layers]] + [[phantom-multi-tenancy]]
+
+**Question:** Simon asked for a deep review of boundaries in the ClawHQ
+codebase. Concerns: (1) multiple layers of code/config blurred, (2) no
+first-class concept of multi-tenancy (ClawHQ managing N OpenClaw instances
+locally), (3) confused ownership between ClawHQ, claw instances, and
+instance-specific configuration.
+
+**Scope:** Full repo audit via Explore subagent. Mapped five ownership
+layers (ClawHQ code / ClawHQ runtime state / OpenClaw upstream / managed
+agent / fleet) and checked where each lives today.
+
+**Findings:**
+
+- **Phantom multi-tenancy.** `FleetRegistry` exists (`src/cloud/fleet/`),
+  `clawhq cloud fleet register/list/doctor` works, but no lifecycle command
+  (doctor, logs, backup, update, monitor, session) takes `--agent <name>`
+  or `--fleet`. `resolveDefaultDeployDir()` in `src/cli/index.ts:54-88`
+  walks up from cwd and returns the first `clawhq.yaml` — two local
+  deployments silently shadow each other.
+- **Container name fallback hardcoded singleton.** `src/build/docker/container.ts:14`
+  — `const FALLBACK = "engine-openclaw-1"`. If Docker label discovery
+  fails and two deployments use compose project `engine`, resolution races.
+- **Ops state mixed with agent workspace.** `${deployDir}/ops/{doctor,monitor,backup,audit,firewall,updater}`
+  holds Layer 2 (ClawHQ runtime metadata) inside Layer 4 (agent filesystem).
+  Backups of `deployDir/` conflate agent content with ops state.
+- **Identity templates not separated from compiled files.** Compiler
+  generates `workspace/SOUL.md`, `workspace/AGENTS.md` etc directly — no
+  `~/.clawhq/templates/identity/` source store.
+- **No "Clawdius" leaks in code.** All `grep -i clawdius` hits are comments
+  or incident references, not structural dependencies. The code is
+  instance-name-agnostic; the singleton assumption is about *count*, not
+  *name*.
+
+**Filed [[ownership-layers]]** (Decisions) — canonical five-layer model
+with rules and how-to-apply guidance. Linked from the new **Ownership
+Layers** section in `CLAUDE.md` so every session sees it.
+
+**Filed [[phantom-multi-tenancy]]** (Decisions) — concrete gap with
+file:line evidence, the scenario that breaks, what is not broken, and a
+pointer to the fix sequence.
+
+**Backlog:** FEAT-186 (pre-existing ungroomed umbrella) groomed with audit
+detail. Added children FEAT-187 (--agent arg) → FEAT-188 (fleet wiring) →
+FEAT-189 (container naming) → FEAT-190 (ops relocation) → FEAT-191
+(identity template split).
+
+**Memory:** filed `project_phantom_multi_tenancy` pointing at both wiki
+pages and the backlog chain.
+
 ## [2026-04-23] query | Email default behaviour + permissions → filed as [[email-integration]]
 
 Synthesized answer from [[integration-layer]], the Email Manager blueprint in

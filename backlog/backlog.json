@@ -1018,9 +1018,180 @@
       "status": "todo",
       "readyForSprint": false,
       "track": "core",
-      "groomedAt": null,
-      "groomingNotes": null,
+      "groomedAt": "2026-04-23",
+      "groomingNotes": "Umbrella item. Audit 2026-04-23 confirmed FleetRegistry exists in src/cloud/fleet/ but no lifecycle command consumes it (phantom multi-tenancy). Split into children FEAT-187..FEAT-191: (187) --agent <name> on every lifecycle command; (188) --fleet flag iterating fleet registry; (189) instance-scoped Docker container_name to kill engine-openclaw-1 fallback at src/build/docker/container.ts:14; (190) move ${deployDir}/ops/{doctor,monitor,backup,audit,firewall,updater} to ~/.clawhq/instances/<id>/ops/; (191) separate identity templates (Layer 2) from compiled workspace/*.md (Layer 4). See knowledge/wiki/phantom-multi-tenancy.md and knowledge/wiki/ownership-layers.md. This item stays as the tracking epic; children are the sprintable slices.",
       "dependsOn": null
+    },
+    {
+      "id": "FEAT-187",
+      "title": "--agent <name> on every lifecycle command — ambiguity is an error, not a default",
+      "intent": "Every lifecycle command must name its target agent explicitly. Two local deployments must never silently shadow each other.",
+      "description": "Today src/cli/index.ts:54-88 (resolveDefaultDeployDir) walks up from cwd looking for a single clawhq.yaml and returns the first match. Commands doctor, logs, backup, update, monitor, session all default to this. When multiple agents are registered in the fleet registry, this is ambiguous. Change: add --agent <name> (resolves via fleet registry) to every lifecycle command; when multiple agents are registered and no --agent is given, error with the list of registered names. Single-agent default stays for backwards compatibility with one registered instance.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Change resolveDefaultDeployDir to take an optional agent selector and consult the fleet registry at ~/.clawhq/cloud/fleet.json",
+        "Return an error (not a default) when selector is absent AND fleet registry has >1 entries",
+        "Add --agent <name> option to doctor, logs, backup, update, monitor, session commands in src/cli/commands/operate.ts",
+        "Add --agent <name> option to build and design commands where applicable",
+        "Update CLI help text with examples"
+      ],
+      "acceptanceCriteria": [
+        "clawhq doctor with one registered agent works unchanged (backwards compatible)",
+        "clawhq doctor with two registered agents and no --agent errors with a list of names",
+        "clawhq doctor --agent=foo resolves to the registered deployDir for 'foo'",
+        "Applies consistently to logs, backup, update, monitor, session"
+      ],
+      "scope": [
+        "src/cli/index.ts",
+        "src/cli/commands/operate.ts",
+        "src/cli/commands/build.ts",
+        "src/cli/commands/design.ts",
+        "src/cloud/fleet/"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "track": "core",
+      "groomedAt": "2026-04-23",
+      "groomingNotes": "Child of FEAT-186. Priority 1 of the phantom-multi-tenancy fix chain. Touches Layer 1 (ClawHQ CLI code) and Layer 5 (fleet resolution). Does not touch Layer 4 (agent content unchanged). Ownership rule: before this item, the CLI has a singleton assumption; after, no lifecycle command assumes a singleton. See knowledge/wiki/phantom-multi-tenancy.md for the file:line evidence and the breaking scenario.",
+      "dependsOn": null
+    },
+    {
+      "id": "FEAT-188",
+      "title": "Fleet-wide lifecycle: --fleet flag on doctor, backup, update",
+      "intent": "Running a lifecycle operation across all managed agents must be one command, not a shell loop. runFleetDoctor already exists — wire it into the mainline doctor command.",
+      "description": "src/cloud/fleet/doctor.ts exports runFleetDoctor() which aggregates health across registered agents. Today it is only reachable via `clawhq cloud fleet doctor` — a parallel command hierarchy that does not cross-wire with `clawhq doctor`. Add --fleet to lifecycle commands: iterates fleet registry, runs the operation per agent, aggregates results. Output is grouped per agent; exit code is non-zero if any agent fails.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Add --fleet flag (mutually exclusive with --agent) to doctor, backup create, update, status",
+        "Route clawhq doctor --fleet to runFleetDoctor()",
+        "Implement fleet iteration for backup create --fleet and update --fleet with per-agent result aggregation",
+        "Update clawhq cloud fleet doctor to delegate to the same code path (remove duplicate command)"
+      ],
+      "acceptanceCriteria": [
+        "clawhq doctor --fleet runs doctor against every registered agent and reports grouped per-agent results",
+        "Non-zero exit if any agent fails its checks",
+        "clawhq cloud fleet doctor and clawhq doctor --fleet produce identical output",
+        "--agent and --fleet are mutually exclusive (error if both given)"
+      ],
+      "scope": [
+        "src/cli/commands/operate.ts",
+        "src/cli/commands/cloud.ts",
+        "src/cloud/fleet/doctor.ts",
+        "src/cloud/fleet/discovery.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "track": "core",
+      "groomedAt": "2026-04-23",
+      "groomingNotes": "Child of FEAT-186. Priority 2 of the phantom-multi-tenancy fix chain. Depends on FEAT-187 because --fleet reuses the per-agent resolution path. Touches Layer 1 (CLI) and Layer 5 (fleet). Does not touch Layer 4. Cleans up the duplicated command hierarchy: cloud fleet doctor becomes a thin alias.",
+      "dependsOn": ["FEAT-187"]
+    },
+    {
+      "id": "FEAT-189",
+      "title": "Instance-scoped Docker container naming — kill the engine-openclaw-1 fallback",
+      "intent": "Two local OpenClaw containers on the same host must never collide on a shared fallback name.",
+      "description": "src/build/docker/container.ts:14 hardcodes `const FALLBACK = 'engine-openclaw-1'`. Discovery first tries Docker label filtering (com.docker.compose.service=openclaw) which is robust, but when filtering fails or two deployments both use compose project 'engine', resolveOpenclawContainer() returns the wrong container. Fix: set explicit container_name in generated docker-compose.yml (src/build/docker/compose.ts) using the instance id — e.g. container_name: openclaw-${instanceId}. Thread deployDir/instanceId through resolveOpenclawContainer() so the fallback is instance-specific. Callers (src/operate/sessions/detect.ts, src/operate/logs/logs.ts, src/cloud/heartbeat/reporter.ts) pass the resolved deployDir.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Add container_name: openclaw-${instanceId} to generated docker-compose.yml in src/build/docker/compose.ts",
+        "Thread deployDir/instanceId through resolveOpenclawContainer() signature",
+        "Derive per-instance fallback name from instance id; remove hardcoded engine-openclaw-1",
+        "Update all callers (sessions/detect.ts, logs/logs.ts, heartbeat/reporter.ts, operate/*)",
+        "Migration: on first `clawhq up` after upgrade, regenerate compose.yml and restart container with the new name"
+      ],
+      "acceptanceCriteria": [
+        "Two local deployments with distinct instance ids get two distinct container names",
+        "resolveOpenclawContainer(deployDir) returns the container for that deployDir, never a neighbor",
+        "Existing single-instance deployments auto-migrate the container name on next up",
+        "No occurrence of the string 'engine-openclaw-1' remains in src/"
+      ],
+      "scope": [
+        "src/build/docker/container.ts",
+        "src/build/docker/compose.ts",
+        "src/operate/sessions/detect.ts",
+        "src/operate/logs/logs.ts",
+        "src/cloud/heartbeat/reporter.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "track": "core",
+      "groomedAt": "2026-04-23",
+      "groomingNotes": "Child of FEAT-186. Priority 3 of the phantom-multi-tenancy fix chain. Depends on FEAT-187 so instance ids are resolvable at the CLI layer. Touches Layer 1 (ClawHQ container resolution code) and Layer 4 (docker-compose.yml is a generated agent-runtime artifact). Cleanest split would be to do the compose.yml change inside the compiler and the resolver change inside ClawHQ; both live in the same patch but touch the layer boundary explicitly.",
+      "dependsOn": ["FEAT-187"]
+    },
+    {
+      "id": "FEAT-190",
+      "title": "Relocate ClawHQ ops state out of ${deployDir}/ into ~/.clawhq/instances/<id>/ops/",
+      "intent": "ClawHQ operational metadata (doctor snapshots, monitor logs, backup snapshots, audit trails, updater rollback state) must not live inside the managed agent's deployment tree. Backing up the agent must not conflate agent content with ops state.",
+      "description": "Today ${deployDir}/ops/{doctor,monitor,backup,audit,firewall,updater} holds ClawHQ runtime state (Layer 2 per knowledge/wiki/ownership-layers.md) inside the agent's filesystem (Layer 4). Scaffolded by src/build/installer/scaffold.ts:26-40. Move to ~/.clawhq/instances/<instance-id>/ops/. Update scaffold, doctor, monitor, backup, audit, firewall, updater path references. Add migration step: on first run after upgrade, move existing ops/ content from deployDir to the new location. Update src/config/ownership.ts to reflect the new paths.",
+      "priority": "should",
+      "category": "core",
+      "steps": [
+        "Add instanceOpsDir(instanceId) helper to src/config/paths.ts",
+        "Update src/build/installer/scaffold.ts to create ~/.clawhq/instances/<id>/ops/ instead of ${deployDir}/ops/",
+        "Update all readers/writers: src/operate/doctor/, src/operate/monitor/, src/operate/backup/, src/operate/updater/, src/secure/audit/, src/build/launcher/firewall.ts",
+        "Write a one-shot migration in src/build/installer that moves ${deployDir}/ops/ → ~/.clawhq/instances/<id>/ops/ when upgrading an existing deployment",
+        "Update src/config/ownership.ts patterns to reflect the new locations",
+        "Update backup semantics: clawhq backup create snapshots ${deployDir}/ (agent) by default; --include-ops opts into snapshotting the ops dir too"
+      ],
+      "acceptanceCriteria": [
+        "No ClawHQ ops state is written under ${deployDir}/ on new installs",
+        "Existing installs auto-migrate ops/ on first command after upgrade",
+        "clawhq backup create produces a snapshot that does not include doctor/monitor/updater state by default",
+        "clawhq doctor, monitor, backup, update, audit all work with the new paths",
+        "ownership.ts classifies the new paths correctly"
+      ],
+      "scope": [
+        "src/config/paths.ts",
+        "src/build/installer/scaffold.ts",
+        "src/operate/",
+        "src/secure/audit/",
+        "src/build/launcher/firewall.ts",
+        "src/config/ownership.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "track": "core",
+      "groomedAt": "2026-04-23",
+      "groomingNotes": "Child of FEAT-186. Priority 4 of the phantom-multi-tenancy fix chain. Depends on FEAT-187 because migration needs a resolvable instance id. Touches Layer 2 (ClawHQ runtime state location) and Layer 4 (agent deployment tree shrinks). Biggest conceptual win of the chain — clean separation of agent content from ClawHQ ops metadata. Size: L. Migration is the risky part; golden-config-pattern style before/after snapshot recommended.",
+      "dependsOn": ["FEAT-187"]
+    },
+    {
+      "id": "FEAT-191",
+      "title": "Separate identity templates (Layer 2) from compiled identity files (Layer 4)",
+      "intent": "Identity templates are ClawHQ meta — they must live outside the agent's workspace. Today templates and compiled outputs share a directory, making their lifecycles indistinguishable by path.",
+      "description": "The compiler in src/design/catalog/compiler.ts:265-276 generates workspace/SOUL.md, workspace/AGENTS.md, workspace/BOOTSTRAP.md, workspace/IDENTITY.md, workspace/TOOLS.md, workspace/HEARTBEAT.md, workspace/USER.md directly into the agent's workspace. There is no separate template store. src/config/ownership.ts:91-101 correctly classifies these as clawhq-owned (regenerated) or seeded-once, but physical storage colocates source and output. Target: templates live at ~/.clawhq/templates/identity/ (Layer 2), read-only compiled outputs remain at workspace/*.md (Layer 4). Enables shared identity fragments across multiple agents in a fleet.",
+      "priority": "could",
+      "category": "feature",
+      "steps": [
+        "Design ~/.clawhq/templates/identity/ layout — per-fragment markdown (soul, agents, bootstrap, identity, tools, heartbeat, user)",
+        "Move the render functions' template inputs out of in-code constants and into the templates directory",
+        "Update src/design/catalog/compiler.ts to load from ~/.clawhq/templates/identity/ and write compiled output to workspace/*.md",
+        "Update src/config/ownership.ts — add Layer-2 classification for the templates dir",
+        "Doctor check: verify templates dir exists, is readable, has all required fragments",
+        "Optional: allow per-instance template override at ~/.clawhq/instances/<id>/templates/identity/"
+      ],
+      "acceptanceCriteria": [
+        "~/.clawhq/templates/identity/ is the source of truth for identity fragments",
+        "workspace/*.md continue to exist as compiled read-only outputs (mount semantics unchanged)",
+        "Multiple agents on the same host share the default template set unless per-instance override is placed",
+        "Doctor warns if templates dir is missing or incomplete"
+      ],
+      "scope": [
+        "src/design/catalog/compiler.ts",
+        "src/design/identity/",
+        "src/config/ownership.ts",
+        "src/operate/doctor/checks.ts"
+      ],
+      "status": "todo",
+      "readyForSprint": false,
+      "track": "feature",
+      "groomedAt": "2026-04-23",
+      "groomingNotes": "Child of FEAT-186. Priority 5 of the phantom-multi-tenancy fix chain — longer-term architectural polish, not urgent. Depends on FEAT-190 so the instances/<id>/ layout exists before per-instance overrides are offered. Touches Layer 2 (new templates dir) and Layer 4 (compiled outputs unchanged in location). Biggest behavioural change: identity fragments are edited at ~/.clawhq/templates/, not inside the agent's workspace. Size: M.",
+      "dependsOn": ["FEAT-190"]
     }
   ]
 }
