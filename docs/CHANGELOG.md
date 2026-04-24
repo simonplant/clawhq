@@ -6,6 +6,44 @@ This project does not yet use version tags. Entries are organized by development
 
 ---
 
+## Phase 5: Multi-Tenancy & Boundary Correction — 2026-04-23
+
+Phase 5 closed a structural gap: ClawHQ had data structures for managing multiple OpenClaw instances on one host but no lifecycle command consumed them. Registration worked; operation did not. Every `clawhq doctor`, `clawhq logs`, `clawhq backup`, `clawhq update` silently targeted whichever `clawhq.yaml` a cwd walk-up happened to find first. An audit named the gap "phantom multi-tenancy" and the fix chain (FEAT-186 → FEAT-191) shipped across 10 commits in one session.
+
+### Unified instance registry
+
+`~/.clawhq/instances.json` — one flat file, uuid-keyed, with a tagged-union `location` field that carries either a local `deployDir` or cloud VM coordinates. Every `clawhq init` now mints a stable `instanceId` and writes it into `clawhq.yaml`. Every `clawhq apply` backfills the id into the yaml when the registry has an entry but the yaml doesn't. The legacy `cloud/fleet.json` and `cloud/instances.json` fold into the unified registry via a one-shot idempotent migration at CLI bootstrap; the legacy files land as `.migrated.bak` for one version cycle.
+
+### `--agent` everywhere
+
+Every lifecycle command resolves "which instance" through one precedence chain: `--agent <name|id-prefix>` flag → `CLAWHQ_AGENT` env var → `~/.clawhq/current` pointer → cwd walk-up → single-default → error. Ambiguity — multiple agents registered and no selector given — is an error, not a silent pick. The error lists the registered names so the operator can pick one. Prior art audit across kubectl, docker, aws cli, gcloud, and podman-machine converged on this shape; ClawHQ adopted it unchanged.
+
+### `--fleet` aggregation
+
+`clawhq doctor --fleet` iterates every registered agent and aggregates health into one report. Exits non-zero if any agent is unhealthy or unreachable. The existing `clawhq cloud fleet doctor` and the new `clawhq doctor --fleet` now share one code path. The fleet API (`cloud fleet list/add/remove/status/doctor`) repointed to read from the unified registry — it had been silently returning empty after the migration renamed the legacy fleet.json.
+
+### Instance-scoped Docker container naming
+
+Generated `docker-compose.yml` now emits `container_name: openclaw-<shortId>` per instance, where `shortId` is the leading 8 hex chars of the uuid. Two local deployments on one host can't collide on a shared fallback name anymore. The hardcoded `engine-openclaw-1` singleton fallback is gone. `resolveOpenclawContainer` takes an optional `deployDir`, reads the instanceId from `clawhq.yaml`, and returns the deterministic name without a docker call. A new `requireOpenclawContainer` helper throws actionable errors ("is the agent up? Try `clawhq up`.") at the five call sites that can't proceed without a name.
+
+### Ops-state relocation
+
+ClawHQ operational metadata — doctor snapshots, monitor logs, backup snapshots, audit trails, firewall state, updater rollback data, automation scripts — moved out of `${deployDir}/ops/` (Layer 4, inside the agent's filesystem) into `~/.clawhq/instances/<instanceId>/ops/` (Layer 2, ClawHQ-owned). `opsPath(deployDir, ...parts)` routes every read/write to the right location; 17 call sites swept. Docker compose mounts (cred-proxy audit, Tailscale state) follow the instanceId. Migration runs at CLI bootstrap, idempotent and cross-filesystem-safe. Backups of the agent no longer conflate agent content with ClawHQ ops state.
+
+### Layer-2 identity fragment overrides
+
+Power users can pin the content of any compiled identity file (SOUL.md, AGENTS.md, USER.md, TOOLS.md, IDENTITY.md, HEARTBEAT.md, BOOTSTRAP.md) by dropping a file at `~/.clawhq/templates/identity/<FRAGMENT>.md` (machine-global) or `~/.clawhq/instances/<id>/templates/identity/<FRAGMENT>.md` (per-instance). The renderer output is discarded for that fragment and the override is used verbatim. Templates live at Layer 2; compiled workspace outputs stay at Layer 4. Mount semantics unchanged.
+
+### The five-layer ownership model
+
+The audit produced a canonical boundary map for the codebase: (1) ClawHQ code, (2) ClawHQ runtime state, (3) OpenClaw upstream engine, (4) a managed agent, (5) fleet. Every path, process, and piece of state belongs to exactly one layer. Before editing code or grooming a backlog item, name the layer. The model is pinned in `CLAUDE.md` and in `knowledge/wiki/ownership-layers.md` so every session and reviewer sees it.
+
+### Numbers
+
+95 new tests (2073 → 2168, all green), 10 commits, 7 new files, ~2,500 lines added across source, tests, and documentation. Full wiki entries: `instance-registry.md`, `phantom-multi-tenancy.md`, `ownership-layers.md`. Backlog items FEAT-186, FEAT-186.5, FEAT-187, FEAT-188, FEAT-189, FEAT-190, FEAT-191 all closed.
+
+---
+
 ## Phase 4: Hardening & Documentation — 2026-03-23 to 2026-03-24
 
 Phase 4 focused on two things: making the project harder to break, and making it possible for someone other than the author to understand it.
@@ -114,12 +152,12 @@ Doctor diagnostics run 14+ preventive checks with auto-fix. Encrypted backup/res
 
 | Metric | Value |
 |---|---|
-| **Total codebase** | ~67,000 lines of TypeScript across ~590 files |
-| **Test coverage** | 77 test files |
-| **Backlog completion** | 40+ items complete |
-| **Blueprints** | 7 use-case blueprints |
+| **Total codebase** | ~90,000 lines of TypeScript across ~400 source files |
+| **Test coverage** | 113 test files (2168 tests, all passing) |
+| **Backlog completion** | 50+ items complete |
+| **Blueprints** | 11 use-case blueprints |
 | **Skills** | 6 built-in skills |
-| **CLI commands** | 78 leaf commands (13 command groups) |
+| **CLI commands** | 78 leaf commands (13 command groups) + global `--agent`/`--fleet` |
 | **Cloud providers** | 4 (DigitalOcean, AWS, GCP, Hetzner) |
-| **Security checks** | 14+ doctor diagnostics |
-| **Development timeline** | 2026-03-18 to 2026-03-24 (AI-assisted) |
+| **Doctor checks** | 40 preventive diagnostics |
+| **Development timeline** | 2026-03-18 to 2026-04-23 (AI-assisted) |

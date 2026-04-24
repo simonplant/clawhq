@@ -2,7 +2,7 @@
 
 > Your AI agent runs on your hardware, talks to your services, and never sends a byte to anyone you didn't choose. ClawHQ makes that possible without a PhD in DevOps.
 
-**Owner:** Simon Plant · **Status:** Pre-launch (all code works, zero external users — community validation begins at publication) · **Updated:** 2026-04-03
+**Owner:** Simon Plant · **Status:** Pre-launch (all code works, zero external users — community validation begins at publication) · **Updated:** 2026-04-23
 
 ---
 
@@ -99,7 +99,7 @@ This is grounded in how people actually use OpenClaw. Cohort research across 3.2
 
 **Deployment** — Two-stage Docker build, pre-flight checks, port-aware egress firewall with auto-detection of integrations from .env, health verification, closed-loop integration verification (credential probes + network reachability + LLM response time), smoke tests.
 
-**Operations** — Encrypted backup/restore, safe updates with rollback, status dashboard, append-only JSONL audit trail, memory lifecycle management.
+**Operations** — Encrypted backup/restore, safe updates with rollback, status dashboard, append-only JSONL audit trail, memory lifecycle management. Multi-instance-native: every deployment is registered in the unified instance registry (`~/.clawhq/instances.json`) with a stable uuid; `--agent <name>` targets a specific instance and `--fleet` aggregates across every registered agent. Ops state lives at `~/.clawhq/instances/<id>/ops/` so it can be backed up, rotated, and discarded independently of the agent's workspace.
 
 **Security** — Secret scanning via gitleaks (recommended external tool), skill vetting (outbound HTTP, shell execution, file escape detection), credential health probes, Tier 1 prompt injection defense (deterministic patterns — invisible unicode, delimiter spoofing, encoded payloads, exfil markup, secret leaks).
 

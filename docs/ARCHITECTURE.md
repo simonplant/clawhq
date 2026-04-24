@@ -699,34 +699,52 @@ User ──message──▶ Channel (Telegram/WhatsApp/etc.)
 
 ## The Deployment Directory
 
+Every managed agent has a deployDir — a Layer-4 tree that holds everything
+that *is* the agent. ClawHQ's Layer-2 operational metadata about an agent
+(diagnostics, backups, audit trails, etc.) lives in a separate per-instance
+tree under `~/.clawhq/instances/<instanceId>/ops/`, and the unified
+instance registry at `~/.clawhq/instances.json` names every managed agent
+on the host by stable uuid. See [[ownership-layers]] for the full model.
+
 ```
-~/.clawhq/
-├── clawhq.yaml                    # Meta-config (version, install method, cloud token)
+<deployDir>/                        # Layer 4 — the agent itself
+├── clawhq.yaml                    # Manifest: instanceId + composition + posture
 │
 ├── engine/                        # OpenClaw runtime
 │   ├── openclaw.json              # Runtime config (forged from blueprint)
 │   ├── .env                       # Secrets (mode 0600)
-│   ├── docker-compose.yml         # Hardened container config
+│   ├── docker-compose.yml         # Hardened container config (container_name: openclaw-<shortId>)
 │   ├── Dockerfile                 # Stage 2 custom layer
 │   └── credentials.json           # Integration credentials (mode 0600)
 │
 ├── workspace/                     # Agent's world (mounted into container)
-│   ├── identity/                  # Who the agent is (read-only mount)
+│   ├── SOUL.md, AGENTS.md, …      # Identity files (read-only mount; optional
+│   │                                Layer-2 overrides at ~/.clawhq/templates/identity/)
 │   ├── tools/                     # What the agent can do (CLI wrappers)
 │   ├── skills/                    # What the agent does autonomously
 │   └── memory/                    # What the agent remembers (hot/warm/cold)
 │
-├── ops/                              # Operational tooling
-│   ├── doctor/                    # Diagnostics
-│   ├── monitor/                   # Health + alerts
-│   ├── backup/snapshots/          # Encrypted backups
-│   ├── updater/rollback/          # Pre-update images
-│   ├── audit/                     # Tool, secret, egress logs
-│   └── firewall/                  # Egress allowlist
-│
 ├── security/                      # Posture + sandbox config
-├── cron/                          # Scheduled jobs
-└── cloud/                         # Cloud connection (optional)
+└── cron/                          # Scheduled jobs
+```
+
+ClawHQ's own state (Layer 2) lives outside the deployDir:
+
+```
+~/.clawhq/                          # Layer 2 — ClawHQ runtime state
+├── instances.json                 # Unified registry (uuid-keyed; local + cloud)
+├── current                        # Pointer: selected instance for this shell
+├── instances/
+│   └── <instanceId>/
+│       └── ops/                   # Per-instance ops state
+│           ├── doctor/            # Diagnostic snapshots
+│           ├── monitor/           # Health + alerts
+│           ├── backup/snapshots/  # Encrypted backups
+│           ├── updater/rollback/  # Pre-update images
+│           ├── audit/             # Tool, secret, egress logs
+│           └── firewall/          # Egress allowlist
+└── templates/
+    └── identity/                  # Optional user overrides for identity fragments
 ```
 
 ---
@@ -888,6 +906,17 @@ Agent workspace uses Docker layer/mount topology to enforce immutability — too
 
 ### AD-07: Update intelligence
 Updates are not mechanical pull-restart cycles. The update system understands what changed upstream, predicts deployment-specific breakage, migrates config automatically, and rolls back on failure. The pipeline: `check → analyze → backup → pull → migrate → restart → verify → rollback`. Four update channels (security/stable/latest/pinned) control update policy.
+
+### AD-08: No singleton-per-host
+Every managed agent has a stable `instanceId` (uuid) minted at `clawhq init`
+and recorded in the unified registry at `~/.clawhq/instances.json`. Every
+lifecycle command resolves a specific instance through the precedence chain
+`--agent > CLAWHQ_AGENT > ~/.clawhq/current > cwd walk-up > single-default`;
+ambiguity is an error, not a silent pick of the first clawhq.yaml on the
+path. Docker container names and ops-state directories are scoped by
+`instanceId`, so two deployments on one host never collide. The fleet
+registry is a projection of the unified registry. See [[instance-registry]]
+and [[phantom-multi-tenancy]] for design + migration history.
 
 ---
 

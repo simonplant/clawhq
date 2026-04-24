@@ -116,17 +116,24 @@ Canonical terms — use these consistently:
 ## CLI Commands
 
 ```
+# Global options (apply to every lifecycle command)
+--agent <name|id-prefix>       Target a specific registered agent (see ~/.clawhq/instances.json).
+                               Ambiguity is an error when multiple agents are registered and
+                               no selector is given. Env equivalent: CLAWHQ_AGENT=<name>.
+
 # Install
 clawhq install                — Full platform install (pre-reqs, engine, scaffold)
 clawhq install --from-source  — Zero-trust: clone, audit, build from source
 
 # Design
 clawhq init --guided          — Interactive setup → choose blueprint, connect services
+                                 (mints an instanceId, registers in ~/.clawhq/instances.json)
 clawhq init --smart           — AI-powered config inference (local Ollama)
 clawhq init --reset           — Archive the existing deployment to a timestamped attic and re-forge
 clawhq blueprint list         — Browse available blueprints
 clawhq blueprint preview      — Preview a blueprint's operational design
-clawhq apply                  — Regenerate files from clawhq.yaml (idempotent; preserves credentials/state)
+clawhq apply                  — Regenerate files from clawhq.yaml (idempotent; preserves
+                                 credentials/state; backfills instanceId into yaml when absent)
 
 # Build
 clawhq build                  — Two-stage Docker build with change detection + manifests
@@ -144,7 +151,8 @@ clawhq verify                 — Verify all integrations work from inside conta
 clawhq connect                — Connect messaging channel
 
 # Operate
-clawhq doctor [--fix]         — Preventive diagnostics (39 checks) with auto-fix
+clawhq doctor [--fix]         — Preventive diagnostics (40 checks) with auto-fix
+clawhq doctor --fleet         — Run against every registered agent; aggregate results
 clawhq status [--watch]       — Single-pane dashboard
 clawhq backup create/list/restore — Encrypted snapshots
 clawhq update [--check]       — Update with change intelligence + migration plan
@@ -163,20 +171,25 @@ clawhq destroy                — Agent destruction with deletion receipt
 # Cloud (optional)
 clawhq cloud connect          — Link to clawhq.com for remote monitoring
 clawhq cloud status           — Remote health dashboard
+clawhq cloud fleet list       — Registered agents (reads ~/.clawhq/instances.json)
+clawhq cloud fleet doctor     — Fleet-wide diagnostic (same code path as `doctor --fleet`)
 ```
 
 ## Implementation Notes
 
 - `docs/PRODUCT.md` — Product bible: user stories organized by module (design, build, secure, operate, evolve, cloud)
-- `docs/ARCHITECTURE.md` — Architecture: six modules, ADs, zero-trust remote admin, package structure
+- `docs/ARCHITECTURE.md` — Architecture: six modules, ADs, five-layer ownership model, zero-trust remote admin, package structure
 - `docs/OPENCLAW-REFERENCE.md` — Engineering reference: OpenClaw internals, 14 landmines, config surfaces
-- `backlog/GAP-ANALYSIS.md` — AS-IS/TO-BE comparison, 10 gaps identified
-- `backlog/backlog.json` — Sprint-ready backlog, 6 parallel tracks
+- `backlog/backlog.json` — Sprint-ready backlog
+- `knowledge/wiki/instance-registry.md` — Unified instance registry design (canonical)
+- `knowledge/wiki/phantom-multi-tenancy.md` — Multi-tenancy gap + fix chain (shipped)
+- `knowledge/wiki/ownership-layers.md` — Five-layer ownership model
 
 Key technical details:
 - TypeScript throughout — matches OpenClaw's Node.js/TypeBox stack, shares schema types directly
 - Tight coupling to OpenClaw — uses its config schema, WebSocket RPC, file paths, and container structure directly
-- Deployment directory at `~/.clawhq/` — engine, workspace, ops, security, cron, cloud
+- Default deployment directory at `~/.clawhq/` — engine, workspace, security, cron (multi-instance supported via the registry; ops state for any instance lives at `~/.clawhq/instances/<instanceId>/ops/`, not inside the deployment tree)
+- Instance registry at `~/.clawhq/instances.json` is the single source of truth for managed agents (local + cloud). Lifecycle code resolves through `src/cloud/instances/resolver.ts` (for id → Instance) or `src/cli/resolve-deploy-dir.ts` (for argv+env+cwd → deployDir); ops paths via `opsPath(deployDir, ...)` in `src/config/ops-paths.ts`; container names via `requireOpenclawContainer({ deployDir })`.
 - Two-stage Docker build: Stage 1 (base OpenClaw + apt packages), Stage 2 (custom tools + skills)
 - Egress firewall uses dedicated iptables chain (`CLAWHQ_FWD`) on Docker bridge with port-aware rules and auto-detection of configured integrations from .env
 - Closed-loop deploy: `clawhq up` verifies every integration works from inside the container (credential probes + network reachability + LLM response time)

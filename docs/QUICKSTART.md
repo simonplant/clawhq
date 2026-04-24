@@ -188,7 +188,7 @@ Run diagnostics:
 ```
 $ clawhq doctor
 
-  ClawHQ Doctor — 39 checks
+  ClawHQ Doctor — 40 checks
   ──────────────────────────
   ✔ docker-running, container-running, container-posture
   ✔ config-valid (14 landmine rules), env-vars, config-sync
@@ -242,6 +242,9 @@ Your agent checks email every 15 minutes and delivers a morning digest at 8:00am
 | `clawhq status --watch` | Live health dashboard |
 | `clawhq backup create` | Encrypted snapshot |
 | `clawhq doctor --fix` | Auto-repair common issues |
+| `clawhq doctor --fleet` | Aggregate diagnostics across every registered agent |
+| `clawhq cloud fleet list` | Show every agent registered in `~/.clawhq/instances.json` |
+| `clawhq --agent <name> doctor` | Target a specific agent when more than one is registered |
 | `clawhq evolve` | Add integrations, skills, capabilities |
 
 Deep dives: [Architecture](ARCHITECTURE.md) | [Product Design](PRODUCT.md)

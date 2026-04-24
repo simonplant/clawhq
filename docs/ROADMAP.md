@@ -2,19 +2,20 @@
 
 > What's built, what's next, and what gates each decision. See [STRATEGY.md](STRATEGY.md) for strategic context.
 
-**Updated:** 2026-04-18
+**Updated:** 2026-04-23
 
 ---
 
 ## What's Built
 
-ClawHQ has a working CLI, ~85,000 lines of TypeScript across 393 source files, and 86 test files across all major subsystems. Built with AI-assisted development (Claude Code). **Pre-launch: all code works but has zero external users. Community validation begins at publication.**
+ClawHQ has a working CLI, ~90,000 lines of TypeScript across ~400 source files, and 113 test files (2168 tests, all passing). Built with AI-assisted development (Claude Code). **Pre-launch: all code works but has zero external users. Community validation begins at publication.**
 
 - **Blueprint engine** — 11 working blueprints (Email Manager, Family Hub, Founder's Ops, Research Co-pilot, Content Creator, Personal Finance Assistant, Stock Trading Assistant, Stoic Coach, Replace ChatGPT Plus, Replace Google Assistant, Replace my PA) with guided and AI-powered setup. The composition model (mission profile × providers) is live: `clawhq init --guided` picks a profile, applies the canonical ClawHQ personality, then compiles both plus the chosen provider per category into a flat OpenClaw runtime config. `clawhq apply` regenerates from the resulting `clawhq.yaml` idempotently.
+- **Multi-instance host support** — Unified instance registry at `~/.clawhq/instances.json` (uuid-keyed, local + cloud in one file). Every `clawhq init` mints a stable `instanceId` and writes it into `clawhq.yaml`. Every lifecycle command resolves via `--agent <name|id-prefix>` → `CLAWHQ_AGENT` env → `~/.clawhq/current` pointer → cwd walk-up → single-default; ambiguity errors loudly with the list of registered names. `--fleet` iterates every registered agent and aggregates results. Docker containers named `openclaw-<shortId>` deterministically. Ops state at `~/.clawhq/instances/<id>/ops/`. Optional Layer-2 identity fragment overrides at `~/.clawhq/templates/identity/`. One-shot idempotent bootstrap migration folds legacy `cloud/fleet.json` + `cloud/instances.json`.
 - **Config generation** — all 14 known failure modes ("landmines") auto-prevented during setup
 - **Full deploy pipeline** — two-stage Docker build, pre-flight checks, firewall, health verification, smoke tests
 - **Container security** — hardened by default: `cap_drop: ALL`, read-only rootfs, non-root user, egress firewall with per-integration domain allowlists
-- **Diagnostics** — `clawhq doctor` with 39 checks and auto-fix, predictive health alerts, self-healing. Extends (not replaces) OpenClaw's built-in `openclaw doctor`
+- **Diagnostics** — `clawhq doctor` with 40 checks and auto-fix, predictive health alerts, self-healing, and `--fleet` aggregation. Extends (not replaces) OpenClaw's built-in `openclaw doctor`
 - **Skill system** — 6 built-in skills with sandboxed vetting and rollback
 - **Workspace tools** — 7 CLI tool generators (email, tasks, todoist, iCal, market quotes, web search, todoist-sync)
 - **Operational tooling** — encrypted backup/restore, safe updates with rollback, status dashboard, audit trail, log streaming
@@ -72,8 +73,6 @@ The launch track has dependencies. This is the order that makes sense:
 **FEAT-108** — Decompose 4,320-line CLI into per-command modules. Unblocks maintainability.
 
 **BUG-125** — Doctor auto-fix: YAML parser instead of regex.
-
-**FEAT-110** — Multi-instance support.
 
 **Context pruning enforcement** — Default config always enables `contextPruning` with `mode: "cache-ttl"`. Doctor verifies it's active. This is effectively landmine #15.
 
@@ -156,7 +155,7 @@ Decisions made. Do not revisit unless the underlying assumption is disproven.
 - **No publishable blueprints yet** — 7 monolithic blueprints exist in the codebase. Zero are extractable as standalone configs for stock OpenClaw without generalization and testing work.
 - **Personal website doesn't exist yet** — Content distribution strategy depends on it. SITE_PLAN.md exists. The site doesn't. Static markdown site is sufficient but must exist before first article publishes.
 - **No distro installer yet** — users must clone the repo and build from source
-- **Single machine only** — no multi-machine or cluster deployment
+- **Single-machine only** — multi-agent on one host works (unified instance registry + `--agent`/`--fleet`), but multi-machine/cluster deployment is out of scope
 - **Linux and macOS only** — Windows requires WSL
 - **Docker required** — no bare-metal option
 - **Web dashboard scaffolded, not built out** — Hono server runs but UI components pending. Must differentiate from OpenClaw's built-in Control UI on composition and lifecycle, not config editing.

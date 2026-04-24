@@ -46,7 +46,7 @@ clawhq init --guided           # Pick a blueprint, connect services
 clawhq up                      # Deploy your agent
 ```
 
-Security hardening is automatic — no opt-in required. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the full walkthrough (pre-launch preview).
+Security hardening is automatic — no opt-in required. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the full walkthrough.
 
 ## Blueprints
 
@@ -63,7 +63,19 @@ cron: inbox check every 15 min, daily digest at 8am
 
 "Run my emails" becomes inbox triage, morning digests, auto-reply with approval gates, and calendar protection — fully configured, hardened, and running.
 
-See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for the full blueprint schema and all available options.
+See [docs/BLUEPRINT-SPEC.md](docs/BLUEPRINT-SPEC.md) for the full blueprint schema.
+
+## Multiple agents, one host
+
+Every deployment is registered in a unified instance registry at `~/.clawhq/instances.json` with a stable uuid minted at `clawhq init`. Lifecycle commands take `--agent <name>` to pick a specific instance; ambiguity is an error, not a silent default. Fleet-wide operations use `--fleet`:
+
+```bash
+clawhq init                             # mints an instanceId, registers in ~/.clawhq/instances.json
+clawhq doctor --agent clawdius          # target a specific agent by name or id-prefix
+clawhq doctor --fleet                   # aggregate health across every registered agent
+```
+
+ClawHQ's operational metadata (doctor snapshots, monitor logs, audit trails, backup snapshots) lives under `~/.clawhq/instances/<id>/ops/` — separate from the agent's own workspace and content, so backups stay clean and instances never collide on container names or state.
 
 ## Why Not Just Use a Hosting Provider?
 
@@ -72,27 +84,27 @@ Hosting providers deploy OpenClaw on a VPS with default or lightly-hardened conf
 - **Blueprints** — purpose-built agent designs that configure 10 dimensions simultaneously (identity, tools, skills, cron, security, egress, autonomy, memory, models, integrations). Not "OpenClaw on a VPS" — a fully designed system for a specific job.
 - **14-landmine prevention** — the config generator makes it impossible to ship a broken config. Every hosting provider ships default config and hopes for the best.
 - **Security by architecture** — content access architecturally blocked (no code path, not a policy flag). Egress firewall per integration. Identity files read-only. No hosting provider does architectural security.
-- **Lifecycle management** — doctor, backup, update, skill vetting, memory management, credential health probes. Hosting providers offer infrastructure. ClawHQ offers operations.
+- **Lifecycle management** — doctor, backup, update, skill vetting, memory management, credential health probes, fleet-wide operations. Hosting providers offer infrastructure. ClawHQ offers operations.
 - **Agent evolution** — the agent at month 6 does more than at day 1, through a validated, sandboxed, rollback-capable pipeline. No hosting provider touches this.
 
 ## Status
 
 **Pre-launch.** Built with AI-assisted development (Claude Code). The market is large and contested — 10+ hosting providers are capturing the OpenClaw ecosystem. ClawHQ competes on architectural depth and sovereignty, not hosting convenience.
 
-**Working:** Blueprint engine with 11 internal blueprints (email-manager, family-hub, founders-ops, research-copilot, content-creator, personal-finance-assistant, stock-trading-assistant, stoic-coach, replace-chatgpt-plus, replace-google-assistant, replace-my-pa); composition model (mission profile × providers, one canonical personality) compiled to flat OpenClaw runtime config; config generation with 14-landmine prevention; closed-loop deploy pipeline (preflight → build → firewall → health → integration verify → smoke test); container security hardening with 3-tier posture system; diagnostics + auto-fix (`clawhq doctor` — 39 checks); skill vetting (outbound HTTP, shell exec, file escape); encrypted backup/restore; credential health probes + `clawhq creds set/unset/get`; port-aware egress firewall with auto-detection of integrations from .env; ClawWall prompt injection defense + deterministic sanitizer; credential proxy (secrets never enter container); append-only JSONL audit trail; memory lifecycle; cloud provisioning (AWS, DigitalOcean, GCP, Hetzner); trust modes.
+**Working:** Blueprint engine with 11 internal blueprints; composition model (mission profile × providers, one canonical personality) compiled to flat OpenClaw runtime config; config generation with 14-landmine prevention; closed-loop deploy pipeline (preflight → build → firewall → health → integration verify → smoke test); container security hardening with 3-tier posture system; diagnostics + auto-fix (`clawhq doctor` — 40 checks, `--fleet` flag for aggregation); skill vetting; encrypted backup/restore; credential health probes; port-aware egress firewall with auto-detection from .env; ClawWall prompt injection defense + deterministic sanitizer; credential proxy (secrets never enter container); append-only JSONL audit trail; memory lifecycle; cloud provisioning (AWS, DigitalOcean, GCP, Hetzner); trust modes; unified instance registry with `--agent` resolution, `clawhq apply` instanceId backfill, instance-scoped Docker container names, Layer-2 ops state relocation, and optional Layer-2 identity fragment overrides.
 
-**In progress:** Distro installer (`curl | sh`), publishable standalone blueprints. The web dashboard ships in `src/web/` (Hono + htmx, 8 pages: home, doctor, logs, init, approvals, deploy, skills, sentinel).
+**In progress:** Distro installer (`curl | sh`), publishable standalone blueprints. The web dashboard ships in `src/web/` (Hono + htmx).
 
 ## Documentation
 
 | Document | Description |
 |---|---|
-| [Architecture](docs/ARCHITECTURE.md) | Three layers, six modules, zero-trust remote admin, skill system |
+| [Architecture](docs/ARCHITECTURE.md) | Three layers, six modules, five-layer ownership model, zero-trust remote admin, skill system |
 | [Quickstart](docs/QUICKSTART.md) | From zero to a working agent in under 10 minutes |
-| [Configuration](docs/CONFIGURATION.md) | Blueprint schema, skill schema, every config option |
+| [Blueprint Spec](docs/BLUEPRINT-SPEC.md) | Blueprint schema, skill schema, every config option |
 | [Problems](docs/PROBLEMS.md) | Why OpenClaw is hard and what ClawHQ fixes |
 | [Roadmap](docs/ROADMAP.md) | What's built, what's next, honest assessment |
-| [Contributing](docs/CONTRIBUTING.md) | How to contribute blueprints, skills, and code |
+| [Contributing](CONTRIBUTING.md) | How to contribute blueprints, skills, and code |
 | [Changelog](docs/CHANGELOG.md) | Development history and notable changes |
 | [Product](docs/PRODUCT.md) | Product design: problem, profiles, blueprints |
 | [OpenClaw Reference](docs/OPENCLAW-REFERENCE.md) | Engine internals, 14 landmines, integration surfaces |
