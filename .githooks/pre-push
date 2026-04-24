@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Fail locally so CI doesn't email you. Bypass with `git push --no-verify`.
+set -e
+echo "→ lint"
+npm run lint
+echo "→ typecheck"
+npx tsc --noEmit
