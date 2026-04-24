@@ -21,6 +21,7 @@ import { promisify } from "node:util";
 import { stringify as yamlStringify, parse as yamlParse } from "yaml";
 
 import { DOCTOR_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
+import { opsPath } from "../../config/ops-paths.js";
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 
 import type {
@@ -456,7 +457,7 @@ export function serializeAllowlist(entries: readonly FirewallAllowEntry[]): stri
 // ── Allowlist Loader ────────────────────────────────────────────────────────
 
 export async function loadAllowlist(deployDir: string): Promise<FirewallAllowEntry[]> {
-  const allowlistPath = join(deployDir, "ops", "firewall", "allowlist.yaml");
+  const allowlistPath = opsPath(deployDir, "firewall", "allowlist.yaml");
   try {
     const raw = await readFile(allowlistPath, "utf-8");
     const parsed: unknown = yamlParse(raw);
@@ -499,7 +500,7 @@ export async function loadAllowlist(deployDir: string): Promise<FirewallAllowEnt
 
 /** Read ipset metadata from ops/firewall/ipset-meta.json. */
 export async function loadIpsetMeta(deployDir: string): Promise<IpsetMeta | null> {
-  const metaPath = join(deployDir, "ops", "firewall", "ipset-meta.json");
+  const metaPath = opsPath(deployDir, "firewall", "ipset-meta.json");
   try {
     const raw = await readFile(metaPath, "utf-8");
     return JSON.parse(raw) as IpsetMeta;
@@ -510,7 +511,7 @@ export async function loadIpsetMeta(deployDir: string): Promise<IpsetMeta | null
 
 /** Write ipset metadata to ops/firewall/ipset-meta.json. */
 async function writeIpsetMeta(deployDir: string, meta: IpsetMeta): Promise<void> {
-  const metaDir = join(deployDir, "ops", "firewall");
+  const metaDir = opsPath(deployDir, "firewall");
   await mkdir(metaDir, { recursive: true });
   const metaPath = join(metaDir, "ipset-meta.json");
   await writeFile(metaPath, JSON.stringify(meta, null, 2) + "\n", "utf-8");

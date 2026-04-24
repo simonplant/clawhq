@@ -22,6 +22,7 @@ import { promisify } from "node:util";
 import { requireOpenclawContainer } from "../../build/docker/container.js";
 import { collectIntegrationDomains, IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadAllowlist, loadIpsetMeta } from "../../build/launcher/firewall.js";
 import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { opsPath } from "../../config/ops-paths.js";
 import { INTEGRATION_REGISTRY } from "../../evolve/integrate/registry.js";
 import { InvalidCronStoreError, loadCronStore } from "../../openclaw/cron-store.js";
 import { isTimerActive } from "../automation/install.js";
@@ -1409,7 +1410,7 @@ async function checkUnderscoreToolMethods(
 /** 18. Air-gap mode: verify firewall blocks all egress (no HTTPS allowlist rules). */
 async function checkAirGapActive(deployDir: string, signal?: AbortSignal): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "air-gap-active";
-  const allowlistPath = join(deployDir, "ops", "firewall", "allowlist.yaml");
+  const allowlistPath = opsPath(deployDir, "firewall", "allowlist.yaml");
 
   try {
     // Check if allowlist file exists — if missing, air-gap is not configured
@@ -1529,7 +1530,7 @@ async function checkIpsetEgressCurrent(deployDir: string, signal?: AbortSignal):
     }
 
     // Verify allowlist domains match current allowlist
-    const allowlistPath = join(deployDir, "ops", "firewall", "allowlist.yaml");
+    const allowlistPath = opsPath(deployDir, "firewall", "allowlist.yaml");
     try {
       const raw = await readFile(allowlistPath, "utf-8");
       const { parse: yamlParse } = await import("yaml");
@@ -1684,12 +1685,12 @@ async function checkSanitizeAvailable(deployDir: string): Promise<DoctorCheckRes
     }
 
     // Check quarantine log directory is writable
-    const securityDir = join(deployDir, "ops", "security");
+    const securityDir = opsPath(deployDir, "security");
     try {
       await access(securityDir, constants.W_OK);
     } catch {
       // Directory may not exist yet — try to check parent
-      const opsDir = join(deployDir, "ops");
+      const opsDir = opsPath(deployDir);
       try {
         await access(opsDir, constants.W_OK);
       } catch {
@@ -1719,7 +1720,7 @@ async function checkOpsAutoUpdateActive(
   const name: DoctorCheckName = "ops-autoupdate-active";
 
   // First check if ops automation scripts were generated
-  const scriptPath = join(deployDir, "ops", "automation", "scripts", "clawhq-autoupdate.sh");
+  const scriptPath = opsPath(deployDir, "automation", "scripts", "clawhq-autoupdate.sh");
   try {
     await access(scriptPath, constants.R_OK);
   } catch {
@@ -1755,7 +1756,7 @@ async function checkOpsBackupRecent(
   const name: DoctorCheckName = "ops-backup-recent";
 
   // Check if backup script exists
-  const scriptPath = join(deployDir, "ops", "automation", "scripts", "clawhq-backup.sh");
+  const scriptPath = opsPath(deployDir, "automation", "scripts", "clawhq-backup.sh");
   try {
     await access(scriptPath, constants.R_OK);
   } catch {
@@ -1768,7 +1769,7 @@ async function checkOpsBackupRecent(
   }
 
   // Check for recent backup snapshots
-  const backupDir = join(deployDir, "ops", "backup", "snapshots");
+  const backupDir = opsPath(deployDir, "backup", "snapshots");
   const latestLink = join(backupDir, "latest");
   try {
     const latestStat = await stat(latestLink);
@@ -1809,7 +1810,7 @@ async function checkOpsSecurityMonitor(
   const name: DoctorCheckName = "ops-security-monitor";
 
   // Check if script exists
-  const scriptPath = join(deployDir, "ops", "automation", "scripts", "clawhq-security-monitor.sh");
+  const scriptPath = opsPath(deployDir, "automation", "scripts", "clawhq-security-monitor.sh");
   try {
     await access(scriptPath, constants.R_OK);
   } catch {

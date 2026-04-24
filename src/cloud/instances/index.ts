@@ -49,5 +49,5 @@ export {
   resolveInstance,
 } from "./resolver.js";
 
-export type { MigrationResult } from "./migration.js";
-export { migrateLegacyRegistries } from "./migration.js";
+export type { MigrationResult, OpsStateMigrationResult } from "./migration.js";
+export { migrateLegacyRegistries, migrateOpsState } from "./migration.js";

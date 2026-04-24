@@ -13,6 +13,7 @@ import {
   CRED_PROXY_ROUTES_PATH,
   CRED_PROXY_SCRIPT_PATH,
 } from "../../config/defaults.js";
+import { instanceOpsDir } from "../../config/ops-paths.js";
 import {
   OPENCLAW_CONTAINER_CONFIG,
   OPENCLAW_CONTAINER_CREDENTIALS,
@@ -336,7 +337,7 @@ export function generateCompose(
         volumes: [
           `${credProxyScriptPath}:${CRED_PROXY_SCRIPT_PATH}:ro`,
           `${credProxyRoutesPath}:${CRED_PROXY_ROUTES_PATH}:ro`,
-          `${deployDir}/ops/audit:${CRED_PROXY_AUDIT_DIR}`,
+          `${options?.instanceId ? instanceOpsDir(options.instanceId, "audit") : `${deployDir}/ops/audit`}:${CRED_PROXY_AUDIT_DIR}`,
         ],
         networks: [networkName],
         env_file: [".env"],
@@ -354,7 +355,11 @@ export function generateCompose(
 
   // Build Tailscale sidecar if enabled — secure remote access without port exposure
   const enableTailscale = options?.enableTailscale ?? false;
-  const tailscaleStateDir = options?.tailscaleStateDir ?? `${deployDir}/ops/tailscale`;
+  const tailscaleStateDir =
+    options?.tailscaleStateDir ??
+    (options?.instanceId
+      ? instanceOpsDir(options.instanceId, "tailscale")
+      : `${deployDir}/ops/tailscale`);
   const tailscaleHostname = options?.tailscaleHostname ?? "clawhq-agent";
 
   const tailscaleService: ComposeTailscaleServiceOutput | undefined = enableTailscale

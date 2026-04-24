@@ -17,6 +17,7 @@ import { promisify } from "node:util";
 
 import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
 import { withDeployLock } from "../../config/lock.js";
+import { opsPath } from "../../config/ops-paths.js";
 import {
   DEFAULT_POSTURE,
   readCurrentPosture,
@@ -203,7 +204,7 @@ async function deployImpl(options: DeployOptions): Promise<DeployResult> {
   // channels and integrations in openclaw.json + .env. Without this, the
   // egress firewall blocks ALL HTTPS traffic.
   {
-    const allowlistPath = join(deployDir, "ops", "firewall", "allowlist.yaml");
+    const allowlistPath = opsPath(deployDir, "firewall", "allowlist.yaml");
     try {
       await stat(allowlistPath);
     } catch {
@@ -241,7 +242,7 @@ async function deployImpl(options: DeployOptions): Promise<DeployResult> {
         }
 
         if (entries.length > 0) {
-          await mkdir(join(deployDir, "ops", "firewall"), { recursive: true });
+          await mkdir(opsPath(deployDir, "firewall"), { recursive: true });
           await writeFile(allowlistPath, serializeAllowlist(entries), "utf-8");
           report("preflight", "running", `Firewall allowlist auto-generated (${entries.length} entries)`);
         }

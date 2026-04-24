@@ -7,14 +7,15 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
-import { parse as yamlParse } from "yaml";
+import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
 import type { BuildSecurityPosture } from "../../build/docker/index.js";
 import { formatPostureDegradations, resolvePosture } from "../../build/docker/index.js";
-import { GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
+import { listInstances } from "../../cloud/instances/index.js";
+import { FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import {
   ENV_PLACEHOLDER,
   protectCredentials as protectCredentialsText,
@@ -63,6 +64,34 @@ const MERGE_PATHS = new Set([
   "cron/jobs.json",                              // compiler owns job definitions, preserve runtime state
 ]);
 
+
+// ── instanceId backfill ─────────────────────────────────────────────────────
+
+/**
+ * When clawhq.yaml predates FEAT-187 (no `instanceId` field) but the unified
+ * instance registry already has a local instance pointing at this deployDir,
+ * write the registry's id back into the yaml. Subsequent commands then
+ * resolve ops paths via the new Layer-2 location without another lookup.
+ *
+ * Returns the id that was written, or undefined if no matching registry
+ * entry existed.
+ */
+function backfillInstanceIdFromRegistry(
+  deployDir: string,
+  configPath: string,
+  raw: Record<string, unknown>,
+): string | undefined {
+  const target = resolve(deployDir);
+  for (const inst of listInstances()) {
+    if (inst.location.kind !== "local") continue;
+    if (resolve(inst.location.deployDir) !== target) continue;
+
+    const next = { instanceId: inst.id, ...raw };
+    writeFileSync(configPath, yamlStringify(next), { mode: FILE_MODE_SECRET });
+    return inst.id;
+  }
+  return undefined;
+}
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -148,7 +177,16 @@ async function applyCore(
     // security.posture block and drives container hardening. instanceId
     // drives the generated container_name for multi-deployment safety.
     const instanceName = typeof raw.instanceName === "string" ? raw.instanceName : undefined;
-    const instanceId = typeof raw.instanceId === "string" ? raw.instanceId : undefined;
+    // instanceId backfill: when clawhq.yaml predates FEAT-187 but the unified
+    // instance registry already has an id for this deployDir (e.g. the one
+    // minted by migrateLegacyRegistries from the old fleet.json), copy it
+    // into the yaml so every subsequent run resolves paths consistently via
+    // readInstanceIdFromDeploy(). Skip in dry-run.
+    let instanceId = typeof raw.instanceId === "string" ? raw.instanceId : undefined;
+    if (!instanceId && !dryRun) {
+      const backfilled = backfillInstanceIdFromRegistry(deployDir, configPath, raw);
+      if (backfilled) instanceId = backfilled;
+    }
     const securityRaw = raw.security as Record<string, unknown> | undefined;
     const postureVal = typeof securityRaw?.posture === "string" ? securityRaw.posture : undefined;
     const posture: BuildSecurityPosture | undefined =

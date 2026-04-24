@@ -11,6 +11,7 @@ import {
   OPS_BACKUP_RETENTION_DAYS,
   OPS_SECURITY_SEVERITIES,
 } from "../../config/defaults.js";
+import { opsPath } from "../../config/ops-paths.js";
 
 // ── Auto-Update Script ─────────────────────────────────────────────────────
 
@@ -238,7 +239,7 @@ export function generateBackupScript(
   targetDir?: string,
   retentionDays: number = OPS_BACKUP_RETENTION_DAYS,
 ): string {
-  const backupTarget = targetDir ?? `${deployDir}/ops/backup/incremental`;
+  const backupTarget = targetDir ?? opsPath(deployDir, "backup", "incremental");
 
   return `#!/usr/bin/env bash
 # ClawHQ Workspace Backup Script

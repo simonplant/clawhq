@@ -19,6 +19,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { BACKUP_RESTORE_GPG_TIMEOUT_MS, BACKUP_RESTORE_TAR_TIMEOUT_MS, DIR_MODE_SECRET } from "../../config/defaults.js";
+import { opsPath } from "../../config/ops-paths.js";
 import { runDoctor } from "../doctor/doctor.js";
 import type { DoctorReport } from "../doctor/types.js";
 
@@ -242,7 +243,7 @@ async function applyRestore(sourceDir: string, deployDir: string): Promise<numbe
     // Skip the snapshots directory to preserve backup history
     if (entry.name === "ops") {
       // For ops/, only copy non-backup subdirectories
-      await copyOpsSelectively(srcPath, join(deployDir, "ops"));
+      await copyOpsSelectively(srcPath, opsPath(deployDir));
       count++;
       continue;
     }

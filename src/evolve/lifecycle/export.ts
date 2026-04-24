@@ -22,6 +22,7 @@ import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 
 import { DIR_MODE_SECRET, FILE_MODE_SECRET } from "../../config/defaults.js";
+import { opsPath } from "../../config/ops-paths.js";
 
 import { formatBytes } from "./format.js";
 import { emptyMaskReport, isTextFile, maskPii, mergeMaskResult } from "./mask.js";
@@ -145,7 +146,7 @@ export async function exportBundle(options: ExportOptions): Promise<ExportResult
 
   // Include ops subdirectories
   for (const subDir of OPS_SUBDIRS) {
-    const dirPath = join(deployDir, "ops", subDir);
+    const dirPath = opsPath(deployDir, subDir);
     const files = await collectFiles(dirPath, deployDir);
     allFiles.push(...files.filter((f) => !isExcluded(f)));
   }

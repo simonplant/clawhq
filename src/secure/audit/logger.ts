@@ -12,6 +12,7 @@
 
 import { join } from "node:path";
 
+import { opsPath } from "../../config/ops-paths.js";
 import { appendSecretLine } from "../fs-mode.js";
 
 import type {
@@ -151,7 +152,7 @@ export async function logApprovalResolution(
 
 /** Create an AuditTrailConfig from a deployment directory. */
 export function createAuditConfig(deployDir: string, _hmacKey?: string): AuditTrailConfig {
-  const auditDir = join(deployDir, "ops", "audit");
+  const auditDir = opsPath(deployDir, "audit");
   return {
     toolLogPath: join(auditDir, "tool-execution.jsonl"),
     egressLogPath: join(auditDir, "egress.jsonl"),

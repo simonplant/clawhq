@@ -164,7 +164,7 @@ export function compile(
     // 8 workspace files
     { relativePath: "workspace/SOUL.md", content: renderSoul(personality, dims, config.soul_overrides) },
     { relativePath: "workspace/AGENTS.md", content: renderAgents(profile) },
-    { relativePath: "workspace/USER.md", content: renderUser(user) },
+    { relativePath: "workspace/USER.md", content: renderUser(user, resolvedProviders, existingEnv) },
     { relativePath: "workspace/TOOLS.md", content: renderTools(profile) },
     { relativePath: "workspace/IDENTITY.md", content: renderIdentity(personality, profile) },
     { relativePath: "workspace/HEARTBEAT.md", content: renderHeartbeat(profile) },
@@ -556,7 +556,11 @@ function renderAgents(profile: MissionProfile): string {
 
 // ── USER.md ─────────────────────────────────────────────────────────────────
 
-function renderUser(user: UserConfig): string {
+function renderUser(
+  user: UserConfig,
+  resolvedProviders: readonly (Provider & { domainKey: string })[] = [],
+  env: Record<string, string> = {},
+): string {
   const lines: string[] = [];
 
   lines.push("# About You\n");
@@ -568,6 +572,22 @@ function renderUser(user: UserConfig): string {
   }
   lines.push("");
 
+  // Accounts Under Management — the concrete mapping from "a tool the
+  // agent can call" to "a real account the user owns." Auto-derived
+  // from composition.providers + env var values so the agent never
+  // has to guess which mailbox `email` vs `email-fastmail` actually
+  // reaches. Silent when the user has no provider-backed accounts
+  // configured (keeps USER.md tight for minimal deploys).
+  const accounts = buildAccountsUnderManagement(resolvedProviders, env);
+  if (accounts.length > 0) {
+    lines.push("## Accounts Under Management\n");
+    lines.push("The agent has credentialed access to these accounts. Each line names the tool the agent calls, the concrete account it reaches, and the slot in `composition.providers` that binds them.\n");
+    for (const acct of accounts) {
+      lines.push(`- **${acct.tool}** → ${acct.identity} _(${acct.provider} at \`providers.${acct.domainKey}\`)_`);
+    }
+    lines.push("");
+  }
+
   if (user.constraints) {
     lines.push("## Constraints\n");
     lines.push(user.constraints.trim());
@@ -575,6 +595,75 @@ function renderUser(user: UserConfig): string {
   }
 
   return lines.join("\n");
+}
+
+/** One account row under management — what the agent sees in USER.md. */
+interface AccountRow {
+  readonly tool: string;
+  readonly provider: string;
+  readonly domainKey: string;
+  readonly identity: string;
+}
+
+/**
+ * Derive concrete accounts under management from composition.providers +
+ * env. Each provider in the catalog names the CLI tool that reaches it;
+ * provider-specific env-var inspection yields the actual identity (email
+ * address, username) where available, or "(credentials configured)" as
+ * a fallback when the identity lives only in the opaque API token.
+ */
+function buildAccountsUnderManagement(
+  providers: readonly (Provider & { domainKey: string })[],
+  env: Record<string, string>,
+): AccountRow[] {
+  const rows: AccountRow[] = [];
+  for (const provider of providers) {
+    const envPrefix = envPrefixForDomainKey(provider.domainKey);
+    const tool = provider.cli;
+    const identity = deriveAccountIdentity(provider, env, envPrefix);
+    rows.push({
+      tool,
+      provider: provider.name,
+      domainKey: provider.domainKey,
+      identity,
+    });
+  }
+  return rows;
+}
+
+/** Same slot → prefix logic used by .env rendering and himalaya config.
+ *  Primary slot = no prefix; numbered slot = `<DOMAIN>_<N>_`. */
+function envPrefixForDomainKey(domainKey: string): string {
+  const match = domainKey.match(/^([a-z]+)-(\d+)$/);
+  if (!match) return "";
+  const domain = match[1] ?? "";
+  const n = match[2] ?? "";
+  return `${domain.toUpperCase()}_${n}_`;
+}
+
+/** Best-effort concrete identity per provider. Inspects well-known env
+ *  vars (IMAP_USER for himalaya email, CALDAV_USER for caldav calendar)
+ *  in the provider's slot prefix. Providers that identify only via an
+ *  opaque API token (JMAP, Todoist, Tavily, etc.) get a neutral
+ *  "(credentials configured)" marker so the agent knows the binding is
+ *  live without claiming an address the env doesn't contain. */
+function deriveAccountIdentity(
+  provider: Provider,
+  env: Record<string, string>,
+  prefix: string,
+): string {
+  // IMAP/SMTP providers — the email address IS the IMAP_USER value.
+  if (provider.domain === "email" && provider.protocol === "IMAP/SMTP") {
+    const user = env[`${prefix}IMAP_USER`];
+    if (user && user.trim() !== "") return user;
+  }
+  // CalDAV providers — CALDAV_USER is usually the email.
+  if (provider.domain === "calendar" && provider.protocol === "CalDAV") {
+    const user = env[`${prefix}CALDAV_USER`];
+    if (user && user.trim() !== "") return user;
+  }
+  // Everything else: token-based, no identity available pre-API-call.
+  return "(credentials configured)";
 }
 
 // ── TOOLS.md ────────────────────────────────────────────────────────────────

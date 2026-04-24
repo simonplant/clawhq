@@ -7,17 +7,25 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FleetRegistry } from "../fleet/types.js";
 import type { InstanceRegistry as LegacyCloudRegistry } from "../provisioning/types.js";
 
-import { migrateLegacyRegistries } from "./migration.js";
-import { listInstances, registryPath } from "./registry.js";
+import { migrateLegacyRegistries, migrateOpsState } from "./migration.js";
+import { addInstance, listInstances, registryPath } from "./registry.js";
 
 let root: string;
+let homeSandbox: string;
+let originalHome: string | undefined;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "instances-migration-test-"));
+  homeSandbox = mkdtempSync(join(tmpdir(), "instances-migration-home-"));
+  originalHome = process.env["HOME"];
+  process.env["HOME"] = homeSandbox;
 });
 
 afterEach(() => {
+  if (originalHome === undefined) delete process.env["HOME"];
+  else process.env["HOME"] = originalHome;
   rmSync(root, { recursive: true, force: true });
+  rmSync(homeSandbox, { recursive: true, force: true });
 });
 
 function seedCloudDir() {
@@ -263,5 +271,87 @@ describe("migrateLegacyRegistries — robustness", () => {
     const result = migrateLegacyRegistries(root);
     expect(result.migratedFleet).toBe(0);
     expect(existsSync(registryPath(root))).toBe(false);
+  });
+});
+
+// ── Ops-state migration (FEAT-190) ──────────────────────────────────────────
+
+describe("migrateOpsState", () => {
+  it("moves ${deployDir}/ops/ → ~/.clawhq/instances/<id>/ops/", () => {
+    const deployDir = mkdtempSync(join(tmpdir(), "ops-state-deploy-"));
+    try {
+      const legacyOps = join(deployDir, "ops");
+      mkdirSync(join(legacyOps, "firewall"), { recursive: true });
+      writeFileSync(join(legacyOps, "firewall", "allowlist.yaml"), "# seed\n");
+
+      const inst = addInstance(
+        { name: "clawdius", status: "running", location: { kind: "local", deployDir } },
+        homeSandbox ? join(homeSandbox, ".clawhq") : undefined,
+      );
+      mkdirSync(join(homeSandbox, ".clawhq"), { recursive: true });
+      // Re-seed registry at the sandbox-home location.
+      addInstance(
+        { id: inst.id, name: "clawdius-sandbox", status: "running", location: { kind: "local", deployDir } },
+        join(homeSandbox, ".clawhq"),
+      );
+
+      const result = migrateOpsState(join(homeSandbox, ".clawhq"));
+
+      expect(result.moved).toContain(inst.id);
+      expect(existsSync(legacyOps)).toBe(false);
+      const targetAllowlist = join(
+        homeSandbox,
+        ".clawhq",
+        "instances",
+        inst.id,
+        "ops",
+        "firewall",
+        "allowlist.yaml",
+      );
+      expect(existsSync(targetAllowlist)).toBe(true);
+    } finally {
+      rmSync(deployDir, { recursive: true, force: true });
+    }
+  });
+
+  it("is idempotent — second call reports alreadyMoved", () => {
+    const deployDir = mkdtempSync(join(tmpdir(), "ops-state-deploy-"));
+    try {
+      mkdirSync(join(deployDir, "ops"), { recursive: true });
+      const inst = addInstance(
+        { name: "a", status: "running", location: { kind: "local", deployDir } },
+        join(homeSandbox, ".clawhq"),
+      );
+
+      migrateOpsState(join(homeSandbox, ".clawhq"));
+      const second = migrateOpsState(join(homeSandbox, ".clawhq"));
+      expect(second.alreadyMoved).toContain(inst.id);
+      expect(second.moved).toHaveLength(0);
+    } finally {
+      rmSync(deployDir, { recursive: true, force: true });
+    }
+  });
+
+  it("skips instances with no legacy ops dir", () => {
+    const deployDir = mkdtempSync(join(tmpdir(), "ops-state-deploy-"));
+    try {
+      // No ops dir created.
+      const inst = addInstance(
+        { name: "a", status: "initialized", location: { kind: "local", deployDir } },
+        join(homeSandbox, ".clawhq"),
+      );
+      const result = migrateOpsState(join(homeSandbox, ".clawhq"));
+      expect(result.nothingToMove).toContain(inst.id);
+    } finally {
+      rmSync(deployDir, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores cloud instances", () => {
+    const result = migrateOpsState(join(homeSandbox, ".clawhq"));
+    // Empty registry → no cloud instances → empty result arrays.
+    expect(result.moved).toEqual([]);
+    expect(result.alreadyMoved).toEqual([]);
+    expect(result.nothingToMove).toEqual([]);
   });
 });

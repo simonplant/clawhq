@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
 
-import { migrateLegacyRegistries } from "../cloud/instances/index.js";
+import { migrateLegacyRegistries, migrateOpsState } from "../cloud/instances/index.js";
 
 import { registerApplyCommand } from "./commands/apply.js";
 import { registerBuildCommands } from "./commands/build.js";
@@ -55,6 +55,7 @@ const pkg = JSON.parse(
  */
 function resolveDefaultDeployDir(): string {
   migrateLegacyRegistries();
+  migrateOpsState();
 
   try {
     const result = resolveDeployDirFromContext();

@@ -23,13 +23,15 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, renameSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 
+import { DIR_MODE_SECRET } from "../../config/defaults.js";
+import { instanceOpsDir, legacyOpsDir } from "../../config/ops-paths.js";
 import type { FleetRegistry } from "../fleet/types.js";
 import type { InstanceRegistry as LegacyCloudRegistry, InstanceRegistryStatus } from "../provisioning/types.js";
 
-import { addInstance, clawhqRoot, registryPath, updateInstance } from "./registry.js";
+import { addInstance, clawhqRoot, listInstances, registryPath, updateInstance } from "./registry.js";
 import type { InstanceStatus } from "./types.js";
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -227,4 +229,80 @@ export function migrateLegacyRegistries(root: string = clawhqRoot()): MigrationR
     migratedCloud,
     renamedForConflict,
   };
+}
+
+// ── Ops-state migration (FEAT-190) ──────────────────────────────────────────
+
+export interface OpsStateMigrationResult {
+  /** Instance ids whose `${deployDir}/ops/` was moved to `~/.clawhq/instances/<id>/ops/`. */
+  readonly moved: readonly string[];
+  /** Instance ids skipped because the target already existed. */
+  readonly alreadyMoved: readonly string[];
+  /** Instance ids skipped because the source `${deployDir}/ops/` didn't exist. */
+  readonly nothingToMove: readonly string[];
+}
+
+/**
+ * Relocate each local instance's `${deployDir}/ops/` to
+ * `~/.clawhq/instances/<instanceId>/ops/`. Idempotent — runs safely on every
+ * CLI invocation.
+ *
+ * Preconditions per instance:
+ *   - `location.kind === "local"` (cloud instances don't have local ops dirs).
+ *   - `${deployDir}/ops/` exists as a directory.
+ *   - The target `~/.clawhq/instances/<id>/ops/` does NOT exist.
+ *
+ * The move uses `renameSync`, which is atomic on the same filesystem. If the
+ * two paths live on different filesystems (rare — both under `$HOME`), the
+ * move is skipped and surfaced in `nothingToMove` so the operator can
+ * migrate manually.
+ */
+export function migrateOpsState(root?: string): OpsStateMigrationResult {
+  const moved: string[] = [];
+  const alreadyMoved: string[] = [];
+  const nothingToMove: string[] = [];
+
+  for (const inst of listInstances(root)) {
+    if (inst.location.kind !== "local") continue;
+
+    const source = legacyOpsDir(inst.location.deployDir);
+    const target = instanceOpsDir(inst.id);
+
+    if (existsSync(target)) {
+      alreadyMoved.push(inst.id);
+      continue;
+    }
+
+    if (!existsSync(source)) {
+      nothingToMove.push(inst.id);
+      continue;
+    }
+
+    // Only act on directories; a regular file at `${deployDir}/ops` would
+    // be an operator-level anomaly we shouldn't touch silently.
+    try {
+      const stats = statSync(source);
+      if (!stats.isDirectory()) {
+        nothingToMove.push(inst.id);
+        continue;
+      }
+    } catch {
+      nothingToMove.push(inst.id);
+      continue;
+    }
+
+    // Ensure the target parent directory exists (`~/.clawhq/instances/<id>/`).
+    mkdirSync(dirname(target), { recursive: true, mode: DIR_MODE_SECRET });
+
+    try {
+      renameSync(source, target);
+      moved.push(inst.id);
+    } catch {
+      // Cross-filesystem or permission issue — surface without failing the
+      // whole bootstrap. Operator can move manually.
+      nothingToMove.push(inst.id);
+    }
+  }
+
+  return { moved, alreadyMoved, nothingToMove };
 }

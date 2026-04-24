@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { DOCTOR_EXEC_TIMEOUT_MS } from "../../config/defaults.js";
+import { opsPath } from "../../config/ops-paths.js";
 
 import type { OpsInstallOptions, OpsInstallResult } from "./types.js";
 
@@ -29,7 +30,7 @@ export async function installOpsAutomation(
   options: OpsInstallOptions,
 ): Promise<OpsInstallResult> {
   const { deployDir, signal } = options;
-  const unitDir = join(deployDir, "ops", "automation", "systemd");
+  const unitDir = opsPath(deployDir, "automation", "systemd");
   const installed: string[] = [];
   const enabled: string[] = [];
 
