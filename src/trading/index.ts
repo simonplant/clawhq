@@ -22,6 +22,7 @@ import { Hono } from "hono";
 
 import {
   dispatchCommand,
+  parseReply,
   type CommandContext,
   type SystemSnapshot,
 } from "./commands.js";
@@ -264,6 +265,64 @@ export function makeHttpApp(state: RuntimeState): Hono {
   app.post("/resume", (c) => {
     const out = dispatchCommand({ command: "resume", args: "" }, makeCommandContext(state));
     return c.json({ ok: true, message: out });
+  });
+
+  // Reply routing: Clawdius receives Simon's "YES-T3ST" / "HALF-T3ST" /
+  // "NO-T3ST" from Telegram and forwards the raw text here. We parse, look
+  // up pendingAlerts, and log either UserReply or UserReplyIgnored. The
+  // actual broker-side action on an approve is still Simon's (Phase A).
+  app.post("/reply", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { text?: string };
+    const text = typeof body.text === "string" ? body.text : "";
+    const parsed = parseReply(text);
+    if (!parsed) {
+      appendEvent(state.db, {
+        type: "UserReplyIgnored",
+        tsMs: Date.now(),
+        alertId: "",
+        reason: "unknown-id",
+        raw: text.slice(0, 200),
+      });
+      return c.json({ ok: false, reason: "unparseable" }, 400);
+    }
+    const pending = state.pendingAlerts.get(parsed.alertId);
+    const nowMs = Date.now();
+    if (!pending) {
+      appendEvent(state.db, {
+        type: "UserReplyIgnored",
+        tsMs: nowMs,
+        alertId: parsed.alertId,
+        reason: "unknown-id",
+        raw: text.slice(0, 200),
+      });
+      return c.json({ ok: false, reason: "unknown-id" }, 404);
+    }
+    if (pending.expiresAtMs < nowMs) {
+      appendEvent(state.db, {
+        type: "UserReplyIgnored",
+        tsMs: nowMs,
+        alertId: parsed.alertId,
+        reason: "expired",
+        raw: text.slice(0, 200),
+      });
+      return c.json({ ok: false, reason: "expired" }, 410);
+    }
+    appendEvent(state.db, {
+      type: "UserReply",
+      tsMs: nowMs,
+      alertId: parsed.alertId,
+      reply: parsed.reply,
+      raw: text.slice(0, 200),
+    });
+    // Keep pendingAlerts around for audit but you can't reply twice —
+    // caller-side dedup happens via the UserReply log.
+    return c.json({
+      ok: true,
+      reply: parsed.reply,
+      alertId: parsed.alertId,
+      ticker: pending.ticker,
+      sequence: pending.sequence,
+    });
   });
 
   // Analytics endpoints — read-only, safe for skills and the EOD review.

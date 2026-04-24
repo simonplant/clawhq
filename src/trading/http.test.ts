@@ -81,6 +81,111 @@ function alertEvent(tsMs: number, overrides: Partial<Alert> = {}): TradingEvent 
   return { type: "AlertSent", tsMs, alert };
 }
 
+describe("POST /reply", () => {
+  let tmp: string;
+  let state: RuntimeState;
+
+  beforeEach(() => {
+    tmp = mkdtempSync(join(tmpdir(), "http-test-"));
+    state = mkState(join(tmp, "events.db"));
+  });
+
+  afterEach(() => {
+    state.db.close();
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  function putAlert(id: string, overrides: Partial<Alert> = {}): void {
+    const alert: Alert = {
+      id,
+      orderId: "mancini-ES-deadbeef",
+      sequence: 1,
+      source: "mancini",
+      horizon: "session",
+      ticker: "ES",
+      execAs: "/MES",
+      accounts: ["tos"],
+      direction: "LONG",
+      conviction: "HIGH",
+      confirmation: "CONFIRMED",
+      entry: 7090,
+      stop: 7078,
+      t1: 7105,
+      t2: 7120,
+      totalRisk: 120,
+      levelName: "entry",
+      levelPrice: 7090,
+      risk: { scope: "advisory-only" },
+      expiresAtMs: Date.now() + 60_000,
+      ...overrides,
+    };
+    state.pendingAlerts.set(id, alert);
+  }
+
+  it("accepts YES-<id>, logs UserReply, returns ticker/sequence", async () => {
+    putAlert("T3ST");
+    const app = makeHttpApp(state);
+    const res = await app.request("/reply", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "YES-T3ST" }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      reply: string;
+      alertId: string;
+      ticker: string;
+    };
+    expect(body).toMatchObject({
+      ok: true,
+      reply: "approve",
+      alertId: "T3ST",
+      ticker: "ES",
+    });
+    const logged = state.db.query({ type: "UserReply" });
+    expect(logged).toHaveLength(1);
+  });
+
+  it("returns 404 + logs UserReplyIgnored for unknown alert id", async () => {
+    const app = makeHttpApp(state);
+    const res = await app.request("/reply", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "YES-ZZZZ" }),
+    });
+    expect(res.status).toBe(404);
+    const ignored = state.db.query({ type: "UserReplyIgnored" });
+    expect(ignored).toHaveLength(1);
+  });
+
+  it("returns 410 for expired alerts and logs reason=expired", async () => {
+    putAlert("T3ST", { expiresAtMs: Date.now() - 1_000 });
+    const app = makeHttpApp(state);
+    const res = await app.request("/reply", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "NO-T3ST" }),
+    });
+    expect(res.status).toBe(410);
+    const ignored = state.db.query({ type: "UserReplyIgnored" });
+    expect(ignored[0]?.payload).toMatchObject({
+      type: "UserReplyIgnored",
+      reason: "expired",
+    });
+  });
+
+  it("returns 400 for unparseable text", async () => {
+    const app = makeHttpApp(state);
+    const res = await app.request("/reply", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "what is this" }),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("GET /report/daily", () => {
   let tmp: string;
   let state: RuntimeState;

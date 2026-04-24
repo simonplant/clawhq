@@ -11,7 +11,7 @@
  * Intraday plan edits are made by editing today.md (fs watch reloads).
  */
 
-import type { OrderBlock } from "./types.js";
+import type { OrderBlock, UserReplyType } from "./types.js";
 
 // ── Parser (pure) ────────────────────────────────────────────────────────────
 
@@ -45,6 +45,50 @@ const COMMAND_VERBS: Record<string, CommandName> = {
   help: "help",
   "?": "help",
 };
+
+export interface ParsedReply {
+  reply: UserReplyType;
+  alertId: string;
+}
+
+const REPLY_VERBS: Record<string, UserReplyType> = {
+  yes: "approve",
+  y: "approve",
+  ok: "approve",
+  approve: "approve",
+  half: "reduce-half",
+  "50": "reduce-half",
+  third: "reduce-third",
+  "33": "reduce-third",
+  no: "reject",
+  n: "reject",
+  reject: "reject",
+  skip: "reject",
+  later: "defer-5m",
+  "5m": "defer-5m",
+  open: "defer-to-open",
+  atopen: "defer-to-open",
+};
+
+/**
+ * Parse a reply like "YES-T3ST" or "half a7f3" or "no T3ST". The verb and
+ * id may be separated by `-`, `_`, ` `, or `:`. Alert ids are 4-char
+ * alphanumeric (uppercase) per telegram.ts:generateAlertId.
+ *
+ * Returns null for anything not matching; the caller falls through to
+ * parseCommand for interactive queries.
+ */
+export function parseReply(raw: string): ParsedReply | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const m = /^([A-Za-z0-9]+)[-_: ]([A-Za-z0-9]{4})\s*$/.exec(trimmed);
+  if (!m) return null;
+  const verb = m[1]!.toLowerCase();
+  const id = m[2]!.toUpperCase();
+  const reply = REPLY_VERBS[verb];
+  if (!reply) return null;
+  return { reply, alertId: id };
+}
 
 export function parseCommand(raw: string): ParsedCommand | null {
   const trimmed = raw.trim();
