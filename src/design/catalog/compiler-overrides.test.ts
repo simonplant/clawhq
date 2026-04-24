@@ -20,6 +20,7 @@ import type { UserConfig } from "./types.js";
 const TEST_USER: UserConfig = {
   name: "Test User",
   timezone: "UTC",
+  communication: "brief",
 };
 
 let homeSandbox: string;
