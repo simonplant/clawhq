@@ -49,6 +49,8 @@ function mkState(dbPath: string): RuntimeState {
     nextHeartbeatMs: null,
     symbolCount: 0,
     blackoutsPath: "/tmp/nonexistent-blackouts.json",
+    trackRecordPath: undefined,
+    sourceQuality: {},
     manualHalt: false,
     shuttingDown: false,
   };

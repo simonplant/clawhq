@@ -37,6 +37,7 @@ import {
   resolveAccounts,
   resolvePaths,
   resolveTelegram,
+  resolveTrackRecordPath,
   resolveTradier,
   resolveWatchlist,
 } from "./config.js";
@@ -49,8 +50,10 @@ import {
 import { loadActiveBlackouts } from "./blackouts.js";
 import {
   computeConfluence,
+  qualityFromAggregates,
   toSnapshot,
   type ConfluenceMap,
+  type SourceQuality,
 } from "./confluence.js";
 import { buildDailyReport, renderDailyReport } from "./daily-report.js";
 import { loadPlan, type LoadedPlan } from "./plan.js";
@@ -117,6 +120,10 @@ export interface RuntimeState {
   shuttingDown: boolean;
   /** Path to the shared scheduled-events file. */
   blackoutsPath: string;
+  /** Path to the rolling track-record JSONL, or undefined to disable. */
+  trackRecordPath: string | undefined;
+  /** Latest source-quality map; {} = all neutral. Recomputed on plan reload. */
+  sourceQuality: SourceQuality;
 }
 
 export interface StartOptions {
@@ -176,6 +183,8 @@ export async function start(opts: StartOptions = {}): Promise<() => Promise<void
     nextHeartbeatMs: null,
     symbolCount: 0,
     blackoutsPath,
+    trackRecordPath: resolveTrackRecordPath(),
+    sourceQuality: {},
     manualHalt: false,
     shuttingDown: false,
   };
@@ -508,6 +517,26 @@ async function refreshRiskState(state: RuntimeState): Promise<void> {
   }
 }
 
+// ── Source-quality feed ──────────────────────────────────────────────────────
+
+/**
+ * Re-read the track-record JSONL and derive per-source quality. Opt-in
+ * via TRACK_RECORD_JSONL_PATH. Soft failure: missing/unreadable file
+ * leaves state.sourceQuality unchanged (starts {} = all neutral).
+ */
+function refreshSourceQuality(state: RuntimeState): void {
+  if (!state.trackRecordPath) return;
+  let text: string;
+  try {
+    text = readFileSync(state.trackRecordPath, "utf-8");
+  } catch {
+    return; // keep prior quality map
+  }
+  const { records } = parseTrackRecordJsonl(text);
+  const aggs = aggregateTrackRecord(records);
+  state.sourceQuality = qualityFromAggregates(aggs);
+}
+
 // ── Blackout feed ────────────────────────────────────────────────────────────
 
 /**
@@ -627,7 +656,13 @@ function loadAndCommitPlan(state: RuntimeState): void {
     return;
   }
   state.plan = result.plan;
-  state.confluence = computeConfluence(result.plan.orders);
+  // Opportunity-cost check: refresh source-quality from track-record JSONL
+  // on every plan reload. Bounded by file size; under normal loads this is
+  // a few hundred lines × ~200 bytes.
+  refreshSourceQuality(state);
+  state.confluence = computeConfluence(result.plan.orders, {
+    sourceQuality: state.sourceQuality,
+  });
   appendEvent(state.db, {
     type: "PlanLoaded",
     tsMs: Date.now(),
