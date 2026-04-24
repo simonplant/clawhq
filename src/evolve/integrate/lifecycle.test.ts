@@ -14,8 +14,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 
 import { addIntegration, removeIntegrationCmd } from "./lifecycle.js";
 

@@ -372,7 +372,7 @@ function removeFromClawhqYaml(deployDir: string, integrationName: string): void 
     if (CHANNEL_INTEGRATIONS.has(integrationName)) {
       const channels = comp.channels as Record<string, unknown> | undefined;
       if (channels && integrationName in channels) {
-        delete channels[integrationName];
+        Reflect.deleteProperty(channels, integrationName);
         if (Object.keys(channels).length === 0) delete comp.channels;
         changed = true;
       }
@@ -381,7 +381,7 @@ function removeFromClawhqYaml(deployDir: string, integrationName: string): void 
       // (`email-2`) — that IS the domain key in composition.providers.
       const providers = comp.providers as Record<string, unknown> | undefined;
       if (providers && integrationName in providers) {
-        delete providers[integrationName];
+        Reflect.deleteProperty(providers, integrationName);
         if (Object.keys(providers).length === 0) delete comp.providers;
         changed = true;
       }
