@@ -1,16 +1,20 @@
 /**
- * `clawhq smoke` — lightweight per-tool liveness check.
+ * `clawhq tool-smoke` — lightweight per-tool liveness check.
  *
  * Runs a safe read-only probe against every workspace tool in the
  * active profile's toolbelt via `docker exec`. Prints a compact
  * status table, emits JSON on `--json`, and (with `--notify`) pings
  * Telegram when tool state transitions against the last run.
  *
+ * Name is deliberately `tool-smoke` (not `smoke`) so callers know at a
+ * glance what's being checked. Leaves namespace open for other smoke
+ * surfaces later (`net-smoke`, `cred-smoke`, etc.).
+ *
  * Designed for a 5-min system-cron cadence:
- *   *\/5 * * * * clawhq --agent clawdius smoke --notify >/dev/null 2>&1
+ *   *\/5 * * * * clawhq --agent clawdius tool-smoke --notify >/dev/null 2>&1
  *
  * Zero LLM tokens per run. Sequential docker exec with a 5s timeout
- * per tool — ~30s total for the 21-tool life-ops profile.
+ * per tool — ~5s total for the 21-tool life-ops profile.
  */
 
 import { readFileSync } from "node:fs";
@@ -37,7 +41,7 @@ import { CommandError } from "../errors.js";
 
 export function registerSmokeCommand(program: Command, defaultDeployDir: string): void {
   program
-    .command("smoke")
+    .command("tool-smoke")
     .description("Run a lightweight liveness probe against every workspace tool")
     .option("-d, --deploy-dir <path>", "Deployment directory", defaultDeployDir)
     .option("--json", "Emit the report as JSON instead of a table")
