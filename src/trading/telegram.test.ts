@@ -74,6 +74,14 @@ describe("formatAlertMessage", () => {
     expect(formatAlertMessage(mkAlert({ levelName: "t1" })).split("\n")[0]).toContain("🎯");
   });
 
+  it("distinguishes post-T1 runner stops from full stops", () => {
+    const body = formatAlertMessage(
+      mkAlert({ levelName: "stop", postT1Runner: true }),
+    );
+    expect(body.split("\n")[0]).toContain("🪁");
+    expect(body).toMatch(/runner stop \(post-T1, BE trail\)/);
+  });
+
   it("upper-cases the source in the header", () => {
     const body = formatAlertMessage(mkAlert());
     expect(body).toContain("MANCINI ES");

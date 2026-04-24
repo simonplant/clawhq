@@ -45,9 +45,12 @@ export function formatAlertMessage(alert: Alert): string {
   const accounts = alert.accounts.map((a) => a.toUpperCase()).join("/");
   const expires = formatClockTime(alert.expiresAtMs);
   const govLine = formatGovernorLine(alert);
+  const contextLevel = alert.postT1Runner
+    ? `runner stop (post-T1, BE trail)`
+    : `${alert.levelName} (${alert.direction})`;
   const context = alert.catchup
-    ? `Level: ${alert.levelName} (${alert.direction}) — crossed while system was down`
-    : `Level: ${alert.levelName} (${alert.direction}) @ ${fmt(alert.levelPrice)}`;
+    ? `Level: ${contextLevel} — crossed while system was down`
+    : `Level: ${contextLevel} @ ${fmt(alert.levelPrice)}`;
   const levels =
     `Entry ${fmt(alert.entry)}  Stop ${fmt(alert.stop)}  ` +
     `T1 ${fmt(alert.t1)}  T2 ${fmt(alert.t2)}`;
@@ -156,7 +159,10 @@ export function makeTelegramChannel(config: TelegramConfig): MessageChannel {
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
 function headIcon(alert: Alert): string {
-  if (alert.levelName === "stop") return "🛑";
+  if (alert.levelName === "stop") {
+    // Post-T1 runner stop is a smaller loss than a full stop — different icon.
+    return alert.postT1Runner ? "🪁🛑" : "🛑";
+  }
   if (alert.levelName === "t1" || alert.levelName === "t2") return "🎯";
   return "📈";
 }

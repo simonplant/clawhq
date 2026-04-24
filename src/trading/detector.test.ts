@@ -234,6 +234,28 @@ describe("makeLevelDetector", () => {
     expect(d.staleSkipped()).toBe(0);
   });
 
+  it("tags a stop cross as postT1Runner when T1 already fired", () => {
+    const d = makeLevelDetector({ monotonicNowMs: () => 0, dedupTtlMs: 1 });
+    const order = mkOrder();
+    d.ingest([mkQuote("ES", 7085)], [order]);
+    // UP through entry, T1, past t1.
+    d.ingest([mkQuote("ES", 7106)], [order]);
+    // Back down through stop.
+    const down = d.ingest([mkQuote("ES", 7075)], [order]);
+    const stopHit = down.find((h) => h.levelName === "stop");
+    expect(stopHit?.postT1Runner).toBe(true);
+  });
+
+  it("does not tag postT1Runner if T1 was not previously hit", () => {
+    const d = makeLevelDetector({ monotonicNowMs: () => 0 });
+    const order = mkOrder();
+    d.ingest([mkQuote("ES", 7085)], [order]);
+    // Drop through stop without ever tagging T1.
+    const down = d.ingest([mkQuote("ES", 7075)], [order]);
+    const stopHit = down.find((h) => h.levelName === "stop");
+    expect(stopHit?.postT1Runner).toBeUndefined();
+  });
+
   it("preserves the prior price when a stale quote is skipped", () => {
     const d = makeLevelDetector({ monotonicNowMs: () => 0, staleMs: 10_000 });
     const order = mkOrder();

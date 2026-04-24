@@ -129,6 +129,12 @@ export interface LevelHit {
   hitMs: number;
   /** Catch-up hit from boot reconciliation; TTL is shorter. */
   catchup?: boolean;
+  /**
+   * True when T1 already hit for this order earlier today and we're now
+   * crossing stop — means the *runner* (10% trailing BE) is being stopped,
+   * not the full position. Alert rendering distinguishes.
+   */
+  postT1Runner?: boolean;
 }
 
 // ── Risk ─────────────────────────────────────────────────────────────────────
@@ -226,6 +232,8 @@ export interface Alert {
    * Telegram notification sound for low-value crossings. Default "loud".
    */
   notify?: NotifyTier;
+  /** True when this stop cross is just the post-T1 runner, not the full position. */
+  postT1Runner?: boolean;
 }
 
 export type NotifyTier = "loud" | "quiet";

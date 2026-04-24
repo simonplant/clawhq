@@ -69,6 +69,7 @@ export function buildAlert(inputs: BuildAlertInputs): Alert {
     }),
     ...(inputs.catchup ? { catchup: true } : {}),
     ...(inputs.confluence ? { confluence: inputs.confluence } : {}),
+    ...(hit.postT1Runner ? { postT1Runner: true } : {}),
   };
 }
 

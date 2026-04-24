@@ -77,6 +77,8 @@ export function makeLevelDetector(opts: DetectorOptions = {}): LevelDetector {
   const lastPriceBySymbol = new Map<string, number>();
   /** Dedup: key = `${orderId}|${levelName}|${direction}`, value = monotonic ms. */
   const lastHitAt = new Map<string, number>();
+  /** Orders for which T1 has fired at least once today — used to tag runner stops. */
+  const t1Fired = new Set<string>();
   let staleSkippedCount = 0;
 
   function dedupKey(orderId: string, levelName: LevelName, direction: "UP" | "DOWN"): string {
@@ -129,6 +131,14 @@ export function makeLevelDetector(opts: DetectorOptions = {}): LevelDetector {
             if (!shouldEmit(key, monoMs)) continue;
             lastHitAt.set(key, monoMs);
 
+            // Track T1 hits so a later stop cross on the same order can be
+            // rendered as a runner stop (post-T1) rather than a full stop.
+            if (levelName === "t1" && crossing === "UP") {
+              t1Fired.add(order.id);
+            }
+            const postT1Runner =
+              levelName === "stop" && crossing === "DOWN" && t1Fired.has(order.id);
+
             hits.push({
               orderId: order.id,
               sequence: order.sequence,
@@ -143,6 +153,7 @@ export function makeLevelDetector(opts: DetectorOptions = {}): LevelDetector {
               prevPrice: prev,
               currentPrice: q.last,
               hitMs: nowMs,
+              ...(postT1Runner ? { postT1Runner: true } : {}),
             });
           }
         }
