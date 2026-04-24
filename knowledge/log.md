@@ -179,6 +179,50 @@ Four commits landed (4a4230a → b67b573 → 83d0240 → ef2d0e3 → 851ec4c):
 are now unblocked (all depend on FEAT-187); FEAT-191 chains after
 FEAT-190.
 
+## [2026-04-23] query | Shipped FEAT-188 → FEAT-191 — full phantom-multi-tenancy chain complete
+
+Four commits closed the fix sequence:
+
+- **FEAT-188 (fca6458)** — `clawhq doctor --fleet` iterates the unified
+  registry and aggregates per-agent health. Mutually exclusive with
+  `--fix`. Collateral fix: the fleet API (`list/add/remove/status/doctor`)
+  had been silently returning empty since FEAT-187's legacy-registry
+  migration renamed `cloud/fleet.json` to `.migrated.bak`. Rewired
+  `src/cloud/fleet/discovery.ts` as a thin adapter over the unified
+  registry; fleet tests sandbox via HOME override.
+- **FEAT-189 (8b8857c)** — `container_name: openclaw-<shortId>` emitted
+  in generated docker-compose.yml when `instanceId` is in `clawhq.yaml`.
+  `resolveOpenclawContainer` now takes an optional `deployDir` and
+  returns the deterministic name without a docker call. Hardcoded
+  `engine-openclaw-1` fallback deleted. New `requireOpenclawContainer`
+  helper throws actionable error ("is the agent up? Try `clawhq up`.")
+  for the five callers that need a definite name.
+- **FEAT-190 (c1b3cd0)** — `opsPath(deployDir, ...parts)` helper routes
+  Layer-2 metadata (doctor/monitor/backup/audit/firewall/updater) to
+  `~/.clawhq/instances/<id>/ops/` when instanceId is known.
+  `migrateOpsState()` hooked into CLI bootstrap — idempotent move from
+  legacy `${deployDir}/ops/`. `clawhq apply` backfills `instanceId`
+  into the yaml from the registry so migrated pre-187 installs resolve
+  correctly. 17 call sites swept to the new helper. Compose mounts
+  (cred-proxy audit, tailscale state) follow the instanceId.
+- **FEAT-191 (420d646)** — Identity fragments honor Layer-2 overrides:
+  drop a `SOUL.md` (or any of the 7 identity files) at
+  `~/.clawhq/templates/identity/` (machine-global) or
+  `~/.clawhq/instances/<id>/templates/identity/` (per-instance); the
+  renderer output is discarded and the override is used verbatim.
+  Doctor check deferred — absence is normal on fresh installs.
+
+**Tests:** 2168 total (up 95 from the start of the chain). All green.
+
+**Backlog:** FEAT-186 (epic) and all children (FEAT-186.5, 187, 188,
+189, 190, 191) marked done.
+
+The singleton-per-host assumption is gone. Lifecycle commands either
+resolve a specific `--agent` or error with the list of registered
+names. Docker container names, ops state, and identity templates all
+key off the stable instance-id. Multi-deployment on one host works
+end-to-end.
+
 ## [2026-04-23] query | Email default behaviour + permissions → filed as [[email-integration]]
 
 Synthesized answer from [[integration-layer]], the Email Manager blueprint in

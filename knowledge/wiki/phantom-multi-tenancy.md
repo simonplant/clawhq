@@ -97,14 +97,22 @@ See backlog items FEAT-186.5 through FEAT-191 for the prioritized work:
    ambiguity is an error, not a silent default. CLI bootstrap runs
    idempotent legacy-registry migration. `clawhq init` mints uuid +
    writes `instanceId` into `clawhq.yaml`.
-2. **FEAT-188** — Wire the fleet registry into lifecycle commands
-   (`--fleet` flag iterates; cross-wire `clawhq doctor --fleet`).
-3. **FEAT-189** — Instance-scoped Docker container naming; kill the
-   `engine-openclaw-1` fallback.
-4. **FEAT-190** — Move ClawHQ ops state out of `${deployDir}/` into
-   `~/.clawhq/instances/<id>/ops/` (Layer 2).
-5. **FEAT-191** — Separate identity templates (Layer 2) from compiled
-   identity files (Layer 4).
+2. **FEAT-188 ✅ done** — `--fleet` flag on `clawhq doctor` iterates
+   every registered instance and aggregates results. Fleet API
+   (`cloud fleet list/add/remove/status/doctor`) repointed to read
+   from the unified registry.
+3. **FEAT-189 ✅ done** — Compose now emits
+   `container_name: openclaw-<shortId>` per instance.
+   `resolveOpenclawContainer` derives the name from `clawhq.yaml`'s
+   `instanceId`. Hardcoded `engine-openclaw-1` fallback removed.
+4. **FEAT-190 ✅ done** — `opsPath(deployDir, ...)` helper routes ops
+   state to `~/.clawhq/instances/<id>/ops/` when `instanceId` is in
+   the yaml. `migrateOpsState()` runs at CLI bootstrap. `clawhq apply`
+   backfills `instanceId` into `clawhq.yaml` from the registry.
+5. **FEAT-191 ✅ done** — Identity fragments support Layer-2 overrides
+   at `~/.clawhq/templates/identity/<FRAGMENT>.md` (machine-global) or
+   `~/.clawhq/instances/<id>/templates/identity/<FRAGMENT>.md`
+   (per-instance). Compiled workspace outputs unchanged.
 
 ## Related
 

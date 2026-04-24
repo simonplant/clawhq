@@ -1015,11 +1015,11 @@
         "src/build/launcher/",
         "src/build/docker/"
       ],
-      "status": "todo",
+      "status": "done",
       "readyForSprint": false,
       "track": "core",
       "groomedAt": "2026-04-23",
-      "groomingNotes": "Umbrella item. Audit 2026-04-23 confirmed FleetRegistry exists in src/cloud/fleet/ but no lifecycle command consumes it (phantom multi-tenancy). Split into children FEAT-186.5, FEAT-187..FEAT-191: (186.5) unified instance registry at ~/.clawhq/instances.json — foundation all later work depends on; (187) --agent <name> on every lifecycle command; (188) --fleet flag iterating fleet registry; (189) instance-scoped Docker container_name to kill engine-openclaw-1 fallback at src/build/docker/container.ts:14; (190) move ${deployDir}/ops/{doctor,monitor,backup,audit,firewall,updater} to ~/.clawhq/instances/<id>/ops/; (191) separate identity templates (Layer 2) from compiled workspace/*.md (Layer 4). See knowledge/wiki/phantom-multi-tenancy.md, knowledge/wiki/ownership-layers.md, knowledge/wiki/instance-registry.md. This item stays as the tracking epic; children are the sprintable slices.",
+      "groomingNotes": "Umbrella item. Audit 2026-04-23 confirmed FleetRegistry exists in src/cloud/fleet/ but no lifecycle command consumes it (phantom multi-tenancy). Split into children FEAT-186.5, FEAT-187..FEAT-191 — all shipped 2026-04-23 (commits 4a4230a, b67b573, 83d0240, ef2d0e3, 851ec4c, fca6458, 8b8857c, c1b3cd0, 420d646). (186.5) unified instance registry at ~/.clawhq/instances.json — foundation all later work depends on; (187) --agent <name> on every lifecycle command; (188) --fleet flag iterating fleet registry; (189) instance-scoped Docker container_name to kill engine-openclaw-1 fallback at src/build/docker/container.ts:14; (190) move ${deployDir}/ops/{doctor,monitor,backup,audit,firewall,updater} to ~/.clawhq/instances/<id>/ops/; (191) separate identity templates (Layer 2) from compiled workspace/*.md (Layer 4). See knowledge/wiki/phantom-multi-tenancy.md, knowledge/wiki/ownership-layers.md, knowledge/wiki/instance-registry.md. This item stays as the tracking epic; children are the sprintable slices.",
       "dependsOn": null
     },
     {
@@ -1119,11 +1119,11 @@
         "src/cloud/fleet/doctor.ts",
         "src/cloud/fleet/discovery.ts"
       ],
-      "status": "todo",
+      "status": "done",
       "readyForSprint": false,
       "track": "core",
       "groomedAt": "2026-04-23",
-      "groomingNotes": "Child of FEAT-186. Priority 2 of the phantom-multi-tenancy fix chain. Depends on FEAT-187 because --fleet reuses the per-agent resolution path. Touches Layer 1 (CLI) and Layer 5 (fleet). Does not touch Layer 4. Cleans up the duplicated command hierarchy: cloud fleet doctor becomes a thin alias.",
+      "groomingNotes": "Child of FEAT-186. Priority 2 of the phantom-multi-tenancy fix chain. Depends on FEAT-187 because --fleet reuses the per-agent resolution path. Touches Layer 1 (CLI) and Layer 5 (fleet). Does not touch Layer 4. Cleans up the duplicated command hierarchy: cloud fleet doctor becomes a thin alias. Shipped 2026-04-23 in fca6458 (doctor --fleet + fleet API adapter over unified registry).",
       "dependsOn": ["FEAT-187"]
     },
     {
@@ -1153,11 +1153,11 @@
         "src/operate/logs/logs.ts",
         "src/cloud/heartbeat/reporter.ts"
       ],
-      "status": "todo",
+      "status": "done",
       "readyForSprint": false,
       "track": "core",
       "groomedAt": "2026-04-23",
-      "groomingNotes": "Child of FEAT-186. Priority 3 of the phantom-multi-tenancy fix chain. Depends on FEAT-187 so instance ids are resolvable at the CLI layer. Touches Layer 1 (ClawHQ container resolution code) and Layer 4 (docker-compose.yml is a generated agent-runtime artifact). Cleanest split would be to do the compose.yml change inside the compiler and the resolver change inside ClawHQ; both live in the same patch but touch the layer boundary explicitly.",
+      "groomingNotes": "Child of FEAT-186. Priority 3 of the phantom-multi-tenancy fix chain. Depends on FEAT-187 so instance ids are resolvable at the CLI layer. Touches Layer 1 (ClawHQ container resolution code) and Layer 4 (docker-compose.yml is a generated agent-runtime artifact). Cleanest split would be to do the compose.yml change inside the compiler and the resolver change inside ClawHQ; both live in the same patch but touch the layer boundary explicitly. Shipped 2026-04-23 in 8b8857c (container_name: openclaw-<shortId> + requireOpenclawContainer).",
       "dependsOn": ["FEAT-187"]
     },
     {
@@ -1190,11 +1190,11 @@
         "src/build/launcher/firewall.ts",
         "src/config/ownership.ts"
       ],
-      "status": "todo",
+      "status": "done",
       "readyForSprint": false,
       "track": "core",
       "groomedAt": "2026-04-23",
-      "groomingNotes": "Child of FEAT-186. Priority 4 of the phantom-multi-tenancy fix chain. Depends on FEAT-187 because migration needs a resolvable instance id. Touches Layer 2 (ClawHQ runtime state location) and Layer 4 (agent deployment tree shrinks). Biggest conceptual win of the chain — clean separation of agent content from ClawHQ ops metadata. Size: L. Migration is the risky part; golden-config-pattern style before/after snapshot recommended.",
+      "groomingNotes": "Child of FEAT-186. Priority 4 of the phantom-multi-tenancy fix chain. Depends on FEAT-187 because migration needs a resolvable instance id. Touches Layer 2 (ClawHQ runtime state location) and Layer 4 (agent deployment tree shrinks). Biggest conceptual win of the chain — clean separation of agent content from ClawHQ ops metadata. Size: L. Migration is the risky part; golden-config-pattern style before/after snapshot recommended. Shipped 2026-04-23 in c1b3cd0 (opsPath helper + migrateOpsState bootstrap hook + 17 call-site sweep + clawhq apply instanceId backfill).",
       "dependsOn": ["FEAT-187"]
     },
     {
@@ -1224,11 +1224,11 @@
         "src/config/ownership.ts",
         "src/operate/doctor/checks.ts"
       ],
-      "status": "todo",
+      "status": "done",
       "readyForSprint": false,
       "track": "feature",
       "groomedAt": "2026-04-23",
-      "groomingNotes": "Child of FEAT-186. Priority 5 of the phantom-multi-tenancy fix chain — longer-term architectural polish, not urgent. Depends on FEAT-190 so the instances/<id>/ layout exists before per-instance overrides are offered. Touches Layer 2 (new templates dir) and Layer 4 (compiled outputs unchanged in location). Biggest behavioural change: identity fragments are edited at ~/.clawhq/templates/, not inside the agent's workspace. Size: M.",
+      "groomingNotes": "Child of FEAT-186. Priority 5 of the phantom-multi-tenancy fix chain — longer-term architectural polish, not urgent. Depends on FEAT-190 so the instances/<id>/ layout exists before per-instance overrides are offered. Touches Layer 2 (new templates dir) and Layer 4 (compiled outputs unchanged in location). Biggest behavioural change: identity fragments are edited at ~/.clawhq/templates/, not inside the agent's workspace. Size: M. Shipped 2026-04-23 in 420d646 (withIdentityOverride hook in compile() + Layer-2 template lookup at ~/.clawhq/templates/identity/ and ~/.clawhq/instances/<id>/templates/identity/; doctor check deferred — optional feature, absence is normal).",
       "dependsOn": ["FEAT-190"]
     }
   ]
