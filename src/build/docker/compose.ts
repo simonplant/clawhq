@@ -264,6 +264,7 @@ interface ComposeMarketEngineServiceOutput {
   readonly cap_drop: readonly string[];
   readonly security_opt: readonly string[];
   readonly volumes: readonly string[];
+  readonly ports?: readonly string[];
   readonly networks: readonly string[];
   readonly env_file: readonly string[];
   readonly environment: Record<string, string>;
@@ -596,6 +597,10 @@ export function generateCompose(
             // Workspace memory (read-only) — today's brief lives here.
             `${deployDir}/workspace/memory:/deploy/workspace/memory:ro`,
           ],
+          // Loopback-only host mapping for the VTF receiver (POST /vtf/alert),
+          // reached by Simon's browser userscript. Bind 127.0.0.1 — no LAN
+          // exposure. Matches the contract documented in src/trading/index.ts.
+          ports: ["127.0.0.1:8080:8080"],
           networks: [networkName],
           env_file: [".env"],
           environment: {
@@ -984,6 +989,10 @@ export function serializeYaml(compose: ComposeOutput): string {
     for (const opt of ct.security_opt) lines.push(`      - ${opt}`);
     lines.push("    volumes:");
     for (const v of ct.volumes) lines.push(`      - "${v}"`);
+    if (ct.ports && ct.ports.length > 0) {
+      lines.push("    ports:");
+      for (const p of ct.ports) lines.push(`      - "${p}"`);
+    }
     lines.push("    networks:");
     for (const n of ct.networks) lines.push(`      - ${n}`);
     lines.push("    env_file:");
