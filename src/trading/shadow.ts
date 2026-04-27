@@ -377,8 +377,9 @@ export function diffTrace(
 
   const len = Math.min(result.events.length, expected.length);
   for (let i = 0; i < len; i++) {
-    const got = result.events[i]!;
-    const want = expected[i]!;
+    const got = result.events[i];
+    const want = expected[i];
+    if (!got || !want) continue;
     if (got.kind !== want.kind) {
       problems.push(`#${i}: kind — expected ${want.kind}, got ${got.kind}`);
       continue;
@@ -425,11 +426,13 @@ export function diffTrace(
     }
   }
   for (let i = len; i < result.events.length; i++) {
-    const e = result.events[i]!;
+    const e = result.events[i];
+    if (!e) continue;
     problems.push(`extra #${i}: ${e.kind} seq=${e.sequence} ${e.levelName}`);
   }
   for (let i = len; i < expected.length; i++) {
-    const e = expected[i]!;
+    const e = expected[i];
+    if (!e) continue;
     problems.push(`missing #${i}: ${e.kind}${e.sequence ? ` seq=${e.sequence}` : ""}`);
   }
   return { ok: problems.length === 0, problems };

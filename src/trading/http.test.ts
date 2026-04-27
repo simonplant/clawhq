@@ -10,10 +10,11 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { openTradingDB } from "./db.js";
-import { makeHttpApp, type RuntimeState } from "./index.js";
 import { makeInMemoryChannel } from "./telegram.js";
 import type { Alert } from "./types.js";
 import { makeVtfDedup } from "./vtf.js";
+
+import { makeHttpApp, type RuntimeState } from "./index.js";
 
 function mkState(dbPath: string): RuntimeState {
   const db = openTradingDB(dbPath);
@@ -21,7 +22,7 @@ function mkState(dbPath: string): RuntimeState {
     db,
     tradier: {
       quotes: async () => [],
-      balances: async () => ({ totalEquity: 3000, dayChange: 0, pdtCount: 0 }),
+      balances: async () => ({ totalEquity: 3000, dayChange: 0, cash: 3000, pdtCount: 0 }),
       positions: async () => [],
       clock: async () => ({
         state: "closed",
@@ -32,7 +33,6 @@ function mkState(dbPath: string): RuntimeState {
     channel: makeInMemoryChannel(),
     channelKind: "in-memory",
     plan: null,
-    confluence: new Map(),
     planPath: "/tmp/nonexistent-brief.md",
     watchlist: [],
     marketClock: null,
@@ -184,9 +184,9 @@ describe("POST /vtf/alert", () => {
     capturedAt: "2026-04-23T16:47:03.123Z",
   };
 
-  function post(body: unknown): Promise<Response> {
+  async function post(body: unknown): Promise<Response> {
     const app = makeHttpApp(state);
-    return app.request("/vtf/alert", {
+    return await app.request("/vtf/alert", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),

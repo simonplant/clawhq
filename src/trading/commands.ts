@@ -83,8 +83,10 @@ export function parseReply(raw: string): ParsedReply | null {
   if (!trimmed) return null;
   const m = /^([A-Za-z0-9]+)[-_: ]([A-Za-z0-9]{4})\s*$/.exec(trimmed);
   if (!m) return null;
-  const verb = m[1]!.toLowerCase();
-  const id = m[2]!.toUpperCase();
+  const [, verbRaw, idRaw] = m;
+  if (!verbRaw || !idRaw) return null;
+  const verb = verbRaw.toLowerCase();
+  const id = idRaw.toUpperCase();
   const reply = REPLY_VERBS[verb];
   if (!reply) return null;
   return { reply, alertId: id };

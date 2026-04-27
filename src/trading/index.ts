@@ -41,13 +41,6 @@ import {
   resolveWatchlist,
 } from "./config.js";
 import { openTradingDB, startOfTodayMs, type TradingDB } from "./db.js";
-import {
-  formatVtfMessage,
-  makeVtfDedup,
-  parseVtfInput,
-  vtfShouldQuiet,
-  type VtfDedup,
-} from "./vtf.js";
 import { makeLevelDetector } from "./detector.js";
 import {
   buildAlert,
@@ -73,6 +66,13 @@ import type {
   RiskState,
   TradingEvent,
 } from "./types.js";
+import {
+  formatVtfMessage,
+  makeVtfDedup,
+  parseVtfInput,
+  vtfShouldQuiet,
+  type VtfDedup,
+} from "./vtf.js";
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 

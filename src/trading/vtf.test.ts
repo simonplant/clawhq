@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { OrderBlock } from "./types.js";
 import {
   VTF_DEDUP_TTL_MS,
   classifyAction,
@@ -12,7 +13,6 @@ import {
   vtfIcon,
   vtfShouldQuiet,
 } from "./vtf.js";
-import type { OrderBlock } from "./types.js";
 
 const T0 = 1_700_000_000_000;
 
@@ -66,7 +66,8 @@ describe("parseVtfInput", () => {
   it.each(["user", "time", "ticker", "action", "capturedAt"])(
     "rejects missing '%s'",
     (field) => {
-      const body = validInput();
+      const body: Record<string, unknown> = validInput();
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete body[field];
       const res = parseVtfInput(body, T0);
       expect(res.ok).toBe(false);

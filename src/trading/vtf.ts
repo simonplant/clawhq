@@ -279,7 +279,8 @@ function annotatePlanMatch(
       conflict: false,
     };
   }
-  const conflicting = matches[0]!;
+  const conflicting = matches[0];
+  if (!conflicting) return undefined;
   return {
     line: `⚠ conflicts with ${conflicting.source.toUpperCase()} ORDER ${conflicting.sequence} ${conflicting.direction} @ ${formatOrderPrice(conflicting.entry)}`,
     conflict: true,

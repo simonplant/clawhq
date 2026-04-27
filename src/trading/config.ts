@@ -236,7 +236,8 @@ const CONTRACT_MULTIPLIERS: Record<string, number> = {
 
 export function contractMultiplier(execAs: string): number {
   const sym = execAs.trim().toUpperCase();
-  if (sym in CONTRACT_MULTIPLIERS) return CONTRACT_MULTIPLIERS[sym]!;
+  const known = CONTRACT_MULTIPLIERS[sym];
+  if (known !== undefined) return known;
   if (sym.startsWith("/")) {
     // Unknown future — conservative fallback. Log path is the caller's job.
     return 1;
