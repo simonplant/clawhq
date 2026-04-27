@@ -164,7 +164,7 @@ cron_defaults:
     expr: "0 * * * *"
     announce: false
   morning_brief:
-    expr: "0 8 * * *"
+    expr: "45 5 * * 1-5"   # 5:45 AM PT weekdays — arrives before 6:00 premarket-brief and 6:30 market open
     announce: true
   mancini_fetch:
     expr: "30 14 * * 1-5"

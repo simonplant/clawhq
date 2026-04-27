@@ -18,6 +18,7 @@ import { join, resolve } from "node:path";
 import { generateCompose, serializeYaml } from "../../build/docker/compose.js";
 import { getPostureConfig } from "../../build/docker/posture.js";
 import type { BuildSecurityPosture, WorkspaceManifest } from "../../build/docker/types.js";
+import { renderDnsmasqConf } from "../../build/launcher/dnsmasq.js";
 import {
   buildAllowlistFromBlueprint,
   collectIntegrationDomains,
@@ -27,6 +28,7 @@ import {
   agentImageTag,
   agentNetworkName,
   CRED_PROXY_PORT,
+  DNS_RESOLVER_GATEWAY,
   FILE_MODE_EXEC,
   FILE_MODE_SECRET,
   GATEWAY_DEFAULT_PORT,
@@ -212,6 +214,16 @@ export function compile(
     // IMAP/SMTP traffic was silently blocked even when the allowlist
     // listed the right hosts.
     { relativePath: "ops/firewall/allowlist.yaml", content: renderAllowlist(profile, [...egressSet], existingEnv) },
+
+    // dns-resolver sidecar config — derived from the same allowlist so the
+    // ipset auto-population matches the firewall's view of "what's allowed
+    // out". Without this, CDN-fronted APIs (Apigee, CloudFront) silently
+    // drop because the IP returned by the container's DNS lookup isn't in
+    // the static ipset snapshot.
+    { relativePath: "engine/dnsmasq.conf", content: renderDnsmasqConf(
+      computeAllowlistEntries([...egressSet], existingEnv),
+      DNS_RESOLVER_GATEWAY,
+    ) },
 
     // clawhq.yaml is intentionally NOT emitted here. It's seeded-once
     // (scaffold writes on fresh install, user/integrate edits after). The
@@ -1416,6 +1428,22 @@ function renderCronJobs(
 
 // ── allowlist.yaml ──────────────────────────────────────────────────────────
 
+/**
+ * Compute the firewall allowlist entries the same way for both
+ * `allowlist.yaml` and `dnsmasq.conf`. Single source of truth so the two
+ * files can never disagree about which domains are allowed out.
+ */
+function computeAllowlistEntries(
+  allDomains: string[],
+  envVars: Record<string, string>,
+): ReturnType<typeof buildAllowlistFromBlueprint> {
+  const integrationEntries = collectIntegrationDomains([], envVars);
+  return buildAllowlistFromBlueprint(
+    [...allDomains].sort(),
+    integrationEntries,
+  );
+}
+
 function renderAllowlist(
   profile: MissionProfile,
   allDomains: string[],
@@ -1425,11 +1453,7 @@ function renderAllowlist(
   // detection adds port-aware entries for IMAP (993), SMTP (587), CalDAV
   // (443), etc. Dedup by domain+port keeps both layers coexisting when a
   // single host would otherwise be added twice at different ports.
-  const integrationEntries = collectIntegrationDomains([], envVars);
-  const entries = buildAllowlistFromBlueprint(
-    [...allDomains].sort(),
-    integrationEntries,
-  );
+  const entries = computeAllowlistEntries(allDomains, envVars);
 
   const header = [
     "# Egress firewall allowlist",

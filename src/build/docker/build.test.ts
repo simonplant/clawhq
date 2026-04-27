@@ -972,11 +972,23 @@ describe("generateCompose with market-engine", () => {
     expect(ct?.depends_on?.["cred-proxy"].condition).toBe("service_healthy");
   });
 
-  it("market-engine has no depends_on when cred-proxy is disabled", () => {
+  it("market-engine drops cred-proxy dependency but still depends on dns-resolver", () => {
     const posture = getPostureConfig("hardened");
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
       enableMarketEngine: true,
       enableCredProxy: false,
+    });
+    const ct = compose.services["market-engine"];
+    expect(ct?.depends_on?.["cred-proxy"]).toBeUndefined();
+    expect(ct?.depends_on?.["dns-resolver"]?.condition).toBe("service_started");
+  });
+
+  it("market-engine has no depends_on when cred-proxy AND dns-resolver are both disabled", () => {
+    const posture = getPostureConfig("hardened");
+    const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq", "clawhq_net", {
+      enableMarketEngine: true,
+      enableCredProxy: false,
+      enableDnsResolver: false,
     });
     const ct = compose.services["market-engine"];
     expect(ct?.depends_on).toBeUndefined();
@@ -1057,6 +1069,97 @@ describe("generateCompose with market-engine", () => {
     const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
     const yaml = serializeYaml(compose);
     expect(yaml).not.toContain("market-engine:");
+  });
+});
+
+describe("generateCompose with dns-resolver", () => {
+  it("emits dns-resolver service in host network mode with NET_ADMIN", () => {
+    const compose = generateCompose(
+      "openclaw:custom",
+      getPostureConfig("hardened"),
+      "/home/u/.clawhq",
+      "clawhq_net",
+    );
+    const dr = compose.services["dns-resolver"];
+    expect(dr).toBeDefined();
+    expect(dr?.network_mode).toBe("host");
+    expect(dr?.cap_drop).toContain("ALL");
+    expect(dr?.cap_add).toContain("NET_ADMIN");
+    expect(dr?.cap_add).toContain("NET_BIND_SERVICE");
+    expect(dr?.read_only).toBe(true);
+    // Mounts the generated dnsmasq.conf read-only
+    expect(dr?.volumes.some((v) => v.includes("dnsmasq.conf"))).toBe(true);
+    expect(dr?.volumes.some((v) => v.endsWith(":ro"))).toBe(true);
+  });
+
+  it("pins the bridge IPAM so the dns-resolver listen IP is stable", () => {
+    const compose = generateCompose(
+      "openclaw:custom",
+      getPostureConfig("hardened"),
+      "/home/u/.clawhq",
+      "clawhq_net",
+    );
+    const net = compose.networks["clawhq_net"];
+    expect(net?.ipam?.config?.[0]?.subnet).toBe("172.28.0.0/16");
+    expect(net?.ipam?.config?.[0]?.gateway).toBe("172.28.0.1");
+  });
+
+  it("routes every other service through the dns-resolver via dns: directive", () => {
+    const compose = generateCompose(
+      "openclaw:custom",
+      getPostureConfig("hardened"),
+      "/home/u/.clawhq",
+      "clawhq_net",
+      { enableCredProxy: true, enableMarketEngine: true },
+    );
+    expect(compose.services.openclaw.dns).toEqual(["172.28.0.1"]);
+    expect(compose.services["cred-proxy"]?.dns).toEqual(["172.28.0.1"]);
+    expect(compose.services["market-engine"]?.dns).toEqual(["172.28.0.1"]);
+  });
+
+  it("makes every other service depend on dns-resolver having started", () => {
+    const compose = generateCompose(
+      "openclaw:custom",
+      getPostureConfig("hardened"),
+      "/home/u/.clawhq",
+      "clawhq_net",
+      { enableCredProxy: true },
+    );
+    expect(compose.services.openclaw.depends_on?.["dns-resolver"]?.condition).toBe("service_started");
+    expect(compose.services["cred-proxy"]?.depends_on?.["dns-resolver"]?.condition).toBe("service_started");
+  });
+
+  it("can be disabled (test escape hatch) — no IPAM, no dns:, no resolver service", () => {
+    const compose = generateCompose(
+      "openclaw:custom",
+      getPostureConfig("hardened"),
+      "/home/u/.clawhq",
+      "clawhq_net",
+      { enableDnsResolver: false },
+    );
+    expect(compose.services["dns-resolver"]).toBeUndefined();
+    expect(compose.networks["clawhq_net"]?.ipam).toBeUndefined();
+    expect(compose.services.openclaw.dns).toBeUndefined();
+    expect(compose.services.openclaw.depends_on).toBeUndefined();
+  });
+
+  it("serializes the dns-resolver block + IPAM + dns: directives to YAML", () => {
+    const compose = generateCompose(
+      "openclaw:custom",
+      getPostureConfig("hardened"),
+      "/home/u/.clawhq",
+      "clawhq_net",
+      { enableCredProxy: true },
+    );
+    const yaml = serializeYaml(compose);
+    expect(yaml).toContain("dns-resolver:");
+    expect(yaml).toContain("network_mode: host");
+    expect(yaml).toContain("- NET_ADMIN");
+    expect(yaml).toContain("    dns:");
+    expect(yaml).toContain("      - 172.28.0.1");
+    expect(yaml).toContain("    ipam:");
+    expect(yaml).toContain("subnet: 172.28.0.0/16");
+    expect(yaml).toContain("gateway: 172.28.0.1");
   });
 });
 

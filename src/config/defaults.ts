@@ -15,7 +15,7 @@ export const DASHBOARD_DEFAULT_PORT = 3737;
 export const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
 
 /** Default Ollama model for local inference. */
-export const OLLAMA_DEFAULT_MODEL = "gemma4:26b";
+export const OLLAMA_DEFAULT_MODEL = "qwen3.6:35b-a3b";
 
 /** Canonical WhatsApp / Facebook Graph API version. */
 export const WHATSAPP_API_VERSION = "v21.0";
@@ -53,6 +53,7 @@ export const KNOWN_MODELS: ReadonlySet<string> = new Set([
   "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
   // Local / Ollama models
   "gemma4:26b",
+  "qwen3.6:35b-a3b",
 ]);
 
 // ── Multi-instance helpers ──────────────────────────────────────────────────
@@ -276,6 +277,27 @@ export const CRED_PROXY_ROUTES_PATH = "/app/routes.json";
 
 /** Container-internal path to the proxy audit log directory. */
 export const CRED_PROXY_AUDIT_DIR = "/app/audit";
+
+// ── DNS resolver sidecar defaults ─────────────────────────────────────────
+//
+// The dns-resolver sidecar runs dnsmasq with `--ipset` so that every
+// container DNS query for an allowlisted FQDN auto-populates the host's
+// `clawhq_egress` ipset. This makes the IP-based egress firewall robust
+// to CDN A-record rotation (Apigee, CloudFront, Cloudflare).
+//
+// See knowledge/wiki/decisions/cdn-dns-aware-egress.md.
+
+/** Docker image for the dns-resolver sidecar (small, dnsmasq-only). */
+export const DNS_RESOLVER_IMAGE = "4km3/dnsmasq:2.90-r3";
+
+/** Pinned subnet for the agent bridge network (IPAM). */
+export const DNS_RESOLVER_SUBNET = "172.28.0.0/16";
+
+/** Pinned gateway IP — also the address dns-resolver listens on. */
+export const DNS_RESOLVER_GATEWAY = "172.28.0.1";
+
+/** Container-internal path to the dnsmasq config file. */
+export const DNS_RESOLVER_CONF_PATH = "/etc/dnsmasq.conf";
 
 // ── OpenClaw environment variable defaults (v0.8.6+) ────────────────────────
 

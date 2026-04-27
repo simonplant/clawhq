@@ -12,6 +12,10 @@ import {
   CRED_PROXY_PORT,
   CRED_PROXY_ROUTES_PATH,
   CRED_PROXY_SCRIPT_PATH,
+  DNS_RESOLVER_CONF_PATH,
+  DNS_RESOLVER_GATEWAY,
+  DNS_RESOLVER_IMAGE,
+  DNS_RESOLVER_SUBNET,
 } from "../../config/defaults.js";
 import { instanceOpsDir } from "../../config/ops-paths.js";
 import {
@@ -84,6 +88,20 @@ export interface ComposeOptions {
    * dropping the mount.
    */
   readonly readOnlyHostMounts?: readonly string[];
+  /**
+   * Enable the dns-resolver sidecar. When true (the default), the bridge
+   * network is pinned to a stable subnet, dnsmasq runs in host network
+   * mode binding the bridge gateway IP, and every other service routes
+   * DNS through it. This is required for CDN-fronted APIs whose IPs
+   * rotate per query — see `renderDnsmasqConf` and
+   * knowledge/wiki/decisions/cdn-dns-aware-egress.md.
+   */
+  readonly enableDnsResolver?: boolean;
+  /**
+   * Host path to the rendered dnsmasq.conf. Mounted read-only into the
+   * dns-resolver container. Defaults to `${deployDir}/engine/dnsmasq.conf`.
+   */
+  readonly dnsResolverConfPath?: string;
 }
 
 /** Generated docker-compose structure. */
@@ -91,9 +109,11 @@ export interface ComposeOutput {
   readonly version: string;
   readonly services: {
     readonly openclaw: ComposeServiceOutput;
+    readonly ollama: ComposeOllamaServiceOutput;
     readonly "cred-proxy"?: ComposeCredProxyServiceOutput;
     readonly "market-engine"?: ComposeMarketEngineServiceOutput;
     readonly tailscale?: ComposeTailscaleServiceOutput;
+    readonly "dns-resolver"?: ComposeDnsResolverServiceOutput;
   };
   readonly networks: Record<string, ComposeNetworkOutput>;
   readonly secrets?: Record<string, ComposeSecretOutput>;
@@ -117,6 +137,11 @@ interface ComposeServiceOutput {
   readonly environment: Record<string, string>;
   readonly init: boolean;
   readonly extra_hosts: readonly string[];
+  /** DNS servers used by the container's resolver. Pointed at dns-resolver
+   * (host bridge gateway IP) when the resolver sidecar is enabled. */
+  readonly dns?: readonly string[];
+  /** Service dependencies — wait for dns-resolver health before starting. */
+  readonly depends_on?: Record<string, { readonly condition: string }>;
   readonly healthcheck: {
     readonly test: readonly string[];
     readonly interval: string;
@@ -142,6 +167,18 @@ interface ComposeNetworkOutput {
   readonly driver?: string;
   readonly driver_opts?: Record<string, string>;
   readonly external?: boolean;
+  /**
+   * Pinned IPAM. Without a pinned subnet/gateway the bridge IP shifts on
+   * `docker network rm/create`, which breaks the `dns:` directive on
+   * every other service (they hard-code the gateway IP). Pin once,
+   * everything stays stable across restarts.
+   */
+  readonly ipam?: {
+    readonly config: ReadonlyArray<{
+      readonly subnet: string;
+      readonly gateway: string;
+    }>;
+  };
 }
 
 interface ComposeSecretOutput {
@@ -161,6 +198,8 @@ interface ComposeCredProxyServiceOutput {
   readonly command: readonly string[];
   readonly restart: string;
   readonly tmpfs: readonly string[];
+  readonly dns?: readonly string[];
+  readonly depends_on?: Record<string, { readonly condition: string }>;
   readonly healthcheck: {
     readonly test: readonly string[];
     readonly interval: string;
@@ -177,6 +216,37 @@ interface ComposeTailscaleServiceOutput {
   readonly volumes: readonly string[];
   readonly networks: readonly string[];
   readonly environment: Record<string, string>;
+  readonly restart: string;
+  readonly dns?: readonly string[];
+  readonly depends_on?: Record<string, { readonly condition: string }>;
+  readonly healthcheck: {
+    readonly test: readonly string[];
+    readonly interval: string;
+    readonly timeout: string;
+    readonly retries: number;
+  };
+}
+
+/**
+ * dns-resolver sidecar — runs dnsmasq with `--ipset=` to auto-populate the
+ * host's `clawhq_egress` ipset on every container DNS query. Required for
+ * CDN-fronted APIs that rotate A records (Apigee, CloudFront).
+ *
+ * Uses `network_mode: host` so the resolver shares the host's network
+ * namespace — the only namespace where the host ipset is reachable via
+ * netlink. CAP_NET_ADMIN is required for the ipset writes; everything
+ * else is dropped.
+ */
+interface ComposeDnsResolverServiceOutput {
+  readonly image: string;
+  readonly container_name?: string;
+  readonly network_mode: "host";
+  readonly cap_drop: readonly string[];
+  readonly cap_add: readonly string[];
+  readonly security_opt: readonly string[];
+  readonly read_only: boolean;
+  readonly volumes: readonly string[];
+  readonly command: readonly string[];
   readonly restart: string;
   readonly healthcheck: {
     readonly test: readonly string[];
@@ -199,12 +269,46 @@ interface ComposeMarketEngineServiceOutput {
   readonly environment: Record<string, string>;
   readonly restart: string;
   readonly tmpfs: readonly string[];
+  readonly dns?: readonly string[];
   readonly depends_on?: Record<string, { readonly condition: string }>;
   readonly healthcheck: {
     readonly test: readonly string[];
     readonly interval: string;
     readonly timeout: string;
     readonly retries: number;
+  };
+}
+
+/** Ollama GPU sidecar service — local LLM inference for the agent. */
+interface ComposeOllamaServiceOutput {
+  readonly image: string;
+  readonly container_name?: string;
+  readonly restart: string;
+  readonly init: boolean;
+  readonly security_opt: readonly string[];
+  readonly volumes: readonly string[];
+  readonly ports: readonly string[];
+  readonly environment: Record<string, string>;
+  readonly networks: readonly string[];
+  readonly healthcheck: {
+    readonly test: readonly string[];
+    readonly interval: string;
+    readonly timeout: string;
+    readonly retries: number;
+    readonly start_period: string;
+  };
+  readonly mem_limit?: string;
+  readonly pids_limit?: number;
+  readonly deploy?: {
+    readonly resources: {
+      readonly reservations?: {
+        readonly devices: ReadonlyArray<{
+          readonly driver: string;
+          readonly count: string | number;
+          readonly capabilities: readonly string[];
+        }>;
+      };
+    };
   };
 }
 
@@ -228,6 +332,19 @@ export function generateCompose(
   const enableCredProxy = options?.enableCredProxy ?? false;
   const credProxyScriptPath = options?.credProxyScriptPath ?? `${deployDir}/engine/cred-proxy.js`;
   const credProxyRoutesPath = options?.credProxyRoutesPath ?? `${deployDir}/engine/cred-proxy-routes.json`;
+  // dns-resolver default: enabled. Egress firewall is on by default and the
+  // resolver is what keeps it correct under CDN A-record rotation; without
+  // it, every CDN-fronted upstream is one DNS rotation away from a silent
+  // drop. Tests opt out.
+  const enableDnsResolver = options?.enableDnsResolver ?? true;
+  const dnsResolverConfPath = options?.dnsResolverConfPath ?? `${deployDir}/engine/dnsmasq.conf`;
+  const dnsServers = enableDnsResolver ? [DNS_RESOLVER_GATEWAY] : undefined;
+  // service_started, not service_healthy: dnsmasq comes up in <1s, and we
+  // don't want the agent's startup gated on a DNS health probe whose
+  // tooling assumptions (nslookup, nc, etc.) depend on the resolver image.
+  const dnsResolverDep = enableDnsResolver
+    ? { "dns-resolver": { condition: "service_started" } }
+    : undefined;
 
   const service: ComposeServiceOutput = {
     image: imageTag,
@@ -283,9 +400,11 @@ export function generateCompose(
       `${OPENCLAW_CONTAINER_ROOT}:exec,nosuid,size=256m,uid=1000,gid=1000`,
     ],
     volumes: buildVolumes(deployDir, options),
-    networks: [networkName, "ollama-bridge"],
+    networks: [networkName],
     env_file: [".env"],
     restart: "unless-stopped",
+    ...(dnsServers ? { dns: dnsServers } : {}),
+    ...(dnsResolverDep ? { depends_on: { ...dnsResolverDep } } : {}),
     // OCI runtime override (gVisor kernel isolation for hardened/paranoid postures).
     // Emitted only when the host supports it; otherwise the other posture hardening
     // still applies (cap_drop, no-new-privileges, read_only, tmpfs, seccomp).
@@ -309,7 +428,9 @@ export function generateCompose(
       : {}),
   };
 
-  // When cred-proxy is enabled, ICC must be allowed so agent can reach the proxy
+  // When cred-proxy is enabled, ICC must be allowed so agent can reach the proxy.
+  // IPAM is pinned when dns-resolver is on so the gateway IP every other
+  // service references is stable across `docker network rm/create`.
   const networks: Record<string, ComposeNetworkOutput> = {
     [networkName]: {
       driver: "bridge",
@@ -320,9 +441,18 @@ export function generateCompose(
             },
           }
         : {}),
-    },
-    "ollama-bridge": {
-      external: true,
+      ...(enableDnsResolver
+        ? {
+            ipam: {
+              config: [
+                {
+                  subnet: DNS_RESOLVER_SUBNET,
+                  gateway: DNS_RESOLVER_GATEWAY,
+                },
+              ],
+            },
+          }
+        : {}),
     },
   };
 
@@ -344,6 +474,8 @@ export function generateCompose(
         command: ["node", CRED_PROXY_SCRIPT_PATH],
         restart: "unless-stopped",
         tmpfs: ["/tmp:size=16m,noexec,nosuid"],
+        ...(dnsServers ? { dns: dnsServers } : {}),
+        ...(dnsResolverDep ? { depends_on: { ...dnsResolverDep } } : {}),
         healthcheck: {
           test: ["CMD", "node", "-e", `require("http").get("http://localhost:${CRED_PROXY_PORT}/health",(r)=>{process.exit(r.statusCode===200?0:1)}).on("error",()=>process.exit(1))`],
           interval: "30s",
@@ -352,6 +484,59 @@ export function generateCompose(
         },
       }
     : undefined;
+
+  // Build dns-resolver sidecar — runs dnsmasq with --ipset so every container
+  // DNS query for an allowlisted FQDN auto-populates clawhq_egress before the
+  // reply reaches the caller. The container shares the host network namespace
+  // (the only place the host ipset is reachable via netlink); CAP_NET_ADMIN
+  // is required for ipset writes.
+  const dnsResolverContainerName = options?.instanceId
+    ? `clawhq-dns-${options.instanceId.slice(0, 8)}`
+    : undefined;
+  const dnsResolverService: ComposeDnsResolverServiceOutput | undefined =
+    enableDnsResolver
+      ? {
+          image: DNS_RESOLVER_IMAGE,
+          ...(dnsResolverContainerName
+            ? { container_name: dnsResolverContainerName }
+            : {}),
+          network_mode: "host",
+          cap_drop: ["ALL"],
+          // NET_ADMIN — write to host ipset via netlink.
+          // NET_BIND_SERVICE — bind dnsmasq to port 53.
+          cap_add: ["NET_ADMIN", "NET_BIND_SERVICE"],
+          security_opt: ["no-new-privileges"],
+          read_only: true,
+          volumes: [`${dnsResolverConfPath}:${DNS_RESOLVER_CONF_PATH}:ro`],
+          // The 4km3/dnsmasq image's entrypoint is `/usr/sbin/dnsmasq
+          // --keep-in-foreground`, so `command:` here only supplies
+          // *additional* flags. Putting `dnsmasq` first would double the
+          // binary name and fail at startup.
+          command: [
+            "--no-daemon",
+            `--conf-file=${DNS_RESOLVER_CONF_PATH}`,
+            "--user=nobody",
+            "--group=nobody",
+          ],
+          restart: "unless-stopped",
+          // Config-validation healthcheck: --test parses dnsmasq.conf and
+          // exits 0 on success. It does NOT confirm the resolver is
+          // serving — that's intentional. Asserting "is the binary alive
+          // and is its config sane" is image-independent (no nslookup/nc
+          // assumption); depends_on uses service_started anyway.
+          healthcheck: {
+            test: [
+              "CMD",
+              "dnsmasq",
+              "--test",
+              `--conf-file=${DNS_RESOLVER_CONF_PATH}`,
+            ],
+            interval: "60s",
+            timeout: "5s",
+            retries: 3,
+          },
+        }
+      : undefined;
 
   // Build Tailscale sidecar if enabled — secure remote access without port exposure
   const enableTailscale = options?.enableTailscale ?? false;
@@ -378,6 +563,8 @@ export function generateCompose(
           TS_USERSPACE: "true",
         },
         restart: "unless-stopped",
+        ...(dnsServers ? { dns: dnsServers } : {}),
+        ...(dnsResolverDep ? { depends_on: { ...dnsResolverDep } } : {}),
         healthcheck: {
           test: ["CMD", "tailscale", "status", "--json"],
           interval: "60s",
@@ -418,8 +605,17 @@ export function generateCompose(
           },
           restart: "unless-stopped",
           tmpfs: ["/tmp:size=32m,noexec,nosuid"],
-          ...(enableCredProxy
-            ? { depends_on: { "cred-proxy": { condition: "service_healthy" } } }
+          ...(dnsServers ? { dns: dnsServers } : {}),
+          // Merge dns-resolver and cred-proxy dependencies into one map.
+          ...((enableCredProxy || dnsResolverDep)
+            ? {
+                depends_on: {
+                  ...(dnsResolverDep ?? {}),
+                  ...(enableCredProxy
+                    ? { "cred-proxy": { condition: "service_healthy" } }
+                    : {}),
+                },
+              }
             : {}),
           healthcheck: {
             test: [
@@ -435,15 +631,59 @@ export function generateCompose(
         }
       : undefined;
 
+  // Ollama GPU sidecar — local LLM inference. Lives in the same compose
+  // project as openclaw so `clawhq up`/`down` manage its lifecycle. Models
+  // persist at `/mnt/data/ollama` across container recreations.
+  const ollamaContainerName = options?.instanceId
+    ? `ollama-${options.instanceId.slice(0, 8)}`
+    : undefined;
+  const ollamaService: ComposeOllamaServiceOutput = {
+    image: "ollama/ollama:latest",
+    ...(ollamaContainerName ? { container_name: ollamaContainerName } : {}),
+    restart: "unless-stopped",
+    init: true,
+    security_opt: ["no-new-privileges"],
+    volumes: ["/mnt/data/ollama:/root/.ollama/models"],
+    ports: ["127.0.0.1:11434:11434"],
+    environment: {
+      OLLAMA_HOST: "0.0.0.0:11434",
+      OLLAMA_KEEP_ALIVE: "24h",
+      OLLAMA_FLASH_ATTENTION: "1",
+      OLLAMA_KV_CACHE_TYPE: "q8_0",
+      OLLAMA_NUM_PARALLEL: "1",
+      OLLAMA_CONTEXT_LENGTH: "16384",
+      OLLAMA_MAX_LOADED_MODELS: "1",
+    },
+    networks: [networkName],
+    healthcheck: {
+      test: ["CMD", "ollama", "list"],
+      interval: "30s",
+      timeout: "5s",
+      retries: 3,
+      start_period: "30s",
+    },
+    mem_limit: "16g",
+    pids_limit: 2048,
+    deploy: {
+      resources: {
+        reservations: {
+          devices: [{ driver: "nvidia", count: "all", capabilities: ["gpu"] }],
+        },
+      },
+    },
+  };
+
   return {
     version: "3.8",
     services: {
       openclaw: service,
+      ollama: ollamaService,
       ...(credProxyService ? { "cred-proxy": credProxyService } : {}),
       ...(marketEngineService
         ? { "market-engine": marketEngineService }
         : {}),
       ...(tailscaleService ? { tailscale: tailscaleService } : {}),
+      ...(dnsResolverService ? { "dns-resolver": dnsResolverService } : {}),
     },
     networks,
     // Docker secrets: token file on host → /run/secrets/ in container
@@ -607,6 +847,19 @@ export function serializeYaml(compose: ComposeOutput): string {
   lines.push("    env_file:");
   for (const e of svc.env_file) lines.push(`      - ${e}`);
 
+  if (svc.dns && svc.dns.length > 0) {
+    lines.push("    dns:");
+    for (const d of svc.dns) lines.push(`      - ${d}`);
+  }
+
+  if (svc.depends_on && Object.keys(svc.depends_on).length > 0) {
+    lines.push("    depends_on:");
+    for (const [name, cond] of sortedEntries(svc.depends_on)) {
+      lines.push(`      ${name}:`);
+      lines.push(`        condition: ${(cond as { condition: string }).condition}`);
+    }
+  }
+
   if (svc.secrets && svc.secrets.length > 0) {
     lines.push("    secrets:");
     for (const s of svc.secrets) lines.push(`      - ${s}`);
@@ -623,6 +876,48 @@ export function serializeYaml(compose: ComposeOutput): string {
     lines.push(`          cpus: "${svc.deploy.resources.limits.cpus}"`);
     lines.push(`          memory: ${svc.deploy.resources.limits.memory}`);
     lines.push(`          pids: ${svc.deploy.resources.limits.pids}`);
+  }
+
+  // Ollama GPU sidecar — local LLM inference
+  {
+    const ol = compose.services.ollama;
+    lines.push("", "  ollama:");
+    lines.push(`    image: ${ol.image}`);
+    if (ol.container_name) lines.push(`    container_name: ${ol.container_name}`);
+    lines.push(`    restart: ${ol.restart}`);
+    lines.push(`    init: ${ol.init}`);
+    lines.push("    security_opt:");
+    for (const opt of ol.security_opt) lines.push(`      - ${opt}`);
+    lines.push("    volumes:");
+    for (const v of ol.volumes) lines.push(`      - "${v}"`);
+    lines.push("    ports:");
+    for (const p of ol.ports) lines.push(`      - "${p}"`);
+    lines.push("    environment:");
+    for (const [key, val] of sortedEntries(ol.environment)) {
+      lines.push(`      ${key}: "${val}"`);
+    }
+    lines.push("    networks:");
+    for (const n of ol.networks) lines.push(`      - ${n}`);
+    lines.push("    healthcheck:");
+    lines.push("      test:");
+    for (const t of ol.healthcheck.test) lines.push(`        - "${t}"`);
+    lines.push(`      interval: ${ol.healthcheck.interval}`);
+    lines.push(`      timeout: ${ol.healthcheck.timeout}`);
+    lines.push(`      retries: ${ol.healthcheck.retries}`);
+    lines.push(`      start_period: ${ol.healthcheck.start_period}`);
+    if (ol.mem_limit) lines.push(`    mem_limit: ${ol.mem_limit}`);
+    if (ol.pids_limit !== undefined) lines.push(`    pids_limit: ${ol.pids_limit}`);
+    if (ol.deploy?.resources.reservations?.devices) {
+      lines.push("    deploy:");
+      lines.push("      resources:");
+      lines.push("        reservations:");
+      lines.push("          devices:");
+      for (const d of ol.deploy.resources.reservations.devices) {
+        lines.push(`            - driver: ${d.driver}`);
+        lines.push(`              count: ${typeof d.count === "string" ? `"${d.count}"` : d.count}`);
+        lines.push(`              capabilities: [${d.capabilities.join(", ")}]`);
+      }
+    }
   }
 
   // Credential proxy sidecar
@@ -647,6 +942,17 @@ export function serializeYaml(compose: ComposeOutput): string {
     for (const e of cp.env_file) lines.push(`      - ${e}`);
     lines.push("    tmpfs:");
     for (const t of cp.tmpfs) lines.push(`      - "${t}"`);
+    if (cp.dns && cp.dns.length > 0) {
+      lines.push("    dns:");
+      for (const d of cp.dns) lines.push(`      - ${d}`);
+    }
+    if (cp.depends_on && Object.keys(cp.depends_on).length > 0) {
+      lines.push("    depends_on:");
+      for (const [name, cond] of sortedEntries(cp.depends_on)) {
+        lines.push(`      ${name}:`);
+        lines.push(`        condition: ${(cond as { condition: string }).condition}`);
+      }
+    }
     lines.push("    healthcheck:");
     lines.push("      test:");
     for (const t of cp.healthcheck.test) {
@@ -688,6 +994,10 @@ export function serializeYaml(compose: ComposeOutput): string {
     }
     lines.push("    tmpfs:");
     for (const t of ct.tmpfs) lines.push(`      - "${t}"`);
+    if (ct.dns && ct.dns.length > 0) {
+      lines.push("    dns:");
+      for (const d of ct.dns) lines.push(`      - ${d}`);
+    }
     if (ct.depends_on && Object.keys(ct.depends_on).length > 0) {
       lines.push("    depends_on:");
       for (const [svc, cond] of sortedEntries(ct.depends_on)) {
@@ -726,12 +1036,57 @@ export function serializeYaml(compose: ComposeOutput): string {
     for (const [key, val] of sortedEntries(ts.environment)) {
       lines.push(`      ${key}: "${val}"`);
     }
+    if (ts.dns && ts.dns.length > 0) {
+      lines.push("    dns:");
+      for (const d of ts.dns) lines.push(`      - ${d}`);
+    }
+    if (ts.depends_on && Object.keys(ts.depends_on).length > 0) {
+      lines.push("    depends_on:");
+      for (const [name, cond] of sortedEntries(ts.depends_on)) {
+        lines.push(`      ${name}:`);
+        lines.push(`        condition: ${(cond as { condition: string }).condition}`);
+      }
+    }
     lines.push("    healthcheck:");
     lines.push("      test:");
     for (const t of ts.healthcheck.test) lines.push(`        - "${t}"`);
     lines.push(`      interval: ${ts.healthcheck.interval}`);
     lines.push(`      timeout: ${ts.healthcheck.timeout}`);
     lines.push(`      retries: ${ts.healthcheck.retries}`);
+  }
+
+  // dns-resolver sidecar — runs dnsmasq in host network ns, populates the
+  // host clawhq_egress ipset on every container DNS query.
+  if (compose.services["dns-resolver"]) {
+    const dr = compose.services["dns-resolver"];
+    lines.push("", "  dns-resolver:");
+    lines.push(`    image: ${dr.image}`);
+    if (dr.container_name) lines.push(`    container_name: ${dr.container_name}`);
+    lines.push(`    network_mode: ${dr.network_mode}`);
+    lines.push(`    read_only: ${dr.read_only}`);
+    lines.push(`    restart: ${dr.restart}`);
+    lines.push("    cap_drop:");
+    for (const cap of dr.cap_drop) lines.push(`      - ${cap}`);
+    lines.push("    cap_add:");
+    for (const cap of dr.cap_add) lines.push(`      - ${cap}`);
+    lines.push("    security_opt:");
+    for (const opt of dr.security_opt) lines.push(`      - ${opt}`);
+    lines.push("    volumes:");
+    for (const v of dr.volumes) lines.push(`      - "${v}"`);
+    lines.push("    command:");
+    for (const c of dr.command) lines.push(`      - "${c}"`);
+    lines.push("    healthcheck:");
+    lines.push("      test:");
+    for (const t of dr.healthcheck.test) {
+      if (t.includes('"')) {
+        lines.push(`        - '${t}'`);
+      } else {
+        lines.push(`        - "${t}"`);
+      }
+    }
+    lines.push(`      interval: ${dr.healthcheck.interval}`);
+    lines.push(`      timeout: ${dr.healthcheck.timeout}`);
+    lines.push(`      retries: ${dr.healthcheck.retries}`);
   }
 
   lines.push("", "networks:");
@@ -745,6 +1100,14 @@ export function serializeYaml(compose: ComposeOutput): string {
         lines.push("    driver_opts:");
         for (const [key, val] of sortedEntries(net.driver_opts)) {
           lines.push(`      ${key}: "${val}"`);
+        }
+      }
+      if (net.ipam && net.ipam.config.length > 0) {
+        lines.push("    ipam:");
+        lines.push("      config:");
+        for (const cfg of net.ipam.config) {
+          lines.push(`        - subnet: ${cfg.subnet}`);
+          lines.push(`          gateway: ${cfg.gateway}`);
         }
       }
     }

@@ -371,9 +371,14 @@ export const probeGitHub: CredentialProbe = async (env) => {
 // ── X/Twitter Probe ─────────────────────────────────────────────────────────
 
 /**
- * Validate an X/Twitter bearer token by calling the /2/users/me endpoint.
+ * Validate an X/Twitter bearer token via /2/users/by/username/{name}.
  *
- * Bearer tokens don't have a standard prefix.
+ * Probes the same endpoint the agent's `x` tool uses (src/design/tools/x.ts),
+ * so a passing probe means the actual tool will work. App-only OAuth 2.0
+ * bearer tokens — the default issued by the developer portal — are valid
+ * here; user-context tokens also work. Avoid /2/users/me: it requires
+ * user-context auth and 403s on app-only tokens, which previously made
+ * Twitter look broken when the credential was actually fine.
  */
 export const probeX: CredentialProbe = async (env) => {
   const integration = "X/Twitter";
@@ -384,7 +389,7 @@ export const probeX: CredentialProbe = async (env) => {
     return missing(integration, envKey, `Set ${envKey} in your .env file. Get a bearer token from https://developer.twitter.com/`);
   }
 
-  const result = await probeFetch("https://api.twitter.com/2/users/me", {
+  const result = await probeFetch("https://api.twitter.com/2/users/by/username/Twitter", {
     method: "GET",
     headers: { Authorization: `Bearer ${key}` },
   });

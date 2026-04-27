@@ -15,7 +15,11 @@ import { copyFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/pro
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { DEPLOY_COMPOSE_TIMEOUT_MS } from "../../config/defaults.js";
+import {
+  DEPLOY_COMPOSE_TIMEOUT_MS,
+  DNS_RESOLVER_GATEWAY,
+  DNS_RESOLVER_SUBNET,
+} from "../../config/defaults.js";
 import { withDeployLock } from "../../config/lock.js";
 import { opsPath } from "../../config/ops-paths.js";
 import {
@@ -263,12 +267,21 @@ async function deployImpl(options: DeployOptions): Promise<DeployResult> {
   try {
     await execFileAsync(
       "docker",
-      ["compose", "-f", join(engineDir, "docker-compose.yml"), "up", "-d", "--wait"],
+      [
+        "compose",
+        "-f",
+        join(engineDir, "docker-compose.yml"),
+        "up",
+        "-d",
+        "--wait",
+        "--remove-orphans",
+      ],
       { timeout: DEPLOY_COMPOSE_TIMEOUT_MS, signal },
     );
     report("compose-up", "done", "Containers started");
 
     await ensureOllamaReachable(report);
+    await ensureDnsResolverReachable(report);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     report("compose-up", "failed", "Failed to start containers");
@@ -456,7 +469,13 @@ async function shutdownImpl(options: ShutdownOptions): Promise<ShutdownResult> {
   report("compose-up", "running", "Stopping containers…");
 
   try {
-    const args = ["compose", "-f", join(engineDir, "docker-compose.yml"), "down"];
+    const args = [
+      "compose",
+      "-f",
+      join(engineDir, "docker-compose.yml"),
+      "down",
+      "--remove-orphans",
+    ];
     if (options.removeVolumes) args.push("-v");
 
     await execFileAsync("docker", args, { timeout: DEPLOY_COMPOSE_TIMEOUT_MS, signal });
@@ -599,6 +618,52 @@ async function ensureOllamaReachable(
     }
   } catch {
     // sudo unavailable or rule add failed — non-fatal, doctor surfaces it.
+  }
+}
+
+/**
+ * Allow container → host:53 (UDP+TCP) for the dns-resolver sidecar.
+ *
+ * The dns-resolver runs in `network_mode: host` and binds dnsmasq to the
+ * bridge gateway IP (172.28.0.1). Because that IP is the host, container
+ * DNS queries land on the host's INPUT chain — which on UFW-managed hosts
+ * has policy DROP. Without an explicit allow, every tool integration
+ * (Telegram, IMAP/SMTP, CalDAV, Fastmail, etc.) silently fails to
+ * resolve names from inside the agent container.
+ *
+ * Mirror of `ensureOllamaReachable` but on INPUT (DNS goes to the host)
+ * rather than FORWARD (Ollama goes to a container on another network).
+ * Idempotent: -C-then-fallback-to-I dedupes across re-deploys.
+ */
+async function ensureDnsResolverReachable(
+  report: (step: DeployStepName, status: DeployStepStatus, message: string) => void,
+): Promise<void> {
+  const subnet = DNS_RESOLVER_SUBNET;
+  const gateway = DNS_RESOLVER_GATEWAY;
+
+  for (const proto of ["udp", "tcp"] as const) {
+    try {
+      try {
+        await execFileAsync(
+          "sudo",
+          ["iptables", "-C", "INPUT",
+           "-s", subnet, "-d", gateway,
+           "-p", proto, "--dport", "53", "-j", "ACCEPT"],
+          { timeout: 5000 },
+        );
+      } catch {
+        await execFileAsync(
+          "sudo",
+          ["iptables", "-I", "INPUT",
+           "-s", subnet, "-d", gateway,
+           "-p", proto, "--dport", "53", "-j", "ACCEPT"],
+          { timeout: 5000 },
+        );
+        report("compose-up", "done", `DNS resolver reachability rule applied (${proto}/53)`);
+      }
+    } catch {
+      // sudo unavailable or rule add failed — non-fatal, doctor surfaces it.
+    }
   }
 }
 

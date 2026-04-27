@@ -388,7 +388,7 @@ describe("probeX", () => {
     await probeX({ X_BEARER_TOKEN: "mytoken" });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://api.twitter.com/2/users/me");
+    expect(url).toBe("https://api.twitter.com/2/users/by/username/Twitter");
     const headers = init?.headers as Record<string, string>;
     expect(headers["Authorization"]).toBe("Bearer mytoken");
   });
