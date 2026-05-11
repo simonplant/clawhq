@@ -53,9 +53,17 @@ iptables chain: CLAWHQ_FWD
   └── * → LOG + DROP
 ```
 
-The chain attaches to the Docker bridge interface (e.g., `openclaw0`)
-via a FORWARD rule, so it governs inter-container traffic routed
-through the bridge as well as external egress.
+The chain attaches to FORWARD with a **source-scoped jump** matching
+the agent's compose network subnet (e.g.,
+`-A FORWARD -s 172.28.0.0/16 -j CLAWHQ_FWD`), so it governs only the
+agent's traffic. Build containers on `docker0` and unrelated host
+workloads on other Docker networks are not affected. The subnet is
+auto-detected via `docker network inspect` at deploy time.
+
+This was previously a global jump (`-A FORWARD -j CLAWHQ_FWD`) that
+filtered every container on the host — see
+[[firewall-attached-globally-blocks-builds]] for the bug, the fix, and
+the IPv6 caveat.
 
 ## Critical operational detail
 
@@ -113,4 +121,5 @@ Defense in depth — neither layer is trusted alone.
 - [[threat-model]]
 - [[container-hardening]]
 - [[firewall-not-reapplied-after-network-recreate]]
+- [[firewall-attached-globally-blocks-builds]]
 - [[prompt-injection-defense]]

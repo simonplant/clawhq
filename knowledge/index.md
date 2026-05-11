@@ -35,6 +35,7 @@
 - [[credential-health-probes]] — Credential health probes (openclaw/security)
 - [[egress-firewall]] — Egress firewall (openclaw/security)
 - [[firewall-not-reapplied-after-network-recreate]] — Egress firewall not reapplied after Docker network recreate (openclaw/landmine)
+- [[firewall-attached-globally-blocks-builds]] — CLAWHQ_FWD attached globally to FORWARD blocks docker build and other host workloads (clawhq/landmine, fixed)
 - [[external-networks-not-created]] — External Docker networks not created before compose up (openclaw/landmine)
 - [[files-are-the-agent]] — Files are the agent (openclaw/concept)
 - [[fs-workspace-only-misconfigured]] — fs.workspaceOnly misconfigured either blocks media or leaks host FS (openclaw/landmine)

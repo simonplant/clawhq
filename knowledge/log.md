@@ -240,3 +240,11 @@ skill), and adjacent landmines.
 Page records the known gap: `himalaya` config generator is not yet produced
 by `clawhq apply` on Clawdius (from 2026-04-16 toolfix triage). Tool,
 permissions, and egress layers are wired — compile step is not.
+
+## [2026-05-11] ingest | Filed firewall-scope landmine discovered during Clawdius update
+
+**Created:** [[firewall-attached-globally-blocks-builds]] (Decisions/landmine, status: fixed)
+**Updated:** [[egress-firewall]] (corrected aspirational claim that the chain attached per-bridge — the actual attach was global until 2026-05-11; now scoped to the agent compose subnet)
+**Trigger:** `clawhq update` v2026.4.21 → v2026.5.7 timed out on `pnpm install` because CLAWHQ_FWD was attached globally on FORWARD and was filtering build-container egress to npm/Cloudflare.
+**Code commits:** `69db47a` (source-scope fix), `312f770` (lint), `e75185c` (separate compiler fix for v2026.5.7 schema drop of `agents.defaults.llm`).
+**Caveats noted:** IPv6 attachment remains global (no v6 subnet pinned).
