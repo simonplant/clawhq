@@ -63,6 +63,7 @@ export const IPSET_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 export async function applyFirewall(options: FirewallOptions): Promise<FirewallResult> {
   const airGap = options.airGap ?? false;
   const allowlist = airGap ? [] : (options.allowlist ?? (await loadAllowlist(options.deployDir)));
+  const forwardScopeCidr = options.forwardScopeCidr;
 
   // ipset is a hard prerequisite when there's any allowlist to apply.
   if (!airGap && allowlist.length > 0) {
@@ -111,6 +112,7 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
       resolved.v4,
       ports,
       airGap,
+      forwardScopeCidr,
       options.signal,
     );
 
@@ -130,6 +132,8 @@ export async function applyFirewall(options: FirewallOptions): Promise<FirewallR
         resolved.v6,
         ports,
         airGap,
+        // v6 attach stays global — no pinned v6 subnet to scope to.
+        undefined,
         options.signal,
       );
     } catch (err) {
@@ -586,20 +590,73 @@ async function ensureChain(cmd: IptablesCmd, signal?: AbortSignal): Promise<void
  * errors, which means no more matches), then inserts exactly one. Net
  * effect: the rule count is always 1 after this call, no matter how many
  * duplicates existed before.
+ *
+ * When `forwardScopeCidr` is provided, the jump is scoped:
+ *     iptables -I FORWARD -s <cidr> -j CLAWHQ_FWD
+ * rather than the legacy global form. This is what stops the chain from
+ * filtering unrelated docker workloads (e.g. `docker build` traffic on
+ * docker0 during a from-source clawhq update). Cleanup tries BOTH
+ * scoped and legacy forms so the transition is idempotent and changing
+ * scopes doesn't strand stale jumps.
  */
-async function attachToForward(cmd: IptablesCmd, signal?: AbortSignal): Promise<void> {
-  // Bounded loop — iptables can't hold more than a handful of duplicates
-  // without prior bugs, and an unbounded loop here would be a DoS if a
-  // caller somehow caused -D to keep succeeding. 32 is far more than
-  // realistic duplicate counts and far less than pathological.
-  for (let i = 0; i < 32; i++) {
+// Exported for tests. Public API stays at `applyFirewall`.
+export async function attachToForward(
+  cmd: IptablesCmd,
+  forwardScopeCidr: string | undefined,
+  signal?: AbortSignal,
+): Promise<void> {
+  await removeAllForwardJumps(cmd, forwardScopeCidr, signal);
+  const insertArgs = forwardScopeCidr
+    ? ["-I", "FORWARD", "-s", forwardScopeCidr, "-j", CHAIN_NAME]
+    : ["-I", "FORWARD", "-j", CHAIN_NAME];
+  await runIptablesCmd(cmd, insertArgs, signal);
+}
+
+/**
+ * Delete every `-j CLAWHQ_FWD` jump on FORWARD, regardless of source scope
+ * or any other match criteria. Works by reading the rule spec via
+ * `iptables -S FORWARD` and replaying each matching line as a `-D`.
+ *
+ * Robust to scope changes: a chain that was attached as `-s <oldCidr>` is
+ * cleaned up correctly even if the caller has no record of `<oldCidr>`,
+ * which is what we need during transitions (legacy global → scoped) and
+ * during teardown (no scope context).
+ */
+async function removeAllForwardJumps(
+  cmd: IptablesCmd,
+  _unusedScope: string | undefined,
+  signal?: AbortSignal,
+): Promise<void> {
+  // Bounded outer loop: each pass deletes every jump we currently see.
+  // A second pass is needed iff a rule appeared between -S and -D
+  // (concurrent firewall write — shouldn't happen, but cheap to guard).
+  for (let pass = 0; pass < 4; pass++) {
+    let stdout = "";
     try {
-      await runIptablesCmd(cmd, ["-D", "FORWARD", "-j", CHAIN_NAME], signal);
+      ({ stdout } = await execFileAsync(
+        "sudo",
+        [cmd, "-S", "FORWARD"],
+        { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
+      ));
     } catch {
-      break;
+      return; // can't enumerate — nothing to do
+    }
+
+    const lines = stdout
+      .split("\n")
+      .filter((l) => l.startsWith("-A FORWARD") && l.includes(`-j ${CHAIN_NAME}`));
+    if (lines.length === 0) return;
+
+    for (const line of lines) {
+      // Convert `-A FORWARD ... -j CLAWHQ_FWD` to a -D with the same spec.
+      const args = line.replace(/^-A /, "-D ").split(/\s+/);
+      try {
+        await runIptablesCmd(cmd, args, signal);
+      } catch {
+        // Another writer may have removed it. Continue.
+      }
     }
   }
-  await runIptablesCmd(cmd, ["-I", "FORWARD", "-j", CHAIN_NAME], signal);
 }
 
 /**
@@ -619,6 +676,7 @@ async function reconcileFamily(
   ips: readonly string[],
   ports: readonly number[],
   airGap: boolean,
+  forwardScopeCidr: string | undefined,
   signal?: AbortSignal,
 ): Promise<number> {
   let rules = 0;
@@ -681,7 +739,7 @@ async function reconcileFamily(
   rules += 2;
 
   // 5. Attach to FORWARD — de-dupes any prior jumps.
-  await attachToForward(cmd, signal);
+  await attachToForward(cmd, forwardScopeCidr, signal);
 
   return rules;
 }
@@ -704,11 +762,10 @@ async function teardown(signal?: AbortSignal): Promise<FirewallResult> {
 
 /** Remove chain from FORWARD and delete it. Safe if chain doesn't exist. */
 async function removeChain(cmd: IptablesCmd, signal?: AbortSignal): Promise<void> {
-  try {
-    await runIptablesCmd(cmd, ["-D", "FORWARD", "-j", CHAIN_NAME], signal);
-  } catch {
-    // Not attached — that's fine
-  }
+  // Teardown has no scope context, so strip every CLAWHQ_FWD jump
+  // (legacy global form + any source-scoped form that was previously
+  // attached). Bounded loop matches the apply path.
+  await removeAllForwardJumps(cmd, undefined, signal);
   try {
     await runIptablesCmd(cmd, ["-F", CHAIN_NAME], signal);
     await runIptablesCmd(cmd, ["-X", CHAIN_NAME], signal);

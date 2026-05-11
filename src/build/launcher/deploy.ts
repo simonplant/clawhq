@@ -330,7 +330,20 @@ async function deployImpl(options: DeployOptions): Promise<DeployResult> {
   } catch { /* no config or parse error — default to enabled */ }
 
   if (!options.skipFirewall && !firewallDisabledByConfig) {
-    const firewallOpts = { deployDir, airGap: options.airGap, signal };
+    // Scope CLAWHQ_FWD's FORWARD jump to the agent network's subnet so the
+    // chain doesn't filter unrelated docker workloads on the host — most
+    // importantly `docker build` traffic during a from-source clawhq update,
+    // which uses the default docker0 bridge on a different /16 than the
+    // agent. Look up the live subnet via `docker network inspect`; if the
+    // lookup fails we fall back to the legacy global attach (preserving
+    // existing behavior).
+    const forwardScopeCidr = await inspectAgentSubnetV4(engineDir, signal);
+    const firewallOpts = {
+      deployDir,
+      airGap: options.airGap,
+      forwardScopeCidr,
+      signal,
+    };
     report("firewall", "running", options.airGap ? "Applying air-gap firewall (all egress blocked)…" : "Applying egress firewall…");
 
     const fwResult = await applyFirewall(firewallOpts);
@@ -704,6 +717,53 @@ async function lockIdentityFiles(deployDir: string): Promise<IdentityLockResult>
       return { success: true, filesLocked: 0 };
     }
     return { success: false, filesLocked: 0, error: msg };
+  }
+}
+
+/**
+ * Inspect the agent's docker network and return its v4 subnet, or
+ * undefined if the network has no IPAM config or the inspect failed.
+ *
+ * Resolves the network name by reading the live compose project: a
+ * compose project named "engine" yields a network named "engine_<svc>"
+ * for each declared network. We don't know the engine's compose project
+ * name a priori (it's derived from the directory containing the compose
+ * file), so we list networks with a `com.docker.compose.project` label
+ * matching the engineDir's basename, then pick the first.
+ */
+async function inspectAgentSubnetV4(
+  engineDir: string,
+  signal?: AbortSignal,
+): Promise<string | undefined> {
+  try {
+    const project = engineDir.split("/").pop() ?? "engine";
+    const { stdout: listOut } = await execFileAsync(
+      "docker",
+      [
+        "network",
+        "ls",
+        "--filter",
+        `label=com.docker.compose.project=${project}`,
+        "--format",
+        "{{.Name}}",
+      ],
+      { timeout: 10_000, signal },
+    );
+    const networkName = listOut.split("\n").find((n) => n.trim().length > 0)?.trim();
+    if (!networkName) return undefined;
+
+    const { stdout: inspectOut } = await execFileAsync(
+      "docker",
+      ["network", "inspect", networkName, "--format", "{{range .IPAM.Config}}{{.Subnet}}\n{{end}}"],
+      { timeout: 10_000, signal },
+    );
+    const subnet = inspectOut
+      .split("\n")
+      .map((s) => s.trim())
+      .find((s) => s.length > 0 && s.includes(".")); // v4 only — ignore v6 subnets
+    return subnet;
+  } catch {
+    return undefined;
   }
 }
 

@@ -143,6 +143,16 @@ export interface FirewallOptions {
   readonly allowlist?: readonly FirewallAllowEntry[];
   /** Block ALL egress including DNS. The paranoid user's kill switch. */
   readonly airGap?: boolean;
+  /**
+   * Source CIDR for the FORWARD jump (v4 only). When set, CLAWHQ_FWD is
+   * attached as `-I FORWARD -s <cidr> -j CLAWHQ_FWD` instead of a global
+   * jump. Scopes the filter to the agent's network so other docker
+   * workloads on the host (notably `docker build` for source-build
+   * updates, which uses the default docker0 bridge on a different /16)
+   * pass through FORWARD unfiltered. Leave undefined to preserve legacy
+   * global behavior. v6 attachment remains global — no pinned v6 subnet.
+   */
+  readonly forwardScopeCidr?: string;
   readonly signal?: AbortSignal;
 }
 
