@@ -631,7 +631,7 @@ async function removeAllForwardJumps(
   // A second pass is needed iff a rule appeared between -S and -D
   // (concurrent firewall write — shouldn't happen, but cheap to guard).
   for (let pass = 0; pass < 4; pass++) {
-    let stdout = "";
+    let stdout: string;
     try {
       ({ stdout } = await execFileAsync(
         "sudo",
