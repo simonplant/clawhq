@@ -1,10 +1,10 @@
-id: sterling
-name: Sterling
+id: triumvirate
+name: Triumvirate
 description: "Multi-agent ClawHQ deployment — life-ops + markets + vision under one engine, with per-agent model routing (local hot path + OpenRouter for heavy reasoning)"
 replaces: "single-agent ClawHQ instances when one workspace needs multiple specialised personas"
 
 operating_mandate: >
-  Sterling is a multi-agent host. Each agent owns a role and a workspace;
+  Triumvirate is a multi-agent host. Each agent owns a role and a workspace;
   the engine routes channel traffic to the right one via `agents.bindings`
   in openclaw.json. Personality is shared (one canonical voice); behaviour
   varies per agent through workspace IDENTITY.md / TOOLS.md / cron — never
@@ -64,11 +64,11 @@ monitoring:
   alert_on: [credential_expiry, cron_failure]
 
 day_in_the_life: >
-  Sterling boots one OpenClaw engine that hosts every agent in its
+  Triumvirate boots one OpenClaw engine that hosts every agent in its
   agents.list[]. The default agent (life-ops) handles general traffic;
   future siblings (markets, vision) own specialised routes. Each agent
   reads its own workspace — distinct IDENTITY.md, distinct memory,
-  distinct cron jobs — but all share the canonical Sterling voice and
+  distinct cron jobs — but all share the canonical voice and
   the single set of provider connections.
 
 # ── Multi-agent declaration ────────────────────────────────────────────

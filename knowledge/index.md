@@ -6,7 +6,7 @@
 - [[auto-reply-router]] — Auto-reply router (openclaw/component)
 - [[blueprint-system]] — Blueprint system (clawhq/architecture)
 - [[bootstrap-md]] — BOOTSTRAP.md (openclaw/component)
-- [[sterling-multi-agent]] — Sterling multi-agent profile (clawhq/architecture)
+- [[triumvirate-multi-agent]] — Triumvirate multi-agent profile (clawhq/architecture)
 - [[doctor-diagnostics]] — Doctor preventive diagnostics (openclaw/operation)
 - [[email-integration]] — Email integration defaults: tool, permissions, egress, probe (openclaw/integration)
 - [[gateway-process]] — Gateway process (openclaw/component)

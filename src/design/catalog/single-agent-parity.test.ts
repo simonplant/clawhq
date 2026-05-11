@@ -3,7 +3,7 @@
  * into single-agent blueprints.
  *
  * Why this test exists: ClawHQ supports per-agent overrides via
- * `agents.list[]` (Sterling). Every existing blueprint (life-ops,
+ * `agents.list[]` (Triumvirate). Every existing blueprint (life-ops,
  * family-hub, stoic-coach, etc.) stays single-agent and MUST keep producing
  * the same `agents` block it produces today — `agents.defaults` only, no
  * `agents.list`. If a future compiler change silently starts emitting
@@ -12,7 +12,7 @@
  *
  * This file pins the contract: single-agent blueprints emit a single-agent
  * `agents` block. When a blueprint INTENTIONALLY becomes multi-agent
- * (sterling), add it to the EXCLUDED set below — that's a one-line
+ * (triumvirate), add it to the EXCLUDED set below — that's a one-line
  * change that gets reviewed as part of the multi-agent work.
  */
 
@@ -39,7 +39,7 @@ const DEPLOY_DIR = "/tmp/single-agent-parity-test";
  * be checked against the single-agent contract.
  */
 const MULTI_AGENT_PROFILES = new Set<string>([
-  "sterling", // Multi-agent host.
+  "triumvirate", // Multi-agent host.
 ]);
 
 function compileOpenclawJson(profile: string): string {

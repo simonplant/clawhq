@@ -1,6 +1,6 @@
 /**
  * Workspace manifest scan — locks the contract for per-agent identity
- * directories in multi-agent (Sterling) profiles.
+ * directories in multi-agent (Triumvirate) profiles.
  *
  * scanWorkspaceManifest builds the immutable file list that the Docker
  * compose generator uses to mount identity files chmod 444 :ro — the

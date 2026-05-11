@@ -1,19 +1,19 @@
 ---
-title: Sterling multi-agent profile
+title: Triumvirate multi-agent profile
 category: Features
 status: active
 date: 2026-05-11
-tags: [clawhq, sterling, multi-agent, routing, openrouter, blueprint]
+tags: [clawhq, triumvirate, multi-agent, routing, openrouter, blueprint]
 sources:
   - https://docs.openclaw.ai/concepts/multi-agent
   - https://docs.openclaw.ai/concepts/model-failover
 ---
 
-# Sterling multi-agent profile
+# Triumvirate multi-agent profile
 
 ## Purpose
 
-`sterling` is the first multi-agent mission profile in ClawHQ. It
+`triumvirate` is the first multi-agent mission profile in ClawHQ. It
 hosts three role-specialised agents — `life-ops`, `markets`, `vision` —
 under one OpenClaw engine, routing each agent's turns to a different
 mix of local and remote models.
@@ -67,7 +67,7 @@ Identity files (SOUL.md, AGENTS.md, etc.) are emitted under
 wildcard pattern form (`workspace/*/SOUL.md`).
 
 Profile-level cron jobs carry `agentId: <default>` so they route to the
-default agent (`life-ops` for Sterling). Per-agent cron schedules are a
+default agent (`life-ops` for Triumvirate). Per-agent cron schedules are a
 future enhancement.
 
 ## Routing semantics
@@ -96,7 +96,7 @@ solo-trader workload. Claude Opus 4.7 sits at the top of the chain
 open models can't handle.
 
 The trade is privacy vs. capability: traffic to OpenRouter leaves the
-machine. Sterling's `markets` and `life-ops` agents have OpenRouter in
+machine. Triumvirate's `markets` and `life-ops` agents have OpenRouter in
 their fallback chains; `vision` does not. The decision is per-agent
 and authorised by the user explicitly.
 
@@ -129,9 +129,10 @@ dominate latency. Mitigations baked into the design:
 - Raise `OLLAMA_MAX_LOADED_MODELS` to 2 if benching shows two models
   fit concurrently without paging — separate decision, separate PR.
 
-## Adding agents 4-N
+## Adding more agents
 
-The blueprint surface for adding a fourth agent is one entry in
+The name "triumvirate" describes the shipping shape (three agents); the
+underlying runtime is N-agent. Adding a fourth is one entry in
 `agents:` plus any pulls for new local models. The compiler handles
 the rest: provider entries, ownership, workspace partition, cron
 routing.

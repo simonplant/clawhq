@@ -1,5 +1,18 @@
 # Log
 
+## [2026-05-11] rename | sterling profile → triumvirate
+
+The "Sterling" name was reclaimed for an upcoming application-layer agent
+(family-ops on Telegram). The existing ClawHQ multi-agent profile primitive
+was renamed to `triumvirate` — the name describes what the profile is
+(three role-specialised agents) rather than naming a specific application.
+
+Renamed: `configs/profiles/sterling.yaml` → `triumvirate.yaml`,
+`knowledge/wiki/sterling-multi-agent.md` → `triumvirate-multi-agent.md`,
+plus references in `docs/ARCHITECTURE.md`, three test files, and
+`knowledge/index.md`. The 2026-04-23 handoff doc was left untouched
+(historical; refers to an unrelated deploy-dir path).
+
 ## [2026-04-22] migrate | Import 48 pages from prior subject/type wiki into native llm-wiki flat layout
 
 **Source:** `raw/research/` (pre-migration wiki, preserved for reference)
