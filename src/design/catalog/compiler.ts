@@ -1250,6 +1250,26 @@ function renderOpenclawJson(
           models: ollamaModelEntries,
           timeoutSeconds: isLocal ? 300 : 60,
         },
+        // Remote providers referenced by any agent in profile.agents are
+        // declared here so LM-15 passes and OpenClaw can dispatch turns.
+        // Each entry is a minimal { baseUrl, apiKey } pair; the secret
+        // itself stays in .env and is interpolated at runtime.
+        ...Object.fromEntries(
+          Array.from(collectAgentProviders(profile.agents))
+            .filter((id) => id !== "ollama")
+            .filter((id) => REMOTE_PROVIDER_CONFIG.has(id))
+            .map((id) => {
+              const cfg = REMOTE_PROVIDER_CONFIG.get(id);
+              if (!cfg) return [id, {}];
+              return [
+                id,
+                {
+                  baseUrl: cfg.baseUrl,
+                  apiKey: `\${${cfg.apiKeyEnv}}`,
+                },
+              ];
+            }),
+        ),
       },
     },
     cron: {
@@ -1637,6 +1657,58 @@ export function mergeAgentConfig(
   const { primary, fallbacks } = resolveAgentModel(defaults, agent);
   merged.model = { primary, fallbacks };
   return merged;
+}
+
+/**
+ * Provider entries for the openclaw.json `models.providers` block.
+ *
+ * `ollama` is always emitted by the main compiler path (its block is built
+ * separately because it carries `models[]` populated from
+ * composition.modelContextWindow). For any OTHER provider referenced in
+ * `agents.list[].model` (or its fallbacks), the compiler emits a minimal
+ * `{ baseUrl, apiKey }` entry from this table so LM-15 passes and OpenClaw
+ * can dispatch turns to the right SDK.
+ *
+ * The table is intentionally narrow — only the providers actually used in
+ * multi-agent profiles today. Extend with care: every provider here adds an
+ * egress domain that flows into the firewall allowlist via the provider
+ * catalogue in src/design/catalog/providers.ts.
+ */
+const REMOTE_PROVIDER_CONFIG: ReadonlyMap<
+  string,
+  { readonly baseUrl: string; readonly apiKeyEnv: string }
+> = new Map([
+  ["openrouter", { baseUrl: "https://openrouter.ai/api/v1", apiKeyEnv: "OPENROUTER_API_KEY" }],
+  ["anthropic", { baseUrl: "https://api.anthropic.com", apiKeyEnv: "ANTHROPIC_API_KEY" }],
+  ["openai", { baseUrl: "https://api.openai.com/v1", apiKeyEnv: "OPENAI_API_KEY" }],
+  ["google", { baseUrl: "https://generativelanguage.googleapis.com/v1beta", apiKeyEnv: "GEMINI_API_KEY" }],
+]);
+
+/**
+ * Walk every per-agent model reference and return the set of unique
+ * provider prefixes used. Includes primaries and per-agent fallback
+ * chains. `ollama` is intentionally returned alongside remote providers
+ * — callers decide whether to skip it (the main compiler builds ollama's
+ * entry separately).
+ */
+export function collectAgentProviders(
+  profileAgents: readonly ProfileAgentEntry[] | undefined,
+): Set<string> {
+  const providers = new Set<string>();
+  for (const agent of profileAgents ?? []) {
+    const refs: string[] = [];
+    if (agent.model === undefined) continue;
+    if (typeof agent.model === "string") refs.push(agent.model);
+    else {
+      refs.push(agent.model.primary);
+      for (const f of agent.model.fallbacks ?? []) refs.push(f);
+    }
+    for (const ref of refs) {
+      const provider = ref.split("/")[0];
+      if (provider) providers.add(provider);
+    }
+  }
+  return providers;
 }
 
 /**

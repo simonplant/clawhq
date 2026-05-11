@@ -16,7 +16,11 @@
 
 import { describe, expect, it } from "vitest";
 
-import { compile, buildAgentsList } from "./compiler.js";
+import {
+  buildAgentsList,
+  collectAgentProviders,
+  compile,
+} from "./compiler.js";
 import { loadAllProfiles, loadProfile } from "./loader.js";
 import type { UserConfig } from "./types.js";
 
@@ -105,48 +109,159 @@ describe("buildAgentsList — pure helper", () => {
   });
 });
 
-describe("sterling-gen4 compile contract (M2)", () => {
+describe("sterling-gen4 compile contract (M4)", () => {
   const config = compileOpenclawJson("sterling-gen4");
   const agents = config.agents as
     | { list?: unknown[]; defaults?: Record<string, unknown> }
     | undefined;
   const list = agents?.list as Array<Record<string, unknown>> | undefined;
+  const byId = new Map((list ?? []).map((e) => [e.id as string, e]));
 
-  it("emits agents.list[]", () => {
+  it("emits agents.list[] alongside agents.defaults", () => {
     expect(agents).toBeDefined();
     expect(list).toBeDefined();
     expect(Array.isArray(list)).toBe(true);
-  });
-
-  it("still emits agents.defaults alongside list", () => {
-    // defaults must coexist with list — runtime falls back to defaults
-    // for any field an agent omits in its override.
     expect(agents?.defaults).toBeDefined();
   });
 
-  it("has exactly one agent during M2 (life-ops)", () => {
-    // When M4 adds markets + vision, update this expectation. The test
-    // exists so adding an agent is an explicit decision, not accidental.
-    expect(list?.length).toBe(1);
-    expect(list?.[0]?.id).toBe("life-ops");
-    expect(list?.[0]?.default).toBe(true);
+  it("has exactly three agents (life-ops, markets, vision)", () => {
+    // Adding/removing agents from sterling-gen4 is an explicit decision.
+    // Update this expectation alongside the YAML — it's the audit trail.
+    expect(list?.length).toBe(3);
+    expect(byId.has("life-ops")).toBe(true);
+    expect(byId.has("markets")).toBe(true);
+    expect(byId.has("vision")).toBe(true);
   });
 
-  it("the life-ops agent declares its own model.primary", () => {
-    expect(list?.[0]?.model).toBe("ollama/gpt-oss:20b");
+  it("life-ops is the default agent", () => {
+    expect(byId.get("life-ops")?.default).toBe(true);
+    expect(byId.get("markets")?.default).toBeUndefined();
+    expect(byId.get("vision")?.default).toBeUndefined();
   });
 
-  it("life-ops agent workspace defaults to its id", () => {
-    expect(list?.[0]?.workspace).toBe("life-ops");
+  it("life-ops uses gpt-oss with OpenRouter fallbacks", () => {
+    const model = byId.get("life-ops")?.model as {
+      primary: string;
+      fallbacks: string[];
+    };
+    expect(model.primary).toBe("ollama/gpt-oss:20b");
+    expect(model.fallbacks).toContain(
+      "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+    );
+    expect(model.fallbacks).toContain("openrouter/anthropic/claude-sonnet-4.6");
+  });
+
+  it("markets primaries OpenRouter Nemotron Super with paid + Opus fallbacks", () => {
+    const model = byId.get("markets")?.model as {
+      primary: string;
+      fallbacks: string[];
+    };
+    expect(model.primary).toBe(
+      "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+    );
+    expect(model.fallbacks).toEqual([
+      "openrouter/nvidia/nemotron-3-super-120b-a12b",
+      "openrouter/anthropic/claude-opus-4.7",
+    ]);
+  });
+
+  it("vision uses qwen2.5vl as a bare string (no fallback)", () => {
+    // Vision content stays fully local — no remote fallback exists, so
+    // the model is declared as a string (strict-no-fallback per upstream
+    // model-failover semantics).
+    expect(byId.get("vision")?.model).toBe("ollama/qwen2.5vl:32b-q4_K_M");
+  });
+
+  it("vision is sandboxed per-agent", () => {
+    expect(byId.get("vision")?.sandbox).toEqual({
+      mode: "all",
+      scope: "agent",
+    });
+  });
+
+  it("every agent's workspace defaults to its id", () => {
+    expect(byId.get("life-ops")?.workspace).toBe("life-ops");
+    expect(byId.get("markets")?.workspace).toBe("markets");
+    expect(byId.get("vision")?.workspace).toBe("vision");
+  });
+
+  it("models.providers includes openrouter (referenced by life-ops and markets)", () => {
+    const models = config.models as
+      | { providers?: Record<string, { baseUrl?: string; apiKey?: string }> }
+      | undefined;
+    expect(models?.providers?.openrouter).toBeDefined();
+    expect(models?.providers?.openrouter?.baseUrl).toBe(
+      "https://openrouter.ai/api/v1",
+    );
+    // ApiKey is an env var reference, not a literal — the secret stays
+    // in .env and is substituted at runtime.
+    expect(models?.providers?.openrouter?.apiKey).toBe("${OPENROUTER_API_KEY}");
+  });
+
+  it("models.providers does NOT include anthropic directly (we use openrouter's proxy)", () => {
+    // Fallback chain uses "openrouter/anthropic/..." — that's
+    // anthropic-via-openrouter, not direct anthropic API. The compiler
+    // should not synthesize an extra anthropic provider.
+    const models = config.models as
+      | { providers?: Record<string, unknown> }
+      | undefined;
+    expect(models?.providers?.anthropic).toBeUndefined();
   });
 });
 
-describe("sterling-gen4 workspace partitioning (M3)", () => {
+describe("collectAgentProviders — pure helper", () => {
+  it("returns empty set for absent or empty profile.agents", () => {
+    expect(collectAgentProviders(undefined).size).toBe(0);
+    expect(collectAgentProviders([]).size).toBe(0);
+  });
+
+  it("collects the provider prefix from string model declarations", () => {
+    const set = collectAgentProviders([
+      { id: "a", model: "ollama/gpt-oss:20b" },
+      { id: "b", model: "openrouter/anthropic/claude-opus-4.7" },
+    ]);
+    expect([...set].sort()).toEqual(["ollama", "openrouter"]);
+  });
+
+  it("collects providers from object model.primary + fallbacks", () => {
+    const set = collectAgentProviders([
+      {
+        id: "a",
+        model: {
+          primary: "ollama/gpt-oss:20b",
+          fallbacks: [
+            "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+            "openrouter/anthropic/claude-sonnet-4.6",
+          ],
+        },
+      },
+    ]);
+    expect([...set].sort()).toEqual(["ollama", "openrouter"]);
+  });
+
+  it("dedupes across agents", () => {
+    const set = collectAgentProviders([
+      { id: "a", model: "openrouter/anthropic/claude-opus-4.7" },
+      { id: "b", model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free" },
+    ]);
+    expect(set.size).toBe(1);
+    expect(set.has("openrouter")).toBe(true);
+  });
+
+  it("ignores agents without a model field (they inherit defaults)", () => {
+    const set = collectAgentProviders([{ id: "a" }, { id: "b" }]);
+    expect(set.size).toBe(0);
+  });
+});
+
+describe("sterling-gen4 workspace partitioning (M3+M4)", () => {
   const paths = compiledPaths("sterling-gen4");
 
-  it("emits all 8 identity files under workspace/life-ops/", () => {
-    for (const name of IDENTITY_FILES) {
-      expect(paths).toContain(`workspace/life-ops/${name}`);
+  it("emits all 8 identity files under each agent's workspace subdir", () => {
+    for (const agentId of ["life-ops", "markets", "vision"]) {
+      for (const name of IDENTITY_FILES) {
+        expect(paths).toContain(`workspace/${agentId}/${name}`);
+      }
     }
   });
 

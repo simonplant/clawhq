@@ -445,6 +445,7 @@ export function validateLM15(config: OpenClawConfig): ValidationResult {
   }
   const providers = new Set(Object.keys(config.models?.providers ?? {}));
   const offenders: string[] = [];
+  let totalRefs = 0;
   for (const agent of list) {
     const refs: string[] = [];
     if (agent.model !== undefined) {
@@ -454,6 +455,7 @@ export function validateLM15(config: OpenClawConfig): ValidationResult {
         for (const f of agent.model.fallbacks ?? []) refs.push(f);
       }
     }
+    totalRefs += refs.length;
     for (const ref of refs) {
       const provider = ref.split("/")[0];
       if (!provider || !providers.has(provider)) {
@@ -467,7 +469,7 @@ export function validateLM15(config: OpenClawConfig): ValidationResult {
     passed,
     severity: "error",
     message: passed
-      ? `All ${list.length} agent model refs resolve to configured providers`
+      ? `${list.length} agent(s), ${totalRefs} model ref(s) — all resolve to configured providers`
       : `${offenders.length} per-agent model ref(s) reference an unconfigured provider:\n  ${offenders.join("\n  ")}`,
     fix: passed
       ? undefined

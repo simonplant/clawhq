@@ -75,16 +75,48 @@ day_in_the_life: >
   the single set of provider connections.
 
 # ── Multi-agent declaration ────────────────────────────────────────────
-# M2 ships one agent — proves the agents.list[] emit path end-to-end.
-# M4 adds `markets` and `vision`. Adding to this list is the only change
-# required to make Sterling N-agent; the compiler picks it up
-# automatically and openclaw.json grows the corresponding entries.
+# M4 ships three agents — life-ops (default, local hot path), markets
+# (heavy reasoning on OpenRouter), vision (multimodal, fully local).
+# Per-agent fallback chains are honored by upstream OpenClaw
+# (https://docs.openclaw.ai/concepts/model-failover).
+#
+# Operational requirements before `clawhq apply` will succeed:
+#   - ollama pull gpt-oss:20b         (~12 GB on disk)
+#   - ollama pull qwen2.5vl:32b-q4_K_M (~20 GB on disk)
+#   - clawhq creds set OPENROUTER_API_KEY <key>
 agents:
+  # ── life-ops — local hot path, OpenRouter on failure ─────────────────
   - id: life-ops
     default: true
     # workspace defaults to the agent id (life-ops/) when omitted.
     name: Life-ops
-    model: ollama/gpt-oss:20b
-    # tools/skills/sandbox/heartbeat overrides land here in later
-    # milestones; M2 leaves them empty so the agent inherits the
-    # profile-level defaults.
+    model:
+      primary: ollama/gpt-oss:20b
+      fallbacks:
+        - openrouter/nvidia/nemotron-3-super-120b-a12b:free
+        - openrouter/anthropic/claude-sonnet-4.6
+
+  # ── markets — heavy reasoning, remote primary ────────────────────────
+  - id: markets
+    name: Markets
+    model:
+      # Free tier first (262K ctx); paid Nemotron Super on rate-limit;
+      # Opus 4.7 as the genuine frontier escape hatch for the hardest
+      # multi-step trading reasoning. Position data leaves the machine
+      # on every turn — explicitly authorised for this agent only.
+      primary: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+      fallbacks:
+        - openrouter/nvidia/nemotron-3-super-120b-a12b
+        - openrouter/anthropic/claude-opus-4.7
+
+  # ── vision — multimodal, fully local, no remote fallback ─────────────
+  - id: vision
+    name: Vision
+    # No fallbacks: vision content (images, OCR) stays on the machine.
+    # On local outage the agent fails loud rather than escaping to
+    # OpenRouter. qwen2.5vl 32B Q4 fits the 5090 alongside one other
+    # loaded model.
+    model: ollama/qwen2.5vl:32b-q4_K_M
+    sandbox:
+      mode: all
+      scope: agent
