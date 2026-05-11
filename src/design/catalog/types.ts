@@ -94,6 +94,24 @@ export interface ProfileAgentEntry {
   readonly groupChat?: {
     readonly mentionPatterns?: readonly string[];
   };
+  /** Per-agent cron jobs — emitted as agentTurn jobs with this agent's
+   *  id. Unlike `profile.cron_defaults` (which routes to the DEFAULT
+   *  agent in a multi-agent profile), entries here are owned by the
+   *  declaring agent — useful for role-specific cadences like a
+   *  market-hours-only heartbeat. Job id in the emitted cron/jobs.json
+   *  is prefixed with `<agent-id>-` to keep ids unique across agents. */
+  readonly cron?: Readonly<Record<
+    string,
+    {
+      readonly expr: string;
+      readonly prompt: string;
+      readonly announce?: boolean;
+      /** Per-job model override. Defaults to the agent's effective
+       *  primary; only set this to use a smaller/larger model for a
+       *  specific cron without affecting the agent's normal turns. */
+      readonly model?: string;
+    }
+  >>;
 }
 
 export interface MissionProfile {

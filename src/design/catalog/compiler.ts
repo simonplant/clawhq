@@ -1408,10 +1408,25 @@ function renderCronJobs(
   // agent. Without an explicit agentId, upstream OpenClaw runs the job
   // against whichever agent it picks — for multi-agent that's ambiguous
   // and the cron's identity files (HEARTBEAT.md etc.) would resolve to
-  // the wrong workspace. Per-agent cron schedules (different cadence per
-  // role) are a future enhancement; today every job goes to the default.
-  const defaultAgentId = profile.agents?.find((a) => a.default)?.id
-    ?? profile.agents?.[0]?.id;
+  // the wrong workspace.
+  const defaultAgent = profile.agents?.find((a) => a.default)
+    ?? profile.agents?.[0];
+  const defaultAgentId = defaultAgent?.id;
+
+  // Resolve the EFFECTIVE primary model for a per-agent context. Falls
+  // back to the global primary when the agent doesn't declare one (or
+  // for single-agent profiles where `agent` is undefined). The model
+  // field in a cron payload is a runtime override — emitting the global
+  // default for a job routed to a non-default agent would force that
+  // agent's turn through the wrong model.
+  const effectivePrimary = (
+    agent: ProfileAgentEntry | undefined,
+  ): string => {
+    if (!agent) return primary;
+    if (typeof agent.model === "string") return agent.model;
+    if (agent.model?.primary) return agent.model.primary;
+    return primary;
+  };
 
   const announceDelivery = telegramChatId
     ? {
@@ -1431,7 +1446,10 @@ function renderCronJobs(
     const message = profile.cron_prompts[id] ?? `Run ${id}`;
     const jobId = id.replace(/_/g, "-");
 
-    // Model selection: always use the configured primary model.
+    // Model selection: use the EFFECTIVE primary for the agent this job
+    // routes to. Single-agent profiles use the global primary; multi-
+    // agent profiles use the default agent's primary so the runtime
+    // doesn't override agentId-routed turns with the wrong provider.
     //
     // Previously the cloud branch emitted bare Anthropic shorthands
     // ("haiku"/"sonnet"/"opus") for tier-based cost optimisation — but
@@ -1442,15 +1460,7 @@ function renderCronJobs(
     // broke Clawdius's heartbeat cron when composition was stripped:
     // primary silently became a cloud model, the cron used bare
     // "haiku", but the Ollama-routed runtime couldn't find it.
-    //
-    // Using `primary` for every cron ID is simpler, always matches
-    // the runtime's configured provider, and fails loudly if the
-    // primary itself is wrong (rather than silently mis-routing
-    // via an unqualified shorthand). Cost-tiering for cloud users
-    // can be re-introduced via explicit per-job model configuration
-    // in the profile's cron_prompts, which is more legible than
-    // implicit tier inference anyway.
-    const model = primary;
+    const model = effectivePrimary(defaultAgent);
 
     jobs.push({
       id: jobId,
@@ -1486,11 +1496,37 @@ function renderCronJobs(
       payload: {
         kind: "agentTurn",
         message: `Run skill: ${skill}`,
-        model: primary,
+        model: effectivePrimary(defaultAgent),
       },
       sessionTarget: "isolated",
       state: {},
     });
+  }
+
+  // Per-agent cron jobs (multi-agent profiles only). Each agent's cron
+  // entries become jobs with that agent's id — distinct from the
+  // profile-level cron which routes to the default agent.
+  for (const agent of profile.agents ?? []) {
+    if (!agent.cron) continue;
+    const agentPrimary = effectivePrimary(agent);
+    for (const [cronId, def] of sortedEntries(agent.cron)) {
+      const jobId = `${agent.id}-${cronId.replace(/_/g, "-")}`;
+      jobs.push({
+        id: jobId,
+        name: jobId,
+        enabled: true,
+        schedule: { kind: "cron", expr: def.expr },
+        delivery: def.announce === true ? announceDelivery : { mode: "none" },
+        agentId: agent.id,
+        payload: {
+          kind: "agentTurn",
+          message: def.prompt,
+          model: def.model ?? agentPrimary,
+        },
+        sessionTarget: "isolated",
+        state: {},
+      });
+    }
   }
 
   // Wrap in versioned envelope

@@ -341,13 +341,51 @@ describe("cron routing (M5)", () => {
     return JSON.parse(cron.content) as Record<string, unknown>;
   }
 
-  it("multi-agent cron carries agentId on every job (routes to default)", () => {
+  it("multi-agent cron carries agentId on every job", () => {
+    // Profile-level cron routes to the default agent; per-agent cron
+    // (M7) routes to its declaring agent. Either way, every job has
+    // an agentId — the runtime never has to guess.
     const cron = compiledCron("sterling-gen4");
     const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
     expect(jobs.length).toBeGreaterThan(0);
     for (const job of jobs) {
-      expect(job.agentId).toBe("life-ops");
+      expect(job.agentId).toBeDefined();
+      expect(typeof job.agentId).toBe("string");
     }
+  });
+
+  it("profile-level cron routes to the default agent (life-ops)", () => {
+    // "heartbeat" comes from sterling-gen4's cron_defaults.
+    const cron = compiledCron("sterling-gen4");
+    const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
+    const heartbeat = jobs.find((j) => j.id === "heartbeat");
+    expect(heartbeat?.agentId).toBe("life-ops");
+  });
+
+  it("per-agent cron routes to its declaring agent (markets)", () => {
+    // sterling-gen4's markets agent declares market-hours-pulse.
+    const cron = compiledCron("sterling-gen4");
+    const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
+    const marketsCron = jobs.find((j) => j.id === "markets-market-hours-pulse");
+    expect(marketsCron).toBeDefined();
+    expect(marketsCron?.agentId).toBe("markets");
+  });
+
+  it("cron model field reflects the routed agent's effective primary", () => {
+    // life-ops primary is gpt-oss; markets primary is OpenRouter.
+    // The cron's `model` payload must match the agent it's routed to,
+    // or the runtime would override the agent's declared primary on
+    // every cron tick.
+    const cron = compiledCron("sterling-gen4");
+    const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
+    const heartbeat = jobs.find((j) => j.id === "heartbeat");
+    const heartbeatPayload = heartbeat?.payload as { model: string };
+    expect(heartbeatPayload.model).toBe("ollama/gpt-oss:20b");
+    const marketsCron = jobs.find((j) => j.id === "markets-market-hours-pulse");
+    const marketsPayload = marketsCron?.payload as { model: string };
+    expect(marketsPayload.model).toBe(
+      "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+    );
   });
 
   it("single-agent cron does NOT emit agentId", () => {

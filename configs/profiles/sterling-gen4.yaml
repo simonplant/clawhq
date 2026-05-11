@@ -106,6 +106,22 @@ agents:
   # ── markets — heavy reasoning, remote primary ────────────────────────
   - id: markets
     name: Markets
+    # Per-agent cron — runs ONLY for this agent (jobs.json carries
+    # agentId=markets). Distinct from profile.cron_defaults which routes
+    # to the default agent (life-ops).
+    cron:
+      market-hours-pulse:
+        # Every 15 min during US market hours, Mon-Fri.
+        # Cron is interpreted in the host timezone; tune for your TZ if
+        # not running in America/Los_Angeles.
+        expr: "*/15 13-20 * * 1-5"
+        announce: true
+        prompt: >
+          Run market-hours pulse: check level proximity in the
+          today-orders watchlist, surface any AT_ENTRY / NEAR_STOP /
+          AT_T1 alerts with one-line context from today's brief, and
+          flag any kill-condition triggers. Respond HEARTBEAT_OK when
+          quiet — never log every poll, only surface signal.
     description: >
       Trading research and pre-market briefing specialist. Synthesises
       Mancini, Focus 25, DP signals into ranked order-ready ideas.
