@@ -348,7 +348,121 @@ describe("checks", { timeout: 30_000 }, () => {
 
   it("runs all checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(42);
+    expect(checks.length).toBe(43);
+  });
+
+  // ── multi-agent-models-available (M8) ─────────────────────────────────
+  //
+  // Walks agents.list[] and verifies each agent's primary either points
+  // at a pulled Ollama model (probed via docker exec; falls back to a
+  // "cannot reach" finding when probing fails) or has the required API
+  // key set in engine/.env. These tests cover the env-key path that
+  // doesn't require a running Ollama.
+
+  it("multi-agent-models-available skips single-agent configs", async () => {
+    // Plain openclaw.json with no agents.list — should short-circuit ok.
+    await writeValidConfig();
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "multi-agent-models-available");
+    expect(check.passed).toBe(true);
+    expect(check.message).toContain("Not a multi-agent profile");
+  });
+
+  it("multi-agent-models-available fails when an agent's API key is missing", async () => {
+    // Multi-agent config with an OpenRouter primary; .env has no key.
+    const config = {
+      dangerouslyDisableDeviceAuth: true,
+      tools: { exec: { host: "gateway", security: "full" } },
+      fs: { workspaceOnly: true },
+      agents: {
+        list: [
+          {
+            id: "markets",
+            workspace: "markets",
+            model: { primary: "openrouter/nvidia/nemotron-3-super-120b-a12b:free" },
+          },
+        ],
+        defaults: {},
+      },
+      models: {
+        providers: {
+          openrouter: { baseUrl: "https://openrouter.ai/api/v1", apiKey: "${OPENROUTER_API_KEY}" },
+        },
+      },
+    };
+    await writeFile(
+      join(testDir, "engine", "openclaw.json"),
+      JSON.stringify(config, null, 2) + "\n",
+    );
+    await writeFile(join(testDir, "engine", ".env"), "OTHER_KEY=x\n");
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "multi-agent-models-available");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("markets");
+    expect(check.message).toContain("OPENROUTER_API_KEY");
+  });
+
+  it("multi-agent-models-available passes when API key is set", async () => {
+    const config = {
+      dangerouslyDisableDeviceAuth: true,
+      tools: { exec: { host: "gateway", security: "full" } },
+      fs: { workspaceOnly: true },
+      agents: {
+        list: [
+          {
+            id: "markets",
+            workspace: "markets",
+            model: "openrouter/anthropic/claude-opus-4.7",
+          },
+        ],
+        defaults: {},
+      },
+      models: {
+        providers: {
+          openrouter: { baseUrl: "https://openrouter.ai/api/v1", apiKey: "${OPENROUTER_API_KEY}" },
+        },
+      },
+    };
+    await writeFile(
+      join(testDir, "engine", "openclaw.json"),
+      JSON.stringify(config, null, 2) + "\n",
+    );
+    await writeFile(join(testDir, "engine", ".env"), "OPENROUTER_API_KEY=sk-or-real-key\n");
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "multi-agent-models-available");
+    expect(check.passed).toBe(true);
+  });
+
+  it("multi-agent-models-available rejects placeholder CHANGE_ME values", async () => {
+    const config = {
+      dangerouslyDisableDeviceAuth: true,
+      tools: { exec: { host: "gateway", security: "full" } },
+      fs: { workspaceOnly: true },
+      agents: {
+        list: [
+          {
+            id: "markets",
+            workspace: "markets",
+            model: "openrouter/anthropic/claude-opus-4.7",
+          },
+        ],
+        defaults: {},
+      },
+      models: {
+        providers: {
+          openrouter: { baseUrl: "https://openrouter.ai/api/v1", apiKey: "${OPENROUTER_API_KEY}" },
+        },
+      },
+    };
+    await writeFile(
+      join(testDir, "engine", "openclaw.json"),
+      JSON.stringify(config, null, 2) + "\n",
+    );
+    await writeFile(join(testDir, "engine", ".env"), "OPENROUTER_API_KEY=CHANGE_ME\n");
+    const checks = await runChecks(testDir);
+    const check = findCheck(checks, "multi-agent-models-available");
+    expect(check.passed).toBe(false);
+    expect(check.message).toContain("OPENROUTER_API_KEY");
   });
 
   // ── cron-error-rate (time-bounded window) ─────────────────────────────
@@ -438,7 +552,7 @@ describe("runDoctor", { timeout: 30_000 }, () => {
 
     const report = await runDoctor({ deployDir: testDir });
     expect(report.timestamp).toBeTruthy();
-    expect(report.checks.length).toBe(42);
+    expect(report.checks.length).toBe(43);
     expect(report.passed.length).toBeGreaterThan(0);
     expect(typeof report.healthy).toBe("boolean");
   });
@@ -915,9 +1029,9 @@ services:
     expect(check.message).toContain("underscore-prefixed methods");
   });
 
-  it("runs all 42 checks", async () => {
+  it("runs all 43 checks", async () => {
     const checks = await runChecks(testDir);
-    expect(checks.length).toBe(42);
+    expect(checks.length).toBe(43);
   });
 });
 

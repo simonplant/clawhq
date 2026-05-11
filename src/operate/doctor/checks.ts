@@ -157,6 +157,7 @@ export async function runChecks(
     checkCredProxyHealthy(deployDir, signal),
     checkEgressDomainsCoverage(deployDir),
     checkOllamaModelAvailable(deployDir, signal),
+    checkMultiAgentModelsAvailable(deployDir, signal),
     checkConfigSync(deployDir),
     checkOllamaUrl(deployDir),
     checkSessionRunaway(signal),
@@ -2154,6 +2155,149 @@ async function checkOllamaModelAvailable(
   } catch {
     return ok(name, "Cannot check model availability — skipped", "info");
   }
+}
+
+/**
+ * Multi-agent variant of ollama-model-available.
+ *
+ * Walks `agents.list[]` in openclaw.json and verifies every per-agent
+ * primary is either (a) a pulled Ollama model or (b) backed by a
+ * present API key in .env. Single-agent profiles short-circuit to ok
+ * since the existing ollama-model-available check already covers the
+ * one primary.
+ *
+ * A failed multi-agent check surfaces the FIRST missing dependency per
+ * agent (we don't enumerate fallbacks because the chain can be long;
+ * if the primary fails the fallback is the safety net). Operators get
+ * a precise fix-it message: "pull this", "set this key".
+ */
+async function checkMultiAgentModelsAvailable(
+  deployDir: string,
+  signal?: AbortSignal,
+): Promise<DoctorCheckResult> {
+  const name: DoctorCheckName = "multi-agent-models-available";
+
+  let config: Record<string, unknown>;
+  try {
+    const raw = await readFile(join(deployDir, "engine", "openclaw.json"), "utf-8");
+    config = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return ok(name, "Cannot read openclaw.json — skipped", "info");
+  }
+
+  const agents = config["agents"] as { list?: unknown } | undefined;
+  const list = agents?.list as
+    | Array<{ id: string; model?: unknown }>
+    | undefined;
+  if (!list || list.length === 0) {
+    return ok(name, "Not a multi-agent profile — skipped");
+  }
+
+  // Parse .env for API-key presence checks. Missing file is a failure
+  // case that other checks (env-vars) surface; here we treat it as
+  // "no remote keys configured."
+  const envKeys = new Map<string, string>();
+  try {
+    const envContent = await readFile(join(deployDir, "engine", ".env"), "utf-8");
+    for (const line of envContent.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq > 0) envKeys.set(trimmed.slice(0, eq), trimmed.slice(eq + 1));
+    }
+  } catch {
+    /* fall through with empty envKeys */
+  }
+
+  // Collect Ollama-pulled models once for every per-agent ollama/* check.
+  // Skip the docker-exec on hosts without docker — the check degrades
+  // gracefully rather than failing loud.
+  let availableOllamaModels: Set<string> = new Set();
+  let ollamaProbed = false;
+  const probeOllama = async (): Promise<Set<string>> => {
+    if (ollamaProbed) return availableOllamaModels;
+    ollamaProbed = true;
+    try {
+      const models = config["models"] as { providers?: Record<string, unknown> } | undefined;
+      const ollamaCfg = models?.providers?.["ollama"] as Record<string, unknown> | undefined;
+      const baseUrl = (ollamaCfg?.["baseUrl"] ?? "http://ollama:11434") as string;
+      const openclawContainer = await requireOpenclawContainer(signal);
+      const { stdout } = await execFileAsync(
+        "docker",
+        [
+          "exec",
+          openclawContainer,
+          "node",
+          "-e",
+          `fetch(${JSON.stringify(baseUrl)}+'/api/tags',{signal:AbortSignal.timeout(3000)}).then(r=>r.text()).then(t=>process.stdout.write(t)).catch(()=>process.exit(1))`,
+        ],
+        { timeout: 8000, signal },
+      );
+      const response = JSON.parse(stdout) as { models?: Array<{ name: string }> };
+      availableOllamaModels = new Set(response.models?.map((m) => m.name) ?? []);
+    } catch {
+      /* leave availableOllamaModels empty — caller treats as "cannot probe" */
+    }
+    return availableOllamaModels;
+  };
+
+  // Provider → required env-var key. Mirrors compiler.ts REMOTE_PROVIDER_CONFIG.
+  // When the compiler grows a new provider, add it here in the same commit.
+  const providerEnv: Record<string, string> = {
+    openrouter: "OPENROUTER_API_KEY",
+    anthropic: "ANTHROPIC_API_KEY",
+    openai: "OPENAI_API_KEY",
+    google: "GEMINI_API_KEY",
+  };
+
+  const offenders: string[] = [];
+  for (const agent of list) {
+    let primaryRef: string | undefined;
+    if (typeof agent.model === "string") primaryRef = agent.model;
+    else if (agent.model && typeof agent.model === "object") {
+      primaryRef = (agent.model as { primary?: string }).primary;
+    }
+    if (!primaryRef) continue; // inherits defaults; check covered elsewhere
+
+    const provider = primaryRef.split("/")[0];
+    if (provider === "ollama") {
+      const modelName = primaryRef.replace("ollama/", "");
+      const available = await probeOllama();
+      if (available.size === 0) {
+        offenders.push(`agent "${agent.id}" → ${primaryRef} (cannot reach Ollama to verify)`);
+        continue;
+      }
+      const ok2 = [...available].some(
+        (m) => m === modelName || m.startsWith(`${modelName}:`),
+      );
+      if (!ok2) {
+        offenders.push(`agent "${agent.id}" → ${primaryRef} not pulled (run: ollama pull ${modelName})`);
+      }
+      continue;
+    }
+
+    if (provider && providerEnv[provider]) {
+      const key = providerEnv[provider];
+      const value = envKeys.get(key);
+      if (!value || value.length === 0 || value === "CHANGE_ME") {
+        offenders.push(`agent "${agent.id}" → ${primaryRef} (set ${key} in engine/.env)`);
+      }
+      continue;
+    }
+
+    // Unknown provider — let LM-15 (apply-time) catch it; doctor stays quiet.
+  }
+
+  if (offenders.length === 0) {
+    return ok(name, `${list.length} agent primary model(s) available`);
+  }
+  return fail(
+    name,
+    "error",
+    `${offenders.length} per-agent primary model(s) unavailable:\n  - ${offenders.join("\n  - ")}`,
+    "Pull missing Ollama models or set the missing API keys in engine/.env, then run: clawhq --agent <name> restart",
+    false,
+  );
 }
 
 /**

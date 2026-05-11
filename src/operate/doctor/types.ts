@@ -44,6 +44,7 @@ export type DoctorCheckName =
   | "egress-domains-coverage"
   | "ollama-reachable"
   | "ollama-model-available"
+  | "multi-agent-models-available"
   | "config-sync"
   | "ollama-url"
   | "session-runaway"
