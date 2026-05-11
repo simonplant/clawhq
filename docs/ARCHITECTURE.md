@@ -306,6 +306,34 @@ The category/provider model is the bridge: it gives us uniform tool interfaces n
 | **Replace Google Asst** | Full daily orchestration | email, calendar, tasks, web-search | morning-brief, email-digest, schedule-guard | Morning 7am, heartbeat 10min |
 | **Founder's Ops** | Inbox zero, investor updates, hiring | email, calendar, tasks, web-search | email-digest, investor-update, hiring-pipeline | Morning triage, weekly investor prep |
 | **Family Hub** | Shared calendar, chores, meals | calendar, tasks, web-search | meal-plan, chore-assign, family-brief | Daily brief, weekly meal plan |
+| **Sterling Gen-4** | Multi-agent host (life-ops + markets + vision) | Inherits per role | Inherits per role | Per-agent (e.g. markets-hours-pulse) |
+
+### Multi-Agent Profiles (Sterling Gen-4)
+
+A profile may optionally declare `agents:` — an array of per-agent
+overrides. When present, the compiler emits `agents.list[]` in
+`openclaw.json` so one OpenClaw engine hosts multiple agents, each with
+its own workspace, model selection, and (optionally) cron schedule.
+
+Per-agent overrides (mirrors
+[upstream](https://docs.openclaw.ai/concepts/multi-agent)):
+
+- `model` — string (`provider/model`) or `{ primary, fallbacks }`. Bare
+  string is strict-no-fallback; object form declares a per-agent
+  fallback chain.
+- `tools`, `skills`, `sandbox`, `heartbeat`, `groupChat`, `identity`
+- `description` (ClawHQ) — free-text role description rendered into the
+  agent's `IDENTITY.md`. Differentiates siblings sharing the canonical
+  voice.
+- `cron` (ClawHQ) — `Record<id, { expr, prompt, announce?, model? }>`.
+  Emits as `agentTurn` jobs with this agent's id, routed under its
+  effective primary.
+
+The `sterling-gen4` profile (`configs/profiles/sterling-gen4.yaml`)
+ships three agents — life-ops (local hot path, OpenRouter fallback),
+markets (OpenRouter primary, Opus escape hatch), vision (fully local
+Qwen2.5-VL, no fallback). See the wiki page [[sterling-gen4-multi-agent]]
+for the full architecture and routing semantics.
 
 ### What Gets Generated
 
