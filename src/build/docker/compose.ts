@@ -291,6 +291,8 @@ interface ComposeOllamaServiceOutput {
   readonly ports: readonly string[];
   readonly environment: Record<string, string>;
   readonly networks: readonly string[];
+  readonly dns?: readonly string[];
+  readonly depends_on?: Record<string, { readonly condition: string }>;
   readonly healthcheck: {
     readonly test: readonly string[];
     readonly interval: string;
@@ -660,6 +662,8 @@ export function generateCompose(
       OLLAMA_MAX_LOADED_MODELS: "1",
     },
     networks: [networkName],
+    ...(dnsServers ? { dns: dnsServers } : {}),
+    ...(dnsResolverDep ? { depends_on: { ...dnsResolverDep } } : {}),
     healthcheck: {
       test: ["CMD", "ollama", "list"],
       interval: "30s",
@@ -903,6 +907,17 @@ export function serializeYaml(compose: ComposeOutput): string {
     }
     lines.push("    networks:");
     for (const n of ol.networks) lines.push(`      - ${n}`);
+    if (ol.dns && ol.dns.length > 0) {
+      lines.push("    dns:");
+      for (const d of ol.dns) lines.push(`      - ${d}`);
+    }
+    if (ol.depends_on && Object.keys(ol.depends_on).length > 0) {
+      lines.push("    depends_on:");
+      for (const [name, cond] of sortedEntries(ol.depends_on)) {
+        lines.push(`      ${name}:`);
+        lines.push(`        condition: ${(cond as { condition: string }).condition}`);
+      }
+    }
     lines.push("    healthcheck:");
     lines.push("      test:");
     for (const t of ol.healthcheck.test) lines.push(`        - "${t}"`);
