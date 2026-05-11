@@ -20,6 +20,17 @@ import { compile, buildAgentsList } from "./compiler.js";
 import { loadAllProfiles, loadProfile } from "./loader.js";
 import type { UserConfig } from "./types.js";
 
+const IDENTITY_FILES = [
+  "SOUL.md",
+  "AGENTS.md",
+  "USER.md",
+  "TOOLS.md",
+  "IDENTITY.md",
+  "HEARTBEAT.md",
+  "BOOTSTRAP.md",
+  "MEMORY.md",
+];
+
 const TEST_USER: UserConfig = {
   name: "TestUser",
   timezone: "UTC",
@@ -33,6 +44,12 @@ function compileOpenclawJson(profile: string): Record<string, unknown> {
   const oc = result.files.find((f) => f.relativePath === "openclaw.json");
   if (!oc) throw new Error(`compile(${profile}) produced no openclaw.json`);
   return JSON.parse(oc.content) as Record<string, unknown>;
+}
+
+function compiledPaths(profile: string): string[] {
+  return compile({ profile }, TEST_USER, DEPLOY_DIR).files.map(
+    (f) => f.relativePath,
+  );
 }
 
 describe("buildAgentsList — pure helper", () => {
@@ -121,6 +138,50 @@ describe("sterling-gen4 compile contract (M2)", () => {
 
   it("life-ops agent workspace defaults to its id", () => {
     expect(list?.[0]?.workspace).toBe("life-ops");
+  });
+});
+
+describe("sterling-gen4 workspace partitioning (M3)", () => {
+  const paths = compiledPaths("sterling-gen4");
+
+  it("emits all 8 identity files under workspace/life-ops/", () => {
+    for (const name of IDENTITY_FILES) {
+      expect(paths).toContain(`workspace/life-ops/${name}`);
+    }
+  });
+
+  it("does NOT emit identity files at the workspace root", () => {
+    // Multi-agent profiles isolate identity per agent; root-level files
+    // would mean ambiguous ownership and a path that no agent reads.
+    for (const name of IDENTITY_FILES) {
+      expect(paths).not.toContain(`workspace/${name}`);
+    }
+  });
+
+  it("still emits shared tool configs at workspace/config/", () => {
+    // Tool configs (substack-aliases, himalaya/config.toml) stay at the
+    // single workspace root — they're shared infrastructure, not per-
+    // agent state. Subagent fan-out and tool plumbing rely on this.
+    expect(paths).toContain("workspace/config/substack-aliases.json");
+  });
+});
+
+describe("single-agent emit unchanged (M3 regression guard)", () => {
+  const paths = compiledPaths("life-ops");
+
+  it("still emits identity files flat at workspace/", () => {
+    for (const name of IDENTITY_FILES) {
+      expect(paths).toContain(`workspace/${name}`);
+    }
+  });
+
+  it("does NOT emit per-agent subdirectories", () => {
+    // life-ops is single-agent — any workspace/<id>/SOUL.md would be a
+    // regression of the workspace-partition fix.
+    const perAgent = paths.filter((p) =>
+      /^workspace\/[^/]+\/SOUL\.md$/.test(p),
+    );
+    expect(perAgent).toEqual([]);
   });
 });
 

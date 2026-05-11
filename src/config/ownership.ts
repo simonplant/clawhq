@@ -88,21 +88,33 @@ export const OWNERSHIP_RULES: readonly OwnershipRule[] = [
   // ── Identity files (OWNED_BY_CLAWHQ per BLUEPRINT-SPEC.md §143) ──────────
   // Read-only mount (chmod 444, Docker :ro) is the supply-chain-attack
   // countermeasure. Regeneration reverts any in-container tampering.
+  // Single-agent profiles emit at workspace/<file>; multi-agent profiles
+  // emit at workspace/<agent-id>/<file> per agents.list[].workspace.
   { pattern: "workspace/SOUL.md",      owner: "clawhq", reason: "identity; read-only security baseline" },
   { pattern: "workspace/AGENTS.md",    owner: "clawhq", reason: "identity; read-only security baseline" },
   { pattern: "workspace/BOOTSTRAP.md", owner: "clawhq", reason: "identity; read-only security baseline" },
   { pattern: "workspace/IDENTITY.md",  owner: "clawhq", reason: "identity; read-only security baseline" },
   { pattern: "workspace/TOOLS.md",     owner: "clawhq", reason: "identity; read-only security baseline" },
   { pattern: "workspace/HEARTBEAT.md", owner: "clawhq", reason: "identity; read-only security baseline" },
+  { pattern: "workspace/*/SOUL.md",      owner: "clawhq", reason: "per-agent identity; read-only security baseline" },
+  { pattern: "workspace/*/AGENTS.md",    owner: "clawhq", reason: "per-agent identity; read-only security baseline" },
+  { pattern: "workspace/*/BOOTSTRAP.md", owner: "clawhq", reason: "per-agent identity; read-only security baseline" },
+  { pattern: "workspace/*/IDENTITY.md",  owner: "clawhq", reason: "per-agent identity; read-only security baseline" },
+  { pattern: "workspace/*/TOOLS.md",     owner: "clawhq", reason: "per-agent identity; read-only security baseline" },
+  { pattern: "workspace/*/HEARTBEAT.md", owner: "clawhq", reason: "per-agent identity; read-only security baseline" },
 
   // USER.md is SEEDED_ONCE: apply roundtrips it via parseUserMd to preserve
   // user-edited name/timezone/communication/constraints fields.
   { pattern: "workspace/USER.md", owner: "seeded-once",
     reason: "user context; apply roundtrips via parseUserMd" },
+  { pattern: "workspace/*/USER.md", owner: "seeded-once",
+    reason: "per-agent user context; apply roundtrips via parseUserMd" },
 
   // ── User-owned ───────────────────────────────────────────────────────────
   { pattern: "workspace/MEMORY.md", owner: "user",
     reason: "user's curated memory" },
+  { pattern: "workspace/*/MEMORY.md", owner: "user",
+    reason: "per-agent curated memory" },
   { pattern: "workspace/memory/**", owner: "user",
     reason: "agent memory store (hot/warm/cold)" },
   { pattern: "workspace/config/substack-aliases.json", owner: "user",
@@ -266,6 +278,21 @@ function matchesPattern(path: string, pattern: string): boolean {
     if (suffix.startsWith("*")) {
       return path.endsWith(suffix.slice(1));
     }
+  }
+  // Single-segment wildcard: "workspace/*/SOUL.md" matches
+  // "workspace/<one-segment>/SOUL.md" but NOT "workspace/a/b/SOUL.md".
+  // Used for per-agent identity files emitted under "workspace/<agent-id>/".
+  // Only the FIRST "*" is treated as a segment wildcard; additional patterns
+  // can compose if needed.
+  const star = pattern.indexOf("/*/");
+  if (star !== -1) {
+    const prefix = pattern.slice(0, star + 1); // "workspace/"
+    const suffix = pattern.slice(star + 3);    // "SOUL.md"
+    if (!path.startsWith(prefix)) return false;
+    const rest = path.slice(prefix.length);    // "<agent-id>/SOUL.md"
+    const slash = rest.indexOf("/");
+    if (slash === -1) return false;
+    return rest.slice(slash + 1) === suffix;
   }
   // Exact path match
   return path === pattern;

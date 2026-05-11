@@ -984,6 +984,28 @@ export function scanWorkspaceManifest(deployDir: string): WorkspaceManifest {
     if (existsSync(join(workspaceDir, f))) immutable.push(f);
   }
 
+  // Per-agent identity files (multi-agent profiles emit identity under
+  // workspace/<agent-id>/). A subdir is treated as a per-agent workspace
+  // when it contains at least one of the canonical identity .md files —
+  // distinguishes it from tool/data subdirs (skills/, memory/, config/).
+  // Same chmod 444 :ro guarantee as root-level identity files.
+  for (const entry of readdirSync(workspaceDir)) {
+    if (entry.startsWith(".")) continue;
+    const sub = join(workspaceDir, entry);
+    if (!statSync(sub).isDirectory()) continue;
+    let isAgentWorkspace = false;
+    for (const f of rootImmutable) {
+      if (existsSync(join(sub, f))) {
+        isAgentWorkspace = true;
+        break;
+      }
+    }
+    if (!isAgentWorkspace) continue;
+    for (const f of rootImmutable) {
+      if (existsSync(join(sub, f))) immutable.push(`${entry}/${f}`);
+    }
+  }
+
   // Sanitize script
   if (existsSync(join(workspaceDir, "sanitize"))) immutable.push("sanitize");
 

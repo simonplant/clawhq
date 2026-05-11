@@ -17,14 +17,39 @@ describe("classify", () => {
     expect(classify("workspace/HEARTBEAT.md")).toBe("clawhq");
   });
 
+  it("classifies per-agent identity files as clawhq-owned (M3)", () => {
+    // Multi-agent profiles emit identity files at workspace/<id>/ instead
+    // of workspace/. Same ownership semantics — clawhq controls and
+    // regenerates from the profile YAML.
+    expect(classify("workspace/life-ops/SOUL.md")).toBe("clawhq");
+    expect(classify("workspace/life-ops/AGENTS.md")).toBe("clawhq");
+    expect(classify("workspace/life-ops/BOOTSTRAP.md")).toBe("clawhq");
+    expect(classify("workspace/life-ops/IDENTITY.md")).toBe("clawhq");
+    expect(classify("workspace/life-ops/TOOLS.md")).toBe("clawhq");
+    expect(classify("workspace/life-ops/HEARTBEAT.md")).toBe("clawhq");
+    // Different agent id, same rule:
+    expect(classify("workspace/markets/SOUL.md")).toBe("clawhq");
+    expect(classify("workspace/vision/IDENTITY.md")).toBe("clawhq");
+  });
+
   it("classifies USER.md as seeded-once (roundtripped by apply)", () => {
     expect(classify("workspace/USER.md")).toBe("seeded-once");
+    expect(classify("workspace/life-ops/USER.md")).toBe("seeded-once");
   });
 
   it("classifies user memory as user-owned", () => {
     expect(classify("workspace/MEMORY.md")).toBe("user");
     expect(classify("workspace/memory/2026-04-16.md")).toBe("user");
     expect(classify("workspace/memory/nested/dir/note.md")).toBe("user");
+    // Per-agent memory file (matches the workspace/*/MEMORY.md rule):
+    expect(classify("workspace/life-ops/MEMORY.md")).toBe("user");
+  });
+
+  it("single-segment wildcard does NOT match deeper paths", () => {
+    // workspace/*/SOUL.md must match exactly one segment after workspace/
+    // — workspace/a/b/SOUL.md should fall through to other rules (or null).
+    // This stops accidental classification of arbitrarily-nested files.
+    expect(classify("workspace/a/b/SOUL.md")).toBeNull();
   });
 
   it("classifies credentials.json as seeded-once (per Phase 0 fix)", () => {

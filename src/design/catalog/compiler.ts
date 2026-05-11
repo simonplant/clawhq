@@ -175,16 +175,35 @@ export function compile(
   const ident = (name: string, rendered: string): string =>
     withIdentityOverride(name, rendered, deployment.instanceId);
 
+  // Identity files — emitted once at `workspace/` for single-agent profiles,
+  // once per agent at `workspace/<agent-id>/` for multi-agent. M3 content is
+  // identical across agents in a multi-agent profile (per-agent IDENTITY.md
+  // / TOOLS.md customisation arrives in M4 when distinct roles are wired).
+  const renderedIdentity: ReadonlyArray<{ name: string; content: string }> = [
+    { name: "SOUL.md", content: ident("SOUL.md", renderSoul(personality, dims, config.soul_overrides)) },
+    { name: "AGENTS.md", content: ident("AGENTS.md", renderAgents(profile)) },
+    { name: "USER.md", content: ident("USER.md", renderUser(user, resolvedProviders, existingEnv)) },
+    { name: "TOOLS.md", content: ident("TOOLS.md", renderTools(profile)) },
+    { name: "IDENTITY.md", content: ident("IDENTITY.md", renderIdentity(personality, profile)) },
+    { name: "HEARTBEAT.md", content: ident("HEARTBEAT.md", renderHeartbeat(profile)) },
+    { name: "BOOTSTRAP.md", content: ident("BOOTSTRAP.md", renderBootstrap(profile)) },
+    { name: "MEMORY.md", content: "" },
+  ];
+  const identityFilesFor = (agentId: string | undefined): CompiledFile[] => {
+    const dir = agentId ? `workspace/${agentId}/` : "workspace/";
+    return renderedIdentity.map(({ name, content }) => ({
+      relativePath: `${dir}${name}`,
+      content,
+    }));
+  };
+  const isMultiAgent = (profile.agents?.length ?? 0) > 0;
+  const identityFiles: CompiledFile[] = isMultiAgent
+    ? (profile.agents ?? []).flatMap((a) => identityFilesFor(a.id))
+    : identityFilesFor(undefined);
+
   const files: CompiledFile[] = [
-    // 8 workspace files
-    { relativePath: "workspace/SOUL.md", content: ident("SOUL.md", renderSoul(personality, dims, config.soul_overrides)) },
-    { relativePath: "workspace/AGENTS.md", content: ident("AGENTS.md", renderAgents(profile)) },
-    { relativePath: "workspace/USER.md", content: ident("USER.md", renderUser(user, resolvedProviders, existingEnv)) },
-    { relativePath: "workspace/TOOLS.md", content: ident("TOOLS.md", renderTools(profile)) },
-    { relativePath: "workspace/IDENTITY.md", content: ident("IDENTITY.md", renderIdentity(personality, profile)) },
-    { relativePath: "workspace/HEARTBEAT.md", content: ident("HEARTBEAT.md", renderHeartbeat(profile)) },
-    { relativePath: "workspace/BOOTSTRAP.md", content: ident("BOOTSTRAP.md", renderBootstrap(profile)) },
-    { relativePath: "workspace/MEMORY.md", content: "" },
+    // Workspace identity (one set per agent in multi-agent profiles)
+    ...identityFiles,
 
     // Runtime config
     { relativePath: "openclaw.json", content: openclawJson, mode: 0o600 },
