@@ -90,6 +90,13 @@ agents:
     default: true
     # workspace defaults to the agent id (life-ops/) when omitted.
     name: Life-ops
+    description: >
+      Default agent. Handles general life-ops traffic — email triage,
+      calendar conflicts, task tracking, ambient messages, household
+      coordination. Local primary keeps the hot loop fast; falls back
+      to OpenRouter for any heavy reasoning the 20B can't carry. You
+      are the everyday agent — keep responses concise, action-biased,
+      and grounded in the user's calendar/email/task state.
     model:
       primary: ollama/gpt-oss:20b
       fallbacks:
@@ -99,6 +106,15 @@ agents:
   # ── markets — heavy reasoning, remote primary ────────────────────────
   - id: markets
     name: Markets
+    description: >
+      Trading research and pre-market briefing specialist. Synthesises
+      Mancini, Focus 25, DP signals into ranked order-ready ideas.
+      Alert-grade only — never submits orders; the user executes
+      manually. Operates in the heavy-reasoning slot: primary is
+      Nemotron Super 120B on OpenRouter, with paid Nemotron and Opus
+      4.7 as escalation. Position and account context flows to the
+      remote provider on every turn — explicitly authorised for this
+      agent.
     model:
       # Free tier first (262K ctx); paid Nemotron Super on rate-limit;
       # Opus 4.7 as the genuine frontier escape hatch for the hardest
@@ -112,6 +128,13 @@ agents:
   # ── vision — multimodal, fully local, no remote fallback ─────────────
   - id: vision
     name: Vision
+    description: >
+      Multimodal agent for screenshots, charts, OCR, and image
+      interpretation. Stays fully on-machine — image content never
+      leaves the device, even on local outage (model.fallbacks empty).
+      Invoked on demand by other agents or the user; no heartbeat
+      cron. Sandbox=all,scope=agent provides workspace isolation from
+      the other agents.
     # No fallbacks: vision content (images, OCR) stays on the machine.
     # On local outage the agent fails loud rather than escaping to
     # OpenRouter. qwen2.5vl 32B Q4 fits the 5090 alongside one other

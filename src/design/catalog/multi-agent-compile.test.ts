@@ -281,6 +281,58 @@ describe("sterling-gen4 workspace partitioning (M3+M4)", () => {
   });
 });
 
+describe("per-agent identity differentiation (M6)", () => {
+  function readIdentity(profile: string, agentId: string): string {
+    const r = compile({ profile }, TEST_USER, DEPLOY_DIR);
+    const f = r.files.find(
+      (x) => x.relativePath === `workspace/${agentId}/IDENTITY.md`,
+    );
+    if (!f) throw new Error(`no IDENTITY.md for ${agentId}`);
+    return f.content;
+  }
+
+  it("each agent's IDENTITY.md carries an Agent Role section", () => {
+    for (const id of ["life-ops", "markets", "vision"]) {
+      const content = readIdentity("sterling-gen4", id);
+      expect(content).toContain("## Agent Role");
+    }
+  });
+
+  it("the Agent Role section reflects the per-agent description", () => {
+    expect(readIdentity("sterling-gen4", "life-ops")).toContain(
+      "email triage, calendar conflicts",
+    );
+    expect(readIdentity("sterling-gen4", "markets")).toContain(
+      "Trading research",
+    );
+    expect(readIdentity("sterling-gen4", "vision")).toContain(
+      "Multimodal agent",
+    );
+  });
+
+  it("per-agent IDENTITY.md content differs across agents", () => {
+    const lifeOps = readIdentity("sterling-gen4", "life-ops");
+    const markets = readIdentity("sterling-gen4", "markets");
+    const vision = readIdentity("sterling-gen4", "vision");
+    expect(lifeOps).not.toBe(markets);
+    expect(lifeOps).not.toBe(vision);
+    expect(markets).not.toBe(vision);
+  });
+
+  it("single-agent IDENTITY.md has NO Agent Role section (parity guard)", () => {
+    // life-ops single-agent must keep producing identical output —
+    // otherwise the parity digest breaks.
+    const r = compile(
+      { profile: "life-ops" },
+      TEST_USER,
+      DEPLOY_DIR,
+    );
+    const f = r.files.find((x) => x.relativePath === "workspace/IDENTITY.md");
+    if (!f) throw new Error("no IDENTITY.md for life-ops");
+    expect(f.content).not.toContain("## Agent Role");
+  });
+});
+
 describe("cron routing (M5)", () => {
   function compiledCron(profile: string): Record<string, unknown> {
     const r = compile({ profile }, TEST_USER, DEPLOY_DIR);

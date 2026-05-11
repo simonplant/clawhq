@@ -176,29 +176,31 @@ export function compile(
     withIdentityOverride(name, rendered, deployment.instanceId);
 
   // Identity files — emitted once at `workspace/` for single-agent profiles,
-  // once per agent at `workspace/<agent-id>/` for multi-agent. M3 content is
-  // identical across agents in a multi-agent profile (per-agent IDENTITY.md
-  // / TOOLS.md customisation arrives in M4 when distinct roles are wired).
-  const renderedIdentity: ReadonlyArray<{ name: string; content: string }> = [
+  // once per agent at `workspace/<agent-id>/` for multi-agent. Most files
+  // are profile-level (same content across agents); IDENTITY.md varies per
+  // agent so each sibling reads its own role on session boot.
+  const renderForAgent = (
+    agent: ProfileAgentEntry | undefined,
+  ): ReadonlyArray<{ name: string; content: string }> => [
     { name: "SOUL.md", content: ident("SOUL.md", renderSoul(personality, dims, config.soul_overrides)) },
     { name: "AGENTS.md", content: ident("AGENTS.md", renderAgents(profile)) },
     { name: "USER.md", content: ident("USER.md", renderUser(user, resolvedProviders, existingEnv)) },
     { name: "TOOLS.md", content: ident("TOOLS.md", renderTools(profile)) },
-    { name: "IDENTITY.md", content: ident("IDENTITY.md", renderIdentity(personality, profile)) },
+    { name: "IDENTITY.md", content: ident("IDENTITY.md", renderIdentity(personality, profile, agent)) },
     { name: "HEARTBEAT.md", content: ident("HEARTBEAT.md", renderHeartbeat(profile)) },
     { name: "BOOTSTRAP.md", content: ident("BOOTSTRAP.md", renderBootstrap(profile)) },
     { name: "MEMORY.md", content: "" },
   ];
-  const identityFilesFor = (agentId: string | undefined): CompiledFile[] => {
-    const dir = agentId ? `workspace/${agentId}/` : "workspace/";
-    return renderedIdentity.map(({ name, content }) => ({
+  const identityFilesFor = (agent: ProfileAgentEntry | undefined): CompiledFile[] => {
+    const dir = agent ? `workspace/${agent.id}/` : "workspace/";
+    return renderForAgent(agent).map(({ name, content }) => ({
       relativePath: `${dir}${name}`,
       content,
     }));
   };
   const isMultiAgent = (profile.agents?.length ?? 0) > 0;
   const identityFiles: CompiledFile[] = isMultiAgent
-    ? (profile.agents ?? []).flatMap((a) => identityFilesFor(a.id))
+    ? (profile.agents ?? []).flatMap((a) => identityFilesFor(a))
     : identityFilesFor(undefined);
 
   const files: CompiledFile[] = [
@@ -1025,7 +1027,11 @@ function extractToolSummary(notes: string, fallback: string): string {
 
 // ── IDENTITY.md ─────────────────────────────────────────────────────────────
 
-function renderIdentity(personality: CanonicalPersonality, profile: MissionProfile): string {
+function renderIdentity(
+  personality: CanonicalPersonality,
+  profile: MissionProfile,
+  agent?: ProfileAgentEntry,
+): string {
   const lines: string[] = [];
 
   lines.push("# Identity\n");
@@ -1034,6 +1040,18 @@ function renderIdentity(personality: CanonicalPersonality, profile: MissionProfi
   lines.push(`**Vibe:** ${personality.identity.vibe}`);
   lines.push(`**Creature:** AI assistant`);
   lines.push(`**Built by:** ClawHQ\n`);
+
+  // Per-agent role block — surfaces in IDENTITY.md so a multi-agent
+  // sibling reads its own mandate on every session boot. Falls back to
+  // a profile-level identity when the profile is single-agent.
+  if (agent) {
+    lines.push("## Agent Role\n");
+    lines.push(`**Agent:** ${agent.name ?? agent.id}`);
+    if (agent.description) {
+      lines.push(`> ${agent.description}`);
+    }
+    lines.push("");
+  }
 
   lines.push("## Composition\n");
   lines.push(`**Mission Profile:** ${profile.name}`);

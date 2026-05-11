@@ -54,6 +54,11 @@ export interface ProfileAgentEntry {
   readonly workspace?: string;
   /** Display name for channels and the control UI. */
   readonly name?: string;
+  /** Free-text role description rendered into the agent's IDENTITY.md
+   *  + AGENTS.md so the model reads its role on every session boot.
+   *  Differentiates multi-agent siblings that share the canonical voice
+   *  but have distinct mandates (e.g., markets vs vision vs life-ops). */
+  readonly description?: string;
   /** Model selector. String form ("provider/model") is treated as strict
    *  no-fallback per upstream model-failover semantics. Object form with
    *  fallbacks declares a per-agent fallback chain. Omit to inherit the
