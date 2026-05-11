@@ -76,7 +76,7 @@ describe("buildAgentsList — pure helper", () => {
 
   it("omits fields that were not declared (no undefined leaks)", () => {
     const list = buildAgentsList([{ id: "a" }]);
-    const entry = list?.[0] as Record<string, unknown>;
+    const entry = list?.[0] as unknown as Record<string, unknown>;
     expect(entry).toBeDefined();
     expect(entry.model).toBeUndefined();
     expect(entry.tools).toBeUndefined();
