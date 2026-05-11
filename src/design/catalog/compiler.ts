@@ -35,6 +35,7 @@ import {
   OLLAMA_DEFAULT_MODEL,
 } from "../../config/defaults.js";
 import { sortedEntries } from "../../config/stable-serialize.js";
+import type { AgentEntry, AgentsConfig } from "../../config/types.js";
 import { BUILTIN_ROUTES, buildRoutesConfig, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv } from "../../secure/credentials/proxy-routes.js";
 import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
 import {
@@ -1547,6 +1548,71 @@ function buildChannels(config: CompositionConfig, user?: UserConfig): Record<str
 
 /** Build model configuration based on selected providers. */
 const DEFAULT_LOCAL_MODEL = `ollama/${OLLAMA_DEFAULT_MODEL}`;
+
+/**
+ * Resolve the effective `{ primary, fallbacks }` model object for an agent,
+ * given the global defaults block. Used by validation to check the runtime
+ * model an agent will actually use.
+ *
+ * Upstream semantics
+ * (https://docs.openclaw.ai/concepts/model-failover):
+ *  - When an agent omits `model`, it inherits `defaults.model` entirely
+ *    (including any fallbacks).
+ *  - When an agent provides `model` as a string, it is treated as primary
+ *    with NO fallback chain — "strict unless that agent model object
+ *    includes its own fallbacks".
+ *  - When an agent provides `model` as an object, that object is the full
+ *    chain — fallbacks default to empty when omitted.
+ *
+ * Pure; returns a fresh object. Inputs are never mutated.
+ */
+export function resolveAgentModel(
+  defaults: AgentsConfig["defaults"] | undefined,
+  agent: AgentEntry,
+): { primary: string | undefined; fallbacks: readonly string[] } {
+  if (agent.model === undefined) {
+    return {
+      primary: defaults?.model?.primary,
+      fallbacks: defaults?.model?.fallbacks ?? [],
+    };
+  }
+  if (typeof agent.model === "string") {
+    return { primary: agent.model, fallbacks: [] };
+  }
+  return {
+    primary: agent.model.primary,
+    fallbacks: agent.model.fallbacks ?? [],
+  };
+}
+
+/**
+ * Merge an agent's per-field overrides on top of `agents.defaults`. Useful
+ * for tests + validation; the COMPILER itself emits the unmerged shape (per
+ * upstream, the OpenClaw runtime is responsible for the merge at turn time).
+ *
+ * Shallow per-top-level-key: agent value wins outright if present. We do
+ * NOT recursively merge nested objects because upstream treats e.g. a
+ * supplied `tools: { allow: [...] }` as a full replacement, not a patch.
+ */
+export function mergeAgentConfig(
+  defaults: AgentsConfig["defaults"] | undefined,
+  agent: AgentEntry,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = {};
+  // Carry forward every default key the agent did not override.
+  if (defaults) {
+    for (const [k, v] of Object.entries(defaults)) {
+      if (v !== undefined) merged[k] = v;
+    }
+  }
+  for (const [k, v] of Object.entries(agent)) {
+    if (v !== undefined) merged[k] = v;
+  }
+  // Model needs special handling because of string|object polymorphism.
+  const { primary, fallbacks } = resolveAgentModel(defaults, agent);
+  merged.model = { primary, fallbacks };
+  return merged;
+}
 
 function buildModelConfig(
   providers: Provider[],

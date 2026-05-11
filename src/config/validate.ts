@@ -421,6 +421,60 @@ export function validateLM14(config: OpenClawConfig): ValidationResult {
   };
 }
 
+/**
+ * LM-15: Per-agent model strings reference a configured provider.
+ *
+ * Multi-agent deployments declare per-agent primaries (and optional
+ * fallback chains) in `agents.list[].model`. A typo or out-of-band edit
+ * can leave an agent pointing at a provider that isn't registered in
+ * `models.providers`, producing a silent runtime failure at first turn.
+ *
+ * This rule walks every per-agent model string (and any fallbacks), parses
+ * the provider prefix, and verifies it's present in
+ * `models.providers`. Single-agent configs (no `agents.list`) are skipped.
+ */
+export function validateLM15(config: OpenClawConfig): ValidationResult {
+  const list = config.agents?.list ?? [];
+  if (list.length === 0) {
+    return {
+      rule: "LM-15",
+      passed: true,
+      severity: "error",
+      message: "No agents.list configured — landmine not applicable",
+    };
+  }
+  const providers = new Set(Object.keys(config.models?.providers ?? {}));
+  const offenders: string[] = [];
+  for (const agent of list) {
+    const refs: string[] = [];
+    if (agent.model !== undefined) {
+      if (typeof agent.model === "string") refs.push(agent.model);
+      else {
+        if (agent.model.primary) refs.push(agent.model.primary);
+        for (const f of agent.model.fallbacks ?? []) refs.push(f);
+      }
+    }
+    for (const ref of refs) {
+      const provider = ref.split("/")[0];
+      if (!provider || !providers.has(provider)) {
+        offenders.push(`agent "${agent.id}" → ${ref} (provider "${provider}" not in models.providers)`);
+      }
+    }
+  }
+  const passed = offenders.length === 0;
+  return {
+    rule: "LM-15",
+    passed,
+    severity: "error",
+    message: passed
+      ? `All ${list.length} agent model refs resolve to configured providers`
+      : `${offenders.length} per-agent model ref(s) reference an unconfigured provider:\n  ${offenders.join("\n  ")}`,
+    fix: passed
+      ? undefined
+      : "Add the provider to models.providers (with baseUrl/auth) or correct the agent's model string.",
+  };
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Find the primary agent service in a compose config. */

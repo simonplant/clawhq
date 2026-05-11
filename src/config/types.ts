@@ -99,11 +99,68 @@ export interface FsConfig {
   readonly workspaceOnly: boolean;
 }
 
-/** Agent definition within multi-agent config. */
+/**
+ * Per-agent model selector. Either a bare provider/model string
+ * (no fallback) or an object with primary + optional fallback chain.
+ * Mirrors upstream OpenClaw `agents.list[].model` polymorphism
+ * (https://docs.openclaw.ai/concepts/multi-agent).
+ */
+export type AgentModelSelector =
+  | string
+  | {
+      readonly primary: string;
+      readonly fallbacks?: readonly string[];
+    };
+
+/** Agent sandbox config (per-agent override of global sandboxing). */
+export interface AgentSandboxConfig {
+  readonly mode?: "off" | "all";
+  readonly scope?: "agent" | "shared";
+  readonly docker?: {
+    readonly setupCommand?: string;
+  };
+}
+
+/**
+ * Agent definition within multi-agent `agents.list[]`. Every field except
+ * `id` and `workspace` is an OPTIONAL override of `agents.defaults`. The
+ * documented overridable surface is in upstream
+ * https://docs.openclaw.ai/concepts/multi-agent — keep this type aligned
+ * with that page, not with the older local OPENCLAW-REFERENCE.md.
+ */
 export interface AgentEntry {
   readonly id: string;
   readonly default?: boolean;
   readonly workspace: string;
+  readonly name?: string;
+  readonly model?: AgentModelSelector;
+  readonly identity?: {
+    readonly name?: string;
+  };
+  readonly groupChat?: {
+    readonly mentionPatterns?: readonly string[];
+  };
+  readonly tools?: {
+    readonly allow?: readonly string[];
+    readonly deny?: readonly string[];
+  };
+  readonly skills?: readonly string[];
+  readonly sandbox?: AgentSandboxConfig;
+  readonly memorySearch?: {
+    readonly qmd?: {
+      readonly extraCollections?: ReadonlyArray<{
+        readonly path: string;
+        readonly name: string;
+      }>;
+    };
+  };
+  readonly agentDir?: string;
+  readonly heartbeat?: {
+    readonly every?: string;
+    readonly target?: string;
+    readonly to?: string;
+    readonly model?: string;
+  };
 }
 
 /** Agent binding for multi-agent routing. */
@@ -126,6 +183,16 @@ export interface AgentsConfig {
     readonly model?: {
       readonly primary?: string;
       readonly fallbacks?: readonly string[];
+    };
+    readonly llm?: {
+      readonly idleTimeoutSeconds?: number;
+    };
+    readonly subagents?: {
+      readonly model?: string;
+      readonly runTimeoutSeconds?: number;
+    };
+    readonly heartbeat?: {
+      readonly model?: string;
     };
     readonly memorySearch?: {
       readonly provider?: string;
@@ -176,6 +243,19 @@ export interface SessionConfig {
  * Partial representation — covers fields relevant to landmine validation
  * and config generation. Unknown fields are preserved during merge.
  */
+/** Model providers configuration (openclaw.json `models` block). */
+export interface ModelsConfig {
+  readonly providers?: Record<
+    string,
+    {
+      readonly baseUrl?: string;
+      readonly timeoutSeconds?: number;
+      readonly models?: readonly unknown[];
+      readonly [key: string]: unknown;
+    }
+  >;
+}
+
 export interface OpenClawConfig {
   readonly dangerouslyDisableDeviceAuth?: boolean;
   readonly allowedOrigins?: readonly string[];
@@ -184,6 +264,7 @@ export interface OpenClawConfig {
   readonly gateway?: GatewayConfig;
   readonly fs?: FsConfig;
   readonly agents?: AgentsConfig;
+  readonly models?: ModelsConfig;
   readonly identity?: IdentityConfig;
   readonly channels?: Record<string, ChannelConfig & Record<string, unknown>>;
   readonly cron?: CronConfig;
