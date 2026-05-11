@@ -1197,10 +1197,6 @@ function renderOpenclawJson(
     agents: {
       defaults: {
         model: modelConfig,
-        // Local models need more time — 5 min timeout, relaxed idle timeout
-        llm: {
-          idleTimeoutSeconds: isLocal ? 300 : 60,
-        },
         subagents: {
           model: modelConfig.primary,
           runTimeoutSeconds: isLocal ? 600 : 120,
@@ -1226,6 +1222,7 @@ function renderOpenclawJson(
         ollama: {
           baseUrl: "http://ollama:11434",
           models: ollamaModelEntries,
+          timeoutSeconds: isLocal ? 300 : 60,
         },
       },
     },
