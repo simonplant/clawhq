@@ -39,7 +39,7 @@ const DEPLOY_DIR = "/tmp/single-agent-parity-test";
  * be checked against the single-agent contract.
  */
 const MULTI_AGENT_PROFILES = new Set<string>([
-  // Sterling Gen-4 will land here when its profile ships.
+  "sterling-gen4", // Multi-agent host (M2 onward).
 ]);
 
 function compileOpenclawJson(profile: string): string {

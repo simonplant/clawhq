@@ -1,0 +1,90 @@
+id: sterling-gen4
+name: Sterling Gen-4
+description: "Multi-agent ClawHQ deployment — life-ops + markets + vision under one engine, with per-agent model routing (local hot path + OpenRouter for heavy reasoning)"
+replaces: "single-agent ClawHQ instances when one workspace needs multiple specialised personas"
+
+operating_mandate: >
+  Sterling is a multi-agent host. Each agent owns a role and a workspace;
+  the engine routes channel traffic to the right one via `agents.bindings`
+  in openclaw.json. Personality is shared (one canonical voice); behaviour
+  varies per agent through workspace IDENTITY.md / TOOLS.md / cron — never
+  through a per-agent personality vector.
+
+  M2 scope: one agent (`life-ops`). M3 partitions workspaces. M4 adds
+  `markets` and `vision`. The profile schema supports the full lineup
+  today; the YAML below ships only what's been validated end-to-end.
+
+# Profile-level tools/skills/cron are the SHARED defaults every agent
+# inherits unless its per-agent block overrides them. Keep this minimal
+# during M2 — the single agent below mirrors the life-ops surface.
+tools:
+  - name: backlog
+    category: core
+    description: "Local work queue for autonomous task execution"
+    required: true
+
+skills: []
+
+integrations:
+  required: [messaging]
+  recommended: []
+  optional: []
+
+cron_defaults:
+  heartbeat:
+    expr: "*/15 * * * *"
+    announce: false
+
+cron_prompts:
+  heartbeat: >
+    Run heartbeat: check the agent's workspace for any deferred work or
+    alerts. If nothing actionable, respond HEARTBEAT_OK.
+
+delegation:
+  - action: respond_to_message
+    tier: execute
+    example: "Reply to direct messages in the routed channel — no escalation"
+  - action: send_message
+    tier: approve
+    example: "Send anything not in response to a user prompt — explicit approval required"
+
+egress_domains: []
+
+security_posture: hardened
+autonomy_default: medium
+
+memory_policy:
+  hot_max: "50KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+monitoring:
+  heartbeat_frequency: "15min"
+  checks: []
+  quiet_hours: "22:00-06:00"
+  alert_on: [credential_expiry, cron_failure]
+
+day_in_the_life: >
+  Sterling boots one OpenClaw engine that hosts every agent in its
+  agents.list[]. The default agent (life-ops) handles general traffic;
+  future siblings (markets, vision) own specialised routes. Each agent
+  reads its own workspace — distinct IDENTITY.md, distinct memory,
+  distinct cron jobs — but all share the canonical Sterling voice and
+  the single set of provider connections.
+
+# ── Multi-agent declaration ────────────────────────────────────────────
+# M2 ships one agent — proves the agents.list[] emit path end-to-end.
+# M4 adds `markets` and `vision`. Adding to this list is the only change
+# required to make Sterling N-agent; the compiler picks it up
+# automatically and openclaw.json grows the corresponding entries.
+agents:
+  - id: life-ops
+    default: true
+    # workspace defaults to the agent id (life-ops/) when omitted.
+    name: Life-ops
+    model: ollama/gpt-oss:20b
+    # tools/skills/sandbox/heartbeat overrides land here in later
+    # milestones; M2 leaves them empty so the agent inherits the
+    # profile-level defaults.

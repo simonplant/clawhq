@@ -30,6 +30,67 @@ export interface ProfileDelegation {
   readonly example: string;
 }
 
+/**
+ * Per-agent declaration inside a multi-agent profile YAML.
+ *
+ * Mirrors the documented overridable surface from
+ * https://docs.openclaw.ai/concepts/multi-agent. The compiler maps each
+ * entry directly to an `agents.list[]` entry in `openclaw.json`, applying
+ * defaults for omitted fields (workspace defaults to the agent's id).
+ *
+ * Profiles WITHOUT an `agents` field stay single-agent (compiler emits
+ * `agents.defaults` only). Profiles WITH a non-empty `agents` array
+ * additionally emit `agents.list[]`.
+ */
+export interface ProfileAgentEntry {
+  /** Agent id — required, unique within the profile. Becomes the
+   *  AgentEntry.id and (by default) the workspace subdir name. */
+  readonly id: string;
+  /** Marks this agent as the default routing target when no binding
+   *  matches. At most one agent per profile may set this true. */
+  readonly default?: boolean;
+  /** Workspace path relative to the deployDir's workspace root. Omit to
+   *  default to the agent's id (e.g. id="markets" → "markets"). */
+  readonly workspace?: string;
+  /** Display name for channels and the control UI. */
+  readonly name?: string;
+  /** Model selector. String form ("provider/model") is treated as strict
+   *  no-fallback per upstream model-failover semantics. Object form with
+   *  fallbacks declares a per-agent fallback chain. Omit to inherit the
+   *  global `agents.defaults.model`. */
+  readonly model?: string | { readonly primary: string; readonly fallbacks?: readonly string[] };
+  /** Per-agent tool allow/deny — overrides any global tool restrictions. */
+  readonly tools?: {
+    readonly allow?: readonly string[];
+    readonly deny?: readonly string[];
+  };
+  /** Per-agent skill allowlist. Skills not listed here are not loaded
+   *  for this agent. */
+  readonly skills?: readonly string[];
+  /** Per-agent sandbox override. `scope: "agent"` produces one container
+   *  per agent. */
+  readonly sandbox?: {
+    readonly mode?: "off" | "all";
+    readonly scope?: "agent" | "shared";
+    readonly docker?: { readonly setupCommand?: string };
+  };
+  /** Per-agent heartbeat schedule and delivery target. */
+  readonly heartbeat?: {
+    readonly every?: string;
+    readonly target?: string;
+    readonly to?: string;
+    readonly model?: string;
+  };
+  /** Per-agent identity name shown in channels. */
+  readonly identity?: {
+    readonly name?: string;
+  };
+  /** Group-chat mention patterns that route to this agent. */
+  readonly groupChat?: {
+    readonly mentionPatterns?: readonly string[];
+  };
+}
+
 export interface MissionProfile {
   readonly id: string;
   readonly name: string;
@@ -71,6 +132,15 @@ export interface MissionProfile {
     readonly alert_on: readonly string[];
   };
   readonly day_in_the_life: string;
+  /**
+   * Multi-agent declaration. When present and non-empty, the compiler emits
+   * `agents.list[]` in openclaw.json alongside `agents.defaults`. When
+   * absent, the profile stays single-agent (every existing profile today).
+   *
+   * Per-agent overrides apply on top of `agents.defaults` at runtime —
+   * see https://docs.openclaw.ai/concepts/multi-agent.
+   */
+  readonly agents?: readonly ProfileAgentEntry[];
 }
 
 // ── Canonical Personality ───────────────────────────────────────────────────

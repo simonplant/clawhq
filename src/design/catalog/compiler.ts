@@ -58,6 +58,7 @@ import type {
   CompiledWorkspace,
   CompositionConfig,
   MissionProfile,
+  ProfileAgentEntry,
   ProfileTool,
   UserConfig,
 } from "./types.js";
@@ -1125,6 +1126,7 @@ function renderOpenclawJson(
   const isUnderAttack = profile.security_posture === "under-attack";
   const modelConfig = buildModelConfig(providers, composition.model, composition.modelFallbacks);
   const isLocal = (modelConfig.primary as string).startsWith("ollama/");
+  const agentsList = buildAgentsList(profile.agents);
   const ollamaModelEntries: Array<Record<string, unknown>> = [];
   if (isLocal && composition.modelContextWindow) {
     const modelName = (modelConfig.primary as string).replace("ollama/", "");
@@ -1196,6 +1198,10 @@ function renderOpenclawJson(
       dmScope: "per-channel-peer",
     },
     agents: {
+      // Multi-agent profiles emit `list:` alongside `defaults`. Single-agent
+      // profiles (every existing one) keep emitting `defaults` only —
+      // single-agent-parity.test.ts locks this invariant byte-for-byte.
+      ...(agentsList !== undefined ? { list: agentsList } : {}),
       defaults: {
         model: modelConfig,
         subagents: {
@@ -1612,6 +1618,42 @@ export function mergeAgentConfig(
   const { primary, fallbacks } = resolveAgentModel(defaults, agent);
   merged.model = { primary, fallbacks };
   return merged;
+}
+
+/**
+ * Build the `agents.list[]` array from a profile's `agents` declaration.
+ *
+ * Returns undefined when the profile is single-agent (no `agents` field or
+ * empty array) — callers should then omit `list` from the emitted config
+ * entirely, preserving the single-agent shape that every existing profile
+ * produces today. The `single-agent-parity` test enforces this contract.
+ *
+ * Each entry maps a `ProfileAgentEntry` to a wire-shape `AgentEntry`:
+ *  - `id` is carried through.
+ *  - `workspace` defaults to the agent's id when omitted, so a YAML
+ *    declaration `{ id: "markets" }` yields `{ workspace: "markets" }` —
+ *    matches upstream's convention of one subdir per agent.
+ *  - All other fields are carried through verbatim; the OpenClaw runtime
+ *    is responsible for merging them with `agents.defaults` at turn time
+ *    (see https://docs.openclaw.ai/concepts/multi-agent).
+ */
+export function buildAgentsList(
+  profileAgents: readonly ProfileAgentEntry[] | undefined,
+): readonly AgentEntry[] | undefined {
+  if (!profileAgents || profileAgents.length === 0) return undefined;
+  return profileAgents.map((a): AgentEntry => ({
+    id: a.id,
+    ...(a.default !== undefined ? { default: a.default } : {}),
+    workspace: a.workspace ?? a.id,
+    ...(a.name !== undefined ? { name: a.name } : {}),
+    ...(a.model !== undefined ? { model: a.model } : {}),
+    ...(a.tools !== undefined ? { tools: a.tools } : {}),
+    ...(a.skills !== undefined ? { skills: a.skills } : {}),
+    ...(a.sandbox !== undefined ? { sandbox: a.sandbox } : {}),
+    ...(a.heartbeat !== undefined ? { heartbeat: a.heartbeat } : {}),
+    ...(a.identity !== undefined ? { identity: a.identity } : {}),
+    ...(a.groupChat !== undefined ? { groupChat: a.groupChat } : {}),
+  }));
 }
 
 function buildModelConfig(
