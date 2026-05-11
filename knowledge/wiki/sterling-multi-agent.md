@@ -1,5 +1,5 @@
 ---
-title: Sterling Gen-4 multi-agent profile
+title: Sterling multi-agent profile
 category: Features
 status: active
 date: 2026-05-11
@@ -9,11 +9,11 @@ sources:
   - https://docs.openclaw.ai/concepts/model-failover
 ---
 
-# Sterling Gen-4 multi-agent profile
+# Sterling multi-agent profile
 
 ## Purpose
 
-`sterling-gen4` is the first multi-agent mission profile in ClawHQ. It
+`sterling` is the first multi-agent mission profile in ClawHQ. It
 hosts three role-specialised agents — `life-ops`, `markets`, `vision` —
 under one OpenClaw engine, routing each agent's turns to a different
 mix of local and remote models.

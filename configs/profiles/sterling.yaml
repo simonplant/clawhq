@@ -1,5 +1,5 @@
-id: sterling-gen4
-name: Sterling Gen-4
+id: sterling
+name: Sterling
 description: "Multi-agent ClawHQ deployment — life-ops + markets + vision under one engine, with per-agent model routing (local hot path + OpenRouter for heavy reasoning)"
 replaces: "single-agent ClawHQ instances when one workspace needs multiple specialised personas"
 
@@ -10,13 +10,10 @@ operating_mandate: >
   varies per agent through workspace IDENTITY.md / TOOLS.md / cron — never
   through a per-agent personality vector.
 
-  M2 scope: one agent (`life-ops`). M3 partitions workspaces. M4 adds
-  `markets` and `vision`. The profile schema supports the full lineup
-  today; the YAML below ships only what's been validated end-to-end.
-
 # Profile-level tools/skills/cron are the SHARED defaults every agent
-# inherits unless its per-agent block overrides them. Keep this minimal
-# during M2 — the single agent below mirrors the life-ops surface.
+# inherits unless its per-agent block overrides them. Kept minimal —
+# the agents below mirror the life-ops surface and own their specialisations
+# via per-agent tools/skills/cron overrides.
 tools:
   - name: backlog
     category: core
@@ -75,7 +72,7 @@ day_in_the_life: >
   the single set of provider connections.
 
 # ── Multi-agent declaration ────────────────────────────────────────────
-# M4 ships three agents — life-ops (default, local hot path), markets
+# Three agents — life-ops (default, local hot path), markets
 # (heavy reasoning on OpenRouter), vision (multimodal, fully local).
 # Per-agent fallback chains are honored by upstream OpenClaw
 # (https://docs.openclaw.ai/concepts/model-failover).

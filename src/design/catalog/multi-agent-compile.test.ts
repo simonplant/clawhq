@@ -2,16 +2,15 @@
  * Multi-agent compile contract — locks the shape `agents.list[]` takes
  * when a profile declares `agents:`.
  *
- * Why this test exists: M2 of the Sterling Gen-4 plan ships the
- * machinery that turns a profile's `agents:` declaration into an
- * `agents.list[]` array in openclaw.json. Subsequent milestones add
- * fields, agents, and per-agent overrides — this test fixes the shape
- * so M3-M5 changes can't silently drop fields or reorder behaviour.
+ * Why this test exists: the compiler turns a profile's `agents:`
+ * declaration into an `agents.list[]` array in openclaw.json. This
+ * test fixes the shape so future compiler changes can't silently drop
+ * fields or reorder behaviour.
  *
- * It's intentionally tight on sterling-gen4 (the only multi-agent
- * profile today) and forgiving on the general contract — every
- * multi-agent profile must emit a well-formed `agents.list[]`, but the
- * specific entries are profile-specific.
+ * Intentionally tight on sterling (the only multi-agent profile today)
+ * and forgiving on the general contract — every multi-agent profile
+ * must emit a well-formed `agents.list[]`, but the specific entries
+ * are profile-specific.
  */
 
 import { describe, expect, it } from "vitest";
@@ -109,8 +108,8 @@ describe("buildAgentsList — pure helper", () => {
   });
 });
 
-describe("sterling-gen4 compile contract (M4)", () => {
-  const config = compileOpenclawJson("sterling-gen4");
+describe("sterling compile contract", () => {
+  const config = compileOpenclawJson("sterling");
   const agents = config.agents as
     | { list?: unknown[]; defaults?: Record<string, unknown> }
     | undefined;
@@ -125,7 +124,7 @@ describe("sterling-gen4 compile contract (M4)", () => {
   });
 
   it("has exactly three agents (life-ops, markets, vision)", () => {
-    // Adding/removing agents from sterling-gen4 is an explicit decision.
+    // Adding/removing agents from sterling is an explicit decision.
     // Update this expectation alongside the YAML — it's the audit trail.
     expect(list?.length).toBe(3);
     expect(byId.has("life-ops")).toBe(true);
@@ -254,8 +253,8 @@ describe("collectAgentProviders — pure helper", () => {
   });
 });
 
-describe("sterling-gen4 workspace partitioning (M3+M4)", () => {
-  const paths = compiledPaths("sterling-gen4");
+describe("sterling workspace partitioning", () => {
+  const paths = compiledPaths("sterling");
 
   it("emits all 8 identity files under each agent's workspace subdir", () => {
     for (const agentId of ["life-ops", "markets", "vision"]) {
@@ -281,7 +280,7 @@ describe("sterling-gen4 workspace partitioning (M3+M4)", () => {
   });
 });
 
-describe("per-agent identity differentiation (M6)", () => {
+describe("per-agent identity differentiation", () => {
   function readIdentity(profile: string, agentId: string): string {
     const r = compile({ profile }, TEST_USER, DEPLOY_DIR);
     const f = r.files.find(
@@ -293,27 +292,27 @@ describe("per-agent identity differentiation (M6)", () => {
 
   it("each agent's IDENTITY.md carries an Agent Role section", () => {
     for (const id of ["life-ops", "markets", "vision"]) {
-      const content = readIdentity("sterling-gen4", id);
+      const content = readIdentity("sterling", id);
       expect(content).toContain("## Agent Role");
     }
   });
 
   it("the Agent Role section reflects the per-agent description", () => {
-    expect(readIdentity("sterling-gen4", "life-ops")).toContain(
+    expect(readIdentity("sterling", "life-ops")).toContain(
       "email triage, calendar conflicts",
     );
-    expect(readIdentity("sterling-gen4", "markets")).toContain(
+    expect(readIdentity("sterling", "markets")).toContain(
       "Trading research",
     );
-    expect(readIdentity("sterling-gen4", "vision")).toContain(
+    expect(readIdentity("sterling", "vision")).toContain(
       "Multimodal agent",
     );
   });
 
   it("per-agent IDENTITY.md content differs across agents", () => {
-    const lifeOps = readIdentity("sterling-gen4", "life-ops");
-    const markets = readIdentity("sterling-gen4", "markets");
-    const vision = readIdentity("sterling-gen4", "vision");
+    const lifeOps = readIdentity("sterling", "life-ops");
+    const markets = readIdentity("sterling", "markets");
+    const vision = readIdentity("sterling", "vision");
     expect(lifeOps).not.toBe(markets);
     expect(lifeOps).not.toBe(vision);
     expect(markets).not.toBe(vision);
@@ -333,7 +332,7 @@ describe("per-agent identity differentiation (M6)", () => {
   });
 });
 
-describe("cron routing (M5)", () => {
+describe("cron routing", () => {
   function compiledCron(profile: string): Record<string, unknown> {
     const r = compile({ profile }, TEST_USER, DEPLOY_DIR);
     const cron = r.files.find((f) => f.relativePath === "cron/jobs.json");
@@ -343,9 +342,9 @@ describe("cron routing (M5)", () => {
 
   it("multi-agent cron carries agentId on every job", () => {
     // Profile-level cron routes to the default agent; per-agent cron
-    // (M7) routes to its declaring agent. Either way, every job has
+    // routes to its declaring agent. Either way, every job has
     // an agentId — the runtime never has to guess.
-    const cron = compiledCron("sterling-gen4");
+    const cron = compiledCron("sterling");
     const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
     expect(jobs.length).toBeGreaterThan(0);
     for (const job of jobs) {
@@ -355,16 +354,16 @@ describe("cron routing (M5)", () => {
   });
 
   it("profile-level cron routes to the default agent (life-ops)", () => {
-    // "heartbeat" comes from sterling-gen4's cron_defaults.
-    const cron = compiledCron("sterling-gen4");
+    // "heartbeat" comes from sterling's cron_defaults.
+    const cron = compiledCron("sterling");
     const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
     const heartbeat = jobs.find((j) => j.id === "heartbeat");
     expect(heartbeat?.agentId).toBe("life-ops");
   });
 
   it("per-agent cron routes to its declaring agent (markets)", () => {
-    // sterling-gen4's markets agent declares market-hours-pulse.
-    const cron = compiledCron("sterling-gen4");
+    // sterling's markets agent declares market-hours-pulse.
+    const cron = compiledCron("sterling");
     const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
     const marketsCron = jobs.find((j) => j.id === "markets-market-hours-pulse");
     expect(marketsCron).toBeDefined();
@@ -376,7 +375,7 @@ describe("cron routing (M5)", () => {
     // The cron's `model` payload must match the agent it's routed to,
     // or the runtime would override the agent's declared primary on
     // every cron tick.
-    const cron = compiledCron("sterling-gen4");
+    const cron = compiledCron("sterling");
     const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
     const heartbeat = jobs.find((j) => j.id === "heartbeat");
     const heartbeatPayload = heartbeat?.payload as { model: string };
@@ -400,7 +399,7 @@ describe("cron routing (M5)", () => {
   });
 });
 
-describe("single-agent emit unchanged (M3 regression guard)", () => {
+describe("single-agent emit unchanged (regression guard)", () => {
   const paths = compiledPaths("life-ops");
 
   it("still emits identity files flat at workspace/", () => {

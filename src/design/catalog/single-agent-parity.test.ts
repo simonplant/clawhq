@@ -1,9 +1,9 @@
 /**
- * Single-agent compile parity — guard against multi-agent emit (M1+) leaking
+ * Single-agent compile parity — guard against multi-agent emit leaking
  * into single-agent blueprints.
  *
- * Why this test exists: ClawHQ is adding per-agent overrides via
- * `agents.list[]` (Sterling Gen-4). Every existing blueprint (life-ops,
+ * Why this test exists: ClawHQ supports per-agent overrides via
+ * `agents.list[]` (Sterling). Every existing blueprint (life-ops,
  * family-hub, stoic-coach, etc.) stays single-agent and MUST keep producing
  * the same `agents` block it produces today — `agents.defaults` only, no
  * `agents.list`. If a future compiler change silently starts emitting
@@ -12,7 +12,7 @@
  *
  * This file pins the contract: single-agent blueprints emit a single-agent
  * `agents` block. When a blueprint INTENTIONALLY becomes multi-agent
- * (sterling-gen4), add it to the EXCLUDED set below — that's a one-line
+ * (sterling), add it to the EXCLUDED set below — that's a one-line
  * change that gets reviewed as part of the multi-agent work.
  */
 
@@ -39,7 +39,7 @@ const DEPLOY_DIR = "/tmp/single-agent-parity-test";
  * be checked against the single-agent contract.
  */
 const MULTI_AGENT_PROFILES = new Set<string>([
-  "sterling-gen4", // Multi-agent host (M2 onward).
+  "sterling", // Multi-agent host.
 ]);
 
 function compileOpenclawJson(profile: string): string {
@@ -108,7 +108,7 @@ describe("life-ops content digest", () => {
   //     console.log(createHash('sha256').update(r.files.find(f=>f.relativePath==='openclaw.json').content).digest('hex'))"
   // …and replace EXPECTED_LIFEOPS_DIGEST below.
 
-  // Pinned 2026-05-11 (M1 baseline). When this fails, EITHER (a) regenerate
+  // Pinned 2026-05-11. When this fails, EITHER (a) regenerate
   // intentionally if the compiler change was deliberate, OR (b) treat the
   // failure as a regression and fix the compiler.
   const EXPECTED_LIFEOPS_DIGEST =

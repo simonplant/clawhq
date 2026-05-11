@@ -1,6 +1,6 @@
 /**
  * Workspace manifest scan — locks the contract for per-agent identity
- * directories (M3 of the Sterling Gen-4 plan).
+ * directories in multi-agent (Sterling) profiles.
  *
  * scanWorkspaceManifest builds the immutable file list that the Docker
  * compose generator uses to mount identity files chmod 444 :ro — the
@@ -40,7 +40,7 @@ function touchIdentityFiles(workspaceSubdir: string): void {
   }
 }
 
-describe("scanWorkspaceManifest — multi-agent partition (M3)", () => {
+describe("scanWorkspaceManifest — multi-agent partition", () => {
   it("lifts per-agent identity files into the immutable list", () => {
     const deploy = makeDeploy();
     touchIdentityFiles(join(deploy, "workspace", "life-ops"));

@@ -351,7 +351,7 @@ describe("checks", { timeout: 30_000 }, () => {
     expect(checks.length).toBe(43);
   });
 
-  // ── multi-agent-models-available (M8) ─────────────────────────────────
+  // ── multi-agent-models-available ─────────────────────────────────
   //
   // Walks agents.list[] and verifies each agent's primary either points
   // at a pulled Ollama model (probed via docker exec; falls back to a

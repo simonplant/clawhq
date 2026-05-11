@@ -17,7 +17,7 @@ describe("classify", () => {
     expect(classify("workspace/HEARTBEAT.md")).toBe("clawhq");
   });
 
-  it("classifies per-agent identity files as clawhq-owned (M3)", () => {
+  it("classifies per-agent identity files as clawhq-owned", () => {
     // Multi-agent profiles emit identity files at workspace/<id>/ instead
     // of workspace/. Same ownership semantics — clawhq controls and
     // regenerates from the profile YAML.
