@@ -20,9 +20,10 @@ import { createHash } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { compile } from "./index.js";
 import { loadAllProfiles } from "./loader.js";
 import type { UserConfig } from "./types.js";
+
+import { compile } from "./index.js";
 
 const TEST_USER: UserConfig = {
   name: "TestUser",
