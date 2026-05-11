@@ -281,6 +281,35 @@ describe("sterling-gen4 workspace partitioning (M3+M4)", () => {
   });
 });
 
+describe("cron routing (M5)", () => {
+  function compiledCron(profile: string): Record<string, unknown> {
+    const r = compile({ profile }, TEST_USER, DEPLOY_DIR);
+    const cron = r.files.find((f) => f.relativePath === "cron/jobs.json");
+    if (!cron) throw new Error(`compile(${profile}) produced no cron/jobs.json`);
+    return JSON.parse(cron.content) as Record<string, unknown>;
+  }
+
+  it("multi-agent cron carries agentId on every job (routes to default)", () => {
+    const cron = compiledCron("sterling-gen4");
+    const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
+    expect(jobs.length).toBeGreaterThan(0);
+    for (const job of jobs) {
+      expect(job.agentId).toBe("life-ops");
+    }
+  });
+
+  it("single-agent cron does NOT emit agentId", () => {
+    // Backward-compat — single-agent profiles never had agentId; adding
+    // it would change the byte sequence locked by the parity digest.
+    const cron = compiledCron("life-ops");
+    const jobs = (cron.jobs as Array<Record<string, unknown>>) ?? [];
+    expect(jobs.length).toBeGreaterThan(0);
+    for (const job of jobs) {
+      expect(job.agentId).toBeUndefined();
+    }
+  });
+});
+
 describe("single-agent emit unchanged (M3 regression guard)", () => {
   const paths = compiledPaths("life-ops");
 

@@ -1386,6 +1386,15 @@ function renderCronJobs(
   const modelConfig = buildModelConfig(providers, modelOverride);
   const primary = modelConfig.primary as string;
 
+  // Multi-agent profiles route every profile-level cron to the default
+  // agent. Without an explicit agentId, upstream OpenClaw runs the job
+  // against whichever agent it picks — for multi-agent that's ambiguous
+  // and the cron's identity files (HEARTBEAT.md etc.) would resolve to
+  // the wrong workspace. Per-agent cron schedules (different cadence per
+  // role) are a future enhancement; today every job goes to the default.
+  const defaultAgentId = profile.agents?.find((a) => a.default)?.id
+    ?? profile.agents?.[0]?.id;
+
   const announceDelivery = telegramChatId
     ? {
         mode: "announce" as const,
@@ -1431,6 +1440,7 @@ function renderCronJobs(
       enabled: true,
       schedule: { kind: "cron", expr },
       delivery: shouldAnnounce ? announceDelivery : { mode: "none" },
+      ...(defaultAgentId !== undefined ? { agentId: defaultAgentId } : {}),
       payload: { kind: "agentTurn", message, model },
       sessionTarget: "isolated",
       state: {},
@@ -1454,6 +1464,7 @@ function renderCronJobs(
       enabled: true,
       schedule: { kind: "cron", expr: "*/15 * * * *" },
       delivery: { mode: "none" },
+      ...(defaultAgentId !== undefined ? { agentId: defaultAgentId } : {}),
       payload: {
         kind: "agentTurn",
         message: `Run skill: ${skill}`,
