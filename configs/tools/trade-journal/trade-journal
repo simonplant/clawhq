@@ -4,7 +4,7 @@
 Tracks positions and P&L for:
   tos     — $100K ThinkOrSwim (Simon executes, full capability)
   ira     — $100K Fidelity IRA (Simon executes, long-only)
-  tradier — $3K Tradier (Clawdius executes, alert-only)
+  tradier — $3K Tradier (Warren executes, alert-only)
 
 Usage: trade-journal <command> [args]
 

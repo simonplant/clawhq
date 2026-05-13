@@ -62,8 +62,8 @@
       "type": "brokerage",
       "balance": 3000.00,
       "broker": "tradier",
-      "execution": "clawdius",
-      "description": "Clawdius's own account — full discretion, small size. Swing and investment focus due to PDT + balance constraints.",
+      "execution": "warren",
+      "description": "Warren's own account — full discretion, small size. Swing and investment focus due to PDT + balance constraints.",
       "constraints": {
         "max_position_pct": 15.0,
         "max_total_exposure_pct": 60.0,

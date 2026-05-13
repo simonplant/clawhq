@@ -148,7 +148,7 @@ CALENDAR RISK
 ACCOUNT STATUS
 tos:     [positions or "flat"] — Simon executes (full capability)
 ira:     [positions or "flat"] — Simon executes (long-only)
-tradier: [positions or "flat"] — Clawdius's own (alert-only)
+tradier: [positions or "flat"] — Warren's own (alert-only)
 ```
 
 **Trade ideas must be order-ready.** Not "watch this area" — give Simon a price to set a LIMIT order at, a stop, and targets. If the conviction isn't high enough for a specific limit price, it's a WATCH, not a trade idea.
@@ -159,7 +159,7 @@ tradier: [positions or "flat"] — Clawdius's own (alert-only)
 
 ## Phase 3: FOCUS (6:00 AM - 6:30 AM PT / market open)
 
-**Goal:** Simon places LIMIT orders from the plan. Clawdius answers questions and monitors for DP VTF alerts.
+**Goal:** Simon places LIMIT orders from the plan. Warren answers questions and monitors for DP VTF alerts.
 
 **Timing:** Brief delivered at 6:00 AM. **Order-ready signals by 6:10 AM** — Simon enters LIMIT orders 6:10-6:30 AM before the bell.
 
@@ -167,11 +167,11 @@ tradier: [positions or "flat"] — Clawdius's own (alert-only)
 
 1. Reads the brief
 2. **Places LIMIT orders** in his trading platform for the day's top ideas
-3. Pastes DP AM Call if he hasn't already (Clawdius processes and supplements)
+3. Pastes DP AM Call if he hasn't already (Warren processes and supplements)
 4. Pastes early DP VTF alerts if the VTF is active pre-market
-5. Asks Clawdius for clarification on levels, sizing, or conviction
+5. Asks Warren for clarification on levels, sizing, or conviction
 
-### What Clawdius Does
+### What Warren Does
 
 1. **Score each trade idea per `DP.md`** — apply conviction scoring and trade type classification. Output HIGH + MEDIUM ideas as order-ready signals, LOW as watch list.
 2. **Output order-ready signals** — LIMIT price, stop, targets, risk, DP's exact words. See brief template below.
@@ -223,7 +223,7 @@ Heartbeat every 15 min during market hours:
 
 ### Scanner / Swing Ideas — Discretionary
 
-Clawdius's own analysis. Uses all sources plus own TA:
+Warren's own analysis. Uses all sources plus own TA:
 1. Identify setups from brief + real-time data
 2. Generate ORDER blocks for all eligible accounts
 3. `trade-journal log <account> ...` with thesis in `--notes`
@@ -323,20 +323,20 @@ TOMORROW'S SETUP
 
 ## Phase Ownership
 
-| Phase | Time (PT) | Primary Owner | Simon's Role | Clawdius Autonomy |
+| Phase | Time (PT) | Primary Owner | Simon's Role | Warren Autonomy |
 |-------|-----------|--------------|--------------|-------------------|
-| RESEARCH | Close → 5 AM | Clawdius (cron) | Sleeps | Full — gather, scan, accumulate |
-| PLAN | 5:00-6:00 AM | Clawdius + Simon | Pastes DP AM Call | Full for synthesis; Simon triggers DP input |
+| RESEARCH | Close → 5 AM | Warren (cron) | Sleeps | Full — gather, scan, accumulate |
+| PLAN | 5:00-6:00 AM | Warren + Simon | Pastes DP AM Call | Full for synthesis; Simon triggers DP input |
 | FOCUS | 6:00-6:30 AM | Simon | Places LIMIT orders by 6:10 AM | On standby — answer questions, process VTF |
 | EXECUTE | 6:30 AM-1 PM | Both | Pastes VTF alerts, manages orders | Advisory for tos/ira; autonomous for tradier (alert-only) |
-| MANAGE | Concurrent | Clawdius | Reviews alerts | Monitors all accounts; advisory for Simon |
-| REVIEW | 1:15 PM → evening | Clawdius (cron) | Reads EOD report | Full — mark, compare, reconcile |
+| MANAGE | Concurrent | Warren | Reviews alerts | Monitors all accounts; advisory for Simon |
+| REVIEW | 1:15 PM → evening | Warren (cron) | Reads EOD report | Full — mark, compare, reconcile |
 
 ---
 
 ## Anti-Patterns
 
-Things Clawdius must NOT do:
+Things Warren must NOT do:
 
 - **50 overnight messages**: Batch everything into the morning brief
 - **Repeating the brief**: If Simon read the brief, don't re-summarize it later
