@@ -54,12 +54,45 @@ ui  update  web  wizard
 canvasHost, cli, commands, commitments, crestodian, mcp, media, memory,
 messages, nodeHost, proxy, surfaces, talk, web, wizard`
 
-**Removed or renamed (5):**
-- `identity` — gone from top level (likely moved under `agents.*` or `ui.*`)
-- `memorySearch` — almost certainly renamed to `memory`
-- `compaction` — likely folded into `session.*` or `memory.*`
-- `contextPruning` — likely folded into `session.*` or `memory.*`
-- `sandbox` — gone from top level despite `sandbox` CLI subcommand still existing
+**Removed or renamed (5)** — provenance resolved by `jq`-walking the schema.
+Pattern: three top-level config sections (`memorySearch`, `compaction`,
+`contextPruning`) were demoted to `agents.defaults.*` so multi-agent setups
+can override them per agent. Two (`identity`, `sandbox`) were split across
+multiple new homes.
+
+- `identity` → split: `agents.list[].identity.{name, theme, emoji, avatar}`
+  (per-agent) + `ui.assistant.{name, avatar}` (UI-level). `name` replaces
+  the old `displayName`.
+- `memorySearch` → **demoted** to `agents.defaults.memorySearch.*`. Same
+  provider/model/extraPaths/fallback preserved + new fields (cache,
+  chunking, multimodal, qmd, sources, sync). The new top-level
+  `memory.*` is unrelated (engine backend `builtin`/`qmd`, citation mode).
+- `compaction` → **demoted** to `agents.defaults.compaction.*`. Fields
+  renamed: `reserveTokensFloor` → `reserveTokens`. New: `mode`
+  (default/safeguard), `provider` (pluggable summarizer),
+  `keepRecentTokens`.
+- `contextPruning` → **demoted** to `agents.defaults.contextPruning.*`.
+  `mode, ttl, keepLastAssistants` preserved + new pruning controls
+  (`hardClear*`, `softTrim*`, `tools`, `minPrunableToolChars`).
+- `sandbox` → split: per-tool sandbox membership at
+  `tools.sandbox.tools[]`; runtime config under
+  `agents.defaults.agentRuntime.*`. CLI subcommand still exists.
+
+### ClawHQ source-side hits (open bug)
+
+`grep -rn` against the v2026.5.7 schema-relevant identifiers in `src/`:
+
+| File:line | What it does | Action |
+|---|---|---|
+| `src/config/types.ts:149,197` | Declares top-level `memorySearch?` | Move under `agents.defaults` |
+| `src/design/configure/generate.ts:237` | Emits top-level `memorySearch:` | Move to `agents.defaults.memorySearch` |
+| `src/design/catalog/compiler.ts:1255` | Emits top-level `memorySearch:` | Same |
+| `src/cli/commands/config.ts:8` | Comment already references `agents.defaults.compaction.reserveTokensFloor` | Comment correct (field name now `reserveTokens`); no code change |
+
+The warren instance survives only because its `openclaw.json` was written
+by an older ClawHQ build before the upstream demotion. A fresh
+`clawhq init` against a v2026.5.7 engine will produce a config that
+Gateway refuses to load.
 
 **Unchanged (20):** `agents, auth, browser, channels, cron, diagnostics,
 discovery, env, gateway, hooks, logging, meta, models, plugins, secrets,
@@ -97,5 +130,10 @@ jq -r '.properties | keys[]' schema.json | sort
   `nodeHost`, `crestodian` — each warrants its own wiki page
 - Bulk frontmatter migration: add `openclaw_version` to the other 44
   `openclaw/*`-tagged pages (deferred to incremental verification)
-- Confirm renames: `memorySearch` → `memory`, where `identity`,
-  `compaction`, `contextPruning`, `sandbox` moved
+- ~~Confirm renames~~ — resolved 2026-05-14 (see Removed/renamed table
+  above). `memorySearch`, `compaction`, `contextPruning` are genuinely
+  gone (not renamed). `identity` and `sandbox` are split.
+- Clawhq blueprint compiler audit: search `src/design/` for any code
+  emitting `identity.*`, `memorySearch.*`, `compaction.*`,
+  `contextPruning.*`, or top-level `sandbox.*` keys — those will fail
+  Gateway validation on v2026.5.7 since unknown keys reject the config.

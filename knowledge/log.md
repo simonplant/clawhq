@@ -1,22 +1,33 @@
 # Log
 
-## [2026-05-14] openclaw-sync | v2026.4.12 → v2026.5.7 (first run)
+## [2026-05-14] openclaw-sync | v2026.4.12 → v2026.5.7 (first run + provenance resolution)
 
 First /openclaw-sync run against the warren instance. Engine moved a CalVer
 month + 7 patches ahead of the seed reference. 21 new top-level schema
-sections, 5 superseded.
+sections; 5 superseded with confirmed migration paths.
 
-Discovery: [[openclaw-discovery-2026-05-14]]. Pages updated:
-[[openclaw-json-schema]] (frontmatter bumped to v2026.5.7; added 21 new
-sections with `needs ingest` placeholders; marked `identity`,
-`memorySearch`, `compaction`, `contextPruning`, `sandbox` as
-**Superseded:** with provenance citations). Skill fix: corrected
-`docker exec -T` → `docker exec` (was compose-only syntax).
+Discovery: `knowledge/raw/openclaw-discovery-2026-05-14.md`. Pages updated:
+[[openclaw-json-schema]] — frontmatter bumped to v2026.5.7; added 21 new
+sections with `needs ingest` placeholders; the 5 superseded sections now
+have confirmed migration paths (not initial guesses):
 
-Pending: per-section ingest for the 21 new top-level keys; confirm where
-the 5 superseded sections moved; bulk `openclaw_version` frontmatter
-backfill across the other 44 openclaw/*-tagged pages; OPENCLAW-REFERENCE.md
-overhaul (gated to major-version boundary — file as backlog item).
+- `memorySearch`, `compaction`, `contextPruning` were **demoted** to
+  `agents.defaults.*` (multi-agent demands per-agent overrides);
+- `identity` and `sandbox` were **split** across multiple new homes;
+- Fields were also renamed (e.g. `reserveTokensFloor` → `reserveTokens`).
+
+**Open bug surfaced:** `src/config/types.ts:149,197`,
+`src/design/configure/generate.ts:237`, `src/design/catalog/compiler.ts:1255`
+still emit top-level `memorySearch.*` — invalid on v2026.5.7. Warren survives
+only because its config predates the demotion. Worth a backlog item.
+
+Skill fixes shipped same run: `docker exec -T` → `docker exec` (compose-only
+syntax); raw-source link convention switched from `[[wiki-link]]` (lint
+rejects, raw is outside the link graph) to relative markdown link.
+
+Pending: per-section ingest for the 21 new top-level keys; bulk
+`openclaw_version` frontmatter backfill across other openclaw/*-tagged
+pages; OPENCLAW-REFERENCE.md overhaul (gated to major-version boundary).
 
 ## [2026-05-11] rename | sterling profile → triumvirate
 

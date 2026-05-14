@@ -77,24 +77,49 @@ from CLI subcommand names and the schema dump
 
 ### Superseded between v2026.4.12 and v2026.5.7
 
-- **`identity.*`** — **Superseded:** removed from top level in v2026.5.7.
-  Display name / theme / emoji / avatar fields likely moved under
-  `agents.*` or `ui.*`. Confirm via `openclaw config schema | jq` before
-  removing references from blueprint compilers. (see [discovery 2026-05-14](../raw/openclaw-discovery-2026-05-14.md))
-- **`memorySearch.*`** — **Superseded:** renamed to `memory.*` in v2026.5.7
-  (high confidence — only candidate top-level key in the new schema).
-  Provider, model, extraPaths, fallback, scoring fields likely live under
-  `memory.*` now. (see [discovery 2026-05-14](../raw/openclaw-discovery-2026-05-14.md))
-- **`compaction.*`** — **Superseded:** removed from top level in v2026.5.7.
-  `reserveTokensFloor`, `memoryFlush` likely folded into `session.*` or
-  `memory.*`. (see [discovery 2026-05-14](../raw/openclaw-discovery-2026-05-14.md))
-- **`contextPruning.*`** — **Superseded:** removed from top level in v2026.5.7.
-  `mode`, `ttl`, `keepLastAssistants` likely folded into `session.*` or
-  `memory.*`. (see [discovery 2026-05-14](../raw/openclaw-discovery-2026-05-14.md))
-- **`sandbox.*`** — **Superseded:** removed from top level in v2026.5.7
-  despite the `openclaw sandbox` CLI subcommand still existing. Config
-  may have moved under `agents.*` or `tools.*`. Verify before relying on
-  `sandbox.image` / `sandbox.network` keys. (see [discovery 2026-05-14](../raw/openclaw-discovery-2026-05-14.md))
+Migration paths resolved by `jq`-walking the v2026.5.7 schema dump on
+2026-05-14 (see [discovery 2026-05-14](../raw/openclaw-discovery-2026-05-14.md)).
+
+**Architectural pattern: top-level config demoted to per-agent defaults.**
+Multi-agent support means settings that used to be global became per-agent
+overridable. Three top-level sections moved en bloc into `agents.defaults.*`.
+
+- **`identity.*`** — **Superseded:** split. Per-agent identity at
+  `agents.list[].identity.{name, theme, emoji, avatar}` (`name` replaces
+  `displayName`); UI-level assistant identity at `ui.assistant.{name,
+  avatar}`. Blueprint compilers writing top-level `identity.*` will fail
+  Gateway validation.
+- **`memorySearch.*`** — **Superseded:** demoted to
+  `agents.defaults.memorySearch.*`. Same provider/model/extraPaths/fallback
+  fields preserved, plus new ones (cache, chunking, multimodal, qmd,
+  sources, sync, etc.) for the expanded retrieval stack. The new
+  top-level `memory.*` is a separate concept (engine backend selector
+  `builtin` vs `qmd`, citation mode) — not a rename.
+- **`compaction.*`** — **Superseded:** demoted to
+  `agents.defaults.compaction.*`. Field names also changed:
+  `reserveTokensFloor` → `reserveTokens`, plus new `mode` (default /
+  safeguard), `provider` (pluggable summarizer), `keepRecentTokens`.
+- **`contextPruning.*`** — **Superseded:** demoted to
+  `agents.defaults.contextPruning.*`. Most fields preserved
+  (`mode, ttl, keepLastAssistants`) plus new ones (`hardClear`,
+  `hardClearRatio`, `softTrim`, `softTrimRatio`, `minPrunableToolChars`,
+  `tools`).
+- **`sandbox.*`** — **Superseded:** split. Per-tool sandbox membership
+  moved to `tools.sandbox.tools[]`; runtime/engine config landed under
+  `agents.defaults.agentRuntime.*`. The `openclaw sandbox` CLI subcommand
+  manages containers; the config-layer name is gone.
+
+### ⚠️ ClawHQ compiler emits superseded keys (open bug)
+
+`src/config/types.ts:149,197` declares top-level `memorySearch?` in the
+ClawHQ side of the config type. `src/design/configure/generate.ts:237`
+and `src/design/catalog/compiler.ts:1255` emit top-level `memorySearch.*`
+into compiled `openclaw.json`. Any ClawHQ-managed agent built against
+v2026.5.7 will hit "unknown key — Gateway refuses to start." The
+existing warren instance survives only because its `openclaw.json` was
+written by an older ClawHQ build pre-update. Fix sequence: move emission
+to `agents.defaults.memorySearch.*`, update types, and check whether
+similar top-level `compaction.*` / `contextPruning.*` emission exists.
 
 Full schema lives in `src/config/schema.ts` (TypeBox). **Unknown keys
 cause the Gateway to refuse to start** — which means blueprints emitting
