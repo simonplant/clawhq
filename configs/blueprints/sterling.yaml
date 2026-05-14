@@ -1,0 +1,103 @@
+name: Sterling
+version: "1.0.0"
+profile_ref: sterling
+
+use_case_mapping:
+  replaces: Consumer AI surfaces (ChatGPT, Claude.ai, Pi) for sensitive family conversations
+  tagline: "Sovereign family-guardian AI — local-first, three-tier inference, family wiki substrate"
+  description: >
+    Family guardian agent serving the Plant household via Telegram. A thinking
+    partner across work, money, health, mind, relationships, home, and meaning —
+    takes positions, disagrees when warranted, names the line where a real
+    professional is irreplaceable. Local Gemma for routine traffic; OpenRouter
+    mid-tier (/think) and Anthropic Opus (/deep, /private, /synth) for harder
+    conversations. Slash-command routing, crisis detection, scratch isolation,
+    and weekly synthesis live in the host-side dispatcher at
+    /sterling/runtime/dispatcher.py — this profile is the runtime container for
+    the local conversational path only.
+  day_in_the_life: >
+    Sterling is asleep most of the time. Wakes on a Telegram message, classifies
+    it, routes default conversation to local (Gemma 4 via Ollama) or escalates
+    to OpenRouter / Anthropic on slash-command. Sunday 17:00 weekly synthesis to
+    the family group from the last 7 days of logs + rituals. Daily Meadow
+    reminders. Weekly scratch wipe (Mondays 03:00).
+
+customization_questions: []
+
+personality:
+  tone: present-and-direct
+  style: "patient, takes positions, disagrees when warranted, names the line for real professionals"
+  relationship: thinking partner
+  boundaries: "respects per-1:1 confidentiality except real-danger crisis; never volunteers cross-context info"
+
+security_posture:
+  posture: hardened
+  egress: allowlist-only
+  egress_domains: []
+  identity_mount: read-only
+
+monitoring:
+  heartbeat_frequency: "30min"
+  checks: []
+  quiet_hours: "22:00-06:00"
+  alert_on:
+    - credential_expiry
+    - cron_failure
+
+memory_policy:
+  hot_max: "50KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+# Sterling's actual cron (synthesis, meadow, scratch_wipe) lives in
+# /sterling/runtime/ via systemd timers — not in ClawHQ's cron system.
+# The three fields below are required by the blueprint validator but
+# intentionally idle: weekly low-frequency schedules with no-op prompts.
+# The dispatcher is the orchestrator; the engine is purely reactive.
+cron_config:
+  heartbeat: "0 6 * * 1"        # Mondays 06:00 — idle ping only
+  work_session: "0 6 * * 1"     # idle
+  morning_brief: "0 6 * * 1"    # idle (the family's /morning ritual lives in the dispatcher)
+
+autonomy_model:
+  default: medium
+  requires_approval: []
+  delegation:
+    - action: respond_to_message
+      tier: execute
+      example: "Reply to a direct or group message routed by the dispatcher"
+    - action: suggest_frontier_escalation
+      tier: execute
+      example: "Suggest /think or /deep when conversation is at the edge of local capability"
+    - action: emit_crisis_marker
+      tier: execute
+      example: "Emit <!-- STERLING_CRISIS_ESCALATE --> when crisis criteria met; the dispatcher fires the escalation"
+
+model_routing_strategy:
+  default_provider: local
+  quality_threshold: low
+
+integration_requirements:
+  required: [messaging]
+  recommended: []
+  optional: []
+
+channels:
+  supported: [telegram]
+  default: telegram
+
+skill_bundle:
+  included: []
+  recommended: []
+
+toolbelt:
+  role: "Family guardian — local conversational path"
+  description: "Minimal tool surface. Slash-command routing, scratch handling, crisis detection, and cron all live in /sterling/runtime/, not in this agent."
+  tools:
+    - name: backlog
+      category: core
+      required: true
+      description: "Local work queue — agent's own deferred items, if any"
+  skills: []

@@ -36,9 +36,33 @@ integrations:
   recommended: []
   optional: []
 
-cron_defaults: {}
+# Sterling's real cron (synthesis, meadow, scratch_wipe) lives in
+# /sterling/runtime/ via systemd timers. The three jobs declared here
+# satisfy the blueprint validator's required cron_config fields but
+# are intentionally idle: weekly low-frequency schedules with no-op
+# prompts. They respond HEARTBEAT_OK and exit.
+cron_defaults:
+  heartbeat:
+    expr: "0 6 * * 1"
+    announce: false
+  work_session:
+    expr: "0 6 * * 1"
+    announce: false
+  morning_brief:
+    expr: "0 6 * * 1"
+    announce: false
 
-cron_prompts: {}
+cron_prompts:
+  heartbeat: >
+    Idle ping. The Sterling dispatcher in /sterling/runtime/ owns real
+    heartbeat behavior; this job is here only because the blueprint
+    schema requires it. Respond HEARTBEAT_OK and exit.
+  work_session: >
+    Idle ping. The Sterling dispatcher in /sterling/runtime/ owns real
+    work-session behavior. Respond HEARTBEAT_OK and exit.
+  morning_brief: >
+    Idle ping. The family's /morning ritual lives in the dispatcher,
+    invoked per-Telegram-user. Respond HEARTBEAT_OK and exit.
 
 delegation:
   - action: respond_to_message
