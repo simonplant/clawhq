@@ -27,7 +27,7 @@ where latency matters.
 ## Architecture (compile time)
 
 A mission profile may now optionally carry `agents:` — an array of
-[[per-agent overrides]]. When the profile compiles, the compiler emits:
+per-agent overrides. When the profile compiles, the compiler emits:
 
 ```json
 {
@@ -111,11 +111,12 @@ and authorised by the user explicitly.
 - **Provider config** — `models.providers.openrouter` is emitted
   automatically when any agent references `openrouter/...`. The
   compiler reads `REMOTE_PROVIDER_CONFIG` in `src/design/catalog/compiler.ts`.
-- **Validation** — [[LM-15]] catches per-agent model strings whose
+- **Validation** — landmine LM-15 catches per-agent model strings whose
   provider isn't configured (typos, missing API keys).
 - **Audit** — egress logs (`ops/audit/egress.jsonl`) capture every
   call to `openrouter.ai`. Per-turn provider/model is also in OpenClaw's
-  `executionTrace.winnerModel` field — see [[per-agent-routing-spike]].
+  `executionTrace.winnerModel` field — see the per-agent-routing spike
+  documented in `project_per_agent_model_routing_verified.md` (auto-memory).
 
 ## Hot-swap budget on the 5090
 

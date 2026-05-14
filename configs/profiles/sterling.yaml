@@ -1,0 +1,85 @@
+id: sterling
+name: Sterling
+description: "Family guardian agent — runs the local conversational path for the Plant family's Telegram"
+replaces: "consumer AI surfaces (ChatGPT, Claude.ai, Pi) for sensitive family conversations — sovereign, local-first"
+
+operating_mandate: >
+  Sterling runs the LOCAL inference path for the Sterling family-guardian
+  application. The Python dispatcher at /sterling/runtime/dispatcher.py
+  routes Telegram traffic to this agent for default conversation; slash
+  commands (/think, /deep, /private, /synth) route to OpenRouter or
+  Anthropic Opus from the dispatcher itself, never through this agent.
+
+  Sterling's family wiki (/sterling/knowledge/family/), the Sterling Code
+  (/sterling/STERLING_CODE.md), and the speaker's last-7-days scratch
+  (personal persona only) are injected by the dispatcher as part of each
+  turn's context. The agent's job is to read that context, reason against
+  it, and reply in Sterling's voice — patient, present, taking positions,
+  disagreeing when warranted, naming the line where a real professional
+  is irreplaceable.
+
+  Slash-command routing, scratch isolation, crisis detection, and the
+  synthesis / meadow / scratch-wipe cron all live in the dispatcher, not
+  in this agent. This profile is the runtime container for local
+  inference only.
+
+tools:
+  - name: backlog
+    category: core
+    description: "Local work queue — agent's own deferred items, if any"
+    required: true
+
+skills: []
+
+integrations:
+  required: [messaging]
+  recommended: []
+  optional: []
+
+cron_defaults: {}
+
+cron_prompts: {}
+
+delegation:
+  - action: respond_to_message
+    tier: execute
+    example: "Reply to a direct or group message routed by the dispatcher"
+  - action: suggest_frontier_escalation
+    tier: execute
+    example: "Suggest the user retry with /think when conversation is at the edge of local capability"
+  - action: emit_crisis_marker
+    tier: execute
+    example: "Emit <!-- STERLING_CRISIS_ESCALATE --> in the response when crisis criteria met; the dispatcher fires the escalation"
+
+# No external egress from this agent. The dispatcher (on host network)
+# handles all frontier API calls — Anthropic, OpenRouter — and their
+# egress is allowlisted at the host firewall layer, not inside the
+# container.
+egress_domains: []
+
+security_posture: hardened
+autonomy_default: medium
+
+memory_policy:
+  hot_max: "50KB"
+  hot_retention: "7d"
+  warm_retention: "90d"
+  cold_retention: "365d"
+  summarization: balanced
+
+monitoring:
+  heartbeat_frequency: "30min"
+  checks: []
+  quiet_hours: "22:00-06:00"
+  alert_on: [credential_expiry, cron_failure]
+
+day_in_the_life: >
+  Sterling is asleep most of the time. Wakes when a family member sends
+  a Telegram message and the /sterling/runtime/dispatcher.py determines
+  the message should route to local inference (default conversation, no
+  /think//deep//private//synth prefix). The dispatcher composes the
+  turn's context — Sterling's CLAUDE.md persona, the family wiki, the
+  Sterling Code, the speaker's recent scratch — and invokes this agent
+  via `docker exec`. Sterling reads, reasons, replies. The dispatcher
+  posts back to Telegram. Cron jobs (Sunday synthesis, Meadow reminders,
+  scratch wipe) live in the dispatcher, not here.
