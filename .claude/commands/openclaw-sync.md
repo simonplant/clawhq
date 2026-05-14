@@ -12,8 +12,8 @@ You are operating as a wiki maintainer for the OpenClaw knowledge corpus. ClawHQ
 
 1. **Inspect available sources** — record what is accessible and what is not:
    - Running container: `docker ps --filter "name=openclaw" --format '{{.Names}}\t{{.Image}}\t{{.Status}}'`. If multiple agents are registered, resolve via `~/.clawhq/instances.json` and `src/build/docker/container.ts::requireOpenclawContainer`.
-   - Installed version: `docker exec -T <container> cat /app/package.json | jq -r .version` (probe `/app`, `/usr/local/lib/openclaw`, or wherever the engine is installed — adapt if the first path is empty).
-   - Schema dump: try `docker exec -T <container> openclaw schema` and `openclaw --help` to discover introspection commands. If a Gateway endpoint is exposed (see `src/gateway/client.ts`), try an RPC call. Note as unavailable if neither works.
+   - Installed version: `docker exec <container> cat /app/package.json | jq -r .version` (probe `/app`, `/usr/local/lib/openclaw`, or wherever the engine is installed — adapt if the first path is empty). Note: use `docker exec` (NOT `docker exec -T` — that's `docker compose exec` syntax).
+   - Schema dump: `docker exec <container> openclaw config schema` (verified working on v2026.5.7 — 53k-line JSON Schema, regenerable so don't commit the full dump). Also run `openclaw --help` to discover new CLI surface. Note as unavailable if neither works.
    - Documented version: read the `openclaw_version` (or `Minimum OpenClaw version`) line in `docs/OPENCLAW-REFERENCE.md` and the frontmatter of openclaw-tagged wiki pages.
    - Prior sync history: `grep "openclaw-sync" knowledge/log.md` for previous runs.
 
@@ -42,15 +42,15 @@ You are operating as a wiki maintainer for the OpenClaw knowledge corpus. ClawHQ
 5. **Heal the wiki** (only the items the user approved in step 3):
    - Bump `openclaw_version` in `knowledge/wiki/openclaw-json-schema.md` and other `openclaw/*`-tagged pages that the user confirmed are still accurate.
    - For removed or renamed schema fields, **do not delete** — annotate with `**Superseded:** as of vX.Y.Z, this field is renamed to ...` and cite the discovery source. Provenance > tidiness.
-   - For new fields, components, or landmines, add a section (or a new page if substantial) citing `(see [[openclaw-discovery-YYYY-MM-DD]])`.
+   - For new fields, components, or landmines, add a section (or a new page if substantial) citing `(see [discovery YYYY-MM-DD](../raw/openclaw-discovery-YYYY-MM-DD.md))` — use a relative markdown link, NOT `[[wiki-link]]` syntax, because raw sources are outside the wiki link graph and `llm-wiki lint` will fail. Also record the raw source path in the page's `sources:` frontmatter list.
    - **`docs/OPENCLAW-REFERENCE.md` is touched only at a major-version boundary** (e.g. v2026.x → v2027.x) and even then propose the diff for user review rather than rewriting. Minor/patch drift is absorbed by the wiki.
    - If new pages were added, update `knowledge/index.md` under the appropriate `openclaw/*` category line.
 
 6. **Append a log entry** to `knowledge/log.md`:
    ```
-   ## [YYYY-MM-DD] openclaw-sync | <running version> → wiki synced
+   ## [YYYY-MM-DD] openclaw-sync | <documented> → <running> (notes)
 
-   Discovery: [[openclaw-discovery-YYYY-MM-DD]]. Pages updated: [...]. Pending: [...].
+   Discovery: `knowledge/raw/openclaw-discovery-YYYY-MM-DD.md`. Pages updated: [...]. Pending: [...].
    ```
 
 7. **Validate** by running `llm-wiki lint`. Fix any structural issues introduced (broken links, index drift, missing frontmatter).

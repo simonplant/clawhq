@@ -1,5 +1,23 @@
 # Log
 
+## [2026-05-14] openclaw-sync | v2026.4.12 → v2026.5.7 (first run)
+
+First /openclaw-sync run against the warren instance. Engine moved a CalVer
+month + 7 patches ahead of the seed reference. 21 new top-level schema
+sections, 5 superseded.
+
+Discovery: [[openclaw-discovery-2026-05-14]]. Pages updated:
+[[openclaw-json-schema]] (frontmatter bumped to v2026.5.7; added 21 new
+sections with `needs ingest` placeholders; marked `identity`,
+`memorySearch`, `compaction`, `contextPruning`, `sandbox` as
+**Superseded:** with provenance citations). Skill fix: corrected
+`docker exec -T` → `docker exec` (was compose-only syntax).
+
+Pending: per-section ingest for the 21 new top-level keys; confirm where
+the 5 superseded sections moved; bulk `openclaw_version` frontmatter
+backfill across the other 44 openclaw/*-tagged pages; OPENCLAW-REFERENCE.md
+overhaul (gated to major-version boundary — file as backlog item).
+
 ## [2026-05-11] rename | sterling profile → triumvirate
 
 The "Sterling" name was reclaimed for an upcoming application-layer agent
