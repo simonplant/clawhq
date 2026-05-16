@@ -73,7 +73,7 @@ services:
       - "host.docker.internal:host-gateway"
     tmpfs:
       - /tmp:size=100m,noexec,nosuid
-      - /home/node/.openclaw:exec,nosuid,size=256m,uid=1000,gid=1000
+      - /home/node/.openclaw:exec,nosuid,size=2048m,uid=1000,gid=1000
     volumes:
       - ./workspace:${OPENCLAW_CONTAINER_WORKSPACE}
 `;

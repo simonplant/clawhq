@@ -400,7 +400,9 @@ export function generateCompose(
       // OpenClaw runtime state: exec-approval temp files, plugin state, and
       // directories created at startup (telegram/, agents/, canvas/, logs/).
       // Bind mounts for persistent paths (workspace, cron, config) overlay this.
-      `${OPENCLAW_CONTAINER_ROOT}:exec,nosuid,size=256m,uid=1000,gid=1000`,
+      // Size is posture-driven — 256m fills in ~4 days under typical cron load
+      // (see 2026-05-16 ENOSPC incident); 2g is the post-incident default.
+      `${OPENCLAW_CONTAINER_ROOT}:${posture.openclawTmpfs.options},size=${posture.openclawTmpfs.sizeMb}m,uid=1000,gid=1000`,
     ],
     volumes: buildVolumes(deployDir, options),
     networks: [networkName],

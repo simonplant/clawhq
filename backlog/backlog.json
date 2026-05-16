@@ -1230,6 +1230,171 @@
       "groomedAt": "2026-04-23",
       "groomingNotes": "Child of FEAT-186. Priority 5 of the phantom-multi-tenancy fix chain — longer-term architectural polish, not urgent. Depends on FEAT-190 so the instances/<id>/ layout exists before per-instance overrides are offered. Touches Layer 2 (new templates dir) and Layer 4 (compiled outputs unchanged in location). Biggest behavioural change: identity fragments are edited at ~/.clawhq/templates/, not inside the agent's workspace. Size: M. Shipped 2026-04-23 in 420d646 (withIdentityOverride hook in compile() + Layer-2 template lookup at ~/.clawhq/templates/identity/ and ~/.clawhq/instances/<id>/templates/identity/; doctor check deferred — optional feature, absence is normal).",
       "dependsOn": ["FEAT-190"]
+    },
+    {
+      "id": "FEAT-192",
+      "title": "clawhq session prune — bulk session cleanup",
+      "intent": "Operators must be able to clear accumulated agent session history in one command. Today `clawhq session archive` handles one sessionId at a time, which is unusable when 3,000+ sessions have accumulated.",
+      "description": "The 2026-05-16 Clawdius incident wedged because /home/node/.openclaw/agents/main/sessions/ accumulated 3,738 trajectory jsonl files (~224MB) and filled the 256MB tmpfs. Each cron tick and inbound message spawns a session; nothing prunes them. `clawhq session list` reports them and `clawhq session archive <id>` archives one, but bulk cleanup requires a scripted loop — and that loop has to run inside the container against ephemeral tmpfs paths. Add `clawhq session prune` that selects by age and/or keep-newest-N and archives the rest in a single pass, restarting the container only once at the end. Respects --agent.",
+      "priority": "should",
+      "category": "feature",
+      "steps": [
+        "Add `clawhq session prune` subcommand under src/cli session.ts (or equivalent)",
+        "Flags: --older-than <duration> (e.g. 24h, 7d), --keep <N> (preserve newest N), --dry-run, --yes",
+        "Implementation reuses the existing archive helper but skips per-session container restart; restart once at end",
+        "Output: count of sessions selected, total bytes reclaimed, dry-run preview",
+        "Doctor check integration point: when FEAT-193 lands, --fix calls this with --older-than 7d --yes",
+        "Cover with unit tests against a fixture sessions/ tree"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq session prune --dry-run --older-than 7d --agent warren` reports counts without modifying state",
+        "Without --dry-run, sessions are archived and removed from sessions.json in one container restart",
+        "Workspace, memory, and cron bind mounts are untouched",
+        "Tested against a fixture with 1,000+ session files completes in seconds, not minutes"
+      ],
+      "scope": [
+        "src/cli/session.ts",
+        "src/operate/sessions/",
+        "tests/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "feature",
+      "groomedAt": "2026-05-16",
+      "groomingNotes": "Triggered by 2026-05-16 Clawdius ENOSPC incident: 3,738 sessions on a 256MB tmpfs, agent stopped persisting at 23:31 the night before. Existing `clawhq session archive` is single-sessionId and restarts container per call — unusable for the actual failure mode. Size: S. No new file or directory layout, no new schema. Prerequisite for the FEAT-193 doctor auto-fix path.",
+      "dependsOn": null
+    },
+    {
+      "id": "FEAT-193",
+      "title": "Doctor check — agent tmpfs usage and session bloat with auto-prune",
+      "intent": "Disk-full inside the agent container must surface as a doctor failure before the agent silently stops persisting state. Today the failure mode is invisible — Telegram outbound keeps working, heartbeats fail silently, and the operator only notices when the agent stops replying.",
+      "description": "Add a doctor check that probes the agent container for /home/node/.openclaw tmpfs usage and counts sessions in agents/<agent>/sessions/. Fails when usage > 70% or session count > 1000. With --fix, invokes the FEAT-192 `clawhq session prune --older-than 7d --yes` command. This closes the loop on the runaway-session failure mode that has now bitten twice ([[project_runaway_session_20260416]] and 2026-05-16). Existing checks at src/operate/doctor/ are the pattern to follow.",
+      "priority": "should",
+      "category": "feature",
+      "steps": [
+        "Add doctor check `agent-tmpfs-usage` in src/operate/doctor/checks/",
+        "Probe via `docker exec <container> df -h /home/node/.openclaw` and parse Use%",
+        "Add second probe `agent-session-count` counting files in agents/*/sessions/",
+        "FAIL thresholds: tmpfs > 70% or sessions > 1000; WARN at 50% / 500",
+        "Wire --fix to invoke `clawhq session prune --older-than 7d --yes --agent <name>`",
+        "Update existing doctor docs / output to mention the new checks"
+      ],
+      "acceptanceCriteria": [
+        "`clawhq doctor --agent warren` reports tmpfs usage and session count",
+        "Check fails when tmpfs > 70%; --fix prunes and re-runs the probe",
+        "Works against any registered agent via --agent",
+        "Fleet variant (`clawhq doctor --fleet`) reports per-agent"
+      ],
+      "scope": [
+        "src/operate/doctor/checks/",
+        "src/operate/doctor/index.ts",
+        "tests/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "feature",
+      "groomedAt": "2026-05-16",
+      "groomingNotes": "Pairs with FEAT-192. Without the doctor surface, FEAT-192 is a tool nobody knows to reach for; without FEAT-192, this check has no --fix. Two-item bundle, both small. The threshold values (70%, 1000 sessions) are conservative — at observed Clawdius write rates (~1000 sessions/day, ~60MB/day on 256MB tmpfs), 70% gives roughly 24h warning. FEAT-194 will lift the underlying ceiling but the check stays useful as long as sessions accumulate.",
+      "dependsOn": ["FEAT-192"]
+    },
+    {
+      "id": "FEAT-194",
+      "title": "Resize or bind-mount the .openclaw tmpfs so agents survive >1 week of cron load",
+      "intent": "The .openclaw tmpfs must be sized for 24/7 operation. Today it is hard-coded to 256MB, which fills in ~4 days at observed cron + message rates and silently wedges the agent.",
+      "description": "Container config in src/build/docker/ (compose/posture) mounts /home/node/.openclaw as a 256MB tmpfs. Bind-mounted subpaths (workspace, cron, memory) survive restart; everything else (agents/sessions, telegram offsets, exec-approvals, heartbeat, flows, tasks, subagents) lives in the ephemeral tmpfs. The 2026-05-16 incident proved 256MB is too small. Two viable fixes: (a) raise the tmpfs cap to 2G — keeps ephemeral semantics, restart still clears state, no host-disk lifecycle issues; (b) bind-mount agents/sessions/ to the host so sessions survive restart and are managed by FEAT-192. Recommend (a) for v1 because it is reversible and adds no host-state classification work; (b) is the eventual right answer if the agent needs persistent session history. Either fix must work with the 3-tier posture system (minimal/hardened/under-attack).",
+      "priority": "must",
+      "category": "feature",
+      "steps": [
+        "Decide (a) resize to 2G vs (b) bind-mount agents/sessions/ — recommend (a) for simplicity",
+        "If (a): update tmpfs size in src/build/docker/posture.ts / compose generator across the three postures",
+        "If (b): add host path under ~/.clawhq/instances/<id>/ops/sessions/ + classify in src/config/ownership.ts",
+        "Add doctor check to verify the effective tmpfs size matches the configured posture (catches landmines)",
+        "Update OPENCLAW-REFERENCE.md and CLAUDE.md key-design-constraints section if needed",
+        "Verify the change applies cleanly on `clawhq apply` + restart for an existing instance"
+      ],
+      "acceptanceCriteria": [
+        "On a freshly built clawhq install, agent container .openclaw tmpfs is sized for >1 week of typical cron + message load",
+        "Posture changes preserve the new sizing across minimal/hardened/under-attack",
+        "Existing installs pick up the new sizing via `clawhq apply` and `clawhq restart` with no data loss",
+        "Doctor check fails fast if effective size does not match configured posture"
+      ],
+      "scope": [
+        "src/build/docker/posture.ts",
+        "src/build/docker/compose.ts",
+        "src/operate/doctor/checks/",
+        "docs/OPENCLAW-REFERENCE.md"
+      ],
+      "status": "done",
+      "readyForSprint": false,
+      "track": "core",
+      "groomedAt": "2026-05-16",
+      "groomingNotes": "Root cause of 2026-05-16 incident. Highest impact of the four post-incident items because without it Clawdius wedges every ~4 days regardless of pruning cadence. Size: S for option (a), M for option (b). Recommend (a) — keep tmpfs semantics, lift the cap. Option (b) becomes more attractive once persistent session search is a real product surface; today nothing reads sessions/ across restarts. Coordinate with FEAT-192/193 — together they form the post-incident hardening bundle. Shipped 2026-05-16 via option (a): added openclawTmpfs: TmpfsConfig to PostureConfig, set 2048MB across all three postures (minimal/hardened/under-attack), wired posture.openclawTmpfs into compose.ts. Verified live on warren — tmpfs now 2.0G. At observed write rates (~60MB/day) this gives ~32 days between forced restarts, up from ~4. Doctor check to verify effective size matches configured posture deferred — would catch landmine reintroduction but not an immediate need.",
+      "dependsOn": null
+    },
+    {
+      "id": "FEAT-195",
+      "title": "Clean phantom instances.json entries + isolate init --reset tests from user registry",
+      "intent": "Test runs of `clawhq init --reset` must not pollute the user's ~/.clawhq/instances.json. Existing pollution must be cleanable in one command, not by hand-editing JSON.",
+      "description": "As of 2026-05-16 the user's instances.json contains 38 leaked entries named `clawhq-init-reset-test-*` from a test suite that did not clean up. Side effect: every `clawhq <command>` without --agent fails with 'multiple agents registered' and a 38-name spam list — even `clawhq --help`. Two fixes needed: (1) test isolation so future runs do not touch the user's registry (use CLAWHQ_HOME override or a tmpdir registry path); (2) a `clawhq fleet prune --orphan` command that removes entries whose deployDir no longer exists and entries whose status is 'initialized' but never reached 'running' within a stale window. The /tmp/ deployDirs from the leaked entries are long gone, so the prune is safe and fast.",
+      "priority": "should",
+      "category": "feature",
+      "steps": [
+        "Audit the init --reset test (likely under tests/) — find where it writes to instances.json without isolating",
+        "Switch the test to use CLAWHQ_HOME=<tmpdir> (or equivalent env override) so the user registry is never touched",
+        "Add `clawhq fleet prune --orphan` (or `clawhq cloud fleet prune --orphan`) that drops entries with missing deployDir",
+        "Optional flag `--initialized-older-than <duration>` to also drop entries that never reached 'running' within the window",
+        "Run the prune locally to clear the 38 leaked entries",
+        "Add a doctor check that warns when >5 orphan entries are present"
+      ],
+      "acceptanceCriteria": [
+        "Running the init --reset test suite leaves ~/.clawhq/instances.json unchanged",
+        "`clawhq fleet prune --orphan --dry-run` lists entries with missing deployDir without modifying state",
+        "After prune, `clawhq status` succeeds against the single real instance without --agent (only one running)",
+        "Doctor warns operators about orphan registry buildup before it gets visible to end users"
+      ],
+      "scope": [
+        "tests/",
+        "src/cloud/fleet/",
+        "src/cli/",
+        "src/operate/doctor/checks/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "feature",
+      "groomedAt": "2026-05-16",
+      "groomingNotes": "Discovered during 2026-05-16 Clawdius investigation. The leaked entries are not just cosmetic — they break the --agent ergonomic default (single registered instance = no flag needed) and turn every accidental `clawhq <cmd>` into a 38-line error wall. Test isolation is the higher-leverage fix; the prune command is the recovery for users who already hit it. Size: S. Independent of FEAT-192/193/194. Partially shipped 2026-05-16: `clawhq cloud fleet prune --orphan [--dry-run] [--json]` exists (src/cloud/instances/registry.ts pruneOrphanInstances + src/cli/commands/cloud.ts), 4 unit tests cover it, and the bootstrap eager-resolver was patched to skip ambiguity for `cloud fleet *`, `version`, and help so registry-management commands stay usable in the very state they exist to fix. Ran on the live registry: 38 phantom `clawhq-init-reset-test-*` entries removed, only warren remains, `clawhq status` resolves without --agent again. Remaining work: (a) test isolation so init --reset tests use a CLAWHQ_HOME tmpdir override, (b) doctor check warning when orphan count > N. Until (a) lands the leak recurs on each test run.",
+      "dependsOn": null
+    },
+    {
+      "id": "FEAT-196",
+      "title": "Ollama registry egress in firewall builder — make model pulls work without manual ipset poking",
+      "intent": "When the ollama service is part of the managed compose stack, `ollama pull` must succeed out of the box. Users should never need to hand-edit the clawhq_egress ipset to download a model.",
+      "description": "Ollama is a clawhq-managed service on the engine_clawhq_net bridge and is therefore subject to the CLAWHQ_FWD egress allowlist (see src/build/launcher/firewall.ts). The allowlist is built from auto-detected integrations in .env (Telegram, Apple Push, Cloudflare, etc.) but has no awareness of ollama's pull endpoints. Result: any `ollama pull <model>` issued inside the container fails with 'max retries exceeded ... dial tcp 172.64.66.x:443 i/o timeout' — manifests sometimes succeed (registry.ollama.ai resolves to a CF edge already on the allowlist for other reasons) but blob fetches go to dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com (Cloudflare R2) which is never allowed. Today's workaround during the 2026-05-16 model-pull session: resolve the R2 + registry hostnames, `sudo ipset add clawhq_egress <ip>`, run the pull, hope no concurrent `clawhq up/down/restart` fires (which rebuilds the ipset and drops the in-flight transfer — see feedback_firewall_watchers).",
+      "priority": "should",
+      "category": "build",
+      "steps": [
+        "Add an 'ollama' egress profile to the firewall builder (src/build/launcher/firewall.ts) that resolves registry.ollama.ai + dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com (and any sibling R2 buckets ollama uses) and adds the resolved IPv4 + IPv6 (clawhq_egress_v6) addresses",
+        "Trigger inclusion automatically when the compose stack has the ollama service (detect via docker-compose.yml service list, not a separate flag — ollama is already a first-class service in clawhq's compose per project_ollama_in_clawhq_compose)",
+        "Refresh the ollama-egress entries on each `clawhq up`/`apply` since R2/CF rotate CDN IPs; the existing rebuild is already idempotent",
+        "Add a doctor check: probe registry.ollama.ai/v2/ and the R2 host from inside the ollama container; FAIL if not reachable while ollama service is present",
+        "Document the limitation: a `clawhq up/restart/down` mid-pull will still drop the connection (rebuild flushes ipset). Either run pulls outside lifecycle windows or implement a soft-reload that diffs rather than tears down (out of scope; track separately if it becomes a recurring pain)"
+      ],
+      "acceptanceCriteria": [
+        "On a fresh `clawhq up` with ollama in the compose stack, `docker exec <ollama> ollama pull <any-public-model>` succeeds without manual ipset edits",
+        "Firewall builder logs the ollama-egress profile being applied (visible in `clawhq up` output) when the ollama service is detected",
+        "Doctor check 'ollama-registry-reachable' returns PASS in normal state, FAIL with actionable message when egress is misconfigured",
+        "Re-running `clawhq up` refreshes the ollama egress IPs (verified by curling the R2 host from inside ollama container before and after a known CDN IP rotation)"
+      ],
+      "scope": [
+        "src/build/launcher/firewall.ts",
+        "src/operate/doctor/checks/"
+      ],
+      "status": "todo",
+      "readyForSprint": true,
+      "track": "feature",
+      "groomedAt": "2026-05-16",
+      "groomingNotes": "Filed during 2026-05-16 model-pull session (gpt-oss:20b + nemotron3:33b + gemma4:31b). Resolution approach: prefer dynamic DNS resolution at firewall build time over hardcoded prefixes — Cloudflare ASN allowlisting would over-grant (most of CF is allowed for arbitrary tenants). The hostnames are stable; only the resolved IPs rotate. Size: S — the firewall builder already has the resolve-and-add pattern for other services; this is one more profile. Be aware: this does NOT fix the watcher-zombie issue (feedback_firewall_watchers) — in-flight pulls during a lifecycle command will still drop. Mention that limitation in the user-facing release note.",
+      "dependsOn": null
     }
   ]
 }

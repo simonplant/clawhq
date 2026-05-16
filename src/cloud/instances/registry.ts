@@ -189,6 +189,49 @@ export function removeInstance(id: string, root: string = clawhqRoot()): boolean
   return true;
 }
 
+/** What an orphan-prune pass would do (dry-run) or did do (committed). */
+export interface PruneOrphanResult {
+  /** Local instances whose deployDir no longer exists on disk. */
+  readonly orphans: readonly Instance[];
+  /** Instances kept — local with present deployDir, plus all cloud entries. */
+  readonly kept: readonly Instance[];
+  /** True when the registry was rewritten; false for dry-run. */
+  readonly committed: boolean;
+}
+
+/**
+ * Drop local instances whose `deployDir` no longer exists. Cloud instances
+ * are always kept — connectivity is out of scope here. With `dryRun`, the
+ * registry is not modified.
+ *
+ * Used by `clawhq cloud fleet prune --orphan` to recover from leaked test
+ * runs that pollute `~/.clawhq/instances.json` with stale entries.
+ */
+export function pruneOrphanInstances(
+  options: { dryRun?: boolean; existsFn?: (path: string) => boolean } = {},
+  root: string = clawhqRoot(),
+): PruneOrphanResult {
+  const exists = options.existsFn ?? existsSync;
+  const registry = readRegistry(root);
+
+  const orphans: Instance[] = [];
+  const kept: Instance[] = [];
+  for (const inst of registry.instances) {
+    if (inst.location.kind === "local" && !exists(inst.location.deployDir)) {
+      orphans.push(inst);
+    } else {
+      kept.push(inst);
+    }
+  }
+
+  const committed = !options.dryRun && orphans.length > 0;
+  if (committed) {
+    writeRegistry(root, { version: 1, instances: kept });
+  }
+
+  return { orphans, kept, committed };
+}
+
 // ── Queries ─────────────────────────────────────────────────────────────────
 
 /** List every registered instance in insertion order. */

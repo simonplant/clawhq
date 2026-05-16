@@ -10,6 +10,7 @@ import {
   findByIdPrefix,
   findByName,
   listInstances,
+  pruneOrphanInstances,
   readRegistry,
   registryPath,
   removeInstance,
@@ -263,5 +264,52 @@ describe("persistence", () => {
     void listInstances(root);
     void findById("x", root);
     expect(existsSync(registryPath(root))).toBe(false);
+  });
+});
+
+// ── Prune orphans ───────────────────────────────────────────────────────────
+
+describe("pruneOrphanInstances", () => {
+  it("removes local instances whose deployDir is missing and keeps the rest", () => {
+    addInstance(localInput("alive", "/tmp/exists"), root);
+    addInstance(localInput("orphan-a", "/tmp/gone-a"), root);
+    addInstance(localInput("orphan-b", "/tmp/gone-b"), root);
+    addInstance(cloudInput("cloudy"), root);
+
+    const existsFn = (p: string) => p === "/tmp/exists";
+    const result = pruneOrphanInstances({ existsFn }, root);
+
+    expect(result.orphans.map((i) => i.name).sort()).toEqual(["orphan-a", "orphan-b"]);
+    expect(result.kept.map((i) => i.name).sort()).toEqual(["alive", "cloudy"]);
+    expect(result.committed).toBe(true);
+    expect(listInstances(root).map((i) => i.name).sort()).toEqual(["alive", "cloudy"]);
+  });
+
+  it("does not touch cloud instances even when listed", () => {
+    addInstance(cloudInput("cloud-only"), root);
+    const result = pruneOrphanInstances({ existsFn: () => false }, root);
+    expect(result.orphans).toHaveLength(0);
+    expect(result.kept.map((i) => i.name)).toEqual(["cloud-only"]);
+    expect(result.committed).toBe(false);
+  });
+
+  it("dry-run reports orphans without writing the registry", () => {
+    addInstance(localInput("alive", "/tmp/exists"), root);
+    addInstance(localInput("orphan", "/tmp/gone"), root);
+
+    const existsFn = (p: string) => p === "/tmp/exists";
+    const result = pruneOrphanInstances({ dryRun: true, existsFn }, root);
+
+    expect(result.orphans.map((i) => i.name)).toEqual(["orphan"]);
+    expect(result.committed).toBe(false);
+    expect(listInstances(root).map((i) => i.name).sort()).toEqual(["alive", "orphan"]);
+  });
+
+  it("is a no-op when nothing is orphaned", () => {
+    addInstance(localInput("alive", "/tmp/exists"), root);
+    const result = pruneOrphanInstances({ existsFn: () => true }, root);
+    expect(result.orphans).toHaveLength(0);
+    expect(result.kept).toHaveLength(1);
+    expect(result.committed).toBe(false);
   });
 });

@@ -434,6 +434,21 @@ describe("generateCompose", () => {
     expect(compose.services.openclaw.tmpfs[0]).toContain("256m");
     expect(compose.services.openclaw.tmpfs[0]).toContain("nosuid");
   });
+
+  it("sizes /home/node/.openclaw tmpfs from posture.openclawTmpfs", () => {
+    // 256m fills in ~4 days under typical cron load — see 2026-05-16 ENOSPC
+    // incident. Every posture must keep this above the wedge threshold.
+    for (const level of ["minimal", "hardened", "under-attack"] as const) {
+      const posture = getPostureConfig(level);
+      const compose = generateCompose("openclaw:custom", posture, "/home/user/.clawhq");
+      const openclawMount = compose.services.openclaw.tmpfs.find((m: string) =>
+        m.startsWith("/home/node/.openclaw:"),
+      );
+      expect(openclawMount).toBeDefined();
+      expect(openclawMount).toContain(`size=${posture.openclawTmpfs.sizeMb}m`);
+      expect(posture.openclawTmpfs.sizeMb).toBeGreaterThanOrEqual(1024);
+    }
+  });
 });
 
 // ── Multi-Instance Tests ───────────────────────────────────────────────────

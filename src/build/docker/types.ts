@@ -33,6 +33,14 @@ export interface PostureConfig {
   readonly iccDisabled: boolean;
   readonly resources: ResourceLimits;
   readonly tmpfs: TmpfsConfig;
+  /**
+   * Tmpfs cap for `/home/node/.openclaw`. OpenClaw accumulates session
+   * trajectory jsonl, telegram offsets, exec-approvals, and heartbeat
+   * state here; bind-mounted subpaths (workspace, cron, memory) overlay
+   * but the rest is ephemeral. 256m fills in ~4 days under typical cron
+   * load — see 2026-05-16 Clawdius ENOSPC incident.
+   */
+  readonly openclawTmpfs: TmpfsConfig;
   /** OCI runtime override (e.g. "runsc" for gVisor kernel isolation). */
   readonly runtime?: string;
   /** Auto-enable egress firewall for this posture level. */

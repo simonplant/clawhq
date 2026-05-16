@@ -28,11 +28,14 @@ export {
   findByIdPrefix,
   findByName,
   listInstances,
+  pruneOrphanInstances,
   readRegistry,
   registryPath,
   removeInstance,
   updateInstance,
 } from "./registry.js";
+
+export type { PruneOrphanResult } from "./registry.js";
 
 export {
   clearCurrentPointer,

@@ -10,6 +10,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -46,6 +47,27 @@ const pkg = JSON.parse(
 ) as { version: string; description: string };
 
 /**
+ * Whether this invocation is a registry-management or meta command that
+ * does not operate on a specific instance. These commands are exempt from
+ * the eager deployDir resolver so that they remain usable when the registry
+ * is ambiguous (the very state these commands are most needed to fix).
+ *
+ * Pattern-matched against the *user* argv (process.argv slice 2). Commander
+ * has not parsed yet at the call site, so this is a string-level shortcut,
+ * not a semantic parse. Keep the list narrow.
+ */
+function argvSkipsResolver(argv: readonly string[]): boolean {
+  // No args = help banner.
+  if (argv.length === 0) return true;
+  const head = argv[0];
+  if (head === "version" || head === "-v" || head === "--version") return true;
+  if (head === "-h" || head === "--help") return true;
+  // All `cloud fleet <sub>` commands act on the registry itself.
+  if (argv[0] === "cloud" && argv[1] === "fleet") return true;
+  return false;
+}
+
+/**
  * Resolve the target deployDir for this invocation.
  *
  * Fold legacy registries (no-op on fresh installs), then ask the context
@@ -57,6 +79,12 @@ const pkg = JSON.parse(
 function resolveDefaultDeployDir(): string {
   migrateLegacyRegistries();
   migrateOpsState();
+
+  // Registry-management and meta commands must run even when the registry
+  // is ambiguous — that's often exactly the state they exist to fix.
+  if (argvSkipsResolver(process.argv.slice(2))) {
+    return join(homedir(), ".clawhq");
+  }
 
   try {
     const result = resolveDeployDirFromContext();

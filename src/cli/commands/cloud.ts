@@ -34,6 +34,7 @@ import {
   switchTrustMode,
   unregisterAgent,
 } from "../../cloud/index.js";
+import { pruneOrphanInstances } from "../../cloud/instances/index.js";
 import type { TrustMode } from "../../config/types.js";
 import { CommandError } from "../errors.js";
 import { ensureInstalled } from "../ux.js";
@@ -221,6 +222,57 @@ export function registerCloudCommands(program: Command, defaultDeployDir: string
       } else {
         console.error(chalk.red(`Agent not found: ${nameOrPath}`));
         throw new CommandError("", 1);
+      }
+    });
+
+  fleet
+    .command("prune")
+    .description("Remove orphan entries from the instance registry")
+    .option("--orphan", "Prune local instances whose deployDir no longer exists")
+    .option("--dry-run", "Show what would be removed without modifying the registry")
+    .option("--json", "Output as JSON")
+    .action(async (opts: { orphan?: boolean; dryRun?: boolean; json?: boolean }) => {
+      if (!opts.orphan) {
+        console.error(chalk.red("Specify what to prune. Today only --orphan is supported."));
+        throw new CommandError("", 1);
+      }
+
+      const result = pruneOrphanInstances({ dryRun: opts.dryRun });
+
+      if (opts.json) {
+        console.log(
+          JSON.stringify(
+            {
+              dryRun: opts.dryRun === true,
+              committed: result.committed,
+              orphans: result.orphans.map((i) => ({
+                id: i.id,
+                name: i.name,
+                deployDir: i.location.kind === "local" ? i.location.deployDir : undefined,
+              })),
+              keptCount: result.kept.length,
+            },
+            null,
+            2,
+          ),
+        );
+        return;
+      }
+
+      if (result.orphans.length === 0) {
+        console.log(chalk.green("✔ No orphan instances — registry is clean."));
+        return;
+      }
+
+      const verb = opts.dryRun ? "Would remove" : "Removed";
+      console.log(chalk.yellow(`${verb} ${result.orphans.length} orphan instance(s):`));
+      for (const inst of result.orphans) {
+        const dir = inst.location.kind === "local" ? inst.location.deployDir : "<cloud>";
+        console.log(`  • ${inst.name} (${inst.id.slice(0, 8)}) → ${dir}`);
+      }
+      console.log(chalk.dim(`${result.kept.length} instance(s) kept.`));
+      if (opts.dryRun) {
+        console.log(chalk.dim("Re-run without --dry-run to apply."));
       }
     });
 
