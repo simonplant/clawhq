@@ -161,7 +161,7 @@ async function cloneRepo(
   try {
     if (existsSync(join(targetDir, ".git"))) {
       // Already cloned — fetch latest
-      await execFileAsync("git", ["-C", targetDir, "fetch", "--tags"], {
+      await execFileAsync("git", ["-C", targetDir, "fetch", "--tags", "--force"], {
         timeout: INSTALL_CLONE_TIMEOUT_MS,
       });
       await execFileAsync("git", ["-C", targetDir, "pull", "--ff-only"], {

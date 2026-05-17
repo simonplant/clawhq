@@ -100,7 +100,7 @@ async function checkForSourceUpdates(
   const image = await getImageName(deployDir) ?? "openclaw:custom";
 
   try {
-    await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags"], {
+    await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags", "--force"], {
       timeout: UPDATER_PULL_TIMEOUT_MS,
       signal,
     });
@@ -249,7 +249,7 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
   if (installMethod === "source" && !options.dryRun) {
     const sourceDir = join(deployDir, "engine", "source");
     try {
-      await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags"], {
+      await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags", "--force"], {
         timeout: UPDATER_PULL_TIMEOUT_MS,
         signal,
       });
@@ -279,7 +279,7 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
     if (installMethod === "source") {
       const sourceDir = join(deployDir, "engine", "source");
       try {
-        await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags"], {
+        await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags", "--force"], {
           timeout: UPDATER_PULL_TIMEOUT_MS, signal,
         });
         targetVersion = await resolveTargetTag(sourceDir, options.channel, signal) ?? undefined;
@@ -345,7 +345,7 @@ export async function applyUpdate(options: UpdateOptions): Promise<UpdateResult>
 
     report("pull", "running", "Fetching latest release…");
     try {
-      await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags"], {
+      await execFileAsync("git", ["-C", sourceDir, "fetch", "--tags", "--force"], {
         timeout: UPDATER_PULL_TIMEOUT_MS,
         signal,
       });

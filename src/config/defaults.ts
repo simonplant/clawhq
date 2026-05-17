@@ -230,7 +230,7 @@ export const SENTINEL_API_TIMEOUT_MS = 30_000;
 export const SENTINEL_API_BASE = "https://sentinel.clawhq.com/api/v1";
 
 /** OpenClaw GitHub repository for upstream monitoring. */
-export const OPENCLAW_GITHUB_REPO = "nicepkg/openclaw";
+export const OPENCLAW_GITHUB_REPO = "openclaw/openclaw";
 
 /** GitHub API base URL (no trailing slash). */
 export const GITHUB_API_BASE = "https://api.github.com";
@@ -259,7 +259,7 @@ export const OPS_BACKUP_RETENTION_DAYS = 30;
 export const OPS_SECURITY_SEVERITIES: readonly string[] = ["critical", "high"];
 
 /** GitHub Security Advisories API endpoint for OpenClaw. */
-export const GITHUB_ADVISORIES_URL = "https://api.github.com/repos/nicepkg/openclaw/security/advisories";
+export const GITHUB_ADVISORIES_URL = "https://api.github.com/repos/openclaw/openclaw/security/advisories";
 
 // ── Credential proxy defaults ─────────────────────────────────────────────
 

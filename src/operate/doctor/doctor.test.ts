@@ -849,7 +849,7 @@ services:
     const compose = `
 services:
   openclaw:
-    image: ghcr.io/nicepkg/openclaw:v0.8.10
+    image: ghcr.io/openclaw/openclaw:v0.8.10
 `;
     await writeFile(join(testDir, "engine", "docker-compose.yml"), compose);
     const version = await detectOpenClawVersion(testDir);
