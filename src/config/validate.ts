@@ -479,12 +479,28 @@ export function validateLM15(config: OpenClawConfig): ValidationResult {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Find the primary agent service in a compose config. */
+/**
+ * Find the primary agent service in a parsed compose config.
+ *
+ * Service keys in generated compose.yml may be:
+ *   - `openclaw-<shortId>` for deployments built with an instanceId
+ *     (instance-scoped, matches the running container's name)
+ *   - the legacy literal `openclaw` for pre-instance-scope deployments
+ *   - `agent` / `gateway` from historical scaffolds we still validate
+ *
+ * Operates on the in-memory parsed structure (no disk reads) so it can
+ * be called from validation paths that already have the parsed compose
+ * in hand. The on-disk equivalent is `resolveOpenclawServiceName` in
+ * src/build/docker/container.ts.
+ */
 function findAgentService(
   compose: ComposeConfig,
 ): ComposeServiceConfig | undefined {
   const services = compose.services ?? {};
-  // Look for common service names
+  const instanceScoped = Object.entries(services).find(([k]) =>
+    k.startsWith("openclaw-"),
+  );
+  if (instanceScoped) return instanceScoped[1];
   return (
     services["openclaw"] ??
     services["agent"] ??

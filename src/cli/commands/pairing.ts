@@ -12,6 +12,7 @@ import { promisify } from "node:util";
 import chalk from "chalk";
 import type { Command } from "commander";
 
+import { resolveOpenclawServiceName } from "../../build/docker/container.js";
 import { CommandError } from "../errors.js";
 import { ensureInstalled } from "../ux.js";
 
@@ -34,13 +35,14 @@ export function registerPairingCommands(program: Command, defaultDeployDir: stri
       ensureInstalled(opts.deployDir);
 
       const composePath = join(opts.deployDir, "engine", "docker-compose.yml");
+      const service = resolveOpenclawServiceName({ deployDir: opts.deployDir });
 
       try {
         const { stdout } = await execFileAsync(
           "docker",
           [
             "compose", "-f", composePath,
-            "exec", "-T", "openclaw",
+            "exec", "-T", service,
             "openclaw", "pairing", "approve", channel, code,
           ],
           { timeout: PAIRING_TIMEOUT_MS },
@@ -68,13 +70,14 @@ export function registerPairingCommands(program: Command, defaultDeployDir: stri
       ensureInstalled(opts.deployDir);
 
       const composePath = join(opts.deployDir, "engine", "docker-compose.yml");
+      const service = resolveOpenclawServiceName({ deployDir: opts.deployDir });
 
       try {
         const { stdout } = await execFileAsync(
           "docker",
           [
             "compose", "-f", composePath,
-            "exec", "-T", "openclaw",
+            "exec", "-T", service,
             "openclaw", "pairing", "list",
           ],
           { timeout: PAIRING_TIMEOUT_MS },

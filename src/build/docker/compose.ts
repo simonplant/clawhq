@@ -27,7 +27,7 @@ import {
 } from "../../config/paths.js";
 import { sortedEntries } from "../../config/stable-serialize.js";
 
-import { openclawContainerName } from "./container-naming.js";
+import { openclawContainerName, openclawServiceName } from "./container-naming.js";
 import type { PostureConfig, WorkspaceManifest } from "./types.js";
 
 /** Options for generating a Docker Compose configuration. */
@@ -107,6 +107,15 @@ export interface ComposeOptions {
 /** Generated docker-compose structure. */
 export interface ComposeOutput {
   readonly version: string;
+  /**
+   * The on-disk YAML key for the primary openclaw service. Varies by
+   * instance: `openclaw-<shortId>` when `instanceId` was supplied to
+   * `generateCompose`, else the legacy literal `"openclaw"`. The
+   * in-memory accessor (`services.openclaw`) stays stable regardless —
+   * only the serialized key changes — so inspection code that parses
+   * the on-disk file must go through `resolveOpenclawServiceName`.
+   */
+  readonly primaryServiceName: string;
   readonly services: {
     readonly openclaw: ComposeServiceOutput;
     readonly ollama: ComposeOllamaServiceOutput;
@@ -684,8 +693,18 @@ export function generateCompose(
     },
   };
 
+  // The primary service's on-disk YAML key. When an instanceId is provided,
+  // the key matches the container_name (both = openclaw-<shortId>) so docker
+  // compose ps, the compose.service label, and the container name all agree
+  // on a single instance-scoped identifier. Inspection code resolves it via
+  // resolveOpenclawServiceName(deployDir).
+  const primaryServiceName = options?.instanceId
+    ? openclawServiceName(options.instanceId)
+    : "openclaw";
+
   return {
     version: "3.8",
+    primaryServiceName,
     services: {
       openclaw: service,
       ollama: ollamaService,
@@ -808,9 +827,10 @@ function hasResourceLimits(posture: PostureConfig): boolean {
 export function serializeYaml(compose: ComposeOutput): string {
   const lines: string[] = [];
   const svc = compose.services.openclaw;
+  const primaryKey = compose.primaryServiceName;
 
   // Note: 'version' is obsolete in Docker Compose v2+ and produces a warning
-  lines.push("services:", "  openclaw:");
+  lines.push("services:", `  ${primaryKey}:`);
   lines.push(`    image: ${svc.image}`);
   if (svc.container_name) lines.push(`    container_name: ${svc.container_name}`);
   lines.push(`    user: "${svc.user}"`);

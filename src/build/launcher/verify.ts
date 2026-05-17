@@ -15,6 +15,7 @@ import { promisify } from "node:util";
 
 import { CREDENTIALS_PROBE_TIMEOUT_MS, OLLAMA_DEFAULT_MODEL, WEBSOCKET_EVENT_CALLER_TIMEOUT_MS } from "../../config/defaults.js";
 import { runProbes } from "../../secure/credentials/health.js";
+import { resolveOpenclawServiceName } from "../docker/container.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -59,9 +60,10 @@ async function containerExec(
 ): Promise<{ stdout: string } | { error: string }> {
   try {
     const composePath = join(deployDir, "engine", "docker-compose.yml");
+    const service = resolveOpenclawServiceName({ deployDir });
     const { stdout } = await execFileAsync(
       "docker",
-      ["compose", "-f", composePath, "exec", "-T", "openclaw", ...cmd],
+      ["compose", "-f", composePath, "exec", "-T", service, ...cmd],
       { timeout: timeoutMs },
     );
     return { stdout: stdout.trim() };

@@ -34,3 +34,32 @@ describe("generateCompose — instance-scoped container_name", () => {
     );
   });
 });
+
+describe("generateCompose — instance-scoped service key", () => {
+  it("emits 'openclaw:' as the service key when no instanceId is provided", () => {
+    const compose = generateCompose("image:tag", POSTURE, "/deploy", "net");
+    expect(compose.primaryServiceName).toBe("openclaw");
+    const yaml = serializeYaml(compose);
+    expect(yaml).toMatch(/^services:\n {2}openclaw:$/m);
+  });
+
+  it("emits 'openclaw-<shortId>:' as the service key when instanceId is provided", () => {
+    const compose = generateCompose("image:tag", POSTURE, "/deploy", "net", {
+      instanceId: "01955000-0000-4000-8000-000000000001",
+    });
+    expect(compose.primaryServiceName).toBe("openclaw-01955000");
+    const yaml = serializeYaml(compose);
+    expect(yaml).toMatch(/^services:\n {2}openclaw-01955000:$/m);
+    // Legacy literal must NOT appear as a top-level service key.
+    expect(yaml).not.toMatch(/^ {2}openclaw:$/m);
+  });
+
+  it("service key matches container_name for the same instanceId", () => {
+    const compose = generateCompose("image:tag", POSTURE, "/deploy", "net", {
+      instanceId: "01966000-0000-4000-8000-000000000002",
+    });
+    expect(compose.primaryServiceName).toBe(
+      compose.services.openclaw.container_name,
+    );
+  });
+});

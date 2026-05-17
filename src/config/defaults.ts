@@ -267,7 +267,7 @@ export const GITHUB_ADVISORIES_URL = "https://api.github.com/repos/openclaw/open
 export const CRED_PROXY_PORT = 9876;
 
 /** Docker image for the credential proxy sidecar (lightweight Node.js). */
-export const CRED_PROXY_IMAGE = "node:20-alpine";
+export const CRED_PROXY_IMAGE = "node:24-alpine";
 
 /** Container-internal path to the proxy server script. */
 export const CRED_PROXY_SCRIPT_PATH = "/app/proxy.js";

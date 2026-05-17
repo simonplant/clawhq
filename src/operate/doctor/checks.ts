@@ -19,7 +19,7 @@ import { access, constants, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { requireOpenclawContainer } from "../../build/docker/container.js";
+import { requireOpenclawContainer, resolveOpenclawServiceName } from "../../build/docker/container.js";
 import { collectIntegrationDomains, IPSET_NAME, IPSET_REFRESH_INTERVAL_MS, loadAllowlist, loadIpsetMeta } from "../../build/launcher/firewall.js";
 import { BOOTSTRAP_MAX_CHARS, CONTAINER_USER, CRED_PROXY_PORT, DOCTOR_EXEC_TIMEOUT_MS, FILE_MODE_SECRET, GATEWAY_DEFAULT_PORT } from "../../config/defaults.js";
 import { opsPath } from "../../config/ops-paths.js";
@@ -90,11 +90,12 @@ export async function detectOpenClawVersion(
 
   // Strategy 2: docker exec to read package.json version from running container
   try {
+    const service = resolveOpenclawServiceName({ deployDir });
     const { stdout } = await execFileAsync(
       "docker",
       [
         "compose", "-f", join(deployDir, "engine", "docker-compose.yml"),
-        "exec", "-T", "openclaw", "cat", "/app/package.json",
+        "exec", "-T", service, "cat", "/app/package.json",
       ],
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
@@ -248,10 +249,17 @@ async function checkComposeExists(deployDir: string): Promise<DoctorCheckResult>
     }
 
     const services = compose["services"] as Record<string, unknown> | undefined;
-    const openclaw = services?.["openclaw"] as Record<string, unknown> | undefined;
+    // Match the legacy literal `openclaw` or the instance-scoped
+    // `openclaw-<shortId>` key generated for multi-agent deployments.
+    const openclawKey = services
+      ? Object.keys(services).find((k) => k === "openclaw" || k.startsWith("openclaw-"))
+      : undefined;
+    const openclaw = openclawKey
+      ? (services?.[openclawKey] as Record<string, unknown> | undefined)
+      : undefined;
 
     if (!openclaw) {
-      return fail(name, "error", "docker-compose.yml missing 'openclaw' service", "Run: clawhq build");
+      return fail(name, "error", "docker-compose.yml missing openclaw service", "Run: clawhq build");
     }
 
     // Image field is required — without it, docker compose up fails with a cryptic error
@@ -259,7 +267,7 @@ async function checkComposeExists(deployDir: string): Promise<DoctorCheckResult>
       return fail(
         name,
         "error",
-        "docker-compose.yml 'openclaw' service has no image field — container cannot start",
+        "docker-compose.yml openclaw service has no image field — container cannot start",
         "Run: clawhq build (regenerates compose from current config)",
         true,
       );
@@ -418,9 +426,10 @@ async function checkCapDrop(
 ): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "cap-drop";
   try {
+    const service = resolveOpenclawServiceName({ deployDir });
     const { stdout } = await execFileAsync(
       "docker",
-      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", "openclaw"],
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", service],
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
@@ -458,9 +467,10 @@ async function checkNoNewPrivileges(
 ): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "no-new-privileges";
   try {
+    const service = resolveOpenclawServiceName({ deployDir });
     const { stdout } = await execFileAsync(
       "docker",
-      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", "openclaw"],
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", service],
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
@@ -500,9 +510,10 @@ async function checkUserUid(
 ): Promise<DoctorCheckResult> {
   const name: DoctorCheckName = "user-uid";
   try {
+    const service = resolveOpenclawServiceName({ deployDir });
     const { stdout } = await execFileAsync(
       "docker",
-      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", "openclaw"],
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", service],
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
@@ -1268,9 +1279,10 @@ async function checkMigrationState(
 
   try {
     // Get container ID
+    const service = resolveOpenclawServiceName({ deployDir });
     const { stdout } = await execFileAsync(
       "docker",
-      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", "openclaw"],
+      ["compose", "-f", join(deployDir, "engine", "docker-compose.yml"), "ps", "-q", service],
       { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
     );
     const containerId = stdout.trim().split("\n")[0];
@@ -1635,11 +1647,12 @@ async function check1PasswordSetup(deployDir: string, signal?: AbortSignal): Pro
 
     // Check op CLI is available in the container
     try {
+      const service = resolveOpenclawServiceName({ deployDir });
       await execFileAsync(
         "docker",
         [
           "compose", "-f", join(deployDir, "engine", "docker-compose.yml"),
-          "exec", "-T", "openclaw", "op", "--version",
+          "exec", "-T", service, "op", "--version",
         ],
         { timeout: DOCTOR_EXEC_TIMEOUT_MS, signal },
       );

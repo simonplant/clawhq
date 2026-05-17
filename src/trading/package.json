@@ -12,13 +12,13 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.13",
+    "@hono/node-server": "^2.0.2",
     "better-sqlite3": "^12.4.1",
     "hono": "^4.12.18"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.5.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   }
 }

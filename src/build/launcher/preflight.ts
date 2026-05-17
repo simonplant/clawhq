@@ -178,13 +178,20 @@ async function checkCompose(deployDir: string): Promise<PreflightCheckResult> {
     }
 
     const services = compose["services"] as Record<string, unknown> | undefined;
-    const openclaw = services?.["openclaw"] as Record<string, unknown> | undefined;
+    // Match either the legacy literal `openclaw` or the instance-scoped
+    // `openclaw-<shortId>` key generated for multi-agent deployments.
+    const openclawKey = services
+      ? Object.keys(services).find((k) => k === "openclaw" || k.startsWith("openclaw-"))
+      : undefined;
+    const openclaw = openclawKey
+      ? (services?.[openclawKey] as Record<string, unknown> | undefined)
+      : undefined;
 
     if (!openclaw) {
       return {
         name,
         passed: false,
-        message: "docker-compose.yml missing 'openclaw' service definition",
+        message: "docker-compose.yml missing openclaw service definition",
         fix: "Run: clawhq apply",
       };
     }

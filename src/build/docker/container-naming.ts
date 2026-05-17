@@ -18,3 +18,16 @@ export function shortInstanceId(instanceId: string): string {
 export function openclawContainerName(instanceId: string): string {
   return `openclaw-${shortInstanceId(instanceId)}`;
 }
+
+/**
+ * Canonical compose-service key for the openclaw service in a given deployment.
+ *
+ * Matches `openclawContainerName(instanceId)` so the docker-compose service
+ * key, the running container name, and the `com.docker.compose.service`
+ * label all agree on one instance-scoped string. That alignment is what
+ * lets inspection code (doctor, preflight, status) find the right service
+ * in a multi-agent deployment without parsing per-deploy state.
+ */
+export function openclawServiceName(instanceId: string): string {
+  return `openclaw-${shortInstanceId(instanceId)}`;
+}

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { openclawContainerName, shortInstanceId } from "./container-naming.js";
+import {
+  openclawContainerName,
+  openclawServiceName,
+  shortInstanceId,
+} from "./container-naming.js";
 
 describe("shortInstanceId", () => {
   it("strips dashes and returns the leading 8 hex chars", () => {
@@ -30,6 +34,25 @@ describe("openclawContainerName", () => {
   it("generates distinct names for distinct instances", () => {
     const a = openclawContainerName("01955000-0000-4000-8000-000000000001");
     const b = openclawContainerName("01966000-0000-4000-8000-000000000002");
+    expect(a).not.toBe(b);
+  });
+});
+
+describe("openclawServiceName", () => {
+  it("matches openclawContainerName for the same instanceId", () => {
+    const id = "01955000-0000-4000-8000-000000000001";
+    expect(openclawServiceName(id)).toBe(openclawContainerName(id));
+  });
+
+  it("is a docker-compose-valid service key", () => {
+    const name = openclawServiceName("01955000-0000-4000-8000-000000000001");
+    expect(name).toBe("openclaw-01955000");
+    expect(name).toMatch(/^[a-zA-Z0-9][a-zA-Z0-9_.-]+$/);
+  });
+
+  it("generates distinct names for distinct instances", () => {
+    const a = openclawServiceName("01955000-0000-4000-8000-000000000001");
+    const b = openclawServiceName("01966000-0000-4000-8000-000000000002");
     expect(a).not.toBe(b);
   });
 });

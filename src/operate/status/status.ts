@@ -10,6 +10,7 @@ import { access, constants, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { resolveOpenclawServiceName } from "../../build/docker/container.js";
 import {
   GATEWAY_DEFAULT_PORT,
   STATUS_EXEC_TIMEOUT_MS,
@@ -120,7 +121,15 @@ async function getContainerStatus(
       RunningFor?: string;
       Status?: string;
     });
-    const svc = containers.find(c => c.Name?.includes("openclaw") || c.Service?.includes("openclaw")) ?? containers[0];
+    // Exact match on the resolved service key — works for both the legacy
+    // literal `openclaw` and instance-scoped `openclaw-<shortId>`. The old
+    // substring match would pick the first matching container, which is
+    // ambiguous if a future sidecar's name also contains "openclaw".
+    const service = resolveOpenclawServiceName({ deployDir });
+    const svc =
+      containers.find((c) => c.Service === service) ??
+      containers.find((c) => c.Name === service) ??
+      null;
     if (!svc) return null;
 
     return {

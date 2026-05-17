@@ -21,7 +21,7 @@ import { promisify } from "node:util";
 
 import { parse as parseYaml } from "yaml";
 
-import { openclawContainerName } from "./container-naming.js";
+import { openclawContainerName, openclawServiceName } from "./container-naming.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -48,6 +48,15 @@ function readInstanceIdFromDeploy(deployDir: string): string | undefined {
   }
 }
 
+/**
+ * Probe docker for any running container whose compose-service label is
+ * `openclaw` (legacy literal) or starts with `openclaw-` (instance-scoped).
+ * Returns the first match — sufficient for the single-agent-on-host case,
+ * which is the only situation this fallback exists to handle.
+ *
+ * When multiple openclaw containers run on one host the caller must pass
+ * a `deployDir` so we go through the deterministic-naming path instead.
+ */
 async function dockerPsByServiceLabel(signal?: AbortSignal): Promise<string | undefined> {
   try {
     const { stdout } = await execFileAsync(
@@ -55,14 +64,20 @@ async function dockerPsByServiceLabel(signal?: AbortSignal): Promise<string | un
       [
         "ps",
         "--filter",
-        "label=com.docker.compose.service=openclaw",
+        "label=com.docker.compose.service",
         "--format",
-        "{{.Names}}",
+        "{{.Names}}\t{{.Label \"com.docker.compose.service\"}}",
       ],
       { timeout: 3000, signal },
     );
-    const name = stdout.trim().split("\n")[0]?.trim();
-    return name && name.length > 0 ? name : undefined;
+    for (const line of stdout.trim().split("\n")) {
+      const [name, label] = line.split("\t");
+      if (!name || !label) continue;
+      if (label === "openclaw" || label.startsWith("openclaw-")) {
+        return name;
+      }
+    }
+    return undefined;
   } catch {
     return undefined;
   }
@@ -111,4 +126,51 @@ export async function requireOpenclawContainer(
     );
   }
   return name;
+}
+
+/**
+ * Resolve the docker-compose service key for the openclaw service in a
+ * given deployment.
+ *
+ * Precedence:
+ *   1. Parse the generated `docker-compose.yml` and pick the first service
+ *      whose key is `openclaw` or starts with `openclaw-`. The on-disk
+ *      file is source of truth — this handles legacy deployments (still
+ *      literally `openclaw`) and new instance-scoped keys
+ *      (`openclaw-<shortId>`) uniformly, with no migration step required.
+ *   2. Derive deterministically from `instanceId` in `clawhq.yaml`
+ *      (`openclaw-<shortId>`).
+ *   3. Last-resort: `"openclaw"` — preserves the pre-instance-scope literal
+ *      for very early deployments or empty scaffolds.
+ *
+ * Sync by design — only reads local files, never probes docker. Call this
+ * before exec'ing `docker compose -f <file> exec -T <service>` so the
+ * service key in the command matches the key in the file.
+ */
+export function resolveOpenclawServiceName(
+  options: { readonly deployDir: string },
+): string {
+  // 1. Source of truth: the on-disk compose.yml
+  const composePath = join(options.deployDir, "engine", "docker-compose.yml");
+  if (existsSync(composePath)) {
+    try {
+      const parsed = parseYaml(readFileSync(composePath, "utf-8")) as {
+        services?: Record<string, unknown>;
+      } | null;
+      const services = parsed?.services ?? {};
+      const key = Object.keys(services).find(
+        (k) => k === "openclaw" || k.startsWith("openclaw-"),
+      );
+      if (key) return key;
+    } catch {
+      // Malformed yaml is non-fatal — fall through to derivation.
+    }
+  }
+
+  // 2. Derive from registered instanceId
+  const instanceId = readInstanceIdFromDeploy(options.deployDir);
+  if (instanceId) return openclawServiceName(instanceId);
+
+  // 3. Last-resort legacy literal
+  return "openclaw";
 }
