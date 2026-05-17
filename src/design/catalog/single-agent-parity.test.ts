@@ -3,17 +3,17 @@
  * into single-agent blueprints.
  *
  * Why this test exists: ClawHQ supports per-agent overrides via
- * `agents.list[]` (Triumvirate). Every existing blueprint (life-ops,
- * family-hub, stoic-coach, etc.) stays single-agent and MUST keep producing
- * the same `agents` block it produces today — `agents.defaults` only, no
+ * `agents.list[]`. Every existing blueprint (life-ops, family-hub,
+ * stoic-coach, etc.) stays single-agent and MUST keep producing the
+ * same `agents` block it produces today — `agents.defaults` only, no
  * `agents.list`. If a future compiler change silently starts emitting
  * `agents.list` for these blueprints, OpenClaw will treat the previously-
  * implicit default agent as just-one-of-many and routing semantics shift.
  *
  * This file pins the contract: single-agent blueprints emit a single-agent
- * `agents` block. When a blueprint INTENTIONALLY becomes multi-agent
- * (triumvirate), add it to the EXCLUDED set below — that's a one-line
- * change that gets reviewed as part of the multi-agent work.
+ * `agents` block. When a blueprint INTENTIONALLY becomes multi-agent, add
+ * it to the EXCLUDED set below — that's a one-line change that gets
+ * reviewed as part of the multi-agent work.
  */
 
 import { createHash } from "node:crypto";
@@ -39,7 +39,7 @@ const DEPLOY_DIR = "/tmp/single-agent-parity-test";
  * be checked against the single-agent contract.
  */
 const MULTI_AGENT_PROFILES = new Set<string>([
-  "triumvirate", // Multi-agent host.
+  // No multi-agent profiles today. Sterling/Warren will land here when built.
 ]);
 
 function compileOpenclawJson(profile: string): string {

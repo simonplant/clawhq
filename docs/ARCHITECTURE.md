@@ -306,9 +306,8 @@ The category/provider model is the bridge: it gives us uniform tool interfaces n
 | **Replace Google Asst** | Full daily orchestration | email, calendar, tasks, web-search | morning-brief, email-digest, schedule-guard | Morning 7am, heartbeat 10min |
 | **Founder's Ops** | Inbox zero, investor updates, hiring | email, calendar, tasks, web-search | email-digest, investor-update, hiring-pipeline | Morning triage, weekly investor prep |
 | **Family Hub** | Shared calendar, chores, meals | calendar, tasks, web-search | meal-plan, chore-assign, family-brief | Daily brief, weekly meal plan |
-| **Triumvirate** | Multi-agent host (life-ops + markets + vision) | Inherits per role | Inherits per role | Per-agent (e.g. markets-hours-pulse) |
 
-### Multi-Agent Profiles (Triumvirate)
+### Multi-Agent Profiles
 
 A profile may optionally declare `agents:` — an array of per-agent
 overrides. When present, the compiler emits `agents.list[]` in
@@ -329,11 +328,8 @@ Per-agent overrides (mirrors
   Emits as `agentTurn` jobs with this agent's id, routed under its
   effective primary.
 
-The `triumvirate` profile (`configs/profiles/triumvirate.yaml`)
-ships three agents — life-ops (local hot path, OpenRouter fallback),
-markets (OpenRouter primary, Opus escape hatch), vision (fully local
-Qwen2.5-VL, no fallback). See the wiki page [[triumvirate-multi-agent]]
-for the full architecture and routing semantics.
+No multi-agent profile ships today. The schema is reserved for future
+sibling agents (Sterling, Warren) that will share an engine.
 
 ### What Gets Generated
 

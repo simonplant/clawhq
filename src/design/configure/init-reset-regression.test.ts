@@ -35,13 +35,20 @@ import { loadBlueprint, listBuiltinBlueprints } from "../blueprints/loader.js";
 import type { WizardAnswers } from "./types.js";
 
 let deployDir: string;
+let registryRoot: string;
 
 beforeEach(() => {
   deployDir = mkdtempSync(join(tmpdir(), "clawhq-init-reset-test-"));
+  // Sandbox the unified instance registry so test runs never pollute
+  // the user's ~/.clawhq/instances.json. Without this, every test instance
+  // (one per builtin blueprint, plus the family-hub round-trip) leaks an
+  // entry that has to be cleaned up via `clawhq cloud fleet prune --orphan`.
+  registryRoot = mkdtempSync(join(tmpdir(), "clawhq-init-reset-registry-"));
 });
 
 afterEach(() => {
   rmSync(deployDir, { recursive: true, force: true });
+  rmSync(registryRoot, { recursive: true, force: true });
 });
 
 function wizardAnswersFor(blueprintName: string): WizardAnswers {
@@ -68,7 +75,7 @@ function wizardAnswersFor(blueprintName: string): WizardAnswers {
 describe("init --reset + apply round-trip (20260421 regression)", () => {
   for (const blueprintName of listBuiltinBlueprints()) {
     it(`[${blueprintName}] forgeFromAnswers produces a composition-bearing yaml`, async () => {
-      await forgeFromAnswers(wizardAnswersFor(blueprintName));
+      await forgeFromAnswers(wizardAnswersFor(blueprintName), registryRoot);
 
       const yamlPath = join(deployDir, "clawhq.yaml");
       expect(existsSync(yamlPath)).toBe(true);
@@ -85,7 +92,7 @@ describe("init --reset + apply round-trip (20260421 regression)", () => {
   it("forge → apply round-trip produces a runnable deployment (family-hub)", async () => {
     // forgeFromAnswers already calls apply internally; the fact that it
     // doesn't throw is the full end-to-end proof.
-    await forgeFromAnswers(wizardAnswersFor("family-hub"));
+    await forgeFromAnswers(wizardAnswersFor("family-hub"), registryRoot);
 
     // Verify the key derived files made it to disk.
     expect(existsSync(join(deployDir, "engine/openclaw.json"))).toBe(true);

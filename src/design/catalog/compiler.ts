@@ -38,6 +38,7 @@ import { sortedEntries } from "../../config/stable-serialize.js";
 import type { AgentEntry, AgentsConfig } from "../../config/types.js";
 import { BUILTIN_ROUTES, buildRoutesConfig, CRED_PROXY_SERVICE_NAME, filterRoutesForEnv } from "../../secure/credentials/proxy-routes.js";
 import { generateProxyServerScript } from "../../secure/credentials/proxy-server.js";
+import { findById } from "../../cloud/instances/index.js";
 import {
   ALWAYS_ON_BOUNDARIES,
   CANONICAL_DIMENSIONS,
@@ -175,6 +176,17 @@ export function compile(
   const ident = (name: string, rendered: string): string =>
     withIdentityOverride(name, rendered, deployment.instanceId);
 
+  // Resolve the agent's display name from the unified instance registry
+  // when an instanceId is present. The registry name is the authoritative
+  // label (set by `clawhq init` or renamed via updateInstance). Fall back
+  // to the canonical personality.name (a generic placeholder) when the
+  // instance isn't registered — happens in compile tests and on the very
+  // first init before the registry entry is written.
+  const registryName = deployment.instanceId
+    ? findById(deployment.instanceId)?.name
+    : undefined;
+  const agentDisplayName = registryName ?? personality.name;
+
   // Identity files — emitted once at `workspace/` for single-agent profiles,
   // once per agent at `workspace/<agent-id>/` for multi-agent. Most files
   // are profile-level (same content across agents); IDENTITY.md varies per
@@ -182,11 +194,11 @@ export function compile(
   const renderForAgent = (
     agent: ProfileAgentEntry | undefined,
   ): ReadonlyArray<{ name: string; content: string }> => [
-    { name: "SOUL.md", content: ident("SOUL.md", renderSoul(personality, dims, config.soul_overrides)) },
+    { name: "SOUL.md", content: ident("SOUL.md", renderSoul(personality, dims, agentDisplayName, config.soul_overrides)) },
     { name: "AGENTS.md", content: ident("AGENTS.md", renderAgents(profile)) },
     { name: "USER.md", content: ident("USER.md", renderUser(user, resolvedProviders, existingEnv)) },
     { name: "TOOLS.md", content: ident("TOOLS.md", renderTools(profile)) },
-    { name: "IDENTITY.md", content: ident("IDENTITY.md", renderIdentity(personality, profile, agent)) },
+    { name: "IDENTITY.md", content: ident("IDENTITY.md", renderIdentity(personality, profile, agentDisplayName, agent)) },
     { name: "HEARTBEAT.md", content: ident("HEARTBEAT.md", renderHeartbeat(profile)) },
     { name: "BOOTSTRAP.md", content: ident("BOOTSTRAP.md", renderBootstrap(profile)) },
     { name: "MEMORY.md", content: "" },
@@ -395,11 +407,12 @@ function marketEngineSourceExists(): boolean {
 function renderSoul(
   personality: CanonicalPersonality,
   dims: typeof CANONICAL_DIMENSIONS,
+  agentDisplayName: string,
   soulOverrides?: string,
 ): string {
   const lines: string[] = [];
 
-  lines.push(`# ${personality.name}\n`);
+  lines.push(`# ${agentDisplayName}\n`);
   lines.push(`> ${personality.description}\n`);
 
   // Core mandate — the foundation operating stance. Rendered before
@@ -1030,12 +1043,13 @@ function extractToolSummary(notes: string, fallback: string): string {
 function renderIdentity(
   personality: CanonicalPersonality,
   profile: MissionProfile,
+  agentDisplayName: string,
   agent?: ProfileAgentEntry,
 ): string {
   const lines: string[] = [];
 
   lines.push("# Identity\n");
-  lines.push(`**Name:** ${personality.name}`);
+  lines.push(`**Name:** ${agentDisplayName}`);
   lines.push(`**Emoji:** ${personality.identity.emoji}`);
   lines.push(`**Vibe:** ${personality.identity.vibe}`);
   lines.push(`**Creature:** AI assistant`);
@@ -1056,7 +1070,7 @@ function renderIdentity(
   lines.push("## Composition\n");
   lines.push(`**Mission Profile:** ${profile.name}`);
   lines.push(`> ${profile.description}\n`);
-  lines.push(`**Personality:** ${personality.name}`);
+  lines.push(`**Personality:** ${agentDisplayName}`);
   lines.push(`> ${personality.description}\n`);
 
   lines.push("## Capabilities\n");

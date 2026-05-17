@@ -209,14 +209,21 @@ function seedFromAnswers(answers: WizardAnswers, registryRoot?: string): void {
  *
  * Throws CommandError on apply failure.
  */
-export async function forgeFromAnswers(answers: WizardAnswers): Promise<void> {
+export async function forgeFromAnswers(
+  answers: WizardAnswers,
+  registryRoot?: string,
+): Promise<void> {
   // Hold the deploy lock for the whole forge so seed + apply run
   // atomically — no concurrent `clawhq build` / `apply` can sneak between
   // the yaml/USER.md seed and apply's regen. Reentrant-by-pid: the inner
   // apply() call sees our lock and doesn't re-acquire.
+  //
+  // `registryRoot` is an explicit override for the unified instance registry
+  // location (default ~/.clawhq/instances.json). Tests pass a tmpdir so the
+  // user's machine-global registry is never touched.
   await withDeployLock(answers.deployDir, async () => {
     // Seed the user-input files so apply has a manifest to regenerate from.
-    seedFromAnswers(answers);
+    seedFromAnswers(answers, registryRoot);
 
     // Apply compiles, validates landmines against the compile output, and
     // writes. Same code path users run every subsequent time — no parallel

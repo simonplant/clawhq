@@ -290,3 +290,16 @@ permissions, and egress layers are wired — compile step is not.
 **Trigger:** `clawhq update` v2026.4.21 → v2026.5.7 timed out on `pnpm install` because CLAWHQ_FWD was attached globally on FORWARD and was filtering build-container egress to npm/Cloudflare.
 **Code commits:** `69db47a` (source-scope fix), `312f770` (lint), `e75185c` (separate compiler fix for v2026.5.7 schema drop of `agents.defaults.llm`).
 **Caveats noted:** IPv6 attachment remains global (no v6 subnet pinned).
+
+## [2026-05-17] lint | Removed Triumvirate references
+
+User flagged the triumvirate profile/wiki page as dead concept. Deleted:
+- `configs/profiles/triumvirate.yaml` (profile)
+- `knowledge/wiki/triumvirate-multi-agent.md` (wiki page)
+- `src/design/catalog/multi-agent-compile.test.ts` (test fixture-coupled)
+
+Stripped references from `docs/ARCHITECTURE.md` (blueprint examples row +
+Triumvirate-specific paragraph), `knowledge/index.md` (entry), and the
+`single-agent-parity.test.ts` MULTI_AGENT_PROFILES set. The multi-agent
+schema description in ARCHITECTURE.md is preserved — Sterling and Warren
+will use it when stood up as sibling agents under one engine.

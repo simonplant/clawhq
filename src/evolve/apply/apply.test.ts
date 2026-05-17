@@ -111,11 +111,12 @@ composition:
     expect(result.success).toBe(true);
     expect(result.report.added.length + result.report.changed.length).toBeGreaterThan(0);
 
-    // SOUL.md carries the canonical ClawHQ personality — the name is derived
-    // from configs/personalities/canonical.yaml and the prose from
-    // CANONICAL_DIMENSIONS rendered through DIMENSION_PROSE.
+    // SOUL.md carries the canonical ClawHQ personality. The agent name in
+    // the heading is the registry entry's name when an instanceId is plumbed
+    // through; this test compiles without an instanceId so it falls back to
+    // the canonical placeholder name from configs/personalities/canonical.yaml.
     const soulMd = await readFile(join(testDir, "workspace", "SOUL.md"), "utf-8");
-    expect(soulMd).toContain("Clawdius");
+    expect(soulMd).toContain("ClawHQ Agent");
     expect(soulMd).toContain("blunt and unvarnished");
 
     const agentsMd = await readFile(join(testDir, "workspace", "AGENTS.md"), "utf-8");
