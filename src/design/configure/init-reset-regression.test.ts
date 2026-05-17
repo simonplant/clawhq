@@ -36,6 +36,7 @@ import type { WizardAnswers } from "./types.js";
 
 let deployDir: string;
 let registryRoot: string;
+let savedClawhqHome: string | undefined;
 
 beforeEach(() => {
   deployDir = mkdtempSync(join(tmpdir(), "clawhq-init-reset-test-"));
@@ -43,10 +44,22 @@ beforeEach(() => {
   // the user's ~/.clawhq/instances.json. Without this, every test instance
   // (one per builtin blueprint, plus the family-hub round-trip) leaks an
   // entry that has to be cleaned up via `clawhq cloud fleet prune --orphan`.
+  //
+  // Belt and suspenders: we BOTH pass registryRoot explicitly into
+  // forgeFromAnswers AND set CLAWHQ_HOME so any downstream call site that
+  // bypasses the explicit param (e.g. apply() resolving an instance by id)
+  // still hits the sandbox root via clawhqRoot()'s env-var lookup.
   registryRoot = mkdtempSync(join(tmpdir(), "clawhq-init-reset-registry-"));
+  savedClawhqHome = process.env["CLAWHQ_HOME"];
+  process.env["CLAWHQ_HOME"] = registryRoot;
 });
 
 afterEach(() => {
+  if (savedClawhqHome === undefined) {
+    delete process.env["CLAWHQ_HOME"];
+  } else {
+    process.env["CLAWHQ_HOME"] = savedClawhqHome;
+  }
   rmSync(deployDir, { recursive: true, force: true });
   rmSync(registryRoot, { recursive: true, force: true });
 });

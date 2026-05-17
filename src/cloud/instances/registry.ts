@@ -46,8 +46,22 @@ const MIN_ID_PREFIX_LENGTH = 4;
 
 // ── Path ────────────────────────────────────────────────────────────────────
 
-/** Root directory for ClawHQ Layer 2 state: `~/.clawhq/`. */
+/**
+ * Root directory for ClawHQ Layer 2 state.
+ *
+ * Default: `~/.clawhq/`. Overridable via the `CLAWHQ_HOME` env var, which
+ * is the canonical sandbox hook for tests and any external invocation that
+ * must not touch the user's machine-global registry. Setting CLAWHQ_HOME
+ * redirects EVERY downstream registry operation (addInstance, listInstances,
+ * pruneOrphanInstances, etc.) to the override path without per-callsite
+ * plumbing — defence in depth against test code paths that don't take an
+ * explicit registryRoot. The override path is used as-is; the caller is
+ * responsible for ensuring the dir exists (writeRegistry creates it on first
+ * write).
+ */
 export function clawhqRoot(): string {
+  const override = process.env["CLAWHQ_HOME"];
+  if (override && override.length > 0) return override;
   return join(homedir(), ".clawhq");
 }
 

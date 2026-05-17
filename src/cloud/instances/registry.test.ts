@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   addInstance,
+  clawhqRoot,
   findById,
   findByIdPrefix,
   findByName,
@@ -264,6 +265,42 @@ describe("persistence", () => {
     void listInstances(root);
     void findById("x", root);
     expect(existsSync(registryPath(root))).toBe(false);
+  });
+});
+
+// ── clawhqRoot env-var override ─────────────────────────────────────────────
+
+describe("clawhqRoot", () => {
+  let saved: string | undefined;
+
+  beforeEach(() => {
+    saved = process.env["CLAWHQ_HOME"];
+  });
+
+  afterEach(() => {
+    if (saved === undefined) delete process.env["CLAWHQ_HOME"];
+    else process.env["CLAWHQ_HOME"] = saved;
+  });
+
+  it("returns ~/.clawhq when CLAWHQ_HOME is unset", () => {
+    delete process.env["CLAWHQ_HOME"];
+    expect(clawhqRoot()).toMatch(/\.clawhq$/);
+  });
+
+  it("honors CLAWHQ_HOME when set", () => {
+    process.env["CLAWHQ_HOME"] = "/tmp/sandbox-root-xyz";
+    expect(clawhqRoot()).toBe("/tmp/sandbox-root-xyz");
+  });
+
+  it("ignores empty CLAWHQ_HOME", () => {
+    process.env["CLAWHQ_HOME"] = "";
+    expect(clawhqRoot()).toMatch(/\.clawhq$/);
+  });
+
+  it("downstream callers (listInstances, registryPath) inherit the override", () => {
+    process.env["CLAWHQ_HOME"] = root;
+    expect(registryPath()).toBe(join(root, "instances.json"));
+    expect(listInstances()).toEqual([]);
   });
 });
 
