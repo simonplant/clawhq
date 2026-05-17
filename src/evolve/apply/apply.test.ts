@@ -115,7 +115,7 @@ composition:
     // from configs/personalities/canonical.yaml and the prose from
     // CANONICAL_DIMENSIONS rendered through DIMENSION_PROSE.
     const soulMd = await readFile(join(testDir, "workspace", "SOUL.md"), "utf-8");
-    expect(soulMd).toContain("ClawHQ Agent");
+    expect(soulMd).toContain("Clawdius");
     expect(soulMd).toContain("blunt and unvarnished");
 
     const agentsMd = await readFile(join(testDir, "workspace", "AGENTS.md"), "utf-8");

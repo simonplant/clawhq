@@ -116,7 +116,7 @@ ClawHQ side of the config type. `src/design/configure/generate.ts:237`
 and `src/design/catalog/compiler.ts:1255` emit top-level `memorySearch.*`
 into compiled `openclaw.json`. Any ClawHQ-managed agent built against
 v2026.5.7 will hit "unknown key — Gateway refuses to start." The
-existing warren instance survives only because its `openclaw.json` was
+existing Clawdius instance survives only because its `openclaw.json` was
 written by an older ClawHQ build pre-update. Fix sequence: move emission
 to `agents.defaults.memorySearch.*`, update types, and check whether
 similar top-level `compaction.*` / `contextPruning.*` emission exists.
