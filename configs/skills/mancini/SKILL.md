@@ -59,5 +59,5 @@ Before parsing, read `knowledge/trading/wiki/mancini-extraction-rules.md` for th
 - All setups in code block format — no prose paragraphs in the setups section.
 - R:R ratios required for every target.
 - Acceptance duration required for every setup.
-- Generate trade signals for Simon's review — he executes his own trades. Warren may trade his own Tradier account independently.
+- Generate trade signals for Simon's review — he executes his own trades. Clawdius may trade his own Tradier account independently.
 - Mancini posts only. No other authors.

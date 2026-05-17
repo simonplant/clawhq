@@ -111,7 +111,7 @@ Simon has ~20 minutes (6:00-6:20 AM) to read, decide, and place orders. The brie
    ACCOUNT STATUS
    tos:     [positions or "flat"] — Simon executes (stocks, options, futures, shorting, margin)
    ira:     [positions or "flat"] — Simon executes (long-only, no margin, no shorting, no day trading)
-   tradier: [positions or "flat"] — Warren's own (alert-only mode)
+   tradier: [positions or "flat"] — Clawdius's own (alert-only mode)
 
    SOURCES: Mancini [Y/N] | Focus 25 [Y/N] | DP [pending] | Overnight [Y/N]
    ```
